@@ -22,6 +22,7 @@ from typing import Any, TypeAlias, cast
 import numpy as np
 import torch
 from numpy.typing import NDArray
+from scipy.optimize import linear_sum_assignment
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -33,11 +34,15 @@ from src.tasks.court_alignment.inference.decoder import (
     fit_similarity_2d,
 )
 from src.tasks.court_alignment.inference.predictor import CourtAlignmentPredictor
+from src.tasks.court_alignment.models.checkpoint import (
+    load_court_alignment_model_checkpoint,
+)
 from src.tasks.court_alignment.models.cnn import (
     validate_court_alignment_input,
     validate_court_alignment_output,
 )
 from src.tasks.court_alignment.training.metrics import compute_alignment_metrics
+from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX
 
 LINE_HEATMAP_ARCHIVE_SCHEMA = "alignment_line_heatmaps_v2"
 LINE_HEATMAP_MANIFEST_SCHEMA = "alignment_line_heatmap_manifest_v2"
@@ -53,6 +58,7 @@ REFERENCE_LIMITATION = (
     "independent ground truth."
 )
 NUM_KEYPOINTS = 14
+POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS = 4
 
 _ARCHIVE_KEYS = frozenset(
     {
@@ -882,52 +888,7 @@ class RealHeatmapEvaluationRequest:
 
 def load_model_checkpoint(model: nn.Module, checkpoint_path: Path) -> dict[str, object]:
     """Strict-load a Lightning ``model.`` state dict into a bare CNN."""
-    _ordinary_file(checkpoint_path, name="Court-alignment checkpoint")
-    checkpoint: object = torch.load(
-        checkpoint_path,
-        map_location="cpu",
-        weights_only=False,
-    )
-    if not isinstance(checkpoint, Mapping):
-        raise TypeError("Checkpoint root must be a mapping.")
-    state = checkpoint.get("state_dict")
-    if not isinstance(state, Mapping) or not state:
-        raise ValueError("Checkpoint must contain a non-empty state_dict mapping.")
-    if any(not isinstance(key, str) for key in state):
-        raise TypeError("Checkpoint state_dict keys must be strings.")
-    invalid_keys = sorted(
-        key for key in state if not cast(str, key).startswith("model.")
-    )
-    if invalid_keys:
-        raise ValueError(
-            "Checkpoint state_dict contains keys outside the required model. prefix: "
-            f"{invalid_keys[:5]}."
-        )
-    stripped: dict[str, Tensor] = {}
-    for raw_key, raw_value in state.items():
-        key = cast(str, raw_key)[len("model.") :]
-        if not key:
-            raise ValueError("Checkpoint contains an empty key after model. stripping.")
-        if not isinstance(raw_value, Tensor):
-            raise TypeError(
-                f"Checkpoint state_dict value {raw_key!r} must be a tensor."
-            )
-        if key in stripped:
-            raise ValueError(
-                f"Duplicate checkpoint key after model. stripping: {key!r}."
-            )
-        stripped[key] = raw_value
-    # strict=True is intentional: architecture/config mismatch must never be hidden.
-    model.load_state_dict(stripped, strict=True)
-    metadata: dict[str, object] = {
-        "checkpoint_path": str(checkpoint_path),
-        "state_dict_key_count": len(stripped),
-    }
-    for key in ("epoch", "global_step", "pytorch-lightning_version"):
-        value = checkpoint.get(key)
-        if isinstance(value, (str, int, float)) and not isinstance(value, bool):
-            metadata[key] = value
-    return metadata
+    return load_court_alignment_model_checkpoint(model, checkpoint_path)
 
 
 def _prediction_poses(
@@ -970,6 +931,408 @@ def _prediction_poses(
             }
         result.append(payload)
     return result
+
+
+@dataclass(frozen=True, slots=True)
+class _PoseFitCandidate:
+    correspondence: str
+    fit: SimilarityFit2D
+    prediction_indices: Tensor
+    reference_indices: Tensor
+    reconstructed_keypoints_px: Tensor
+
+
+def _apply_similarity_fit(fit: SimilarityFit2D, points: Tensor) -> Tensor:
+    cosine = torch.cos(fit.rotation_rad)
+    sine = torch.sin(fit.rotation_rad)
+    rotation = torch.stack(
+        (
+            torch.stack((cosine, -sine)),
+            torch.stack((sine, cosine)),
+        )
+    )
+    return points @ (fit.scale_px_per_metre * rotation).T + fit.translation_px
+
+
+def _error_statistics(
+    errors_px: Tensor,
+    *,
+    transform: PixelUVTransform,
+) -> dict[str, object]:
+    values = errors_px.detach().to(device="cpu", dtype=torch.float64).numpy()
+    if values.ndim != 1 or values.size == 0 or not np.isfinite(values).all():
+        raise ValueError("Pose diagnostic errors must be a non-empty finite vector.")
+    pixel_values = {
+        "mean_px": float(np.mean(values)),
+        "median_px": float(np.median(values)),
+        "q95_px": float(np.quantile(values, 0.95)),
+        "max_px": float(np.max(values)),
+    }
+    return {
+        "count": int(values.size),
+        **pixel_values,
+        **{
+            key.replace("_px", "_m"): transform.pixels_to_metres(value)
+            for key, value in pixel_values.items()
+        },
+    }
+
+
+def _add_flat_error_statistics(
+    summary: dict[str, object],
+    *,
+    prefix: str,
+    statistics: Mapping[str, object] | None,
+) -> None:
+    for statistic in ("mean", "median", "q95", "max"):
+        for unit in ("px", "m"):
+            key = f"{prefix}_error_{statistic}_{unit}"
+            summary[key] = (
+                None if statistics is None else statistics[f"{statistic}_{unit}"]
+            )
+
+
+def compute_pose_alignment_diagnostics(
+    sample: CourtInstanceBatch,
+    reference: ProjectedReference,
+    transform: PixelUVTransform,
+    *,
+    match_max_error_px: float,
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Match independently fitted prediction poses to full-KP14 references.
+
+    This is deliberately separate from the established instance metric.  Each
+    prediction proposes direct and half-turn Sim(2) fits from its available
+    semantic keypoints.  Full reconstructed KP14 error supplies a pair cost,
+    and one Hungarian assignment prevents two predictions from claiming the
+    same accepted court.
+    """
+
+    if not isinstance(sample, CourtInstanceBatch):
+        raise TypeError("Pose diagnostics require a CourtInstanceBatch.")
+    if not isinstance(reference, ProjectedReference):
+        raise TypeError("Pose diagnostics require a ProjectedReference.")
+    if not isinstance(transform, PixelUVTransform):
+        raise TypeError("Pose diagnostics require a PixelUVTransform.")
+    if not math.isfinite(match_max_error_px) or match_max_error_px <= 0.0:
+        raise ValueError(
+            "Pose diagnostic match_max_error_px must be finite and positive."
+        )
+    reference_keypoints = np.asarray(reference.keypoints_px)
+    reference_count = int(reference_keypoints.shape[0])
+    if reference_keypoints.shape != (reference_count, NUM_KEYPOINTS, 2):
+        raise ValueError(
+            "Pose diagnostic reference keypoints must have shape (N,14,2)."
+        )
+    if not np.isfinite(reference_keypoints).all():
+        raise ValueError("Pose diagnostic reference keypoints must be finite.")
+    if not (
+        len(reference.court_instance_ids)
+        == len(reference.candidate_ids)
+        == len(reference.poses)
+        == reference_count
+    ):
+        raise ValueError(
+            "Pose diagnostic reference metadata count must match keypoints."
+        )
+
+    device = sample.keypoints_px.device
+    dtype = sample.keypoints_px.dtype
+    canonical = canonical_court_keypoints(dtype=dtype, device=device)
+    half_turn = torch.as_tensor(
+        CAMERA_VIEW_HALF_TURN_INDEX,
+        dtype=torch.long,
+        device=device,
+    )
+    targets = torch.as_tensor(reference_keypoints, dtype=dtype, device=device)
+    candidates_by_prediction: dict[int, tuple[_PoseFitCandidate, ...]] = {}
+    prediction_fits: list[dict[str, object]] = []
+    for prediction_index in range(sample.num_instances):
+        prediction_indices = torch.nonzero(
+            sample.valid[prediction_index], as_tuple=False
+        ).flatten()
+        valid_count = int(prediction_indices.numel())
+        prediction_payload: dict[str, object] = {
+            "prediction_index": prediction_index,
+            "valid_keypoint_count": valid_count,
+        }
+        if valid_count < POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS:
+            prediction_payload.update(
+                {
+                    "status": "unavailable",
+                    "reason": (
+                        f"requires at least {POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS} "
+                        f"valid semantic keypoints; got {valid_count}"
+                    ),
+                    "available_correspondences": [],
+                }
+            )
+            prediction_fits.append(prediction_payload)
+            continue
+
+        candidates: list[_PoseFitCandidate] = []
+        failure_reasons: list[str] = []
+        for correspondence, reference_indices in (
+            ("direct", prediction_indices),
+            ("half_turn", half_turn[prediction_indices]),
+        ):
+            try:
+                fit = fit_similarity_2d(
+                    canonical[reference_indices],
+                    sample.keypoints_px[prediction_index, prediction_indices],
+                )
+            except ValueError as error:
+                failure_reasons.append(f"{correspondence}: {error}")
+                continue
+            candidates.append(
+                _PoseFitCandidate(
+                    correspondence=correspondence,
+                    fit=fit,
+                    prediction_indices=prediction_indices,
+                    reference_indices=reference_indices,
+                    reconstructed_keypoints_px=_apply_similarity_fit(fit, canonical),
+                )
+            )
+        if not candidates:
+            prediction_payload.update(
+                {
+                    "status": "unavailable",
+                    "reason": "; ".join(failure_reasons),
+                    "available_correspondences": [],
+                }
+            )
+            prediction_fits.append(prediction_payload)
+            continue
+        candidates_by_prediction[prediction_index] = tuple(candidates)
+        prediction_payload.update(
+            {
+                "status": "available",
+                "available_correspondences": [
+                    candidate.correspondence for candidate in candidates
+                ],
+            }
+        )
+        if failure_reasons:
+            prediction_payload["failed_correspondences"] = failure_reasons
+        prediction_fits.append(prediction_payload)
+
+    fit_prediction_indices = tuple(sorted(candidates_by_prediction))
+    pair_choices: dict[tuple[int, int], tuple[_PoseFitCandidate, Tensor]] = {}
+    costs: NDArray[np.float64] = np.full(
+        (reference_count, len(fit_prediction_indices)),
+        np.inf,
+        dtype=np.float64,
+    )
+    for reference_index in range(reference_count):
+        for column, prediction_index in enumerate(fit_prediction_indices):
+            evaluated: list[tuple[int, _PoseFitCandidate, Tensor]] = []
+            for candidate_index, candidate in enumerate(
+                candidates_by_prediction[prediction_index]
+            ):
+                reconstructed_errors = torch.linalg.vector_norm(
+                    candidate.reconstructed_keypoints_px - targets[reference_index],
+                    dim=-1,
+                )
+                evaluated.append((candidate_index, candidate, reconstructed_errors))
+            _candidate_index, candidate, reconstructed_errors = min(
+                evaluated,
+                key=lambda item: (float(item[2].mean()), item[0]),
+            )
+            pair_choices[reference_index, prediction_index] = (
+                candidate,
+                reconstructed_errors,
+            )
+            costs[reference_index, column] = float(reconstructed_errors.mean())
+
+    assigned: list[tuple[int, int]] = []
+    rejected_over_gate: list[dict[str, object]] = []
+    if costs.shape[0] > 0 and costs.shape[1] > 0:
+        # Preserve the ordinary forced assignment only as evidence of pairs
+        # rejected by the gate.  Accepted matches use the same dummy-column
+        # gated Hungarian policy as the established instance metric, so a
+        # distant forced pair cannot block a lower-cost valid pair.
+        reference_indices, prediction_columns = linear_sum_assignment(costs)
+        for reference_index, column in zip(
+            reference_indices.tolist(),
+            prediction_columns.tolist(),
+            strict=True,
+        ):
+            prediction_index = fit_prediction_indices[int(column)]
+            pair_cost_px = float(costs[int(reference_index), int(column)])
+            if pair_cost_px <= match_max_error_px:
+                continue
+            candidate, _errors = pair_choices[int(reference_index), prediction_index]
+            rejected_over_gate.append(
+                {
+                    "prediction_index": prediction_index,
+                    "reference_index": int(reference_index),
+                    "court_instance_id": reference.court_instance_ids[
+                        int(reference_index)
+                    ],
+                    "candidate_id": reference.candidate_ids[int(reference_index)],
+                    "correspondence": candidate.correspondence,
+                    "pair_cost_px": pair_cost_px,
+                    "pair_cost_m": transform.pixels_to_metres(pair_cost_px),
+                    "status": "unavailable",
+                    "reason": (
+                        f"pair cost exceeds match_max_error_px={match_max_error_px}"
+                    ),
+                }
+            )
+        accepted = np.isfinite(costs) & (costs <= match_max_error_px)
+        unmatched_penalty = (reference_count + 1) * match_max_error_px
+        gated_costs: NDArray[np.float64] = np.full(
+            (reference_count, len(fit_prediction_indices) + reference_count),
+            np.inf,
+            dtype=np.float64,
+        )
+        gated_costs[:, : len(fit_prediction_indices)][accepted] = costs[accepted]
+        for reference_index in range(reference_count):
+            gated_costs[
+                reference_index,
+                len(fit_prediction_indices) + reference_index,
+            ] = unmatched_penalty
+        gated_references, gated_columns = linear_sum_assignment(gated_costs)
+        assigned = [
+            (int(reference_index), fit_prediction_indices[int(column)])
+            for reference_index, column in zip(
+                gated_references.tolist(),
+                gated_columns.tolist(),
+                strict=True,
+            )
+            if column < len(fit_prediction_indices)
+        ]
+
+    raw_error_vectors: list[Tensor] = []
+    reconstructed_error_vectors: list[Tensor] = []
+    matches: list[dict[str, object]] = []
+    matched_prediction_indices: set[int] = set()
+    matched_reference_indices: set[int] = set()
+    half_turn_match_count = 0
+    for reference_index, prediction_index in assigned:
+        candidate, reconstructed_errors = pair_choices[
+            reference_index, prediction_index
+        ]
+        raw_errors = torch.linalg.vector_norm(
+            sample.keypoints_px[prediction_index, candidate.prediction_indices]
+            - targets[reference_index, candidate.reference_indices],
+            dim=-1,
+        )
+        raw_statistics = _error_statistics(raw_errors, transform=transform)
+        reconstructed_statistics = _error_statistics(
+            reconstructed_errors,
+            transform=transform,
+        )
+        raw_error_vectors.append(raw_errors)
+        reconstructed_error_vectors.append(reconstructed_errors)
+        matched_prediction_indices.add(prediction_index)
+        matched_reference_indices.add(reference_index)
+        half_turn_match_count += int(candidate.correspondence == "half_turn")
+        matches.append(
+            {
+                "prediction_index": prediction_index,
+                "reference_index": reference_index,
+                "court_instance_id": reference.court_instance_ids[reference_index],
+                "candidate_id": reference.candidate_ids[reference_index],
+                "correspondence": candidate.correspondence,
+                "half_turn_selected": candidate.correspondence == "half_turn",
+                "pair_cost_px": float(reconstructed_errors.mean()),
+                "pair_cost_m": transform.pixels_to_metres(
+                    float(reconstructed_errors.mean())
+                ),
+                "raw_detected_keypoints": {
+                    **raw_statistics,
+                    "coverage": int(raw_errors.numel()) / NUM_KEYPOINTS,
+                },
+                "reconstructed_full_keypoints": reconstructed_statistics,
+                "similarity_fit": _similarity_payload(candidate.fit),
+            }
+        )
+
+    matched_count = len(matches)
+    unmatched_prediction_indices = sorted(
+        set(range(sample.num_instances)) - matched_prediction_indices
+    )
+    unmatched_reference_indices = sorted(
+        set(range(reference_count)) - matched_reference_indices
+    )
+    fit_unavailable_count = sample.num_instances - len(fit_prediction_indices)
+    if matched_count == 0:
+        status = "unavailable"
+    elif unmatched_prediction_indices or unmatched_reference_indices:
+        status = "partial"
+    else:
+        status = "available"
+    aggregate_raw_statistics = (
+        _error_statistics(torch.cat(raw_error_vectors), transform=transform)
+        if raw_error_vectors
+        else None
+    )
+    aggregate_reconstructed_statistics = (
+        _error_statistics(
+            torch.cat(reconstructed_error_vectors),
+            transform=transform,
+        )
+        if reconstructed_error_vectors
+        else None
+    )
+    raw_count = sum(int(errors.numel()) for errors in raw_error_vectors)
+    reconstructed_count = sum(
+        int(errors.numel()) for errors in reconstructed_error_vectors
+    )
+    summary: dict[str, object] = {
+        "pose_diagnostic_status": status,
+        "pose_minimum_keypoints": POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS,
+        "pose_prediction_instance_count": sample.num_instances,
+        "pose_reference_instance_count": reference_count,
+        "pose_fit_available_prediction_count": len(fit_prediction_indices),
+        "pose_fit_unavailable_prediction_count": fit_unavailable_count,
+        "pose_matched_instance_count": matched_count,
+        "pose_rejected_over_gate_pair_count": len(rejected_over_gate),
+        "pose_unmatched_prediction_count": len(unmatched_prediction_indices),
+        "pose_unmatched_reference_count": len(unmatched_reference_indices),
+        "pose_half_turn_match_count": half_turn_match_count,
+        "pose_raw_kp_count": raw_count,
+        "pose_raw_kp_coverage": (
+            raw_count / (matched_count * NUM_KEYPOINTS) if matched_count > 0 else 0.0
+        ),
+        "pose_reconstructed_kp_count": reconstructed_count,
+    }
+    _add_flat_error_statistics(
+        summary,
+        prefix="pose_raw_kp",
+        statistics=aggregate_raw_statistics,
+    )
+    _add_flat_error_statistics(
+        summary,
+        prefix="pose_reconstructed_kp",
+        statistics=aggregate_reconstructed_statistics,
+    )
+    diagnostic: dict[str, object] = {
+        "schema": "court_alignment_pose_diagnostics_v1",
+        "status": status,
+        "matching": ("full14_reconstructed_sim2_pair_cost_gated_hungarian_one_to_one"),
+        "minimum_valid_semantic_keypoints": POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS,
+        "match_max_error_px": match_max_error_px,
+        "summary": summary,
+        "prediction_fits": prediction_fits,
+        "matches": matches,
+        "rejected_over_gate_pairs": rejected_over_gate,
+        "unmatched_prediction_indices": unmatched_prediction_indices,
+        "unmatched_references": [
+            {
+                "reference_index": index,
+                "court_instance_id": reference.court_instance_ids[index],
+                "candidate_id": reference.candidate_ids[index],
+            }
+            for index in unmatched_reference_indices
+        ],
+        "unavailable_policy": (
+            "Unavailable or unmatched instances are counted explicitly and are "
+            "never silently omitted into an all-instance pose average."
+        ),
+    }
+    return summary, diagnostic
 
 
 def _input_tensor(image: FloatArray) -> Tensor:
@@ -1113,7 +1476,14 @@ def evaluate_real_heatmap(
         minimum_visible_fraction=request.metrics.minimum_visible_fraction,
         minimum_sim2_keypoints=request.metrics.minimum_sim2_keypoints,
     )
+    pose_metrics, pose_diagnostic = compute_pose_alignment_diagnostics(
+        sample,
+        reference,
+        transform,
+        match_max_error_px=request.metrics.match_max_error_px,
+    )
     metric_values: dict[str, object] = dict(raw_metrics)
+    metric_values.update(pose_metrics)
     for pixel_key, metre_key in (
         ("instance_kp_mean_error_px", "instance_kp_mean_error_m"),
         ("matched_center_mean_error_px", "matched_center_mean_error_m"),
@@ -1143,7 +1513,7 @@ def evaluate_real_heatmap(
     scale_low, scale_high = request.training_scale_range_px_per_metre
     ood_flags = [scale < scale_low or scale > scale_high for scale in reference_scales]
     diagnostic: dict[str, object] = {
-        "schema": "court_alignment_real_heatmap_diagnostics_v1",
+        "schema": "court_alignment_real_heatmap_diagnostics_v2",
         "reference": {
             "type": REFERENCE_TYPE,
             "is_independent_ground_truth": False,
@@ -1180,6 +1550,7 @@ def evaluate_real_heatmap(
         "metrics_options": asdict(request.metrics),
         "predicted_instance_count": sample.num_instances,
         "predicted_poses": _prediction_poses(sample, transform),
+        "pose_alignment": pose_diagnostic,
         "raw_existing_metrics": raw_metrics,
         "checkpoint": checkpoint_metadata,
         "scale_domain": {
@@ -1231,6 +1602,7 @@ __all__ = [
     "REAL_HEATMAP_PREPROCESSORS",
     "RealHeatmapArchive",
     "RealHeatmapEvaluationRequest",
+    "compute_pose_alignment_diagnostics",
     "evaluate_real_heatmap",
     "letterbox_heatmap",
     "load_accepted_alignments",

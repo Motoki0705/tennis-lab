@@ -1,0 +1,12 @@
+# @package data
+defaults:
+  - default
+  - _self_
+
+# B00 pilot factor: target width and expanded court scale only.
+sigma_px: 2.0
+min_scale_px_per_metre: 3.0
+max_scale_px_per_metre: 9.0
+augmentations:
+  - name: identity
+    params: {}

@@ -1,0 +1,16 @@
+{
+  "run_id": "1788334188219626092_1436198_court-align-synth-eval-aug-r2-weak-mp8-v2",
+  "name": "court-align-synth-eval-aug-r2-weak-mp8-v2",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True HYDRA_FULL_ERROR=1 /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_alignment.scripts.evaluate paths.checkpoint_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs paths.output_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs data=b00_weak_structure_v2 evaluation.checkpoint_path=court_alignment/augmentation_round2/b00_weak_warm30_lr3e4_s42/logs/version_0/checkpoints/court-alignment-epoch\\\\=029.ckpt decoder.threshold=0.25 decoder.max_peaks=8 decoder.cluster_distance_px=8.0 decoder.max_instances=2 metrics.threshold=0.25 metrics.max_peaks=8 metrics.match_max_error_px=8.0 run.output_dir=court_alignment/evaluation/b00_weak_warm30_mp8_v2 run.gpus=1",
+  "provider": "codex",
+  "session": "01a05a02-ad55-76c0-9fcb-f250929e59a7",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5de3a7d45e037a799d4dad0ae1ef3ac3cb24897e",
+  "branch": "feat/court-alignment-kp14-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "captured_at": "2026-09-02T16:30:07+09:00"
+}

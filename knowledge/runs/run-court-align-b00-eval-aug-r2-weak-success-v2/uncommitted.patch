@@ -1,0 +1,3021 @@
+diff --git a/src/tasks/court_alignment/data/augmentation.py b/src/tasks/court_alignment/data/augmentation.py
+index cf443c9c..2a303b47 100644
+--- a/src/tasks/court_alignment/data/augmentation.py
++++ b/src/tasks/court_alignment/data/augmentation.py
+@@ -1,13 +1,14 @@
+-"""Typed augmentation registry for ground-court procedural samples.
++"""Typed image-only augmentations for ground-court procedural samples.
+ 
+-The initial experiment registers only ``identity``.  Augmentations receive a
+-small immutable rendered sample and return a new one, making future blur,
+-dropout, noise, and warp implementations independently testable and avoiding
+-an augmentation name silently selecting a different operation.
++Every registered transform consumes one shared ``numpy.random.Generator`` and
++returns a new sample without changing its geometry payload. The registry and
++ordered compose contract make B00 domain randomization explicit in Hydra while
++keeping validation/test inputs clean.
+ """
+ 
+ from __future__ import annotations
+ 
++import math
+ from collections.abc import Callable, Mapping, Sequence
+ from dataclasses import dataclass, field
+ from types import MappingProxyType
+@@ -15,31 +16,91 @@ from typing import Protocol
+ 
+ import numpy as np
+ import torch
++import torch.nn.functional as F
+ from torch import Tensor
+ 
+ 
++def _validate_image(image: Tensor) -> None:
++    """Validate the strict line-evidence image contract."""
++
++    if not isinstance(image, Tensor):
++        raise TypeError("Augmentable image must be a torch.Tensor.")
++    if (
++        image.ndim != 3
++        or image.shape[0] != 1
++        or image.shape[1] <= 0
++        or image.shape[2] <= 0
++    ):
++        raise ValueError("Augmentable image must have non-empty shape [1,H,W].")
++    if not image.is_floating_point():
++        raise TypeError("Augmentable image must have a floating-point dtype.")
++    if not bool(torch.isfinite(image).all().item()):
++        raise ValueError("Augmentable image values must be finite.")
++    minimum = float(image.amin().item())
++    maximum = float(image.amax().item())
++    if minimum < 0.0 or maximum > 1.0:
++        raise ValueError("Augmentable image values must lie in [0,1].")
++    if maximum <= 0.0:
++        raise ValueError("Augmentable image must contain positive line evidence.")
++    if minimum >= 1.0:
++        raise ValueError("Augmentable image must contain background evidence.")
++
++
++def _validate_rng(rng: np.random.Generator) -> None:
++    if not isinstance(rng, np.random.Generator):
++        raise TypeError("augmentation rng must be numpy.random.Generator.")
++
++
+ @dataclass(frozen=True, slots=True)
+ class AugmentableGroundCourtSample:
+     """Image and geometry payload passed through an augmentation."""
+ 
+-    image: Tensor  # [1,H,W] binary or augmented line evidence
++    image: Tensor  # [1,H,W] float line evidence in [0,1]
+     keypoints: Tensor  # [M,14,2], output pixels
+     visibility: Tensor  # [M,14], bool
+     centers: Tensor  # [M,2], output pixels
+     instance_ids: Tensor  # [M], int64
+ 
+     def __post_init__(self) -> None:
+-        if self.image.ndim != 3 or self.image.shape[0] != 1:
+-            raise ValueError("Augmentable image must have shape [1,H,W].")
++        _validate_image(self.image)
++        geometry = {
++            "keypoints": self.keypoints,
++            "visibility": self.visibility,
++            "centers": self.centers,
++            "instance_ids": self.instance_ids,
++        }
++        for name, value in geometry.items():
++            if not isinstance(value, Tensor):
++                raise TypeError(f"Augmentable {name} must be a torch.Tensor.")
+         if self.keypoints.ndim != 3 or self.keypoints.shape[-2:] != (14, 2):
+             raise ValueError("Augmentable keypoints must have shape [M,14,2].")
+         count = self.keypoints.shape[0]
++        if count <= 0:
++            raise ValueError("Augmentable geometry must contain at least one instance.")
++        if not self.keypoints.is_floating_point():
++            raise TypeError("Augmentable keypoints must have a floating-point dtype.")
+         if self.visibility.shape != (count, 14) or self.visibility.dtype != torch.bool:
+-            raise ValueError("Augmentable visibility must have shape [M,14] and bool dtype.")
++            raise ValueError(
++                "Augmentable visibility must have shape [M,14] and bool dtype."
++            )
+         if self.centers.shape != (count, 2):
+             raise ValueError("Augmentable centers must have shape [M,2].")
++        if not self.centers.is_floating_point():
++            raise TypeError("Augmentable centers must have a floating-point dtype.")
+         if self.instance_ids.shape != (count,) or self.instance_ids.dtype != torch.long:
+             raise ValueError("Augmentable instance_ids must be int64 [M].")
++        if any(value.device != self.image.device for value in geometry.values()):
++            raise ValueError(
++                "Augmentable image and geometry must be on the same device."
++            )
++        if not bool(torch.isfinite(self.keypoints).all().item()):
++            raise ValueError("Augmentable keypoints must be finite.")
++        if not bool(torch.isfinite(self.centers).all().item()):
++            raise ValueError("Augmentable centers must be finite.")
++        if bool((self.instance_ids < 0).any().item()):
++            raise ValueError("Augmentable instance_ids must be non-negative.")
++        if torch.unique(self.instance_ids).numel() != count:
++            raise ValueError("Augmentable instance_ids must be unique.")
+ 
+ 
+ class GroundCourtAugmentation(Protocol):
+@@ -55,9 +116,7 @@ class GroundCourtAugmentationConfig:
+     """Name and typed parameter mapping for one registered augmentation."""
+ 
+     name: str = "identity"
+-    params: Mapping[str, object] = field(
+-        default_factory=lambda: MappingProxyType({})
+-    )
++    params: Mapping[str, object] = field(default_factory=lambda: MappingProxyType({}))
+ 
+     def __post_init__(self) -> None:
+         if not isinstance(self.name, str) or not self.name.strip():
+@@ -69,11 +128,7 @@ class GroundCourtAugmentationConfig:
+ 
+     @classmethod
+     def from_mapping(cls, value: Mapping[str, object]) -> GroundCourtAugmentationConfig:
+-        """Parse ``{'type': ..., 'params': {...}}`` with no unknown fields.
+-
+-        ``name`` and ``type`` are equivalent spellings; a config must select
+-        exactly one of them.
+-        """
++        """Parse ``{'type': ..., 'params': {...}}`` with no unknown fields."""
+ 
+         if not isinstance(value, Mapping):
+             raise TypeError("augmentation config must be a mapping.")
+@@ -91,6 +146,105 @@ class GroundCourtAugmentationConfig:
+         return cls(name=name, params=params)
+ 
+ 
++def _replace_image(
++    sample: AugmentableGroundCourtSample, image: Tensor
++) -> AugmentableGroundCourtSample:
++    """Replace only image data; geometry tensor identity is deliberately retained."""
++
++    return AugmentableGroundCourtSample(
++        image=image,
++        keypoints=sample.keypoints,
++        visibility=sample.visibility,
++        centers=sample.centers,
++        instance_ids=sample.instance_ids,
++    )
++
++
++def _prepare(sample: AugmentableGroundCourtSample, rng: np.random.Generator) -> None:
++    if not isinstance(sample, AugmentableGroundCourtSample):
++        raise TypeError("augmentation sample must be AugmentableGroundCourtSample.")
++    _validate_image(sample.image)
++    _validate_rng(rng)
++
++
++def _probability(value: object, *, name: str) -> float:
++    if isinstance(value, bool) or not isinstance(value, (int, float)):
++        raise TypeError(f"{name} must be numeric.")
++    result = float(value)
++    if not math.isfinite(result) or not 0.0 <= result <= 1.0:
++        raise ValueError(f"{name} must lie in [0,1].")
++    return result
++
++
++def _non_negative_float(value: object, *, name: str) -> float:
++    if isinstance(value, bool) or not isinstance(value, (int, float)):
++        raise TypeError(f"{name} must be numeric.")
++    result = float(value)
++    if not math.isfinite(result) or result < 0.0:
++        raise ValueError(f"{name} must be finite and non-negative.")
++    return result
++
++
++def _positive_int(value: object, *, name: str) -> int:
++    if type(value) is not int:
++        raise TypeError(f"{name} must be an integer.")
++    if value <= 0:
++        raise ValueError(f"{name} must be positive.")
++    return value
++
++
++def _int_range(value: object, *, name: str, minimum: int = 0) -> tuple[int, int]:
++    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
++        raise TypeError(f"{name} must be an integer pair.")
++    items = tuple(value)
++    if len(items) != 2 or any(type(item) is not int for item in items):
++        raise TypeError(f"{name} must be an integer pair.")
++    low, high = items
++    if low < minimum or high < low:
++        raise ValueError(f"{name} must be ordered with minimum {minimum}.")
++    return low, high
++
++
++def _float_range(
++    value: object,
++    *,
++    name: str,
++    minimum: float = 0.0,
++    maximum: float | None = None,
++) -> tuple[float, float]:
++    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
++        raise TypeError(f"{name} must be a numeric pair.")
++    items = tuple(value)
++    if len(items) != 2:
++        raise ValueError(f"{name} must contain two values.")
++    parsed = tuple(_non_negative_float(item, name=name) for item in items)
++    low, high = parsed
++    if low < minimum or high < low or (maximum is not None and high > maximum):
++        upper = "" if maximum is None else f" and maximum {maximum}"
++        raise ValueError(f"{name} must be ordered with minimum {minimum}{upper}.")
++    return low, high
++
++
++def _validate_params(params: Mapping[str, object], allowed: set[str]) -> None:
++    unknown = set(params) - allowed
++    if unknown:
++        raise ValueError(f"Unknown augmentation parameters: {sorted(unknown)}")
++
++
++def _uniform(rng: np.random.Generator, bounds: tuple[float, float]) -> float:
++    low, high = bounds
++    if low == high:
++        return low
++    return float(rng.uniform(low, high))
++
++
++def _integer(rng: np.random.Generator, bounds: tuple[int, int]) -> int:
++    low, high = bounds
++    if low == high:
++        return low
++    return int(rng.integers(low, high + 1))
++
++
+ @dataclass(frozen=True, slots=True)
+ class IdentityAugmentation:
+     """Baseline no-op augmentation."""
+@@ -98,10 +252,397 @@ class IdentityAugmentation:
+     def __call__(
+         self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
+     ) -> AugmentableGroundCourtSample:
+-        _ = rng
++        _prepare(sample, rng)
+         return sample
+ 
+ 
++@dataclass(frozen=True, slots=True)
++class RandomLineMorphology:
++    """Random grey-scale dilation or erosion without moving annotations.
++
++    An erosion proposal that would delete every line pixel is explicitly
++    rejected, since an empty heatmap has no valid alignment target.
++    """
++
++    probability: float = 0.7
++    dilate_probability: float = 0.8
++    kernel_size_choices: tuple[int, ...] = (3,)
++    iterations: int = 1
++
++    def __post_init__(self) -> None:
++        object.__setattr__(
++            self, "probability", _probability(self.probability, name="probability")
++        )
++        object.__setattr__(
++            self,
++            "dilate_probability",
++            _probability(self.dilate_probability, name="dilate_probability"),
++        )
++        if (
++            not isinstance(self.kernel_size_choices, tuple)
++            or not self.kernel_size_choices
++        ):
++            raise TypeError("kernel_size_choices must be a non-empty integer tuple.")
++        if any(type(item) is not int for item in self.kernel_size_choices):
++            raise TypeError("kernel_size_choices must contain integers.")
++        if any(item <= 0 or item % 2 == 0 for item in self.kernel_size_choices):
++            raise ValueError("kernel_size_choices must contain positive odd values.")
++        _positive_int(self.iterations, name="iterations")
++
++    def __call__(
++        self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
++    ) -> AugmentableGroundCourtSample:
++        _prepare(sample, rng)
++        if rng.random() >= self.probability:
++            return sample
++        kernel = int(rng.choice(self.kernel_size_choices))
++        dilate = rng.random() < self.dilate_probability
++        result = sample.image
++        for _ in range(self.iterations):
++            padded = F.pad(
++                result.unsqueeze(0),
++                (kernel // 2,) * 4,
++                mode="replicate",
++            )
++            if dilate:
++                result = F.max_pool2d(padded, kernel_size=kernel, stride=1).squeeze(0)
++            else:
++                result = -F.max_pool2d(-padded, kernel_size=kernel, stride=1).squeeze(0)
++        if float(result.amax().item()) <= 0.0:
++            result = sample.image
++        return _replace_image(sample, result.clamp(0.0, 1.0))
++
++
++@dataclass(frozen=True, slots=True)
++class RandomHeatmapBlur:
++    """Gaussian blur that retains continuous line probabilities."""
++
++    probability: float = 0.7
++    sigma_range: tuple[float, float] = (0.0, 1.5)
++
++    def __post_init__(self) -> None:
++        object.__setattr__(
++            self, "probability", _probability(self.probability, name="probability")
++        )
++        object.__setattr__(
++            self,
++            "sigma_range",
++            _float_range(self.sigma_range, name="sigma_range"),
++        )
++
++    def __call__(
++        self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
++    ) -> AugmentableGroundCourtSample:
++        _prepare(sample, rng)
++        if rng.random() >= self.probability:
++            return sample
++        sigma = _uniform(rng, self.sigma_range)
++        if sigma <= 1.0e-6:
++            return sample
++        radius = max(1, int(math.ceil(3.0 * sigma)))
++        coordinates = torch.arange(
++            -radius,
++            radius + 1,
++            dtype=torch.float32,
++            device=sample.image.device,
++        )
++        kernel = torch.exp(-(coordinates.square()) / (2.0 * sigma * sigma))
++        kernel /= kernel.sum()
++        working = sample.image.to(dtype=torch.float32).unsqueeze(0)
++        horizontal = F.conv2d(
++            F.pad(working, (radius, radius, 0, 0), mode="replicate"),
++            kernel.view(1, 1, 1, -1),
++        )
++        blurred = F.conv2d(
++            F.pad(horizontal, (0, 0, radius, radius), mode="replicate"),
++            kernel.view(1, 1, -1, 1),
++        ).squeeze(0)
++        return _replace_image(
++            sample, blurred.to(dtype=sample.image.dtype).clamp(0.0, 1.0)
++        )
++
++
++def _segment_mask(
++    image: Tensor,
++    *,
++    center_x: float,
++    center_y: float,
++    angle_rad: float,
++    length_px: float,
++    width_px: float,
++) -> Tensor:
++    height, width = image.shape[-2:]
++    ys = torch.arange(height, dtype=torch.float32, device=image.device).view(-1, 1)
++    xs = torch.arange(width, dtype=torch.float32, device=image.device).view(1, -1)
++    cosine = math.cos(angle_rad)
++    sine = math.sin(angle_rad)
++    along = (xs - center_x) * cosine + (ys - center_y) * sine
++    across = -(xs - center_x) * sine + (ys - center_y) * cosine
++    return (along.abs() <= length_px / 2.0) & (across.abs() <= width_px / 2.0)
++
++
++@dataclass(frozen=True, slots=True)
++class RandomLineDropout:
++    """Erase bounded oriented gaps centered on existing line evidence."""
++
++    probability: float = 0.3
++    gap_count_range: tuple[int, int] = (1, 4)
++    gap_length_px_range: tuple[float, float] = (2.0, 12.0)
++    gap_width_px_range: tuple[float, float] = (1.0, 4.0)
++
++    def __post_init__(self) -> None:
++        object.__setattr__(
++            self, "probability", _probability(self.probability, name="probability")
++        )
++        object.__setattr__(
++            self,
++            "gap_count_range",
++            _int_range(self.gap_count_range, name="gap_count_range", minimum=1),
++        )
++        object.__setattr__(
++            self,
++            "gap_length_px_range",
++            _float_range(
++                self.gap_length_px_range, name="gap_length_px_range", minimum=1.0
++            ),
++        )
++        object.__setattr__(
++            self,
++            "gap_width_px_range",
++            _float_range(
++                self.gap_width_px_range, name="gap_width_px_range", minimum=1.0
++            ),
++        )
++
++    def __call__(
++        self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
++    ) -> AugmentableGroundCourtSample:
++        _prepare(sample, rng)
++        if rng.random() >= self.probability:
++            return sample
++        result = sample.image.clone()
++        count = _integer(rng, self.gap_count_range)
++        for _ in range(count):
++            foreground = torch.nonzero(result[0] > 0.0, as_tuple=False)
++            if foreground.shape[0] <= 1:
++                break
++            coordinate = foreground[int(rng.integers(0, foreground.shape[0]))]
++            center_y = float(coordinate[0].item())
++            center_x = float(coordinate[1].item())
++            mask = _segment_mask(
++                result,
++                center_x=center_x,
++                center_y=center_y,
++                angle_rad=float(rng.uniform(0.0, math.pi)),
++                length_px=_uniform(rng, self.gap_length_px_range),
++                width_px=_uniform(rng, self.gap_width_px_range),
++            )
++            proposal = result.masked_fill(mask.unsqueeze(0), 0.0)
++            if float(proposal.amax().item()) > 0.0:
++                result = proposal
++        return _replace_image(sample, result)
++
++
++def _shift_without_wrap(image: Tensor, *, dx: int, dy: int) -> Tensor:
++    shifted = torch.roll(image, shifts=(dy, dx), dims=(-2, -1))
++    if dy > 0:
++        shifted[..., :dy, :] = 0.0
++    elif dy < 0:
++        shifted[..., dy:, :] = 0.0
++    if dx > 0:
++        shifted[..., :, :dx] = 0.0
++    elif dx < 0:
++        shifted[..., :, dx:] = 0.0
++    return shifted
++
++
++@dataclass(frozen=True, slots=True)
++class RandomGhostLines:
++    """Add parallel shifted copies and optional unrelated long line clutter."""
++
++    probability: float = 0.5
++    copy_count_range: tuple[int, int] = (1, 3)
++    offset_px_range: tuple[int, int] = (3, 15)
++    amplitude_range: tuple[float, float] = (0.55, 1.0)
++    long_line_count_range: tuple[int, int] = (0, 3)
++    long_line_length_px_range: tuple[float, float] = (48.0, 220.0)
++    long_line_width_px_range: tuple[float, float] = (1.0, 4.0)
++    long_line_amplitude_range: tuple[float, float] = (0.55, 1.0)
++
++    def __post_init__(self) -> None:
++        object.__setattr__(
++            self, "probability", _probability(self.probability, name="probability")
++        )
++        object.__setattr__(
++            self,
++            "copy_count_range",
++            _int_range(self.copy_count_range, name="copy_count_range", minimum=1),
++        )
++        object.__setattr__(
++            self,
++            "offset_px_range",
++            _int_range(self.offset_px_range, name="offset_px_range", minimum=1),
++        )
++        object.__setattr__(
++            self,
++            "amplitude_range",
++            _float_range(self.amplitude_range, name="amplitude_range", maximum=1.0),
++        )
++        object.__setattr__(
++            self,
++            "long_line_count_range",
++            _int_range(self.long_line_count_range, name="long_line_count_range"),
++        )
++        object.__setattr__(
++            self,
++            "long_line_length_px_range",
++            _float_range(
++                self.long_line_length_px_range,
++                name="long_line_length_px_range",
++                minimum=1.0,
++            ),
++        )
++        object.__setattr__(
++            self,
++            "long_line_width_px_range",
++            _float_range(
++                self.long_line_width_px_range,
++                name="long_line_width_px_range",
++                minimum=1.0,
++            ),
++        )
++        object.__setattr__(
++            self,
++            "long_line_amplitude_range",
++            _float_range(
++                self.long_line_amplitude_range,
++                name="long_line_amplitude_range",
++                maximum=1.0,
++            ),
++        )
++
++    def __call__(
++        self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
++    ) -> AugmentableGroundCourtSample:
++        _prepare(sample, rng)
++        if rng.random() >= self.probability:
++            return sample
++        result = sample.image.clone()
++        copy_count = _integer(rng, self.copy_count_range)
++        for _ in range(copy_count):
++            magnitude = _integer(rng, self.offset_px_range)
++            angle = float(rng.uniform(0.0, 2.0 * math.pi))
++            dx = int(round(magnitude * math.cos(angle)))
++            dy = int(round(magnitude * math.sin(angle)))
++            if dx == 0 and dy == 0:
++                dx = magnitude
++            copy = _shift_without_wrap(sample.image, dx=dx, dy=dy)
++            result = torch.maximum(result, copy * _uniform(rng, self.amplitude_range))
++        height, width = sample.image.shape[-2:]
++        line_count = _integer(rng, self.long_line_count_range)
++        for _ in range(line_count):
++            mask = _segment_mask(
++                result,
++                center_x=float(rng.uniform(0.0, max(width - 1, 1))),
++                center_y=float(rng.uniform(0.0, max(height - 1, 1))),
++                angle_rad=float(rng.uniform(0.0, math.pi)),
++                length_px=_uniform(rng, self.long_line_length_px_range),
++                width_px=_uniform(rng, self.long_line_width_px_range),
++            )
++            amplitude = _uniform(rng, self.long_line_amplitude_range)
++            clutter = mask.to(dtype=result.dtype).unsqueeze(0) * amplitude
++            result = torch.maximum(result, clutter)
++        return _replace_image(sample, result.clamp(0.0, 1.0))
++
++
++@dataclass(frozen=True, slots=True)
++class RandomProbabilityNoise:
++    """Randomize confidence calibration and add isolated detector speckles."""
++
++    probability: float = 0.8
++    foreground_amplitude_range: tuple[float, float] = (0.55, 1.0)
++    gamma_range: tuple[float, float] = (0.7, 1.5)
++    speckle_fraction_range: tuple[float, float] = (0.001, 0.008)
++    speckle_amplitude_range: tuple[float, float] = (0.2, 0.9)
++    additive_std: float = 0.0
++
++    def __post_init__(self) -> None:
++        object.__setattr__(
++            self, "probability", _probability(self.probability, name="probability")
++        )
++        object.__setattr__(
++            self,
++            "foreground_amplitude_range",
++            _float_range(
++                self.foreground_amplitude_range,
++                name="foreground_amplitude_range",
++                maximum=1.0,
++            ),
++        )
++        gamma_range = _float_range(self.gamma_range, name="gamma_range")
++        if gamma_range[0] <= 0.0:
++            raise ValueError("gamma_range must be positive.")
++        object.__setattr__(self, "gamma_range", gamma_range)
++        object.__setattr__(
++            self,
++            "speckle_fraction_range",
++            _float_range(
++                self.speckle_fraction_range,
++                name="speckle_fraction_range",
++                maximum=1.0,
++            ),
++        )
++        object.__setattr__(
++            self,
++            "speckle_amplitude_range",
++            _float_range(
++                self.speckle_amplitude_range,
++                name="speckle_amplitude_range",
++                maximum=1.0,
++            ),
++        )
++        object.__setattr__(
++            self,
++            "additive_std",
++            _non_negative_float(self.additive_std, name="additive_std"),
++        )
++
++    def __call__(
++        self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
++    ) -> AugmentableGroundCourtSample:
++        _prepare(sample, rng)
++        if rng.random() >= self.probability:
++            return sample
++        amplitude = _uniform(rng, self.foreground_amplitude_range)
++        gamma = _uniform(rng, self.gamma_range)
++        result = (sample.image * amplitude).pow(gamma)
++        height, width = result.shape[-2:]
++        pixel_count = height * width
++        fraction = _uniform(rng, self.speckle_fraction_range)
++        speckle_count = min(pixel_count, int(round(pixel_count * fraction)))
++        if speckle_count > 0:
++            flat_indices = rng.choice(pixel_count, size=speckle_count, replace=False)
++            amplitudes = rng.uniform(
++                self.speckle_amplitude_range[0],
++                self.speckle_amplitude_range[1],
++                size=speckle_count,
++            )
++            index = torch.as_tensor(
++                flat_indices, dtype=torch.long, device=result.device
++            )
++            values = torch.as_tensor(
++                amplitudes, dtype=result.dtype, device=result.device
++            )
++            flat = result.view(-1)
++            flat[index] = torch.maximum(flat[index], values)
++        if self.additive_std > 0.0:
++            noise = rng.normal(0.0, self.additive_std, size=(height, width))
++            result = result + torch.as_tensor(
++                noise, dtype=result.dtype, device=result.device
++            ).unsqueeze(0)
++        return _replace_image(sample, result.clamp(0.0, 1.0))
++
++
+ @dataclass(frozen=True, slots=True)
+ class ComposeAugmentation:
+     """Apply an ordered tuple of typed augmentations."""
+@@ -111,6 +652,7 @@ class ComposeAugmentation:
+     def __call__(
+         self, sample: AugmentableGroundCourtSample, rng: np.random.Generator
+     ) -> AugmentableGroundCourtSample:
++        _prepare(sample, rng)
+         result = sample
+         for augmentation in self.augmentations:
+             result = augmentation(result, rng)
+@@ -151,6 +693,156 @@ def _build_identity(params: Mapping[str, object]) -> GroundCourtAugmentation:
+     return IdentityAugmentation()
+ 
+ 
++@register_augmentation("random_line_morphology")
++def _build_random_line_morphology(
++    params: Mapping[str, object],
++) -> GroundCourtAugmentation:
++    allowed = {"probability", "dilate_probability", "kernel_size_choices", "iterations"}
++    _validate_params(params, allowed)
++    choices = params.get("kernel_size_choices", (3,))
++    if isinstance(choices, (str, bytes)) or not isinstance(choices, Sequence):
++        raise TypeError("kernel_size_choices must be a non-empty integer sequence.")
++    return RandomLineMorphology(
++        probability=_probability(params.get("probability", 0.7), name="probability"),
++        dilate_probability=_probability(
++            params.get("dilate_probability", 0.8), name="dilate_probability"
++        ),
++        kernel_size_choices=tuple(choices),
++        iterations=_positive_int(params.get("iterations", 1), name="iterations"),
++    )
++
++
++@register_augmentation("random_heatmap_blur")
++def _build_random_heatmap_blur(params: Mapping[str, object]) -> GroundCourtAugmentation:
++    _validate_params(params, {"probability", "sigma_range"})
++    return RandomHeatmapBlur(
++        probability=_probability(params.get("probability", 0.7), name="probability"),
++        sigma_range=_float_range(
++            params.get("sigma_range", (0.0, 1.5)), name="sigma_range"
++        ),
++    )
++
++
++@register_augmentation("random_line_dropout")
++def _build_random_line_dropout(params: Mapping[str, object]) -> GroundCourtAugmentation:
++    allowed = {
++        "probability",
++        "gap_count_range",
++        "gap_length_px_range",
++        "gap_width_px_range",
++    }
++    _validate_params(params, allowed)
++    return RandomLineDropout(
++        probability=_probability(params.get("probability", 0.3), name="probability"),
++        gap_count_range=_int_range(
++            params.get("gap_count_range", (1, 4)),
++            name="gap_count_range",
++            minimum=1,
++        ),
++        gap_length_px_range=_float_range(
++            params.get("gap_length_px_range", (2.0, 12.0)),
++            name="gap_length_px_range",
++            minimum=1.0,
++        ),
++        gap_width_px_range=_float_range(
++            params.get("gap_width_px_range", (1.0, 4.0)),
++            name="gap_width_px_range",
++            minimum=1.0,
++        ),
++    )
++
++
++@register_augmentation("random_ghost_lines")
++def _build_random_ghost_lines(params: Mapping[str, object]) -> GroundCourtAugmentation:
++    allowed = {
++        "probability",
++        "copy_count_range",
++        "offset_px_range",
++        "amplitude_range",
++        "long_line_count_range",
++        "long_line_length_px_range",
++        "long_line_width_px_range",
++        "long_line_amplitude_range",
++    }
++    _validate_params(params, allowed)
++    return RandomGhostLines(
++        probability=_probability(params.get("probability", 0.5), name="probability"),
++        copy_count_range=_int_range(
++            params.get("copy_count_range", (1, 3)),
++            name="copy_count_range",
++            minimum=1,
++        ),
++        offset_px_range=_int_range(
++            params.get("offset_px_range", (3, 15)),
++            name="offset_px_range",
++            minimum=1,
++        ),
++        amplitude_range=_float_range(
++            params.get("amplitude_range", (0.55, 1.0)),
++            name="amplitude_range",
++            maximum=1.0,
++        ),
++        long_line_count_range=_int_range(
++            params.get("long_line_count_range", (0, 3)),
++            name="long_line_count_range",
++        ),
++        long_line_length_px_range=_float_range(
++            params.get("long_line_length_px_range", (48.0, 220.0)),
++            name="long_line_length_px_range",
++            minimum=1.0,
++        ),
++        long_line_width_px_range=_float_range(
++            params.get("long_line_width_px_range", (1.0, 4.0)),
++            name="long_line_width_px_range",
++            minimum=1.0,
++        ),
++        long_line_amplitude_range=_float_range(
++            params.get("long_line_amplitude_range", (0.55, 1.0)),
++            name="long_line_amplitude_range",
++            maximum=1.0,
++        ),
++    )
++
++
++@register_augmentation("random_probability_noise")
++def _build_random_probability_noise(
++    params: Mapping[str, object],
++) -> GroundCourtAugmentation:
++    allowed = {
++        "probability",
++        "foreground_amplitude_range",
++        "gamma_range",
++        "speckle_fraction_range",
++        "speckle_amplitude_range",
++        "additive_std",
++    }
++    _validate_params(params, allowed)
++    return RandomProbabilityNoise(
++        probability=_probability(params.get("probability", 0.8), name="probability"),
++        foreground_amplitude_range=_float_range(
++            params.get("foreground_amplitude_range", (0.55, 1.0)),
++            name="foreground_amplitude_range",
++            maximum=1.0,
++        ),
++        gamma_range=_float_range(
++            params.get("gamma_range", (0.7, 1.5)), name="gamma_range"
++        ),
++        speckle_fraction_range=_float_range(
++            params.get("speckle_fraction_range", (0.001, 0.008)),
++            name="speckle_fraction_range",
++            maximum=1.0,
++        ),
++        speckle_amplitude_range=_float_range(
++            params.get("speckle_amplitude_range", (0.2, 0.9)),
++            name="speckle_amplitude_range",
++            maximum=1.0,
++        ),
++        additive_std=_non_negative_float(
++            params.get("additive_std", 0.0), name="additive_std"
++        ),
++    )
++
++
+ def build_augmentation(
+     config: GroundCourtAugmentationConfig | Mapping[str, object] | str | None = None,
+ ) -> GroundCourtAugmentation:
+@@ -177,9 +869,7 @@ def build_augmentation(
+ 
+ 
+ def build_augmentations(
+-    configs: Sequence[
+-        GroundCourtAugmentationConfig | Mapping[str, object] | str
+-    ] = (),
++    configs: Sequence[GroundCourtAugmentationConfig | Mapping[str, object] | str] = (),
+ ) -> GroundCourtAugmentation:
+     """Build an ordered augmentation pipeline, defaulting to identity."""
+ 
+@@ -195,6 +885,11 @@ __all__ = [
+     "GroundCourtAugmentation",
+     "GroundCourtAugmentationConfig",
+     "IdentityAugmentation",
++    "RandomGhostLines",
++    "RandomHeatmapBlur",
++    "RandomLineDropout",
++    "RandomLineMorphology",
++    "RandomProbabilityNoise",
+     "build_augmentation",
+     "build_augmentations",
+     "register_augmentation",
+diff --git a/src/tasks/court_alignment/data/datamodule.py b/src/tasks/court_alignment/data/datamodule.py
+index 1c299215..65eb1b32 100644
+--- a/src/tasks/court_alignment/data/datamodule.py
++++ b/src/tasks/court_alignment/data/datamodule.py
+@@ -33,9 +33,8 @@ def _size_tuple(image_size: int | Sequence[int]) -> tuple[int, int]:
+ 
+ 
+ def _configs(
+-    augmentations: Sequence[
+-        GroundCourtAugmentationConfig | Mapping[str, object] | str
+-    ] | None,
++    augmentations: Sequence[GroundCourtAugmentationConfig | Mapping[str, object] | str]
++    | None,
+ ) -> tuple[GroundCourtAugmentationConfig, ...]:
+     if augmentations is None:
+         return ()
+@@ -48,7 +47,9 @@ def _configs(
+         elif isinstance(item, str):
+             result.append(GroundCourtAugmentationConfig(name=item))
+         else:
+-            raise TypeError("Each augmentation must be a typed config, mapping, or name.")
++            raise TypeError(
++                "Each augmentation must be a typed config, mapping, or name."
++            )
+     return tuple(result)
+ 
+ 
+@@ -85,10 +86,14 @@ class GroundCourtDataModule(pl.LightningDataModule):
+         max_sampling_attempts: int = 64,
+         court_margin_px: float = 0.0,
+         seed: int = 42,
+-        augmentation: GroundCourtAugmentationConfig | Mapping[str, object] | str | None = None,
++        augmentation: GroundCourtAugmentationConfig
++        | Mapping[str, object]
++        | str
++        | None = None,
+         augmentations: Sequence[
+             GroundCourtAugmentationConfig | Mapping[str, object] | str
+-        ] | None = None,
++        ]
++        | None = None,
+     ) -> None:
+         super().__init__()
+         if type(batch_size) is not int or batch_size <= 0:
+diff --git a/src/tasks/court_alignment/data/dataset.py b/src/tasks/court_alignment/data/dataset.py
+index a38635a8..0f954188 100644
+--- a/src/tasks/court_alignment/data/dataset.py
++++ b/src/tasks/court_alignment/data/dataset.py
+@@ -5,6 +5,7 @@ from __future__ import annotations
+ import math
+ from collections.abc import Mapping, Sequence
+ from dataclasses import dataclass
++from typing import TypeAlias
+ 
+ import numpy as np
+ import torch
+@@ -15,6 +16,7 @@ from src.tasks.court_alignment.data.augmentation import (
+     AugmentableGroundCourtSample,
+     GroundCourtAugmentation,
+     GroundCourtAugmentationConfig,
++    IdentityAugmentation,
+     build_augmentation,
+     build_augmentations,
+ )
+@@ -36,7 +38,7 @@ from src.tasks.court_alignment.geometry.rasterization import (
+     render_keypoint_heatmaps,
+ )
+ 
+-GroundCourtAugmentationSpec = (
++GroundCourtAugmentationSpec: TypeAlias = (
+     GroundCourtAugmentationConfig | Mapping[str, object] | str
+ )
+ 
+@@ -80,9 +82,7 @@ class GroundCourtDatasetConfig:
+         _validate_positive(self.sigma_px, "sigma_px")
+         _validate_positive(self.line_width_px, "line_width_px")
+         _validate_positive(self.vote_radius_px, "vote_radius_px")
+-        _validate_positive(
+-            self.rotation_seam_margin_rad, "rotation_seam_margin_rad"
+-        )
++        _validate_positive(self.rotation_seam_margin_rad, "rotation_seam_margin_rad")
+         if not math.isfinite(float(self.court_margin_px)) or self.court_margin_px < 0.0:
+             raise ValueError("court_margin_px must be finite and non-negative.")
+         _validate_range(
+@@ -94,7 +94,10 @@ class GroundCourtDatasetConfig:
+             self.rotation_rad_range,
+             seam_margin_rad=self.rotation_seam_margin_rad,
+         )
+-        if not math.isfinite(float(self.min_center_distance_px)) or self.min_center_distance_px < 0.0:
++        if (
++            not math.isfinite(float(self.min_center_distance_px))
++            or self.min_center_distance_px < 0.0
++        ):
+             raise ValueError("min_center_distance_px must be finite and non-negative.")
+         if (
+             not math.isfinite(float(self.footprint_overlap_tolerance_px))
+@@ -250,8 +253,12 @@ def _pad_geometry(
+     max_courts: int,
+ ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+     count = points.shape[0]
+-    padded_points = torch.zeros((max_courts, GROUND_COURT_KP14_COUNT, 2), dtype=torch.float32)
+-    padded_visibility = torch.zeros((max_courts, GROUND_COURT_KP14_COUNT), dtype=torch.bool)
++    padded_points = torch.zeros(
++        (max_courts, GROUND_COURT_KP14_COUNT, 2), dtype=torch.float32
++    )
++    padded_visibility = torch.zeros(
++        (max_courts, GROUND_COURT_KP14_COUNT), dtype=torch.bool
++    )
+     padded_centers = torch.zeros((max_courts, 2), dtype=torch.float32)
+     padded_ids = torch.full((max_courts,), -1, dtype=torch.long)
+     padded_points[:count] = points
+@@ -277,17 +284,30 @@ class GroundCourtDataset(Dataset[dict[str, object]]):
+         if split not in {"train", "val", "test"}:
+             raise ValueError(f"Unknown ground-court split: {split!r}.")
+         self.split: GroundCourtSplit = split
+-        if augmentation is not None:
+-            self.augmentation = augmentation
++        resolved_augmentation: GroundCourtAugmentation
++        if split != "train":
++            if augmentation is not None and not isinstance(
++                augmentation, IdentityAugmentation
++            ):
++                raise ValueError(
++                    "Validation and test ground-court datasets only accept "
++                    "IdentityAugmentation; augmentation is train-only."
++                )
++            resolved_augmentation = IdentityAugmentation()
++        elif augmentation is not None:
++            resolved_augmentation = augmentation
+         elif self.config.augmentations:
+-            self.augmentation = build_augmentations(tuple(self.config.augmentations))
++            resolved_augmentation = build_augmentations(
++                tuple(self.config.augmentations)
++            )
+         else:
+-            self.augmentation = build_augmentation(self.config.augmentation)
++            resolved_augmentation = build_augmentation(self.config.augmentation)
++        self.augmentation = resolved_augmentation
+         if not callable(self.augmentation):
+             raise TypeError("augmentation must be callable.")
+ 
+     def __len__(self) -> int:
+-        return self.config.split.size(self.split)
++        return int(self.config.split.size(self.split))
+ 
+     def __getitem__(self, index: int) -> dict[str, object]:
+         if isinstance(index, bool) or not isinstance(index, int):
+@@ -301,8 +321,12 @@ class GroundCourtDataset(Dataset[dict[str, object]]):
+         instances = _sample_instances(self.config, rng)
+         image_size = _size_tuple(self.config.image_size)
+         points = torch.stack([court_keypoints_for_instance(item) for item in instances])
+-        centers = torch.tensor([item.center_xy_px for item in instances], dtype=torch.float32)
+-        instance_ids = torch.tensor([item.instance_id for item in instances], dtype=torch.long)
++        centers = torch.tensor(
++            [item.center_xy_px for item in instances], dtype=torch.float32
++        )
++        instance_ids = torch.tensor(
++            [item.instance_id for item in instances], dtype=torch.long
++        )
+         visibility = self._visibility(points)
+         image = render_court_line_mask(
+             image_size,
+@@ -320,12 +344,16 @@ class GroundCourtDataset(Dataset[dict[str, object]]):
+         if not isinstance(augmented, AugmentableGroundCourtSample):
+             raise TypeError("augmentation must return AugmentableGroundCourtSample.")
+         if augmented.keypoints.shape[0] != len(instances):
+-            raise ValueError("Augmentation cannot change the number of court instances.")
++            raise ValueError(
++                "Augmentation cannot change the number of court instances."
++            )
+         if augmented.keypoints.shape[0] > self.config.max_courts:
+             raise ValueError("Augmentation returned more courts than max_courts.")
+         if augmented.image.shape != (1, *image_size):
+             raise ValueError("Augmentation must preserve the configured image shape.")
+-        if not augmented.image.is_floating_point() or not bool(torch.isfinite(augmented.image).all()):
++        if not augmented.image.is_floating_point() or not bool(
++            torch.isfinite(augmented.image).all()
++        ):
+             raise ValueError("Augmented image must be finite floating point.")
+         if bool(torch.any((augmented.image < 0.0) | (augmented.image > 1.0))):
+             raise ValueError("Augmented image values must remain in [0,1].")
+@@ -379,11 +407,15 @@ def build_ground_court_datasets(
+     """Construct all deterministic splits from one shared configuration."""
+ 
+     resolved = GroundCourtDatasetConfig() if config is None else config
+-    return {
+-        split: GroundCourtDataset(resolved, split=split)
+-        for split in ("train", "val", "test")
+-        if resolved.split.size(split) > 0
+-    }
++    datasets: dict[GroundCourtSplit, GroundCourtDataset] = {}
++    for split in ("train", "val", "test"):
++        if resolved.split.size(split) <= 0:
++            continue
++        datasets[split] = GroundCourtDataset(
++            resolved,
++            split=split,
++        )
++    return datasets
+ 
+ 
+ __all__ = [
+diff --git a/src/tasks/court_alignment/evaluation/real_heatmap.py b/src/tasks/court_alignment/evaluation/real_heatmap.py
+index d7aaf486..f1fd0e43 100644
+--- a/src/tasks/court_alignment/evaluation/real_heatmap.py
++++ b/src/tasks/court_alignment/evaluation/real_heatmap.py
+@@ -22,6 +22,7 @@ from typing import Any, TypeAlias, cast
+ import numpy as np
+ import torch
+ from numpy.typing import NDArray
++from scipy.optimize import linear_sum_assignment
+ from torch import Tensor, nn
+ from torch.nn import functional as F
+ 
+@@ -33,11 +34,15 @@ from src.tasks.court_alignment.inference.decoder import (
+     fit_similarity_2d,
+ )
+ from src.tasks.court_alignment.inference.predictor import CourtAlignmentPredictor
++from src.tasks.court_alignment.models.checkpoint import (
++    load_court_alignment_model_checkpoint,
++)
+ from src.tasks.court_alignment.models.cnn import (
+     validate_court_alignment_input,
+     validate_court_alignment_output,
+ )
+ from src.tasks.court_alignment.training.metrics import compute_alignment_metrics
++from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX
+ 
+ LINE_HEATMAP_ARCHIVE_SCHEMA = "alignment_line_heatmaps_v2"
+ LINE_HEATMAP_MANIFEST_SCHEMA = "alignment_line_heatmap_manifest_v2"
+@@ -53,6 +58,7 @@ REFERENCE_LIMITATION = (
+     "independent ground truth."
+ )
+ NUM_KEYPOINTS = 14
++POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS = 4
+ 
+ _ARCHIVE_KEYS = frozenset(
+     {
+@@ -882,52 +888,10 @@ class RealHeatmapEvaluationRequest:
+ 
+ def load_model_checkpoint(model: nn.Module, checkpoint_path: Path) -> dict[str, object]:
+     """Strict-load a Lightning ``model.`` state dict into a bare CNN."""
+-    _ordinary_file(checkpoint_path, name="Court-alignment checkpoint")
+-    checkpoint: object = torch.load(
+-        checkpoint_path,
+-        map_location="cpu",
+-        weights_only=False,
+-    )
+-    if not isinstance(checkpoint, Mapping):
+-        raise TypeError("Checkpoint root must be a mapping.")
+-    state = checkpoint.get("state_dict")
+-    if not isinstance(state, Mapping) or not state:
+-        raise ValueError("Checkpoint must contain a non-empty state_dict mapping.")
+-    if any(not isinstance(key, str) for key in state):
+-        raise TypeError("Checkpoint state_dict keys must be strings.")
+-    invalid_keys = sorted(
+-        key for key in state if not cast(str, key).startswith("model.")
++    return cast(
++        dict[str, object],
++        load_court_alignment_model_checkpoint(model, checkpoint_path),
+     )
+-    if invalid_keys:
+-        raise ValueError(
+-            "Checkpoint state_dict contains keys outside the required model. prefix: "
+-            f"{invalid_keys[:5]}."
+-        )
+-    stripped: dict[str, Tensor] = {}
+-    for raw_key, raw_value in state.items():
+-        key = cast(str, raw_key)[len("model.") :]
+-        if not key:
+-            raise ValueError("Checkpoint contains an empty key after model. stripping.")
+-        if not isinstance(raw_value, Tensor):
+-            raise TypeError(
+-                f"Checkpoint state_dict value {raw_key!r} must be a tensor."
+-            )
+-        if key in stripped:
+-            raise ValueError(
+-                f"Duplicate checkpoint key after model. stripping: {key!r}."
+-            )
+-        stripped[key] = raw_value
+-    # strict=True is intentional: architecture/config mismatch must never be hidden.
+-    model.load_state_dict(stripped, strict=True)
+-    metadata: dict[str, object] = {
+-        "checkpoint_path": str(checkpoint_path),
+-        "state_dict_key_count": len(stripped),
+-    }
+-    for key in ("epoch", "global_step", "pytorch-lightning_version"):
+-        value = checkpoint.get(key)
+-        if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+-            metadata[key] = value
+-    return metadata
+ 
+ 
+ def _prediction_poses(
+@@ -972,6 +936,408 @@ def _prediction_poses(
+     return result
+ 
+ 
++@dataclass(frozen=True, slots=True)
++class _PoseFitCandidate:
++    correspondence: str
++    fit: SimilarityFit2D
++    prediction_indices: Tensor
++    reference_indices: Tensor
++    reconstructed_keypoints_px: Tensor
++
++
++def _apply_similarity_fit(fit: SimilarityFit2D, points: Tensor) -> Tensor:
++    cosine = torch.cos(fit.rotation_rad)
++    sine = torch.sin(fit.rotation_rad)
++    rotation = torch.stack(
++        (
++            torch.stack((cosine, -sine)),
++            torch.stack((sine, cosine)),
++        )
++    )
++    return points @ (fit.scale_px_per_metre * rotation).T + fit.translation_px
++
++
++def _error_statistics(
++    errors_px: Tensor,
++    *,
++    transform: PixelUVTransform,
++) -> dict[str, object]:
++    values = errors_px.detach().to(device="cpu", dtype=torch.float64).numpy()
++    if values.ndim != 1 or values.size == 0 or not np.isfinite(values).all():
++        raise ValueError("Pose diagnostic errors must be a non-empty finite vector.")
++    pixel_values = {
++        "mean_px": float(np.mean(values)),
++        "median_px": float(np.median(values)),
++        "q95_px": float(np.quantile(values, 0.95)),
++        "max_px": float(np.max(values)),
++    }
++    return {
++        "count": int(values.size),
++        **pixel_values,
++        **{
++            key.replace("_px", "_m"): transform.pixels_to_metres(value)
++            for key, value in pixel_values.items()
++        },
++    }
++
++
++def _add_flat_error_statistics(
++    summary: dict[str, object],
++    *,
++    prefix: str,
++    statistics: Mapping[str, object] | None,
++) -> None:
++    for statistic in ("mean", "median", "q95", "max"):
++        for unit in ("px", "m"):
++            key = f"{prefix}_error_{statistic}_{unit}"
++            summary[key] = (
++                None if statistics is None else statistics[f"{statistic}_{unit}"]
++            )
++
++
++def compute_pose_alignment_diagnostics(
++    sample: CourtInstanceBatch,
++    reference: ProjectedReference,
++    transform: PixelUVTransform,
++    *,
++    match_max_error_px: float,
++) -> tuple[dict[str, object], dict[str, object]]:
++    """Match independently fitted prediction poses to full-KP14 references.
++
++    This is deliberately separate from the established instance metric.  Each
++    prediction proposes direct and half-turn Sim(2) fits from its available
++    semantic keypoints.  Full reconstructed KP14 error supplies a pair cost,
++    and one Hungarian assignment prevents two predictions from claiming the
++    same accepted court.
++    """
++
++    if not isinstance(sample, CourtInstanceBatch):
++        raise TypeError("Pose diagnostics require a CourtInstanceBatch.")
++    if not isinstance(reference, ProjectedReference):
++        raise TypeError("Pose diagnostics require a ProjectedReference.")
++    if not isinstance(transform, PixelUVTransform):
++        raise TypeError("Pose diagnostics require a PixelUVTransform.")
++    if not math.isfinite(match_max_error_px) or match_max_error_px <= 0.0:
++        raise ValueError(
++            "Pose diagnostic match_max_error_px must be finite and positive."
++        )
++    reference_keypoints = np.asarray(reference.keypoints_px)
++    reference_count = int(reference_keypoints.shape[0])
++    if reference_keypoints.shape != (reference_count, NUM_KEYPOINTS, 2):
++        raise ValueError(
++            "Pose diagnostic reference keypoints must have shape (N,14,2)."
++        )
++    if not np.isfinite(reference_keypoints).all():
++        raise ValueError("Pose diagnostic reference keypoints must be finite.")
++    if not (
++        len(reference.court_instance_ids)
++        == len(reference.candidate_ids)
++        == len(reference.poses)
++        == reference_count
++    ):
++        raise ValueError(
++            "Pose diagnostic reference metadata count must match keypoints."
++        )
++
++    device = sample.keypoints_px.device
++    dtype = sample.keypoints_px.dtype
++    canonical = canonical_court_keypoints(dtype=dtype, device=device)
++    half_turn = torch.as_tensor(
++        CAMERA_VIEW_HALF_TURN_INDEX,
++        dtype=torch.long,
++        device=device,
++    )
++    targets = torch.as_tensor(reference_keypoints, dtype=dtype, device=device)
++    candidates_by_prediction: dict[int, tuple[_PoseFitCandidate, ...]] = {}
++    prediction_fits: list[dict[str, object]] = []
++    for prediction_index in range(sample.num_instances):
++        prediction_indices = torch.nonzero(
++            sample.valid[prediction_index], as_tuple=False
++        ).flatten()
++        valid_count = int(prediction_indices.numel())
++        prediction_payload: dict[str, object] = {
++            "prediction_index": prediction_index,
++            "valid_keypoint_count": valid_count,
++        }
++        if valid_count < POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS:
++            prediction_payload.update(
++                {
++                    "status": "unavailable",
++                    "reason": (
++                        f"requires at least {POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS} "
++                        f"valid semantic keypoints; got {valid_count}"
++                    ),
++                    "available_correspondences": [],
++                }
++            )
++            prediction_fits.append(prediction_payload)
++            continue
++
++        candidates: list[_PoseFitCandidate] = []
++        failure_reasons: list[str] = []
++        for correspondence, reference_indices in (
++            ("direct", prediction_indices),
++            ("half_turn", half_turn[prediction_indices]),
++        ):
++            try:
++                fit = fit_similarity_2d(
++                    canonical[reference_indices],
++                    sample.keypoints_px[prediction_index, prediction_indices],
++                )
++            except ValueError as error:
++                failure_reasons.append(f"{correspondence}: {error}")
++                continue
++            candidates.append(
++                _PoseFitCandidate(
++                    correspondence=correspondence,
++                    fit=fit,
++                    prediction_indices=prediction_indices,
++                    reference_indices=reference_indices,
++                    reconstructed_keypoints_px=_apply_similarity_fit(fit, canonical),
++                )
++            )
++        if not candidates:
++            prediction_payload.update(
++                {
++                    "status": "unavailable",
++                    "reason": "; ".join(failure_reasons),
++                    "available_correspondences": [],
++                }
++            )
++            prediction_fits.append(prediction_payload)
++            continue
++        candidates_by_prediction[prediction_index] = tuple(candidates)
++        prediction_payload.update(
++            {
++                "status": "available",
++                "available_correspondences": [
++                    candidate.correspondence for candidate in candidates
++                ],
++            }
++        )
++        if failure_reasons:
++            prediction_payload["failed_correspondences"] = failure_reasons
++        prediction_fits.append(prediction_payload)
++
++    fit_prediction_indices = tuple(sorted(candidates_by_prediction))
++    pair_choices: dict[tuple[int, int], tuple[_PoseFitCandidate, Tensor]] = {}
++    costs: NDArray[np.float64] = np.full(
++        (reference_count, len(fit_prediction_indices)),
++        np.inf,
++        dtype=np.float64,
++    )
++    for reference_index in range(reference_count):
++        for column, prediction_index in enumerate(fit_prediction_indices):
++            evaluated: list[tuple[int, _PoseFitCandidate, Tensor]] = []
++            for candidate_index, candidate in enumerate(
++                candidates_by_prediction[prediction_index]
++            ):
++                reconstructed_errors = torch.linalg.vector_norm(
++                    candidate.reconstructed_keypoints_px - targets[reference_index],
++                    dim=-1,
++                )
++                evaluated.append((candidate_index, candidate, reconstructed_errors))
++            _candidate_index, candidate, reconstructed_errors = min(
++                evaluated,
++                key=lambda item: (float(item[2].mean()), item[0]),
++            )
++            pair_choices[reference_index, prediction_index] = (
++                candidate,
++                reconstructed_errors,
++            )
++            costs[reference_index, column] = float(reconstructed_errors.mean())
++
++    assigned: list[tuple[int, int]] = []
++    rejected_over_gate: list[dict[str, object]] = []
++    if costs.shape[0] > 0 and costs.shape[1] > 0:
++        # Preserve the ordinary forced assignment only as evidence of pairs
++        # rejected by the gate.  Accepted matches use the same dummy-column
++        # gated Hungarian policy as the established instance metric, so a
++        # distant forced pair cannot block a lower-cost valid pair.
++        reference_indices, prediction_columns = linear_sum_assignment(costs)
++        for reference_index, column in zip(
++            reference_indices.tolist(),
++            prediction_columns.tolist(),
++            strict=True,
++        ):
++            prediction_index = fit_prediction_indices[int(column)]
++            pair_cost_px = float(costs[int(reference_index), int(column)])
++            if pair_cost_px <= match_max_error_px:
++                continue
++            candidate, _errors = pair_choices[int(reference_index), prediction_index]
++            rejected_over_gate.append(
++                {
++                    "prediction_index": prediction_index,
++                    "reference_index": int(reference_index),
++                    "court_instance_id": reference.court_instance_ids[
++                        int(reference_index)
++                    ],
++                    "candidate_id": reference.candidate_ids[int(reference_index)],
++                    "correspondence": candidate.correspondence,
++                    "pair_cost_px": pair_cost_px,
++                    "pair_cost_m": transform.pixels_to_metres(pair_cost_px),
++                    "status": "unavailable",
++                    "reason": (
++                        f"pair cost exceeds match_max_error_px={match_max_error_px}"
++                    ),
++                }
++            )
++        accepted = np.isfinite(costs) & (costs <= match_max_error_px)
++        unmatched_penalty = (reference_count + 1) * match_max_error_px
++        gated_costs: NDArray[np.float64] = np.full(
++            (reference_count, len(fit_prediction_indices) + reference_count),
++            np.inf,
++            dtype=np.float64,
++        )
++        gated_costs[:, : len(fit_prediction_indices)][accepted] = costs[accepted]
++        for reference_index in range(reference_count):
++            gated_costs[
++                reference_index,
++                len(fit_prediction_indices) + reference_index,
++            ] = unmatched_penalty
++        gated_references, gated_columns = linear_sum_assignment(gated_costs)
++        assigned = [
++            (int(reference_index), fit_prediction_indices[int(column)])
++            for reference_index, column in zip(
++                gated_references.tolist(),
++                gated_columns.tolist(),
++                strict=True,
++            )
++            if column < len(fit_prediction_indices)
++        ]
++
++    raw_error_vectors: list[Tensor] = []
++    reconstructed_error_vectors: list[Tensor] = []
++    matches: list[dict[str, object]] = []
++    matched_prediction_indices: set[int] = set()
++    matched_reference_indices: set[int] = set()
++    half_turn_match_count = 0
++    for reference_index, prediction_index in assigned:
++        candidate, reconstructed_errors = pair_choices[
++            reference_index, prediction_index
++        ]
++        raw_errors = torch.linalg.vector_norm(
++            sample.keypoints_px[prediction_index, candidate.prediction_indices]
++            - targets[reference_index, candidate.reference_indices],
++            dim=-1,
++        )
++        raw_statistics = _error_statistics(raw_errors, transform=transform)
++        reconstructed_statistics = _error_statistics(
++            reconstructed_errors,
++            transform=transform,
++        )
++        raw_error_vectors.append(raw_errors)
++        reconstructed_error_vectors.append(reconstructed_errors)
++        matched_prediction_indices.add(prediction_index)
++        matched_reference_indices.add(reference_index)
++        half_turn_match_count += int(candidate.correspondence == "half_turn")
++        matches.append(
++            {
++                "prediction_index": prediction_index,
++                "reference_index": reference_index,
++                "court_instance_id": reference.court_instance_ids[reference_index],
++                "candidate_id": reference.candidate_ids[reference_index],
++                "correspondence": candidate.correspondence,
++                "half_turn_selected": candidate.correspondence == "half_turn",
++                "pair_cost_px": float(reconstructed_errors.mean()),
++                "pair_cost_m": transform.pixels_to_metres(
++                    float(reconstructed_errors.mean())
++                ),
++                "raw_detected_keypoints": {
++                    **raw_statistics,
++                    "coverage": int(raw_errors.numel()) / NUM_KEYPOINTS,
++                },
++                "reconstructed_full_keypoints": reconstructed_statistics,
++                "similarity_fit": _similarity_payload(candidate.fit),
++            }
++        )
++
++    matched_count = len(matches)
++    unmatched_prediction_indices = sorted(
++        set(range(sample.num_instances)) - matched_prediction_indices
++    )
++    unmatched_reference_indices = sorted(
++        set(range(reference_count)) - matched_reference_indices
++    )
++    fit_unavailable_count = sample.num_instances - len(fit_prediction_indices)
++    if matched_count == 0:
++        status = "unavailable"
++    elif unmatched_prediction_indices or unmatched_reference_indices:
++        status = "partial"
++    else:
++        status = "available"
++    aggregate_raw_statistics = (
++        _error_statistics(torch.cat(raw_error_vectors), transform=transform)
++        if raw_error_vectors
++        else None
++    )
++    aggregate_reconstructed_statistics = (
++        _error_statistics(
++            torch.cat(reconstructed_error_vectors),
++            transform=transform,
++        )
++        if reconstructed_error_vectors
++        else None
++    )
++    raw_count = sum(int(errors.numel()) for errors in raw_error_vectors)
++    reconstructed_count = sum(
++        int(errors.numel()) for errors in reconstructed_error_vectors
++    )
++    summary: dict[str, object] = {
++        "pose_diagnostic_status": status,
++        "pose_minimum_keypoints": POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS,
++        "pose_prediction_instance_count": sample.num_instances,
++        "pose_reference_instance_count": reference_count,
++        "pose_fit_available_prediction_count": len(fit_prediction_indices),
++        "pose_fit_unavailable_prediction_count": fit_unavailable_count,
++        "pose_matched_instance_count": matched_count,
++        "pose_rejected_over_gate_pair_count": len(rejected_over_gate),
++        "pose_unmatched_prediction_count": len(unmatched_prediction_indices),
++        "pose_unmatched_reference_count": len(unmatched_reference_indices),
++        "pose_half_turn_match_count": half_turn_match_count,
++        "pose_raw_kp_count": raw_count,
++        "pose_raw_kp_coverage": (
++            raw_count / (matched_count * NUM_KEYPOINTS) if matched_count > 0 else 0.0
++        ),
++        "pose_reconstructed_kp_count": reconstructed_count,
++    }
++    _add_flat_error_statistics(
++        summary,
++        prefix="pose_raw_kp",
++        statistics=aggregate_raw_statistics,
++    )
++    _add_flat_error_statistics(
++        summary,
++        prefix="pose_reconstructed_kp",
++        statistics=aggregate_reconstructed_statistics,
++    )
++    diagnostic: dict[str, object] = {
++        "schema": "court_alignment_pose_diagnostics_v1",
++        "status": status,
++        "matching": ("full14_reconstructed_sim2_pair_cost_gated_hungarian_one_to_one"),
++        "minimum_valid_semantic_keypoints": POSE_DIAGNOSTIC_MINIMUM_KEYPOINTS,
++        "match_max_error_px": match_max_error_px,
++        "summary": summary,
++        "prediction_fits": prediction_fits,
++        "matches": matches,
++        "rejected_over_gate_pairs": rejected_over_gate,
++        "unmatched_prediction_indices": unmatched_prediction_indices,
++        "unmatched_references": [
++            {
++                "reference_index": index,
++                "court_instance_id": reference.court_instance_ids[index],
++                "candidate_id": reference.candidate_ids[index],
++            }
++            for index in unmatched_reference_indices
++        ],
++        "unavailable_policy": (
++            "Unavailable or unmatched instances are counted explicitly and are "
++            "never silently omitted into an all-instance pose average."
++        ),
++    }
++    return summary, diagnostic
++
++
+ def _input_tensor(image: FloatArray) -> Tensor:
+     if image.shape != (256, 256) or image.dtype != np.float32:
+         raise ValueError(
+@@ -1113,7 +1479,14 @@ def evaluate_real_heatmap(
+         minimum_visible_fraction=request.metrics.minimum_visible_fraction,
+         minimum_sim2_keypoints=request.metrics.minimum_sim2_keypoints,
+     )
++    pose_metrics, pose_diagnostic = compute_pose_alignment_diagnostics(
++        sample,
++        reference,
++        transform,
++        match_max_error_px=request.metrics.match_max_error_px,
++    )
+     metric_values: dict[str, object] = dict(raw_metrics)
++    metric_values.update(pose_metrics)
+     for pixel_key, metre_key in (
+         ("instance_kp_mean_error_px", "instance_kp_mean_error_m"),
+         ("matched_center_mean_error_px", "matched_center_mean_error_m"),
+@@ -1143,7 +1516,7 @@ def evaluate_real_heatmap(
+     scale_low, scale_high = request.training_scale_range_px_per_metre
+     ood_flags = [scale < scale_low or scale > scale_high for scale in reference_scales]
+     diagnostic: dict[str, object] = {
+-        "schema": "court_alignment_real_heatmap_diagnostics_v1",
++        "schema": "court_alignment_real_heatmap_diagnostics_v2",
+         "reference": {
+             "type": REFERENCE_TYPE,
+             "is_independent_ground_truth": False,
+@@ -1180,6 +1553,7 @@ def evaluate_real_heatmap(
+         "metrics_options": asdict(request.metrics),
+         "predicted_instance_count": sample.num_instances,
+         "predicted_poses": _prediction_poses(sample, transform),
++        "pose_alignment": pose_diagnostic,
+         "raw_existing_metrics": raw_metrics,
+         "checkpoint": checkpoint_metadata,
+         "scale_domain": {
+@@ -1231,6 +1605,7 @@ __all__ = [
+     "REAL_HEATMAP_PREPROCESSORS",
+     "RealHeatmapArchive",
+     "RealHeatmapEvaluationRequest",
++    "compute_pose_alignment_diagnostics",
+     "evaluate_real_heatmap",
+     "letterbox_heatmap",
+     "load_accepted_alignments",
+diff --git a/src/tasks/court_alignment/training/runner.py b/src/tasks/court_alignment/training/runner.py
+index d4e4913a..be5b5a16 100644
+--- a/src/tasks/court_alignment/training/runner.py
++++ b/src/tasks/court_alignment/training/runner.py
+@@ -9,14 +9,19 @@ import pytorch_lightning as pl
+ from hydra.utils import instantiate
+ from omegaconf import DictConfig
+ from pytorch_lightning.callbacks import ModelCheckpoint
++from torch import nn
+ 
+ from src.tasks.base.configuration import TrainingRuntimeConfig
+ from src.tasks.base.training.repro import resolve_queue_repro_dir
+ from src.tasks.base.training.runner import BaseTrainingRunner
+ from src.tasks.court_alignment.configuration import CourtAlignmentRuntimeConfig
++from src.tasks.court_alignment.models.checkpoint import (
++    load_court_alignment_model_checkpoint,
++)
+ from src.tasks.court_alignment.training.lightning_module import (
+     CourtAlignmentLightningModule,
+ )
++from src.utils.configuration import PathRole
+ 
+ 
+ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
+@@ -48,6 +53,30 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
+             )
+         return datamodule
+ 
++    def maybe_load_init_weights(
++        self,
++        config: TrainingRuntimeConfig,
++        lightning_module: pl.LightningModule,
++    ) -> None:
++        """Strictly warm-start the task CNN from a historical Lightning payload."""
++
++        init_path = config.run.init_weights
++        if init_path is None:
++            return
++        checkpoint_path = config.resolver.validate(PathRole.CHECKPOINT, init_path)
++        model = getattr(lightning_module, "model", None)
++        if not isinstance(model, nn.Module):
++            raise TypeError(
++                "Court-alignment init_weights requires lightning_module.model "
++                "to be a torch module."
++            )
++        metadata = load_court_alignment_model_checkpoint(model, checkpoint_path)
++        print(
++            "[init_weights] strict-loaded "
++            f"{metadata['state_dict_key_count']} model tensors from {checkpoint_path}; "
++            "optimizer, scheduler, loop, and epoch state were not loaded."
++        )
++
+     def test_checkpoint_path(self, config: Any, trainer: pl.Trainer) -> str:
+         """Require and select the same validation-best checkpoint for testing."""
+         runtime = self.validate_runtime_config(config)
+@@ -94,6 +123,10 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
+             raise ValueError(
+                 "evaluation.checkpoint_path must be set to an existing checkpoint."
+             )
++        checkpoint_path = runtime.resolver.validate(
++            PathRole.CHECKPOINT,
++            checkpoint_path,
++        )
+         if not checkpoint_path.is_file():
+             raise FileNotFoundError(
+                 f"Court-alignment checkpoint does not exist: {checkpoint_path}"
+@@ -120,7 +153,12 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
+             enable_progress_bar=trainer_cfg.enable_progress_bar,
+             enable_model_summary=trainer_cfg.enable_model_summary,
+         )
+-        trainer.test(module, datamodule=datamodule, ckpt_path=str(checkpoint_path))
++        trainer.test(
++            module,
++            datamodule=datamodule,
++            ckpt_path=str(checkpoint_path),
++            weights_only=False,
++        )
+ 
+         repro_dir = resolve_queue_repro_dir()
+         if repro_dir is not None:
+diff --git a/tests/integration/tasks/court_alignment/test_config_compose.py b/tests/integration/tasks/court_alignment/test_config_compose.py
+index c46b12ab..9b6e4afb 100644
+--- a/tests/integration/tasks/court_alignment/test_config_compose.py
++++ b/tests/integration/tasks/court_alignment/test_config_compose.py
+@@ -18,7 +18,16 @@ from src.tasks.court_alignment.configuration import (
+     validate_real_heatmap_evaluation_boundary,
+     validate_training_boundary,
+ )
++from src.tasks.court_alignment.data.augmentation import (
++    GroundCourtAugmentationConfig,
++    build_augmentation,
++)
++from src.tasks.court_alignment.data.datamodule import GroundCourtDataModule
++from src.tasks.court_alignment.data.dataset import GroundCourtDataset
+ from src.tasks.court_alignment.models.cnn import CourtAlignmentCNN
++from src.tasks.court_alignment.training.lightning_module import (
++    CourtAlignmentLightningModule,
++)
+ from src.tasks.court_alignment.training.losses import CourtAlignmentLoss
+ from src.tasks.court_alignment.training.runner import CourtAlignmentTrainingRunner
+ from src.utils.configuration import UnknownConfigurationKeyError
+@@ -38,6 +47,15 @@ def _compose(config_name: str, overrides: list[str] | None = None) -> DictConfig
+         return compose(config_name=config_name, overrides=overrides or [])
+ 
+ 
++def _augmentations(
++    datamodule: GroundCourtDataModule,
++) -> tuple[GroundCourtAugmentationConfig, ...]:
++    return cast(
++        tuple[GroundCourtAugmentationConfig, ...],
++        datamodule.dataset_config.augmentations,
++    )
++
++
+ @pytest.mark.parametrize("sigma_px", _SIGMAS)
+ def test_sigma_ablation_changes_only_the_explicit_target_width(
+     sigma_px: float,
+@@ -71,6 +89,140 @@ def test_config_constructs_model_loss_metrics_and_datamodule() -> None:
+     assert runner.build_datamodule(cfg).__class__.__name__ == "GroundCourtDataModule"
+ 
+ 
++@pytest.mark.parametrize(
++    ("config_name", "augmentation_names"),
++    [
++        ("b00_scale_v1", ["identity"]),
++        (
++            "b00_appearance_v1",
++            [
++                "random_line_morphology",
++                "random_heatmap_blur",
++                "random_probability_noise",
++            ],
++        ),
++        ("b00_structure_v1", ["random_line_dropout", "random_ghost_lines"]),
++        (
++            "b00_v1",
++            [
++                "random_line_morphology",
++                "random_heatmap_blur",
++                "random_line_dropout",
++                "random_ghost_lines",
++                "random_probability_noise",
++            ],
++        ),
++        (
++            "b00_weak_structure_v2",
++            [
++                "random_line_morphology",
++                "random_heatmap_blur",
++                "random_line_dropout",
++                "random_ghost_lines",
++                "random_probability_noise",
++            ],
++        ),
++    ],
++)
++def test_b00_pilot_profiles_compose_as_explicit_data_overrides(
++    config_name: str,
++    augmentation_names: list[str],
++) -> None:
++    cfg = _compose("train", [f"data={config_name}"])
++    runner = CourtAlignmentTrainingRunner()
++    runner.prepare_config(cfg)
++    datamodule = cast(GroundCourtDataModule, runner.build_datamodule(cfg))
++
++    assert cfg.data.sigma_px == pytest.approx(2.0)
++    assert cfg.data.min_scale_px_per_metre == pytest.approx(3.0)
++    assert cfg.data.max_scale_px_per_metre == pytest.approx(9.0)
++    assert [item.name for item in _augmentations(datamodule)] == augmentation_names
++
++
++def test_b00_weak_structure_v2_keeps_appearance_v1_and_exact_weak_noise() -> None:
++    weak_cfg = _compose("train", ["data=b00_weak_structure_v2"])
++    appearance_cfg = _compose("train", ["data=b00_appearance_v1"])
++    runner = CourtAlignmentTrainingRunner()
++    weak = _augmentations(
++        cast(GroundCourtDataModule, runner.build_datamodule(weak_cfg))
++    )
++    appearance = _augmentations(
++        cast(GroundCourtDataModule, runner.build_datamodule(appearance_cfg))
++    )
++
++    for weak_index, appearance_index in ((0, 0), (1, 1), (4, 2)):
++        assert weak[weak_index].name == appearance[appearance_index].name
++        assert dict(weak[weak_index].params) == dict(
++            appearance[appearance_index].params
++        )
++    assert dict(weak[2].params) == {
++        "probability": 0.08,
++        "gap_count_range": [1, 2],
++        "gap_length_px_range": [2.0, 8.0],
++        "gap_width_px_range": [1.0, 3.0],
++    }
++    assert dict(weak[3].params) == {
++        "probability": 0.18,
++        "copy_count_range": [1, 1],
++        "offset_px_range": [3, 10],
++        "amplitude_range": [0.35, 0.70],
++        "long_line_count_range": [0, 1],
++        "long_line_length_px_range": [48.0, 180.0],
++        "long_line_width_px_range": [1.0, 3.0],
++        "long_line_amplitude_range": [0.35, 0.70],
++    }
++
++
++def test_b00_combined_profile_keeps_validation_and_test_clean() -> None:
++    cfg = _compose(
++        "train",
++        [
++            "data=b00_v1",
++            "data.train_samples=1",
++            "data.val_samples=1",
++            "data.test_samples=1",
++            "data.num_workers=0",
++        ],
++    )
++    datamodule = cast(
++        GroundCourtDataModule,
++        CourtAlignmentTrainingRunner().build_datamodule(cfg),
++    )
++    datamodule.setup(None)
++    assert datamodule.train_dataset is not None
++    assert datamodule.val_dataset is not None
++    assert datamodule.test_dataset is not None
++    identity = build_augmentation("identity")
++
++    for split, actual_dataset in (
++        ("train", datamodule.train_dataset),
++        ("val", datamodule.val_dataset),
++        ("test", datamodule.test_dataset),
++    ):
++        clean_dataset = GroundCourtDataset(
++            datamodule.dataset_config,
++            split=cast(Any, split),
++            augmentation=identity,
++        )
++        actual = actual_dataset[0]
++        clean = clean_dataset[0]
++        for key in ("keypoints", "visibility", "centers", "instance_ids"):
++            torch.testing.assert_close(
++                cast(torch.Tensor, actual[key]),
++                cast(torch.Tensor, clean[key]),
++            )
++        if split == "train":
++            assert not torch.equal(
++                cast(torch.Tensor, actual["image"]),
++                cast(torch.Tensor, clean["image"]),
++            )
++        else:
++            torch.testing.assert_close(
++                cast(torch.Tensor, actual["image"]),
++                cast(torch.Tensor, clean["image"]),
++            )
++
++
+ def test_smoke_config_is_cpu_only_and_keeps_test_bundle_enabled() -> None:
+     cfg = _compose("smoke")
+ 
+@@ -130,6 +282,19 @@ def test_real_heatmap_config_composes_explicit_ablation_boundaries(
+     assert request.decoder.threshold == pytest.approx(0.3)
+ 
+ 
++def test_b00_v1_decoder_profile_composes_explicit_success_settings() -> None:
++    cfg = _compose("evaluate_real_heatmap", ["decoder=b00_v1"])
++
++    validate_real_heatmap_evaluation_boundary(cfg)
++
++    assert cfg.decoder.threshold == pytest.approx(0.25)
++    assert cfg.decoder.nms_kernel == 3
++    assert cfg.decoder.max_peaks == 8
++    assert cfg.decoder.subpixel_refine is True
++    assert cfg.decoder.cluster_distance_px == pytest.approx(8.0)
++    assert cfg.decoder.max_instances == 2
++
++
+ def test_real_heatmap_config_rejects_unknown_preprocess() -> None:
+     cfg = _compose(
+         "evaluate_real_heatmap",
+@@ -208,7 +373,9 @@ def test_evaluate_tests_the_typed_explicit_checkpoint(
+     cfg.paths.output_root = str(tmp_path / "outputs")
+     cfg.evaluation.checkpoint_path = "sigma-1/best.ckpt"
+     runner = CourtAlignmentTrainingRunner()
+-    tested_checkpoints: list[str] = []
++    test_calls: list[dict[str, object]] = []
++    datamodule = object()
++    module = object()
+ 
+     class _Trainer:
+         def __init__(self, **kwargs: object) -> None:
+@@ -216,15 +383,15 @@ def test_evaluate_tests_the_typed_explicit_checkpoint(
+ 
+         def test(self, *args: object, **kwargs: object) -> None:
+             del args
+-            tested_checkpoints.append(cast(str, kwargs["ckpt_path"]))
++            test_calls.append(kwargs)
+ 
+     monkeypatch.setattr(runner, "seed_everything", lambda _: None)
+     monkeypatch.setattr(runner, "apply_runtime_settings", lambda _: None)
+-    monkeypatch.setattr(runner, "build_datamodule", lambda _: cast(Any, object()))
++    monkeypatch.setattr(runner, "build_datamodule", lambda _: cast(Any, datamodule))
+     monkeypatch.setattr(
+         runner,
+         "build_lightning_module",
+-        lambda *_, **__: cast(Any, object()),
++        lambda *_, **__: cast(Any, module),
+     )
+     monkeypatch.setattr(runner, "select_devices", lambda _: ("cpu", 1))
+     monkeypatch.setattr(
+@@ -238,7 +405,10 @@ def test_evaluate_tests_the_typed_explicit_checkpoint(
+ 
+     runner.evaluate(cfg)
+ 
+-    assert tested_checkpoints == [str(checkpoint_path.resolve())]
++    assert len(test_calls) == 1
++    assert test_calls[0]["datamodule"] is datamodule
++    assert test_calls[0]["ckpt_path"] == str(checkpoint_path.resolve())
++    assert test_calls[0]["weights_only"] is False
+ 
+ 
+ def test_evaluate_rejects_a_missing_typed_checkpoint(
+@@ -261,15 +431,80 @@ def test_sigma_runs_share_samples_and_change_only_dense_targets() -> None:
+     samples: list[dict[str, object]] = []
+     for sigma_px in _SIGMAS:
+         cfg = _compose("smoke", [f"data.sigma_px={sigma_px}"])
+-        datamodule = CourtAlignmentTrainingRunner().build_datamodule(cfg)
++        datamodule = cast(
++            GroundCourtDataModule,
++            CourtAlignmentTrainingRunner().build_datamodule(cfg),
++        )
+         datamodule.setup("test")
+         dataset = datamodule.test_dataloader().dataset
+         samples.append(dataset[0])
+ 
+     reference = samples[0]
+     for sample in samples[1:]:
+-        assert torch.equal(sample["image"], reference["image"])
+-        assert torch.equal(sample["keypoints"], reference["keypoints"])
+-        assert torch.equal(sample["visibility"], reference["visibility"])
++        assert torch.equal(
++            cast(torch.Tensor, sample["image"]),
++            cast(torch.Tensor, reference["image"]),
++        )
++        assert torch.equal(
++            cast(torch.Tensor, sample["keypoints"]),
++            cast(torch.Tensor, reference["keypoints"]),
++        )
++        assert torch.equal(
++            cast(torch.Tensor, sample["visibility"]),
++            cast(torch.Tensor, reference["visibility"]),
++        )
+         assert sample["sample_id"] == reference["sample_id"]
+-        assert not torch.equal(sample["target_heatmaps"], reference["target_heatmaps"])
++        assert not torch.equal(
++            cast(torch.Tensor, sample["target_heatmaps"]),
++            cast(torch.Tensor, reference["target_heatmaps"]),
++        )
++
++
++def test_runner_strict_warm_starts_historical_model_only_payload(
++    tmp_path: Path,
++) -> None:
++    checkpoint_root = tmp_path / "checkpoints"
++    checkpoint_root.mkdir()
++    checkpoint_path = checkpoint_root / "historical-sigma2.ckpt"
++    cfg = _compose(
++        "smoke",
++        [
++            f"paths.checkpoint_root={checkpoint_root}",
++            "run.init_weights=historical-sigma2.ckpt",
++            "model.base_channels=4",
++            "model.group_norm_groups=4",
++        ],
++    )
++    runner = CourtAlignmentTrainingRunner()
++    datamodule = runner.build_datamodule(cfg)
++    source = cast(
++        CourtAlignmentLightningModule,
++        runner.build_lightning_module(cfg, datamodule),
++    )
++    target = cast(
++        CourtAlignmentLightningModule,
++        runner.build_lightning_module(cfg, datamodule),
++    )
++    with torch.no_grad():
++        for parameter in source.model.parameters():
++            parameter.fill_(0.125)
++        for parameter in target.model.parameters():
++            parameter.zero_()
++    torch.save(
++        {
++            "epoch": 47,
++            "global_step": 12_288,
++            "optimizer_states": [{"state": "must-be-ignored"}],
++            "lr_schedulers": [{"state": "must-be-ignored"}],
++            "state_dict": {
++                f"model.{key}": value.clone()
++                for key, value in source.model.state_dict().items()
++            },
++        },
++        checkpoint_path,
++    )
++
++    runner.maybe_load_init_weights(runner.validate_runtime_config(cfg), target)
++
++    for key, expected in source.model.state_dict().items():
++        torch.testing.assert_close(target.model.state_dict()[key], expected)
+diff --git a/tests/unit/tasks/court_alignment/data/test_augmentation.py b/tests/unit/tasks/court_alignment/data/test_augmentation.py
+index 9fcc83ca..cd74a95f 100644
+--- a/tests/unit/tasks/court_alignment/data/test_augmentation.py
++++ b/tests/unit/tasks/court_alignment/data/test_augmentation.py
+@@ -1,12 +1,96 @@
+ """Tests for the extensible typed augmentation registry."""
+ 
++from typing import cast
++
++import numpy as np
+ import pytest
++import torch
+ 
+ from src.tasks.court_alignment.data.augmentation import (
++    AugmentableGroundCourtSample,
++    ComposeAugmentation,
+     GroundCourtAugmentationConfig,
++    RandomGhostLines,
++    RandomHeatmapBlur,
++    RandomLineDropout,
++    RandomLineMorphology,
++    RandomProbabilityNoise,
+     build_augmentation,
++    build_augmentations,
+ )
+ from src.tasks.court_alignment.data.datamodule import GroundCourtDataModule
++from src.tasks.court_alignment.data.dataset import GroundCourtDataset
++from src.tasks.court_alignment.data.splits import GroundCourtSplit
++
++
++def _sample(*, dtype: torch.dtype = torch.float32) -> AugmentableGroundCourtSample:
++    image = torch.zeros((1, 32, 40), dtype=dtype)
++    image[0, 8:24, 10] = 1.0
++    image[0, 8:24, 29] = 1.0
++    image[0, 8, 10:30] = 1.0
++    image[0, 23, 10:30] = 1.0
++    return AugmentableGroundCourtSample(
++        image=image,
++        keypoints=torch.arange(28, dtype=torch.float32).reshape(1, 14, 2),
++        visibility=torch.ones((1, 14), dtype=torch.bool),
++        centers=torch.tensor([[19.5, 15.5]], dtype=torch.float32),
++        instance_ids=torch.tensor([7], dtype=torch.long),
++    )
++
++
++def _combined() -> ComposeAugmentation:
++    result = build_augmentations(
++        [
++            {
++                "name": "random_line_morphology",
++                "params": {
++                    "probability": 1.0,
++                    "dilate_probability": 1.0,
++                    "kernel_size_choices": [3],
++                    "iterations": 1,
++                },
++            },
++            {
++                "name": "random_heatmap_blur",
++                "params": {"probability": 1.0, "sigma_range": [0.5, 1.5]},
++            },
++            {
++                "name": "random_line_dropout",
++                "params": {
++                    "probability": 1.0,
++                    "gap_count_range": [1, 3],
++                    "gap_length_px_range": [2.0, 8.0],
++                    "gap_width_px_range": [1.0, 3.0],
++                },
++            },
++            {
++                "name": "random_ghost_lines",
++                "params": {
++                    "probability": 1.0,
++                    "copy_count_range": [1, 2],
++                    "offset_px_range": [3, 6],
++                    "amplitude_range": [0.55, 0.9],
++                    "long_line_count_range": [1, 2],
++                    "long_line_length_px_range": [10.0, 25.0],
++                    "long_line_width_px_range": [1.0, 3.0],
++                    "long_line_amplitude_range": [0.4, 0.8],
++                },
++            },
++            {
++                "name": "random_probability_noise",
++                "params": {
++                    "probability": 1.0,
++                    "foreground_amplitude_range": [0.55, 1.0],
++                    "gamma_range": [0.7, 1.5],
++                    "speckle_fraction_range": [0.002, 0.008],
++                    "speckle_amplitude_range": [0.2, 0.9],
++                    "additive_std": 0.0,
++                },
++            },
++        ]
++    )
++    assert isinstance(result, ComposeAugmentation)
++    return result
+ 
+ 
+ def test_identity_is_explicit_baseline() -> None:
+@@ -32,3 +116,360 @@ def test_datamodule_resolves_unknown_transform_during_construction() -> None:
+             test_samples=0,
+             augmentations=[{"type": "does-not-exist"}],
+         )
++
++
++@pytest.mark.parametrize(
++    ("image", "error", "message"),
++    [
++        (torch.zeros((1, 8, 8), dtype=torch.long), TypeError, "floating-point"),
++        (torch.full((1, 8, 8), float("nan")), ValueError, "finite"),
++        (torch.full((1, 8, 8), 1.1), ValueError, r"\[0,1\]"),
++        (torch.zeros((1, 8, 8)), ValueError, "positive line evidence"),
++        (torch.ones((1, 8, 8)), ValueError, "background evidence"),
++    ],
++)
++def test_sample_rejects_invalid_image_contract(
++    image: torch.Tensor, error: type[Exception], message: str
++) -> None:
++    with pytest.raises(error, match=message):
++        AugmentableGroundCourtSample(
++            image=image,
++            keypoints=torch.zeros((1, 14, 2)),
++            visibility=torch.ones((1, 14), dtype=torch.bool),
++            centers=torch.zeros((1, 2)),
++            instance_ids=torch.zeros((1,), dtype=torch.long),
++        )
++
++
++def test_sample_rejects_non_float_or_non_finite_geometry() -> None:
++    sample = _sample()
++    with pytest.raises(TypeError, match="keypoints must have a floating-point"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=sample.keypoints.long(),
++            visibility=sample.visibility,
++            centers=sample.centers,
++            instance_ids=sample.instance_ids,
++        )
++    with pytest.raises(ValueError, match="keypoints must be finite"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=sample.keypoints.clone().masked_fill(
++                torch.arange(28).reshape(1, 14, 2) == 0, float("nan")
++            ),
++            visibility=sample.visibility,
++            centers=sample.centers,
++            instance_ids=sample.instance_ids,
++        )
++    with pytest.raises(TypeError, match="centers must have a floating-point"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=sample.keypoints,
++            visibility=sample.visibility,
++            centers=sample.centers.long(),
++            instance_ids=sample.instance_ids,
++        )
++    with pytest.raises(ValueError, match="centers must be finite"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=sample.keypoints,
++            visibility=sample.visibility,
++            centers=torch.full_like(sample.centers, float("inf")),
++            instance_ids=sample.instance_ids,
++        )
++
++
++def test_sample_rejects_invalid_instance_ids_and_geometry_device() -> None:
++    sample = _sample()
++    with pytest.raises(ValueError, match="visibility must have shape"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=sample.keypoints,
++            visibility=sample.visibility.float(),
++            centers=sample.centers,
++            instance_ids=sample.instance_ids,
++        )
++    with pytest.raises(ValueError, match="instance_ids must be int64"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=sample.keypoints,
++            visibility=sample.visibility,
++            centers=sample.centers,
++            instance_ids=sample.instance_ids.int(),
++        )
++    duplicate_geometry = {
++        "image": sample.image,
++        "keypoints": sample.keypoints.repeat(2, 1, 1),
++        "visibility": sample.visibility.repeat(2, 1),
++        "centers": sample.centers.repeat(2, 1),
++    }
++    with pytest.raises(ValueError, match="non-negative"):
++        AugmentableGroundCourtSample(
++            **duplicate_geometry,
++            instance_ids=torch.tensor([0, -1], dtype=torch.long),
++        )
++    with pytest.raises(ValueError, match="unique"):
++        AugmentableGroundCourtSample(
++            **duplicate_geometry,
++            instance_ids=torch.tensor([4, 4], dtype=torch.long),
++        )
++    with pytest.raises(ValueError, match="same device"):
++        AugmentableGroundCourtSample(
++            image=sample.image,
++            keypoints=torch.empty((1, 14, 2), device="meta"),
++            visibility=sample.visibility,
++            centers=sample.centers,
++            instance_ids=sample.instance_ids,
++        )
++
++
++@pytest.mark.parametrize(
++    ("name", "params", "message"),
++    [
++        ("random_line_morphology", {"kernel_size_choices": [2]}, "positive odd"),
++        ("random_heatmap_blur", {"probability": 1.1}, r"\[0,1\]"),
++        ("random_line_dropout", {"gap_count_range": [0, 1]}, "minimum 1"),
++        ("random_ghost_lines", {"offset_px_range": [5, 2]}, "ordered"),
++        ("random_probability_noise", {"gamma_range": [0.0, 1.0]}, "positive"),
++        ("random_heatmap_blur", {"unknown": 1}, "Unknown augmentation parameters"),
++    ],
++)
++def test_registered_augmentations_reject_invalid_parameters(
++    name: str, params: dict[str, object], message: str
++) -> None:
++    with pytest.raises((TypeError, ValueError), match=message):
++        build_augmentation({"name": name, "params": params})
++
++
++def test_morphology_dilates_and_preserves_dtype_and_range() -> None:
++    sample = _sample(dtype=torch.float64)
++    transform = RandomLineMorphology(
++        probability=1.0,
++        dilate_probability=1.0,
++        kernel_size_choices=(3,),
++        iterations=1,
++    )
++
++    result = transform(sample, np.random.default_rng(1))
++
++    assert torch.count_nonzero(result.image) > torch.count_nonzero(sample.image)
++    assert result.image.dtype == torch.float64
++    assert 0.0 <= float(result.image.min()) <= float(result.image.max()) <= 1.0
++
++
++def test_morphology_never_accepts_an_empty_erosion_proposal() -> None:
++    sample = _sample()
++    transform = RandomLineMorphology(
++        probability=1.0,
++        dilate_probability=0.0,
++        kernel_size_choices=(3,),
++        iterations=1,
++    )
++
++    result = transform(sample, np.random.default_rng(1))
++
++    assert torch.equal(result.image, sample.image)
++
++
++def test_blur_produces_continuous_values() -> None:
++    sample = _sample()
++    transform = RandomHeatmapBlur(probability=1.0, sigma_range=(1.0, 1.0))
++
++    result = transform(sample, np.random.default_rng(2))
++
++    fractional = (result.image > 0.0) & (result.image < 1.0)
++    assert bool(fractional.any())
++    assert not torch.equal(result.image, sample.image)
++
++
++def test_dropout_erases_evidence_but_forbids_total_deletion() -> None:
++    sample = _sample()
++    transform = RandomLineDropout(
++        probability=1.0,
++        gap_count_range=(8, 8),
++        gap_length_px_range=(12.0, 12.0),
++        gap_width_px_range=(5.0, 5.0),
++    )
++
++    result = transform(sample, np.random.default_rng(3))
++
++    assert torch.count_nonzero(result.image) < torch.count_nonzero(sample.image)
++    assert torch.count_nonzero(result.image) > 0
++
++
++def test_ghost_lines_add_shifted_and_long_evidence() -> None:
++    sample = _sample()
++    transform = RandomGhostLines(
++        probability=1.0,
++        copy_count_range=(2, 2),
++        offset_px_range=(4, 4),
++        amplitude_range=(0.7, 0.7),
++        long_line_count_range=(2, 2),
++        long_line_length_px_range=(20.0, 20.0),
++        long_line_width_px_range=(2.0, 2.0),
++        long_line_amplitude_range=(0.6, 0.6),
++    )
++
++    result = transform(sample, np.random.default_rng(4))
++
++    assert torch.count_nonzero(result.image) > torch.count_nonzero(sample.image)
++    assert bool((result.image == 0.7).any() | (result.image == 0.6).any())
++
++
++def test_ghost_copy_draws_and_applies_amplitude_exactly_once() -> None:
++    sample = _sample(dtype=torch.float64)
++    transform = RandomGhostLines(
++        probability=1.0,
++        copy_count_range=(1, 1),
++        offset_px_range=(4, 4),
++        amplitude_range=(0.35, 0.70),
++        long_line_count_range=(0, 0),
++    )
++    seed = 1_937
++    expected_rng = np.random.default_rng(seed)
++    _ = expected_rng.random()  # probability gate
++    angle = float(expected_rng.uniform(0.0, 2.0 * np.pi))
++    amplitude = float(expected_rng.uniform(0.35, 0.70))
++    expected_next_draw = float(expected_rng.random())
++    dx = int(round(4 * np.cos(angle)))
++    dy = int(round(4 * np.sin(angle)))
++    if dx == 0 and dy == 0:
++        dx = 4
++    shifted = torch.roll(sample.image, shifts=(dy, dx), dims=(-2, -1))
++    if dy > 0:
++        shifted[..., :dy, :] = 0.0
++    elif dy < 0:
++        shifted[..., dy:, :] = 0.0
++    if dx > 0:
++        shifted[..., :, :dx] = 0.0
++    elif dx < 0:
++        shifted[..., :, dx:] = 0.0
++    expected_image = torch.maximum(sample.image, shifted * amplitude)
++
++    actual_rng = np.random.default_rng(seed)
++    result = transform(sample, actual_rng)
++
++    torch.testing.assert_close(result.image, expected_image, rtol=0.0, atol=0.0)
++    ghost_only = (shifted > 0.0) & (sample.image == 0.0)
++    assert bool(ghost_only.any())
++    torch.testing.assert_close(
++        result.image[ghost_only],
++        torch.full_like(result.image[ghost_only], amplitude),
++        rtol=0.0,
++        atol=0.0,
++    )
++    assert 0.35 <= amplitude <= 0.70
++    assert float(actual_rng.random()) == expected_next_draw
++
++
++def test_probability_noise_adds_fractional_speckles() -> None:
++    sample = _sample()
++    transform = RandomProbabilityNoise(
++        probability=1.0,
++        foreground_amplitude_range=(0.8, 0.8),
++        gamma_range=(1.0, 1.0),
++        speckle_fraction_range=(0.01, 0.01),
++        speckle_amplitude_range=(0.3, 0.3),
++        additive_std=0.0,
++    )
++
++    result = transform(sample, np.random.default_rng(5))
++
++    assert bool((result.image == 0.8).any())
++    assert bool((result.image == 0.3).any())
++    assert torch.count_nonzero(result.image) > torch.count_nonzero(sample.image)
++
++
++def test_combined_pipeline_is_seed_deterministic_and_geometry_invariant() -> None:
++    sample = _sample()
++    transform = _combined()
++
++    first = transform(sample, np.random.default_rng(123))
++    replay = transform(sample, np.random.default_rng(123))
++    changed = transform(sample, np.random.default_rng(124))
++
++    assert torch.equal(first.image, replay.image)
++    assert not torch.equal(first.image, changed.image)
++    assert first.image.dtype == sample.image.dtype
++    assert 0.0 <= float(first.image.min()) <= float(first.image.max()) <= 1.0
++    assert first.keypoints is sample.keypoints
++    assert first.visibility is sample.visibility
++    assert first.centers is sample.centers
++    assert first.instance_ids is sample.instance_ids
++
++
++def test_compose_keeps_configuration_order() -> None:
++    transform = _combined()
++
++    assert [type(item).__name__ for item in transform.augmentations] == [
++        "RandomLineMorphology",
++        "RandomHeatmapBlur",
++        "RandomLineDropout",
++        "RandomGhostLines",
++        "RandomProbabilityNoise",
++    ]
++
++
++def test_datamodule_augments_train_only_and_explicit_identity_wins() -> None:
++    datamodule = GroundCourtDataModule(
++        image_size=64,
++        train_samples=1,
++        val_samples=1,
++        test_samples=1,
++        num_workers=0,
++        min_courts=1,
++        max_courts=1,
++        min_scale_px_per_metre=1.0,
++        max_scale_px_per_metre=1.0,
++        seed=23,
++        augmentations=[
++            {
++                "name": "random_heatmap_blur",
++                "params": {"probability": 1.0, "sigma_range": [1.0, 1.0]},
++            }
++        ],
++    )
++    datamodule.setup()
++    assert datamodule.train_dataset is not None
++    assert datamodule.val_dataset is not None
++    assert datamodule.test_dataset is not None
++    identity = build_augmentation("identity")
++    datasets: dict[GroundCourtSplit, GroundCourtDataset] = {
++        "train": datamodule.train_dataset,
++        "val": datamodule.val_dataset,
++        "test": datamodule.test_dataset,
++    }
++    clean_samples: dict[str, dict[str, object]] = {}
++    for split, dataset in datasets.items():
++        clean_dataset = GroundCourtDataset(
++            datamodule.dataset_config,
++            split=split,
++            augmentation=identity,
++        )
++        actual = dataset[0]
++        clean = clean_dataset[0]
++        clean_samples[split] = clean
++        for key in ("keypoints", "visibility", "centers", "instance_ids"):
++            assert torch.equal(
++                cast(torch.Tensor, actual[key]), cast(torch.Tensor, clean[key])
++            )
++        if split == "train":
++            assert not torch.equal(
++                cast(torch.Tensor, actual["image"]),
++                cast(torch.Tensor, clean["image"]),
++            )
++        else:
++            assert torch.equal(
++                cast(torch.Tensor, actual["image"]),
++                cast(torch.Tensor, clean["image"]),
++            )
++        assert actual["sample_id"] == f"{split}-00000000"
++
++    assert not torch.equal(
++        cast(torch.Tensor, clean_samples["train"]["image"]),
++        cast(torch.Tensor, clean_samples["val"]["image"]),
++    )
++    assert not torch.equal(
++        cast(torch.Tensor, clean_samples["val"]["image"]),
++        cast(torch.Tensor, clean_samples["test"]["image"]),
++    )
+diff --git a/tests/unit/tasks/court_alignment/data/test_dataset.py b/tests/unit/tasks/court_alignment/data/test_dataset.py
+index df647d6d..c67a3095 100644
+--- a/tests/unit/tasks/court_alignment/data/test_dataset.py
++++ b/tests/unit/tasks/court_alignment/data/test_dataset.py
+@@ -7,12 +7,19 @@ import pytest
+ import torch
+ from torch.utils.data import DataLoader
+ 
++from src.tasks.court_alignment.data.augmentation import (
++    IdentityAugmentation,
++    build_augmentation,
++)
+ from src.tasks.court_alignment.data.dataset import (
+     GroundCourtDataset,
+     GroundCourtDatasetConfig,
+     build_ground_court_datasets,
+ )
+-from src.tasks.court_alignment.data.splits import GroundCourtSplitConfig
++from src.tasks.court_alignment.data.splits import (
++    GroundCourtSplit,
++    GroundCourtSplitConfig,
++)
+ from src.tasks.court_alignment.geometry.court import (
+     doubles_footprints_overlap,
+ )
+@@ -56,15 +63,78 @@ def test_splits_use_stable_disjoint_seeds() -> None:
+     datasets = build_ground_court_datasets(_config())
+     assert tuple(datasets) == ("train", "val", "test")
+     assert datasets["train"][0]["sample_id"] != datasets["val"][0]["sample_id"]
+-    assert not torch.equal(datasets["train"][0]["image"], datasets["val"][0]["image"])
++    assert not torch.equal(
++        cast(torch.Tensor, datasets["train"][0]["image"]),
++        cast(torch.Tensor, datasets["val"][0]["image"]),
++    )
++
++
++@pytest.mark.parametrize("split", ("val", "test"))
++def test_direct_evaluation_dataset_ignores_configured_train_augmentation(
++    split: str,
++) -> None:
++    split_config = GroundCourtSplitConfig(
++        train_size=1,
++        val_size=1,
++        test_size=1,
++        seed=29,
++    )
++    augmented_config = GroundCourtDatasetConfig(
++        image_size=64,
++        max_courts=1,
++        min_courts=1,
++        scale_px_per_metre_range=(1.0, 1.0),
++        split=split_config,
++        augmentations=(
++            {
++                "name": "random_heatmap_blur",
++                "params": {"probability": 1.0, "sigma_range": [1.0, 1.0]},
++            },
++        ),
++    )
++    clean_config = GroundCourtDatasetConfig(
++        image_size=64,
++        max_courts=1,
++        min_courts=1,
++        scale_px_per_metre_range=(1.0, 1.0),
++        split=split_config,
++    )
++
++    evaluation = GroundCourtDataset(
++        augmented_config, split=cast(GroundCourtSplit, split)
++    )
++    clean = GroundCourtDataset(clean_config, split=cast(GroundCourtSplit, split))
++
++    assert isinstance(evaluation.augmentation, IdentityAugmentation)
++    torch.testing.assert_close(
++        cast(torch.Tensor, evaluation[0]["image"]),
++        cast(torch.Tensor, clean[0]["image"]),
++    )
++
++
++@pytest.mark.parametrize("split", ("val", "test"))
++def test_evaluation_dataset_rejects_explicit_nonidentity_augmentation(
++    split: str,
++) -> None:
++    transform = build_augmentation(
++        {
++            "name": "random_heatmap_blur",
++            "params": {"probability": 1.0, "sigma_range": [1.0, 1.0]},
++        }
++    )
++
++    with pytest.raises(ValueError, match="train-only"):
++        GroundCourtDataset(
++            _config(),
++            split=cast(GroundCourtSplit, split),
++            augmentation=transform,
++        )
+ 
+ 
+ def test_non_integer_keypoint_gets_exact_positive_at_nearest_lattice_pixel() -> None:
+     points = torch.full((1, 14, 2), 10.4, dtype=torch.float32)
+     visibility = torch.ones((1, 14), dtype=torch.bool)
+-    heatmaps = render_keypoint_heatmaps(
+-        (24, 24), points, visibility, sigma_px=0.75
+-    )
++    heatmaps = render_keypoint_heatmaps((24, 24), points, visibility, sigma_px=0.75)
+     assert float(heatmaps[0, 10, 10]) == 1.0
+ 
+ 
+@@ -108,7 +178,8 @@ def test_vote_mask_is_identical_across_sigma_ablation() -> None:
+         samples.append(GroundCourtDataset(config)[0])
+     for sample in samples[1:]:
+         assert torch.equal(
+-            sample["target_center_vote_mask"], samples[0]["target_center_vote_mask"]
++            cast(torch.Tensor, sample["target_center_vote_mask"]),
++            cast(torch.Tensor, samples[0]["target_center_vote_mask"]),
+         )
+ 
+ 
+@@ -139,7 +210,9 @@ def test_generated_multiple_courts_have_non_overlapping_footprints() -> None:
+         sample = dataset[index]
+         points = cast(torch.Tensor, sample["keypoints"])[:2]
+         footprints = [
+-            points[item].index_select(0, points.new_tensor((0, 1, 3, 2), dtype=torch.long))
++            points[item].index_select(
++                0, points.new_tensor((0, 1, 3, 2), dtype=torch.long)
++            )
+             for item in range(2)
+         ]
+         assert not doubles_footprints_overlap(footprints[0], footprints[1])
+diff --git a/tests/unit/tasks/court_alignment/evaluation/test_real_heatmap.py b/tests/unit/tasks/court_alignment/evaluation/test_real_heatmap.py
+index 6730c727..792cb5ae 100644
+--- a/tests/unit/tasks/court_alignment/evaluation/test_real_heatmap.py
++++ b/tests/unit/tasks/court_alignment/evaluation/test_real_heatmap.py
+@@ -8,6 +8,7 @@ from typing import Any, cast
+ 
+ import numpy as np
+ import pytest
++import torch
+ from numpy.typing import NDArray
+ 
+ from src.tasks.base.training.repro import QueueReproDirError
+@@ -17,11 +18,16 @@ from src.tasks.court_alignment.evaluation.real_heatmap import (
+     AlignmentGroundPlane,
+     PixelUVTransform,
+     PreprocessOptions,
++    ProjectedReference,
+     RealHeatmapArchive,
++    compute_pose_alignment_diagnostics,
+     letterbox_heatmap,
+     project_accepted_reference,
+     write_evaluation_artifacts,
+ )
++from src.tasks.court_alignment.geometry.court import canonical_court_keypoints
++from src.tasks.court_alignment.inference.decoder import CourtInstanceBatch
++from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX
+ 
+ 
+ def _transform() -> PixelUVTransform:
+@@ -158,6 +164,237 @@ def test_pixel_error_conversion_uses_effective_letterbox_scale() -> None:
+     assert transform.pixels_to_metres(3.25) == pytest.approx(3.25)
+ 
+ 
++def _similarity(
++    points: torch.Tensor,
++    *,
++    scale: float,
++    angle: float,
++    translation: tuple[float, float],
++) -> torch.Tensor:
++    cosine = torch.cos(torch.tensor(angle, dtype=points.dtype))
++    sine = torch.sin(torch.tensor(angle, dtype=points.dtype))
++    rotation = torch.stack(
++        (
++            torch.stack((cosine, -sine)),
++            torch.stack((sine, cosine)),
++        )
++    )
++    return points @ (scale * rotation).T + points.new_tensor(translation)
++
++
++def _pose_diagnostic_fixture() -> tuple[
++    CourtInstanceBatch,
++    ProjectedReference,
++    PixelUVTransform,
++]:
++    canonical = canonical_court_keypoints(dtype=torch.float32)
++    references = torch.stack(
++        (
++            _similarity(
++                canonical,
++                scale=2.2,
++                angle=0.23,
++                translation=(72.0, 96.0),
++            ),
++            _similarity(
++                canonical,
++                scale=1.7,
++                angle=-0.41,
++                translation=(181.0, 137.0),
++            ),
++        )
++    )
++    half_turn = torch.as_tensor(CAMERA_VIEW_HALF_TURN_INDEX, dtype=torch.long)
++    direct_indices = torch.tensor((0, 1, 2, 4, 5, 7, 9, 11, 13))
++    half_indices = torch.tensor((0, 1, 3, 4, 6, 8, 10, 12, 13))
++    keypoints = torch.zeros((3, 14, 2), dtype=torch.float32)
++    valid = torch.zeros((3, 14), dtype=torch.bool)
++    direct_noise = torch.tensor(
++        (
++            (0.12, -0.08),
++            (-0.05, 0.16),
++            (0.09, 0.04),
++            (-0.11, -0.03),
++            (0.02, 0.13),
++            (0.07, -0.12),
++            (-0.04, 0.06),
++            (0.15, 0.01),
++            (-0.08, -0.09),
++        )
++    )
++    half_noise = direct_noise.flip(0) * 0.8
++    # Prediction order is deliberately opposite the reference order.  The
++    # first prediction also uses half-turn semantic correspondence.
++    keypoints[0, half_indices] = references[1, half_turn[half_indices]] + half_noise
++    valid[0, half_indices] = True
++    keypoints[1, direct_indices] = references[0, direct_indices] + direct_noise
++    valid[1, direct_indices] = True
++    keypoints[2, :3] = references[0, :3]
++    valid[2, :3] = True
++    sample = CourtInstanceBatch(
++        keypoints_px=keypoints,
++        scores=valid.float(),
++        valid=valid,
++        centers_px=torch.stack(
++            (references[1].mean(0), references[0].mean(0), references[0].mean(0))
++        ),
++    )
++    reference = ProjectedReference(
++        keypoints_px=references.numpy(),
++        valid=np.ones((2, 14), dtype=np.bool_),
++        centers_px=references.mean(1).numpy(),
++        court_instance_ids=("court-a", "court-b"),
++        candidate_ids=("candidate-a", "candidate-b"),
++        poses=({"court_instance_id": "court-a"}, {"court_instance_id": "court-b"}),
++    )
++    transform = PixelUVTransform(
++        bounds_uv=(0.0, 127.5, 0.0, 127.5),
++        grid_spacing_m=0.5,
++        source_shape=(256, 256),
++        content_shape=(256, 256),
++        output_shape=(256, 256),
++        padding_xy=(0, 0),
++    )
++    return sample, reference, transform
++
++
++def test_pose_diagnostic_matches_partial_half_turn_courts_one_to_one() -> None:
++    sample, reference, transform = _pose_diagnostic_fixture()
++
++    summary, diagnostic = compute_pose_alignment_diagnostics(
++        sample,
++        reference,
++        transform,
++        match_max_error_px=8.0,
++    )
++
++    assert summary["pose_diagnostic_status"] == "partial"
++    assert summary["pose_prediction_instance_count"] == 3
++    assert summary["pose_reference_instance_count"] == 2
++    assert summary["pose_fit_available_prediction_count"] == 2
++    assert summary["pose_fit_unavailable_prediction_count"] == 1
++    assert summary["pose_matched_instance_count"] == 2
++    assert summary["pose_rejected_over_gate_pair_count"] == 0
++    assert summary["pose_unmatched_prediction_count"] == 1
++    assert summary["pose_unmatched_reference_count"] == 0
++    assert summary["pose_half_turn_match_count"] == 1
++    assert summary["pose_raw_kp_count"] == 18
++    assert summary["pose_raw_kp_coverage"] == pytest.approx(18 / 28)
++    assert summary["pose_reconstructed_kp_count"] == 28
++    assert cast(float, summary["pose_raw_kp_error_mean_px"]) > 0.0
++    assert cast(float, summary["pose_reconstructed_kp_error_q95_px"]) < 0.25
++    assert summary["pose_raw_kp_error_mean_m"] == pytest.approx(
++        cast(float, summary["pose_raw_kp_error_mean_px"]) / 2.0
++    )
++    assert summary["pose_reconstructed_kp_error_q95_m"] == pytest.approx(
++        cast(float, summary["pose_reconstructed_kp_error_q95_px"]) / 2.0
++    )
++    matches = cast(list[dict[str, object]], diagnostic["matches"])
++    assert {
++        (item["prediction_index"], item["reference_index"]) for item in matches
++    } == {(1, 0), (0, 1)}
++    half_match = next(item for item in matches if item["prediction_index"] == 0)
++    assert half_match["half_turn_selected"] is True
++    assert half_match["correspondence"] == "half_turn"
++    assert diagnostic["unmatched_prediction_indices"] == [2]
++    prediction_fits = cast(list[dict[str, object]], diagnostic["prediction_fits"])
++    assert prediction_fits[2]["status"] == "unavailable"
++    assert "at least 4" in cast(str, prediction_fits[2]["reason"])
++    assert diagnostic["summary"] == summary
++
++
++def test_pose_diagnostic_rejects_far_four_keypoint_false_cluster() -> None:
++    _sample_value, reference, transform = _pose_diagnostic_fixture()
++    single_reference = ProjectedReference(
++        keypoints_px=reference.keypoints_px[:1],
++        valid=reference.valid[:1],
++        centers_px=reference.centers_px[:1],
++        court_instance_ids=reference.court_instance_ids[:1],
++        candidate_ids=reference.candidate_ids[:1],
++        poses=reference.poses[:1],
++    )
++    canonical = canonical_court_keypoints(dtype=torch.float32)
++    far_court = _similarity(
++        canonical,
++        scale=2.0,
++        angle=0.2,
++        translation=(500.0, 500.0),
++    )
++    valid = torch.zeros((1, 14), dtype=torch.bool)
++    valid[0, :4] = True
++    keypoints = torch.zeros((1, 14, 2), dtype=torch.float32)
++    keypoints[0, :4] = far_court[:4]
++    false_cluster = CourtInstanceBatch(
++        keypoints_px=keypoints,
++        scores=valid.float(),
++        valid=valid,
++        centers_px=torch.tensor(((500.0, 500.0),), dtype=torch.float32),
++    )
++
++    summary, diagnostic = compute_pose_alignment_diagnostics(
++        false_cluster,
++        single_reference,
++        transform,
++        match_max_error_px=8.0,
++    )
++
++    assert summary["pose_diagnostic_status"] == "unavailable"
++    assert summary["pose_fit_available_prediction_count"] == 1
++    assert summary["pose_fit_unavailable_prediction_count"] == 0
++    assert summary["pose_matched_instance_count"] == 0
++    assert summary["pose_rejected_over_gate_pair_count"] == 1
++    assert summary["pose_unmatched_prediction_count"] == 1
++    assert summary["pose_unmatched_reference_count"] == 1
++    assert summary["pose_raw_kp_count"] == 0
++    assert summary["pose_reconstructed_kp_count"] == 0
++    assert summary["pose_raw_kp_error_mean_px"] is None
++    assert summary["pose_reconstructed_kp_error_q95_px"] is None
++    rejected = cast(list[dict[str, object]], diagnostic["rejected_over_gate_pairs"])
++    assert len(rejected) == 1
++    assert rejected[0]["status"] == "unavailable"
++    assert cast(float, rejected[0]["pair_cost_px"]) > 8.0
++    assert "exceeds match_max_error_px=8.0" in cast(str, rejected[0]["reason"])
++
++
++def test_pose_metrics_and_diagnostic_artifacts_share_identical_summary(
++    tmp_path: Path,
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
++    sample, reference, transform = _pose_diagnostic_fixture()
++    summary, pose_diagnostic = compute_pose_alignment_diagnostics(
++        sample,
++        reference,
++        transform,
++        match_max_error_px=8.0,
++    )
++
++    write_evaluation_artifacts(
++        tmp_path,
++        metrics={
++            **summary,
++            "reference_type": "accepted_alignment",
++            "reference_is_independent_ground_truth": False,
++        },
++        diagnostic={
++            "reference": {
++                "type": "accepted_alignment",
++                "is_independent_ground_truth": False,
++            },
++            "pose_alignment": pose_diagnostic,
++        },
++        arrays={"input": np.zeros((1, 1, 2, 2), dtype=np.float32)},
++    )
++
++    metrics_json = json.loads((tmp_path / "metrics.json").read_text())
++    diagnostic_json = json.loads((tmp_path / "diagnostic_metrics.json").read_text())
++    assert diagnostic_json["pose_alignment"]["summary"] == {
++        key: metrics_json[key] for key in summary
++    }
++    assert metrics_json["reference_is_independent_ground_truth"] is False
++    assert diagnostic_json["reference"]["is_independent_ground_truth"] is False
++
++
+ def test_malformed_archive_fails_before_manifest_use(tmp_path: Path) -> None:
+     archive_path = tmp_path / "heatmaps.npz"
+     manifest_path = tmp_path / "manifest.json"
+diff --git a/tests/unit/tasks/court_alignment/training/test_runner.py b/tests/unit/tasks/court_alignment/training/test_runner.py
+index 10d8777b..6a4f2618 100644
+--- a/tests/unit/tasks/court_alignment/training/test_runner.py
++++ b/tests/unit/tasks/court_alignment/training/test_runner.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++from pathlib import Path
+ from types import SimpleNamespace
+ from typing import Any, cast
+ 
+@@ -9,6 +10,12 @@ import pytest
+ from pytorch_lightning.callbacks import ModelCheckpoint
+ 
+ from src.tasks.court_alignment.training.runner import CourtAlignmentTrainingRunner
++from src.utils.configuration import (
++    PathContractError,
++    PathResolver,
++    PathRole,
++    RuntimePathRoots,
++)
+ 
+ 
+ def _runtime(*, checkpoint_enabled: bool) -> SimpleNamespace:
+@@ -17,6 +24,95 @@ def _runtime(*, checkpoint_enabled: bool) -> SimpleNamespace:
+     )
+ 
+ 
++def _path_resolver(tmp_path: Path) -> PathResolver:
++    return PathResolver(
++        RuntimePathRoots.from_mapping(
++            {
++                "project_root": ".",
++                "data_root": "data",
++                "checkpoint_root": "checkpoints",
++                "artifact_root": "artifacts",
++                "output_root": "outputs",
++                "cache_root": "cache-files",
++                "external_asset_root": "external-files",
++            },
++            repository_root=tmp_path.resolve(),
++        )
++    )
++
++
++def _install_evaluation_runtime(
++    runner: CourtAlignmentTrainingRunner,
++    monkeypatch: pytest.MonkeyPatch,
++    *,
++    resolver: PathResolver,
++    checkpoint_path: Path,
++    output_dir: Path,
++    test_calls: list[dict[str, object]],
++) -> object:
++    trainer_config = SimpleNamespace(
++        precision="32-true",
++        deterministic=True,
++        benchmark=False,
++        enable_progress_bar=False,
++        enable_model_summary=False,
++    )
++    court_runtime = SimpleNamespace(
++        runtime=SimpleNamespace(
++            resolver=resolver,
++            training=SimpleNamespace(trainer=trainer_config),
++        ),
++        evaluation_checkpoint=checkpoint_path,
++    )
++
++    class _RuntimeBoundary:
++        @classmethod
++        def from_config(
++            cls,
++            config: object,
++            *,
++            evaluation: bool = False,
++        ) -> SimpleNamespace:
++            del cls, config
++            assert evaluation is True
++            return court_runtime
++
++    class _Trainer:
++        def __init__(self, **kwargs: object) -> None:
++            del kwargs
++
++        def test(self, *args: object, **kwargs: object) -> None:
++            del args
++            test_calls.append(kwargs)
++
++    datamodule = object()
++    module = object()
++    monkeypatch.setattr(
++        "src.tasks.court_alignment.training.runner.CourtAlignmentRuntimeConfig",
++        _RuntimeBoundary,
++    )
++    monkeypatch.setattr(
++        "src.tasks.court_alignment.training.runner.pl.Trainer",
++        _Trainer,
++    )
++    monkeypatch.setattr(
++        "src.tasks.court_alignment.training.runner.resolve_queue_repro_dir",
++        lambda: None,
++    )
++    monkeypatch.setattr(runner, "seed_everything", lambda _: None)
++    monkeypatch.setattr(runner, "apply_runtime_settings", lambda _: None)
++    monkeypatch.setattr(runner, "prepare_output_dir", lambda _: output_dir)
++    monkeypatch.setattr(runner, "save_config", lambda *_: None)
++    monkeypatch.setattr(runner, "build_datamodule", lambda _: cast(Any, datamodule))
++    monkeypatch.setattr(
++        runner,
++        "build_lightning_module",
++        lambda *_, **__: cast(Any, module),
++    )
++    monkeypatch.setattr(runner, "select_devices", lambda _: ("cpu", 1))
++    return datamodule
++
++
+ def test_test_checkpoint_path_selects_nonempty_validation_best(
+     monkeypatch: pytest.MonkeyPatch,
+ ) -> None:
+@@ -67,3 +163,55 @@ def test_test_checkpoint_path_rejects_disabled_checkpointing(
+ 
+     with pytest.raises(RuntimeError, match="without checkpointing"):
+         runner.test_checkpoint_path({}, cast(Any, SimpleNamespace()))
++
++
++def test_evaluate_passes_contained_checkpoint_and_explicit_full_load(
++    tmp_path: Path,
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    resolver = _path_resolver(tmp_path)
++    checkpoint_path = resolver.resolve(PathRole.CHECKPOINT, "model.ckpt")
++    checkpoint_path.parent.mkdir(parents=True)
++    checkpoint_path.write_bytes(b"checkpoint")
++    runner = CourtAlignmentTrainingRunner()
++    test_calls: list[dict[str, object]] = []
++    datamodule = _install_evaluation_runtime(
++        runner,
++        monkeypatch,
++        resolver=resolver,
++        checkpoint_path=checkpoint_path,
++        output_dir=tmp_path / "evaluation-output",
++        test_calls=test_calls,
++    )
++
++    runner.evaluate(cast(Any, {}))
++
++    assert len(test_calls) == 1
++    assert test_calls[0]["datamodule"] is datamodule
++    assert test_calls[0]["ckpt_path"] == str(checkpoint_path.resolve())
++    assert test_calls[0]["weights_only"] is False
++
++
++def test_evaluate_rejects_checkpoint_outside_role_before_trainer_test(
++    tmp_path: Path,
++    monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    resolver = _path_resolver(tmp_path)
++    outside_path = (tmp_path / "outside.ckpt").resolve()
++    outside_path.write_bytes(b"checkpoint")
++    runner = CourtAlignmentTrainingRunner()
++    test_calls: list[dict[str, object]] = []
++    _install_evaluation_runtime(
++        runner,
++        monkeypatch,
++        resolver=resolver,
++        checkpoint_path=outside_path,
++        output_dir=tmp_path / "evaluation-output",
++        test_calls=test_calls,
++    )
++
++    with pytest.raises(PathContractError, match="outside its root"):
++        runner.evaluate(cast(Any, {}))
++
++    assert test_calls == []
++    assert not (tmp_path / "evaluation-output").exists()

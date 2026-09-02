@@ -1,0 +1,16 @@
+{
+  "run_id": "1788326795287584461_861661_court-align-b00-eval-aug-pilot-combined-v1",
+  "name": "court-align-b00-eval-aug-pilot-combined-v1",
+  "command": "HYDRA_FULL_ERROR=1 /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_alignment.scripts.evaluate_real_heatmap paths.data_root=/home/kamimura/projects/tennis-lab/.tmp/b00-alignment-eval paths.checkpoint_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs paths.output_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs real_evaluation.archive_path=synthetic_data_generation/scenes/B00/alignment/line-heatmaps/heatmaps.npz real_evaluation.manifest_path=synthetic_data_generation/scenes/B00/alignment/line-heatmaps/manifest.json real_evaluation.alignment_path=synthetic_data_generation/scenes/B00/alignment/alignment.json real_evaluation.device=cuda real_evaluation.preprocess.method=max decoder.threshold=0.25 real_evaluation.preprocess.content_fraction=1.0 real_evaluation.checkpoint_path=court_alignment/augmentation_pilot/b00_combined_v1_warm20_s42/logs/version_0/checkpoints/court-alignment-epoch\\\\=019.ckpt real_evaluation.output_dir=court_alignment/real_heatmap/aug_pilot_combined_v1",
+  "provider": "codex",
+  "session": "01a05a02-ad55-76c0-9fcb-f250929e59a7",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5de3a7d45e037a799d4dad0ae1ef3ac3cb24897e",
+  "branch": "feat/court-alignment-kp14-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "captured_at": "2026-09-02T14:27:04+09:00"
+}

@@ -1,0 +1,16 @@
+{
+  "run_id": "1788328590453203027_886544_court-align-aug-r2-appearance-warm-v1",
+  "name": "court-align-aug-r2-appearance-warm-v1",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True HYDRA_FULL_ERROR=1 /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_alignment.scripts.train data=b00_appearance_v1 paths.checkpoint_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs data.train_samples=2048 data.val_samples=256 data.test_samples=256 data.batch_size=16 training.steps_per_epoch=128 training.trainer.max_epochs=30 training.learning_rate=3.0e-4 training.warmup_steps=128 run.seed=42 run.init_weights=court_alignment/ablation_sigma_200/logs/version_0/checkpoints/court-alignment-epoch\\\\=047.ckpt run.output_dir=court_alignment/augmentation_round2/b00_appearance_warm30_lr3e4_s42",
+  "provider": "codex",
+  "session": "01a05a02-ad55-76c0-9fcb-f250929e59a7",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5de3a7d45e037a799d4dad0ae1ef3ac3cb24897e",
+  "branch": "feat/court-alignment-kp14-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14",
+  "captured_at": "2026-09-02T14:56:37+09:00"
+}

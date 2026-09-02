@@ -1,0 +1,14 @@
+{
+  "instance_precision": 0.7515923566878981,
+  "instance_recall": 0.9194805194805195,
+  "instance_f1": 0.8271028037383179,
+  "instance_count_accuracy": 0.6640625,
+  "instance_count_mae": 0.3359375,
+  "matched_center_mean_error_px": 2.303648454195025,
+  "instance_kp_mean_error_px": 77.1794952978072,
+  "instance_kp_pck_2px": 0.7864785992217899,
+  "instance_kp_pck_4px": 0.7864785992217899,
+  "sim2_translation_error_px": 29.17018586527798,
+  "sim2_rotation_error_deg": 14.574080343420606,
+  "sim2_scale_relative_error": 0.08172066273569877
+}

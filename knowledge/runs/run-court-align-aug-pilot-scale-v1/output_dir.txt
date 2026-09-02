@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/court-alignment-kp14/outputs/court_alignment/augmentation_pilot/b00_scale_v1_warm20_s42/logs/version_0/checkpoints

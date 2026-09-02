@@ -8,6 +8,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
 
 from src.tasks.base.training.repro import QueueReproDirError
@@ -17,11 +18,16 @@ from src.tasks.court_alignment.evaluation.real_heatmap import (
     AlignmentGroundPlane,
     PixelUVTransform,
     PreprocessOptions,
+    ProjectedReference,
     RealHeatmapArchive,
+    compute_pose_alignment_diagnostics,
     letterbox_heatmap,
     project_accepted_reference,
     write_evaluation_artifacts,
 )
+from src.tasks.court_alignment.geometry.court import canonical_court_keypoints
+from src.tasks.court_alignment.inference.decoder import CourtInstanceBatch
+from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX
 
 
 def _transform() -> PixelUVTransform:
@@ -156,6 +162,237 @@ def test_pixel_error_conversion_uses_effective_letterbox_scale() -> None:
 
     assert transform.pixels_per_metre == pytest.approx(1.0)
     assert transform.pixels_to_metres(3.25) == pytest.approx(3.25)
+
+
+def _similarity(
+    points: torch.Tensor,
+    *,
+    scale: float,
+    angle: float,
+    translation: tuple[float, float],
+) -> torch.Tensor:
+    cosine = torch.cos(torch.tensor(angle, dtype=points.dtype))
+    sine = torch.sin(torch.tensor(angle, dtype=points.dtype))
+    rotation = torch.stack(
+        (
+            torch.stack((cosine, -sine)),
+            torch.stack((sine, cosine)),
+        )
+    )
+    return points @ (scale * rotation).T + points.new_tensor(translation)
+
+
+def _pose_diagnostic_fixture() -> tuple[
+    CourtInstanceBatch,
+    ProjectedReference,
+    PixelUVTransform,
+]:
+    canonical = canonical_court_keypoints(dtype=torch.float32)
+    references = torch.stack(
+        (
+            _similarity(
+                canonical,
+                scale=2.2,
+                angle=0.23,
+                translation=(72.0, 96.0),
+            ),
+            _similarity(
+                canonical,
+                scale=1.7,
+                angle=-0.41,
+                translation=(181.0, 137.0),
+            ),
+        )
+    )
+    half_turn = torch.as_tensor(CAMERA_VIEW_HALF_TURN_INDEX, dtype=torch.long)
+    direct_indices = torch.tensor((0, 1, 2, 4, 5, 7, 9, 11, 13))
+    half_indices = torch.tensor((0, 1, 3, 4, 6, 8, 10, 12, 13))
+    keypoints = torch.zeros((3, 14, 2), dtype=torch.float32)
+    valid = torch.zeros((3, 14), dtype=torch.bool)
+    direct_noise = torch.tensor(
+        (
+            (0.12, -0.08),
+            (-0.05, 0.16),
+            (0.09, 0.04),
+            (-0.11, -0.03),
+            (0.02, 0.13),
+            (0.07, -0.12),
+            (-0.04, 0.06),
+            (0.15, 0.01),
+            (-0.08, -0.09),
+        )
+    )
+    half_noise = direct_noise.flip(0) * 0.8
+    # Prediction order is deliberately opposite the reference order.  The
+    # first prediction also uses half-turn semantic correspondence.
+    keypoints[0, half_indices] = references[1, half_turn[half_indices]] + half_noise
+    valid[0, half_indices] = True
+    keypoints[1, direct_indices] = references[0, direct_indices] + direct_noise
+    valid[1, direct_indices] = True
+    keypoints[2, :3] = references[0, :3]
+    valid[2, :3] = True
+    sample = CourtInstanceBatch(
+        keypoints_px=keypoints,
+        scores=valid.float(),
+        valid=valid,
+        centers_px=torch.stack(
+            (references[1].mean(0), references[0].mean(0), references[0].mean(0))
+        ),
+    )
+    reference = ProjectedReference(
+        keypoints_px=references.numpy(),
+        valid=np.ones((2, 14), dtype=np.bool_),
+        centers_px=references.mean(1).numpy(),
+        court_instance_ids=("court-a", "court-b"),
+        candidate_ids=("candidate-a", "candidate-b"),
+        poses=({"court_instance_id": "court-a"}, {"court_instance_id": "court-b"}),
+    )
+    transform = PixelUVTransform(
+        bounds_uv=(0.0, 127.5, 0.0, 127.5),
+        grid_spacing_m=0.5,
+        source_shape=(256, 256),
+        content_shape=(256, 256),
+        output_shape=(256, 256),
+        padding_xy=(0, 0),
+    )
+    return sample, reference, transform
+
+
+def test_pose_diagnostic_matches_partial_half_turn_courts_one_to_one() -> None:
+    sample, reference, transform = _pose_diagnostic_fixture()
+
+    summary, diagnostic = compute_pose_alignment_diagnostics(
+        sample,
+        reference,
+        transform,
+        match_max_error_px=8.0,
+    )
+
+    assert summary["pose_diagnostic_status"] == "partial"
+    assert summary["pose_prediction_instance_count"] == 3
+    assert summary["pose_reference_instance_count"] == 2
+    assert summary["pose_fit_available_prediction_count"] == 2
+    assert summary["pose_fit_unavailable_prediction_count"] == 1
+    assert summary["pose_matched_instance_count"] == 2
+    assert summary["pose_rejected_over_gate_pair_count"] == 0
+    assert summary["pose_unmatched_prediction_count"] == 1
+    assert summary["pose_unmatched_reference_count"] == 0
+    assert summary["pose_half_turn_match_count"] == 1
+    assert summary["pose_raw_kp_count"] == 18
+    assert summary["pose_raw_kp_coverage"] == pytest.approx(18 / 28)
+    assert summary["pose_reconstructed_kp_count"] == 28
+    assert cast(float, summary["pose_raw_kp_error_mean_px"]) > 0.0
+    assert cast(float, summary["pose_reconstructed_kp_error_q95_px"]) < 0.25
+    assert summary["pose_raw_kp_error_mean_m"] == pytest.approx(
+        cast(float, summary["pose_raw_kp_error_mean_px"]) / 2.0
+    )
+    assert summary["pose_reconstructed_kp_error_q95_m"] == pytest.approx(
+        cast(float, summary["pose_reconstructed_kp_error_q95_px"]) / 2.0
+    )
+    matches = cast(list[dict[str, object]], diagnostic["matches"])
+    assert {
+        (item["prediction_index"], item["reference_index"]) for item in matches
+    } == {(1, 0), (0, 1)}
+    half_match = next(item for item in matches if item["prediction_index"] == 0)
+    assert half_match["half_turn_selected"] is True
+    assert half_match["correspondence"] == "half_turn"
+    assert diagnostic["unmatched_prediction_indices"] == [2]
+    prediction_fits = cast(list[dict[str, object]], diagnostic["prediction_fits"])
+    assert prediction_fits[2]["status"] == "unavailable"
+    assert "at least 4" in cast(str, prediction_fits[2]["reason"])
+    assert diagnostic["summary"] == summary
+
+
+def test_pose_diagnostic_rejects_far_four_keypoint_false_cluster() -> None:
+    _sample_value, reference, transform = _pose_diagnostic_fixture()
+    single_reference = ProjectedReference(
+        keypoints_px=reference.keypoints_px[:1],
+        valid=reference.valid[:1],
+        centers_px=reference.centers_px[:1],
+        court_instance_ids=reference.court_instance_ids[:1],
+        candidate_ids=reference.candidate_ids[:1],
+        poses=reference.poses[:1],
+    )
+    canonical = canonical_court_keypoints(dtype=torch.float32)
+    far_court = _similarity(
+        canonical,
+        scale=2.0,
+        angle=0.2,
+        translation=(500.0, 500.0),
+    )
+    valid = torch.zeros((1, 14), dtype=torch.bool)
+    valid[0, :4] = True
+    keypoints = torch.zeros((1, 14, 2), dtype=torch.float32)
+    keypoints[0, :4] = far_court[:4]
+    false_cluster = CourtInstanceBatch(
+        keypoints_px=keypoints,
+        scores=valid.float(),
+        valid=valid,
+        centers_px=torch.tensor(((500.0, 500.0),), dtype=torch.float32),
+    )
+
+    summary, diagnostic = compute_pose_alignment_diagnostics(
+        false_cluster,
+        single_reference,
+        transform,
+        match_max_error_px=8.0,
+    )
+
+    assert summary["pose_diagnostic_status"] == "unavailable"
+    assert summary["pose_fit_available_prediction_count"] == 1
+    assert summary["pose_fit_unavailable_prediction_count"] == 0
+    assert summary["pose_matched_instance_count"] == 0
+    assert summary["pose_rejected_over_gate_pair_count"] == 1
+    assert summary["pose_unmatched_prediction_count"] == 1
+    assert summary["pose_unmatched_reference_count"] == 1
+    assert summary["pose_raw_kp_count"] == 0
+    assert summary["pose_reconstructed_kp_count"] == 0
+    assert summary["pose_raw_kp_error_mean_px"] is None
+    assert summary["pose_reconstructed_kp_error_q95_px"] is None
+    rejected = cast(list[dict[str, object]], diagnostic["rejected_over_gate_pairs"])
+    assert len(rejected) == 1
+    assert rejected[0]["status"] == "unavailable"
+    assert cast(float, rejected[0]["pair_cost_px"]) > 8.0
+    assert "exceeds match_max_error_px=8.0" in cast(str, rejected[0]["reason"])
+
+
+def test_pose_metrics_and_diagnostic_artifacts_share_identical_summary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
+    sample, reference, transform = _pose_diagnostic_fixture()
+    summary, pose_diagnostic = compute_pose_alignment_diagnostics(
+        sample,
+        reference,
+        transform,
+        match_max_error_px=8.0,
+    )
+
+    write_evaluation_artifacts(
+        tmp_path,
+        metrics={
+            **summary,
+            "reference_type": "accepted_alignment",
+            "reference_is_independent_ground_truth": False,
+        },
+        diagnostic={
+            "reference": {
+                "type": "accepted_alignment",
+                "is_independent_ground_truth": False,
+            },
+            "pose_alignment": pose_diagnostic,
+        },
+        arrays={"input": np.zeros((1, 1, 2, 2), dtype=np.float32)},
+    )
+
+    metrics_json = json.loads((tmp_path / "metrics.json").read_text())
+    diagnostic_json = json.loads((tmp_path / "diagnostic_metrics.json").read_text())
+    assert diagnostic_json["pose_alignment"]["summary"] == {
+        key: metrics_json[key] for key in summary
+    }
+    assert metrics_json["reference_is_independent_ground_truth"] is False
+    assert diagnostic_json["reference"]["is_independent_ground_truth"] is False
 
 
 def test_malformed_archive_fails_before_manifest_use(tmp_path: Path) -> None:
