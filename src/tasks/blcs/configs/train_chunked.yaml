@@ -3,8 +3,8 @@ defaults:
   - paths: default
   - model: multiview_axial_base
   - data: chunked_multiview_sequence
-  - training: chunked
-  - loss: chunked
+  - training: default
+  - loss: reprojection
   - metrics: default
   - run: train
   - physics: default

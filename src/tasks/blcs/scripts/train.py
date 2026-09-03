@@ -4,7 +4,7 @@ Usage:
     python -m src.tasks.blcs.scripts.train
     python -m src.tasks.blcs.scripts.train training.max_epochs=5 run.gpus=0
     python -m src.tasks.blcs.scripts.train model=multiview_axial_small data=multiview_sequence
-    python -m src.tasks.blcs.scripts.train data=chunked_multiview_sequence training=chunked
+    python -m src.tasks.blcs.scripts.train data=chunked_multiview_sequence loss=reprojection
     python -m src.tasks.blcs.scripts.train --config-name train_chunked_gan
     python -m src.tasks.blcs.scripts.train run.dry_run=true
 

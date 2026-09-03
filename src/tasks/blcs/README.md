@@ -75,7 +75,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 
 ### configs/
 - 学習用の公開data profileは10個に固定している。`singleview_sequence` / `multiview_sequence` / `chunked_singleview_sequence` / `chunked_multiview_sequence` は `blcs/single_object`、`singleview_sequence_broadcast` / `multiview_sequence_broadcast` は `blcs/single_object_broadcast`、`tracking` / `tracking_chunked` は `blcs/multi_object`、`tracking_broadcast` は `blcs/multi_object_broadcast`、`tracking_camera_view_v2` は `blcs/multi_object_camera_view_v2` を使う。`chunked_singleview_sequence` は `model=single` と組み合わせる。旧 `chunked_multiview_sequence_bs4/8/16` は廃止した。
-- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。`data=tracking_camera_view_v2`を選ぶと、Hydraのabsolute package override defaultsにより `court_keypoints=camera_view_v2` と `model=tracking_query_reference` が一意に選択される。その他にmodel(single/multiview/axial)・data・training(default/chunked/GAN)・loss(default/chunked/tracking)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定がある。
+- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。`data=tracking_camera_view_v2`を選ぶと、Hydraのabsolute package override defaultsにより `court_keypoints=camera_view_v2` と `model=tracking_query_reference` が一意に選択される。その他にmodel(single/multiview/axial)・data・training(default/GAN)・loss(default/reprojection/tracking)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定がある。
 
 ## Multi-ball tracking
 
