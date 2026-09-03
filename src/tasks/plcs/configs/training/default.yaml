@@ -9,7 +9,7 @@ trainer:
   deterministic: true
   precision: "bf16-mixed"
   log_every_n_steps: 50
-  check_val_every_n_epoch: 3
+  check_val_every_n_epoch: 10
   # Effective batch = batch_size * accumulate_grad_batches. Lets VRAM-bound large
   # models keep a target effective batch on small GPUs (e.g. 16GB WSL2). 1 = off.
   accumulate_grad_batches: 1
@@ -20,7 +20,7 @@ trainer:
 
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
-weight_decay: 1.0e-5
+weight_decay: 0.1
 warmup_steps: 1000
 warmup_epochs: null
 min_lr: 1.0e-6
@@ -48,7 +48,7 @@ checkpoint:
   save_last: true
 
 early_stopping:
-  enabled: true
+  enabled: false
   monitor: val/position_error_m
   mode: min
   patience: 10
@@ -61,7 +61,7 @@ lr_monitor:
 
 # ---- Qualitative validation logging ----
 qualitative_logging:
-  enabled: true
+  enabled: false
   every_n_epochs: 10
   num_samples: 4
   selection_mode: random
