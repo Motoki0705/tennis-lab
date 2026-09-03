@@ -1,14 +1,13 @@
 defaults:
   - _augmentation
   - _chunked
-  - _multiview
+  - _singleview
   - _self_
 
 scene_dir: blcs/single_object
-num_court_kp: 20
+num_court_kp: 14
 
-batch_size: 4
 num_workers: 4
 pin_memory: true
 
-seq_len_range: [64, 256]
+seq_len_range: [64, 1024]

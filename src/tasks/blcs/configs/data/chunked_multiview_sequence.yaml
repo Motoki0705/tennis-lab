@@ -5,9 +5,8 @@ defaults:
   - _self_
 
 scene_dir: blcs/single_object
-num_court_kp: 20
+num_court_kp: 14
 
-batch_size: 16
 num_workers: 4
 pin_memory: true
 

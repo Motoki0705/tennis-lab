@@ -4,13 +4,10 @@ defaults:
   - _self_
 
 backend: default
-scene_dir: plcs/single_object
-adapter_camera_index: 0
+scene_dir: blcs/single_object_broadcast
 num_court_kp: 14
 
 num_workers: 4
 pin_memory: true
 
-mode: sequence
-seq_stride: 128
-seq_len_range: [64, 512]
+seq_len_range: [64, 1024]

@@ -1,0 +1,22 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _observation_tracking
+  - _self_
+
+backend: default
+scene_dir: blcs/multi_object_broadcast
+
+# Broadcast artifacts contain exactly two views. Keep the batch proportional
+# to the view count and use the stable first camera for validation/test.
+num_views_range: [2, 2]
+batch_size: 2
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [512, 1024]
+evaluation_reference_camera_id: cam_1
+
+lifecycle:
+  pack_to_query_slots: true
+  min_reuse_gap_frames: 4

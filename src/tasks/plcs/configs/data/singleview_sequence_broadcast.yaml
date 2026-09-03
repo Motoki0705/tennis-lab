@@ -3,8 +3,10 @@ defaults:
   - _singleview
   - _self_
 
+# Fixed single-object scenes rendered with the two-camera broadcast layout.
+# The sequence model consumes one selected camera per sample.
 backend: default
-scene_dir: plcs/single_object
+scene_dir: plcs/single_object_broadcast
 adapter_camera_index: 0
 num_court_kp: 14
 

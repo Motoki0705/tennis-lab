@@ -16,6 +16,109 @@ from src.utils.configuration import ConfigurationTypeError, SemanticConfiguratio
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
+_TRAINING_PROFILES = (
+    (
+        "singleview_sequence",
+        "train",
+        ("data=singleview_sequence", "model=single"),
+        "blcs/single_object",
+        "default",
+        (1, 1),
+        "physical_v1",
+        "blcs",
+    ),
+    (
+        "multiview_sequence",
+        "train",
+        ("data=multiview_sequence",),
+        "blcs/single_object",
+        "default",
+        (3, 5),
+        "physical_v1",
+        "blcs_multiview_axial",
+    ),
+    (
+        "chunked_singleview_sequence",
+        "train_chunked",
+        ("model=single", "data=chunked_singleview_sequence"),
+        "blcs/single_object",
+        "chunked",
+        (1, 1),
+        "physical_v1",
+        "blcs",
+    ),
+    (
+        "chunked_multiview_sequence",
+        "train_chunked",
+        (),
+        "blcs/single_object",
+        "chunked",
+        (3, 5),
+        "physical_v1",
+        "blcs_multiview_axial",
+    ),
+    (
+        "tracking",
+        "train_tracking",
+        (),
+        "blcs/multi_object",
+        "default",
+        (3, 5),
+        "physical_v1",
+        "blcs_track_query",
+    ),
+    (
+        "tracking_chunked",
+        "train_tracking_chunked",
+        (),
+        "blcs/multi_object",
+        "chunked",
+        (3, 5),
+        "physical_v1",
+        "blcs_track_query",
+    ),
+    (
+        "singleview_sequence_broadcast",
+        "train",
+        ("data=singleview_sequence_broadcast", "model=single"),
+        "blcs/single_object_broadcast",
+        "default",
+        (1, 1),
+        "physical_v1",
+        "blcs",
+    ),
+    (
+        "multiview_sequence_broadcast",
+        "train",
+        ("data=multiview_sequence_broadcast",),
+        "blcs/single_object_broadcast",
+        "default",
+        (2, 2),
+        "physical_v1",
+        "blcs_multiview_axial",
+    ),
+    (
+        "tracking_broadcast",
+        "train_tracking",
+        ("data=tracking_broadcast",),
+        "blcs/multi_object_broadcast",
+        "default",
+        (2, 2),
+        "physical_v1",
+        "blcs_track_query",
+    ),
+    (
+        "tracking_camera_view_v2",
+        "train_tracking",
+        ("data=tracking_camera_view_v2",),
+        "blcs/multi_object_camera_view_v2",
+        "default",
+        (3, 5),
+        "camera_view_v2",
+        "blcs_track_query_reference",
+    ),
+)
+
 
 def test_generation_default_uses_canonical_single_object_path() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
@@ -103,6 +206,76 @@ def test_training_profiles_use_canonical_dataset_paths(
         assert "chunk" not in config.data
     else:
         assert config.data.chunk.chunks_dir == chunks_dir
+
+
+@pytest.mark.parametrize(
+    (
+        "profile",
+        "config_name",
+        "overrides",
+        "scene_dir",
+        "backend",
+        "views",
+        "court_selector",
+        "model_name",
+    ),
+    _TRAINING_PROFILES,
+    ids=[row[0] for row in _TRAINING_PROFILES],
+)
+def test_all_public_data_profiles_compose_and_validate(
+    profile: str,
+    config_name: str,
+    overrides: tuple[str, ...],
+    scene_dir: str,
+    backend: str,
+    views: tuple[int, int],
+    court_selector: str,
+    model_name: str,
+) -> None:
+    """The profile matrix is the executable data/model/court contract."""
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name=config_name, overrides=list(overrides))
+
+    validate_training_boundary(config)
+
+    assert config.data.scene_dir == scene_dir
+    assert config.data.backend == backend
+    assert tuple(config.data.num_views_range) == views
+    assert config.court_keypoints.selector == court_selector
+    assert config.model.name == model_name
+
+
+def test_blcs_has_exactly_ten_public_data_profiles_covering_all_datasets() -> None:
+    profiles = tuple(
+        sorted(
+            path.stem
+            for path in (_CONFIG_DIR / "data").glob("*.yaml")
+            if not path.name.startswith("_")
+        )
+    )
+
+    assert profiles == tuple(sorted(row[0] for row in _TRAINING_PROFILES))
+    assert len(profiles) == 10
+
+    assert {row[3] for row in _TRAINING_PROFILES} == {
+        "blcs/single_object",
+        "blcs/multi_object",
+        "blcs/single_object_broadcast",
+        "blcs/multi_object_broadcast",
+        "blcs/multi_object_camera_view_v2",
+    }
+
+
+def test_camera_view_data_profile_selects_reference_contract_atomically() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=["data=tracking_camera_view_v2"],
+        )
+
+    assert config.court_keypoints.selector == "camera_view_v2"
+    assert config.model.name == "blcs_track_query_reference"
+    validate_training_boundary(config)
 
 
 @pytest.mark.parametrize(

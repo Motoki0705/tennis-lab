@@ -3,11 +3,16 @@ defaults:
   - _multiview
   - _self_
 
+# Fixed single-object broadcast scenes with both broadcast views available.
 backend: default
-scene_dir: plcs/single_object
+scene_dir: plcs/single_object_broadcast
 adapter_camera_index: 0
 num_court_kp: 14
 
+camera_mode: random
+min_cameras: 2
+num_views_range: [2, 2]
+batch_size: 8
 num_workers: 4
 pin_memory: true
 

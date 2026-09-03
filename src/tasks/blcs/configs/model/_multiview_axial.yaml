@@ -33,4 +33,4 @@ max_seq_len: 10240
 max_num_cameras: 6
 predict_velocity: true
 invisible_init_std: 0.02
-num_court_tokens: 20
+num_court_tokens: 14

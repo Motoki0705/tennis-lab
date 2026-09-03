@@ -74,7 +74,8 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`visualize.py`**: 可視化エントリポイント。
 
 ### configs/
-- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。その他にmodel(single/multiview/axial)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定がある。
+- 学習用の公開data profileは10個に固定している。`singleview_sequence` / `multiview_sequence` / `chunked_singleview_sequence` / `chunked_multiview_sequence` は `blcs/single_object`、`singleview_sequence_broadcast` / `multiview_sequence_broadcast` は `blcs/single_object_broadcast`、`tracking` / `tracking_chunked` は `blcs/multi_object`、`tracking_broadcast` は `blcs/multi_object_broadcast`、`tracking_camera_view_v2` は `blcs/multi_object_camera_view_v2` を使う。`chunked_singleview_sequence` は `model=single` と組み合わせる。旧 `chunked_multiview_sequence_bs4/8/16` は廃止した。
+- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。`data=tracking_camera_view_v2`を選ぶと、Hydraのabsolute package override defaultsにより `court_keypoints=camera_view_v2` と `model=tracking_query_reference` が一意に選択される。その他にmodel(single/multiview/axial)・data・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定がある。
 
 ## Multi-ball tracking
 
@@ -112,9 +113,12 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 
 # camera-view reference（別途生成したopt-inデータ、GPU実行はtraining queue経由）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking \
-  court_keypoints=camera_view_v2 data.scene_dir=blcs/multi_object_camera_view_v2 \
-  model=tracking_query_reference
+  data=tracking_camera_view_v2
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked
+
+# single-view model + on-the-fly chunk generation
+.venv/bin/python -m src.tasks.blcs.scripts.train \
+  --config-name train_chunked model=single data=chunked_singleview_sequence
 ```
