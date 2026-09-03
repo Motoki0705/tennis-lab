@@ -1,0 +1,28 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _observation_tracking
+  - _self_
+  # This profile is an atomic camera-view experiment.  The absolute group
+  # overrides make `data=tracking_camera_view_v2` select both contracts.
+  - override /court_keypoints@_global_.court_keypoints: camera_view_v2
+  - override /model@_global_.model: tracking_query_reference
+
+# Fixed multi-object scenes with the camera-local CourtKP20 v2 contract.
+backend: default
+scene_dir: plcs/multi_object_camera_view_v2
+adapter_camera_index: 0
+camera_mode: random
+min_cameras: 2
+num_views_range: [3, 5]
+batch_size: 8
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [512, 1024]
+
+evaluation_reference_camera_id: camera_1
+
+lifecycle:
+  pack_to_query_slots: true
+  min_reuse_gap_frames: 4

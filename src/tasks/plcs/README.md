@@ -83,7 +83,8 @@ human UV/visibility には適用しません。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### configs/
-- track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。その他にmodel(frame/multiview/axial系)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定がある。
+- 公開data profileは10個に整理している。`singleview_frame`、`singleview_sequence`、`multiview_sequence`、`chunked_multiview_sequence`（single_object）、`tracking`、`tracking_chunked`（multi_object）、`singleview_sequence_broadcast`、`multiview_sequence_broadcast`（single_object_broadcast）、`tracking_broadcast`（multi_object_broadcast）、`tracking_camera_view_v2`（multi_object_camera_view_v2）で、各データセットを固定・chunked・broadcast・camera-viewの用途から重複なく選択できる。
+- `tracking_camera_view_v2` はdata profileの選択だけで、Hydraのabsolute overrideにより`court_keypoints=camera_view_v2`と`model=tracking_query_reference`を同時に選択する。その他にmodel(frame/multiview/axial系)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定がある。
 
 ## Multi-person tracking
 
@@ -113,10 +114,13 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
   model=tracking_query
 
+# broadcast two-view tracking（GPUならqueue経由）
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
+  data=tracking_broadcast
+
 # camera-view reference（別途生成したopt-inデータ、GPUならqueue経由）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking \
-  court_keypoints=camera_view_v2 data.scene_dir=plcs/multi_object_camera_view_v2 \
-  model=tracking_query_reference
+  data=tracking_camera_view_v2
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked

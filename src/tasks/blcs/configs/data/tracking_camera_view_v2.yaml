@@ -1,0 +1,26 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _observation_tracking
+  - _self_
+  # Selecting this data profile atomically selects the matching camera-view
+  # CourtKP20 and reference-conditioned track-query contracts.
+  - override /court_keypoints@_global_.court_keypoints: camera_view_v2
+  - override /model@_global_.model: tracking_query_reference
+
+backend: default
+scene_dir: blcs/multi_object_camera_view_v2
+
+# Camera-view-v2 artifacts have three to five cameras and use the same stable
+# reference identity as the physical multi-view tracking profiles.
+num_views_range: [3, 5]
+batch_size: 1
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [512, 1024]
+evaluation_reference_camera_id: cam_1
+
+lifecycle:
+  pack_to_query_slots: true
+  min_reuse_gap_frames: 4

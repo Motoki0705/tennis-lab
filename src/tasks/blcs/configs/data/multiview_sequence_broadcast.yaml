@@ -1,0 +1,16 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _self_
+
+backend: default
+scene_dir: blcs/single_object_broadcast
+num_court_kp: 14
+
+# Two view tokens carry roughly twice the observation load of a single view.
+num_views_range: [2, 2]
+batch_size: 8
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [64, 256]

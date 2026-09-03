@@ -1,0 +1,24 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _observation_tracking
+  - _self_
+
+# Fixed multi-object scenes rendered with the two-camera broadcast layout.
+backend: default
+scene_dir: plcs/multi_object_broadcast
+adapter_camera_index: 0
+camera_mode: random
+min_cameras: 2
+num_views_range: [2, 2]
+batch_size: 16
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [512, 1024]
+
+evaluation_reference_camera_id: camera_1
+
+lifecycle:
+  pack_to_query_slots: true
+  min_reuse_gap_frames: 4
