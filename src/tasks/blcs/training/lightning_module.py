@@ -71,7 +71,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         """Initialize the Lightning module.
 
         Args:
-            config: Configuration dictionary with model and training parameters.
+            config: Configuration dictionary with model, training, and loss parameters.
 
         """
         super().__init__(config)
@@ -83,6 +83,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.qualitative_rendering = parse_qualitative_rendering(self.config)
 
         train_cfg = self.config.training
+        loss_cfg = self.config.loss
         self.max_epochs = int(train_cfg.trainer.max_epochs)
         # The gravity prior needs an absolute physical scale: derive the
         # output-frame dt and g from the run config (rally / physics) rather than
@@ -91,15 +92,15 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         physics_cfg = self.config.physics
         output_fps = float(rally_cfg.output_fps)
         self.loss_fn = BLCSLoss(
-            position_weight=train_cfg.position_loss_weight,
-            reprojection_weight=train_cfg.reprojection_loss_weight,
-            position_axis_weights=train_cfg.position_axis_weights,
-            smoothness_weight=train_cfg.smoothness_loss_weight,
-            gravity_weight=train_cfg.gravity_loss_weight,
-            smoothness_order=int(train_cfg.smoothness_order),
-            smoothness_beta=float(train_cfg.smoothness_beta),
-            smoothness_axis_weights=train_cfg.smoothness_axis_weights,
-            gravity_beta=float(train_cfg.gravity_beta),
+            position_weight=loss_cfg.position_weight,
+            reprojection_weight=loss_cfg.reprojection_weight,
+            position_axis_weights=loss_cfg.position_axis_weights,
+            smoothness_weight=loss_cfg.smoothness_weight,
+            gravity_weight=loss_cfg.gravity_weight,
+            smoothness_order=int(loss_cfg.smoothness_order),
+            smoothness_beta=float(loss_cfg.smoothness_beta),
+            smoothness_axis_weights=loss_cfg.smoothness_axis_weights,
+            gravity_beta=float(loss_cfg.gravity_beta),
             gravity=float(physics_cfg.gravity),
             frame_dt=1.0 / output_fps,
         )

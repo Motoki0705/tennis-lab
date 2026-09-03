@@ -32,27 +32,6 @@ compile:
   fullgraph: false
   dynamic: false
 
-# ---- Loss weights ----
-position_loss_weight: 1.0
-position_axis_weights: null
-reprojection_loss_weight: 0.0
-# Physics priors (temporal); see src/utils/losses/temporal.py. These are an
-# explicit, tunable alternative to the GAN discriminator for temporal
-# consistency. Default 0.0 (off); enable for broadcast/monocular training where
-# depth is under-constrained and the raw trajectory is jittery.
-smoothness_loss_weight: 0.0  # jerk (3rd-diff) penalty on predicted 3D position
-gravity_loss_weight: 0.0     # ballistic vertical-curvature -> monocular depth cue
-smoothness_order: 3          # finite-difference order (3 = jerk, 2 = acceleration)
-smoothness_beta: 1.0e-3      # Smooth-L1 knee for the smoothness prior
-gravity_beta: 5.0e-3         # Smooth-L1 knee for the gravity prior
-# Per-axis (x, y, z) weights for the jerk smoothness prior; null = uniform.
-# Uniform jerk-smoothing flattens the ballistic height arc (the jerk term fights
-# the gravity term on z) and over-smooths axes with legitimate sharp motion.
-# e.g. [1, 1, 0] smooths only x/y depth-jitter and lets the gravity term own z.
-smoothness_axis_weights: null
-# The gravity target is derived from physical g, output-frame dt, and the sole
-# fixed scale documented in src/utils/README.md (see lightning_module).
-
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:
   enabled: true

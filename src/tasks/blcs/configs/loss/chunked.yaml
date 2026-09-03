@@ -1,0 +1,6 @@
+defaults:
+  - default
+  - _self_
+
+# Chunked online-generation training enables reprojection supervision.
+reprojection_weight: 0.1

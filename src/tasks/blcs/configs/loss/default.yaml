@@ -1,0 +1,12 @@
+# Standard BLCS trajectory loss configuration.
+position_weight: 1.0
+position_axis_weights: null
+reprojection_weight: 0.0
+
+# Physics priors (temporal); disabled by default.
+smoothness_weight: 0.0
+gravity_weight: 0.0
+smoothness_order: 3
+smoothness_beta: 1.0e-3
+gravity_beta: 5.0e-3
+smoothness_axis_weights: null
