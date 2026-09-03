@@ -1,8 +1,0 @@
-defaults:
-  - default
-  - _self_
-
-# Chunked online-generation training: same trainer/optimizer profile as default
-# with denser step logging and reprojection supervision enabled.
-trainer:
-  log_every_n_steps: 50
