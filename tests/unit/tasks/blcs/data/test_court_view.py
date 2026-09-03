@@ -22,7 +22,7 @@ from src.tasks.blcs.data.dataset import (
 )
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData, CameraData
-from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
+from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX, NUM_GROUND_COURT_KP
 from src.utils.schema.court_normalization import (
     normalize_court_position,
     normalize_court_velocity,
@@ -127,7 +127,7 @@ def test_v2_dataset_aligns_reordered_views_targets_velocity_and_extrinsics(
     )[0]
 
     expected_court = torch.from_numpy(
-        physical_court[np.asarray(COURT_KP20_HALF_TURN_INDEX)]
+        physical_court[np.asarray(COURT_KP20_HALF_TURN_INDEX)[:NUM_GROUND_COURT_KP]]
     )
     torch.testing.assert_close(sample["court_kp"][0, 0], expected_court)
     torch.testing.assert_close(sample["court_kp"][1, 0], expected_court)

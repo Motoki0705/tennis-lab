@@ -1851,6 +1851,56 @@ def validate_generator_sections(
         )
 
 
+def _validate_standard_loss_config(loss: Mapping[str, object]) -> None:
+    """Validate the loss section used by standard BLCS trajectory training."""
+    loss_keys = {
+        "position_weight",
+        "position_axis_weights",
+        "reprojection_weight",
+        "smoothness_weight",
+        "gravity_weight",
+        "smoothness_order",
+        "smoothness_beta",
+        "gravity_beta",
+        "smoothness_axis_weights",
+    }
+    _exact(loss, loss_keys, path="loss")
+    _validate_types(
+        loss,
+        {
+            "position_weight": float,
+            "position_axis_weights": (list, type(None)),
+            "reprojection_weight": float,
+            "smoothness_weight": float,
+            "gravity_weight": float,
+            "smoothness_order": int,
+            "smoothness_beta": float,
+            "gravity_beta": float,
+            "smoothness_axis_weights": (list, type(None)),
+        },
+        path="loss",
+    )
+    for key in ("position_axis_weights", "smoothness_axis_weights"):
+        weights = _optional_numeric_sequence(
+            loss[key], path=f"loss.{key}", length=3
+        )
+        if weights is not None and any(weight < 0.0 for weight in weights):
+            raise SemanticConfigurationError(
+                f"loss.{key} values must be non-negative."
+            )
+    for key in (
+        "position_weight",
+        "reprojection_weight",
+        "smoothness_weight",
+        "gravity_weight",
+        "smoothness_beta",
+        "gravity_beta",
+    ):
+        _non_negative(cast("float", loss[key]), path=f"loss.{key}")
+    if cast("int", loss["smoothness_order"]) < 1:
+        raise SemanticConfigurationError("loss.smoothness_order must be >= 1.")
+
+
 def validate_training_boundary(config: object) -> BLCSModelConfig:
     """Validate BLCS-specific model and the seven-root contract before training."""
     root = as_config_mapping(config, path="configuration")
@@ -1884,6 +1934,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             "model",
             "data",
             "training",
+            "loss",
             "metrics",
             "run",
             "physics",
@@ -2123,15 +2174,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "steps_per_epoch",
         "optimizer",
         "compile",
-        "position_loss_weight",
-        "position_axis_weights",
-        "reprojection_loss_weight",
-        "smoothness_loss_weight",
-        "gravity_loss_weight",
-        "smoothness_order",
-        "smoothness_beta",
-        "gravity_beta",
-        "smoothness_axis_weights",
         "checkpoint",
         "early_stopping",
         "lr_monitor",
@@ -2145,38 +2187,10 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     _validate_types(
         training,
         {
-            "position_loss_weight": float,
-            "position_axis_weights": (list, type(None)),
-            "reprojection_loss_weight": float,
-            "smoothness_loss_weight": float,
-            "gravity_loss_weight": float,
-            "smoothness_order": int,
-            "smoothness_beta": float,
-            "gravity_beta": float,
-            "smoothness_axis_weights": (list, type(None)),
             "qualitative_rendering": dict,
         },
         path="training",
     )
-    for key in ("position_axis_weights", "smoothness_axis_weights"):
-        weights = _optional_numeric_sequence(
-            training[key], path=f"training.{key}", length=3
-        )
-        if weights is not None and any(weight < 0.0 for weight in weights):
-            raise SemanticConfigurationError(
-                f"training.{key} values must be non-negative."
-            )
-    for key in (
-        "position_loss_weight",
-        "reprojection_loss_weight",
-        "smoothness_loss_weight",
-        "gravity_loss_weight",
-        "smoothness_beta",
-        "gravity_beta",
-    ):
-        _non_negative(cast("float", training[key]), path=f"training.{key}")
-    if cast("int", training["smoothness_order"]) < 1:
-        raise SemanticConfigurationError("training.smoothness_order must be >= 1.")
     TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
     parse_qualitative_rendering(config)
     gan = require_config_mapping(training, "gan", path="training")
@@ -2340,6 +2354,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             require_config_mapping(root, "tracking_metrics", path="configuration")
         )
     else:
+        _validate_standard_loss_config(
+            require_config_mapping(root, "loss", path="configuration")
+        )
         metrics = require_config_mapping(root, "metrics", path="configuration")
         _exact(
             metrics,

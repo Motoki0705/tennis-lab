@@ -209,6 +209,40 @@ def test_training_profiles_use_canonical_dataset_paths(
 
 
 @pytest.mark.parametrize(
+    ("config_name", "reprojection_weight"),
+    (
+        ("train", 0.0),
+        ("train_chunked", 0.1),
+        ("train_chunked_gan", 0.1),
+    ),
+)
+def test_standard_training_profiles_select_loss_without_training_loss_fields(
+    config_name: str,
+    reprojection_weight: float,
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name=config_name)
+
+    validate_training_boundary(config)
+
+    assert config.loss.reprojection_weight == reprojection_weight
+    assert "position_weight" in config.loss
+    assert set(config.training).isdisjoint(
+        {
+            "position_loss_weight",
+            "position_axis_weights",
+            "reprojection_loss_weight",
+            "smoothness_loss_weight",
+            "gravity_loss_weight",
+            "smoothness_order",
+            "smoothness_beta",
+            "gravity_beta",
+            "smoothness_axis_weights",
+        }
+    )
+
+
+@pytest.mark.parametrize(
     (
         "profile",
         "config_name",
