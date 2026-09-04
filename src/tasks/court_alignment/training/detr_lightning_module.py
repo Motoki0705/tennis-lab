@@ -17,6 +17,8 @@ from src.tasks.court_alignment.inference.detr_decoder import (
     CourtDetrDetections,
     decode_detr_courts,
 )
+from src.tasks.court_alignment.models.dino_detector import validate_dino_court_output
+from src.tasks.court_alignment.models.dino_input import validate_dino_heatmaps
 from src.tasks.court_alignment.training.detr_losses import CourtDetrCriterion
 from src.tasks.court_alignment.training.detr_metrics import CourtDetrMetrics
 from src.utils.configuration import PathRole
@@ -110,10 +112,7 @@ class DinoCourtAlignmentLightningModule(BaseLightningModule):
         image: Tensor,
         targets: list[dict[str, Tensor]] | None = None,
     ) -> Mapping[str, object]:
-        output = self.model(image, targets)
-        if not isinstance(output, Mapping):
-            raise TypeError("DINO court model must return a prediction mapping.")
-        return cast(Mapping[str, object], output)
+        return cast(Mapping[str, object], self.model(image, targets))
 
     @staticmethod
     def _tensor(batch: Mapping[str, object], key: str) -> Tensor:
@@ -128,11 +127,14 @@ class DinoCourtAlignmentLightningModule(BaseLightningModule):
         *,
         image_size: tuple[int, int],
     ) -> list[dict[str, Tensor]]:
-        return build_detr_court_targets(
-            self._tensor(batch, "keypoints"),
-            self._tensor(batch, "visibility"),
-            image_size=image_size,
-            class_index=self._decoder_class_index,
+        return cast(
+            list[dict[str, Tensor]],
+            build_detr_court_targets(
+                self._tensor(batch, "keypoints"),
+                self._tensor(batch, "visibility"),
+                image_size=image_size,
+                class_index=self._decoder_class_index,
+            ),
         )
 
     def _decode(
@@ -159,11 +161,13 @@ class DinoCourtAlignmentLightningModule(BaseLightningModule):
 
     def _shared_step(self, batch: Mapping[str, object], stage: str) -> Tensor:
         image = self._tensor(batch, "image")
-        if image.ndim != 4 or image.shape[1] != 1 or not image.is_floating_point():
-            raise ValueError("DINO court input must be floating [B,1,H,W].")
+        validate_dino_heatmaps(image)
         image_size = (int(image.shape[-2]), int(image.shape[-1]))
         targets = self._targets(batch, image_size=image_size)
-        output = self(image, targets if stage == "train" else None)
+        output = validate_dino_court_output(
+            self(image, targets if stage == "train" else None)
+        )
+        self.loss_fn.validate_inputs(output, targets)
         losses = self.loss_fn(output, targets)
         total = losses.get("loss_total")
         if not isinstance(total, Tensor):

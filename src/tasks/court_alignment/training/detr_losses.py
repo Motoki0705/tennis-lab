@@ -12,13 +12,12 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 from scipy.optimize import linear_sum_assignment
 from torch import Tensor, nn
 from torch.nn import functional as F
-
-from src.tasks.court_alignment.geometry.oriented_box import decode_raw_court_boxes
 
 DetrOutputs = Mapping[str, object]
 DetrTarget = Mapping[str, Tensor]
@@ -54,6 +53,12 @@ def box_cxcywh_to_xyxy(boxes: Tensor) -> Tensor:
 
     if boxes.ndim < 1 or boxes.shape[-1] != 4:
         raise ValueError("boxes must have final dimension four.")
+    return _box_cxcywh_to_xyxy(boxes)
+
+
+def _box_cxcywh_to_xyxy(boxes: Tensor) -> Tensor:
+    """Convert already-validated boxes inside the loss computation graph."""
+
     center_x, center_y, width, height = boxes.unbind(-1)
     return torch.stack(
         (
@@ -84,6 +89,14 @@ def generalized_box_iou(first_xyxy: Tensor, second_xyxy: Tensor) -> Tensor:
     second_min, second_max = second_xyxy[:, :2], second_xyxy[:, 2:]
     if bool((first_max < first_min).any()) or bool((second_max < second_min).any()):
         raise ValueError("xyxy boxes must have non-negative width and height.")
+    return _generalized_box_iou(first_xyxy, second_xyxy)
+
+
+def _generalized_box_iou(first_xyxy: Tensor, second_xyxy: Tensor) -> Tensor:
+    """Compute pairwise GIoU after the explicit boundary has validated boxes."""
+
+    first_min, first_max = first_xyxy[:, :2], first_xyxy[:, 2:]
+    second_min, second_max = second_xyxy[:, :2], second_xyxy[:, 2:]
     intersection_min = torch.maximum(first_min[:, None], second_min[None])
     intersection_max = torch.minimum(first_max[:, None], second_max[None])
     intersection = (intersection_max - intersection_min).clamp_min(0.0).prod(dim=-1)
@@ -117,6 +130,25 @@ def sigmoid_focal_loss(
         raise ValueError("normalizer must be finite and positive.")
     if not 0.0 <= alpha <= 1.0 or not math.isfinite(gamma) or gamma < 0.0:
         raise ValueError("Focal alpha/gamma values are invalid.")
+    return _sigmoid_focal_loss(
+        logits,
+        targets,
+        normalizer=normalizer,
+        alpha=alpha,
+        gamma=gamma,
+    )
+
+
+def _sigmoid_focal_loss(
+    logits: Tensor,
+    targets: Tensor,
+    *,
+    normalizer: float,
+    alpha: float,
+    gamma: float,
+) -> Tensor:
+    """Compute focal loss for tensors validated at the lifecycle boundary."""
+
     probability = logits.sigmoid()
     cross_entropy = F.binary_cross_entropy_with_logits(
         logits, targets, reduction="none"
@@ -176,6 +208,31 @@ def _detection_prediction_tensors(
     if bool(((boxes < 0.0) | (boxes > 1.0)).any()):
         raise ValueError("pred_boxes must be normalized to [0,1].")
     return logits, boxes
+
+
+def _detection_prediction_values(
+    outputs: Mapping[str, object],
+) -> tuple[Tensor, Tensor]:
+    """Extract class/AABB tensors already validated before ``forward``."""
+
+    return cast(Tensor, outputs["pred_logits"]), cast(Tensor, outputs["pred_boxes"])
+
+
+def _prediction_values(
+    outputs: Mapping[str, object],
+) -> tuple[Tensor, Tensor, Tensor]:
+    """Extract all task-head tensors already validated before ``forward``."""
+
+    logits, boxes = _detection_prediction_values(outputs)
+    return logits, boxes, cast(Tensor, outputs["pred_court_boxes"])
+
+
+def _decode_court_values(raw_court_boxes: Tensor) -> Tensor:
+    """Decode raw scale/axis values after validation at the outer boundary."""
+
+    long_side = raw_court_boxes[..., :1].sigmoid()
+    axis = F.normalize(raw_court_boxes[..., 1:], dim=-1, eps=1.0e-8)
+    return torch.cat((long_side, axis), dim=-1)
 
 
 def _validate_targets(
@@ -260,6 +317,26 @@ class CourtDetrHungarianMatcher(nn.Module):
         with torch.no_grad():
             return self._match(outputs, targets, include_court=True)
 
+    def validate_inputs(
+        self,
+        outputs: DetrOutputs,
+        targets: Sequence[DetrTarget],
+        *,
+        include_court: bool = True,
+    ) -> None:
+        """Validate matcher inputs before entering computation-only ``forward``."""
+
+        if include_court:
+            logits, _, _ = _prediction_tensors(outputs)
+        else:
+            logits, _ = _detection_prediction_tensors(outputs)
+        _validate_targets(
+            targets,
+            batch_size=logits.shape[0],
+            num_classes=logits.shape[-1],
+            device=logits.device,
+        )
+
     def match_detection_outputs(
         self, outputs: DetrOutputs, targets: Sequence[DetrTarget]
     ) -> MatchIndices:
@@ -276,17 +353,11 @@ class CourtDetrHungarianMatcher(nn.Module):
         include_court: bool,
     ) -> MatchIndices:
         if include_court:
-            logits, boxes, raw_court_boxes = _prediction_tensors(outputs)
-            decoded_court_boxes = decode_raw_court_boxes(raw_court_boxes)
+            logits, boxes, raw_court_boxes = _prediction_values(outputs)
+            decoded_court_boxes = _decode_court_values(raw_court_boxes)
         else:
-            logits, boxes = _detection_prediction_tensors(outputs)
+            logits, boxes = _detection_prediction_values(outputs)
             decoded_court_boxes = None
-        _validate_targets(
-            targets,
-            batch_size=logits.shape[0],
-            num_classes=logits.shape[-1],
-            device=logits.device,
-        )
         assignments: MatchIndices = []
         for batch_index, target in enumerate(targets):
             target_labels = target["labels"]
@@ -306,9 +377,9 @@ class CourtDetrHungarianMatcher(nn.Module):
                 positive[:, target_labels] - negative[:, target_labels]
             )
             bbox_cost = torch.cdist(boxes[batch_index], target_boxes, p=1)
-            giou_cost = -generalized_box_iou(
-                box_cxcywh_to_xyxy(boxes[batch_index]),
-                box_cxcywh_to_xyxy(target_boxes),
+            giou_cost = -_generalized_box_iou(
+                _box_cxcywh_to_xyxy(boxes[batch_index]),
+                _box_cxcywh_to_xyxy(target_boxes),
             )
             cost = (
                 self.weights.classification * classification_cost
@@ -365,8 +436,9 @@ def _matched_values(
         prediction_parts.append(prediction[batch_index, prediction_indices])
         target_parts.append(targets[batch_index][target_name][target_indices])
     if not prediction_parts:
-        return prediction.reshape(-1, prediction.shape[-1])[:0], prediction.new_empty(
-            (0, 0)
+        return (
+            prediction.reshape(-1, prediction.shape[-1])[:0],
+            targets[0][target_name][:0],
         )
     return torch.cat(prediction_parts), torch.cat(target_parts)
 
@@ -418,6 +490,149 @@ class CourtDetrCriterion(nn.Module):
             focal_gamma=focal_gamma,
         )
 
+    def _validate_detection_layer(
+        self,
+        outputs: DetrOutputs,
+        targets: Sequence[DetrTarget],
+    ) -> tuple[Tensor, Tensor]:
+        logits, boxes = _detection_prediction_tensors(outputs)
+        if logits.shape[-1] != self.num_classes:
+            raise ValueError(
+                "pred_logits class count does not match criterion num_classes."
+            )
+        _validate_targets(
+            targets,
+            batch_size=logits.shape[0],
+            num_classes=self.num_classes,
+            device=logits.device,
+        )
+        return logits, boxes
+
+    def _validate_court_layer(
+        self,
+        outputs: DetrOutputs,
+        targets: Sequence[DetrTarget],
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        logits, boxes, court_boxes = _prediction_tensors(outputs)
+        if logits.shape[-1] != self.num_classes:
+            raise ValueError(
+                "pred_logits class count does not match criterion num_classes."
+            )
+        _validate_targets(
+            targets,
+            batch_size=logits.shape[0],
+            num_classes=self.num_classes,
+            device=logits.device,
+        )
+        return logits, boxes, court_boxes
+
+    def _validate_denoising_inputs(
+        self,
+        dn_meta: object,
+        targets: Sequence[DetrTarget],
+    ) -> None:
+        if dn_meta is None:
+            return
+        if not isinstance(dn_meta, Mapping):
+            raise TypeError("dn_meta must be a mapping or None.")
+        if "pad_size" not in dn_meta or "num_dn_group" not in dn_meta:
+            raise ValueError("dn_meta requires pad_size and num_dn_group.")
+        pad_size = dn_meta["pad_size"]
+        num_dn_groups = dn_meta["num_dn_group"]
+        if isinstance(pad_size, bool) or not isinstance(pad_size, int) or pad_size < 0:
+            raise ValueError("dn_meta.pad_size must be a non-negative integer.")
+        if (
+            isinstance(num_dn_groups, bool)
+            or not isinstance(num_dn_groups, int)
+            or num_dn_groups <= 0
+        ):
+            raise ValueError("dn_meta.num_dn_group must be a positive integer.")
+        if pad_size % num_dn_groups != 0:
+            raise ValueError("DN pad_size must be divisible by num_dn_group.")
+        if pad_size == 0:
+            if "output_known_lbs_bboxes" in dn_meta:
+                raise ValueError(
+                    "Zero-size DN metadata must not contain known outputs."
+                )
+            return
+
+        known_outputs = dn_meta.get("output_known_lbs_bboxes")
+        if not isinstance(known_outputs, Mapping):
+            raise ValueError("Active dn_meta requires output_known_lbs_bboxes.")
+        logits, boxes = self._validate_detection_layer(known_outputs, targets)
+        if logits.shape[1] != pad_size:
+            raise ValueError("DN known-output query count must equal pad_size.")
+        group_width = pad_size // num_dn_groups
+        if group_width % 2 != 0:
+            raise ValueError("Each DN group must have equal positive/negative halves.")
+        positive_capacity = group_width // 2
+        if any(int(target["labels"].shape[0]) > positive_capacity for target in targets):
+            raise ValueError(
+                "DN positive half is smaller than this sample's target count."
+            )
+
+        auxiliary = known_outputs.get("aux_outputs")
+        if auxiliary is not None:
+            if not isinstance(auxiliary, Sequence) or isinstance(
+                auxiliary, (str, bytes)
+            ):
+                raise TypeError("DN known aux_outputs must be a sequence.")
+            for layer_outputs in auxiliary:
+                if not isinstance(layer_outputs, Mapping):
+                    raise TypeError("Each DN aux output must be a mapping.")
+                aux_logits, aux_boxes = self._validate_detection_layer(
+                    layer_outputs, targets
+                )
+                if aux_logits.shape != logits.shape or aux_boxes.shape != boxes.shape:
+                    raise ValueError(
+                        "DN auxiliary outputs must match main known-output shapes."
+                    )
+
+    def validate_inputs(
+        self,
+        outputs: DetrOutputs,
+        targets: Sequence[DetrTarget],
+    ) -> None:
+        """Validate all DINO loss branches before computation-only ``forward``."""
+
+        self._validate_court_layer(outputs, targets)
+        auxiliary = outputs.get("aux_outputs")
+        if self.auxiliary_loss and auxiliary is not None:
+            if not isinstance(auxiliary, Sequence) or isinstance(
+                auxiliary, (str, bytes)
+            ):
+                raise TypeError(
+                    "aux_outputs must be a sequence of prediction mappings."
+                )
+            for layer_outputs in auxiliary:
+                if not isinstance(layer_outputs, Mapping):
+                    raise TypeError(
+                        "Each aux_outputs item must be a prediction mapping."
+                    )
+                self._validate_court_layer(layer_outputs, targets)
+
+        self._validate_denoising_inputs(outputs.get("dn_meta"), targets)
+        intermediate = outputs.get("interm_outputs")
+        if intermediate is not None:
+            if not isinstance(intermediate, Mapping):
+                raise TypeError("interm_outputs must be a prediction mapping.")
+            self._validate_detection_layer(intermediate, targets)
+
+        encoder_outputs = outputs.get("enc_outputs")
+        if encoder_outputs is not None:
+            if isinstance(encoder_outputs, Mapping):
+                encoder_layers: Sequence[object] = (encoder_outputs,)
+            elif isinstance(encoder_outputs, Sequence) and not isinstance(
+                encoder_outputs, (str, bytes)
+            ):
+                encoder_layers = encoder_outputs
+            else:
+                raise TypeError("enc_outputs must be a mapping or sequence.")
+            for layer_outputs in encoder_layers:
+                if not isinstance(layer_outputs, Mapping):
+                    raise TypeError("Each enc_outputs item must be a mapping.")
+                self._validate_detection_layer(layer_outputs, targets)
+
     def _detection_losses_with_assignments(
         self,
         logits: Tensor,
@@ -435,7 +650,7 @@ class CourtDetrCriterion(nn.Module):
             if prediction_indices.numel() > 0:
                 labels = targets[batch_index]["labels"][target_indices]
                 class_targets[batch_index, prediction_indices, labels] = 1.0
-        classification = sigmoid_focal_loss(
+        classification = _sigmoid_focal_loss(
             logits,
             class_targets,
             normalizer=normalizer,
@@ -445,17 +660,12 @@ class CourtDetrCriterion(nn.Module):
         matched_boxes, target_boxes = _matched_values(
             boxes, targets, assignments, "boxes"
         )
-        if matched_boxes.shape[0] == 0:
-            differentiable_zero = boxes.sum() * 0.0
-            bbox = differentiable_zero
-            giou = differentiable_zero
-        else:
-            bbox = F.l1_loss(matched_boxes, target_boxes, reduction="sum") / normalizer
-            pairwise_giou = generalized_box_iou(
-                box_cxcywh_to_xyxy(matched_boxes),
-                box_cxcywh_to_xyxy(target_boxes),
-            )
-            giou = (1.0 - pairwise_giou.diag()).sum() / normalizer
+        bbox = F.l1_loss(matched_boxes, target_boxes, reduction="sum") / normalizer
+        pairwise_giou = _generalized_box_iou(
+            _box_cxcywh_to_xyxy(matched_boxes),
+            _box_cxcywh_to_xyxy(target_boxes),
+        )
+        giou = (1.0 - pairwise_giou.diag()).sum() / normalizer
         return {
             f"loss_class{suffix}": classification,
             f"loss_bbox{suffix}": bbox,
@@ -471,11 +681,7 @@ class CourtDetrCriterion(nn.Module):
     ) -> dict[str, Tensor]:
         """Hungarian-match and supervise an encoder class/AABB output."""
 
-        logits, boxes = _detection_prediction_tensors(outputs)
-        if logits.shape[-1] != self.num_classes:
-            raise ValueError(
-                "pred_logits class count does not match criterion num_classes."
-            )
+        logits, boxes = _detection_prediction_values(outputs)
         assignments = self.matcher.match_detection_outputs(outputs, targets)
         target_count = sum(int(target["labels"].shape[0]) for target in targets)
         return self._detection_losses_with_assignments(
@@ -494,11 +700,7 @@ class CourtDetrCriterion(nn.Module):
         *,
         suffix: str,
     ) -> dict[str, Tensor]:
-        logits, boxes, raw_court_boxes = _prediction_tensors(outputs)
-        if logits.shape[-1] != self.num_classes:
-            raise ValueError(
-                "pred_logits class count does not match criterion num_classes."
-            )
+        logits, boxes, raw_court_boxes = _prediction_values(outputs)
         assignments = self.matcher(outputs, targets)
         target_count = sum(int(target["labels"].shape[0]) for target in targets)
         normalizer = float(max(target_count, 1))
@@ -510,27 +712,22 @@ class CourtDetrCriterion(nn.Module):
             normalizer=normalizer,
             suffix=suffix,
         )
-        decoded_court_boxes = decode_raw_court_boxes(raw_court_boxes)
+        decoded_court_boxes = _decode_court_values(raw_court_boxes)
         matched_court, target_court = _matched_values(
             decoded_court_boxes, targets, assignments, "court_boxes"
         )
-        if matched_court.shape[0] == 0:
-            differentiable_zero = raw_court_boxes.sum() * 0.0
-            scale = differentiable_zero
-            axis = differentiable_zero
-        else:
-            scale = (
-                F.l1_loss(
-                    matched_court[:, 0].clamp_min(1.0e-8).log(),
-                    target_court[:, 2].clamp_min(1.0e-8).log(),
-                    reduction="sum",
-                )
-                / normalizer
+        scale = (
+            F.l1_loss(
+                matched_court[:, 0].clamp_min(1.0e-8).log(),
+                target_court[:, 2].clamp_min(1.0e-8).log(),
+                reduction="sum",
             )
-            axis = (
-                1.0 - (matched_court[:, 1:] * target_court[:, 3:]).sum(dim=-1)
-            ).sum()
-            axis = axis / normalizer
+            / normalizer
+        )
+        axis = (
+            1.0 - (matched_court[:, 1:] * target_court[:, 3:]).sum(dim=-1)
+        ).sum()
+        axis = axis / normalizer
         losses[f"loss_scale{suffix}"] = scale
         losses[f"loss_axis{suffix}"] = axis
         return losses
@@ -545,21 +742,10 @@ class CourtDetrCriterion(nn.Module):
     ) -> MatchIndices:
         """Build official DINO fixed positive-slot target assignments."""
 
-        if pad_size <= 0 or num_dn_groups <= 0:
-            raise ValueError("Active DN metadata requires positive sizes.")
-        if pad_size % num_dn_groups != 0:
-            raise ValueError("DN pad_size must be divisible by num_dn_group.")
         group_width = pad_size // num_dn_groups
-        if group_width % 2 != 0:
-            raise ValueError("Each DN group must have equal positive/negative halves.")
-        positive_capacity = group_width // 2
         assignments: MatchIndices = []
         for target in targets:
             target_count = int(target["labels"].shape[0])
-            if target_count > positive_capacity:
-                raise ValueError(
-                    "DN positive half is smaller than this sample's target count."
-                )
             if target_count == 0:
                 empty = torch.empty(0, dtype=torch.long, device=device)
                 assignments.append((empty, empty))
@@ -586,43 +772,16 @@ class CourtDetrCriterion(nn.Module):
 
         if dn_meta is None:
             return {}
-        if not isinstance(dn_meta, Mapping):
-            raise TypeError("dn_meta must be a mapping or None.")
-        if "pad_size" not in dn_meta or "num_dn_group" not in dn_meta:
-            raise ValueError("dn_meta requires pad_size and num_dn_group.")
-        pad_size = dn_meta["pad_size"]
-        num_dn_groups = dn_meta["num_dn_group"]
-        if isinstance(pad_size, bool) or not isinstance(pad_size, int) or pad_size < 0:
-            raise ValueError("dn_meta.pad_size must be a non-negative integer.")
-        if (
-            isinstance(num_dn_groups, bool)
-            or not isinstance(num_dn_groups, int)
-            or num_dn_groups <= 0
-        ):
-            raise ValueError("dn_meta.num_dn_group must be a positive integer.")
-        if pad_size % num_dn_groups != 0:
-            raise ValueError("DN pad_size must be divisible by num_dn_group.")
+        typed_dn_meta = cast(Mapping[str, object], dn_meta)
+        pad_size = cast(int, typed_dn_meta["pad_size"])
+        num_dn_groups = cast(int, typed_dn_meta["num_dn_group"])
         if pad_size == 0:
-            if "output_known_lbs_bboxes" in dn_meta:
-                raise ValueError(
-                    "Zero-size DN metadata must not contain known outputs."
-                )
             return {}
 
-        known_outputs = dn_meta.get("output_known_lbs_bboxes")
-        if not isinstance(known_outputs, Mapping):
-            raise ValueError("Active dn_meta requires output_known_lbs_bboxes.")
-        logits, boxes = _detection_prediction_tensors(known_outputs)
-        if logits.shape[1] != pad_size:
-            raise ValueError("DN known-output query count must equal pad_size.")
-        if logits.shape[-1] != self.num_classes:
-            raise ValueError("DN pred_logits class count does not match criterion.")
-        _validate_targets(
-            targets,
-            batch_size=logits.shape[0],
-            num_classes=self.num_classes,
-            device=logits.device,
+        known_outputs = cast(
+            Mapping[str, object], typed_dn_meta["output_known_lbs_bboxes"]
         )
+        logits, boxes = _detection_prediction_values(known_outputs)
         assignments = self._denoising_assignments(
             targets,
             pad_size=pad_size,
@@ -642,18 +801,10 @@ class CourtDetrCriterion(nn.Module):
 
         auxiliary = known_outputs.get("aux_outputs")
         if auxiliary is not None:
-            if not isinstance(auxiliary, Sequence) or isinstance(
-                auxiliary, (str, bytes)
+            for index, layer_outputs in enumerate(
+                cast(Sequence[Mapping[str, object]], auxiliary)
             ):
-                raise TypeError("DN known aux_outputs must be a sequence.")
-            for index, layer_outputs in enumerate(auxiliary):
-                if not isinstance(layer_outputs, Mapping):
-                    raise TypeError("Each DN aux output must be a mapping.")
-                aux_logits, aux_boxes = _detection_prediction_tensors(layer_outputs)
-                if aux_logits.shape != logits.shape or aux_boxes.shape != boxes.shape:
-                    raise ValueError(
-                        "DN auxiliary outputs must match main known-output shapes."
-                    )
+                aux_logits, aux_boxes = _detection_prediction_values(layer_outputs)
                 if self.auxiliary_loss:
                     losses.update(
                         self._detection_losses_with_assignments(
@@ -668,7 +819,7 @@ class CourtDetrCriterion(nn.Module):
         return losses
 
     def _weighted_sum(self, losses: Mapping[str, Tensor]) -> Tensor:
-        weighted: Tensor | None = None
+        weighted = losses["loss_class"] * 0.0
         weight_by_prefix = {
             "loss_class": self.weights.classification,
             "loss_bbox": self.weights.bbox,
@@ -688,9 +839,7 @@ class CourtDetrCriterion(nn.Module):
             if weight is None:
                 continue
             term = value * weight
-            weighted = term if weighted is None else weighted + term
-        if weighted is None:
-            raise RuntimeError("No weighted DETR losses were produced.")
+            weighted = weighted + term
         return weighted
 
     def forward(
@@ -700,27 +849,12 @@ class CourtDetrCriterion(nn.Module):
     ) -> dict[str, Tensor]:
         """Return named components and their weighted ``loss_total``."""
 
-        logits, _, _ = _prediction_tensors(outputs)
-        _validate_targets(
-            targets,
-            batch_size=logits.shape[0],
-            num_classes=self.num_classes,
-            device=logits.device,
-        )
         losses = self._losses_for_layer(outputs, targets, suffix="")
         auxiliary = outputs.get("aux_outputs")
         if self.auxiliary_loss and auxiliary is not None:
-            if not isinstance(auxiliary, Sequence) or isinstance(
-                auxiliary, (str, bytes)
+            for index, layer_outputs in enumerate(
+                cast(Sequence[Mapping[str, object]], auxiliary)
             ):
-                raise TypeError(
-                    "aux_outputs must be a sequence of prediction mappings."
-                )
-            for index, layer_outputs in enumerate(auxiliary):
-                if not isinstance(layer_outputs, Mapping):
-                    raise TypeError(
-                        "Each aux_outputs item must be a prediction mapping."
-                    )
                 losses.update(
                     self._losses_for_layer(
                         layer_outputs, targets, suffix=f"_aux_{index}"
@@ -730,11 +864,9 @@ class CourtDetrCriterion(nn.Module):
 
         intermediate = outputs.get("interm_outputs")
         if intermediate is not None:
-            if not isinstance(intermediate, Mapping):
-                raise TypeError("interm_outputs must be a prediction mapping.")
             losses.update(
                 self._detection_losses_for_layer(
-                    intermediate,
+                    cast(Mapping[str, object], intermediate),
                     targets,
                     suffix="_interm",
                 )
@@ -742,17 +874,20 @@ class CourtDetrCriterion(nn.Module):
 
         encoder_outputs = outputs.get("enc_outputs")
         if encoder_outputs is not None:
-            if isinstance(encoder_outputs, Mapping):
-                encoder_layers: Sequence[object] = (encoder_outputs,)
-            elif isinstance(encoder_outputs, Sequence) and not isinstance(
-                encoder_outputs, (str, bytes)
-            ):
-                encoder_layers = encoder_outputs
+            typed_encoder_outputs = cast(
+                Mapping[str, object] | Sequence[Mapping[str, object]],
+                encoder_outputs,
+            )
+            encoder_layers: Sequence[Mapping[str, object]]
+            if "pred_logits" in typed_encoder_outputs:
+                encoder_layers = (
+                    cast(Mapping[str, object], typed_encoder_outputs),
+                )
             else:
-                raise TypeError("enc_outputs must be a mapping or sequence.")
+                encoder_layers = cast(
+                    Sequence[Mapping[str, object]], typed_encoder_outputs
+                )
             for index, layer_outputs in enumerate(encoder_layers):
-                if not isinstance(layer_outputs, Mapping):
-                    raise TypeError("Each enc_outputs item must be a mapping.")
                 losses.update(
                     self._detection_losses_for_layer(
                         layer_outputs,

@@ -16,6 +16,7 @@ from src.tasks.court_alignment.models.dino_detector import (
     COURT_CLASS_COUNT,
     DinoCourtDetector,
     lora_parameter_count,
+    validate_dino_court_output,
 )
 from src.utils.models.lora import LoRALinear
 
@@ -202,6 +203,17 @@ def test_forward_preserves_dino_boxes_and_adds_scale_axis_to_every_layer() -> No
     nested_input = cast(_FakeDino, model.dino).last_nested_input
     assert nested_input is not None
     assert not bool(nested_input.mask.any())
+
+
+def test_output_contract_is_validated_after_computation() -> None:
+    model = _build_model()
+    output = model(torch.zeros(2, 1, 8, 8))
+
+    assert validate_dino_court_output(output) is output
+    malformed = dict(output)
+    malformed["pred_court_boxes"] = torch.zeros(2, 5, 2)
+    with pytest.raises(RuntimeError, match="court parameters"):
+        validate_dino_court_output(malformed)
 
 
 def test_only_lora_new_heads_and_learnable_input_adapter_are_trainable() -> None:

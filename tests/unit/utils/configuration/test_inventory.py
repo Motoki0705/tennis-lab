@@ -126,6 +126,10 @@ def test_court_alignment_train_and_evaluate_boundaries_are_registered() -> None:
             "court_alignment.evaluate",
             "src.tasks.court_alignment.configuration.validate_evaluation_boundary",
         ),
+        "src.tasks.court_alignment.scripts.evaluate_real_heatmap": (
+            "court_alignment.evaluate_real_heatmap",
+            "src.tasks.court_alignment.configuration.validate_real_heatmap_evaluation_boundary",
+        ),
     }
 
 

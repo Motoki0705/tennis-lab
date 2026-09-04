@@ -11,7 +11,7 @@ input twice.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal
+from typing import Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -49,10 +49,47 @@ def dino_resize_shape(
         raise TypeError("height and width must be integers.")
     if height <= 0 or width <= 0:
         raise ValueError("height and width must be positive.")
+    return _compute_dino_resize_shape(
+        height,
+        width,
+        short_side=short_side,
+        max_long_side=max_long_side,
+    )
+
+
+def _compute_dino_resize_shape(
+    height: int,
+    width: int,
+    *,
+    short_side: int,
+    max_long_side: int,
+) -> tuple[int, int]:
+    """Compute the resize shape after the public boundary has validated it."""
+
     scale = short_side / min(height, width)
     if max(height, width) * scale > max_long_side:
         scale = max_long_side / max(height, width)
     return int(round(height * scale)), int(round(width * scale))
+
+
+def validate_dino_heatmaps(heatmaps: Tensor) -> None:
+    """Validate raw one-channel DINO evidence outside model ``forward``."""
+
+    if not isinstance(heatmaps, Tensor):
+        raise TypeError("DINO heatmap input must be a torch.Tensor.")
+    if heatmaps.ndim != 4 or heatmaps.shape[1] != 1 or heatmaps.shape[0] <= 0:
+        raise ValueError(
+            "DINO heatmap input must have shape (B,1,H,W), got "
+            f"{tuple(heatmaps.shape)}."
+        )
+    if not heatmaps.is_floating_point():
+        raise TypeError("DINO heatmap input must be floating point.")
+    if any(size <= 0 for size in heatmaps.shape[2:]):
+        raise ValueError("DINO heatmap spatial dimensions must be positive.")
+    if not bool(torch.isfinite(heatmaps).all()):
+        raise ValueError("DINO heatmap input must contain only finite values.")
+    if bool(torch.any((heatmaps < 0.0) | (heatmaps > 1.0))):
+        raise ValueError("DINO heatmap input values must lie in [0, 1].")
 
 
 class DinoHeatmapInputAdapter(nn.Module):
@@ -106,23 +143,7 @@ class DinoHeatmapInputAdapter(nn.Module):
         )
 
     def forward(self, heatmaps: Tensor) -> Tensor:
-        if not isinstance(heatmaps, Tensor):
-            raise TypeError("DINO heatmap input must be a torch.Tensor.")
-        if heatmaps.ndim != 4 or heatmaps.shape[1] != 1 or heatmaps.shape[0] <= 0:
-            raise ValueError(
-                "DINO heatmap input must have shape (B,1,H,W), got "
-                f"{tuple(heatmaps.shape)}."
-            )
-        if not heatmaps.is_floating_point():
-            raise TypeError("DINO heatmap input must be floating point.")
-        if any(size <= 0 for size in heatmaps.shape[2:]):
-            raise ValueError("DINO heatmap spatial dimensions must be positive.")
-        if not bool(torch.isfinite(heatmaps).all()):
-            raise ValueError("DINO heatmap input must contain only finite values.")
-        if bool(torch.any((heatmaps < 0.0) | (heatmaps > 1.0))):
-            raise ValueError("DINO heatmap input values must lie in [0, 1].")
-
-        target_shape = dino_resize_shape(
+        target_shape = _compute_dino_resize_shape(
             heatmaps.shape[-2],
             heatmaps.shape[-1],
             short_side=self.short_side,
@@ -140,11 +161,14 @@ class DinoHeatmapInputAdapter(nn.Module):
         elif self.mode == "red_only":
             rgb = torch.cat((resized, torch.zeros_like(resized).repeat(1, 2, 1, 1)), dim=1)
         else:
-            if self.projection is None:  # pragma: no cover - constructor invariant
-                raise RuntimeError("learnable_1x1 input adapter has no projection.")
-            rgb = self.projection(resized)
+            rgb = cast(nn.Conv2d, self.projection)(resized)
         result = (rgb - self.imagenet_mean) / self.imagenet_std
         return result
+
+    def validate_input(self, heatmaps: Tensor) -> None:
+        """Validate heatmaps before invoking the computation-only ``forward``."""
+
+        validate_dino_heatmaps(heatmaps)
 
 
 __all__: Sequence[str] = (
@@ -155,4 +179,5 @@ __all__: Sequence[str] = (
     "IMAGENET_RGB_MEAN",
     "IMAGENET_RGB_STD",
     "dino_resize_shape",
+    "validate_dino_heatmaps",
 )
