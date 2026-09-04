@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import cast
 
 import pytest
 import torch
@@ -27,7 +28,10 @@ def _targets(instances: list[GroundCourtInstance]) -> list[dict[str, torch.Tenso
     else:
         keypoints = torch.empty((1, 0, 14, 2))
         visibility = torch.empty((1, 0, 14), dtype=torch.bool)
-    return build_detr_court_targets(keypoints, visibility, image_size=(800, 800))
+    return cast(
+        list[dict[str, torch.Tensor]],
+        build_detr_court_targets(keypoints, visibility, image_size=(800, 800)),
+    )
 
 
 def _inverse_sigmoid(value: torch.Tensor) -> torch.Tensor:
@@ -74,7 +78,9 @@ def test_hungarian_matching_uses_geometry_for_swapped_queries() -> None:
         "pred_court_boxes": _raw_court(targets[0]["court_boxes"].flip(0))[None],
     }
 
-    assignments = CourtDetrHungarianMatcher()(outputs, targets)
+    matcher = CourtDetrHungarianMatcher()
+    matcher.validate_inputs(outputs, targets)
+    assignments = matcher(outputs, targets)
 
     assert assignments[0][0].tolist() == [0, 1]
     assert assignments[0][1].tolist() == [1, 0]
@@ -277,6 +283,72 @@ def test_dn_with_empty_targets_is_finite_and_supervises_all_queries_as_negative(
     assert known_boxes.grad is not None and torch.count_nonzero(known_boxes.grad) == 0
 
 
+def test_empty_targets_keep_every_supervision_branch_finite_and_differentiable() -> (
+    None
+):
+    targets = _targets([])
+
+    def prediction(*, with_court: bool, queries: int = 3) -> dict[str, torch.Tensor]:
+        result = {
+            "pred_logits": torch.randn((1, queries, 1), requires_grad=True),
+            "pred_boxes": torch.full(
+                (1, queries, 4), 0.5, requires_grad=True
+            ),
+        }
+        if with_court:
+            result["pred_court_boxes"] = torch.randn(
+                (1, queries, 3), requires_grad=True
+            )
+        return result
+
+    main = prediction(with_court=True)
+    auxiliary = prediction(with_court=True)
+    intermediate = prediction(with_court=False)
+    encoder = prediction(with_court=False)
+    known: dict[str, object] = prediction(with_court=False, queries=4)
+    known_auxiliary = prediction(with_court=False, queries=4)
+    known["aux_outputs"] = [known_auxiliary]
+    outputs: dict[str, object] = {
+        **main,
+        "aux_outputs": [auxiliary],
+        "interm_outputs": intermediate,
+        "enc_outputs": [encoder],
+        "dn_meta": {
+            "pad_size": 4,
+            "num_dn_group": 1,
+            "output_known_lbs_bboxes": known,
+        },
+    }
+    criterion = CourtDetrCriterion()
+    criterion.validate_inputs(outputs, targets)
+
+    losses = criterion(outputs, targets)
+
+    expected_suffixes = ("", "_aux_0", "_interm", "_enc_0", "_dn", "_dn_aux_0")
+    for suffix in expected_suffixes:
+        assert f"loss_class{suffix}" in losses
+        assert f"loss_bbox{suffix}" in losses
+        assert f"loss_giou{suffix}" in losses
+    assert all(torch.isfinite(value) for value in losses.values())
+
+    losses["loss_total"].backward()
+    tensors = [
+        tensor
+        for branch in (
+            main,
+            auxiliary,
+            intermediate,
+            encoder,
+            known,
+            known_auxiliary,
+        )
+        for tensor in branch.values()
+        if isinstance(tensor, torch.Tensor)
+    ]
+    assert all(tensor.grad is not None for tensor in tensors)
+    assert all(torch.isfinite(tensor.grad).all() for tensor in tensors if tensor.grad is not None)
+
+
 def test_eval_none_and_official_zero_pad_dn_metadata_are_normal() -> None:
     targets = _targets([])
     for dn_meta in (None, {"pad_size": 0, "num_dn_group": 1}):
@@ -318,6 +390,7 @@ def test_malformed_dn_metadata_fails_explicitly(
     targets = _targets([GroundCourtInstance(0, (200.0, 200.0), 0.2, 4.0)])
     outputs: dict[str, object] = _main_outputs(targets)
     outputs["dn_meta"] = dn_meta
+    criterion = CourtDetrCriterion()
 
     with pytest.raises((TypeError, ValueError), match=message):
-        CourtDetrCriterion()(outputs, targets)
+        criterion.validate_inputs(outputs, targets)

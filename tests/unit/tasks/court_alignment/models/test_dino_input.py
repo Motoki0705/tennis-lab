@@ -89,6 +89,28 @@ def test_input_modes_have_only_the_intended_trainable_parameters() -> None:
     assert sum(parameter.numel() for parameter in learnable.parameters()) == 6
 
 
+@pytest.mark.parametrize(
+    "heatmap",
+    [
+        torch.zeros(1, 2, 2, 2),
+        torch.zeros(1, 1, 2, 2, dtype=torch.long),
+        torch.full((1, 1, 2, 2), float("nan")),
+        torch.full((1, 1, 2, 2), 1.01),
+    ],
+)
+def test_runtime_contract_is_validated_before_computation(
+    heatmap: torch.Tensor,
+) -> None:
+    adapter = DinoHeatmapInputAdapter(
+        mode="repeat_rgb",
+        short_side=2,
+        max_long_side=2,
+    )
+
+    with pytest.raises((TypeError, ValueError)):
+        adapter.validate_input(heatmap)
+
+
 @pytest.mark.parametrize("mode", ["rgb", "", "REPEAT_RGB"])
 def test_unknown_mode_fails_explicitly(mode: str) -> None:
     with pytest.raises(ValueError, match="Unsupported DINO input mode"):

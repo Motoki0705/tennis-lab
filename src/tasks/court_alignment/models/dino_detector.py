@@ -26,6 +26,7 @@ from src.tasks.court_alignment.models.dino_input import (
     DINO_DEFAULT_SHORT_SIDE,
     DinoHeatmapInputAdapter,
     DinoInputMode,
+    validate_dino_heatmaps,
 )
 from src.utils.models.lora import apply_lora, iter_lora_parameters
 
@@ -107,6 +108,55 @@ def _stack_decoder_hidden_states(output: Any, *, hidden_dim: int) -> Tensor:
     return torch.stack(decoder_states, dim=0)
 
 
+def validate_dino_court_output(output: object) -> Mapping[str, object]:
+    """Validate the task-head result after detector ``forward`` completes."""
+
+    if not isinstance(output, Mapping):
+        raise TypeError("Official DINO model must return a mapping.")
+    logits = output.get("pred_logits")
+    boxes = output.get("pred_boxes")
+    court_boxes = output.get("pred_court_boxes")
+    if not isinstance(logits, Tensor) or logits.ndim != 3:
+        raise RuntimeError("Official DINO logits must have shape (B,Q,C).")
+    if not isinstance(boxes, Tensor) or boxes.ndim != 3 or boxes.shape[-1] != 4:
+        raise RuntimeError("Official DINO boxes must have shape (B,Q,4).")
+    if (
+        not isinstance(court_boxes, Tensor)
+        or court_boxes.ndim != 3
+        or court_boxes.shape[-1] != COURT_PARAMETER_COUNT
+    ):
+        raise RuntimeError("DINO court parameters must have shape (B,Q,3).")
+    if logits.shape[:2] != boxes.shape[:2] or logits.shape[:2] != court_boxes.shape[:2]:
+        raise RuntimeError("DINO task heads disagree on batch/query shape.")
+    if logits.shape[-1] != COURT_CLASS_COUNT:
+        raise RuntimeError(
+            f"Court classifier must emit {COURT_CLASS_COUNT} logit, got "
+            f"{logits.shape[-1]}."
+        )
+    auxiliary = output.get("aux_outputs")
+    if auxiliary is not None:
+        if not isinstance(auxiliary, list):
+            raise TypeError("Official DINO aux_outputs must be a list.")
+        for layer_output in auxiliary:
+            if not isinstance(layer_output, Mapping):
+                raise TypeError("Every DINO auxiliary output must be a mapping.")
+            layer_logits = layer_output.get("pred_logits")
+            layer_boxes = layer_output.get("pred_boxes")
+            layer_court_boxes = layer_output.get("pred_court_boxes")
+            if (
+                not isinstance(layer_logits, Tensor)
+                or not isinstance(layer_boxes, Tensor)
+                or not isinstance(layer_court_boxes, Tensor)
+                or layer_logits.shape != logits.shape
+                or layer_boxes.shape != boxes.shape
+                or layer_court_boxes.shape != court_boxes.shape
+            ):
+                raise RuntimeError(
+                    "Every DINO auxiliary layer must match the final task-head shapes."
+                )
+    return output
+
+
 class DinoCourtDetector(nn.Module):
     """Adapt an already checkpoint-loaded official DINO model for courts.
 
@@ -173,6 +223,12 @@ class DinoCourtDetector(nn.Module):
                 target_modules=lora_target_modules,
             )
         )
+        gradient_anchor = next(iter_lora_parameters(self.dino), None)
+        if gradient_anchor is None:  # pragma: no cover - apply_lora rejects this first
+            raise RuntimeError("DINO court model has no LoRA gradient anchor.")
+        # A plain tuple keeps an alias to the registered DINO parameter without
+        # registering a duplicate state-dict name on this wrapper.
+        self._lora_gradient_anchors = (gradient_anchor,)
         for module in (*new_class_modules, *detection_bbox_modules):
             module.requires_grad_(True)
 
@@ -186,14 +242,9 @@ class DinoCourtDetector(nn.Module):
             # Official Swin-L enables re-entrant gradient checkpointing.  Its
             # checkpointed blocks drop parameter gradients when every input is
             # frozen; repeat_rgb/red_only have no trainable input projection.
-            # This out-of-place gradient anchor preserves LoRA gradients
-            # without unfreezing the heatmap tensor, backbone, or transformer
-            # base weights.  It must remain out-of-place: official DINO's
-            # Tensor-to-NestedTensor conversion cannot copy a grad-requiring
-            # batched Tensor through the views produced by Tensor iteration.
-            anchor = next(iter_lora_parameters(self.dino), None)
-            if anchor is None:  # pragma: no cover - apply_lora already rejects this
-                raise RuntimeError("DINO court model has no LoRA gradient anchor.")
+            # This out-of-place zero anchor activates checkpoint autograd
+            # without unfreezing the heatmap, backbone, or transformer base.
+            anchor = self._lora_gradient_anchors[0]
             images = images + anchor.reshape(-1)[0] * 0.0
         dino_input: object = images
         if self._nested_tensor_factory is not None:
@@ -214,43 +265,18 @@ class DinoCourtDetector(nn.Module):
             _inputs: tuple[Any, ...],
             output: Any,
         ) -> None:
-            captured["decoder"] = _stack_decoder_hidden_states(
-                output,
-                hidden_dim=self.hidden_dim,
-            )
+            captured["decoder"] = torch.stack(output[0], dim=0)
 
-        transformer = getattr(self.dino, "transformer", None)
-        if not isinstance(transformer, nn.Module):
-            raise RuntimeError("Official DINO model has no transformer module.")
+        transformer = cast(Any, self.dino).transformer
         handle = transformer.register_forward_hook(capture_hidden_states)
         try:
             raw_output = self.dino(dino_input, targets)
         finally:
             handle.remove()
-        if not isinstance(raw_output, Mapping):
-            raise TypeError("Official DINO model must return a mapping.")
         output = dict(raw_output)
-        logits = output.get("pred_logits")
-        boxes = output.get("pred_boxes")
-        hidden_states = captured.get("decoder")
-        if not isinstance(logits, Tensor) or not isinstance(boxes, Tensor):
-            raise RuntimeError("Official DINO output must contain tensor logits and boxes.")
-        if hidden_states is None:
-            raise RuntimeError("Failed to capture official DINO decoder hidden states.")
-        if logits.ndim != 3 or boxes.ndim != 3:
-            raise RuntimeError("Official DINO logits and boxes must have shape (B,Q,C).")
-        if logits.shape[:2] != boxes.shape[:2]:
-            raise RuntimeError("Official DINO logits and boxes disagree on batch/query shape.")
-        if logits.shape[-1] != COURT_CLASS_COUNT:
-            raise RuntimeError(
-                f"Court classifier must emit {COURT_CLASS_COUNT} logit, got "
-                f"{logits.shape[-1]}."
-            )
-        if hidden_states.shape[1] != logits.shape[0]:
-            raise RuntimeError("Decoder hidden states disagree with output batch size.")
+        logits = cast(Tensor, output["pred_logits"])
+        hidden_states = captured["decoder"]
         query_count = logits.shape[1]
-        if hidden_states.shape[2] < query_count:
-            raise RuntimeError("Decoder hidden states contain fewer queries than DINO output.")
 
         # DINO prepends denoising queries while training.  Its standard output
         # removes that prefix, so take the same trailing matching-query slice.
@@ -260,25 +286,27 @@ class DinoCourtDetector(nn.Module):
 
         auxiliary = output.get("aux_outputs")
         if auxiliary is not None:
-            if not isinstance(auxiliary, list):
-                raise TypeError("Official DINO aux_outputs must be a list.")
-            if len(auxiliary) != hidden_states.shape[0] - 1:
-                raise RuntimeError(
-                    "DINO auxiliary output count does not match decoder layers."
-                )
             augmented_auxiliary: list[dict[str, Any]] = []
             for layer_output, layer_court_parameters in zip(
-                auxiliary,
+                cast(list[Mapping[str, object]], auxiliary),
                 court_parameters[:-1],
                 strict=True,
             ):
-                if not isinstance(layer_output, Mapping):
-                    raise TypeError("Every DINO auxiliary output must be a mapping.")
                 augmented = dict(layer_output)
                 augmented["pred_court_boxes"] = layer_court_parameters
                 augmented_auxiliary.append(augmented)
             output["aux_outputs"] = augmented_auxiliary
         return output
+
+    def validate_input(self, heatmaps: Tensor) -> None:
+        """Validate raw detector evidence before invoking ``forward``."""
+
+        validate_dino_heatmaps(heatmaps)
+
+    def validate_output(self, output: object) -> Mapping[str, object]:
+        """Validate task-head tensors after ``forward`` has completed."""
+
+        return validate_dino_court_output(output)
 
     def trainable_parameter_names(self) -> tuple[str, ...]:
         """Return stable diagnostics for optimizer/config validation."""
@@ -559,4 +587,5 @@ __all__ = [
     "DinoCourtDetector",
     "load_pretrained_dino_court_detector",
     "lora_parameter_count",
+    "validate_dino_court_output",
 ]
