@@ -84,12 +84,18 @@ DINOは上流ソースを変更せず `third_party/DINO/` のgit submoduleから
 推論契約だけを `models/dino/` に置きます。
 
 DINO利用時はsubmoduleを初期化し、custom CUDA opをルート `setup.py` からビルドします。
-PyTorch互換修正は `build/` 内の生成ソースだけに適用し、submodule自体は変更しません。
+PyTorch互換修正は `.cache/dino_ops/` 内の生成ソースだけに適用し、submodule自体は変更しません。
+build境界は全pathを明示するため、`project_root`だけはclone先の絶対pathへ置き換えてください。
 
 ```bash
 git submodule update --init third_party/DINO
-TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace
+export TENNIS_LAB_DINO_OPS_BUILD_CONFIG='{"paths":{"project_root":"/absolute/path/to/tennis-lab","data_root":"data","checkpoint_root":"ckpt","artifact_root":"artifacts","output_root":"outputs","cache_root":".cache","external_asset_root":"third_party"},"source_role":"external_asset","source":"DINO/models/dino/ops/src","destination_role":"cache","destination":"dino_ops/src","compressed_time_local_bindings":"src/utils/models/components/ops/compressed_time_local/bindings.cpp","compressed_time_local_kernels":"src/utils/models/components/ops/compressed_time_local/kernels.cu"}'
+TENNIS_LAB_BUILD_CUDA_OPS=1 TENNIS_LAB_CUDA_OPS_BUILD_TARGET=all \
+    .venv/bin/python setup.py build_ext --inplace --force
 ```
+
+成功時はrepository rootに`MultiScaleDeformableAttention.so`が生成されます。別のbuild
+directoryへ出力した場合は、そのdirectoryを`PYTHONPATH`の先頭へ追加します。
 
 `DinoPersonTracker` は検出だけをDINOへ変更し、時系列対応付けには既存YOLO
 trackingと同じUltralytics BoT-SORT設定を使います。DINO自体からtrack IDが出る

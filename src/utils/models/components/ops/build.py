@@ -34,6 +34,12 @@ _BOOTSTRAP_NAMESPACE_PATHS = (
 
 _OLD_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.type(),"
 _NEW_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.scalar_type(),"
+_OLD_CUDA_DEVICE_CHECK = ".type().is_cuda()"
+_NEW_CUDA_DEVICE_CHECK = ".is_cuda()"
+_DINO_CUDA_DEVICE_CHECK_COUNTS = {
+    Path("ms_deform_attn.h"): 2,
+    Path("cuda/ms_deform_attn_cuda.cu"): 11,
+}
 
 
 def parse_build_cuda_ops(raw: str | None, /) -> bool:
@@ -251,7 +257,7 @@ def _require_build_inputs(build_paths: Any, build_target: str) -> None:
 
 
 def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
-    """Copy official DINO ops and apply the required modern-PyTorch dispatch fix."""
+    """Copy official DINO ops and apply required modern-PyTorch API fixes."""
     cuda_source = source / "cuda/ms_deform_attn_cuda.cu"
     if not cuda_source.is_file():
         raise FileNotFoundError(
@@ -271,6 +277,26 @@ def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
             f"calls, found {replacement_count} in {cuda_source}"
         )
     generated_cuda_source.write_text(contents.replace(_OLD_DISPATCH, _NEW_DISPATCH))
+    for relative_path, expected_count in _DINO_CUDA_DEVICE_CHECK_COUNTS.items():
+        generated_source = destination / relative_path
+        if not generated_source.is_file():
+            raise RuntimeError(
+                f"Copied DINO operation source is missing: {generated_source}"
+            )
+        generated_contents = generated_source.read_text()
+        device_check_count = generated_contents.count(_OLD_CUDA_DEVICE_CHECK)
+        if device_check_count != expected_count:
+            raise RuntimeError(
+                "Unexpected DINO CUDA source: expected exactly "
+                f"{expected_count} legacy device checks, found "
+                f"{device_check_count} in {source / relative_path}"
+            )
+        generated_source.write_text(
+            generated_contents.replace(
+                _OLD_CUDA_DEVICE_CHECK,
+                _NEW_CUDA_DEVICE_CHECK,
+            )
+        )
     return destination
 
 
