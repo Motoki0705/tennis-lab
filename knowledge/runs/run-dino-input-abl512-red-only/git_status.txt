@@ -1,0 +1,29 @@
+ M pyproject.toml
+ M src/tasks/court_alignment/configuration.py
+ M src/tasks/court_alignment/models/__init__.py
+ M src/tasks/court_alignment/training/runner.py
+ M src/utils/models/components/ops/build.py
+ M tests/unit/utils/models/components/ops/test_build.py
+ M uv.lock
+?? .cuda_ops_runtime/
+?? src/tasks/court_alignment/configs/decoder/dino.yaml
+?? src/tasks/court_alignment/configs/loss/dino.yaml
+?? src/tasks/court_alignment/configs/metrics/dino.yaml
+?? src/tasks/court_alignment/configs/model/dino.yaml
+?? src/tasks/court_alignment/configs/run/dino.yaml
+?? src/tasks/court_alignment/configs/train_dino.yaml
+?? src/tasks/court_alignment/geometry/oriented_box.py
+?? src/tasks/court_alignment/inference/detr_decoder.py
+?? src/tasks/court_alignment/models/dino_detector.py
+?? src/tasks/court_alignment/models/dino_input.py
+?? src/tasks/court_alignment/training/detr_lightning_module.py
+?? src/tasks/court_alignment/training/detr_losses.py
+?? src/tasks/court_alignment/training/detr_metrics.py
+?? tests/integration/tasks/court_alignment/test_dino_config_compose.py
+?? tests/integration/tasks/court_alignment/test_dino_training_smoke.py
+?? tests/unit/tasks/court_alignment/geometry/test_oriented_box.py
+?? tests/unit/tasks/court_alignment/inference/test_detr_decoder.py
+?? tests/unit/tasks/court_alignment/models/test_dino_detector.py
+?? tests/unit/tasks/court_alignment/models/test_dino_input.py
+?? tests/unit/tasks/court_alignment/training/test_detr_losses.py
+?? tests/unit/tasks/court_alignment/training/test_detr_metrics.py

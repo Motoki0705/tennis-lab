@@ -15,6 +15,8 @@ from src.utils.models.components.ops import build as build_module
 
 _LEGACY_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.type(),"
 _MODERN_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.scalar_type(),"
+_LEGACY_CUDA_DEVICE_CHECK = ".type().is_cuda()"
+_MODERN_CUDA_DEVICE_CHECK = ".is_cuda()"
 _BUILD_MODULE_PATH = Path(build_module.__file__).resolve()
 _PROJECT_ROOT = _BUILD_MODULE_PATH.parents[5]
 _OPERATION_ENVIRONMENT_NAMES = (
@@ -75,7 +77,7 @@ def _build_mapping(project_root: Path) -> dict[str, object]:
             "external_asset_root": "third_party",
         },
         "source_role": "external_asset",
-        "source": "DINO/ops/src",
+        "source": "DINO/models/dino/ops/src",
         "destination_role": "cache",
         "destination": "dino_ops/src",
         "compressed_time_local_bindings": (
@@ -334,17 +336,36 @@ def test_prepare_dino_ops_sources_patches_copy_only(tmp_path: Path) -> None:
     source = tmp_path / "third_party_src"
     cuda_source = source / "cuda/ms_deform_attn_cuda.cu"
     cuda_source.parent.mkdir(parents=True)
-    original = f"{_LEGACY_DISPATCH}\n{_LEGACY_DISPATCH}\n"
-    cuda_source.write_text(original)
+    header_source = source / "ms_deform_attn.h"
+    cuda_original = (
+        f"{_LEGACY_DISPATCH}\n{_LEGACY_DISPATCH}\n"
+        + "\n".join(
+            f"tensor_{index}{_LEGACY_CUDA_DEVICE_CHECK}"
+            for index in range(11)
+        )
+        + "\n"
+    )
+    header_original = (
+        f"value{_LEGACY_CUDA_DEVICE_CHECK}\n"
+        f"value{_LEGACY_CUDA_DEVICE_CHECK}\n"
+    )
+    cuda_source.write_text(cuda_original)
+    header_source.write_text(header_original)
     destination = tmp_path / "build_src"
 
     result = build_module._prepare_dino_ops_sources(source, destination)
 
     assert result == destination
-    assert cuda_source.read_text() == original
+    assert cuda_source.read_text() == cuda_original
+    assert header_source.read_text() == header_original
     generated = (destination / "cuda/ms_deform_attn_cuda.cu").read_text()
+    generated_header = (destination / "ms_deform_attn.h").read_text()
     assert _LEGACY_DISPATCH not in generated
     assert generated.count(_MODERN_DISPATCH) == 2
+    assert _LEGACY_CUDA_DEVICE_CHECK not in generated
+    assert generated.count(_MODERN_CUDA_DEVICE_CHECK) == 11
+    assert _LEGACY_CUDA_DEVICE_CHECK not in generated_header
+    assert generated_header.count(_MODERN_CUDA_DEVICE_CHECK) == 2
 
 
 def test_prepare_dino_ops_sources_requires_initialized_submodule(

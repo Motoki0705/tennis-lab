@@ -1,0 +1,2 @@
+_target_: src.tasks.court_alignment.training.detr_metrics.CourtDetrMetrics
+match_max_corner_error_px: 32.0

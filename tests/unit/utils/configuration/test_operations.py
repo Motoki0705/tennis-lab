@@ -45,7 +45,7 @@ def _build_mapping(root: Path) -> dict[str, object]:
             "external_asset_root": "third_party",
         },
         "source_role": "external_asset",
-        "source": "DINO/ops/src",
+        "source": "DINO/models/dino/ops/src",
         "destination_role": "cache",
         "destination": "dino_ops/src",
         "compressed_time_local_bindings": (
@@ -160,7 +160,7 @@ def test_dino_build_contract_resolves_all_roles(tmp_path: Path) -> None:
         _build_mapping(tmp_path), repository_root=tmp_path.resolve()
     )
 
-    assert config.source == tmp_path / "third_party/DINO/ops/src"
+    assert config.source == tmp_path / "third_party/DINO/models/dino/ops/src"
     assert config.destination == tmp_path / ".cache/dino_ops/src"
     assert config.compressed_time_local_kernels == (
         tmp_path / "src/utils/models/components/ops/compressed_time_local/kernels.cu"

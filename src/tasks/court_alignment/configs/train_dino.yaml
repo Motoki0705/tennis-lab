@@ -1,0 +1,41 @@
+defaults:
+  - paths: default
+  - data: default
+  - model: dino
+  - loss: dino
+  - decoder: dino
+  - metrics: dino
+  - training: default
+  - run: dino
+  - _self_
+
+data:
+  image_size: 800
+  batch_size: 1
+  # Preserve the original 256x256 court-size distribution after scaling to 800.
+  sigma_px: 3.125
+  line_width_px: 3.125
+  vote_radius_px: 9.375
+  min_scale_px_per_metre: 9.375
+  max_scale_px_per_metre: 18.0
+  min_center_distance_px: 100.0
+  # Numerical/contact tolerance shared by every input mode; not an ablation axis.
+  footprint_overlap_tolerance_px: 1.0
+  # DETR targets intentionally require all four doubles-footprint corners.
+  # This worst-case rotated-court margin prevents visible line evidence from
+  # being silently omitted from the set target as a partial court.
+  court_margin_px: 236.0
+  max_sampling_attempts: 512
+
+training:
+  learning_rate: 1.0e-4
+  steps_per_epoch: 4096
+  compile:
+    enabled: false
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

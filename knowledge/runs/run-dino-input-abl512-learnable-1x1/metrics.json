@@ -1,0 +1,11 @@
+{
+  "instance_precision": 0.13402061855670103,
+  "instance_recall": 0.13402061855670103,
+  "instance_f1": 0.13402061855670103,
+  "instance_count_accuracy": 1.0,
+  "instance_count_mae": 0.0,
+  "matched_center_mean_error_px": 0.44590624651083577,
+  "matched_scale_relative_error": 0.09953450941695617,
+  "matched_axial_angle_mean_error_deg": 5.131740008409206,
+  "matched_corner_mean_error_px": 22.093279104966385
+}
