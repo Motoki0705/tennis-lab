@@ -17,7 +17,7 @@ trainer:
 
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
-weight_decay: 0.1
+weight_decay: 1.0
 warmup_steps: 200
 warmup_epochs: null
 min_lr: 1.0e-6
@@ -55,8 +55,8 @@ lr_monitor:
 
 # ---- Qualitative validation logging ----
 qualitative_logging:
-  enabled: false
-  every_n_epochs: 5
+  enabled: true
+  every_n_epochs: 20
   num_samples: 4
   selection_mode: random
   selected_indices: null
