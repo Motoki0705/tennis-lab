@@ -38,9 +38,9 @@ _TRAINING_PROFILES = (
         "blcs_multiview_axial",
     ),
     (
-        "chunked_singleview_sequence",
+        "singleview_chunked_sequence",
         "train_chunked",
-        ("model=single", "data=chunked_singleview_sequence"),
+        ("model=single", "data=singleview_chunked_sequence"),
         "blcs/single_object",
         "chunked",
         (1, 1),
@@ -48,7 +48,7 @@ _TRAINING_PROFILES = (
         "blcs",
     ),
     (
-        "chunked_multiview_sequence",
+        "multiview_chunked_sequence",
         "train_chunked",
         (),
         "blcs/single_object",

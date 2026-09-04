@@ -1,7 +1,7 @@
 defaults:
   - court_keypoints: physical_v1
   - model: multiview_axial_base
-  - data: chunked_multiview_sequence
+  - data: multiview_chunked_sequence
   - training: gan_base
   - loss: canonical
   - metrics: default

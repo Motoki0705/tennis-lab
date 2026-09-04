@@ -83,7 +83,7 @@ human UV/visibility には適用しません。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### configs/
-- 公開data profileは10個に整理している。`singleview_frame`、`singleview_sequence`、`multiview_sequence`、`chunked_multiview_sequence`（single_object）、`tracking`、`tracking_chunked`（multi_object）、`singleview_sequence_broadcast`、`multiview_sequence_broadcast`（single_object_broadcast）、`tracking_broadcast`（multi_object_broadcast）、`tracking_camera_view_v2`（multi_object_camera_view_v2）で、各データセットを固定・chunked・broadcast・camera-viewの用途から重複なく選択できる。
+- 公開data profileは11個に整理している。`singleview_frame`、`singleview_sequence`、`singleview_chunked_sequence`、`multiview_sequence`、`multiview_chunked_sequence`（single_object）、`tracking`、`tracking_chunked`（multi_object）、`singleview_sequence_broadcast`、`multiview_sequence_broadcast`（single_object_broadcast）、`tracking_broadcast`（multi_object_broadcast）、`tracking_camera_view_v2`（multi_object_camera_view_v2）で、各データセットを固定・chunked・broadcast・camera-viewの用途から重複なく選択できる。
 - `tracking_camera_view_v2` はdata profileの選択だけで、Hydraのabsolute overrideにより`court_keypoints=camera_view_v2`と`model=tracking_query_reference`を同時に選択する。その他にmodel(frame/multiview/axial系)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定がある。
 
 ## Multi-person tracking

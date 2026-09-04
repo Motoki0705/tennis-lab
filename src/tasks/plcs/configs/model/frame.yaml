@@ -6,10 +6,10 @@ name: plcs
 io:
   input_profile: frame
 
-hidden_dim: 256
-num_layers: 4
+hidden_dim: 512
+num_layers: 12
 num_heads: 8
-ffn_dim: 704         # Matches the former wide FFN width
+ffn_dim: 1408         # Matches the former wide FFN width
 ffn_type: swiglu
 dropout: 0.1
 invisible_init_std: 0.02
