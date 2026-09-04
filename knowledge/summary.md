@@ -1,7 +1,8 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-08-28  
-調査基準commit: `bb5a7c1460b5b9b6e3cdc934e1f4cdcbecae1387`
+更新日: 2026-09-04
+
+調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`
 
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
@@ -9,7 +10,9 @@
 
 ## 現在の全体像
 
-現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSはend-to-end経路の動作確認までは完了していますが、recording-disjointな汎化baselineはありません。2026-08-28時点の新しいPLCS / BLCS研究結果は、いずれもproduction checkpointを置き換える段階には達していません。
+現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSはend-to-end経路の動作確認までは完了していますが、recording-disjointな汎化baselineはありません。2026-09-04時点でも、knowledgeの研究結果を根拠とするproduction checkpointの更新は確認されていません。
+
+前回の要約以降、正式な実験知見として追加されたのは、2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/group-i832-blcs-observation-tracking.md)、3 run）です。conservative設定が学習用associationの運用選択となりましたが、単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
 
 | task | 現在の基準 | 主な固定値 | 現在の判断 |
 |---|---|---|---|
@@ -19,7 +22,7 @@
 | `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
 | `slcs` | [`run-i634-slcs-overfit-dino`](nodes/run-i634-slcs-overfit-dino.md) | player `0.470360 m`、yaw `7.761920°`、ball `1.954024 m` | 同一13 windowのmemorization diagnostic。deploy / 汎化主張は不可 |
 
-pipelineが参照するcheckpointは次です。
+[pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpointは次です。前回から変更はありません。
 
 | stage | checkpoint |
 |---|---|
@@ -28,7 +31,7 @@ pipelineが参照するcheckpointは次です。
 | PLCS | `plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt` |
 | BLCS | `blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt` |
 
-## タスク別に確立した知見
+## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
 
@@ -62,6 +65,20 @@ track-query architectureの[`group-i786-normv2-large-cuda-ablation-eb32`](nodes/
 
 [`group-i801-reference-selector-ablation`](nodes/group-i801-reference-selector-ablation.md) のmatched BLCS比較では、selector-zeroがreferenceよりposition `3.721058 < 3.813505 m`、Y-sign accuracy `0.877656 > 0.871094`でした。第三RoPE軸によるreference明示の追加効果は確認できず、production v1を維持します。
 
+観測ベース2D追跡の[`group-i832-blcs-observation-tracking`](nodes/group-i832-blcs-observation-tracking.md)では、GT lifecycleに依存する旧random-slot入力を、noise後の2D観測からdeterministicに対応付ける入力へ変更して比較しました。3 runは同一の`blcs/multi_object` split、`blcs_track_query`（Q=4）、seed `832`、100 epoch、FP augmentation無効で揃えています。
+
+| run / association | position error (m) ↓ | presence F1 ↑ | ID switches ↓ | duplicate active tracks ↓ | missed GT frames ↓ |
+|---|---:|---:|---:|---:|---:|
+| [legacy random slot](nodes/run-i832-blcs-legacy-slot-baseline.md) | 5.434213 | 0.878670 | 0.64 | 80.22 | 26.76 |
+| [conservative（距離閾値0.04・保持2 frames）](nodes/run-i832-blcs-tracker-conservative.md) | 5.430877 | 0.881151 | 0.66 | 86.19 | 24.63 |
+| [permissive（距離閾値0.10・保持8 frames）](nodes/run-i832-blcs-tracker-permissive.md) | 5.435566 | 0.878761 | 0.60 | 83.53 | 25.32 |
+
+表は各runの`metrics.json` / `diagnostic_metrics.json`に基づくtest実測値です。conservativeはposition / F1 / missed GT framesで最良ですが、baseline比のposition改善は約`0.00334 m`にとどまり、ID switchesとduplicate active tracksは増えています。permissiveはID switchesが最良で、F1もbaselineを僅かに上回りますが、positionとprecisionは悪化しています。全runが100 epochを完走し、曲線に発散やNaNは報告されていません。低いID switchesだけでtracking failureが解消したとは判断しません。
+
+#832ではconservativeを運用選択として採用し、[現行association設定](../src/tasks/blcs/configs/data/_observation_tracking.yaml)も`max_distance=0.04`、`max_missed_frames=2`です。ただし、指標間の許容差・重みと複数seed評価は未確定で、因果的・統計的な優位は未確立です。次はこの条件を基準に重複trackとID切替の増加を検証し、FP augmentationを有効にした条件と実検出入力での評価を分けて確認します。
+
+#832のID switchesはpost-#824の定義です。#643 / #648 / #650などのpre-#824の保存値とは直接比較できません。再現時は各bundleのcommitと`uncommitted.patch`を確認します。特にlegacy baselineとconservativeには未commit差分が保存されており、現行mainの設定だけで同じ学習条件になるとは限りません。
+
 学習性能では、[`group-blcs-compile-training-abba-v4`](nodes/group-blcs-compile-training-abba-v4.md) によりcompiled実行がsteady-stateで`1.90×`高速、peak CUDA allocatedが`19.6%`減る一方、cold-start込み3 epochでは`2.98×`遅く、break-evenは約18 epochと分かっています。これはtrajectory精度ではなくruntime baselineです。
 
 multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep`](nodes/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep.md) の512-frame lifecycle baselineも、sequence length・data・training budgetが違うため相互に直接順位付けしません。
@@ -87,6 +104,7 @@ SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball�
 3. 単一seedの小差は確立した効果とみなさない。
 4. no-op、作業tree取り違え、failed qualification、holdout rejectを正の証拠へ昇格しない。
 5. 現行mainとnormalization、loss beta、runtime、artifact schemaが異なるrunはhistorical evidenceと明記する。
+6. associationの生成方法、FP augmentation、ID switchesの定義も比較条件に含める。学習入力の運用設定の採用と、production checkpointの更新は別の判断として記録する。
 
 ## 優先して解くべき課題
 
@@ -94,7 +112,8 @@ SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball�
 |---|---|---|---|
 | S | Court Detection | recording-disjoint test | KP距離、geometry valid、line support、wall time、下流E2Eを固定評価 |
 | S | PLCS canonical motion | jitter抑制とmulti-task再導入 | motion相関を保ち、high-frequency fractionを低下させ、position / rotation併用でもmean collapseしない |
-| S | BLCS track-query | 現行main contractでの再現性 | A/B/Dをcurrent loss・schema、3 seed以上で再実行し、position / ID / lifecycleのParetoを確認 |
+| S | BLCS観測ベースtracking | #832が単一seed・FP augmentation無効、重複track増加 | 許容差・重みを先に固定し、同一条件で3 seed以上を比較。position / presence / ID / duplicate / missedを併記し、FP有効条件と実検出入力でも評価 |
+| A | BLCS track-query architecture | #786が旧runtime・入力契約 | associationとpost-#824 metricを固定し、A/B/Dをcurrent loss・schema、3 seed以上で再実行してposition / ID / lifecycleのParetoを確認 |
 | A | PLCS reprojection | 単一seed・weight 1のみ | weight `0.1/0.3/1.0`を複数seedで比較し、meanだけでなく0.5 m率・軸別誤差・tailを改善 |
 | A | SLCS | 汎化splitがない | recording-disjoint splitで3 seed、欠損率・jerk・calibrationまで報告 |
 | A | Ball 3DGS augmentation | campaign未完了 | 残りseedとgame10 final testを固定protocolで完了 |
