@@ -4,14 +4,14 @@ Usage:
     python -m src.tasks.blcs.scripts.train
     python -m src.tasks.blcs.scripts.train training.max_epochs=5 run.gpus=0
     python -m src.tasks.blcs.scripts.train model=multiview_axial_small data=multiview_sequence
-    python -m src.tasks.blcs.scripts.train data=chunked_multiview_sequence loss=reprojection
+    python -m src.tasks.blcs.scripts.train data=multiview_chunked_sequence loss=reprojection
     python -m src.tasks.blcs.scripts.train --config-name train_chunked_gan
     python -m src.tasks.blcs.scripts.train run.dry_run=true
 
 Notes:
     - Hydra loads configuration from `src/tasks/blcs/configs/train.yaml`.
     - Experiment configs can be selected with `--config-name`.
-    - Chunked training is selected with a chunked data config.
+    - Chunked training is selected with a `*_chunked_sequence` data config.
     - GAN training is selected with a GAN training config.
     - The runner handles the full BLCS training loop from the resolved config.
     - Use `--config-name train_tracking` for multi-ball tracking.

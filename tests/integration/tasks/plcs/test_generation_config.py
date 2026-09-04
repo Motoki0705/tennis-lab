@@ -12,7 +12,7 @@ from src.utils.configuration import UnknownConfigurationKeyError
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 _DATA_CONFIG_DIR = _CONFIG_DIR / "data"
 
-# Keep this table as the executable catalogue of the ten public PLCS data
+# Keep this table as the executable catalogue of the eleven public PLCS data
 # profiles.  Each row documents the root training boundary needed to validate
 # the profile and its externally visible dataset/view/model contracts.
 _TRAINING_PROFILES = (
@@ -48,7 +48,17 @@ _TRAINING_PROFILES = (
         "plcs_multiview_axial",
     ),
     (
-        "chunked_multiview_sequence",
+        "singleview_chunked_sequence",
+        "train_chunked",
+        ("model=frame",),
+        "plcs/single_object",
+        "chunked",
+        (1, 1),
+        "physical_v1",
+        "plcs",
+    ),
+    (
+        "multiview_chunked_sequence",
         "train_chunked",
         (),
         "plcs/single_object",
@@ -135,7 +145,7 @@ def _compose_training_profile(
     return config, runtime
 
 
-def test_public_data_profile_catalogue_is_exactly_ten() -> None:
+def test_public_data_profile_catalogue_is_exactly_eleven() -> None:
     profiles = sorted(
         path.stem
         for path in _DATA_CONFIG_DIR.glob("*.yaml")
