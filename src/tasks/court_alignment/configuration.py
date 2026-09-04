@@ -36,6 +36,12 @@ from src.utils.paths import PROJECT_ROOT
 
 ConfigMapping = Mapping[str, object]
 
+CNN_MODEL_TARGET = "src.tasks.court_alignment.models.cnn.CourtAlignmentCNN"
+DINO_MODEL_TARGET = (
+    "src.tasks.court_alignment.models.dino_detector."
+    "load_pretrained_dino_court_detector"
+)
+
 
 def _schema(
     name: str,
@@ -230,8 +236,64 @@ COURT_ALIGNMENT_MODEL_SCHEMA = _schema(
         "heatmap_prior_probability": _number(),
     },
     semantic_checks=(
-        _target("src.tasks.court_alignment.models.cnn.CourtAlignmentCNN"),
+        _target(CNN_MODEL_TARGET),
     ),
+)
+
+
+def _dino_model_semantics(value: Mapping[str, object]) -> None:
+    _target(DINO_MODEL_TARGET)(value)
+    if value["input_mode"] not in {"repeat_rgb", "learnable_1x1", "red_only"}:
+        raise SemanticConfigurationError(
+            "model.input_mode must be repeat_rgb, learnable_1x1, or red_only."
+        )
+    for name in ("repository", "checkpoint_path", "device"):
+        if not cast(str, value[name]).strip():
+            raise SemanticConfigurationError(f"model.{name} must not be empty.")
+    short_side = value["short_side"]
+    max_long_side = value["max_long_side"]
+    if type(short_side) is not int or short_side <= 0:
+        raise SemanticConfigurationError("model.short_side must be a positive integer.")
+    if type(max_long_side) is not int or max_long_side < short_side:
+        raise SemanticConfigurationError(
+            "model.max_long_side must be an integer no smaller than short_side."
+        )
+    if short_side != 800 or max_long_side != 1333:
+        raise SemanticConfigurationError(
+            "DINO ablations must retain the released 800/1333 evaluation resize."
+        )
+    rank = value["lora_rank"]
+    if type(rank) is not int or rank <= 0:
+        raise SemanticConfigurationError("model.lora_rank must be a positive integer.")
+    _positive(value["lora_alpha"], path="model.lora_alpha")
+    dropout = value["lora_dropout"]
+    if type(dropout) not in (int, float):
+        raise SemanticConfigurationError("model.lora_dropout must lie in [0,1).")
+    if not 0.0 <= float(cast(int | float, dropout)) < 1.0:
+        raise SemanticConfigurationError("model.lora_dropout must lie in [0,1).")
+    targets = cast(Sequence[object], value["lora_target_modules"])
+    if not targets or any(type(name) is not str or not name for name in targets):
+        raise SemanticConfigurationError(
+            "model.lora_target_modules must contain non-empty strings."
+        )
+
+
+COURT_ALIGNMENT_DINO_MODEL_SCHEMA = _schema(
+    "model",
+    {
+        "_target_": ConfigField.of(str),
+        "repository": ConfigField.of(str),
+        "checkpoint_path": ConfigField.of(str),
+        "device": ConfigField.of(str),
+        "input_mode": ConfigField.of(str),
+        "short_side": ConfigField.of(int),
+        "max_long_side": ConfigField.of(int),
+        "lora_rank": ConfigField.of(int),
+        "lora_alpha": _number(),
+        "lora_dropout": _number(),
+        "lora_target_modules": ConfigField.sequence(ConfigField.of(str)),
+    },
+    semantic_checks=(_dino_model_semantics,),
 )
 COURT_ALIGNMENT_LOSS_SCHEMA = _schema(
     "loss",
@@ -247,6 +309,61 @@ COURT_ALIGNMENT_LOSS_SCHEMA = _schema(
         _target("src.tasks.court_alignment.training.losses.CourtAlignmentLoss"),
     ),
 )
+
+_DINO_LOSS_WEIGHTS_SCHEMA = _schema(
+    "loss.weights",
+    {
+        "_target_": ConfigField.of(str),
+        "classification": _number(),
+        "bbox": _number(),
+        "giou": _number(),
+        "scale": _number(),
+        "axis": _number(),
+    },
+    semantic_checks=(
+        _target(
+            "src.tasks.court_alignment.training.detr_losses.CourtDetrLossWeights"
+        ),
+    ),
+)
+
+
+def _dino_loss_semantics(value: Mapping[str, object]) -> None:
+    if value["num_classes"] != 1:
+        raise SemanticConfigurationError("loss.num_classes must equal one.")
+    alpha = float(cast(int | float, value["focal_alpha"]))
+    gamma = float(cast(int | float, value["focal_gamma"]))
+    if not math.isfinite(alpha) or not 0.0 <= alpha <= 1.0:
+        raise SemanticConfigurationError("loss.focal_alpha must lie in [0,1].")
+    if not math.isfinite(gamma) or gamma < 0.0:
+        raise SemanticConfigurationError(
+            "loss.focal_gamma must be finite and non-negative."
+        )
+    weights = cast(Mapping[str, object], value["weights"])
+    names = ("classification", "bbox", "giou", "scale", "axis")
+    for name in names:
+        _positive(weights[name], path=f"loss.weights.{name}", allow_zero=True)
+    if not any(float(cast(int | float, weights[name])) > 0.0 for name in names):
+        raise SemanticConfigurationError(
+            "At least one DINO loss weight must be positive."
+        )
+
+
+COURT_ALIGNMENT_DINO_LOSS_SCHEMA = _schema(
+    "loss",
+    {
+        "_target_": ConfigField.of(str),
+        "num_classes": ConfigField.of(int),
+        "weights": ConfigField.mapping(_DINO_LOSS_WEIGHTS_SCHEMA),
+        "focal_alpha": _number(),
+        "focal_gamma": _number(),
+        "auxiliary_loss": ConfigField.of(bool),
+    },
+    semantic_checks=(
+        _target("src.tasks.court_alignment.training.detr_losses.CourtDetrCriterion"),
+        _dino_loss_semantics,
+    ),
+)
 COURT_ALIGNMENT_DECODER_SCHEMA = _schema(
     "decoder",
     {
@@ -256,6 +373,14 @@ COURT_ALIGNMENT_DECODER_SCHEMA = _schema(
         "subpixel_refine": ConfigField.of(bool),
         "cluster_distance_px": _number(),
         "max_instances": ConfigField.of(int),
+    },
+)
+COURT_ALIGNMENT_DINO_DECODER_SCHEMA = _schema(
+    "decoder",
+    {
+        "threshold": _number(),
+        "class_index": ConfigField.of(int),
+        "top_k": ConfigField.of(int),
     },
 )
 COURT_ALIGNMENT_METRICS_SCHEMA = _schema(
@@ -273,6 +398,16 @@ COURT_ALIGNMENT_METRICS_SCHEMA = _schema(
     },
     semantic_checks=(
         _target("src.tasks.court_alignment.training.metrics.CourtAlignmentMetrics"),
+    ),
+)
+COURT_ALIGNMENT_DINO_METRICS_SCHEMA = _schema(
+    "metrics",
+    {
+        "_target_": ConfigField.of(str),
+        "match_max_corner_error_px": _number(),
+    },
+    semantic_checks=(
+        _target("src.tasks.court_alignment.training.detr_metrics.CourtDetrMetrics"),
     ),
 )
 
@@ -454,12 +589,38 @@ class CourtAlignmentRuntimeConfig:
             path="paths",
         )
         sections: dict[str, Mapping[str, object]] = {}
+        sections["data"] = COURT_ALIGNMENT_DATA_SCHEMA.validate(
+            require_config_mapping(root, "data", path="configuration"),
+            path="data",
+        )
+        raw_model = require_config_mapping(root, "model", path="configuration")
+        model_target = raw_model.get("_target_")
+        is_dino = model_target == DINO_MODEL_TARGET
+        model_schema = (
+            COURT_ALIGNMENT_DINO_MODEL_SCHEMA
+            if is_dino
+            else COURT_ALIGNMENT_MODEL_SCHEMA
+        )
+        loss_schema = (
+            COURT_ALIGNMENT_DINO_LOSS_SCHEMA
+            if is_dino
+            else COURT_ALIGNMENT_LOSS_SCHEMA
+        )
+        decoder_schema = (
+            COURT_ALIGNMENT_DINO_DECODER_SCHEMA
+            if is_dino
+            else COURT_ALIGNMENT_DECODER_SCHEMA
+        )
+        metrics_schema = (
+            COURT_ALIGNMENT_DINO_METRICS_SCHEMA
+            if is_dino
+            else COURT_ALIGNMENT_METRICS_SCHEMA
+        )
         for name, schema in (
-            ("data", COURT_ALIGNMENT_DATA_SCHEMA),
-            ("model", COURT_ALIGNMENT_MODEL_SCHEMA),
-            ("loss", COURT_ALIGNMENT_LOSS_SCHEMA),
-            ("decoder", COURT_ALIGNMENT_DECODER_SCHEMA),
-            ("metrics", COURT_ALIGNMENT_METRICS_SCHEMA),
+            ("model", model_schema),
+            ("loss", loss_schema),
+            ("decoder", decoder_schema),
+            ("metrics", metrics_schema),
             ("training", COURT_ALIGNMENT_TRAINING_SCHEMA),
             ("run", COURT_ALIGNMENT_RUN_SCHEMA),
         ):
@@ -471,20 +632,62 @@ class CourtAlignmentRuntimeConfig:
             raise SemanticConfigurationError(
                 "data.seed must equal run.seed for reproducible splits."
             )
-        if cast(int, data["max_courts"]) > cast(
-            int, sections["decoder"]["max_instances"]
-        ):
-            raise SemanticConfigurationError(
-                "decoder.max_instances must cover data.max_courts."
+        if is_dino:
+            image_size = data["image_size"]
+            resolved_image_size = (
+                (image_size, image_size)
+                if type(image_size) is int
+                else tuple(cast(Sequence[int], image_size))
             )
-        if cast(int, data["max_courts"]) > cast(int, sections["decoder"]["max_peaks"]):
-            raise SemanticConfigurationError(
-                "decoder.max_peaks must cover data.max_courts."
+            if resolved_image_size != (800, 800):
+                raise SemanticConfigurationError(
+                    "DINO court alignment requires data.image_size=800x800."
+                )
+            top_k = cast(int, sections["decoder"]["top_k"])
+            if top_k <= 0:
+                raise SemanticConfigurationError(
+                    "decoder.top_k must be a positive integer."
+                )
+            if cast(int, data["max_courts"]) > top_k:
+                raise SemanticConfigurationError(
+                    "decoder.top_k must cover data.max_courts."
+                )
+            if cast(int, sections["decoder"]["class_index"]) != 0:
+                raise SemanticConfigurationError(
+                    "The one-class DINO court head requires decoder.class_index=0."
+                )
+            if cast(int, sections["loss"]["num_classes"]) != 1:
+                raise SemanticConfigurationError(
+                    "The DINO court criterion requires loss.num_classes=1."
+                )
+            threshold = float(
+                cast(int | float, sections["decoder"]["threshold"])
             )
-        if cast(int, sections["model"]["num_keypoints"]) != 14:
-            raise SemanticConfigurationError(
-                "model.num_keypoints must preserve the KP14 contract."
+            if not 0.0 <= threshold <= 1.0:
+                raise SemanticConfigurationError(
+                    "decoder.threshold must lie in [0,1]."
+                )
+            _positive(
+                sections["metrics"]["match_max_corner_error_px"],
+                path="metrics.match_max_corner_error_px",
             )
+        else:
+            if cast(int, data["max_courts"]) > cast(
+                int, sections["decoder"]["max_instances"]
+            ):
+                raise SemanticConfigurationError(
+                    "decoder.max_instances must cover data.max_courts."
+                )
+            if cast(int, data["max_courts"]) > cast(
+                int, sections["decoder"]["max_peaks"]
+            ):
+                raise SemanticConfigurationError(
+                    "decoder.max_peaks must cover data.max_courts."
+                )
+            if cast(int, sections["model"]["num_keypoints"]) != 14:
+                raise SemanticConfigurationError(
+                    "model.num_keypoints must preserve the KP14 contract."
+                )
         expected_steps = math.ceil(
             cast(int, data["train_samples"]) / cast(int, data["batch_size"])
         )
@@ -555,12 +758,12 @@ def _resolve_explicit_path(
     if not value.strip() or value != value.strip():
         raise SemanticConfigurationError(f"{name} must be a non-empty trimmed path.")
     candidate = Path(value).expanduser()
-    return cast(
-        Path,
+    resolved: Path = (
         resolver.validate(role, candidate)
         if candidate.is_absolute()
-        else resolver.resolve(role, value),
+        else resolver.resolve(role, value)
     )
+    return resolved
 
 
 @dataclass(frozen=True, slots=True)
@@ -760,8 +963,13 @@ register_boundary_validator(
 
 
 __all__ = [
+    "CNN_MODEL_TARGET",
     "COURT_ALIGNMENT_DATA_SCHEMA",
     "COURT_ALIGNMENT_DECODER_SCHEMA",
+    "COURT_ALIGNMENT_DINO_DECODER_SCHEMA",
+    "COURT_ALIGNMENT_DINO_LOSS_SCHEMA",
+    "COURT_ALIGNMENT_DINO_METRICS_SCHEMA",
+    "COURT_ALIGNMENT_DINO_MODEL_SCHEMA",
     "COURT_ALIGNMENT_EVALUATION_SCHEMA",
     "COURT_ALIGNMENT_LOSS_SCHEMA",
     "COURT_ALIGNMENT_METRICS_SCHEMA",
@@ -772,6 +980,7 @@ __all__ = [
     "COURT_ALIGNMENT_TRAINING_SCHEMA",
     "CourtAlignmentRuntimeConfig",
     "CourtAlignmentRealHeatmapRuntimeConfig",
+    "DINO_MODEL_TARGET",
     "validate_evaluation_boundary",
     "validate_real_heatmap_evaluation_boundary",
     "validate_training_boundary",

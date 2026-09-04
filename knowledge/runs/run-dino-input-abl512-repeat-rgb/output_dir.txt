@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/dino-detr-court-alignment/outputs/court_alignment/dino_input_ablation_512_repeat_rgb/logs/version_0/checkpoints

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 import pytorch_lightning as pl
 from hydra.utils import instantiate
@@ -12,11 +12,19 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch import nn
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.repro import resolve_queue_repro_dir
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.court_alignment.configuration import CourtAlignmentRuntimeConfig
+from src.tasks.court_alignment.configuration import (
+    CNN_MODEL_TARGET,
+    DINO_MODEL_TARGET,
+    CourtAlignmentRuntimeConfig,
+)
 from src.tasks.court_alignment.models.checkpoint import (
     load_court_alignment_model_checkpoint,
+)
+from src.tasks.court_alignment.training.detr_lightning_module import (
+    DinoCourtAlignmentLightningModule,
 )
 from src.tasks.court_alignment.training.lightning_module import (
     CourtAlignmentLightningModule,
@@ -25,7 +33,7 @@ from src.utils.configuration import PathRole
 
 
 class CourtAlignmentTrainingRunner(BaseTrainingRunner):
-    """Build the procedural DataModule and KP14 Lightning module from config."""
+    """Build the shared procedural data pipeline and configured alignment model."""
 
     def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
         evaluation = (
@@ -104,7 +112,13 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         del datamodule
-        module = CourtAlignmentLightningModule(config)
+        model_target = str(config.model._target_)
+        if model_target == DINO_MODEL_TARGET:
+            module: BaseLightningModule = DinoCourtAlignmentLightningModule(config)
+        elif model_target == CNN_MODEL_TARGET:
+            module = CourtAlignmentLightningModule(config)
+        else:
+            raise ValueError(f"Unsupported court-alignment model target: {model_target!r}.")
         module.steps_per_epoch = steps_per_epoch
         return module
 
@@ -136,10 +150,7 @@ class CourtAlignmentTrainingRunner(BaseTrainingRunner):
         output_dir.mkdir(parents=True, exist_ok=True)
         self.save_config(config, output_dir)
         datamodule = self.build_datamodule(config)
-        module = cast(
-            CourtAlignmentLightningModule,
-            self.build_lightning_module(config, datamodule),
-        )
+        module = self.build_lightning_module(config, datamodule)
         accelerator, devices = self.select_devices(config)
         trainer_cfg = runtime.training.trainer
         trainer = pl.Trainer(
