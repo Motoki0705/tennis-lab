@@ -1,19 +1,19 @@
 trainer:
-  max_epochs: 100
+  max_epochs: 20
   gradient_clip_val: 1.0
   deterministic: warn
   precision: bf16-mixed
   log_every_n_steps: 50
-  check_val_every_n_epoch: 1
+  check_val_every_n_epoch: 3
   accumulate_grad_batches: 1
   reload_dataloaders_every_n_epochs: 0
   enable_progress_bar: true
   enable_model_summary: true
   benchmark: false
 
-learning_rate: 1.0e-3
-weight_decay: 1.0e-4
-warmup_epochs: 5
+learning_rate: 1.0e-4
+weight_decay: 1.0
+warmup_epochs: 3
 warmup_steps: null
 min_lr: 1.0e-6
 steps_per_epoch: null
@@ -55,7 +55,7 @@ lr_monitor:
 # ---- Qualitative validation logging ----
 qualitative_logging:
   enabled: true
-  every_n_epochs: 1
+  every_n_epochs: 5
   num_samples: 4
   selection_mode: random
   selected_indices: null
