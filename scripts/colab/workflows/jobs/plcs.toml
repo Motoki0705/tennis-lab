@@ -1,0 +1,27 @@
+schema_version = 1
+name = "plcs"
+description = "Train the standard PLCS multiview model."
+accelerator = "gpu"
+timeout_seconds = 86400
+setup = ["base"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.output_root",
+  "data.scene_dir",
+  "run.output_dir",
+  "run.gpus",
+]
+outputs = ["outputs/colab/plcs"]
+
+[command]
+module = "src.tasks.plcs.scripts.train"
+args = [
+  "paths.output_root=outputs/colab",
+  "run.output_dir=plcs",
+  "run.gpus=1",
+]
+
+[[inputs]]
+source = "data/plcs/single_object"
+destination = "data/plcs/single_object"
+writable = false
