@@ -106,4 +106,4 @@ def main(cfg: DictConfig) -> int:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
