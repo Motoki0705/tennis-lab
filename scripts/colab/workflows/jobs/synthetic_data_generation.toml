@@ -1,0 +1,52 @@
+schema_version = 1
+name = "synthetic_data_generation"
+description = "Run the canonical synthetic scene reconstruction and dataset pipeline."
+accelerator = "gpu"
+timeout_seconds = 604800
+setup = ["base", "submodules", "nht"]
+protected_override_keys = [
+  "roots.data_root",
+  "roots.checkpoint_root",
+  "roots.output_root",
+  "roots.external_asset_root",
+  "profile",
+  "request.scene_id",
+  "request.source_video",
+  "alignment.evidence.line_model.checkpoint_path",
+  "alignment.evidence.line_model.backbone_repository_path",
+  "alignment.evidence.line_model.backbone_checkpoint_path",
+  "dataset.plcs.accad_root",
+  "dataset.plcs.smplh_model_root",
+]
+outputs = ["data/synthetic_data_generation/scenes/B00"]
+
+[command]
+module = "src.synthetic_data_generation.scripts.run_scene_pipeline"
+args = [
+  "profile=b00",
+]
+
+[[inputs]]
+source = "data/synthetic_data_generation/raw/B00.mp4"
+destination = "data/synthetic_data_generation/raw/B00.mp4"
+writable = false
+
+[[inputs]]
+source = "data/ACCAD"
+destination = "data/ACCAD"
+writable = false
+
+[[inputs]]
+source = "data/smplh"
+destination = "data/smplh"
+writable = false
+
+[[inputs]]
+source = "ckpt/court_detection/line/court-detection-epoch19.ckpt"
+destination = "ckpt/court_detection/line/court-detection-epoch19.ckpt"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false

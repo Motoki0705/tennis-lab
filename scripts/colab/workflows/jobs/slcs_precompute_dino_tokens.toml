@@ -1,0 +1,37 @@
+schema_version = 1
+name = "slcs_precompute_dino_tokens"
+description = "Precompute strict DINOv3 frame tokens for the SLCS dataset."
+accelerator = "gpu"
+timeout_seconds = 86400
+setup = ["base", "submodules"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.checkpoint_root",
+  "paths.external_asset_root",
+  "paths.output_root",
+  "data.dataset_root",
+  "data.split_file",
+  "precompute.device",
+  "precompute.repository_path",
+  "precompute.checkpoint_path",
+]
+outputs = ["data/tennis_scene_dataset"]
+
+[command]
+module = "src.tasks.slcs.scripts.precompute_dino_tokens"
+args = [
+  "paths.output_root=outputs/colab",
+  "data.dataset_root=tennis_scene_dataset",
+  "data.split_file=tennis_scene_dataset/splits.json",
+  "precompute.device=cuda",
+]
+
+[[inputs]]
+source = "data/tennis_scene_dataset"
+destination = "data/tennis_scene_dataset"
+writable = true
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "checkpoints/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false
