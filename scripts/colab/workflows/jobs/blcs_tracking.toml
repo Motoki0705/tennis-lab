@@ -1,0 +1,29 @@
+schema_version = 1
+name = "blcs_tracking"
+description = "Train the canonical multi-object BLCS tracking-query model."
+accelerator = "gpu"
+timeout_seconds = 86400
+setup = ["base", "submodules", "cuda_ops"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.output_root",
+  "data.scene_dir",
+  "run.output_dir",
+  "run.gpus",
+]
+outputs = ["outputs/colab/blcs_tracking"]
+
+[command]
+module = "src.tasks.blcs.scripts.train"
+args = [
+  "--config-name",
+  "train_tracking",
+  "paths.output_root=outputs/colab",
+  "run.output_dir=blcs_tracking",
+  "run.gpus=1",
+]
+
+[[inputs]]
+source = "data/blcs/multi_object"
+destination = "data/blcs/multi_object"
+writable = false
