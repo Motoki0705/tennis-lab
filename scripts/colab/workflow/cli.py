@@ -1371,8 +1371,8 @@ def command_run(args: argparse.Namespace) -> int:
     if not args.dry_run:
         if shutil.which("colab") is None:
             raise WorkflowError(
-                "colab executable not found; install it with "
-                "`uv tool install google-colab-cli`"
+                "colab executable not found; follow the pinned setup in "
+                "scripts/colab/README.md"
             )
         if args.drive_mode == "rclone":
             if shutil.which("rclone") is None:
