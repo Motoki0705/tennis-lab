@@ -701,6 +701,29 @@ def test_unknown_job_or_option_fails_before_session_creation(
     assert _invocations(fake_colab) == []
 
 
+def test_missing_colab_points_to_pinned_setup_before_session_creation(
+    tmp_path: Path,
+) -> None:
+    empty_bin = tmp_path / "bin"
+    empty_bin.mkdir()
+    result = _run_cli(
+        tmp_path,
+        "run",
+        "court_detection",
+        "--run-id",
+        RUN_ID,
+        "--drive-mode",
+        "mount",
+        env={**os.environ, "PATH": str(empty_bin)},
+    )
+
+    assert result.returncode == 3
+    assert "colab executable not found" in result.stderr
+    assert "scripts/colab/README.md" in result.stderr
+    assert "uv tool install google-colab-cli" not in result.stderr
+    assert not (tmp_path / "state").exists()
+
+
 @pytest.mark.parametrize("source", ("git", "snapshot"))
 def test_dry_run_has_no_state_or_colab_side_effects(
     tmp_path: Path,

@@ -15,8 +15,19 @@ macOSです）。
 
 ```bash
 uv python install 3.12
-uv tool install --python 3.12 'google-colab-cli==0.6.0'
+uv tool install --python 3.12 \
+  --with 'jupyter-kernel-client==0.15.0' 'google-colab-cli==0.6.0'
 colab version
+```
+
+`google-colab-cli==0.6.0` が使う `jupyter_kernel_client.KernelClient` は依存先の
+1.xでは公開されていないため、Python 3.12で検証した `0.15.0` を併せて固定します。
+この固定がないと `colab version` やhelpが成功してもruntime接続時に失敗します。
+すでに依存を固定せずinstallしている場合は、tool専用環境を次のコマンドで修復します。
+
+```bash
+uv tool install --reinstall --python 3.12 \
+  --with 'jupyter-kernel-client==0.15.0' 'google-colab-cli==0.6.0'
 ```
 
 `colab version` が `Version: 0.6.0` 以上を返す必要があります。一方、このworkflowの
