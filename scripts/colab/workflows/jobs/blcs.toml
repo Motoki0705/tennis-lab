@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "blcs"
 description = "Train the standard BLCS multiview model."
 accelerator = "gpu"

@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "court_detection_mixed"
 description = "Train Court Detection on the fixed-ratio synthetic and real mix."
 accelerator = "gpu"
