@@ -47,6 +47,7 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
                 "seq_len_range": [1, 2],
                 "num_views_range": [1, 1],
                 "camera_mode": "first",
+                "camera_candidates": [0],
                 "lifecycle": {
                     "pack_to_query_slots": True,
                     "min_reuse_gap_frames": 0,
@@ -69,6 +70,8 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
     assert dataset.observation_tracking_config.max_distance == 0.1
     assert not hasattr(dataset, "randomize_slots_train")
 
+
+    assert dataset.config.camera_candidates == (0,)
 
 def _minimal_dataset_config() -> dict[str, object]:
     return {

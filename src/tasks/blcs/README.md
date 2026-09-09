@@ -122,3 +122,9 @@ multi-object generatorは1024-frame global timelineに3〜10個のsource rally s
 .venv/bin/python -m src.tasks.blcs.scripts.train \
   --config-name train_chunked model=single data=singleview_chunked_sequence
 ```
+
+Single-object camera-view data can be generated with
+`--config-name generate_dataset_camera_view_v2`. The shared
+[explicit camera candidate contract](../base/generate_dataset/README.md#explicit-camera-candidate-sets)
+describes the four-corner preset and `data.camera_candidates` for standard scene
+sampling. This generation recipe does not start BLCS training.

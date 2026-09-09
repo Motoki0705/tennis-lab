@@ -39,3 +39,6 @@ broadcast_look_at_height: 0.5   # look-at target Z above the court (m)
 broadcast_position_noise_radius: 1.0
 broadcast_look_at_xy_radius: 2.0
 broadcast_hfov_jitter_deg: 0.0
+
+# Explicit fixed-rig candidate positions; null keeps all six.
+fixed_camera_indices: null

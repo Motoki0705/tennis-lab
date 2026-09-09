@@ -28,6 +28,7 @@ from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
 )
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,
@@ -119,9 +120,9 @@ class SceneGenerator:
         """
         self.config = config
         self.device = torch.device(device)
-        self.court_keypoint_contract = (
-            PLCSCourtKeypointRuntimeConfig.from_config(config).contract
-        )
+        self.court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(
+            config
+        ).contract
 
         # Initialize motion sampler if not provided
         if motion_sampler is None:
@@ -145,6 +146,9 @@ class SceneGenerator:
             fixed_look_at=cast(
                 "tuple[float, float, float]",
                 tuple(float(v) for v in cam_cfg.fixed_look_at),
+            ),
+            fixed_camera_indices=camera_candidate_indices(
+                cam_cfg.get("fixed_camera_indices"), capacity=6
             ),
             fixed_baseline_clear_extra=float(cam_cfg.fixed_baseline_clear_extra),
             fixed_position_noise_radius=float(cam_cfg.fixed_position_noise_radius),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
@@ -557,3 +558,28 @@ def test_scene_dataset_config_preserves_explicit_contract() -> None:
     assert cfg.num_views_range == (1, 1)
     assert cfg.camera_mode == "random"
     assert cfg.crop_mode == "random"
+
+
+def test_explicit_camera_candidates_never_sample_outside_pool() -> None:
+    from types import SimpleNamespace
+
+    sampler = SimpleNamespace(
+        config=SimpleNamespace(
+            camera_candidates=(1, 3, 5, 7), num_views_range=(3, 4), camera_mode="random"
+        ),
+        rng=np.random.default_rng(42),
+        _validate_range=SceneDatasetBase._validate_range,
+    )
+    scene = Scene(path=Path("scene"), data={}, meta={}, num_frames=4, num_cameras=8)
+    subsets = [
+        SceneDatasetBase.select_cameras(cast(SceneDatasetBase, sampler), scene).indices
+        for _ in range(200)
+    ]
+    assert {len(s) for s in subsets} == {3, 4}
+    assert all(set(s) <= {1, 3, 5, 7} for s in subsets)
+    assert {
+        tuple(sorted(set((1, 3, 5, 7)) - set(s))) for s in subsets if len(s) == 3
+    } == {(1,), (3,), (5,), (7,)}
+    sampler.config.camera_candidates = (1, 3)
+    with pytest.raises(ValueError, match="cannot provide"):
+        SceneDatasetBase.select_cameras(cast(SceneDatasetBase, sampler), scene)

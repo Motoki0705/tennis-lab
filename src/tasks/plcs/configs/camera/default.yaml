@@ -19,3 +19,6 @@ broadcast_hfov_jitter_deg: 2.0
 broadcast_setback_range: null
 broadcast_height_range: null
 broadcast_court_width_frac_range: null
+
+# Explicit fixed-rig candidate positions; null keeps all six.
+fixed_camera_indices: null
