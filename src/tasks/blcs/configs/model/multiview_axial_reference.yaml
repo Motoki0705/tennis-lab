@@ -4,7 +4,7 @@ defaults:
 name: blcs_multiview_axial_reference
 max_seq_len: 256
 max_num_cameras: 4
-num_court_tokens: 20
+num_court_tokens: 14
 rope_dim: 16
 predict_velocity: false
 target_frame_contract: reference_camera_court_rzpi_v1
