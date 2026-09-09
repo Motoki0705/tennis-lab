@@ -1899,6 +1899,33 @@ def test_keep_on_failure_retains_session_but_always_removes_rclone_secret(
     assert metadata["session_state"] == "retained-after-failure"
 
 
+@pytest.mark.parametrize(
+    "retained_state", ["retained-after-failure", "retained-status-unknown"]
+)
+def test_run_cleanup_does_not_overwrite_a_concurrent_stop(
+    tmp_path: Path, retained_state: str
+) -> None:
+    from scripts.colab.workflow import cli
+
+    path = tmp_path / "local.json"
+    stopped = {
+        "session_state": "stopped",
+        "updated_at": "2026-09-09T00:00:00+00:00",
+        "session": "retained",
+    }
+    path.write_text(json.dumps(stopped), encoding="utf-8")
+    stale_run_metadata = {
+        "session_state": "active",
+        "updated_at": "2026-09-08T00:00:00+00:00",
+        "session": "retained",
+    }
+
+    cli._update_metadata(path, stale_run_metadata, retained_state)
+
+    assert json.loads(path.read_text(encoding="utf-8")) == stopped
+    assert stale_run_metadata == stopped
+
+
 def test_resume_reuses_request_digest_increments_attempt_and_stops_on_success(
     tmp_path: Path, fake_colab: dict[str, Any]
 ) -> None:

@@ -1250,6 +1250,15 @@ def _resolve_rclone_config(value: str | None, *, required: bool) -> Path | None:
 
 
 def _update_metadata(path: Path, metadata: dict[str, Any], state: str) -> None:
+    if (
+        state in {"retained-after-failure", "retained-status-unknown"}
+        and path.is_file()
+    ):
+        current = read_json(path)
+        if current.get("session_state") == "stopped":
+            metadata.clear()
+            metadata.update(current)
+            return
     metadata["session_state"] = state
     metadata["updated_at"] = _utc_now()
     atomic_write_json(path, metadata)
