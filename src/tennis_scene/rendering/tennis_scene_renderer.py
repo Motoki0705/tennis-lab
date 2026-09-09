@@ -224,6 +224,8 @@ class TennisSceneRenderer:
         missing: list[str] = []
         if scene.smpl_vertices_local is None:
             missing.append("smpl_vertices_local")
+        if scene.smpl_global_orient is None:
+            missing.append("smpl_global_orient")
         if missing:
             missing_str = ", ".join(missing)
             raise RuntimeError(

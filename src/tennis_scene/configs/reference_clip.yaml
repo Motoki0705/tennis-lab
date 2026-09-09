@@ -1,0 +1,26 @@
+clip_dir: /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/clips/meiji_3cam/clip_000
+output_dir: outputs/meiji_clip000
+device: cuda:0
+stage: observe
+reference_camera: cam0
+# Confirmed from the same physical players and court in the input preview.
+view_half_turns: [false, false, true]
+people:
+  dino_checkpoint: /home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth
+  dino_repository: /home/kamimura/projects/tennis-lab/third_party/DINO
+  vitpose_checkpoint: /home/kamimura/projects/tennis-lab/ckpt/vitpose/vitpose-h-multi-coco.pth
+  confidence: 0.3
+  short_side: 800
+  max_long_side: 1333
+  batch_size: 8
+plcs_checkpoint: /home/kamimura/projects/tennis-lab/ckpt/plcs/plcs-axial-reference-corners-v3-4-t128-seed42-epoch47.ckpt
+blcs_checkpoint: /home/kamimura/projects/tennis-lab/ckpt/blcs/blcs-axial-reference-kp14-corners-v3-4-t128-seed42-best.ckpt
+window_size: 128
+window_overlap: 64
+sample_stride: 2
+pose_visibility_threshold: 0.15
+hydra:
+  run:
+    dir: ${output_dir}/hydra/${now:%Y-%m-%d_%H-%M-%S}
+  job:
+    chdir: false

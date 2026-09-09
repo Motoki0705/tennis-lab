@@ -271,6 +271,11 @@ def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
             f"calls, found {replacement_count} in {cuda_source}"
         )
     generated_cuda_source.write_text(contents.replace(_OLD_DISPATCH, _NEW_DISPATCH))
+    # DeprecatedTypeProperties no longer has a usable backend in current PyTorch.
+    # Patch only staged upstream files; the git submodule remains pristine.
+    for relative in ("cuda/ms_deform_attn_cuda.cu", "ms_deform_attn.h"):
+        staged = destination / relative
+        staged.write_text(staged.read_text().replace(".type().is_cuda()", ".is_cuda()"))
     return destination
 
 

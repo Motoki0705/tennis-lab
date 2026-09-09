@@ -53,9 +53,9 @@ class SceneResult:
     player_position: NDArray[np.float32]  # (P, T, 3)
     player_yaw: NDArray[np.float32]  # (P, T)
 
-    smpl_body_pose: NDArray[np.float32]  # (P, T, 63)
-    smpl_global_orient: NDArray[np.float32]  # (P, T, 3)
-    smpl_betas: NDArray[np.float32]  # (P, 10)
+    smpl_body_pose: NDArray[np.float32] | None = None  # (P, T, 63)
+    smpl_global_orient: NDArray[np.float32] | None = None  # (P, T, 3)
+    smpl_betas: NDArray[np.float32] | None = None  # (P, 10)
     smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
     ball_uv: NDArray[np.float32] | None = None  # (N, T, 2)
@@ -67,6 +67,10 @@ class SceneResult:
 
     player_track_ids: NDArray[np.int32] | None = None
     player_kp_3d: NDArray[np.float32] | None = None  # (P, T, J, 3)
+
+    player_canonical_pose: NDArray[np.float32] | None = (
+        None  # (P,T,17,3), root-relative court Z-up
+    )
 
     metadata: dict[str, Any] = field(default_factory=dict)
 

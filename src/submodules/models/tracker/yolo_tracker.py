@@ -47,6 +47,10 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
         self._yolo = None
 
     def _predict_impl(self, request: TrackRequest) -> TrackResult:
+        if request.footpoint_polygon_px is not None:
+            raise ValueError(
+                "footpoint_polygon_px is supported only by DinoPersonTracker"
+            )
         video_path = str(request.video_path)
         num_frames = probe_video_info(video_path).frame_count
 
