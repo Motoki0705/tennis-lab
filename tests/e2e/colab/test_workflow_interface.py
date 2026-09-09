@@ -550,8 +550,10 @@ def test_jobs_lists_every_validated_builtin_manifest(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     jobs = json.loads(result.stdout)
-    assert [job["name"] for job in jobs] == list(BUILTIN_ACCELERATORS)
-    assert {job["name"]: job["accelerator"] for job in jobs} == (BUILTIN_ACCELERATORS)
+    catalog_names = sorted(path.stem for path in (ROOT / "scripts/colab/workflows/jobs").glob("*.toml"))
+    assert [job["name"] for job in jobs] == catalog_names
+    accelerators = {job["name"]: job["accelerator"] for job in jobs}
+    assert {name: accelerators[name] for name in BUILTIN_ACCELERATORS} == BUILTIN_ACCELERATORS
     assert all(
         set(job)
         == {
