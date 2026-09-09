@@ -1,6 +1,6 @@
 ---
 name: knowledge-control
-description: Use this skill to record what a training/experiment run taught us into the shared, git-managed knowledge graph under knowledge/, and to read that graph when deciding what to try next. One node = one run; nodes can be grouped; edges are directed (parent->child). Each provider session (Claude/Codex/Gemini) registers its own runs here so findings stop being scattered across chat logs and issue comments.
+description: Use this skill to record what a training/experiment run taught us into the shared, git-managed knowledge graph under knowledge/, and to read that graph when deciding what to try next. One node = one run; nodes can be grouped; edges are directed (parent to child). Each provider session (Claude/Codex/Gemini) registers its own runs here so findings stop being scattered across chat logs and issue comments.
 ---
 
 # Knowledge Control
@@ -134,8 +134,7 @@ frontmatter の主要 metrics の読み方。`curves.png` の収束の質（過�
   issue/tag/provider).
 - Or read `knowledge/nodes/*.md` directly.
 - When proposing the next experiment, ground it in existing nodes: cite parent
-  run ids and the 考察 that motivates the follow-up. When that next step is filed
-  as a GitHub issue, use the **gh-issue** skill.
+  run ids and the 考察 that motivates the follow-up.
 
 ## Conventions
 
