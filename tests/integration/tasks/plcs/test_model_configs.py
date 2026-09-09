@@ -143,19 +143,19 @@ def test_tracking_query_profile_composes_and_validates() -> None:
         )
 
     assert config.model.name == "plcs_track_query"
-    assert config.model.hidden_dim == 64
-    assert config.model.num_heads == 4
-    assert config.model.num_stages == 4
-    assert config.model.ffn_dim == 128
-    assert config.model.rope_dim == 16
-    assert config.model.dropout == 0.0
+    assert config.model.hidden_dim == 512
+    assert config.model.num_heads == 8
+    assert config.model.num_stages == 12
+    assert config.model.ffn_dim == 1408
+    assert config.model.rope_dim == 32
+    assert config.model.dropout == 0.1
     assert config.model.mhc.coefficient_dim == 64
     assert config.model.cswa.compression_ratio == 4
 
     parsed = PLCSModelConfig.from_mapping(config.model)
     assert parsed.name == "plcs_track_query"
-    assert parsed.integer("hidden_dim") == 64
-    assert parsed.integer("num_stages") == 4
+    assert parsed.integer("hidden_dim") == 512
+    assert parsed.integer("num_stages") == 12
 
 
 def test_reference_profile_composes_from_canonical_architecture() -> None:
@@ -177,8 +177,8 @@ def test_reference_profile_composes_from_canonical_architecture() -> None:
         "time_camera_reference_selector_v1"
     )
     assert runtime.model.string("reference_selector_mode") == "reference"
-    assert runtime.model.integer("hidden_dim") == 64
-    assert runtime.model.integer("num_stages") == 4
+    assert runtime.model.integer("hidden_dim") == 512
+    assert runtime.model.integer("num_stages") == 12
     assert "role_rope_enabled" not in runtime.model.values
 
 
@@ -203,15 +203,16 @@ def test_reference_rejects_rope_dim_four_and_accepts_dim_six() -> None:
 
 
 @pytest.mark.parametrize(
-    ("model_profile", "court_profile"),
+    ("model_profile", "court_profile", "expected_message"),
     [
-        ("tracking_query_reference", "physical_v1"),
-        ("tracking_query", "camera_view_v2"),
+        ("tracking_query_reference", "physical_v1", "Reference PLCS models require"),
+        ("tracking_query", "camera_view_v2", "track-query models require"),
     ],
 )
 def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
     model_profile: str,
     court_profile: str,
+    expected_message: str,
 ) -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
@@ -221,7 +222,7 @@ def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
                 f"court_keypoints={court_profile}",
             ],
         )
-    with pytest.raises(SemanticConfigurationError, match="track-query models require"):
+    with pytest.raises(SemanticConfigurationError, match=expected_message):
         PLCSTrainingConfig.from_config(config)
 
 
