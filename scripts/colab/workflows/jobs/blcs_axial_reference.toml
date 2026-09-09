@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "blcs_axial_reference"
 description = "Train BLCS axial reference on the verified four-corner v2 dataset."
 accelerator = "gpu"
