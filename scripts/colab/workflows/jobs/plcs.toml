@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "plcs"
 description = "Train the standard PLCS multiview model."
 accelerator = "gpu"

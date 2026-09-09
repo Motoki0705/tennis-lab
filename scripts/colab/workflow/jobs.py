@@ -24,6 +24,7 @@ TOP_LEVEL_FIELDS = frozenset(
         "command",
         "inputs",
         "outputs",
+        "output_storage",
     }
 )
 ACCELERATORS = frozenset({"cpu", "gpu"})
@@ -59,6 +60,7 @@ class Job:
     default_args: tuple[str, ...]
     inputs: tuple[InputMapping, ...]
     outputs: tuple[str, ...]
+    output_storage: str
     definition_path: Path
     definition_digest: str
 
@@ -108,7 +110,12 @@ def load_job(path: Path) -> Job:
         raise WorkflowError(f"cannot load job definition {path}: {error}") from error
     if not isinstance(value, dict):
         raise WorkflowError(f"job definition must be a TOML table: {path}")
-    _expect_fields(value, TOP_LEVEL_FIELDS, TOP_LEVEL_FIELDS, str(path))
+    _expect_fields(
+        value, TOP_LEVEL_FIELDS, TOP_LEVEL_FIELDS - {"output_storage"}, str(path)
+    )
+    output_storage = value.get("output_storage", "local")
+    if output_storage not in {"local", "drive"}:
+        raise WorkflowError("output_storage must be local or drive")
 
     if value["schema_version"] != SCHEMA_VERSION:
         raise WorkflowError(
@@ -268,6 +275,14 @@ def load_job(path: Path) -> Job:
                 f"{destination}, {overlaps[0]}"
             )
 
+    if output_storage == "drive" and (
+        default_args.count("paths.output_root=outputs/colab") != 1
+        or any(not item.startswith("outputs/colab/") for item in outputs)
+    ):
+        raise WorkflowError(
+            "Drive outputs require paths.output_root=outputs/colab and outputs below it"
+        )
+
     return Job(
         name=name,
         description=description.strip(),
@@ -281,6 +296,7 @@ def load_job(path: Path) -> Job:
         default_args=default_args,
         inputs=tuple(inputs),
         outputs=outputs,
+        output_storage=output_storage,
         definition_path=path.resolve(),
         definition_digest=hashlib.sha256(raw_bytes).hexdigest(),
     )

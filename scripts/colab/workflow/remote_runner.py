@@ -10,12 +10,17 @@ import os
 import platform
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
+import time
 import traceback
+from collections import deque
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
@@ -445,7 +450,10 @@ def _validate_job(value: Any) -> dict[str, Any]:
             "outputs",
         }
     )
-    _expect_fields(job, fields, fields, "job")
+    _expect_fields(job, fields | {"output_storage"}, fields, "job")
+    storage = job.get("output_storage", "local")
+    if storage not in {"local", "drive"}:
+        raise RemoteWorkflowError("job.output_storage must be local or drive")
     if not isinstance(job["name"], str) or not NAME_RE.fullmatch(job["name"]):
         raise RemoteWorkflowError("job.name is invalid")
     if not isinstance(job["definition_digest"], str) or not SHA256_RE.fullmatch(
@@ -519,6 +527,11 @@ def _validate_job(value: Any) -> dict[str, Any]:
         for index, output in enumerate(raw_outputs)
     ]
     _validate_mapping_paths(inputs, outputs)
+    if storage == "drive" and (
+        argv.count("paths.output_root=outputs/colab") != 1
+        or any(not item.startswith("outputs/colab/") for item in outputs)
+    ):
+        raise RemoteWorkflowError("Drive outputs require the reserved output root")
     return job
 
 
@@ -1357,9 +1370,161 @@ def _stage_inputs(
     return manifest
 
 
+def _live_root(request: dict[str, Any]) -> Path:
+    if request["drive"]["mode"] != "mount":
+        raise RemoteWorkflowError("direct Drive output requires --drive-mode mount")
+    return _child(
+        _mount_drive_root(request), f"colab-live/{request['run_id']}", "live output"
+    )
+
+
+def _output_base(request: dict[str, Any], repo: Path) -> Path:
+    return (
+        _live_root(request)
+        if request["job"].get("output_storage", "local") == "drive"
+        else repo
+    )
+
+
+def _prepare_live_output(request: dict[str, Any]) -> Path | None:
+    if request["job"].get("output_storage", "local") != "drive":
+        return None
+    root = _live_root(request)
+    marker = _child(root, "request.json", "live request")
+    if root.exists():
+        if not marker.is_file() or _read_json_object(marker, "live request") != request:
+            raise RemoteWorkflowError("Drive live output belongs to another request")
+    else:
+        root.mkdir(parents=True)
+        _atomic_json(marker, request)
+    return root
+
+
+def _run_monitored_job(
+    request: dict[str, Any],
+    repo: Path,
+    workspace: Path,
+    status: dict[str, Any],
+    environment: dict[str, str],
+    live_root: Path | None,
+) -> None:
+    """Stream job output and persist bounded progress without using the busy kernel."""
+    argv = list(request["job"]["argv"])
+    monitor_root = live_root if live_root is not None else workspace
+    if live_root is not None:
+        output_root = _child(live_root, "outputs/colab", "training output root")
+        output_root.mkdir(parents=True, exist_ok=True)
+        argv = [
+            f"paths.output_root={output_root}"
+            if arg == "paths.output_root=outputs/colab"
+            else arg
+            for arg in argv
+        ]
+    environment["PYTHONUNBUFFERED"] = "1"
+    environment["TENNIS_LAB_COLAB_PROGRESS_PATH"] = str(
+        monitor_root / "training-progress.json"
+    )
+    # Each attempt starts with its own observation; old metrics must not appear current.
+    (monitor_root / "training-progress.json").unlink(missing_ok=True)
+    lines: deque[str] = deque(maxlen=80)
+    lock = threading.Lock()
+    errors: list[BaseException] = []
+    started = time.monotonic()
+    with (monitor_root / f"attempt-{status['attempt']}.log").open(
+        "a", encoding="utf-8"
+    ) as log:
+        process = subprocess.Popen(
+            argv,
+            cwd=repo,
+            env=environment,
+            text=True,
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+        def pump() -> None:
+            try:
+                assert process.stdout is not None
+                for line in process.stdout:
+                    log.write(line)
+                    log.flush()
+                    with lock:
+                        lines.append(line[-4000:].rstrip())
+                    print(line, end="", flush=True)
+            except BaseException as error:
+                errors.append(error)
+
+        reader = threading.Thread(target=pump, daemon=True)
+        reader.start()
+
+        def publish(state: str) -> None:
+            training_path = monitor_root / "training-progress.json"
+            training = (
+                _read_json_object(training_path, "training progress")
+                if training_path.is_file()
+                else None
+            )
+            with lock:
+                tail = list(lines)
+            progress = {
+                "run_id": request["run_id"],
+                "request_digest": request["request_digest"],
+                "attempt": status["attempt"],
+                "state": state,
+                "phase": "running_job",
+                "updated_at": _utc_now(),
+                "elapsed_seconds": round(time.monotonic() - started, 1),
+                "pid": process.pid,
+                "returncode": process.poll(),
+                "training": training,
+                "output_root": str(_output_base(request, repo)),
+                "argv": argv,
+                "log_tail": tail,
+            }
+            _atomic_json(workspace / "progress.json", progress)
+            if live_root is not None:
+                _atomic_json(live_root / "progress.json", progress)
+                _atomic_json(live_root / "status.json", status)
+
+        try:
+            while process.poll() is None:
+                if errors:
+                    raise RemoteWorkflowError(f"job log writer failed: {errors[0]}")
+                if time.monotonic() - started > request["job"]["timeout_seconds"]:
+                    raise RemoteWorkflowError("job exceeded configured timeout")
+                publish("running")
+                with suppress(subprocess.TimeoutExpired):
+                    process.wait(timeout=5)
+            reader.join(timeout=5)
+            if errors:
+                raise RemoteWorkflowError(f"job log writer failed: {errors[0]}")
+            publish("job_succeeded" if process.returncode == 0 else "failed")
+            if process.returncode != 0:
+                raise RemoteWorkflowError(
+                    f"job failed with exit code {process.returncode}; see attempt log"
+                )
+        except BaseException:
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
+            reader.join(timeout=5)
+            publish("failed")
+            raise
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
+
+
 def _collect_outputs(
     request: dict[str, Any], repo: Path, bundle: Path
 ) -> tuple[list[dict[str, Any]], Path]:
+    repo = _output_base(request, repo)
     output_paths: list[Path] = []
     manifest: list[dict[str, Any]] = []
     for index, relative_value in enumerate(request["job"]["outputs"]):
@@ -1512,6 +1677,29 @@ def _write_status(path: Path, status: dict[str, Any], step: str) -> None:
     status["step"] = step
     status["updated_at"] = _utc_now()
     _atomic_json(path, status)
+    progress_path = path.parent / "progress.json"
+    progress = (
+        _read_json_object(progress_path, "progress") if progress_path.exists() else {}
+    )
+    progress.update(
+        {
+            "run_id": status["run_id"],
+            "request_digest": status["request_digest"],
+            "attempt": status["attempt"],
+            "state": status["state"],
+            "phase": step,
+            "updated_at": status["updated_at"],
+        }
+    )
+    _atomic_json(progress_path, progress)
+    request_path = path.parent / "request.json"
+    if request_path.is_file():
+        request = _read_json_object(request_path, "request")
+        if request["job"].get("output_storage", "local") == "drive":
+            root = _live_root(request)
+            if (root / "request.json").is_file():
+                _atomic_json(root / "status.json", status)
+                _atomic_json(root / "progress.json", progress)
 
 
 def _validate_manifest_entries(value: Any, label: str) -> list[dict[str, Any]]:
@@ -1884,7 +2072,9 @@ def _execute_action() -> int:
     status = _initial_status(request, attempt)
     _write_status(status_path, status, "preparing_source")
     config_path: Path | None = None
+    live_root: Path | None = None
     try:
+        live_root = _prepare_live_output(request)
         if request["drive"]["mode"] == "rclone":
             configured = globals().get("TENNIS_COLAB_RCLONE_CONFIG", "")
             if not isinstance(configured, str):
@@ -1931,17 +2121,7 @@ def _execute_action() -> int:
         environment = os.environ.copy()
         environment["TENNIS_LAB_COLAB_RUN_ID"] = request["run_id"]
         environment["PATH"] = f"{repo / '.venv/bin'}:{environment.get('PATH', '')}"
-        try:
-            _run(
-                list(request["job"]["argv"]),
-                cwd=repo,
-                timeout=request["job"]["timeout_seconds"],
-                env=environment,
-            )
-        except subprocess.TimeoutExpired as error:
-            raise RemoteWorkflowError(
-                f"job exceeded timeout of {request['job']['timeout_seconds']} seconds"
-            ) from error
+        _run_monitored_job(request, repo, workspace, status, environment, live_root)
         _write_status(status_path, status, "collecting_outputs")
         bundle = workspace / "bundle"
         if bundle.exists():
@@ -1963,7 +2143,7 @@ def _execute_action() -> int:
         _atomic_json(bundle / "status.json", completed_status)
         _atomic_json(bundle / "manifest.json", _bundle_manifest(bundle))
         _publish(request, bundle, attempt, config_path)
-        _atomic_json(status_path, completed_status)
+        _write_status(status_path, completed_status, "completed")
         print(f"[tennis-colab] completed run {request['run_id']}", flush=True)
         return 0
     except BaseException as error:
@@ -1981,6 +2161,10 @@ def _execute_action() -> int:
     finally:
         if config_path is not None:
             config_path.unlink(missing_ok=True)
+        if live_root is not None:
+            _atomic_json(
+                live_root / "status.json", _read_json_object(status_path, "status")
+            )
 
 
 def main() -> int:
