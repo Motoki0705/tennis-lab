@@ -91,6 +91,20 @@ def test_drive_live_directory_rejects_other_request(
         remote._prepare_live_output(request)
 
 
+def test_drive_output_rejects_an_unmounted_local_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = request_for(tmp_path / "train.py")
+    mountpoint = tmp_path / "drive"
+    (mountpoint / "MyDrive").mkdir(parents=True)
+    monkeypatch.setattr(remote, "DRIVE_MOUNTPOINT", mountpoint)
+
+    with pytest.raises(remote.RemoteWorkflowError, match="not mounted"):
+        remote._prepare_live_output(request)
+
+    assert not (mountpoint / "MyDrive" / "tennis_lab").exists()
+
+
 def test_training_catalog_requires_explicit_drive_output() -> None:
     root = Path(__file__).parents[3]
     for path in (root / "scripts/colab/workflows/jobs").glob("*.toml"):
