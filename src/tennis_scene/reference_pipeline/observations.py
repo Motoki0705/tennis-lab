@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from omegaconf import DictConfig
 
+from src.tennis_scene.configuration import ReferenceClipPaths
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionResult
 from src.utils.schema.court import CourtConfig, court_keypoints_3d
 
@@ -141,7 +142,9 @@ def court_homographies(clip_dir: Path) -> tuple[np.ndarray, np.ndarray]:
     return kp, np.asarray(matrices)
 
 
-def observe_people(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
+def observe_people(
+    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path
+) -> None:
     """Run DINO/BoT-SORT within the playing area, then ViTPose; cache each camera."""
     import torch
 
@@ -186,8 +189,8 @@ def observe_people(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
             roi_xy = np.array([[-7, -18], [7, -18], [7, 18], [-7, 18]], np.float32)
             polygon = cv2.perspectiveTransform(roi_xy[None], h)[0]
             tracker = DinoPersonTracker(
-                Path(cfg.people.dino_checkpoint),
-                Path(cfg.people.dino_repository),
+                paths.dino_checkpoint,
+                paths.dino_repository,
                 device=cfg.device,
                 confidence=float(cfg.people.confidence),
                 short_side=int(cfg.people.short_side),
@@ -210,7 +213,7 @@ def observe_people(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
             clip["num_frames"],
         )
         pose = ViTPosePose2D(
-            Path(cfg.people.vitpose_checkpoint),
+            paths.vitpose_checkpoint,
             device=cfg.device,
             flip_test=True,
             batch_size=int(cfg.people.batch_size),
