@@ -1,0 +1,45 @@
+schema_version = 1
+name = "tennis_scene_generate_dataset"
+description = "Generate incremental headless tennis-scene pseudo annotations."
+accelerator = "gpu"
+timeout_seconds = 172800
+setup = ["base", "submodules", "cuda_ops"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.checkpoint_root",
+  "paths.artifact_root",
+  "paths.output_root",
+  "paths.external_asset_root",
+  "dataset_directory",
+  "pipeline_overrides",
+]
+outputs = ["data/tennis_scene_dataset"]
+
+[command]
+module = "src.tennis_scene.scripts.generate_dataset"
+args = [
+  "paths.artifact_root=data",
+  "paths.output_root=outputs/colab",
+  "dataset_directory=tennis_scene_dataset",
+  "pipeline_overrides=[\"court_kp.mode=model\",\"court_kp.save_result=false\",\"gvhmr.save_result=false\",\"player_association.save_result=false\",\"player_association.source=load\",\"player_association.load_path=tennis_scene/player_association_result.json\",\"ball_detection.save_result=false\",\"plcs.save_result=false\",\"blcs.save_result=false\"]",
+]
+
+[[inputs]]
+source = "data/tennis_scene_dataset"
+destination = "data/tennis_scene_dataset"
+writable = true
+
+[[inputs]]
+source = "data/tennis_scene/player_association_result.json"
+destination = "data/tennis_scene/player_association_result.json"
+writable = false
+
+[[inputs]]
+source = "ckpt"
+destination = "ckpt"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false
