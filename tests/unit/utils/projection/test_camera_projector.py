@@ -176,9 +176,7 @@ class TestCameraProjector:
 
 class TestCameraDataclass:
     def test_is_constructible(self) -> None:
-        cam = Camera(
-            C=torch.zeros(3), R=torch.eye(3), f=1.0, cx=0.5, cy=0.5, w=2, h=2
-        )
+        cam = Camera(C=torch.zeros(3), R=torch.eye(3), f=1.0, cx=0.5, cy=0.5, w=2, h=2)
         assert cam.f == 1.0
 
 
@@ -356,6 +354,7 @@ class TestBroadcastRanges:
         assert cfg.broadcast_height_range == (5.0, 15.0)
         assert cfg.broadcast_court_width_frac_range == (0.5, 0.9)
 
+
 class TestCamerasDispatch:
     def test_fixed_layout_returns_six(self) -> None:
         cfg = CameraConfig(
@@ -393,3 +392,23 @@ class TestCameraConfigContract:
         assert cfg.layout == "broadcast"
         assert cfg.image_size == (640, 360)
         assert cfg.broadcast_height == 9.0
+
+
+def test_fixed_camera_candidates_preserve_requested_geometry_and_order() -> None:
+    all_cameras = CameraProjector(CameraConfig()).cameras()
+    subset = CameraProjector(CameraConfig(fixed_camera_indices=(3, 0, 2))).cameras()
+    assert len(subset) == 3
+    for camera, index in zip(subset, (3, 0, 2), strict=True):
+        torch.testing.assert_close(camera.C, all_cameras[index].C)
+        torch.testing.assert_close(camera.R, all_cameras[index].R)
+
+
+@pytest.mark.parametrize("indices", [(), (0, 0), (-1, 2), (0, 6), (True, 2)])
+def test_fixed_camera_candidates_reject_invalid_sets(indices: tuple[int, ...]) -> None:
+    with pytest.raises(ValueError, match="camera candidate"):
+        CameraProjector(CameraConfig(fixed_camera_indices=indices)).cameras()
+
+
+def test_broadcast_does_not_silently_ignore_fixed_candidates() -> None:
+    with pytest.raises(ValueError, match="requires the fixed camera layout"):
+        CameraProjector(CameraConfig(layout=BROADCAST_LAYOUT, fixed_camera_indices=(0, 1))).cameras()

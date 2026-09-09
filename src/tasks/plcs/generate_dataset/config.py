@@ -63,6 +63,7 @@ class PLCSGenerationConfig:
     train_ratio: float
     val_ratio: float
     test_ratio: float
+    split_group: str
 
     OUTPUT_ROLE: ClassVar[PathRole] = PathRole.DATA
 
@@ -72,9 +73,7 @@ class PLCSGenerationConfig:
             raise ConfigurationTypeError(
                 "PLCS generation boundary requires DictConfig."
             )
-        components = configuration_contracts.PLCSGenerationComponents.from_config(
-            value
-        )
+        components = configuration_contracts.PLCSGenerationComponents.from_config(value)
         path_config = components.paths
         root = as_config_mapping(
             OmegaConf.to_container(value, resolve=True), path="configuration"
@@ -103,9 +102,19 @@ class PLCSGenerationConfig:
                 "train_ratio",
                 "val_ratio",
                 "test_ratio",
+                "split_group",
             },
             path="run",
         )
+        split_group = run.get("split_group", "scene")
+        if split_group not in {"scene", "motion_source"}:
+            raise SemanticConfigurationError(
+                "run.split_group must be scene or motion_source."
+            )
+        if split_group == "motion_source" and components.mode != "single_object":
+            raise SemanticConfigurationError(
+                "motion_source splits require single_object generation."
+            )
         mode = components.mode
         output_relative = cast(
             "str", require_config_value(run, "output_dir", str, path="run")
@@ -175,6 +184,7 @@ class PLCSGenerationConfig:
             train_ratio=ratios[0],
             val_ratio=ratios[1],
             test_ratio=ratios[2],
+            split_group=split_group,
         )
 
 

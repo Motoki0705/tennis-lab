@@ -173,3 +173,32 @@ sorted/first camera. The selected ID, local index, complete ID table,
 forward/inverse transforms, target-frame marker, RoPE marker, and selector mode
 are serialized with predictions so downstream consumers can restore physical
 court coordinates exactly.
+
+## Explicit camera candidate sets
+
+PLCS and BLCS generation accept `camera.fixed_camera_indices`: an ordered,
+nonempty list of unique fixed-rig positions (0–5), or `null` for the full rig.
+Positions 0–3 are the fence corners in order `(-x,+y)`, `(+x,+y)`, `(+x,-y)`,
+`(-x,-y)`; positions 4–5 are the baseline midpoints. `camera=corners` selects
+`[0,1,2,3]`. An explicit fixed-rig set is invalid for the broadcast layout.
+Writers assign local stable IDs in the generated order: `camera_0`, … for
+PLCS and `cam_0`, … for BLCS. The saved generation config records the source
+rig positions.
+
+Scene and tracking datasets independently accept `data.camera_candidates`: an
+ordered list of local indices in the **saved** rig, or `null` for all saved
+cameras. `data.num_views_range` samples without replacement within this set.
+Duplicate, negative, out-of-range and undersized explicit sets fail; a fixed
+evaluation reference outside the set also fails. This selection never implies a reference camera:
+reference selection follows the stable-ID contract above.
+
+`generate_dataset_camera_view_v2` is the single-object four-corner generation
+recipe in both tasks. It writes `data/{plcs,blcs}/single_object_camera_view_v2`
+using the shared metadata contract, with 10,000 scenes per task. PLCS uses
+`run.split_group=motion_source` to keep all scenes from one AMASS source file
+in one split; realized scene counts approximate the requested 80/10/10 ratio.
+
+```bash
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
+.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
+```
