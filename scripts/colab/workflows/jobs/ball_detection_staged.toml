@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "ball_detection_staged"
 description = "Train the default TrackNet-only staged ball-detection phase."
 accelerator = "gpu"

@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "ball_detection"
 description = "Train the standard TrackNet ball detector."
 accelerator = "gpu"
