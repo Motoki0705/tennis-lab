@@ -1382,6 +1382,11 @@ def _dry_run_plan(
 
     commands.extend(
         [
+            *(
+                [exec_command("verify-drive", 60)]
+                if request["drive"]["mode"] == "mount"
+                else []
+            ),
             exec_command("prepare", 120),
             [
                 *_colab_prefix(config_path),
@@ -1558,6 +1563,9 @@ def command_run(args: argparse.Namespace) -> int:
             _invoke(
                 config_path,
                 ["drivemount", "-s", session, "/content/drive"],
+            )
+            _exec_remote(
+                repo_root, config_path, session, run_id, "verify-drive", timeout=60
             )
         _exec_remote(repo_root, config_path, session, run_id, "prepare", timeout=120)
         _upload(config_path, session, run_dir / "request.json", remote["request"])
@@ -1933,6 +1941,14 @@ def command_resume(args: argparse.Namespace) -> int:
             _invoke(
                 config_path,
                 ["drivemount", "-s", session, "/content/drive"],
+            )
+            _exec_remote(
+                repo_root,
+                config_path,
+                session,
+                request["run_id"],
+                "verify-drive",
+                timeout=60,
             )
         if rclone_config is not None:
             remote_secret_uploaded = True

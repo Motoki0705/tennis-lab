@@ -1269,10 +1269,27 @@ def _rclone_path(request: dict[str, Any], relative: str) -> str:
     return f"{drive['remote']}:{path}"
 
 
+DRIVE_MOUNTPOINT = Path("/content/drive")
+
+
+def _require_drive_mount() -> Path:
+    if not DRIVE_MOUNTPOINT.is_mount():
+        raise RemoteWorkflowError(
+            "Google Drive is not mounted at /content/drive; refusing to use VM-local storage"
+        )
+    my_drive = DRIVE_MOUNTPOINT / "MyDrive"
+    if not my_drive.is_dir():
+        raise RemoteWorkflowError("mounted Google Drive has no MyDrive directory")
+    return my_drive
+
+
 def _mount_drive_root(request: dict[str, Any]) -> Path:
-    return _child(
-        Path("/content/drive/MyDrive"), request["drive"]["root"], "drive.root"
-    )
+    return _child(_require_drive_mount(), request["drive"]["root"], "drive.root")
+
+
+def _verify_drive_mount_action() -> None:
+    _require_drive_mount()
+    print("[tennis-colab] verified Google Drive mount", flush=True)
 
 
 def _copy_rclone_input(
@@ -2173,6 +2190,9 @@ def main() -> int:
     action = globals().get("TENNIS_COLAB_ACTION", "")
     if action == "prepare":
         _prepare_action()
+        return 0
+    elif action == "verify-drive":
+        _verify_drive_mount_action()
         return 0
     elif action == "cleanup-secret":
         _cleanup_secret()
