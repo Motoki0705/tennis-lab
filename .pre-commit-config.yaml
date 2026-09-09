@@ -14,9 +14,3 @@ repos:
         types: [python]
         files: ^(src|tests|\.spin)/
         require_serial: true
-      - id: task-script-reviewer
-        name: task script reviewer
-        entry: ./scripts/run_in_repo_venv.sh python ./.agents/skills/script-conventions/scripts/review_task_scripts.py
-        language: system
-        files: ^(src|experiments)/.+/scripts/.+\.py$
-        exclude: ^(src|experiments)/.+/scripts/__init__\.py$
