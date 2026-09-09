@@ -1,5 +1,5 @@
 """
-Launch the multi-camera clip studio GUI with one explicit project-file contract.
+Launch the local browser clip studio with one explicit project-file contract.
 
 Usage:
     python -m src.tennis_scene.scripts.clip_studio project_path=tennis_scene/project.json
@@ -31,9 +31,10 @@ register_boundary_validator(_BOUNDARY, validate_clip_studio_boundary)
 )
 def main(cfg: DictConfig) -> int:
     """Validate the full GUI boundary, then load or create one project."""
-    from src.tennis_scene.clip_studio.app import ClipStudioApp, ClipStudioAppConfig
-    from src.tennis_scene.clip_studio.export import ExportSettings
+    import uvicorn
+
     from src.tennis_scene.clip_studio.project import ClipSource, ClipStudioProject
+    from src.tennis_scene.clip_studio.web.app import create_app
     from src.tennis_scene.configuration import parse_clip_studio_config
 
     runtime = parse_clip_studio_config(cfg)
@@ -61,33 +62,9 @@ def main(cfg: DictConfig) -> int:
         )
         project.save(project_path, runtime.export.resolver)
 
-    export = runtime.export
-    export_settings = ExportSettings(
-        output_dir=export.output_dir,
-        fps=export.fps,
-        width=export.width,
-        height=export.height,
-        crf=export.crf,
-        overwrite=export.overwrite,
-    )
-    app = ClipStudioApp(
-        ClipStudioAppConfig(
-            project_path=project_path,
-            resolver=runtime.export.resolver,
-            export=export_settings,
-            canvas_width=runtime.gui.canvas_width,
-            tile_width=runtime.gui.tile_width,
-            cache_frames=runtime.gui.cache_frames,
-            seek_grab_threshold=runtime.gui.seek_grab_threshold,
-            window_name=runtime.gui.window_name,
-            audio_sample_rate=runtime.audio_sync.sample_rate,
-            audio_envelope_rate=runtime.audio_sync.envelope_rate,
-            audio_max_seconds=runtime.audio_sync.max_seconds,
-            zoom_step=runtime.gui.zoom_step,
-        ),
-        project,
-    )
-    app.run()
+    app = create_app(runtime, project)
+    LOGGER.info("Open http://127.0.0.1:%s in your browser", runtime.gui.port)
+    uvicorn.run(app, host="127.0.0.1", port=runtime.gui.port)
     return 0
 
 

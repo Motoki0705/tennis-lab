@@ -4,15 +4,16 @@ defaults:
 
 project_path: tennis_scene/clip_studio/project.json
 recording_id: recording
-video_paths: [tennis_multivew/raw/recording/cam0.mp4]
-camera_ids: [cam0]
+video_paths: null
+camera_ids: null
 gui:
   canvas_width: 1600
-  tile_width: 640
+  tile_width: 1280
   cache_frames: 96
   seek_grab_threshold: 24
   window_name: Tennis Clip Studio
   zoom_step: 1.5
+  port: 8765
 audio_sync:
   sample_rate: 8000
   envelope_rate: 100.0

@@ -66,12 +66,14 @@ def batch(views: int = 4, reference: int = 2) -> dict[str, Any]:
         k: v.unsqueeze(0)
         for k, v in selection.to_tensor_fields(dtype=torch.float32).items()
     }
-    fields["physical_from_reference"] = fields["reference_from_physical"].transpose(-1, -2)
+    fields["physical_from_reference"] = fields["reference_from_physical"].transpose(
+        -1, -2
+    )
     return dict(
         ball_uv=torch.rand(1, views, 8, 2),
         ball_vis=torch.ones(1, views, 8, dtype=torch.bool),
-        court_kp=torch.rand(1, views, 8, 20, 2),
-        court_vis=torch.ones(1, views, 8, 20, dtype=torch.bool),
+        court_kp=torch.rand(1, views, 8, 14, 2),
+        court_vis=torch.ones(1, views, 8, 14, dtype=torch.bool),
         padding_mask=torch.zeros(1, views, 8, dtype=torch.bool),
         reference_view_selection=(selection,),
         stable_camera_id_table=(selection.stable_camera_id_table,),
@@ -83,6 +85,8 @@ def batch(views: int = 4, reference: int = 2) -> dict[str, Any]:
 def test_recipe_and_selector_frequencies() -> None:
     config = recipe()
     validate_training_boundary(config)
+    assert config.data.num_court_kp == config.model.num_court_tokens == 14
+    assert config.court_keypoints.selector == "camera_view_v2"
     assert config.data.batch_size == 16
     assert config.run.seed == 42 and config.training.compile.enabled
     assert config.loss.reprojection_weight == 1
@@ -106,7 +110,7 @@ def test_selected_reference_readout_matches_embedding() -> None:
     call = binding.build_call(inputs)
     with torch.no_grad():
         expected = model.group_embed(
-            inputs["court_kp"][:, 2].reshape(8, 20, 2),
+            inputs["court_kp"][:, 2].reshape(8, 14, 2),
             inputs["ball_uv"][:, 2].reshape(8, 2),
             inputs["ball_vis"][:, 2].reshape(8),
         ).reshape(1, 8, 32)
@@ -191,11 +195,17 @@ def test_invisible_out_of_frame_uv_is_valid_but_visible_uv_is_rejected() -> None
     inputs["ball_vis"][0, 0, 0] = False
     binding.build_call(inputs)
     inputs.update(
-        position_3d=torch.zeros(1, 8, 3), velocity_3d=torch.zeros(1, 8, 3),
-        camera_R=torch.eye(3).expand(1, 4, 3, 3), camera_C=torch.zeros(1, 4, 3),
-        camera_f=torch.ones(1, 4), camera_cx=torch.ones(1, 4),
-        camera_cy=torch.ones(1, 4), camera_w=torch.ones(1, 4), camera_h=torch.ones(1, 4),
-        ball_uv_target=inputs["ball_uv"].clone(), ball_vis_target=inputs["ball_vis"].clone(),
+        position_3d=torch.zeros(1, 8, 3),
+        velocity_3d=torch.zeros(1, 8, 3),
+        camera_R=torch.eye(3).expand(1, 4, 3, 3),
+        camera_C=torch.zeros(1, 4, 3),
+        camera_f=torch.ones(1, 4),
+        camera_cx=torch.ones(1, 4),
+        camera_cy=torch.ones(1, 4),
+        camera_w=torch.ones(1, 4),
+        camera_h=torch.ones(1, 4),
+        ball_uv_target=inputs["ball_uv"].clone(),
+        ball_vis_target=inputs["ball_vis"].clone(),
     )
     binding.adapter.build_training_batch(inputs)
     inputs["ball_vis_target"][0, 0, 0] = True
@@ -207,4 +217,13 @@ def test_invisible_out_of_frame_uv_is_valid_but_visible_uv_is_rejected() -> None
         binding.adapter.build_training_batch(inputs)
     inputs["ball_vis"][0, 0, 0] = True
     with pytest.raises(ValueError, match="ball_uv"):
+        binding.build_call(inputs)
+
+
+def test_kp14_recipe_rejects_twenty_point_model_inputs() -> None:
+    binding = compose_blcs_trajectory_model_io(recipe())
+    inputs = batch()
+    inputs["court_kp"] = torch.rand(1, 4, 8, 20, 2)
+    inputs["court_vis"] = torch.ones(1, 4, 8, 20, dtype=torch.bool)
+    with pytest.raises(ValueError, match="14"):
         binding.build_call(inputs)
