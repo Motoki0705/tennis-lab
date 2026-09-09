@@ -1,0 +1,13 @@
+defaults:
+  - generate_dataset
+  - override court_keypoints: camera_view_v2
+  - override camera: corners
+  - _self_
+
+simulation:
+  num_scenes: 10000
+run:
+  output_dir: plcs/single_object_camera_view_v2
+  seed: 42
+  num_workers: 4
+  split_group: motion_source

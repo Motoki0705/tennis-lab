@@ -33,6 +33,10 @@ from src.tasks.plcs.model_io import (
     validate_plcs_checkpoint_court_keypoints,
     write_plcs_checkpoint_court_keypoints,
 )
+from src.tasks.plcs.model_io.axial_reference import (
+    validate_axial_reference_checkpoint,
+    write_axial_reference_checkpoint,
+)
 from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
@@ -166,6 +170,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.test_metrics = _build_metrics()
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        write_axial_reference_checkpoint(
+            checkpoint, model_name=self.plcs_runtime.model.name
+        )
         add_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
         write_plcs_checkpoint_court_keypoints(
             checkpoint,
@@ -173,6 +180,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        validate_axial_reference_checkpoint(
+            checkpoint, model_name=self.plcs_runtime.model.name
+        )
         validate_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
         validate_plcs_checkpoint_court_keypoints(
             checkpoint,

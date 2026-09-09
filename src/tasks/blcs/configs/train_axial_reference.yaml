@@ -1,0 +1,20 @@
+defaults:
+  - train
+  - override data: multiview_sequence_camera_view_v2
+  - override loss: axial_reference
+  - _self_
+data:
+  batch_size: 16
+training:
+  trainer:
+    max_epochs: 50
+    check_val_every_n_epoch: 1
+  weight_decay: 0.1
+  warmup_steps: 1000
+  compile:
+    enabled: true
+  checkpoint:
+    monitor: val/position_error_m
+run:
+  seed: 42
+  output_dir: blcs/axial_reference_corners_v3-4_t128

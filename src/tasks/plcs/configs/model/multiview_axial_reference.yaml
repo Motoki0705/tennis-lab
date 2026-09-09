@@ -1,0 +1,10 @@
+defaults:
+  - multiview_axial_base_temporal_pose
+  - _self_
+
+name: plcs_multiview_axial_reference
+max_views: 4
+max_seq_len: 256
+target_frame_contract: reference_camera_court_rzpi_v1
+axial_rope_contract: time_camera_reference_selector_v1
+reference_selector_mode: reference

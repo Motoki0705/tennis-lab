@@ -1,0 +1,4 @@
+defaults:
+  - default
+  - _self_
+reprojection_weight: 1.0

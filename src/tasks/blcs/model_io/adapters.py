@@ -90,10 +90,13 @@ def _positive_axes(name: str, tensor: Tensor, axes: tuple[int, ...]) -> None:
         raise ModelInputContractError(f"{name} must be non-empty on axes {empty}.")
 
 
-def _validate_uv(name: str, tensor: Tensor) -> None:
+def _validate_uv(name: str, tensor: Tensor, visible: Tensor | None = None) -> None:
     if not bool(torch.isfinite(tensor).all()):
         raise ModelInputContractError(f"{name} must contain only finite UV values.")
-    if not bool(((tensor >= 0.0) & (tensor <= 1.0)).all()):
+    in_range = (tensor >= 0.0) & (tensor <= 1.0)
+    if visible is not None:
+        in_range = in_range | ~visible.bool().unsqueeze(-1)
+    if not bool(in_range.all()):
         raise ModelInputContractError(
             f"{name} must contain normalized UV values within [0, 1]."
         )
@@ -334,7 +337,7 @@ class TrajectoryModelIOAdapter(ABC):
             raise ModelInputContractError(
                 "All camera parameter tensors must match the target UV camera axis."
             )
-        _validate_uv("target_uv", target_uv)
+        _validate_uv("target_uv", target_uv, target_vis)
         _validate_mask("target_vis", target_vis)
         _validate_mask("loss_mask", loss_mask)
         _same_device(
@@ -380,6 +383,10 @@ class TrajectoryModelIOAdapter(ABC):
     ) -> BLCSBatch | BLCSMultiViewBatch:
         """Collate canonical samples into this adapter's fixed input profile."""
 
+    def _validate_inference_observations(self, batch: Mapping[str, object]) -> None:
+        """Validate arrays before the predictor binds explicit reference metadata."""
+        self.build_call(batch)
+
     def build_inference_batch_from_arrays(
         self,
         *,
@@ -402,7 +409,7 @@ class TrajectoryModelIOAdapter(ABC):
             "court_vis": court_visible,
             "padding_mask": torch.zeros_like(visible, dtype=torch.bool),
         }
-        self.build_call(batch)
+        self._validate_inference_observations(batch)
         return batch
 
     def build_inference_batch_from_scene(
@@ -529,8 +536,8 @@ class SingleTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
             )
         if court_kp.shape[0] != ball_uv.shape[0]:
             raise ModelInputContractError("court_kp batch axis must match ball_uv.")
-        _validate_uv("ball_uv", ball_uv)
-        _validate_uv("court_kp", court_kp)
+        _validate_uv("ball_uv", ball_uv, ball_vis)
+        _validate_uv("court_kp", court_kp, court_vis)
         _validate_mask("ball_vis", ball_vis)
         _validate_mask("padding_mask", padding_mask)
         _validate_mask("court_vis", court_vis)
@@ -666,8 +673,8 @@ class _MultiviewTrajectoryModelIOAdapter(TrajectoryModelIOAdapter):
             court_vis = court_vis.unsqueeze(2).expand(-1, -1, frames, -1)
         if court_vis.shape != court_kp.shape[:-1]:
             raise ModelInputContractError("court_vis must match court_kp without XY.")
-        _validate_uv("ball_uv", ball_uv)
-        _validate_uv("court_kp", court_kp)
+        _validate_uv("ball_uv", ball_uv, ball_vis)
+        _validate_uv("court_kp", court_kp, court_vis)
         _validate_mask("ball_vis", ball_vis)
         _validate_mask("padding_mask", padding_mask)
         _validate_mask("court_vis", court_vis)

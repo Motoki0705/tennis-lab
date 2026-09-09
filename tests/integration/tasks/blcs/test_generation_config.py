@@ -17,6 +17,9 @@ from src.utils.configuration import ConfigurationTypeError, SemanticConfiguratio
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 _TRAINING_PROFILES = (
+    ("multiview_sequence_camera_view_v2", "train_axial_reference", (),
+     "blcs/single_object_camera_view_v2", "default", (3, 4),
+     "camera_view_v2", "blcs_multiview_axial_reference"),
     (
         "singleview_sequence",
         "train",
@@ -126,7 +129,7 @@ def test_generation_default_uses_canonical_single_object_path() -> None:
 
     runtime, _resolver = parse_generation_run(config)
 
-    assert runtime.output_dir == _CONFIG_DIR.parents[3] / "data/blcs/single_object"
+    assert runtime.output_dir == (_CONFIG_DIR.parents[3] / "data/blcs/single_object").resolve()
 
 
 @pytest.mark.parametrize(
@@ -280,7 +283,7 @@ def test_all_public_data_profiles_compose_and_validate(
     assert config.model.name == model_name
 
 
-def test_blcs_has_exactly_ten_public_data_profiles_covering_all_datasets() -> None:
+def test_blcs_public_data_profiles_cover_all_datasets() -> None:
     profiles = tuple(
         sorted(
             path.stem
@@ -290,10 +293,11 @@ def test_blcs_has_exactly_ten_public_data_profiles_covering_all_datasets() -> No
     )
 
     assert profiles == tuple(sorted(row[0] for row in _TRAINING_PROFILES))
-    assert len(profiles) == 10
+    assert len(profiles) == 11
 
     assert {row[3] for row in _TRAINING_PROFILES} == {
         "blcs/single_object",
+        "blcs/single_object_camera_view_v2",
         "blcs/multi_object",
         "blcs/single_object_broadcast",
         "blcs/multi_object_broadcast",

@@ -464,6 +464,7 @@ class PLCSModelIOAdapter:
             "court_vis": court_vis,
         }
         canonical: dict[str, object] = {
+            **batch,
             **canonical_tensors,
             "court_keypoint_metadata": batch.get("court_keypoint_metadata"),
             "court_reference_provenance": batch.get(
@@ -905,6 +906,10 @@ class PLCSModelIOAdapter:
             "court_reference_provenance": provenance,
         }
         if self.profile is PLCSInputProfile.MULTIVIEW:
+            if provenance.reference_camera_local_index is not None:
+                ready["reference_view_index"] = torch.tensor(
+                    [provenance.reference_camera_local_index], dtype=torch.int64
+                )
             return PLCSPreparedBatch(
                 call=self.build_call(ready),
                 court_reference_provenance=(provenance,),
@@ -987,6 +992,15 @@ class PLCSModelIOAdapter:
             self.court_keypoint_contract,
             batch_size=batch_size,
         )
+        if (
+            court_reference_provenance is not None
+            and court_reference_provenance.reference_camera_local_index is not None
+        ):
+            ready["reference_view_index"] = torch.full(
+                (batch_size,),
+                court_reference_provenance.reference_camera_local_index,
+                dtype=torch.int64,
+            )
         return PLCSPreparedBatch(
             call=self.build_call(ready),
             court_reference_provenance=provenance,

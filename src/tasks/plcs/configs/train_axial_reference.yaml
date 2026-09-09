@@ -1,0 +1,15 @@
+defaults:
+  - train
+  - override data: multiview_sequence_camera_view_v2
+  - override loss: axial_reference
+  - _self_
+
+training:
+  trainer:
+    max_epochs: 50
+    check_val_every_n_epoch: 1
+  compile:
+    enabled: true
+run:
+  seed: 42
+  output_dir: plcs/axial_reference_corners_v3-4_t128

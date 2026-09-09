@@ -25,6 +25,7 @@ from src.tasks.base.generate_dataset.court_view import (
     build_reference_frame_provenance,
     validate_reference_frame_provenance,
 )
+from src.utils.data.camera_sampling import camera_candidate_indices
 
 STABLE_CAMERA_ID_TABLE_SCHEMA_VERSION: Final = 1
 CAMERA_ID_PADDING_VALUE: Final = -1
@@ -350,6 +351,7 @@ def include_evaluation_reference_camera(
     *,
     requested_camera_id: str | None,
     rng: np.random.Generator,
+    candidate_camera_indices: Sequence[int] | None = None,
 ) -> tuple[int, ...]:
     """Keep an explicit evaluation reference in the selected camera subset.
 
@@ -385,6 +387,9 @@ def include_evaluation_reference_camera(
             "selected_camera_indices contain an index outside the complete "
             f"camera domain [0, {len(complete_ids)})."
         )
+    candidates = camera_candidate_indices(candidate_camera_indices, capacity=len(complete_ids))
+    if candidates is not None and not set(indices) <= set(candidates):
+        raise ReferenceViewSelectionError("Selected cameras are outside camera_candidates.")
     if requested_camera_id is None:
         return indices
     if type(requested_camera_id) is not str or not requested_camera_id.strip():
@@ -398,6 +403,8 @@ def include_evaluation_reference_camera(
             f"Requested reference {requested_camera_id!r} is absent from the "
             f"complete camera domain {complete_ids!r}."
         ) from error
+    if candidates is not None and required_index not in candidates:
+        raise ReferenceViewSelectionError("Evaluation reference camera is outside camera_candidates.")
     if required_index in indices:
         return indices
     if not isinstance(rng, np.random.Generator):
