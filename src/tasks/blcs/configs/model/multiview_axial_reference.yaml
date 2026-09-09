@@ -1,0 +1,12 @@
+defaults:
+  - multiview_axial_base
+  - _self_
+name: blcs_multiview_axial_reference
+max_seq_len: 256
+max_num_cameras: 4
+num_court_tokens: 20
+rope_dim: 16
+predict_velocity: false
+target_frame_contract: reference_camera_court_rzpi_v1
+axial_rope_contract: time_camera_reference_selector_v1
+reference_selector_mode: reference

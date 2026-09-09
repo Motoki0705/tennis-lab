@@ -31,6 +31,10 @@ from src.tasks.blcs.model_io import (
     TrajectoryModelIOAdapter,
     blcs_reference_metadata_from_batch,
 )
+from src.tasks.blcs.model_io.axial_reference import (
+    validate_axial_reference_checkpoint,
+    write_axial_reference_checkpoint,
+)
 from src.tasks.blcs.models import build_blcs_discriminator
 from src.tasks.blcs.training.losses import BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
@@ -130,6 +134,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Persist the exact normalization and CourtKP contracts."""
+        write_axial_reference_checkpoint(checkpoint, model_name=str(self.config.model.name))
         add_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
         write_model_artifact_court_keypoint_contract(
             checkpoint,
@@ -139,6 +144,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Reject normalization or CourtKP mismatches before weights."""
+        validate_axial_reference_checkpoint(checkpoint, model_name=str(self.config.model.name))
         validate_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
         validate_model_artifact_court_keypoint_contract(
             checkpoint,
