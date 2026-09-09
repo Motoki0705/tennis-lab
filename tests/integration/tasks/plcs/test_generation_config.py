@@ -12,7 +12,7 @@ from src.utils.configuration import UnknownConfigurationKeyError
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 _DATA_CONFIG_DIR = _CONFIG_DIR / "data"
 
-# Keep this table as the executable catalogue of the eleven public PLCS data
+# Keep this table as the executable catalogue of the public PLCS data
 # profiles.  Each row documents the root training boundary needed to validate
 # the profile and its externally visible dataset/view/model contracts.
 _TRAINING_PROFILES = (
@@ -46,6 +46,16 @@ _TRAINING_PROFILES = (
         (3, 5),
         "physical_v1",
         "plcs_multiview_axial",
+    ),
+    (
+        "multiview_sequence_camera_view_v2",
+        "train",
+        (),
+        "plcs/single_object_camera_view_v2",
+        "default",
+        (3, 4),
+        "camera_view_v2",
+        "plcs_multiview_axial_reference",
     ),
     (
         "singleview_chunked_sequence",
@@ -145,7 +155,7 @@ def _compose_training_profile(
     return config, runtime
 
 
-def test_public_data_profile_catalogue_is_exactly_eleven() -> None:
+def test_public_data_profile_catalogue_is_exact() -> None:
     profiles = sorted(
         path.stem
         for path in _DATA_CONFIG_DIR.glob("*.yaml")
@@ -191,7 +201,10 @@ def test_public_data_profiles_compose_and_validate_contracts(
     if views[0] > 1:
         # The random 3-5-view profiles need two cameras as a lower bound;
         # broadcast profiles are exactly two views and therefore also use 2.
-        assert config.data.min_cameras == 2
+        expected_min_cameras = (
+            3 if profile == "multiview_sequence_camera_view_v2" else 2
+        )
+        assert config.data.min_cameras == expected_min_cameras
     if profile in {"tracking_broadcast", "tracking_camera_view_v2"}:
         assert config.data.evaluation_reference_camera_id == "camera_1"
 
@@ -204,6 +217,7 @@ def test_public_profiles_cover_each_plcs_dataset_once_or_more() -> None:
         "plcs/single_object_broadcast",
         "plcs/multi_object_broadcast",
         "plcs/multi_object_camera_view_v2",
+        "plcs/single_object_camera_view_v2",
     }
 
 
