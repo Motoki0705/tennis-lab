@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -342,6 +343,7 @@ def _request(
                 for item in job.inputs
             ],
             "outputs": list(job.outputs),
+            "output_storage": job.output_storage,
         },
     }
     value["request_digest"] = digest_json(value)
@@ -1341,6 +1343,10 @@ def command_run(args: argparse.Namespace) -> int:
             f"unknown job {args.job!r}; available: {', '.join(sorted(jobs))}"
         )
     job = jobs[args.job]
+    if job.output_storage == "drive" and args.drive_mode != "mount":
+        raise WorkflowError(
+            "this training job writes directly to Drive; use --drive-mode mount"
+        )
     _validate_overrides(job, args.overrides)
     if any("/content/drive" in item for item in args.overrides):
         raise WorkflowError(
@@ -1735,6 +1741,59 @@ def command_stop(args: argparse.Namespace) -> int:
     return 0 if ok else EXIT_RUNTIME
 
 
+def command_progress(args: argparse.Namespace) -> int:
+    """Read bounded progress through the contents API, without executing kernel code."""
+    if args.interval < 2:
+        raise WorkflowError("--interval must be at least 2 seconds")
+    run_dir, request, metadata = _load_run(_state_root(args.state_dir), args.run_id)
+    while True:
+        temporary = run_dir / ".progress.download"
+        try:
+            _invoke(
+                Path(metadata["colab_config"]),
+                [
+                    "download",
+                    "-s",
+                    metadata["session"],
+                    f"/content/tennis-lab-runs/{request['run_id']}/progress.json",
+                    str(temporary),
+                ],
+                capture=True,
+            )
+            progress = read_json(temporary)
+        finally:
+            temporary.unlink(missing_ok=True)
+        if (
+            progress.get("run_id") != request["run_id"]
+            or progress.get("request_digest") != request["request_digest"]
+        ):
+            raise WorkflowError("progress belongs to a different run/request")
+        try:
+            age = (
+                datetime.now(UTC) - datetime.fromisoformat(progress["updated_at"])
+            ).total_seconds()
+        except (KeyError, TypeError, ValueError) as error:
+            raise WorkflowError("invalid progress timestamp") from error
+        progress["heartbeat_age_seconds"] = round(age, 1)
+        progress["stale"] = age > 30
+        training = progress.get("training")
+        if training and training.get("updated_at"):
+            progress["training_update_age_seconds"] = round(
+                (
+                    datetime.now(UTC) - datetime.fromisoformat(training["updated_at"])
+                ).total_seconds(),
+                1,
+            )
+        atomic_write_json(run_dir / "progress.json", progress)
+        if args.command == "logs":
+            print("\n".join(progress.get("log_tail", [])[-args.tail :]))
+        else:
+            print(json.dumps(progress, indent=2, ensure_ascii=False))
+        if not args.watch or progress.get("state") != "running":
+            return 0
+        time.sleep(args.interval)
+
+
 def command_resume(args: argparse.Namespace) -> int:
     repo_root = _resolve_repo_root(args.repo_root)
     state_root = _state_root(args.state_dir)
@@ -1920,7 +1979,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--ref", default="HEAD", help="git ref resolved to an exact SHA"
     )
     run_parser.add_argument(
-        "--drive-mode", choices=("rclone", "mount"), default="rclone"
+        "--drive-mode", choices=("rclone", "mount"), default="mount"
     )
     run_parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
     run_parser.add_argument("--rclone-config")
@@ -1955,6 +2014,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="local rclone config used for strict published-status recovery",
     )
     status_parser.set_defaults(handler=command_status)
+
+    for name in ("progress", "logs"):
+        monitor_parser = subparsers.add_parser(
+            name, help="read live progress or the last 80 log lines"
+        )
+        monitor_parser.add_argument("run_id")
+        monitor_parser.add_argument("--watch", action="store_true")
+        monitor_parser.add_argument("--interval", type=float, default=10)
+        monitor_parser.add_argument(
+            "--tail", type=int, choices=range(1, 81), default=40, metavar="1..80"
+        )
+        monitor_parser.set_defaults(handler=command_progress)
 
     resume_parser = subparsers.add_parser("resume", help="resume a retained failed run")
     resume_parser.add_argument("run_id")

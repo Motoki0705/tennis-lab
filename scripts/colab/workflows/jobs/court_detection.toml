@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "court_detection"
 description = "Train the DINOv3 court keypoint model on the canonical synthetic scenes."
 accelerator = "gpu"
