@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Train the fixed four-corner BLCS reference recipe on Colab VM local disk.
+# Train the fixed four-corner BLCS recipe with workflow-owned input/output roots.
 # Drive mounting and environment setup belong to the Colab workflow runner.
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
