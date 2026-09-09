@@ -49,8 +49,8 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     - ball_uv: (N, T, 2)
     - ball_vis: (N, T)
     - padding_mask: (N, T), ``True`` marks padding
-    - court_kp: (N, T, 20, 2)
-    - court_vis: (N, T, 20)
+    - court_kp: (N, T, K, 2), K = configured num_court_kp
+    - court_vis: (N, T, K)
     - position_3d: (T, 3)
     - velocity_3d: (T, 3)
     """
