@@ -1,0 +1,15 @@
+{
+  "task": "blcs",
+  "checkpoint": "blcs-axial-reference-kp14-corners-v3-4-t128-seed42-best.ckpt",
+  "sha256": "e82d16b1a919da34290560b3e3b85b2e79432ae8b243d1c7f10f918e24b64a21",
+  "selection_metric": "val/position_error_m",
+  "selection_mode": "min",
+  "best_validation_score": 0.2252211719751358,
+  "source_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tmp-blcs-axial-reference-colab/outputs/colab_restart/kp14_completed/outputs/colab/blcs_axial_reference_kp14/logs/version_0/checkpoints/blcs-epoch=49.ckpt",
+  "epoch": 49,
+  "training_completed_epochs": 50,
+  "num_court_tokens": 14,
+  "data_num_court_kp": 14,
+  "run_id": "20260909t142241z-9b25420d",
+  "source_commit": "41da7f0aedbad30bf0cc65852b2ee979b9e05d11"
+}
