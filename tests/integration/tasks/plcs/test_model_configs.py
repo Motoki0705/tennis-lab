@@ -203,15 +203,16 @@ def test_reference_rejects_rope_dim_four_and_accepts_dim_six() -> None:
 
 
 @pytest.mark.parametrize(
-    ("model_profile", "court_profile"),
+    ("model_profile", "court_profile", "expected_message"),
     [
-        ("tracking_query_reference", "physical_v1"),
-        ("tracking_query", "camera_view_v2"),
+        ("tracking_query_reference", "physical_v1", "Reference PLCS models require"),
+        ("tracking_query", "camera_view_v2", "track-query models require"),
     ],
 )
 def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
     model_profile: str,
     court_profile: str,
+    expected_message: str,
 ) -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
@@ -221,7 +222,7 @@ def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
                 f"court_keypoints={court_profile}",
             ],
         )
-    with pytest.raises(SemanticConfigurationError, match="track-query models require"):
+    with pytest.raises(SemanticConfigurationError, match=expected_message):
         PLCSTrainingConfig.from_config(config)
 
 
