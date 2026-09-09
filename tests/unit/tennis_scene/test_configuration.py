@@ -36,6 +36,7 @@ def _clip_studio_config(root: Path) -> dict[str, object]:
             "seek_grab_threshold": 24,
             "window_name": "Tennis Clip Studio",
             "zoom_step": 1.5,
+            "port": 8765,
         },
         "audio_sync": {
             "sample_rate": 8000,
@@ -83,4 +84,14 @@ def test_clip_studio_config_rejects_removed_path_aliases(
         UnknownConfigurationKeyError,
         match=rf"tennis_scene\.clip_studio\.{former_key}",
     ):
+        parse_clip_studio_config(OmegaConf.create(config))
+
+
+@pytest.mark.parametrize("port", [0, 65536, -1])
+def test_clip_studio_rejects_invalid_port(tmp_path: Path, port: int) -> None:
+    config = _clip_studio_config(tmp_path)
+    gui = config["gui"]
+    assert isinstance(gui, dict)
+    gui["port"] = port
+    with pytest.raises(ValueError, match="gui.port"):
         parse_clip_studio_config(OmegaConf.create(config))

@@ -22,6 +22,7 @@ from torch.utils.data import Dataset
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
 from src.tasks.base.data.rng import derive_seed, validate_seed
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.data.scene_io import load_scene_payload
 
 SampleT = TypeVar("SampleT")
@@ -43,6 +44,7 @@ class SceneDatasetConfig:
     crop_mode: Literal["random", "center"]
     min_num_frames: int
     min_num_cameras: int
+    camera_candidates: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -250,8 +252,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         self.seed = validate_seed(seed, path="dataset seed")
         if rng is not None and not isinstance(rng, np.random.Generator):
             raise TypeError(
-                "rng must be numpy.random.Generator, got "
-                f"{type(rng).__name__}."
+                f"rng must be numpy.random.Generator, got {type(rng).__name__}."
             )
         self._managed_rng = np.random.default_rng(self.seed)
         self.rng = self._managed_rng if rng is None else rng
@@ -341,6 +342,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         ``camera_mode``, or other non-default values.
         """
         return SceneDatasetConfig(
+            camera_candidates=camera_candidate_indices(data_cfg.get("camera_candidates")),
             scene_dir=Path(scene_dir),
             split_file=Path(split_file),
             seq_len_range=self._parse_int_range(data_cfg, "seq_len_range"),
@@ -491,7 +493,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
             scene_identity = path.relative_to(self.scene_dir).as_posix()
         except ValueError:
             scene_identity = path.as_posix()
-        return derive_seed(self.seed, "sample", resolved_idx, scene_identity)
+        return int(derive_seed(self.seed, "sample", resolved_idx, scene_identity))
 
     def get_scene_header(self, path: Path) -> SceneHeader:
         """Return the pre-computed header for the given scene path."""
@@ -551,26 +553,35 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
                 f"Scene {scene.path} has {scene.num_cameras} cameras, but min_views={min_views}"
             )
 
-        nmax = min(max_views, scene.num_cameras)
+        explicit = camera_candidate_indices(
+            self.config.camera_candidates, capacity=scene.num_cameras
+        )
+        candidates = tuple(range(scene.num_cameras)) if explicit is None else explicit
+        if explicit is not None and len(candidates) < max_views:
+            raise ValueError(
+                "camera_candidates cannot provide the requested num_views_range."
+            )
+        nmax = min(max_views, len(candidates))
         n = int(self.rng.integers(min_views, nmax + 1))
         mode = self.config.camera_mode if camera_mode is None else camera_mode
 
         if mode == "random":
-            selected = self.rng.choice(scene.num_cameras, size=n, replace=False)
+            selected = self.rng.choice(candidates, size=n, replace=False)
             return CameraSelection(indices=tuple(int(i) for i in selected.tolist()))
 
         if mode == "first":
-            return CameraSelection(indices=tuple(range(n)))
+            return CameraSelection(indices=candidates[:n])
 
         primary = 0
         if isinstance(mode, int) or isinstance(mode, str) and mode.isdigit():
             primary = int(mode)
-        primary = min(max(primary, 0), scene.num_cameras - 1)
+        if primary not in candidates:
+            raise ValueError("Primary camera is outside camera_candidates.")
 
         if n == 1:
             return CameraSelection(indices=(primary,))
 
-        remaining = [i for i in range(scene.num_cameras) if i != primary]
+        remaining = [i for i in candidates if i != primary]
         sampled = self.rng.choice(np.asarray(remaining), size=n - 1, replace=False)
         indices = (primary, *[int(i) for i in sampled.tolist()])
         return CameraSelection(indices=indices)

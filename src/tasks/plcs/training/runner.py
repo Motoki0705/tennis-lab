@@ -15,6 +15,7 @@ from src.tasks.plcs.model_io import (
     validate_plcs_checkpoint_court_keypoints,
     validate_plcs_checkpoint_track_query_reference,
 )
+from src.tasks.plcs.model_io.axial_reference import validate_axial_reference_checkpoint
 from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
     build_plcs_lightning_module,
@@ -65,6 +66,13 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                 checkpoint,
                 runtime.court_keypoint_contract,
             )
+            validate_axial_reference_checkpoint(checkpoint, model_name=runtime.model.name)
+            if runtime.model.name == "plcs_multiview_axial_reference":
+                state_dict = checkpoint.get("state_dict")
+                if not isinstance(state_dict, dict):
+                    raise ValueError("Axial reference init_weights requires a complete state_dict.")
+                lightning_module.load_state_dict(state_dict, strict=True)
+                return
             if runtime.model.name in {
                 "plcs_track_query",
                 "plcs_track_query_reference",

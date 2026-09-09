@@ -72,6 +72,7 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
 "*" = [
     "README.md",
     "configs/*.yaml",

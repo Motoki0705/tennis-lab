@@ -20,6 +20,7 @@ from src.tasks.plcs.model_io.adapters import (
     PLCSTrackQueryIOAdapter,
     PLCSTrackQueryReferenceIOAdapter,
 )
+from src.tasks.plcs.model_io.axial_reference import PLCSAxialReferenceIOAdapter
 from src.tasks.plcs.model_io.contracts import (
     PLCSDecodedPrediction,
     PLCSInputProfile,
@@ -30,6 +31,9 @@ from src.tasks.plcs.models.plcs_multiview_axial_camtoken_model import (
     PLCSMultiViewAxialCamTokenModel,
 )
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
+from src.tasks.plcs.models.plcs_multiview_axial_reference_model import (
+    PLCSMultiViewAxialReferenceModel,
+)
 from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
 )
@@ -107,7 +111,12 @@ def _standard_adapter(
     if num_court_tokens is None:
         raise ValueError("Standard PLCS models require data.num_court_kp.")
     values = runtime.model.values
-    return PLCSModelIOAdapter(
+    adapter_type = (
+        PLCSAxialReferenceIOAdapter
+        if model_type is PLCSMultiViewAxialReferenceModel
+        else PLCSModelIOAdapter
+    )
+    return adapter_type(
         model_type=model_type,
         profile=profile,
         num_court_tokens=num_court_tokens,
@@ -154,15 +163,18 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
             profile=profile,
             output_rank=2,
         )
-    elif model_name == "plcs_multiview_axial":
+    elif model_name in {"plcs_multiview_axial", "plcs_multiview_axial_reference"}:
         if num_court_tokens is None:
             raise ValueError("PLCS axial models require data.num_court_kp.")
-        model = PLCSMultiViewAxialModel.from_config(
-            model_cfg, num_court_tokens=num_court_tokens
+        axial_type = (
+            PLCSMultiViewAxialReferenceModel
+            if model_name == "plcs_multiview_axial_reference"
+            else PLCSMultiViewAxialModel
         )
+        model = axial_type.from_config(model_cfg, num_court_tokens=num_court_tokens)
         adapter = _standard_adapter(
             runtime,
-            model_type=PLCSMultiViewAxialModel,
+            model_type=axial_type,
             profile=PLCSInputProfile.MULTIVIEW,
             output_rank=3,
         )

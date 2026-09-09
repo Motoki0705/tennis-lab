@@ -45,6 +45,7 @@ from src.tasks.plcs.court_keypoint_contract import (
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.projection.camera_projector import camera_from_mapping
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
@@ -80,9 +81,9 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         self.hydra_cfg = config
         self.augment = augment
         self.reference_camera_id = reference_camera_id
-        self.court_keypoint_contract = (
-            PLCSCourtKeypointRuntimeConfig.from_config(config).contract
-        )
+        self.court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(
+            config
+        ).contract
         self.track_query_reference_document = track_query_reference_contract_document(
             config,
             self.court_keypoint_contract,
@@ -135,6 +136,9 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         data_cfg: dict,
     ) -> SceneDatasetConfig:
         return SceneDatasetConfig(
+            camera_candidates=camera_candidate_indices(
+                data_cfg.get("camera_candidates")
+            ),
             scene_dir=Path(scene_dir),
             split_file=Path(split_file),
             seq_len_range=self._plcs_seq_len_range,
@@ -167,6 +171,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
                     tuple(view.camera_id for view in complete_views),
                     cams.indices,
                     requested_camera_id=self.reference_camera_id,
+                    candidate_camera_indices=self.config.camera_candidates,
                     rng=self.rng,
                 )
             )
@@ -201,9 +206,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             complete_views,
             views,
             rng=self.rng if self.augment else None,
-            requested_camera_id=(
-                None if self.augment else self.reference_camera_id
-            ),
+            requested_camera_id=(None if self.augment else self.reference_camera_id),
         )
         provenance = (
             build_physical_court_provenance()
@@ -384,8 +387,7 @@ def _collate_reference_fields(
         for sample in batch
     )
     tables = tuple(
-        cast(StableCameraIdTable, sample["stable_camera_id_table"])
-        for sample in batch
+        cast(StableCameraIdTable, sample["stable_camera_id_table"]) for sample in batch
     )
     for sample_index, (sample, selection, table) in enumerate(
         zip(batch, selections, tables, strict=True)

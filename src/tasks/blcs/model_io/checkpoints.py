@@ -31,6 +31,7 @@ from src.tasks.base.models import (
     resolve_track_query_rope_contract,
 )
 from src.tasks.blcs.configuration import parse_court_keypoint_contract
+from src.tasks.blcs.model_io.axial_reference import validate_axial_reference_checkpoint
 from src.utils.schema.court_normalization import load_and_validate_checkpoint
 
 
@@ -94,7 +95,7 @@ def resolve_config_track_query_reference_contract(
     name = raw_model.get("name")
     if name == "blcs_track_query":
         return TrackQueryReferenceContract.physical_v1()
-    if name in {None, "blcs", "blcs_multiview_axial"}:
+    if name in {None, "blcs", "blcs_multiview_axial", "blcs_multiview_axial_reference"}:
         return None
     if name != "blcs_track_query_reference":
         raise RuntimeError(f"Unsupported BLCS checkpoint model name {name!r}.")
@@ -211,6 +212,10 @@ def load_checkpoint_runtime(
 
     config = _checkpoint_config(checkpoint)
     config_track_query_contract = resolve_config_track_query_reference_contract(config)
+    raw_model = config.get("model")
+    validate_axial_reference_checkpoint(
+        checkpoint, model_name=str(raw_model.get("name")) if isinstance(raw_model, (DictConfig, Mapping)) else ""
+    )
     if checkpoint_contract.legacy_metadata_free:
         if config_track_query_contract is not None:
             raise MissingCourtKeypointMetadataError(

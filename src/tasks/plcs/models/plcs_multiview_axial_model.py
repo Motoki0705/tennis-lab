@@ -181,6 +181,9 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         else:
             self._decode_readouts = self._decode_readouts_without_canonical_pose
 
+        self._register_token_frequencies()
+
+    def _register_token_frequencies(self) -> None:
         token_freqs = precompute_freqs_cis_nd(
             dim=self.rope_dim,
             pos=self._build_token_positions(
@@ -249,6 +252,46 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
     ) -> dict[str, Tensor]:
         """Forward pass for multiview PLCS inputs."""
         batch_size, n_cams, seq_len_in = human_kp.shape[:3]
+        camera_freqs = self._camera_freqs(
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+        )
+        time_freqs = self._time_freqs(
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+        )
+
+        x = self._encode_views(
+            human_kp,
+            court_kp,
+            human_vis,
+            padding_mask,
+            court_vis,
+            camera_attention_mask,
+            time_attention_mask,
+            camera_freqs,
+            time_freqs,
+        )
+        x = self.final_norm(x[:, :, 0, :])
+        frame_valid = ~padding_mask.all(dim=1)
+        return self._decode_readouts(x, x, frame_valid)
+
+    def _encode_views(
+        self,
+        human_kp: Tensor,
+        court_kp: Tensor,
+        human_vis: Tensor,
+        padding_mask: Tensor,
+        court_vis: Tensor,
+        camera_attention_mask: Tensor,
+        time_attention_mask: Tensor,
+        camera_freqs: Tensor,
+        time_freqs: Tensor,
+    ) -> Tensor:
+        """Encode each view with caller-owned positional frequencies."""
+        batch_size, n_cams, seq_len_in = human_kp.shape[:3]
 
         human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
         court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
@@ -269,17 +312,6 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 self.hidden_dim,
             )
             .permute(0, 2, 1, 3)
-        )
-
-        camera_freqs = self._camera_freqs(
-            batch_size=batch_size,
-            seq_len=seq_len_in,
-            n_cams=n_cams,
-        )
-        time_freqs = self._time_freqs(
-            batch_size=batch_size,
-            seq_len=seq_len_in,
-            n_cams=n_cams,
         )
 
         for camera_layer, time_layer in zip(
@@ -307,11 +339,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 0, 2, 1, 3
             )
 
-        x = x[:, :, 0, :]
-        x = self.final_norm(x)
-        frame_valid = ~padding_mask.all(dim=1)
-
-        return self._decode_readouts(x, x, frame_valid)
+        return x
 
     def _decode_readouts_without_canonical_pose(
         self,

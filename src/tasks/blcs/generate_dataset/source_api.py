@@ -96,6 +96,7 @@ _RALLY_KEYS = {
     "out_court_target_probability",
 }
 _CAMERA_KEYS = {
+    "fixed_camera_indices",
     "z_min",
     "z_max",
     "hfov_deg",
@@ -131,6 +132,8 @@ _TARGETED_VELOCITY_KEYS = {
     "target_margin_m",
 }
 _COURT_KEYS = {"net_post_offset_x", "net_post_offset_x_range"}
+
+
 class BLCSPhysicsProposalRejected(RuntimeError):
     """Signal that one stochastic physics proposal may be resampled."""
 
@@ -847,7 +850,9 @@ class BLCSSourceTrack:
             raise TypeError("Source frame indices must be non-negative integers.")
         if active != list(range(active[0], active[0] + len(active))):
             raise ValueError("Source frame indices must be consecutive.")
-        active_global = [index for index, value in enumerate(mapping) if value is not None]
+        active_global = [
+            index for index, value in enumerate(mapping) if value is not None
+        ]
         if active_global != list(range(active_global[0], active_global[-1] + 1)):
             raise ValueError("BLCS presence must be one continuous interval.")
         object.__setattr__(self, "source_frame_indices", mapping)
@@ -905,12 +910,7 @@ class BLCSSourceScene:
         provenance = tuple(self.physics_provenance)
         diagnostics = tuple(self.proposal_diagnostics)
         object_count = positions.shape[1]
-        if not (
-            len(tracks)
-            == len(provenance)
-            == len(diagnostics)
-            == object_count
-        ):
+        if not (len(tracks) == len(provenance) == len(diagnostics) == object_count):
             raise ValueError(
                 "Tracks, provenance, and diagnostics must match the object axis."
             )
@@ -945,13 +945,17 @@ class BLCSSourceScene:
                 value for value in track.source_frame_indices if value is not None
             ]
             if active[-1] >= provenance[object_index].source_frame_count:
-                raise ValueError("A source-frame mapping exceeds its physics trajectory.")
+                raise ValueError(
+                    "A source-frame mapping exceeds its physics trajectory."
+                )
             if provenance[object_index].output_fps != fps:
                 raise ValueError("All source objects must share the scene output fps.")
             if provenance[object_index].simulation_fps != simulation_fps:
                 raise ValueError("All source objects must share the simulation fps.")
             if diagnostics[object_index].accepted_attempt is None:
-                raise ValueError("Published source scenes cannot contain exhausted proposals.")
+                raise ValueError(
+                    "Published source scenes cannot contain exhausted proposals."
+                )
         for array in (positions, velocities, presence):
             array.setflags(write=False)
         object.__setattr__(self, "frame_indices", frame_indices)
@@ -1061,7 +1065,9 @@ class _BoundedPhysicsSceneSource:
                 )
                 continue
             if scene.scene_id != scene_id:
-                raise ValueError("BLCS physics generator changed the requested scene ID.")
+                raise ValueError(
+                    "BLCS physics generator changed the requested scene ID."
+                )
             diagnostic = BLCSProposalDiagnostic(
                 source_trajectory_id=scene_id,
                 accepted_attempt=attempt,
@@ -1069,7 +1075,9 @@ class _BoundedPhysicsSceneSource:
                 rejected_attempts=tuple(rejected),
             )
             if scene_id in self.diagnostics or scene_id in self.provenance:
-                raise ValueError("BLCS physics generator reused a source trajectory ID.")
+                raise ValueError(
+                    "BLCS physics generator reused a source trajectory ID."
+                )
             self.diagnostics[scene_id] = diagnostic
             self.provenance[scene_id] = _physics_provenance(scene)
             return scene
@@ -1109,9 +1117,7 @@ class BLCSPhysicsTrajectorySource:
                     config=self.generator_config,
                     device=self.settings.device,
                 ),
-                maximum_attempts=(
-                    self.settings.maximum_physics_attempts_per_object
-                ),
+                maximum_attempts=(self.settings.maximum_physics_attempts_per_object),
             )
             internal = MultiBallSceneGenerator(
                 bounded,
@@ -1150,10 +1156,7 @@ def _source_scene_from_internal(
         raise ValueError("BLCS source positions do not cover every physical ball.")
     if raw_velocities.shape != raw_positions.shape:
         raise ValueError("BLCS source velocities do not match positions.")
-    if (
-        raw_presence.dtype != np.bool_
-        or raw_presence.shape != raw_positions.shape[:2]
-    ):
+    if raw_presence.dtype != np.bool_ or raw_presence.shape != raw_positions.shape[:2]:
         raise ValueError("BLCS source presence does not match trajectory shape.")
     positions = _float64_array(
         raw_positions[:, : scene.num_balls],
@@ -1189,9 +1192,7 @@ def _source_scene_from_internal(
         present=presence,
         tracks=tracks,
         physics_provenance=tuple(provenance[source_id] for source_id in source_ids),
-        proposal_diagnostics=tuple(
-            diagnostics[source_id] for source_id in source_ids
-        ),
+        proposal_diagnostics=tuple(diagnostics[source_id] for source_id in source_ids),
     )
 
 
@@ -1568,9 +1569,7 @@ def _json_mapping(value: object, *, name: str) -> dict[str, object]:
         raise TypeError(f"{name} must be a mapping.")
     if any(not isinstance(key, str) for key in value):
         raise TypeError(f"{name} keys must be strings.")
-    return {
-        key: _json_value(item, name=f"{name}.{key}") for key, item in value.items()
-    }
+    return {key: _json_value(item, name=f"{name}.{key}") for key, item in value.items()}
 
 
 def _json_value(value: object, *, name: str) -> object:
