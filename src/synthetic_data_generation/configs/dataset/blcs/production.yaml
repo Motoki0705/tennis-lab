@@ -76,6 +76,7 @@ generator:
 
   camera:
     layout: fixed
+    fixed_camera_indices: null
     z_min: 3.0
     z_max: 5.0
     hfov_deg: 60.0
