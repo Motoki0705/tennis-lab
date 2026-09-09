@@ -1001,7 +1001,7 @@ def test_dry_run_constructs_drive_and_secret_safe_commands(
     result = _run_cli(
         tmp_path,
         "run",
-        "court_detection",
+        "court_detection_materialize_targets",
         "--run-id",
         RUN_ID,
         "--drive-mode",
@@ -1480,6 +1480,8 @@ def test_remote_runner_publishes_completed_bundle_before_marking_vm_completed(
         return f"tennis_lab/colab-runs/{RUN_ID}"
 
     monkeypatch.setattr(remote_runner, "_workspace", lambda: workspace)
+    monkeypatch.setattr(remote_runner, "_mount_drive_root", lambda _request: tmp_path / "drive")
+    monkeypatch.setattr(remote_runner, "_run_monitored_job", lambda *_args: None)
     monkeypatch.setattr(remote_runner, "_recover_published_status", lambda *_args: None)
     monkeypatch.setattr(
         remote_runner,
@@ -1608,9 +1610,11 @@ def test_exec_zero_with_failed_remote_status_is_runtime_failure_and_cleans_up(
     result = _run_cli(
         tmp_path,
         "run",
-        "court_detection",
+        "court_detection_materialize_targets",
         "--run-id",
         RUN_ID,
+        "--drive-mode",
+        "rclone",
         "--rclone-config",
         str(config),
         env=environment,
@@ -1703,9 +1707,11 @@ def test_rclone_status_and_download_work_directly_after_session_stop(
     run = _run_cli(
         tmp_path,
         "run",
-        "court_detection",
+        "court_detection_materialize_targets",
         "--run-id",
         RUN_ID,
+        "--drive-mode",
+        "rclone",
         "--rclone-config",
         str(config),
         env=fake_colab["env"],
@@ -1772,9 +1778,11 @@ def test_rclone_download_rejects_publication_without_completed_status(
     run = _run_cli(
         tmp_path,
         "run",
-        "court_detection",
+        "court_detection_materialize_targets",
         "--run-id",
         RUN_ID,
+        "--drive-mode",
+        "rclone",
         "--rclone-config",
         str(config),
         env=environment,
@@ -1806,9 +1814,11 @@ def test_keep_on_failure_retains_session_but_always_removes_rclone_secret(
     result = _run_cli(
         tmp_path,
         "run",
-        "court_detection",
+        "court_detection_materialize_targets",
         "--run-id",
         RUN_ID,
+        "--drive-mode",
+        "rclone",
         "--rclone-config",
         str(config),
         "--keep-on-failure",
