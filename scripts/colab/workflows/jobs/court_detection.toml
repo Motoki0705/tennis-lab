@@ -1,0 +1,39 @@
+schema_version = 1
+name = "court_detection"
+description = "Train the DINOv3 court keypoint model on the canonical synthetic scenes."
+accelerator = "gpu"
+timeout_seconds = 43200
+setup = ["base", "submodules"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.external_asset_root",
+  "paths.output_root",
+  "data/source",
+  "data/processing",
+  "data.source.workspace_root",
+  "model.encoder.repository_path",
+  "model.encoder.checkpoint_path",
+  "run.output_dir",
+  "run.gpus",
+]
+outputs = ["outputs/colab/court_detection"]
+
+[command]
+module = "src.tasks.court_detection.scripts.train"
+args = [
+  "data/source=synthetic_court",
+  "data/processing=kp",
+  "paths.output_root=outputs/colab",
+  "run.output_dir=court_detection",
+  "run.gpus=1",
+]
+
+[[inputs]]
+source = "data/synthetic_data_generation/scenes"
+destination = "data/synthetic_data_generation/scenes"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false
