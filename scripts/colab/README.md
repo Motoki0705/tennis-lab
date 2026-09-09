@@ -3,9 +3,8 @@
 このディレクトリは、`tennis-lab` の非対話処理をローカル端末からGoogle
 Colabへ送る統一入口です。session作成、Drive接続、入力のVM local diskへのstage、
 repository環境の構築、処理実行、成果物の検証・Driveへのatomic publish、必要なら
-local download、session停止までを `scripts/colab/run.sh` が管理します。学習中に
-Drive FUSEへ直接checkpointを書かず、GUIやOpenCVのinteractive modeもcatalogへ
-登録しません。
+local download、session停止までを `scripts/colab/run.sh` が管理します。学習jobはDriveへcheckpoint・TensorBoard・設定を直接保存します。入力はVM local diskへ
+copyします。GUIやOpenCVのinteractive modeはcatalogへ登録しません。
 
 ## 前提条件
 
@@ -49,12 +48,12 @@ extension、NHTをVM内に構築します。
 入力とpublish済み成果物は、どちらの方式でも既定ではDriveの
 `tennis_lab/` 配下に置きます。
 
-- `--drive-mode mount` は `colab new` の認証後に `colab drivemount` を実行します。
-  Drive mount固有のGoogle OAuth URLが端末に表示されるため、browserで同意し、求め
-  られたcodeを端末へ返します。人間が操作できる端末向けで、完全headlessでは
+- `--drive-mode mount`（既定）は `colab new` の認証後に `colab drivemount` を実行します。
+  Drive mount固有のGoogle OAuth URLが端末に表示されるため、browserで同意し、端末の指示に従ってEnterを押して続行します。
+  初回のColab CLI認証で求められるcode入力とは別の手順です。人間が操作できる端末向けで、完全headlessでは
   ありません。CLIの対話待ちは最大600秒です。
-- `--drive-mode rclone`（既定）はbrowser操作済みのrclone configを使うheadless方式
-  です。local hostにも `rclone` が必要です。別端末で `rclone config` を完了して
+- `--drive-mode rclone`はbrowser操作済みのrclone configを使うheadless方式
+  です。Driveへ直接出力する学習jobでは使用できません。local hostにも `rclone` が必要です。別端末で `rclone config` を完了して
   configを安全に転送するか、既存configを指定し、owner以外が読めないようにします。
 
 ```bash
@@ -84,12 +83,14 @@ bash scripts/colab/run.sh jobs --json
 bash scripts/colab/run.sh run ball_detection \
   --drive-mode mount --download-to ./colab-artifacts
 
-# headless rclone。GPU jobのautoはT4
-bash scripts/colab/run.sh run blcs \
+# headless rclone。生成・前処理などlocal出力job向け
+bash scripts/colab/run.sh run court_detection_materialize_targets \
   --drive-mode rclone --rclone-config ~/.config/rclone/rclone.conf \
   --download-to ./colab-artifacts
 
 bash scripts/colab/run.sh status <run-id>
+bash scripts/colab/run.sh progress <run-id> --watch
+bash scripts/colab/run.sh logs <run-id> --tail 40
 bash scripts/colab/run.sh resume <run-id> --download-to ./colab-artifacts
 bash scripts/colab/run.sh download <run-id> --to ./colab-artifacts
 bash scripts/colab/run.sh stop <run-id>
@@ -121,6 +122,54 @@ bash scripts/colab/run.sh run slcs --gpu A100 --dry-run -- \
 `protected_override_keys` は利用者override禁止です。末尾の `--` 以降で変更できるのは、
 そのjobが所有しないmodel/training parameterだけです。別Hydra configを固定して実行
 したい場合は、そのconfig、入力、出力を固定した専用job TOMLを追加します。
+
+## 学習出力と進捗確認
+
+学習job TOMLは `output_storage = "drive"` を必ず指定します。このjobはmount方式を
+要求し、rclone指定はVMを作る前に拒否します。runnerが予約済みの
+`paths.output_root=outputs/colab` を次の絶対パスへ解決します。利用者によるDriveパスの
+Hydra overrideやsymlinkによる迂回は不要です。
+
+```text
+MyDrive/<drive-root>/colab-live/<run-id>/
+  request.json
+  status.json
+  progress.json
+  training-progress.json
+  attempt-1.log
+  outputs/colab/<job-output>/
+    config.yaml
+    logs/.../checkpoints/...
+```
+
+checkpoint、TensorBoard、設定など、学習コードがoutput root配下へ生成したファイルは
+生成時からDriveへ保存されます。正常終了後の検証済みbundleは従来どおり別の
+`colab-runs/<run-id>/` へ公開します。失敗しても `colab-live` は削除しません。
+Driveへの書き込み失敗はエラーとして扱い、VMローカルへの切り替えはしません。
+ただし、書き込み途中のファイルまで完全性を保証する仕組みではありません。
+
+`progress` はColab contents APIから小さなJSONを取得し、学習中のkernelへ追加コードを
+投入しません。処理phase、実行attempt、更新時刻、job実行中は約5秒ごとの生存情報、
+ログ末尾最大80行を表示します。共通TrainingRunnerの学習ではepoch（0始まり）、
+global_step、max_epochs、直近batch lossと取得可能なcallback metricsも記録します。
+非有限のmetricsは `non_finite_metrics` に名前を表示します。
+
+`--watch --interval 10` は10秒間隔で再取得します（最小2秒）。Ctrl-Cで監視だけを
+終了でき、学習は止めません。`logs --tail 40` は直近40行を表示します。全ログはDriveの
+attempt別ファイルで確認できます。`heartbeat_age_seconds` と `stale`（30秒超）、
+`training_update_age_seconds` は監視更新と学習更新を区別します。compileや長いbatch、
+setup中に更新が遅れることもあるため、古い更新を自動で学習失敗とは判定しません。
+`status` は成果物公開まで含むworkflow状態の確認に使用します。
+
+liveコマンドは稼働中のVMを必要とします。VM停止後はDriveのJSON・ログを参照して
+ください。この機能を追加する前に起動したrunにはprogress JSONがなく、後付けでは
+有効になりません。独自entrypointが共通TrainingRunnerを使わない場合、phaseとログは
+取得できますが学習metricsは提供されません。
+
+`resume` は保持中VMで同じrequestを再試行する機能であり、最新checkpointからの自動
+学習再開ではありません。以前のDrive出力は残し、ログはattempt別に保存します。
+checkpointから学習を続ける場合は、検証したcheckpointを新しいjobの入力として宣言し、
+`run.resume` を指定してください。修正コミットを使う場合も新規runになります。
 
 ## source、stage、成果物
 
@@ -166,7 +215,7 @@ status取得に失敗しても、atomic publish済みならrclone remoteからco
 
 大容量入力は1 inputごとに再帰copyされ、output archive作成時にはoutput総量に加えて
 1 GiBの空きが必要です。rcloneの入力copy・publish copy/checkにはそれぞれ1時間の
-上限があります。VM local diskに「source + staged inputs + outputs + archive」が収まる
+上限があります。VM local diskに「source + staged inputs + archive」（local出力jobではoutputsも）が収まる
 ことを先に確認してください。source snapshot自体にも20 GiBのuncompressed上限が
 あります。多数のsmall fileを避け、長い学習はcheckpointを含むjob outputやphaseに
 分けてください。job timeoutの最大7日はColab runtimeの寿命を保証しません。
@@ -243,6 +292,7 @@ schema version 1は全top-level fieldと、各inputの `writable` を必須と�
 
 ```toml
 schema_version = 1
+output_storage = "drive"
 name = "my_training_job"
 description = "One non-interactive training workflow."
 accelerator = "gpu"
@@ -273,7 +323,7 @@ writable = false
 
 `setup` は `base` から始め、必要時だけ `submodules`、`cuda_ops`、`nht` をこの順で
 追加します。commandはPython moduleまたはshell-free argvとし、`bash -c`、secret、
-Drive FUSE pathを含めません。input/outputはsymlinkなしのstrictなrepository-relative
+Drive FUSE pathを直書きしません。input/output宣言はsymlinkなしのstrictなrepository-relative
 POSIX pathです。実commandが書く全declared outputを固定し、そのpathを決めるHydra
 keyを `protected_override_keys` に含めます。writable inputは同じexact pathをoutputに
 宣言し、read-only inputとoutputは重ねません。追加後はloaderとdry-runで検証します。
@@ -288,7 +338,7 @@ bash scripts/colab/run.sh run my_training_job --dry-run
 `train/20260829T150257Z/run_b01_b03_alignment.sh` はgeneric catalogとは別の、
 B01→B02→B03 3DGS reconstruction / court alignment検証を再現する固定runnerです。
 Drive mount、入力SHA検証、locked依存、NHT、DINOv3、GPU/CPU処理、scene単位atomic保存
-を自身で所有するため、18個のgeneric jobへ重複登録しません。
+を自身で所有するため、generic jobへ重複登録しません。
 
 ```bash
 bash scripts/colab/train/20260829T150257Z/run_b01_b03_alignment.sh

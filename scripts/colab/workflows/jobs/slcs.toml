@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "slcs"
 description = "Train the standard SLCS temporal scene-localization model."
 accelerator = "gpu"

@@ -1,4 +1,5 @@
 schema_version = 1
+output_storage = "drive"
 name = "plcs_tracking"
 description = "Train the canonical multi-object PLCS tracking-query model."
 accelerator = "gpu"
