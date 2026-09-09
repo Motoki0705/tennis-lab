@@ -402,6 +402,78 @@ def _colab_prefix(config_path: Path) -> list[str]:
     return ["colab", "--config", str(config_path.resolve())]
 
 
+_REFRESH_RUNTIME_PROXY_SOURCE = """
+import sys
+from colab_cli.common import State
+
+state = State()
+state.config_path = sys.argv[1]
+session = state.store.get(sys.argv[2])
+if session is None:
+    raise SystemExit(2)
+matches = [
+    assignment
+    for assignment in state.client.list_assignments()
+    if assignment.endpoint == session.endpoint
+]
+if len(matches) != 1:
+    raise SystemExit(3)
+session.token = matches[0].runtime_proxy_info.token
+session.url = matches[0].runtime_proxy_info.url
+state.store.add(session)
+"""
+
+
+def _colab_cli_python() -> Path:
+    executable = shutil.which("colab")
+    if executable is None:
+        raise WorkflowError("cannot execute colab: executable not found")
+    try:
+        first_line = Path(executable).read_text(encoding="utf-8").splitlines()[0]
+    except (OSError, UnicodeDecodeError, IndexError) as error:
+        raise WorkflowError("cannot determine the Colab CLI Python runtime") from error
+    match = re.fullmatch(r"#!(/[^\s]+)", first_line)
+    if match is None:
+        raise WorkflowError(
+            "Colab CLI must use an absolute Python shebang so runtime credentials "
+            "can be refreshed"
+        )
+    python = Path(match.group(1))
+    if not python.is_file():
+        raise WorkflowError("the Colab CLI Python runtime does not exist")
+    return python
+
+
+def _refresh_runtime_proxy(config_path: Path, session: str) -> None:
+    """Replace an expired contents-API credential without exposing its value."""
+    result = subprocess.run(
+        [
+            str(_colab_cli_python()),
+            "-c",
+            _REFRESH_RUNTIME_PROXY_SOURCE,
+            str(config_path.resolve()),
+            session,
+        ],
+        check=False,
+        text=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode != 0:
+        raise WorkflowError(
+            "could not refresh Colab runtime credentials for the retained session"
+        )
+
+
+def _session_argument(args: list[str]) -> str | None:
+    if "-s" not in args:
+        return None
+    index = args.index("-s")
+    if index + 1 >= len(args):
+        return None
+    return args[index + 1]
+
+
 def _invoke(
     config_path: Path,
     args: list[str],
@@ -409,16 +481,36 @@ def _invoke(
     check: bool = True,
     capture: bool = False,
 ) -> subprocess.CompletedProcess[str]:
+    retry_contents = bool(args and args[0] in {"download", "upload"})
+    capture_process = capture or retry_contents
     try:
         result = subprocess.run(
             [*_colab_prefix(config_path), *args],
             check=False,
             text=True,
-            stdout=subprocess.PIPE if capture else None,
-            stderr=subprocess.PIPE if capture else None,
+            stdout=subprocess.PIPE if capture_process else None,
+            stderr=subprocess.PIPE if capture_process else None,
         )
     except OSError as error:
         raise WorkflowError(f"cannot execute colab: {error}") from error
+    session = _session_argument(args)
+    if result.returncode != 0 and retry_contents and session is not None:
+        _refresh_runtime_proxy(config_path, session)
+        try:
+            result = subprocess.run(
+                [*_colab_prefix(config_path), *args],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE if capture_process else None,
+                stderr=subprocess.PIPE if capture_process else None,
+            )
+        except OSError as error:
+            raise WorkflowError(f"cannot execute colab: {error}") from error
+    if not capture and capture_process:
+        if result.stdout:
+            print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, end="", file=sys.stderr)
     if check and result.returncode != 0:
         detail = ""
         if capture:

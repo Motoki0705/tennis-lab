@@ -550,10 +550,14 @@ def test_jobs_lists_every_validated_builtin_manifest(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     jobs = json.loads(result.stdout)
-    catalog_names = sorted(path.stem for path in (ROOT / "scripts/colab/workflows/jobs").glob("*.toml"))
+    catalog_names = sorted(
+        path.stem for path in (ROOT / "scripts/colab/workflows/jobs").glob("*.toml")
+    )
     assert [job["name"] for job in jobs] == catalog_names
     accelerators = {job["name"]: job["accelerator"] for job in jobs}
-    assert {name: accelerators[name] for name in BUILTIN_ACCELERATORS} == BUILTIN_ACCELERATORS
+    assert {
+        name: accelerators[name] for name in BUILTIN_ACCELERATORS
+    } == BUILTIN_ACCELERATORS
     assert all(
         set(job)
         == {
@@ -1115,6 +1119,64 @@ def test_fake_colab_matches_official_0_6_help_and_rejects_unknown_options(
     assert "unknown option: --unknown" in unknown_new.stderr
 
 
+def test_contents_operation_refreshes_expired_runtime_proxy_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scripts.colab.workflow import cli
+
+    calls: list[list[str]] = []
+    refreshes: list[tuple[Path, str]] = []
+
+    def fake_run(argv: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        if len(calls) == 1:
+            return subprocess.CompletedProcess(
+                argv, 1, stdout="", stderr="404 Not Found"
+            )
+        return subprocess.CompletedProcess(argv, 0, stdout="downloaded\n", stderr="")
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        cli,
+        "_refresh_runtime_proxy",
+        lambda config, session: refreshes.append((config, session)),
+    )
+    config = tmp_path / "sessions.json"
+
+    result = cli._invoke(
+        config,
+        ["download", "-s", "retained", "/content/progress.json", "progress.json"],
+        capture=True,
+    )
+
+    assert result.returncode == 0
+    assert len(calls) == 2
+    assert refreshes == [(config, "retained")]
+
+
+def test_non_contents_failure_is_not_retried(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scripts.colab.workflow import cli
+
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 1, stdout="", stderr="failed")
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    result = cli._invoke(
+        tmp_path / "sessions.json",
+        ["exec", "-s", "retained", "-f", "run.py", "--timeout", "60"],
+        check=False,
+        capture=True,
+    )
+
+    assert result.returncode == 1
+    assert len(calls) == 1
+
+
 def test_mount_mode_never_uploads_or_logs_an_rclone_secret(
     tmp_path: Path, fake_colab: dict[str, Any]
 ) -> None:
@@ -1480,7 +1542,9 @@ def test_remote_runner_publishes_completed_bundle_before_marking_vm_completed(
         return f"tennis_lab/colab-runs/{RUN_ID}"
 
     monkeypatch.setattr(remote_runner, "_workspace", lambda: workspace)
-    monkeypatch.setattr(remote_runner, "_mount_drive_root", lambda _request: tmp_path / "drive")
+    monkeypatch.setattr(
+        remote_runner, "_mount_drive_root", lambda _request: tmp_path / "drive"
+    )
     monkeypatch.setattr(remote_runner, "_run_monitored_job", lambda *_args: None)
     monkeypatch.setattr(remote_runner, "_recover_published_status", lambda *_args: None)
     monkeypatch.setattr(
