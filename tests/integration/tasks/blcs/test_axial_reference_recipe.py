@@ -83,6 +83,7 @@ def batch(views: int = 4, reference: int = 2) -> dict[str, Any]:
 def test_recipe_and_selector_frequencies() -> None:
     config = recipe()
     validate_training_boundary(config)
+    assert config.data.batch_size == 16
     assert config.run.seed == 42 and config.training.compile.enabled
     assert config.loss.reprojection_weight == 1
     assert config.data.num_views_range == [3, 4]
