@@ -51,7 +51,9 @@ extension、NHTをVM内に構築します。
 - `--drive-mode mount`（既定）は `colab new` の認証後に `colab drivemount` を実行します。
   Drive mount固有のGoogle OAuth URLが端末に表示されるため、browserで同意し、端末の指示に従ってEnterを押して続行します。
   初回のColab CLI認証で求められるcode入力とは別の手順です。人間が操作できる端末向けで、完全headlessでは
-  ありません。CLIの対話待ちは最大600秒です。
+  ありません。CLIの対話待ちは最大600秒です。CLIの終了コードだけには依存せず、VM側で
+  `/content/drive`が実際のmountpointであり`MyDrive`を提供することを確認してから入力stageや
+  学習を開始します。未mountの同名directoryへ出力することはありません。
 - `--drive-mode rclone`はbrowser操作済みのrclone configを使うheadless方式
   です。Driveへ直接出力する学習jobでは使用できません。local hostにも `rclone` が必要です。別端末で `rclone config` を完了して
   configを安全に転送するか、既存configを指定し、owner以外が読めないようにします。
