@@ -310,6 +310,11 @@ workspace.mkdir(parents=True, exist_ok=True)
 if action == "prepare":
     (workspace / ".secrets").mkdir(exist_ok=True)
     raise SystemExit(0)
+if action == "verify-drive":
+    if os.environ.get("FAKE_DRIVE_MOUNTED", "1") != "1":
+        print("Google Drive is not mounted", file=sys.stderr)
+        raise SystemExit(93)
+    raise SystemExit(0)
 if action == "cleanup-secret":
     if rclone_config_remote:
         remote_path(rclone_config_remote).unlink(missing_ok=True)
@@ -1056,9 +1061,37 @@ def test_official_colab_cli_uses_versioned_file_exec_without_env_options(
     exec_calls = [
         call for call in calls if _operation(call) == "exec" and call[-1] != "--help"
     ]
-    assert {_action(call) for call in exec_calls} == {"prepare", "run"}
+    assert {_action(call) for call in exec_calls} == {
+        "verify-drive",
+        "prepare",
+        "run",
+    }
     assert all("-f" in call and "--timeout" in call for call in exec_calls)
     assert all("--env" not in call for call in exec_calls)
+
+
+def test_mount_exit_zero_does_not_start_job_when_drive_is_not_mounted(
+    tmp_path: Path, fake_colab: dict[str, Any]
+) -> None:
+    environment = {**fake_colab["env"], "FAKE_DRIVE_MOUNTED": "0"}
+
+    result = _run_cli(
+        tmp_path,
+        "run",
+        "court_detection",
+        "--run-id",
+        RUN_ID,
+        "--drive-mode",
+        "mount",
+        "--keep-on-failure",
+        env=environment,
+    )
+
+    assert result.returncode == 3
+    calls = _invocations(fake_colab)
+    assert any(_operation(call) == "drivemount" for call in calls)
+    assert any(_action(call) == "verify-drive" for call in calls)
+    assert not any(_action(call) in {"prepare", "run"} for call in calls)
 
 
 def test_fake_colab_matches_official_0_6_help_and_rejects_unknown_options(
