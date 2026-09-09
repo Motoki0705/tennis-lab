@@ -1,0 +1,17 @@
+schema_version = 1
+name = "blcs_axial_reference"
+description = "Train BLCS axial reference on the verified four-corner v2 dataset."
+accelerator = "gpu"
+timeout_seconds = 172800
+setup = ["base"]
+protected_override_keys = ["paths.data_root", "paths.output_root", "data.scene_dir", "run.output_dir", "run.gpus"]
+outputs = ["outputs/colab/blcs_axial_reference"]
+
+[command]
+argv = ["bash", "scripts/colab/train/blcs_axial_reference.sh"]
+args = ["paths.output_root=outputs/colab", "run.output_dir=blcs_axial_reference", "run.gpus=1"]
+
+[[inputs]]
+source = "data/blcs/single_object_camera_view_v2.tar.gz"
+destination = "data/blcs/single_object_camera_view_v2.tar.gz"
+writable = false

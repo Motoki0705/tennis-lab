@@ -37,6 +37,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 ### models/
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
+- **`blcs_multiview_axial_reference_model.py`**: axial trunkに(time, camera, reference-selector) RoPEと指定カメラからのreadoutを追加する。
 - **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。object streamをviewごとに1 tokenへ圧縮し、FFN-free attention block、`Q+V` spatial attention、stage末尾の共有FFNとmHC writebackを用いて複数ボール軌道とpresenceを推定する。
 - **`blcs_track_query_reference_model.py`**: 同じarchitectureへcamera-view target frameとreference selectorの6入力contractを追加する。
 - **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
@@ -74,7 +75,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`visualize.py`**: 可視化エントリポイント。
 
 ### configs/
-- 学習用の公開data profileは10個に固定している。`singleview_sequence` / `multiview_sequence` / `singleview_chunked_sequence` / `multiview_chunked_sequence` は `blcs/single_object`、`singleview_sequence_broadcast` / `multiview_sequence_broadcast` は `blcs/single_object_broadcast`、`tracking` / `tracking_chunked` は `blcs/multi_object`、`tracking_broadcast` は `blcs/multi_object_broadcast`、`tracking_camera_view_v2` は `blcs/multi_object_camera_view_v2` を使う。`singleview_chunked_sequence` は `model=single` と組み合わせる。旧 `chunked_multiview_sequence_bs4/8/16` は廃止した。
+- 学習用の公開data profileは以下を提供する。`multiview_sequence_camera_view_v2` は `blcs/single_object_camera_view_v2` とreference axialモデルを選択する。`singleview_sequence` / `multiview_sequence` / `singleview_chunked_sequence` / `multiview_chunked_sequence` は `blcs/single_object`、`singleview_sequence_broadcast` / `multiview_sequence_broadcast` は `blcs/single_object_broadcast`、`tracking` / `tracking_chunked` は `blcs/multi_object`、`tracking_broadcast` は `blcs/multi_object_broadcast`、`tracking_camera_view_v2` は `blcs/multi_object_camera_view_v2` を使う。`singleview_chunked_sequence` は `model=single` と組み合わせる。旧 `chunked_multiview_sequence_bs4/8/16` は廃止した。
 - track-queryは`model=tracking_query`と`model=tracking_query_reference`の2 profileだけを公開する。`data=tracking_camera_view_v2`を選ぶと、Hydraのabsolute package override defaultsにより `court_keypoints=camera_view_v2` と `model=tracking_query_reference` が一意に選択される。その他にmodel(single/multiview/axial)・data・training(default/GAN)・loss(default/reprojection/tracking)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定がある。
 
 ## Multi-ball tracking
@@ -127,4 +128,19 @@ Single-object camera-view data can be generated with
 `--config-name generate_dataset_camera_view_v2`. The shared
 [explicit camera candidate contract](../base/generate_dataset/README.md#explicit-camera-candidate-sets)
 describes the four-corner preset and `data.camera_candidates` for standard scene
-sampling. This generation recipe does not start BLCS training.
+sampling.
+
+## Axial reference training
+
+[`configs/train_axial_reference.yaml`](configs/train_axial_reference.yaml) is the
+single-object reference recipe. It retains the BLCS base trunk's local temporal
+attention schedule and predicts position only (the standard loss does not train a
+velocity head). Invisible out-of-frame UV coordinates may lie outside [0,1];
+visible coordinates must be in range and all coordinates must be finite.
+Model, optimizer, augmentation and data settings are owned by the
+composed YAML files. BLCS has no player canonical-pose or rotation head.
+
+The Colab L4 entry is `scripts/colab/train/blcs_axial_reference.sh`, dispatched by
+the `blcs_axial_reference` workflow job. Its dataset archive is validated before
+extraction onto VM local disk. See [Colab workflow](../../../scripts/colab/README.md)
+for authentication and artifact lifecycle.

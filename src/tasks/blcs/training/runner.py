@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
@@ -14,6 +15,7 @@ from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
     validate_training_boundary,
 )
+from src.tasks.blcs.model_io.axial_reference import validate_axial_reference_checkpoint
 from src.tasks.blcs.model_io.checkpoints import (
     resolve_config_track_query_reference_contract,
     validate_checkpoint_path,
@@ -121,6 +123,12 @@ class BLCSTrainingRunner(BaseTrainingRunner):
                 self._require_court_keypoint_contract(),
                 self._track_query_reference_contract,
             )
+            checkpoint = torch.load(config.run.init_weights, map_location="cpu", weights_only=False)
+            model_name = str(lightning_module.config.model.name)
+            validate_axial_reference_checkpoint(checkpoint, model_name=model_name)
+            if model_name == "blcs_multiview_axial_reference":
+                lightning_module.load_state_dict(checkpoint["state_dict"], strict=True)
+                return
         super().maybe_load_init_weights(config, lightning_module)
 
     def _require_court_keypoint_contract(self) -> CourtKeypointContract:

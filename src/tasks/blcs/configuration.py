@@ -260,7 +260,7 @@ class SingleModelConfig:
 
 @dataclass(frozen=True, slots=True)
 class AxialModelConfig:
-    name: Literal["blcs_multiview_axial"]
+    name: Literal["blcs_multiview_axial", "blcs_multiview_axial_reference"]
     input_profile: Literal["multiview"]
     hidden_dim: int
     num_layers: int
@@ -466,7 +466,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         ):
             _positive(value, path=f"model.{key}")
         return result
-    if name == "blcs_multiview_axial":
+    if name in {"blcs_multiview_axial", "blcs_multiview_axial_reference"}:
         keys = {
             "name",
             "io",
@@ -491,6 +491,17 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "time_layers_per_stage",
             "time_global_stage_mask",
         }
+        if name == "blcs_multiview_axial_reference":
+            from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
+
+            for key in ("target_frame_contract", "axial_rope_contract", "reference_selector_mode"):
+                keys.add(key)
+                if model.get(key) != AXIAL_REFERENCE_CONTRACT[key]:
+                    raise SemanticConfigurationError(f"Invalid axial reference model.{key}.")
+            if int(model["rope_dim"]) < 6:
+                raise SemanticConfigurationError("Axial reference requires rope_dim >= 6.")
+            if parse_court_keypoint_contract(config).selector != "camera_view_v2":
+                raise SemanticConfigurationError("Axial reference requires camera_view_v2.")
         _exact(model, keys, path="model")
         _validate_types(
             model,
@@ -529,7 +540,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "Invalid axial model profile, attention_type, or ffn_type."
             )
         result = AxialModelConfig(
-            name="blcs_multiview_axial",
+            name=cast("Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']", name),
             input_profile="multiview",
             hidden_dim=int(model["hidden_dim"]),
             num_layers=int(model["num_layers"]),
@@ -2070,6 +2081,11 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 "data.camera_candidates cannot provide num_views_range."
             )
+    if model.name == "blcs_multiview_axial_reference":
+        data_keys.add("evaluation_reference_camera_id")
+        evaluation_reference = data.get("evaluation_reference_camera_id")
+        if not isinstance(evaluation_reference, str) or not evaluation_reference.strip():
+            raise SemanticConfigurationError("Axial reference requires evaluation_reference_camera_id.")
     _exact(data, data_keys, path="data")
     data_types: dict[str, type[object]] = {
         "backend": str,
@@ -2116,6 +2132,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 f"data.{name} must be a positive ordered range."
             )
+    if model.name == "blcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+        raise SemanticConfigurationError("Axial reference requires 3 or 4 views.")
     batch_size = cast("int", data["batch_size"])
     num_workers = cast("int", data["num_workers"])
     if batch_size <= 0 or num_workers < 0:
