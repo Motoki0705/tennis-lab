@@ -16,6 +16,7 @@ from src.tasks.blcs.model_io.contracts import BLCSReferenceMetadata
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.model_io.contracts import PLCSReferenceMetadata
 from src.tennis_scene.archive import save_scene_result
+from src.tennis_scene.configuration import ReferenceClipPaths
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionResult
 from src.tennis_scene.reference_pipeline.observations import (
     court_homographies,
@@ -27,7 +28,6 @@ from src.tennis_scene.reference_pipeline.reference import (
     reference_metadata,
 )
 from src.tennis_scene.schema import SceneResult
-from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.inference.windowed import blend_windows, window_slices
 
 
@@ -75,7 +75,9 @@ def restore_frames(values: np.ndarray, indices: np.ndarray, total: int) -> np.nd
     )
 
 
-def reconstruct(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
+def reconstruct(
+    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path
+) -> None:
     clip = read_clip(clip_dir)
     kp, hs = court_homographies(clip_dir)
     aligned, selection, document = build_reference(
@@ -102,22 +104,9 @@ def reconstruct(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
     if stride <= 0 or int(cfg.window_size) != 128:
         raise ValueError("Require positive stride and the trained 128-frame windows")
     indices = np.arange(0, total, stride)
-    roots = RuntimePathRoots.from_mapping(
-        {
-            "project_root": str(Path.cwd()),
-            "data_root": str(clip_dir),
-            "checkpoint_root": str(Path(cfg.plcs_checkpoint).parent.parent),
-            "artifact_root": str(output),
-            "output_root": str(output),
-            "cache_root": str(output / "cache"),
-            "external_asset_root": str(Path(cfg.people.dino_repository).parent),
-        },
-        repository_root=Path.cwd(),
-    )
-    resolver = PathResolver(roots)
     plcs = PLCSPredictor.load_from_checkpoint(
-        cfg.plcs_checkpoint,
-        resolver=resolver,
+        paths.plcs_checkpoint,
+        resolver=paths.resolver,
         device=cfg.device,
         court_keypoint_contract=selection.provenance.contract,
     )
@@ -168,8 +157,8 @@ def reconstruct(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
     del plcs
     torch.cuda.empty_cache()
     blcs = BLCSPredictor.load_from_checkpoint(
-        cfg.blcs_checkpoint,
-        resolver=resolver,
+        paths.blcs_checkpoint,
+        resolver=paths.resolver,
         device=cfg.device,
         court_keypoints=selection.provenance.contract,
     )
@@ -218,8 +207,8 @@ def reconstruct(cfg: DictConfig, clip_dir: Path, output: Path) -> None:
         "time_restore": "linear positions/canonical joints; circular heading; final sub-frame held",
         "checkpoints": {
             task: {
-                "path": str(cfg[f"{task}_checkpoint"]),
-                "sha256": sha256(Path(cfg[f"{task}_checkpoint"])),
+                "path": str(getattr(paths, f"{task}_checkpoint")),
+                "sha256": sha256(getattr(paths, f"{task}_checkpoint")),
             }
             for task in ("plcs", "blcs")
         },

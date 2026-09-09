@@ -68,11 +68,11 @@ class SceneResult:
     player_track_ids: NDArray[np.int32] | None = None
     player_kp_3d: NDArray[np.float32] | None = None  # (P, T, J, 3)
 
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     player_canonical_pose: NDArray[np.float32] | None = (
         None  # (P,T,17,3), root-relative court Z-up
     )
-
-    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def attach_court_keypoint_provenance(
