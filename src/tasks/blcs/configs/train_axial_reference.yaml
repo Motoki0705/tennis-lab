@@ -3,6 +3,8 @@ defaults:
   - override data: multiview_sequence_camera_view_v2
   - override loss: axial_reference
   - _self_
+data:
+  batch_size: 16
 training:
   trainer:
     max_epochs: 50
