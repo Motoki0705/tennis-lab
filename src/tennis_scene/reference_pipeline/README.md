@@ -9,10 +9,13 @@ this route saves PLCS canonical joints and court-space joints in `SceneResult`.
 
 Run from a checkout containing the axial-reference model implementation, with
 `.venv`, `data`, `ckpt` and the initialized DINO external asset available. The
-example paths in `../configs/reference_clip.yaml` identify this workstation's
-shared assets explicitly; override them when running elsewhere. A compatible
+paths in `../configs/reference_clip.yaml` are resolved through the repository's
+role-based roots; override those roots when using shared assets. A compatible
 `MultiScaleDeformableAttention` extension must be on the Python import path.
 GPU stages must use the repository's shared training queue.
+
+When a worktree reuses external assets from another checkout, declare that root
+explicitly, for example `paths.external_asset_root=/path/to/tennis-lab/third_party`.
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.reconstruct_reference_clip stage=observe
