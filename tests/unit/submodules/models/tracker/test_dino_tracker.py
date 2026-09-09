@@ -104,3 +104,37 @@ def test_completed_dino_track_interpolates_then_smooths_missing_frames(
     torch.testing.assert_close(smoothing_inputs[0], interpolated)
     torch.testing.assert_close(smoothing_inputs[1], interpolated + 0.25)
     torch.testing.assert_close(result.tracks[7], interpolated + 0.5)
+
+
+def test_playing_area_filters_by_feet_and_preserves_scores() -> None:
+    from src.submodules.models.tracker.dino_tracker import (
+        filter_detections_by_footpoint,
+    )
+
+    detections = PersonDetectionResult(
+        np.array([[1, -5, 3, 5], [8, 8, 12, 10], [2, 0, 4, 11]], np.float32),
+        np.array([0.8, 0.7, 0.9], np.float32),
+    )
+    polygon = ((0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0))
+    selected = filter_detections_by_footpoint(detections, polygon)
+    np.testing.assert_array_equal(selected.boxes_xyxy, detections.boxes_xyxy[:2])
+    np.testing.assert_array_equal(selected.scores, detections.scores[:2])
+    empty = filter_detections_by_footpoint(
+        PersonDetectionResult(np.empty((0, 4), np.float32), np.empty(0, np.float32)),
+        polygon,
+    )
+    assert empty.boxes_xyxy.shape == (0, 4)
+    with pytest.raises(ValueError, match="finite polygon"):
+        filter_detections_by_footpoint(detections, ((0.0, 0.0), (1.0, 1.0)))
+
+
+def test_yolo_rejects_dino_only_playing_area() -> None:
+    from src.submodules.models.tracker.yolo_tracker import YoloPersonTracker
+
+    tracker = YoloPersonTracker.__new__(YoloPersonTracker)
+    with pytest.raises(ValueError, match="only by DinoPersonTracker"):
+        tracker._predict_impl(
+            TrackRequest(
+                "not-opened.mp4", 2, False, ((0.0, 0.0), (1.0, 0.0), (0.0, 1.0))
+            )
+        )
