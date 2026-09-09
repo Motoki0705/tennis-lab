@@ -45,7 +45,6 @@ dependencies = [
     "uvicorn>=0.52.3",
     "fastapi>=0.135.3",
     "requests>=2.34.2",
-    "vllm>=0.26.0",
     "lap>=0.5.12",
     "mcp>=2.0.0,<3",
 ]
