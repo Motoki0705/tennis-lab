@@ -1,0 +1,24 @@
+schema_version = 1
+name = "blcs_generate_dataset"
+description = "Generate the standard CPU BLCS single-object dataset."
+accelerator = "cpu"
+timeout_seconds = 86400
+setup = ["base"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.output_root",
+  "generation",
+  "camera",
+  "run.output_dir",
+  "run.device",
+]
+outputs = ["data/blcs/single_object"]
+inputs = []
+
+[command]
+module = "src.tasks.blcs.scripts.generate_dataset"
+args = [
+  "paths.output_root=outputs/colab",
+  "run.output_dir=blcs/single_object",
+  "run.device=cpu",
+]

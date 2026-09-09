@@ -1,0 +1,36 @@
+schema_version = 1
+name = "plcs_generate_dataset"
+description = "Generate the standard CPU PLCS single-object dataset."
+accelerator = "cpu"
+timeout_seconds = 86400
+setup = ["base"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.external_asset_root",
+  "paths.output_root",
+  "generation",
+  "camera",
+  "external_assets.smplh_model_path",
+  "motion_sources",
+  "run.output_dir",
+  "run.device",
+]
+outputs = ["data/plcs/single_object"]
+
+[command]
+module = "src.tasks.plcs.scripts.generate_dataset"
+args = [
+  "paths.output_root=outputs/colab",
+  "run.output_dir=plcs/single_object",
+  "run.device=cpu",
+]
+
+[[inputs]]
+source = "data/smplx/smplh"
+destination = "data/smplx/smplh"
+writable = false
+
+[[inputs]]
+source = "data/ACCAD"
+destination = "data/ACCAD"
+writable = false
