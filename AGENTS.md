@@ -23,7 +23,6 @@
 - コミット時には `.pre-commit-config.yaml` により以下が実行される。
   - **ruff**: `select = ["E", "F", "UP", "B", "SIM", "I"]`, `ignore = ["F405", "F403", "E501"]`
   - **mypy**: `disallow_untyped_defs`, `disallow_incomplete_defs`, `check_untyped_defs`, `no_implicit_optional`, `warn_return_any`, `warn_unused_ignores`, `warn_unreachable`, `strict_equality`
-  - **task-script-reviewer**: `**/scripts/**` にスクリプトを作成する際の規約（モジュールdocstringの強制）
 
 ## 開発スタイル
 
