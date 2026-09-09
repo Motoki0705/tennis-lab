@@ -238,6 +238,7 @@ BLCS_SINGLE_VIEW_OUTPUT_MASK_PATH = (
 )
 BLCS_AXIAL_MASK_PATH = (
     "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
+    "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel._encode_views",
     "src.tasks.blcs.models.components.padding.build_axial_padding_masks",
 )
 BLCS_AXIAL_PADDING_VALIDATION_PATH = (
@@ -246,6 +247,11 @@ BLCS_AXIAL_PADDING_VALIDATION_PATH = (
 )
 BLCS_AXIAL_OUTPUT_MASK_PATH = (
     "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
+    "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
+)
+BLCS_AXIAL_REFERENCE_OUTPUT_MASK_PATH = (
+    "src.tasks.blcs.models.blcs_multiview_axial_reference_model."
+    "BLCSMultiViewAxialReferenceModel.forward",
     "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
 )
 BLCS_FIXED_QUERY_MASK_PATH = (
@@ -394,6 +400,10 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "runtime implementation/type selection via isinstance": 1,
     },
     BLCS_AXIAL_OUTPUT_MASK_PATH: {
+        "Python raise": 1,
+        "Python shape/value validation branch": 1,
+    },
+    BLCS_AXIAL_REFERENCE_OUTPUT_MASK_PATH: {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
     },

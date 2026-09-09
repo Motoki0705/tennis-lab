@@ -61,9 +61,7 @@ def _container() -> dict[str, object]:
     }
 
 
-_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
-    "physical_v1"
-)
+_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract("physical_v1")
 _CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT = TrackQueryReferenceContract.physical_v1()
 
 
@@ -281,7 +279,8 @@ def test_raw_checkpoint_validation_happens_without_inference(
         (
             BLCSLightningModule,
             SimpleNamespace(
-                court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
+                config=SimpleNamespace(model=SimpleNamespace(name="blcs")),
+                court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
             ),
             _checkpoint_container(),
         ),
@@ -299,7 +298,8 @@ def test_raw_checkpoint_validation_happens_without_inference(
             PLCSLightningModule,
             SimpleNamespace(
                 plcs_runtime=SimpleNamespace(
-                    court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
+                    court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
+                    model=SimpleNamespace(name="plcs"),
                 )
             ),
             _checkpoint_container(),
@@ -329,9 +329,29 @@ def test_task_lightning_save_hooks_write_the_exact_contract(
 
 
 @pytest.mark.parametrize(
-    "module_type",
-    [BLCSLightningModule, PLCSLightningModule, PLCSTrackingLightningModule],
+    ("module_type", "receiver"),
+    [
+        (
+            BLCSLightningModule,
+            SimpleNamespace(
+                config=SimpleNamespace(model=SimpleNamespace(name="blcs")),
+                court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
+            ),
+        ),
+        (
+            PLCSLightningModule,
+            SimpleNamespace(
+                plcs_runtime=SimpleNamespace(
+                    model=SimpleNamespace(name="plcs"),
+                    court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
+                )
+            ),
+        ),
+        (PLCSTrackingLightningModule, object()),
+    ],
 )
-def test_task_lightning_load_hooks_reject_old_checkpoints(module_type: Any) -> None:
+def test_task_lightning_load_hooks_reject_old_checkpoints(
+    module_type: Any, receiver: object
+) -> None:
     with pytest.raises(CourtCoordinateContractError, match="missing"):
-        module_type.on_load_checkpoint(object(), {})
+        module_type.on_load_checkpoint(receiver, {})

@@ -135,8 +135,8 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 both 0.1 by default for this recipe. Reprojection has weight 1 with no paired
 weight-zero run. Model/data/loss/optimizer values live in these Hydra configs;
 this README is the entry point rather than a second copy of the parameter table.
-Generation and explicit camera candidate semantics are documented in the
-[shared generation contract](../base/generate_dataset/README.md#explicit-camera-candidate-sets).
+Generation and explicit camera candidate semantics are documented in the shared
+contract linked above.
 
 ```bash
 # Submit through the shared training queue when running on a local GPU.
