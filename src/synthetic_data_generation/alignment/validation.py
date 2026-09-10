@@ -178,6 +178,19 @@ def write_alignment_outputs(
 def validate_alignment_outputs(output_path: Path) -> AlignmentResult:
     """Validate the complete fixed inventory and cross-file semantic agreement."""
     _require_output_directory(output_path)
+    if (output_path / "manual-confirmation.json").exists():
+        from src.synthetic_data_generation.alignment.manual.artifacts import (
+            load_manual_source,
+            validate_manual_outputs,
+        )
+        from src.synthetic_data_generation.alignment.manual.source import (
+            reconstruction_identity,
+        )
+
+        result = validate_manual_outputs(output_path)
+        if load_manual_source(output_path).reconstruction != reconstruction_identity(output_path.parent):
+            raise ValueError("Manual alignment is bound to a different reconstruction.")
+        return result
     expected = {
         GROUND_LINE_MAP_FILE,
         COURT_GEOMETRY_FILE,

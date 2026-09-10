@@ -119,6 +119,12 @@ selected view, proximity-weighted ground-plane heatmaps for every view, and
 their weighted aggregate on one common ground grid. The numeric archive is the
 validation authority for the PNG diagnostics.
 
+## Correct court alignment manually
+
+[Court Alignment Studio](alignment/manual/README.md) edits court position, yaw,
+shared scale and court count on the projected heatmap, with human confirmation
+as the final authority for downstream datasets.
+
 ## Dataset domains
 
 The canonical dataset package owns config-driven camera rigs, balanced target-court
