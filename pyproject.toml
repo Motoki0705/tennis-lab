@@ -72,6 +72,7 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
 "*" = [
     "README.md",
@@ -250,6 +251,15 @@ disallow_untyped_decorators = false
 # appears untyped when the pre-commit hook intentionally skips imported bodies.
 [[tool.mypy.overrides]]
 module = ["src.automation.chatgpt_mcp.server"]
+disallow_untyped_decorators = false
+
+# FastAPI and Pydantic decorators lose their imported types under the
+# pre-commit hook's --follow-imports=skip; keep editor bodies type-checked.
+[[tool.mypy.overrides]]
+module = [
+    "src.synthetic_data_generation.alignment.manual.models",
+    "src.synthetic_data_generation.alignment.manual.web",
+]
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]

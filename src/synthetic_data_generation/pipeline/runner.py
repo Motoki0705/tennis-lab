@@ -20,6 +20,7 @@ from src.synthetic_data_generation.pipeline.contracts import (
     StageName,
     StageStatus,
 )
+from src.synthetic_data_generation.pipeline.locking import scene_write_lock
 from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
@@ -56,6 +57,10 @@ class ScenePipelineRunner:
 
     def run(self, request: ScenePipelineRequest) -> MutableRunManifest:
         """Run one request, leaving no partial/stale stage marked completed."""
+        with scene_write_lock(self.workspace.root):
+            return self._run_locked(request)
+
+    def _run_locked(self, request: ScenePipelineRequest) -> MutableRunManifest:
         if request.scene_id != self.workspace.scene_id:
             raise ValueError("Request scene_id disagrees with the resolved workspace.")
 

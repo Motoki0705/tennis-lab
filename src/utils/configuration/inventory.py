@@ -292,6 +292,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "automation.chatgpt_mcp",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.synthetic_data_generation.scripts.edit_alignment": (
+        "synthetic.manual_court_alignment",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -327,6 +331,12 @@ _RUNTIME_BOUNDARIES = (
         "src.automation.chatgpt_mcp.cli",
         "main",
         domain="automation",
+    ),
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.edit_alignment",
+        "main",
+        domain="manual_court_alignment",
+        executable_module=True,
     ),
     _runtime_boundary(
         "synthetic_data_generation",
