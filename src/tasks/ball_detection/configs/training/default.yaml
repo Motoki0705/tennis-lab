@@ -14,7 +14,7 @@ trainer:
 
 # ---- Optimizer / scheduler ----
 learning_rate: 1.0e-4
-weight_decay: 1.0e-4
+weight_decay: 0.1
 warmup_steps: 200
 warmup_epochs: null
 min_lr: 1.0e-6
@@ -45,7 +45,7 @@ checkpoint:
   save_last: true
 
 early_stopping:
-  enabled: true
+  enabled: false
   monitor: val/loss
   mode: min
   patience: 5
@@ -59,7 +59,7 @@ lr_monitor:
 # ---- Qualitative validation logging ----
 qualitative_logging:
   enabled: true
-  every_n_epochs: 1
+  every_n_epochs: 5
   num_samples: 4
   selection_mode: random
   selected_indices: null
