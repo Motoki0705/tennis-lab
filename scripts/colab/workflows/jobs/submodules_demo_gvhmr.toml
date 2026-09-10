@@ -1,0 +1,51 @@
+schema_version = 1
+name = "submodules_demo_gvhmr"
+description = "Run the headless GVHMR video-to-mesh demo."
+accelerator = "gpu"
+timeout_seconds = 43200
+setup = ["base", "submodules"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.checkpoint_root",
+  "paths.output_root",
+  "paths.external_asset_root",
+  "assets.checkpoints.yolo",
+  "assets.checkpoints.dino",
+  "assets.checkpoints.vitpose",
+  "assets.checkpoints.hmr2",
+  "assets.checkpoints.gvhmr",
+  "assets.dino_repository",
+  "assets.body_models_dir",
+  "assets.smpl_faces",
+  "video",
+  "output_directory",
+  "output_name",
+  "interactive_tracks",
+  "runtime.device",
+]
+outputs = ["outputs/colab/gvhmr_demo"]
+
+[command]
+module = "src.submodules.scripts.demo_gvhmr"
+args = [
+  "paths.output_root=outputs/colab",
+  "video=samples/tennis_clip.mp4",
+  "output_directory=gvhmr_demo",
+  "interactive_tracks=false",
+  "runtime.device=cuda",
+]
+
+[[inputs]]
+source = "data/samples"
+destination = "data/samples"
+writable = false
+
+[[inputs]]
+source = "ckpt"
+destination = "ckpt"
+writable = false
+
+[[inputs]]
+source = "data/smplh/neutral/model.npz"
+destination = "data/smplh/neutral/model.npz"
+writable = false
