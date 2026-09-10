@@ -1,0 +1,10 @@
+{
+  "Circle + ellipse": {
+    "proposals": 2288,
+    "occupied_1m_xy_cells": 747
+  },
+  "Four shapes + spatial coverage": {
+    "proposals": 2264,
+    "occupied_1m_xy_cells": 1124
+  }
+}

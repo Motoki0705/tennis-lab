@@ -1,0 +1,1720 @@
+{
+  "v3": {
+    "rendered_count": 96,
+    "mean_alpha_below_0_5_fraction": 0.0038976677029708465,
+    "mean_alpha_below_0_9_fraction": 0.025161813706428632,
+    "frames": [
+      {
+        "camera_id": "court-sample-000000",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0031534084863445804,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000077",
+        "alpha_below_0_5_fraction": 0.004335453017115463,
+        "alpha_below_0_9_fraction": 0.06149340009015266,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000154",
+        "alpha_below_0_5_fraction": 0.00013929166320049682,
+        "alpha_below_0_9_fraction": 0.0432133039015208,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000231",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0017566226414729318,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000232",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0031534084863445804,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000309",
+        "alpha_below_0_5_fraction": 0.007235428060692473,
+        "alpha_below_0_9_fraction": 0.06719855446207301,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000386",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.042166681821083726,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000463",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0016947152356060445,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000464",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000559",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000655",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.016602792410925882,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000751",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000752",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000847",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000943",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01715415524442785,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001039",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001040",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004161338438114842,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001095",
+        "alpha_below_0_5_fraction": 0.0032017736471780865,
+        "alpha_below_0_9_fraction": 0.05476677352142867,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001151",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0022364050369413097,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001207",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00895529317993194,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001208",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001271",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004263872579081875,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001335",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01367186366441543,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001399",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001400",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03771902163083453,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001466",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02080088837127419,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001532",
+        "alpha_below_0_5_fraction": 0.014141973027717107,
+        "alpha_below_0_9_fraction": 0.0791428145815156,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001599",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03493512297325794,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001600",
+        "alpha_below_0_5_fraction": 0.008413603378596675,
+        "alpha_below_0_9_fraction": 0.06359244807032681,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001679",
+        "alpha_below_0_5_fraction": 0.025500047397857616,
+        "alpha_below_0_9_fraction": 0.11715589639021785,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001759",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0018436799309732425,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001839",
+        "alpha_below_0_5_fraction": 0.010081234124135956,
+        "alpha_below_0_9_fraction": 0.06940594040251422,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001840",
+        "alpha_below_0_5_fraction": 0.006790468581024219,
+        "alpha_below_0_9_fraction": 0.06444754411386319,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001919",
+        "alpha_below_0_5_fraction": 0.02712124758899673,
+        "alpha_below_0_9_fraction": 0.1148691915860097,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001999",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.003718313564879929,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002079",
+        "alpha_below_0_5_fraction": 0.008599325596197338,
+        "alpha_below_0_9_fraction": 0.06967291609031517,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002080",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002157",
+        "alpha_below_0_5_fraction": 0.003422318780578873,
+        "alpha_below_0_9_fraction": 0.10459256221210637,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002234",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0071522399840588426,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002311",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002312",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002394",
+        "alpha_below_0_5_fraction": 0.032104793761281177,
+        "alpha_below_0_9_fraction": 0.12355363986527401,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002476",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02559677771952463,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002559",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002560",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002650",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0395975244776079,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002740",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002831",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002832",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.001234278904471069,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002893",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0012981209167712967,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002954",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.013203688907547093,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003015",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0022576857077080525,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003016",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003085",
+        "alpha_below_0_5_fraction": 0.03537621324005951,
+        "alpha_below_0_9_fraction": 0.09565854970294119,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003154",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 3.6757522233464434e-05,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003223",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003224",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003298",
+        "alpha_below_0_5_fraction": 0.04104461008974639,
+        "alpha_below_0_9_fraction": 0.1073435725603162,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003372",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00017024536613394054,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003447",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003448",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.019195165031601798,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003487",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.000174114579000621,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003527",
+        "alpha_below_0_5_fraction": 0.01317466981104699,
+        "alpha_below_0_9_fraction": 0.06428116796059594,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003567",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.018723121061866778,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003568",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03854703318430415,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003607",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.003985289252680881,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003647",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.024292852983453312,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003687",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03540329773012627,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003688",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003727",
+        "alpha_below_0_5_fraction": 0.00018959143046734286,
+        "alpha_below_0_9_fraction": 0.005287279382318858,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003767",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.019860669644670835,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003807",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003808",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01566837750362255,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003850",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0005687742914020287,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003892",
+        "alpha_below_0_5_fraction": 0.0157476963673895,
+        "alpha_below_0_9_fraction": 0.06838253359927723,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003935",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01749464597669573,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003936",
+        "alpha_below_0_5_fraction": 0.0003346869129678604,
+        "alpha_below_0_9_fraction": 0.037082536114265596,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-003978",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.005320167691685642,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004020",
+        "alpha_below_0_5_fraction": 0.058123315683273974,
+        "alpha_below_0_9_fraction": 0.12175445588226759,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004063",
+        "alpha_below_0_5_fraction": 0.0005610358656686677,
+        "alpha_below_0_9_fraction": 0.035395559304392914,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004064",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004117",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.001400655057738329,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004170",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.009170034494032706,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004223",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004224",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004282",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0016773037777059823,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004340",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.018409714819665662,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004399",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004400",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03771902163083453,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004455",
+        "alpha_below_0_5_fraction": 0.002667822271576182,
+        "alpha_below_0_9_fraction": 0.012865132781712552,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004511",
+        "alpha_below_0_5_fraction": 0.05582693784689911,
+        "alpha_below_0_9_fraction": 0.1324528294586391,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004567",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03489836545102447,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004568",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004645",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.021833968206677875,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004722",
+        "alpha_below_0_5_fraction": 4.2561341533485136e-05,
+        "alpha_below_0_9_fraction": 0.06904803821234627,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-004799",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      }
+    ]
+  },
+  "sfm_bounded": {
+    "rendered_count": 188,
+    "mean_alpha_below_0_5_fraction": 0.001971137565459158,
+    "mean_alpha_below_0_9_fraction": 0.030298581394264265,
+    "frames": [
+      {
+        "camera_id": "court-sample-000000",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.027063209395996525,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000007",
+        "alpha_below_0_5_fraction": 0.004285153249848617,
+        "alpha_below_0_9_fraction": 0.02395236225118543,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000015",
+        "alpha_below_0_5_fraction": 0.013975596874449846,
+        "alpha_below_0_9_fraction": 0.0507776150558811,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000023",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.026757541579528768,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000024",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02793958611029965,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000031",
+        "alpha_below_0_5_fraction": 0.0025556150984424484,
+        "alpha_below_0_9_fraction": 0.02412260761731937,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000039",
+        "alpha_below_0_5_fraction": 0.003654471552579701,
+        "alpha_below_0_9_fraction": 0.0344766212485563,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000047",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.024586913161321028,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000048",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.020400424839572762,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000055",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.005103491771151536,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000063",
+        "alpha_below_0_5_fraction": 0.004714635878050149,
+        "alpha_below_0_9_fraction": 0.0337646860810871,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000071",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02005026107513818,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000072",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0009827800681368386,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000079",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02753718797216488,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000087",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0017082574806394262,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000095",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.005645181572486801,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000096",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004161338438114842,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000103",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01432769524531777,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000111",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.011563142652074575,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000119",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004940984830750957,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000120",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.038367114786003506,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000130",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000140",
+        "alpha_below_0_5_fraction": 0.005364663639652468,
+        "alpha_below_0_9_fraction": 0.027949259142466352,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000151",
+        "alpha_below_0_5_fraction": 9.673032166701167e-06,
+        "alpha_below_0_9_fraction": 0.03472618547845719,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000152",
+        "alpha_below_0_5_fraction": 0.0036196486367795766,
+        "alpha_below_0_9_fraction": 0.05278380192725493,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000162",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000172",
+        "alpha_below_0_5_fraction": 0.010963414657739102,
+        "alpha_below_0_9_fraction": 0.02959174000437221,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000183",
+        "alpha_below_0_5_fraction": 0.007908671099494875,
+        "alpha_below_0_9_fraction": 0.054907999791062506,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000184",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03808079303386915,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000194",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 9.673032166701167e-06,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000204",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0010021261324702408,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000215",
+        "alpha_below_0_5_fraction": 0.007390196575359692,
+        "alpha_below_0_9_fraction": 0.054265710455193544,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000216",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01574576176095616,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000231",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000247",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000263",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01060551246757116,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000264",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00994194246093546,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000279",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000295",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000311",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.021083340910541863,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000312",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.002834198424843442,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000335",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000359",
+        "alpha_below_0_5_fraction": 0.0012710364267045334,
+        "alpha_below_0_9_fraction": 0.07071953817075223,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000383",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.016200394272791116,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000384",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0208976186929412,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000413",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000442",
+        "alpha_below_0_5_fraction": 0.0010176029839369628,
+        "alpha_below_0_9_fraction": 0.04630093576913181,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000471",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.022453042265346747,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000472",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.019984484456404612,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000503",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00044302487323491345,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000535",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.006974256192191541,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000567",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.022555576406313782,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000568",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.021002087440341575,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000599",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0010292106225370042,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000631",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004376079752215608,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000663",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.021187809657942237,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000664",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.018914647098767463,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000695",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000727",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0017295381514061687,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000759",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.027113509163263372,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000760",
+        "alpha_below_0_5_fraction": 4.836516083350584e-05,
+        "alpha_below_0_9_fraction": 0.08941557474255225,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000773",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.007724883488327552,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000786",
+        "alpha_below_0_5_fraction": 0.03366215194012006,
+        "alpha_below_0_9_fraction": 0.09410506073696898,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000799",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.08997274139535423,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000800",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.1491871751070321,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000813",
+        "alpha_below_0_5_fraction": 0.00397948543338086,
+        "alpha_below_0_9_fraction": 0.03049326660230876,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000826",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.030456509080075293,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000839",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.17122621159564405,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000840",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.1523947525735102,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000853",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.006935564063524737,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000866",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.04219183170471715,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000879",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.16110435073640794,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000880",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.14671861729808996,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000893",
+        "alpha_below_0_5_fraction": 0.008974639244265344,
+        "alpha_below_0_9_fraction": 0.04928603349577579,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000906",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.012306031522477225,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000919",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.14676504785249012,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000920",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.016262301678658,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000935",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000951",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02936345644523806,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000967",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.010870553548938771,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000968",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03017599114724096,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000975",
+        "alpha_below_0_5_fraction": 0.004198095960348307,
+        "alpha_below_0_9_fraction": 0.02420773030038634,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000983",
+        "alpha_below_0_5_fraction": 0.008568371893263893,
+        "alpha_below_0_9_fraction": 0.04018371022690999,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000991",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.027237323974997146,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000992",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.005709023584787029,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-000999",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.019377018036335777,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001007",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0018436799309732425,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001015",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004203899779648327,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001016",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00023408737843416824,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001023",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.026322255132027215,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001031",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.011961671577342663,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001039",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.001955887104106976,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001040",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.001259428788104492,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001050",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0013580937162048438,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001060",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.010615185499737861,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001071",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.12411661033737602,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001072",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.092149173632862,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001082",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001092",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.008725075014364453,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001103",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.008026682091928628,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001104",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0031785583699780037,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001114",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0010737065705038295,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001124",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.017452084635162245,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001135",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.16756787083019767,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001136",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.011365812795873871,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001146",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.006674392195023806,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001156",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.002859348308476865,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001167",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0170554903163275,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001168",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.036662726518230764,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001178",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 1.9346064333402332e-06,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001188",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0012826440653045748,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001199",
+        "alpha_below_0_5_fraction": 0.007016817533725027,
+        "alpha_below_0_9_fraction": 0.057715113725839186,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001200",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.061303808659685315,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001213",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001226",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001239",
+        "alpha_below_0_5_fraction": 5.8038193000207e-06,
+        "alpha_below_0_9_fraction": 0.07774409413021062,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001240",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.023000535885982037,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001253",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0008144693084362383,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001266",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001279",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.025500047397857616,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001280",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02171595721424412,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001293",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001306",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 5.9972799433547234e-05,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001319",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.026666615077161778,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001320",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.014292872329517644,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001333",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001346",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001359",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.014979657613353427,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001360",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.032770298374350214,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001378",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01384404363698271,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001396",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00020119906906738427,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001415",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.037183135648799284,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001416",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03122454783411137,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001431",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001447",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001463",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03736305404709993,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001464",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.012364069715477433,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001487",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001511",
+        "alpha_below_0_5_fraction": 0.007837090661461286,
+        "alpha_below_0_9_fraction": 0.09485955724597167,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001535",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.013880801159216175,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001536",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.009727201146834693,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001562",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.00035016376443458227,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001588",
+        "alpha_below_0_5_fraction": 0.010818319175238586,
+        "alpha_below_0_9_fraction": 0.06558315809023392,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001615",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.009394448840300173,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001616",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.007922213344528256,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001642",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0001683107597006003,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001668",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.04331583804248783,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001695",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.014890665717419777,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001696",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.028970731339269997,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001722",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0003288830936678397,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001748",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.029044246383736923,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001775",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.024917730861422207,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001776",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.026908440881329307,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001802",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.000348229158001242,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001828",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.032273104520981775,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001855",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.024064569424319164,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001856",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.026494435104594496,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001885",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001914",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.032557491666682786,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001943",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02297538600234861,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001944",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.022097074681612146,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-001973",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.008721205801497772,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002002",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0032868963302450567,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002031",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.032273104520981775,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002032",
+        "alpha_below_0_5_fraction": 4.449594796682537e-05,
+        "alpha_below_0_9_fraction": 0.08920083342845149,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002042",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.006221694289622191,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002052",
+        "alpha_below_0_5_fraction": 0.09124184321562542,
+        "alpha_below_0_9_fraction": 0.16008094393317096,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002063",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.1139657303816398,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002064",
+        "alpha_below_0_5_fraction": 0.00017604918543396124,
+        "alpha_below_0_9_fraction": 0.09312614988169882,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002074",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.004940984830750957,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002084",
+        "alpha_below_0_5_fraction": 0.0677944132435418,
+        "alpha_below_0_9_fraction": 0.13488849895821445,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002095",
+        "alpha_below_0_5_fraction": 0.00044109026680157323,
+        "alpha_below_0_9_fraction": 0.0908123605874239,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002096",
+        "alpha_below_0_5_fraction": 4.2561341533485136e-05,
+        "alpha_below_0_9_fraction": 0.1407387488126353,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002106",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0059856723047546825,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002116",
+        "alpha_below_0_5_fraction": 0.05806721209670711,
+        "alpha_below_0_9_fraction": 0.11752540621898584,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002127",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.06869207062861167,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002128",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.08711145848044403,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002141",
+        "alpha_below_0_5_fraction": 0.0009266764815699718,
+        "alpha_below_0_9_fraction": 0.02608623314715971,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002154",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.02973877009330607,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002167",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.11301196941000308,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002168",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 8.512268306697027e-05,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002189",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002210",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.03825684221930312,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002231",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.009556955780700753,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002232",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0007409542639693093,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002250",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.0,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002268",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.01933639130123563,
+        "zero_depth_fraction": 0.0
+      },
+      {
+        "camera_id": "court-sample-002287",
+        "alpha_below_0_5_fraction": 0.0,
+        "alpha_below_0_9_fraction": 0.036676268763264144,
+        "zero_depth_fraction": 0.0
+      }
+    ]
+  }
+}

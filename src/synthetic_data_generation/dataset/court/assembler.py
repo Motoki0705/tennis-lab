@@ -867,6 +867,10 @@ def validate_court_dataset(
     _validate_metric_schema(metrics, definition=definition)
     for group in groups:
         _validate_group_record(group, definition=definition)
+        if expected_configuration is not None and _uses_resolved_target_version(definition.version):
+            for view_value in _mapping_sequence(group["views"], name="views"):
+                if OrbitViewSpecV2.from_mapping(view_value).look_at_jitter_radius_m != expected_configuration.view.look_at_jitter_radius_m:
+                    raise ValueError("Court view jitter disagrees with the requested configuration.")
     group_ids = [_nested_group_id(group) for group in groups]
     if not group_ids or len(group_ids) != len(set(group_ids)):
         raise ValueError("Court trajectory group IDs must be non-empty and unique.")
@@ -1310,6 +1314,8 @@ def _validate_semantic_sample_record(
             camera=camera,
             target_court=target,
             look_at_height_m=view.look_at_height_m,
+            look_at_jitter_radius_m=view.look_at_jitter_radius_m,
+            sample_index=camera.source_frame_index,
         )
     expected_metadata = {
         "target_court": expected_target_court,
@@ -1576,7 +1582,9 @@ def _validate_group_record(
         if not _uses_resolved_target_version(definition.version):
             OrbitViewSpec.from_mapping(view)
         else:
-            OrbitViewSpecV2.from_mapping(view)
+            parsed_view = OrbitViewSpecV2.from_mapping(view)
+            if definition.version is CourtDatasetSchemaVersion.V2 and parsed_view.look_at_jitter_radius_m != 0.0:
+                raise ValueError("Court v2 does not support look-at jitter.")
     center = OrbitCenter.from_mapping(group["center"])
     if center.key() != (
         trajectory.center_kind,

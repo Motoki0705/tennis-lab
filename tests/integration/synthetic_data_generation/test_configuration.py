@@ -166,7 +166,7 @@ def test_court_selectors_compose_and_validate_exact_typed_versions(
     court = _compose(selector).court
 
     assert court.schema_version is version
-    assert set(court.trajectory.shapes) == set(OrbitShape)
+    assert set(court.trajectory.shapes) == {OrbitShape.CIRCLE, OrbitShape.ELLIPSE}
     assert set(court.trajectory.center_kinds) == set(OrbitCenterKind)
     assert set(court.trajectory.curve_modes) == set(OrbitCurveMode)
     assert set(court.view.target_modes) == target_modes

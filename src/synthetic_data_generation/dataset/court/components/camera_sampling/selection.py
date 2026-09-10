@@ -17,6 +17,9 @@ from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
     sample_uniform_arc_length,
 )
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.sfm_bounds import (
+    bound_trajectory_candidates,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
     resolve_target_court,
     resolved_court_look_at_scene,
@@ -121,6 +124,14 @@ def build_court_dataset_plan(
         seed=policy.seed,
         stable_field_order=policy.stable_field_order,
     )
+    if configuration.trajectory.sfm_boundary_margin_m is not None:
+        candidates = bound_trajectory_candidates(
+            candidates,
+            centers=centers,
+            cameras=camera_tuple,
+            margin_m=configuration.trajectory.sfm_boundary_margin_m,
+            expansion_percent=configuration.trajectory.sfm_boundary_expansion_percent,
+        )
     first_group_view_count = len(
         _target_modes_for_group(group_index=0, configuration=configuration)
     )
@@ -129,6 +140,7 @@ def build_court_dataset_plan(
         centers=centers,
         policy=policy,
         first_group_view_count=first_group_view_count,
+        spatial_coverage_cell_m=configuration.trajectory.spatial_coverage_cell_m,
     )
     split_by_group = assign_group_disjoint_splits(
         tuple(item.trajectory.trajectory_group_id for item in selected),
@@ -352,6 +364,7 @@ def select_budgeted_coverage(
     centers: Sequence[OrbitCenter],
     policy: OrbitSamplingPolicy,
     first_group_view_count: int = 2,
+    spatial_coverage_cell_m: float | None = None,
 ) -> tuple[SelectedTrajectory, ...]:
     """Maximize ordered typed token families within one explicit frame budget.
 
@@ -401,6 +414,20 @@ def select_budgeted_coverage(
                 path=sample_uniform_arc_length(candidate, center, policy),
             )
         )
+    spatial_cells: dict[str, set[tuple[int, int]]] = {}
+    covered_cells: set[tuple[int, int]] = set()
+    if spatial_coverage_cell_m is not None:
+        if not math.isfinite(spatial_coverage_cell_m) or spatial_coverage_cell_m <= 0.0:
+            raise ValueError("Spatial coverage cell size must be finite and positive.")
+        # One shared metric frame for every orbit centre. Using per-centre
+        # grids would incorrectly count identical scene locations as novel.
+        common_from_scene = centers[0].scene_from_center.inverse()
+        for item in resolved:
+            xy = common_from_scene.apply(item.path.points_scene_m)[:, :2]
+            cells = np.floor(xy / spatial_coverage_cell_m).astype(np.int64)
+            spatial_cells[item.trajectory.trajectory_group_id] = {
+                (int(x), int(y)) for x, y in cells
+            }
     all_tokens = set().union(
         *(
             _objective_tokens(item.trajectory, policy.coverage_objective)
@@ -452,21 +479,18 @@ def select_budgeted_coverage(
         if requirements_met:
             break
         feasible: list[tuple[SelectedTrajectory, int]] = []
+        remaining_group_count = max(0, policy.minimum_trajectory_groups - len(selected) - 1)
+        completion_costs = sorted(len(item.path.theta_radians) for item in remaining)
+        minimum_other_cost = sum(completion_costs[:remaining_group_count])
         for item in remaining:
             view_count = first_group_view_count if not selected else 1
-            cost = len(item.path.theta_radians) * view_count
-            remaining_group_count = max(
-                0,
-                policy.minimum_trajectory_groups - len(selected) - 1,
-            )
-            completion_costs = sorted(
-                len(other.path.theta_radians)
-                for other in remaining
-                if other is not item
-            )
-            if len(completion_costs) < remaining_group_count:
+            path_cost = len(item.path.theta_radians)
+            cost = path_cost * view_count
+            if len(completion_costs) - 1 < remaining_group_count:
                 continue
-            minimum_completion_cost = sum(completion_costs[:remaining_group_count])
+            minimum_completion_cost = minimum_other_cost
+            if remaining_group_count and path_cost <= completion_costs[remaining_group_count - 1]:
+                minimum_completion_cost += completion_costs[remaining_group_count] - path_cost
             if (
                 proposal_count + cost + minimum_completion_cost
                 <= policy.proposal_budget
@@ -481,12 +505,13 @@ def select_budgeted_coverage(
             parts: list[int] = []
             for objective in policy.coverage_objective:
                 family_tokens = _objective_tokens(trajectory, (objective,))
-                parts.extend(
-                    (
-                        len(family_tokens - covered),
-                        -sum(token_counts[token] for token in family_tokens),
-                    )
-                )
+                parts.append(len(family_tokens - covered))
+                if spatial_coverage_cell_m is not None and objective is OrbitCoverageObjective.COVERAGE_MODE:
+                    # Keep the added shapes from crowding out circles/ellipses,
+                    # then prefer views in previously unused shared XY cells.
+                    parts.append(-stable_token_counts[(OrbitStableField.SHAPE, trajectory.shape.value)])
+                    parts.append(len(spatial_cells[trajectory.trajectory_group_id] - covered_cells))
+                parts.append(-sum(token_counts[token] for token in family_tokens))
             for field in policy.stable_field_order:
                 stable_token = (field, trajectory_field_value(trajectory, field))
                 parts.extend(
@@ -513,6 +538,8 @@ def select_budgeted_coverage(
             policy.coverage_objective,
         )
         covered.update(tokens)
+        if spatial_coverage_cell_m is not None:
+            covered_cells.update(spatial_cells[chosen.trajectory.trajectory_group_id])
         token_counts.update(tokens)
         stable_token_counts.update(
             (field, trajectory_field_value(chosen.trajectory, field))
@@ -853,6 +880,7 @@ def _views_for_group_v2(
                 low_height if (group_index + target_index) % 2 == 0 else high_height
             ),
             hfov_degrees=hfov_by_coverage[coverage],
+            look_at_jitter_radius_m=configuration.view.look_at_jitter_radius_m,
         )
         for target_index, target in enumerate(targets)
     )
@@ -985,9 +1013,6 @@ def _plan_samples_v2(
 ) -> tuple[PlannedCourtSampleV2, ...]:
     """Resolve sample target, then construct its look-at pose in that order."""
     template = cameras[0]
-    complex_center = next(
-        center for center in centers if center.court_instance_id is None
-    )
     samples: list[PlannedCourtSampleV2] = []
     for group in groups:
         path = paths_by_group[group.trajectory_group_id]
@@ -1005,11 +1030,12 @@ def _plan_samples_v2(
                     layout=layout,
                     selection_seed=selection_seed,
                 )
-                target_scene = _target_scene_v2(
-                    view,
+                target_scene = resolved_court_look_at_scene(
                     target_court=resolved_target,
                     layout=layout,
-                    complex_center=complex_center,
+                    look_at_height_m=view.look_at_height_m,
+                    look_at_jitter_radius_m=view.look_at_jitter_radius_m,
+                    sample_index=len(samples),
                 )
                 camera_to_scene = _look_at_opencv(
                     center_scene,
@@ -1033,6 +1059,8 @@ def _plan_samples_v2(
                         target_court=resolved_target,
                         layout=layout,
                         look_at_height_m=view.look_at_height_m,
+                        look_at_jitter_radius_m=view.look_at_jitter_radius_m,
+                        sample_index=sample_index,
                     )
                 samples.append(
                     PlannedCourtSampleV2(

@@ -1,0 +1,16 @@
+{
+  "run_id": "1789008541987483682_318155_b01_court_shapes_balanced_full",
+  "name": "b01_court_shapes_balanced_full",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. .venv/bin/python outputs/b01-court-shapes-balanced/full_render_check.py",
+  "provider": "codex",
+  "session": "01a088da-0867-7e43-99b5-415e56dc292d",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "96b98a17ee067d9956cafcfb65448d527910349b",
+  "branch": "codex/court-sfm-bounded",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "repo_root": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "captured_at": "2026-09-10T11:49:02+09:00"
+}

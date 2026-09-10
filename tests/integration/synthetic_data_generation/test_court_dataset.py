@@ -203,6 +203,15 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
             "v3",
             "court_dataset_performance_v4",
         ),
+        (
+            "sfm_bounded",
+            CourtDatasetPlanV3,
+            "canonical_court_dataset_v3",
+            "canonical_court_sample_v3",
+            "court_renderer_semantic_manifest_v3",
+            "v3",
+            "court_dataset_performance_v4",
+        ),
     ],
 )
 def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostics(
@@ -284,7 +293,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
         )
         assert set(serialized_physical_indices) == set(range(14))
 
-    if selector == "v3":
+    if selector in ("v3", "sfm_bounded"):
         camera = SceneCamera.from_dict(first_record["camera"])
         layout_by_id = {
             court.court_instance_id: court for court in _alignment().layout.courts

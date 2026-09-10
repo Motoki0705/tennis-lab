@@ -1,0 +1,8 @@
+{
+  "expansion_percent": 5.0,
+  "proposals": 2368,
+  "outside_original_hull": 25,
+  "maximum_original_hull_overshoot_m": 0.33871872867324004,
+  "minimum_expanded_hull_clearance_m": 0.7461791845748778,
+  "selected_for_render": 132
+}
