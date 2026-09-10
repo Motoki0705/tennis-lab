@@ -141,7 +141,7 @@ class ExternalAtomicPublication:
         definition: StageDefinition[StageExecutionSummary],
     ) -> Path:
         """Return the fixed owner the external command publishes atomically."""
-        owner = workspace.owner_path(definition)
+        owner: Path = workspace.owner_path(definition)
         owner.mkdir(parents=True, exist_ok=True)
         return owner
 
@@ -201,17 +201,20 @@ class StagePublisher:
     @property
     def owner(self) -> Path:
         """Return the one fixed canonical owner directory."""
-        return self.workspace.owner_path(self.definition)
+        path: Path = self.workspace.owner_path(self.definition)
+        return path
 
     @property
     def transaction(self) -> Path:
         """Return the fixed transaction root for this stage."""
-        return self.workspace.stage_transaction_path(self.definition)
+        path: Path = self.workspace.stage_transaction_path(self.definition)
+        return path
 
     @property
     def staging(self) -> Path:
         """Return the complete replacement snapshot outside the owner."""
-        return self.workspace.staging_path(self.definition)
+        path: Path = self.workspace.staging_path(self.definition)
+        return path
 
     @property
     def marker(self) -> Path:
@@ -333,6 +336,15 @@ class StagePublisher:
             shutil.rmtree(self.transaction)
         parent = self.transaction.parent
         _remove_empty_directory(parent)
+
+
+def exchange_owner_directories(source: Path, destination: Path) -> None:
+    """Atomically exchange two complete same-filesystem owner directories."""
+    if any(not path.is_dir() or path.is_symlink() for path in (source, destination)):
+        raise ValueError("Owner exchange requires two ordinary directories.")
+    # No fallible operation may follow the exchange: callers must know whether
+    # ownership changed before attempting their rollback.
+    _renameat2(source, destination, flags=_RENAME_EXCHANGE)
 
 
 def _renameat2(source: Path, destination: Path, *, flags: int) -> None:
