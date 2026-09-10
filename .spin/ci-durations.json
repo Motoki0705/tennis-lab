@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "source": "Bootstrap estimates from slowest-test summaries of GitHub runs 34438516120 and 34448144940; replace with a complete successful run via spin ci-update-durations.",
+  "seconds_by_file": {
+    "tests/e2e/development/test_architecture_boundaries.py": 15.2,
+    "tests/e2e/development/test_configuration_audit.py": 89.88,
+    "tests/e2e/synthetic_data_generation/test_generate_publication_visualizations.py": 7.1,
+    "tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py": 50.52,
+    "tests/e2e/synthetic_data_generation/test_visualize_dataset.py": 7.05,
+    "tests/e2e/tasks/blcs/test_generate_dataset_cli.py": 23.36,
+    "tests/e2e/tasks/plcs/test_generate_dataset_cli.py": 5.6,
+    "tests/e2e/tennis_scene/test_generate_dataset_cli.py": 13.81,
+    "tests/integration/synthetic_data_generation/test_court_dataset.py": 578.65,
+    "tests/integration/tasks/blcs/test_physics_source.py": 27.43,
+    "tests/integration/tennis_scene/test_clip_studio_web.py": 33.6,
+    "tests/unit/synthetic_data_generation/alignment/test_evidence_source.py": 114.93,
+    "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_selection.py": 17.6,
+    "tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_bounds.py": 26.14,
+    "tests/unit/tasks/base/data/test_rng.py": 12.38,
+    "tests/unit/tasks/plcs/test_configuration_contracts.py": 19.24,
+    "tests/unit/utils/configuration/test_audit.py": 16.06,
+    "tests/unit/utils/configuration/test_discovery.py": 73.21
+  }
+}
