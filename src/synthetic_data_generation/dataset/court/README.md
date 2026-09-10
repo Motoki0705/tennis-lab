@@ -37,6 +37,10 @@ placement and independently sampled look-at offsets. Legacy `train`, `v1`,
 policy is owned by `configs/dataset/court/sfm_bounded.yaml`.
 
 `trajectory.sfm_boundary_margin_m` explicitly enables the boundary heuristic.
+In this mode the complex orbit centre is the mean of accepted court centres,
+projected onto the reference court plane. Scene bounds can include distant
+background geometry and therefore do not define the bounded orbit centre.
+Legacy presets keep their previous scene-bounds centre.
 `trajectory.sfm_boundary_expansion_percent` allows controlled extrapolation:
 `5.0` expands the horizontal hull by a linear factor of 1.05 about the mean of
 its vertices, before applying the inward metric margin. This origin belongs

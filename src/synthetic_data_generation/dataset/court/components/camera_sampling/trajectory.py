@@ -28,12 +28,16 @@ from src.synthetic_data_generation.scene_contract import (
 def derive_orbit_centers(
     cameras: Sequence[SceneCamera],
     layout: MultiCourtLayout,
+    *,
+    use_court_centroid: bool = False,
 ) -> tuple[OrbitCenter, ...]:
     """Derive complex and per-court radii from captured camera offsets.
 
     Every centre gets its own robust offset distribution.  The complex centre
     is the accepted complex-bounds midpoint projected onto the reference court
     plane; court centres are their exact accepted local origins.
+    SfM-bounded generation explicitly uses the accepted-court centroid instead
+    of scene bounds, which can include distant background outliers.
     """
     captured = tuple(cameras)
     if not captured:
@@ -43,7 +47,11 @@ def derive_orbit_centers(
     )
     reference = _reference_court(layout)
     bounds = np.asarray(layout.complex_bounds_scene, dtype=np.float64).reshape(2, 3)
-    midpoint_scene = np.mean(bounds, axis=0)
+    midpoint_scene = (
+        np.mean([court.scene_from_court.matrix()[:3, 3] for court in layout.courts], axis=0)
+        if use_court_centroid
+        else np.mean(bounds, axis=0)
+    )
     midpoint_reference = reference.court_from_scene.apply(midpoint_scene[None, :])[0]
     midpoint_reference[2] = 0.0
     complex_transform = reference.scene_from_court.matrix()
