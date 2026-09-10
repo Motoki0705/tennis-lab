@@ -118,12 +118,17 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     save_json(scenes_meta, meta_path, default=str)
 
     writer.save_meta_json(config=resolved_meta)
-    writer.save_split_info(
-        train_ratio=runtime.train_ratio,
-        val_ratio=runtime.val_ratio,
-        test_ratio=runtime.test_ratio,
-        seed=seed,
-    )
+    if runtime.split_group == "motion_source":
+        writer.save_motion_group_splits(
+            val_ratio=runtime.val_ratio, test_ratio=runtime.test_ratio, seed=seed
+        )
+    else:
+        writer.save_split_info(
+            train_ratio=runtime.train_ratio,
+            val_ratio=runtime.val_ratio,
+            test_ratio=runtime.test_ratio,
+            seed=seed,
+        )
 
     print("\nGeneration complete!")
     print(f"  Successful scenes: {successful}")

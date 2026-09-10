@@ -32,6 +32,7 @@ human UV/visibility には適用しません。
 ### models/
 - **各model module**: 実装classのcanonical import先。package rootは内部classや旧factoryをre-exportしない。
 - **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
+- **`plcs_multiview_axial_reference_model.py`**: `PLCSMultiViewAxialReferenceModel`。reference selectorを第3 RoPE軸に持ち、指定cameraの特徴からposition・rotation・canonical poseを読む。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
@@ -83,7 +84,7 @@ human UV/visibility には適用しません。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### configs/
-- 公開data profileは11個に整理している。`singleview_frame`、`singleview_sequence`、`singleview_chunked_sequence`、`multiview_sequence`、`multiview_chunked_sequence`（single_object）、`tracking`、`tracking_chunked`（multi_object）、`singleview_sequence_broadcast`、`multiview_sequence_broadcast`（single_object_broadcast）、`tracking_broadcast`（multi_object_broadcast）、`tracking_camera_view_v2`（multi_object_camera_view_v2）で、各データセットを固定・chunked・broadcast・camera-viewの用途から重複なく選択できる。
+- 公開data profileは用途ごとに整理している。`singleview_frame`、`singleview_sequence`、`singleview_chunked_sequence`、`multiview_sequence`、`multiview_chunked_sequence`（single_object）、`tracking`、`tracking_chunked`（multi_object）、`singleview_sequence_broadcast`、`multiview_sequence_broadcast`（single_object_broadcast）、`tracking_broadcast`（multi_object_broadcast）、`tracking_camera_view_v2`（multi_object_camera_view_v2）、`multiview_sequence_camera_view_v2`（single_object_camera_view_v2）で、各データセットを固定・chunked・broadcast・camera-viewの用途から重複なく選択できる。
 - `tracking_camera_view_v2` はdata profileの選択だけで、Hydraのabsolute overrideにより`court_keypoints=camera_view_v2`と`model=tracking_query_reference`を同時に選択する。その他にmodel(frame/multiview/axial系)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定がある。
 
 ## Multi-person tracking
@@ -125,3 +126,27 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked
 ```
+
+## Axial reference training recipe
+
+`train_axial_reference` composes the four-corner camera-view data profile,
+`multiview_axial_reference` model and `loss=axial_reference`. The model uses
+`TemporalDecomposedCanonicalPoseHead`; rotation and wrapped-angle weights are
+both 0.1 by default for this recipe. Reprojection has weight 1 with no paired
+weight-zero run. Model/data/loss/optimizer values live in these Hydra configs;
+this README is the entry point rather than a second copy of the parameter table.
+Generation and explicit camera candidate semantics are documented in the shared
+contract linked above.
+
+```bash
+# Submit through the shared training queue when running on a local GPU.
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_axial_reference
+```
+
+The model requires an explicit reference selector and matching provenance.
+Reference validity is checked by the paired adapter before compiled forward.
+Checkpoint metadata includes the independent `axial_reference` architecture,
+target, RoPE and selector markers; physical and track-query checkpoints cannot
+be substituted. Position, heading, world-joint and camera transformations follow
+the shared reference-frame contract. Direct scene inference requires a stable
+`reference_camera_id`; array inference requires explicit reference provenance.

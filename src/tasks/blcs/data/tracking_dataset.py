@@ -141,6 +141,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
                     tuple(view.camera_id for view in court_views),
                     cameras.indices,
                     requested_camera_id=self.reference_camera_id,
+                    candidate_camera_indices=self.config.camera_candidates,
                     rng=self.rng,
                 )
             )

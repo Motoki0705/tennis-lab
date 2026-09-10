@@ -1,0 +1,12 @@
+defaults:
+  - generate_dataset
+  - override court_keypoints: camera_view_v2
+  - override camera: corners
+  - _self_
+
+generator:
+  num_scenes: 10000
+run:
+  output_dir: blcs/single_object_camera_view_v2
+  seed: 42
+  num_workers: 8

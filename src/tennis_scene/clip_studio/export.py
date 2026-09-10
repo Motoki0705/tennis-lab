@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import shutil
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -32,7 +32,7 @@ from src.tennis_scene.clip_studio.timeline import (
     source_frame_index,
 )
 from src.tennis_scene.generate_dataset.manifest import register_exported_clip
-from src.utils.io import save_json_atomic, utc_now_iso
+from src.utils.io import load_json, save_json_atomic, utc_now_iso
 from src.utils.video import (
     RandomAccessVideoReader,
     VideoInfo,
@@ -217,7 +217,11 @@ def plan_clip_export(
 
 
 def _write_camera_video(
-    camera: CameraExportPlan, plan: ClipExportPlan, video_path: Path, crf: int
+    camera: CameraExportPlan,
+    plan: ClipExportPlan,
+    video_path: Path,
+    crf: int,
+    on_progress: Callable[[str, int, int], None] | None = None,
 ) -> None:
     source_size = (camera.source_info.width, camera.source_info.height)
     needs_fit = source_size != (plan.width, plan.height)
@@ -238,6 +242,8 @@ def _write_camera_video(
                 previous_index = index
                 previous_frame = frame_rgb
             writer.write_frame(frame_rgb)
+            if on_progress is not None:
+                on_progress(camera.camera_id, position + 1, plan.num_frames)
             if (position + 1) % 500 == 0:
                 LOGGER.info(
                     f"  {camera.camera_id}: {position + 1}/{plan.num_frames} frames"
@@ -302,7 +308,43 @@ def _verify_exported_video(video_path: Path, plan: ClipExportPlan) -> None:
         )
 
 
-def export_clip(plan: ClipExportPlan, settings: ExportSettings) -> ClipExportResult:
+def verify_existing_export(plan: ClipExportPlan, settings: ExportSettings) -> bool:
+    """Return True only for a completed export matching the current frame plan.
+
+    Missing/empty destinations need encoding. Conflicting or partial outputs are
+    errors, never silently skipped or overwritten. Extra downstream metadata is
+    permitted, but all exported timing, source and geometry fields must match.
+    """
+    directory = settings.output_dir / "clips" / plan.recording_id / plan.clip_name
+    if not directory.exists() or (directory.is_dir() and not any(directory.iterdir())):
+        return False
+    manifest = directory / MANIFEST_FILENAME
+    if not manifest.is_file():
+        raise ValueError(
+            f"{plan.clip_name}: incomplete output (clip.json missing); move it aside or explicitly enable overwrite"
+        )
+    saved = load_json(manifest)
+    expected = _build_manifest(plan)
+    differences = [
+        key
+        for key, value in expected.items()
+        if key != "exported_at" and saved.get(key) != value
+    ]
+    if differences:
+        raise ValueError(
+            f"{plan.clip_name}: existing export differs from current edit/settings: {', '.join(differences)}; explicitly enable overwrite to replace"
+        )
+    for camera in plan.cameras:
+        _verify_exported_video(directory / "media" / f"{camera.camera_id}.mp4", plan)
+    return True
+
+
+def export_clip(
+    plan: ClipExportPlan,
+    settings: ExportSettings,
+    *,
+    on_progress: Callable[[str, int, int], None] | None = None,
+) -> ClipExportResult:
     """Encode one planned clip and write its manifest.
 
     Raises:
@@ -329,7 +371,7 @@ def export_clip(plan: ClipExportPlan, settings: ExportSettings) -> ClipExportRes
             f"Exporting {plan.clip_name}/{camera.camera_id}: "
             f"{plan.num_frames} frames from {camera.source_path}"
         )
-        _write_camera_video(camera, plan, video_path, settings.crf)
+        _write_camera_video(camera, plan, video_path, settings.crf, on_progress)
         _verify_exported_video(video_path, plan)
         video_paths.append(video_path)
 
@@ -383,4 +425,5 @@ __all__ = [
     "export_clip",
     "export_clips",
     "plan_clip_export",
+    "verify_existing_export",
 ]

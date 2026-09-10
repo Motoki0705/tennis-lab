@@ -37,6 +37,7 @@ from src.utils.configuration import (
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.device import resolve_device
 from src.utils.hydra import register_boundary_validator
 from src.utils.models.components.ffn_layers import (
@@ -259,7 +260,7 @@ class SingleModelConfig:
 
 @dataclass(frozen=True, slots=True)
 class AxialModelConfig:
-    name: Literal["blcs_multiview_axial"]
+    name: Literal["blcs_multiview_axial", "blcs_multiview_axial_reference"]
     input_profile: Literal["multiview"]
     hidden_dim: int
     num_layers: int
@@ -465,7 +466,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         ):
             _positive(value, path=f"model.{key}")
         return result
-    if name == "blcs_multiview_axial":
+    if name in {"blcs_multiview_axial", "blcs_multiview_axial_reference"}:
         keys = {
             "name",
             "io",
@@ -490,6 +491,17 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "time_layers_per_stage",
             "time_global_stage_mask",
         }
+        if name == "blcs_multiview_axial_reference":
+            from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
+
+            for key in ("target_frame_contract", "axial_rope_contract", "reference_selector_mode"):
+                keys.add(key)
+                if model.get(key) != AXIAL_REFERENCE_CONTRACT[key]:
+                    raise SemanticConfigurationError(f"Invalid axial reference model.{key}.")
+            if int(model["rope_dim"]) < 6:
+                raise SemanticConfigurationError("Axial reference requires rope_dim >= 6.")
+            if parse_court_keypoint_contract(config).selector != "camera_view_v2":
+                raise SemanticConfigurationError("Axial reference requires camera_view_v2.")
         _exact(model, keys, path="model")
         _validate_types(
             model,
@@ -528,7 +540,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "Invalid axial model profile, attention_type, or ffn_type."
             )
         result = AxialModelConfig(
-            name="blcs_multiview_axial",
+            name=cast("Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']", name),
             input_profile="multiview",
             hidden_dim=int(model["hidden_dim"]),
             num_layers=int(model["num_layers"]),
@@ -1354,6 +1366,7 @@ def validate_generator_sections(
             "hfov_deg",
             "image_size",
             "fixed_look_at",
+            "fixed_camera_indices",
             "fixed_baseline_clear_extra",
             "fixed_position_noise_radius",
             "fixed_look_at_xy_radius",
@@ -1389,6 +1402,8 @@ def validate_generator_sections(
         for section in schemas
     }
     for section, keys in schemas.items():
+        if section == "camera" and "fixed_camera_indices" not in sections[section]:
+            keys = keys - {"fixed_camera_indices"}
         _exact(sections[section], keys, path=section)
 
     physics = sections["physics"]
@@ -1580,6 +1595,11 @@ def validate_generator_sections(
         },
         path="camera",
     )
+    candidates = camera_candidate_indices(camera.get("fixed_camera_indices"), capacity=6)
+    if candidates is not None and camera["layout"] != "fixed":
+        raise SemanticConfigurationError(
+            "camera.fixed_camera_indices requires layout=fixed."
+        )
     _int_sequence(camera["image_size"], path="camera.image_size")
     if len(cast("Sequence[object]", camera["image_size"])) != 2:
         raise SemanticConfigurationError("camera.image_size must contain two values.")
@@ -1881,13 +1901,9 @@ def _validate_standard_loss_config(loss: Mapping[str, object]) -> None:
         path="loss",
     )
     for key in ("position_axis_weights", "smoothness_axis_weights"):
-        weights = _optional_numeric_sequence(
-            loss[key], path=f"loss.{key}", length=3
-        )
+        weights = _optional_numeric_sequence(loss[key], path=f"loss.{key}", length=3)
         if weights is not None and any(weight < 0.0 for weight in weights):
-            raise SemanticConfigurationError(
-                f"loss.{key} values must be non-negative."
-            )
+            raise SemanticConfigurationError(f"loss.{key} values must be non-negative.")
     for key in (
         "position_weight",
         "reprojection_weight",
@@ -2056,6 +2072,20 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                     "generation.timeline.min_reuse_gap_frames cannot be smaller than "
                     "data.lifecycle.min_reuse_gap_frames."
                 )
+    if "camera_candidates" in data:
+        data_keys.add("camera_candidates")
+        candidates = camera_candidate_indices(data["camera_candidates"])
+        if candidates is not None and len(candidates) < int(
+            cast(Sequence[int], data["num_views_range"])[1]
+        ):
+            raise SemanticConfigurationError(
+                "data.camera_candidates cannot provide num_views_range."
+            )
+    if model.name == "blcs_multiview_axial_reference":
+        data_keys.add("evaluation_reference_camera_id")
+        evaluation_reference = data.get("evaluation_reference_camera_id")
+        if not isinstance(evaluation_reference, str) or not evaluation_reference.strip():
+            raise SemanticConfigurationError("Axial reference requires evaluation_reference_camera_id.")
     _exact(data, data_keys, path="data")
     data_types: dict[str, type[object]] = {
         "backend": str,
@@ -2102,6 +2132,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 f"data.{name} must be a positive ordered range."
             )
+    if model.name == "blcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+        raise SemanticConfigurationError("Axial reference requires 3 or 4 views.")
     batch_size = cast("int", data["batch_size"])
     num_workers = cast("int", data["num_workers"])
     if batch_size <= 0 or num_workers < 0:

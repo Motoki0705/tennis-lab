@@ -1,0 +1,6 @@
+defaults:
+  - all_outputs_beta01_reprojection
+  - _self_
+
+rotation_weight: 0.1
+angle_weight: 0.1
