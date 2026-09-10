@@ -1122,9 +1122,9 @@ class CourtTrajectoryPolicy:
     base_heights_m: tuple[float, ...]
     vertical_modulations_m: tuple[float, ...]
     curve_modes: tuple[OrbitCurveMode, ...]
-    sfm_boundary_margin_m: float | None = None
-    sfm_boundary_expansion_percent: float = 0.0
-    spatial_coverage_cell_m: float | None = None
+    sfm_boundary_margin_m: float | None
+    sfm_boundary_expansion_percent: float
+    spatial_coverage_cell_m: float | None
 
     @classmethod
     def from_mapping(cls, value: object) -> CourtTrajectoryPolicy:
@@ -1140,12 +1140,10 @@ class CourtTrajectoryPolicy:
                 "base_heights_m",
                 "vertical_modulations_m",
                 "curve_modes",
-            }
-            | (
-                {key for key in ("sfm_boundary_margin_m", "sfm_boundary_expansion_percent", "spatial_coverage_cell_m") if key in value}
-                if isinstance(value, Mapping)
-                else set()
-            ),
+                "sfm_boundary_margin_m",
+                "sfm_boundary_expansion_percent",
+                "spatial_coverage_cell_m",
+            },
         )
         path = "dataset.court.trajectory"
         result = cls(
@@ -1180,26 +1178,25 @@ class CourtTrajectoryPolicy:
                 path=path,
                 enum_type=OrbitCurveMode,
             ),
+            sfm_boundary_margin_m=(None if raw["sfm_boundary_margin_m"] is None else _number(raw, "sfm_boundary_margin_m", path=path)),
+            sfm_boundary_expansion_percent=_number(raw, "sfm_boundary_expansion_percent", path=path),
+            spatial_coverage_cell_m=(None if raw["spatial_coverage_cell_m"] is None else _number(raw, "spatial_coverage_cell_m", path=path)),
         )
-        if "sfm_boundary_margin_m" in raw:
-            margin = _number(raw, "sfm_boundary_margin_m", path=path)
+        if result.sfm_boundary_margin_m is not None:
+            margin = result.sfm_boundary_margin_m
             if margin < 0.0 or result.captured_offset_scale_range[1] > 1.0:
                 raise SemanticConfigurationError(
                     "SfM bounds require non-negative margin and radius scales <= 1."
                 )
-            object.__setattr__(result, "sfm_boundary_margin_m", margin)
-        if "sfm_boundary_expansion_percent" in raw:
-            expansion = _number(raw, "sfm_boundary_expansion_percent", path=path)
-            if expansion < 0.0 or result.sfm_boundary_margin_m is None:
-                raise SemanticConfigurationError(
-                    "SfM expansion requires a non-negative percent and explicit SfM bounds."
-                )
-            object.__setattr__(result, "sfm_boundary_expansion_percent", expansion)
-        if "spatial_coverage_cell_m" in raw:
-            cell_m = _number(raw, "spatial_coverage_cell_m", path=path)
+        expansion = result.sfm_boundary_expansion_percent
+        if expansion < 0.0 or (expansion > 0.0 and result.sfm_boundary_margin_m is None):
+            raise SemanticConfigurationError(
+                "SfM expansion requires a non-negative percent and explicit SfM bounds."
+            )
+        if result.spatial_coverage_cell_m is not None:
+            cell_m = result.spatial_coverage_cell_m
             if cell_m <= 0.0 or result.sfm_boundary_margin_m is None:
                 raise SemanticConfigurationError("Spatial coverage requires a positive cell size and explicit SfM bounds.")
-            object.__setattr__(result, "spatial_coverage_cell_m", cell_m)
         if not {OrbitShape.CIRCLE, OrbitShape.ELLIPSE}.issubset(result.shapes):
             raise SemanticConfigurationError(
                 "Court trajectory shapes must include circle and ellipse."
@@ -1247,7 +1244,7 @@ class CourtViewPolicy:
     coverage_modes: tuple[OrbitCoverageMode, ...]
     look_at_height_m: tuple[float, float]
     hfov_degrees: tuple[float, float]
-    look_at_jitter_radius_m: float = 0.0
+    look_at_jitter_radius_m: float
 
     @classmethod
     def from_mapping(
@@ -1259,12 +1256,7 @@ class CourtViewPolicy:
         raw = _exact(
             value,
             path="dataset.court.view",
-            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees"}
-            | (
-                {"look_at_jitter_radius_m"}
-                if isinstance(value, Mapping) and "look_at_jitter_radius_m" in value
-                else set()
-            ),
+            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees", "look_at_jitter_radius_m"},
         )
         path = "dataset.court.view"
         result = cls(
@@ -1284,14 +1276,13 @@ class CourtViewPolicy:
                 raw, "look_at_height_m", path=path, positive=False
             ),
             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
+            look_at_jitter_radius_m=_number(raw, "look_at_jitter_radius_m", path=path),
         )
-        if "look_at_jitter_radius_m" in raw:
-            radius = _number(raw, "look_at_jitter_radius_m", path=path)
-            if radius < 0.0 or schema_version is not CourtDatasetSchemaVersion.V3:
-                raise SemanticConfigurationError(
-                    "Look-at jitter requires v3 and a non-negative radius."
-                )
-            object.__setattr__(result, "look_at_jitter_radius_m", radius)
+        radius = result.look_at_jitter_radius_m
+        if radius < 0.0 or (radius > 0.0 and schema_version is not CourtDatasetSchemaVersion.V3):
+            raise SemanticConfigurationError(
+                "Look-at jitter requires v3 and a non-negative radius."
+            )
         if not isinstance(schema_version, CourtDatasetSchemaVersion):
             raise ConfigurationTypeError(
                 "dataset.court.schema_version must be a CourtDatasetSchemaVersion."

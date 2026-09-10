@@ -252,7 +252,7 @@ def test_expansion_grows_bounds_and_zero_is_compatible(
     centers = derive_orbit_centers(captured_cameras, multi_court_layout)
     candidates = generate_trajectory_candidates(config.trajectory, centers, seed=policy.seed, stable_field_order=policy.stable_field_order)
     def bound(percent: float = 0.0) -> tuple[OrbitTrajectorySpec, ...]:
-        return bound_trajectory_candidates(candidates, centers=centers, cameras=captured_cameras, margin_m=0.0, expansion_percent=percent)
+        return tuple(bound_trajectory_candidates(candidates, centers=centers, cameras=captured_cameras, margin_m=0.0, expansion_percent=percent))
     baseline = bound()
     expanded = bound(5.0)
     assert baseline == bound_trajectory_candidates(candidates, centers=centers, cameras=captured_cameras, margin_m=0.0)
@@ -283,6 +283,22 @@ def test_config_expansion_requires_bounds_and_accepts_percent() -> None:
     raw = json.loads(json.dumps(asdict(_composed_configuration("sfm_bounded").trajectory)))
     raw["sfm_boundary_expansion_percent"] = 5.0
     assert CourtTrajectoryPolicy.from_mapping(raw).sfm_boundary_expansion_percent == 5.0
-    del raw["sfm_boundary_margin_m"]
+    raw["sfm_boundary_margin_m"] = None
     with pytest.raises(SemanticConfigurationError, match="expansion"):
         CourtTrajectoryPolicy.from_mapping(raw)
+
+
+def test_bounded_complex_center_ignores_background_bounds(
+    captured_cameras: tuple[SceneCamera, ...], multi_court_layout: MultiCourtLayout
+) -> None:
+    from dataclasses import replace
+
+    changed = replace(multi_court_layout, complex_bounds_scene=(-300.0, -200.0, -10.0, -100.0, 300.0, 20.0))
+    expected = derive_orbit_centers(captured_cameras, multi_court_layout, use_court_centroid=True)
+    actual = derive_orbit_centers(captured_cameras, changed, use_court_centroid=True)
+    assert actual == expected
+    reference = multi_court_layout.court(actual[0].reference_court_instance_id)
+    local = reference.court_from_scene.apply(np.array([c.scene_from_court.matrix()[:3, 3] for c in multi_court_layout.courts]))
+    center = reference.court_from_scene.apply(actual[0].scene_from_center.matrix()[:3, 3][None, :])[0]
+    np.testing.assert_allclose(center[:2], local[:, :2].mean(axis=0))
+    assert center[2] == pytest.approx(0.0, abs=1e-10)

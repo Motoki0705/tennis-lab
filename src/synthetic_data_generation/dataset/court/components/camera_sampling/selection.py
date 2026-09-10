@@ -117,7 +117,10 @@ def build_court_dataset_plan(
         nht_camera_tuple,
         metric_adapter=metric_adapter,
     )
-    centers = derive_orbit_centers(camera_tuple, layout)
+    centers = derive_orbit_centers(
+        camera_tuple, layout,
+        use_court_centroid=configuration.trajectory.sfm_boundary_margin_m is not None,
+    )
     candidates = generate_trajectory_candidates(
         configuration.trajectory,
         centers,
