@@ -55,12 +55,21 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
     }
 )
 
-# The court-line cache hashes model inputs and images only to reuse deterministic raw
-# probabilities. It is deliberately separate from the removed artifact publication
-# and scene-identity architecture guarded by this test.
+# These modules hash either detector inputs or immutable manual-alignment evidence.
+# The digests validate/reuse the exact measured source; they do not restore the
+# removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/alignment/line_inference_cache.py"): frozenset(
         {"fingerprint", "sha256"}
+    ),
+    Path("src/synthetic_data_generation/alignment/manual/artifacts.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/alignment/manual/service.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/alignment/manual/source.py"): frozenset(
+        {"sha256"}
     ),
 }
 
@@ -89,6 +98,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     }
     assert scripts == {
         "__init__.py",
+        "edit_alignment.py",
         "generate_publication_visualizations.py",
         "run_scene_pipeline.py",
         "visualize_dataset.py",

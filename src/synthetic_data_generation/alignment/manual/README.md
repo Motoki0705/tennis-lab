@@ -6,6 +6,7 @@ explicit canonical scene path:
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.edit_alignment \
+  --data-root /home/kamimura/projects/tennis-lab/data \
   --scene-root /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01 \
   --recover-ground-frame --port 8765
 ```
