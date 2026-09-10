@@ -78,13 +78,14 @@ def render_court_overlay(
     frame: CourtSourceFrame,
     *,
     trajectory_id: str,
+    show_metadata: bool = True,
 ) -> NDArray[np.uint8]:
     """Overlay seven-class physical keypoints and renderer visibility."""
     if frame.schema_version in (
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
     ):
-        return _render_court_overlay_singleton(frame, trajectory_id=trajectory_id)
+        return _render_court_overlay_singleton(frame, trajectory_id=trajectory_id, show_metadata=show_metadata)
     if frame.schema_version is not CourtDatasetSchemaVersion.V1:
         raise TypeError("Court overlay requires an explicit supported schema version.")
     canvas = _rgb_float_to_bgr(frame.rgb)
@@ -158,17 +159,18 @@ def render_court_overlay(
                 color=_TEXT_BGR,
                 scale=0.48,
             )
-    _header(
-        canvas,
-        (
-            f"COURT trajectory={trajectory_id} view={frame.view_id} "
-            f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
-        ),
-        second_line=(
-            f"filled=renderer-visible  x=not-visible  count={visible_points}/{total_points}"
-        ),
-    )
-    _court_class_legend(canvas)
+    if show_metadata:
+        _header(
+            canvas,
+            (
+                f"COURT trajectory={trajectory_id} view={frame.view_id} "
+                f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
+            ),
+            second_line=(
+                f"filled=renderer-visible  x=not-visible  count={visible_points}/{total_points}"
+            ),
+        )
+        _court_class_legend(canvas)
     return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
 
 
@@ -176,6 +178,7 @@ def _render_court_overlay_singleton(
     frame: CourtSourceFrame,
     *,
     trajectory_id: str,
+    show_metadata: bool = True,
 ) -> NDArray[np.uint8]:
     """Overlay exact V2/V3 singleton classes and physical CourtKP lines."""
     version = frame.schema_version.value
@@ -285,19 +288,20 @@ def _render_court_overlay_singleton(
                 color=_TEXT_BGR,
                 scale=0.48,
             )
-    _header(
-        canvas,
-        (
-            f"COURT {version} trajectory={trajectory_id} view={frame.view_id} "
-            f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
-        ),
-        second_line=(f"filled=renderer-visible  count={visible_points}/{total_points}"),
-    )
-    _court_class_legend(
-        canvas,
-        class_names=SEMANTIC_CLASS_NAMES_V2,
-        colors=_COURT_CLASS_COLORS_V2,
-    )
+    if show_metadata:
+        _header(
+            canvas,
+            (
+                f"COURT {version} trajectory={trajectory_id} view={frame.view_id} "
+                f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
+            ),
+            second_line=(f"filled=renderer-visible  count={visible_points}/{total_points}"),
+        )
+        _court_class_legend(
+            canvas,
+            class_names=SEMANTIC_CLASS_NAMES_V2,
+            colors=_COURT_CLASS_COLORS_V2,
+        )
     return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
 
 

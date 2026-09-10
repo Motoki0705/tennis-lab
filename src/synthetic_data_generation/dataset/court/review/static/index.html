@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Court Review</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main>
+      <section class="workspace" aria-label="データセットの目視確認">
+        <header class="masthead">
+          <div>
+            <span class="brand-mark">⌗</span> COURT <strong>REVIEW</strong
+            ><span class="subtitle">視点とラベルを、ひとつの画面で。</span>
+          </div>
+          <a href="#statistics">統計を見る ↓</a>
+        </header>
+        <aside class="sidebar">
+          <label for="scene">シーン</label
+          ><select id="scene" aria-label="シーンを選択"></select>
+          <div class="list-heading">
+            カメラ軌道 <span id="trajectory-count"></span>
+          </div>
+          <nav id="trajectories" aria-label="カメラ軌道一覧"></nav>
+        </aside>
+        <section class="viewport" aria-label="3Dカメラ軌道">
+          <div class="viewport-heading">
+            <div>
+              <span class="eyebrow">SCENE EXPLORER</span>
+              <h1 id="scene-title">Court Review</h1>
+            </div>
+            <button id="reset">視点を戻す</button>
+          </div>
+          <canvas
+            id="view"
+            tabindex="0"
+            aria-label="ドラッグで回転、ホイールで拡大。軌道をクリックして選択"
+          ></canvas>
+          <div class="legend">
+            <span class="train">● train</span
+            ><span class="validation">● validation</span
+            ><span class="test">● test</span>
+          </div>
+          <div class="navigation-hint">
+            ドラッグ：回転 · Shift＋ドラッグ：移動 · ホイール：拡大<span
+              >↓ スクロールして統計</span
+            >
+          </div>
+        </section>
+        <aside class="filmstrip">
+          <div class="filmstrip-heading">
+            <span id="selected-title">軌道を選択</span
+            ><small id="image-count"></small>
+          </div>
+          <div
+            id="gallery"
+            tabindex="0"
+            aria-label="選択軌道の画像とラベル一覧"
+          ></div>
+        </aside>
+        <div id="status" role="status" hidden></div>
+      </section>
+      <section id="statistics">
+        <div class="stats-heading">
+          <div>
+            <span class="eyebrow">DATASET OVERVIEW</span>
+            <h2>シーンの統計</h2>
+          </div>
+          <span id="schema"></span>
+        </div>
+        <div id="stat-cards"></div>
+        <div class="stat-columns">
+          <section>
+            <h3>split別の画像数</h3>
+            <div id="splits"></div>
+          </section>
+          <section>
+            <h3>軌道の形状</h3>
+            <div id="shapes"></div>
+          </section>
+          <section>
+            <h3>画面内のコート</h3>
+            <div id="coverage"></div>
+          </section>
+        </div>
+        <p class="stats-note">
+          統計は保存済みデータセットの値です。coverageは画像数ではなく、画像内の各コートを集計しています。
+        </p>
+      </section>
+    </main>
+    <dialog id="lightbox" aria-label="画像とラベルの全画面表示">
+      <button id="close" aria-label="全画面表示を閉じる">✕</button
+      ><button id="previous" aria-label="前の画像">‹</button
+      ><img id="large-image" alt="画像と教師ラベル" />
+      <p id="image-error" role="alert" hidden></p>
+      <button id="next" aria-label="次の画像">›</button
+      ><span id="position"></span>
+    </dialog>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>

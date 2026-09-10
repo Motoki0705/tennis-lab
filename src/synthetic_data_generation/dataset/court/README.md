@@ -4,6 +4,10 @@ Status: implemented. This document is the canonical production contract for
 all explicitly selected Court dataset versions. It is also the sole prose
 authority for the camera-view KP14 semantics and their migration policy.
 
+## Visual review
+
+See [Court Review](review/README.md) for the local 3D trajectory and image-label browser.
+
 ## Purpose
 
 Court dataset v2 introduced three related changes without changing the shared
