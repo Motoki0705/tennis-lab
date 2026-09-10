@@ -31,9 +31,7 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
     """Save a scene result to compressed NPZ plus its mandatory JSON sidecar."""
     archive_path = Path(path)
     if archive_path.suffix != ".npz":
-        raise ValueError(
-            f"Scene archive path must use the .npz suffix: {archive_path}"
-        )
+        raise ValueError(f"Scene archive path must use the .npz suffix: {archive_path}")
     if not isinstance(result.metadata, dict):
         raise TypeError("Scene metadata must be a dictionary")
     metadata_text = json.dumps(
@@ -52,11 +50,12 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
         "court_vis": result.court_vis,
         "player_position": result.player_position,
         "player_yaw": result.player_yaw,
+    }
+    optional_arrays = {
         "smpl_body_pose": result.smpl_body_pose,
         "smpl_global_orient": result.smpl_global_orient,
         "smpl_betas": result.smpl_betas,
-    }
-    optional_arrays = {
+        "player_canonical_pose": result.player_canonical_pose,
         "smpl_vertices_local": result.smpl_vertices_local,
         "ball_uv": result.ball_uv,
         "ball_vis": result.ball_vis,
@@ -96,11 +95,11 @@ def load_scene_result(path: str | Path) -> SceneResult:
             court_vis=np.asarray(archive["court_vis"], dtype=np.float32),
             player_position=np.asarray(archive["player_position"], dtype=np.float32),
             player_yaw=np.asarray(archive["player_yaw"], dtype=np.float32),
-            smpl_body_pose=np.asarray(archive["smpl_body_pose"], dtype=np.float32),
-            smpl_global_orient=np.asarray(
-                archive["smpl_global_orient"], dtype=np.float32
+            smpl_body_pose=_optional_array(archive, "smpl_body_pose", dtype=np.float32),
+            smpl_global_orient=_optional_array(
+                archive, "smpl_global_orient", dtype=np.float32
             ),
-            smpl_betas=np.asarray(archive["smpl_betas"], dtype=np.float32),
+            smpl_betas=_optional_array(archive, "smpl_betas", dtype=np.float32),
             smpl_vertices_local=_optional_array(
                 archive, "smpl_vertices_local", dtype=np.float32
             ),
@@ -108,14 +107,13 @@ def load_scene_result(path: str | Path) -> SceneResult:
             ball_vis=_optional_array(archive, "ball_vis", dtype=np.bool_),
             ball_3d=_optional_array(archive, "ball_3d", dtype=np.float32),
             human_kp_2d=_optional_array(archive, "human_kp_2d", dtype=np.float32),
-            human_kp_vis=_optional_array(
-                archive, "human_kp_vis", dtype=np.float32
-            ),
+            human_kp_vis=_optional_array(archive, "human_kp_vis", dtype=np.float32),
             player_track_ids=_optional_array(
                 archive, "player_track_ids", dtype=np.int32
             ),
-            player_kp_3d=_optional_array(
-                archive, "player_kp_3d", dtype=np.float32
+            player_kp_3d=_optional_array(archive, "player_kp_3d", dtype=np.float32),
+            player_canonical_pose=_optional_array(
+                archive, "player_canonical_pose", dtype=np.float32
             ),
             metadata=metadata,
         )

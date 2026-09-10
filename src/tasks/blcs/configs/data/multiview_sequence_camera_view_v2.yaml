@@ -4,7 +4,7 @@ defaults:
   - override /court_keypoints@_global_.court_keypoints: camera_view_v2
   - override /model@_global_.model: multiview_axial_reference
 scene_dir: blcs/single_object_camera_view_v2
-num_court_kp: 20
+num_court_kp: 14
 camera_candidates: [0, 1, 2, 3]
 num_views_range: [3, 4]
 seq_len_range: [128, 128]

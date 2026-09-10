@@ -4,6 +4,12 @@
 
 再構成済み3D sceneを使った学習データ生成は、責務を分離した[`src/synthetic_data_generation`](../synthetic_data_generation/README.md)が担当します。
 
+## Referenceモデルによる実クリップ検証
+
+DINO → ViTPose → PLCSと外部ボール観測 → BLCSを接続する経路は
+[`reference_pipeline/README.md`](reference_pipeline/README.md)を参照してください。
+SMPLを実行せず、canonical poseと3D関節を保存できます。
+
 ## Modules
 
 ### clip_studio/
