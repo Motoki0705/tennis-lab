@@ -1,0 +1,37 @@
+{
+  "B00": {
+    "courts_before": 2,
+    "courts_after": 2,
+    "matched_origin_shift_m": [
+      0.011957503976387127,
+      0.0007264934546880956
+    ],
+    "nht_units_per_metre_relative_change_percent": 0.047295812867576004
+  },
+  "B01": {
+    "courts_before": 3,
+    "courts_after": 3,
+    "matched_origin_shift_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "nht_units_per_metre_relative_change_percent": 0.0
+  },
+  "B02": {
+    "courts_before": 1,
+    "courts_after": 1,
+    "matched_origin_shift_m": [
+      0.0
+    ],
+    "nht_units_per_metre_relative_change_percent": 0.0
+  },
+  "B03": {
+    "courts_before": 1,
+    "courts_after": 1,
+    "matched_origin_shift_m": [
+      0.0
+    ],
+    "nht_units_per_metre_relative_change_percent": 0.0
+  }
+}

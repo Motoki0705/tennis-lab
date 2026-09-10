@@ -1,0 +1,4 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789013109491527089_651616_court_b00_regenerate_terminal (commit=ad5554ab0cfd provider=codex session=01a088da-0867-7e43-99b5-415e56dc292d)
+/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/src/synthetic_data_generation/alignment/evidence_source.py:268: UserWarning: Mapped the exact historical court-line final_conv head to heads.line before strict checkpoint loading.
+  model_state = _court_line_model_state(raw_state)
+exit_code=143

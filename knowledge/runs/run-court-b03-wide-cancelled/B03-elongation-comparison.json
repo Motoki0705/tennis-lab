@@ -1,0 +1,69 @@
+[
+  {
+    "hfov": [
+      75.0,
+      110.0
+    ],
+    "axis_ratios": [
+      0.65,
+      0.8,
+      1.0
+    ],
+    "proposals": 2256,
+    "groups": 42,
+    "ambiguous": 56,
+    "partial": 1726,
+    "valid": 2142,
+    "sparse": 55,
+    "insufficient": 58,
+    "near_full": 411,
+    "none": 3,
+    "full": 5
+  },
+  {
+    "hfov": [
+      75.0,
+      110.0
+    ],
+    "axis_ratios": [
+      0.35,
+      0.5,
+      0.65,
+      0.8,
+      1.0
+    ],
+    "proposals": 2256,
+    "groups": 40,
+    "ambiguous": 56,
+    "partial": 1442,
+    "valid": 2093,
+    "sparse": 101,
+    "insufficient": 107,
+    "none": 6,
+    "near_full": 598,
+    "full": 53
+  },
+  {
+    "hfov": [
+      75.0,
+      110.0
+    ],
+    "axis_ratios": [
+      0.25,
+      0.4,
+      0.65,
+      0.8,
+      1.0
+    ],
+    "proposals": 2232,
+    "groups": 40,
+    "ambiguous": 48,
+    "partial": 1377,
+    "valid": 2029,
+    "sparse": 130,
+    "insufficient": 155,
+    "near_full": 617,
+    "none": 25,
+    "full": 35
+  }
+]

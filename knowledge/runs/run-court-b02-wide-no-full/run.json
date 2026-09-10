@@ -1,0 +1,16 @@
+{
+  "run_id": "1789013968365497308_752870_court_b02_wide_generate",
+  "name": "court_b02_wide_generate",
+  "command": "PYTHONPATH=. .venv/bin/python outputs/court-b00-b03-generation/run_requested.py outputs/court-b00-b03-generation/B02-wide-requested.yaml",
+  "provider": "codex",
+  "session": "01a088da-0867-7e43-99b5-415e56dc292d",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ad5554ab0cfdc433408b5762f3eb8792a30e6698",
+  "branch": "codex/court-sfm-bounded",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "repo_root": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "captured_at": "2026-09-10T13:20:54+09:00"
+}

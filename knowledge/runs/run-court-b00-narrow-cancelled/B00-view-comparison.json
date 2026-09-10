@@ -1,0 +1,46 @@
+[
+  {
+    "hfov": [
+      45.0,
+      90.0
+    ],
+    "proposals": 2256,
+    "groups": 35,
+    "valid": 2017,
+    "insufficient": 221,
+    "ambiguous": 18
+  },
+  {
+    "hfov": [
+      60.0,
+      100.0
+    ],
+    "proposals": 2256,
+    "groups": 35,
+    "valid": 2101,
+    "insufficient": 137,
+    "ambiguous": 18
+  },
+  {
+    "hfov": [
+      75.0,
+      110.0
+    ],
+    "proposals": 2256,
+    "groups": 35,
+    "valid": 2156,
+    "ambiguous": 18,
+    "insufficient": 82
+  },
+  {
+    "hfov": [
+      90.0,
+      120.0
+    ],
+    "proposals": 2256,
+    "groups": 35,
+    "valid": 2195,
+    "ambiguous": 18,
+    "insufficient": 43
+  }
+]
