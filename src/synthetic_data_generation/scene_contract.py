@@ -259,8 +259,13 @@ class CourtInstance:
         _validate_id(self.candidate_id, name="candidate_id")
         fit_status = _string(self.fit_status, name="fit_status")
         holdout_status = _string(self.holdout_status, name="holdout_status")
-        if fit_status != "accepted" or holdout_status != "accepted":
-            raise ValueError("Only fit- and holdout-accepted courts may enter MultiCourtLayout.")
+        if (fit_status, holdout_status) not in {
+            ("accepted", "accepted"),
+            ("human_confirmed", "human_confirmed"),
+        }:
+            raise ValueError(
+                "Courts require automatic acceptance or explicit human confirmation."
+            )
         product = self.court_from_scene.matrix() @ self.scene_from_court.matrix()
         if not np.allclose(product, np.eye(4), atol=_MATRIX_ATOL, rtol=0.0):
             raise ValueError("court_from_scene and scene_from_court must be reciprocal.")
