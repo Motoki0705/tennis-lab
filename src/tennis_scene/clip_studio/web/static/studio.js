@@ -187,5 +187,12 @@ document.addEventListener('keydown', e => {
   else if (e.key === ',' || e.key === '.') { e.preventDefault(); clearLoop(); playback.seek(playback.time + (e.key === ',' ? -1 : 1)/project.sources[playback.selected].fps); }
   else if (actions[e.key.toLowerCase()]) { e.preventDefault(); if (!e.repeat) $(actions[e.key.toLowerCase()]).click(); }
 });
-try { project = await api('project'); renderProject(true); status('単一カメラでラリーを切り出せます。同期確認は「カメラ比較」へ。'); await pollJob(); }
+try {
+  const notice = await api('startup-notice');
+  if (notice) {
+    $('startup-notice').textContent = notice.message;
+    $('startup-notice').classList.toggle('warning', notice.warning);
+    $('startup-notice').hidden = false;
+  }
+  project = await api('project'); renderProject(true); status('単一カメラでラリーを切り出せます。同期確認は「カメラ比較」へ。'); await pollJob(); }
 catch(error) { status(error.message,true); }

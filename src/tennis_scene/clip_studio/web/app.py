@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 from urllib.parse import urlsplit
 
 import cv2
@@ -15,6 +16,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from src.tennis_scene.clip_studio.export import ExportSettings
+from src.tennis_scene.clip_studio.initialization import StartupNotice
 from src.tennis_scene.clip_studio.project import ClipStudioProject
 from src.tennis_scene.clip_studio.sources import PreviewSource
 from src.tennis_scene.clip_studio.timeline import source_frame_index
@@ -25,7 +27,12 @@ from src.tennis_scene.configuration import ClipStudioRuntimeConfig
 STATIC = Path(__file__).parent / "static"
 
 
-def create_app(runtime: ClipStudioRuntimeConfig, project: ClipStudioProject) -> FastAPI:
+def create_app(
+    runtime: ClipStudioRuntimeConfig,
+    project: ClipStudioProject,
+    *,
+    startup_notice: StartupNotice | None = None,
+) -> FastAPI:
     sources: list[PreviewSource] = []
     try:
         for source in project.sources:
@@ -44,8 +51,8 @@ def create_app(runtime: ClipStudioRuntimeConfig, project: ClipStudioProject) -> 
             runtime.export.resolver,
         )
     except Exception:
-        for source in sources:
-            source.close()
+        for preview in sources:
+            preview.close()
         raise
     settings = runtime.export
     jobs = Jobs(
@@ -96,16 +103,16 @@ def create_app(runtime: ClipStudioRuntimeConfig, project: ClipStudioProject) -> 
         response.headers["Cache-Control"] = "no-store"
         return response
 
-    async def value_error(request: Request, error: ValueError) -> JSONResponse:
+    async def value_error(request: Request, error: Exception) -> JSONResponse:
         return JSONResponse(
             {"detail": str(error)},
             status_code=409 if isinstance(error, RevisionConflict) else 400,
         )
 
-    async def key_error(request: Request, error: KeyError) -> JSONResponse:
+    async def key_error(request: Request, error: Exception) -> JSONResponse:
         return JSONResponse({"detail": str(error)}, status_code=404)
 
-    async def io_error(request: Request, error: OSError) -> JSONResponse:
+    async def io_error(request: Request, error: Exception) -> JSONResponse:
         return JSONResponse(
             {"detail": f"ファイル操作に失敗しました: {error}"}, status_code=500
         )
@@ -118,11 +125,14 @@ def create_app(runtime: ClipStudioRuntimeConfig, project: ClipStudioProject) -> 
             raise HTTPException(404)
         return FileResponse(STATIC / name)
 
+    def get_startup_notice() -> dict[str, Any] | None:
+        return asdict(startup_notice) if startup_notice is not None else None
+
     def get_project() -> dict[str, Any]:
-        return editor.snapshot()
+        return cast(dict[str, Any], editor.snapshot())
 
     def edit(request: Edit) -> dict[str, Any]:
-        return editor.edit(request)
+        return cast(dict[str, Any], editor.edit(request))
 
     def media(camera: int) -> FileResponse:
         if not 0 <= camera < len(sources):
@@ -155,13 +165,13 @@ def create_app(runtime: ClipStudioRuntimeConfig, project: ClipStudioProject) -> 
         )
 
     def start_job(request: JobRequest) -> dict[str, Any]:
-        return jobs.start(request)
+        return cast(dict[str, Any], jobs.start(request))
 
     def get_job() -> dict[str, Any]:
-        return jobs.snapshot()
+        return cast(dict[str, Any], jobs.snapshot())
 
     def cancel_job() -> dict[str, Any]:
-        return jobs.cancel()
+        return cast(dict[str, Any], jobs.cancel())
 
     app.middleware("http")(same_origin)
     app.add_exception_handler(ValueError, value_error)
@@ -169,6 +179,7 @@ def create_app(runtime: ClipStudioRuntimeConfig, project: ClipStudioProject) -> 
     app.add_exception_handler(OSError, io_error)
     app.add_api_route("/", index, methods=["GET"])
     app.add_api_route("/static/{name}", static, methods=["GET"])
+    app.add_api_route("/api/startup-notice", get_startup_notice, methods=["GET"])
     app.add_api_route("/api/project", get_project, methods=["GET"])
     app.add_api_route("/api/edit", edit, methods=["POST"])
     app.add_api_route("/api/media/{camera}", media, methods=["GET"])
