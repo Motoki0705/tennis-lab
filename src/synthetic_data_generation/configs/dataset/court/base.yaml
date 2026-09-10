@@ -13,6 +13,7 @@ trajectory:
   curve_modes: [planar, sinusoidal_height]
   sfm_boundary_margin_m: null
   sfm_boundary_expansion_percent: 0.0
+  sfm_complex_center_on_hull: false
   spatial_coverage_cell_m: null
 
 view:

@@ -41,6 +41,12 @@ In this mode the complex orbit centre is the mean of accepted court centres,
 projected onto the reference court plane. Scene bounds can include distant
 background geometry and therefore do not define the bounded orbit centre.
 Legacy presets keep their previous scene-bounds centre.
+`trajectory.sfm_complex_center_on_hull=true` explicitly places the complex
+orbit centre at the captured-camera XY hull's vertex mean instead. This helps
+asymmetric capture footprints use the observed space on both sides of a court.
+Per-court orbit centres and look-at targets retain the actual court geometry;
+the setting does not shift court labels or relax the boundary. It requires
+explicit SfM bounds. The default is false.
 `trajectory.sfm_boundary_expansion_percent` allows controlled extrapolation:
 `5.0` expands the horizontal hull by a linear factor of 1.05 about the mean of
 its vertices, before applying the inward metric margin. This origin belongs
@@ -89,7 +95,13 @@ This is a horizontal camera-position heuristic. A convex hull can bridge
 unobserved gaps, and remaining height/view-direction extrapolation can still
 produce artifacts. It does not certify 3DGS image quality. Moving cameras inward
 also changes framing, so the bounded preset uses a wider HFOV range; existing
-pre-render semantic and dataset acceptance gates remain active.
+pre-render semantic and dataset acceptance gates remain active. Before the first
+NHT render, the geometric evaluation rejects plans whose remaining candidates
+cannot meet the minimum accepted frame count/fraction, leave a trajectory group
+empty, or lack full/near-full/partial geometric coverage. Errors report candidate
+and required counts plus missing coverage. This is only an upper-bound feasibility
+check: renderer visibility and the existing post-render release gates still
+control acceptance.
 
 `view.look_at_jitter_radius_m` is an explicit v3-only extension. Each sample
 looks at a point drawn uniformly by area from a disk in its resolved court's
