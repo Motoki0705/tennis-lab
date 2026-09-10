@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import cv2
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -23,6 +24,33 @@ from src.submodules.models.tracker.common import (
     select_and_complete_tracks,
 )
 from src.utils.video.reader import OpenCVVideoFrameReader, probe_video_info
+
+
+def filter_detections_by_footpoint(
+    detections: PersonDetectionResult,
+    footpoint_polygon_px: tuple[tuple[float, float], ...],
+) -> PersonDetectionResult:
+    """Retain bottom-centre box points within/on the playing-area polygon."""
+    polygon = np.asarray(footpoint_polygon_px, dtype=np.float32)
+    if (
+        polygon.ndim != 2
+        or polygon.shape[1] != 2
+        or len(polygon) < 3
+        or not np.isfinite(polygon).all()
+    ):
+        raise ValueError("footpoint_polygon_px must be a finite polygon")
+    boxes = detections.boxes_xyxy
+    keep = np.array(
+        [
+            cv2.pointPolygonTest(
+                polygon, (float((b[0] + b[2]) / 2), float(b[3])), False
+            )
+            >= 0
+            for b in boxes
+        ],
+        dtype=bool,
+    )
+    return PersonDetectionResult(boxes[keep], detections.scores[keep])
 
 
 class BotSortAssociator:
@@ -115,6 +143,10 @@ class DinoPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
             detections = self._detector.predict(
                 PersonDetectionRequest(frame_bgr=packet.frame)
             )
+            if request.footpoint_polygon_px is not None:
+                detections = filter_detections_by_footpoint(
+                    detections, request.footpoint_polygon_px
+                )
             track_history.append(associator.update(detections, packet.frame))
         if len(track_history) != expected_frames:
             raise RuntimeError(

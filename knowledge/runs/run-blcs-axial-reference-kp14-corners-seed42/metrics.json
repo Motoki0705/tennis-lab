@@ -1,0 +1,13 @@
+{
+  "test_checkpoint_epoch": 49,
+  "test_checkpoint_scope": "in-memory model after fit (runner.py trainer.test without ckpt_path)",
+  "selected_checkpoint_epoch": 49,
+  "selected_checkpoint_test_evaluated": true,
+  "test": {
+    "loss": 0.00019348060595802963,
+    "position_error_m": 0.22284646332263947,
+    "position_accuracy_0.3m": 0.8301770687103271,
+    "endpoint_error_m": 0.6715567111968994
+  },
+  "best_validation_position_error_m": 0.2252211719751358
+}

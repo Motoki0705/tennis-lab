@@ -1,0 +1,38 @@
+schema_version = 1
+output_storage = "drive"
+name = "ball_detection_staged"
+description = "Train the default TrackNet-only staged ball-detection phase."
+accelerator = "gpu"
+timeout_seconds = 172800
+setup = ["base", "submodules"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.external_asset_root",
+  "paths.output_root",
+  "data.sources.tracknet.data_dir",
+  "data.sources.web.data_dir",
+  "data.sources.web.enabled",
+  "model.backbone.repository_path",
+  "model.backbone.checkpoint_path",
+  "run.output_dir",
+  "run.gpus",
+]
+outputs = ["outputs/colab/ball_detection/staged"]
+
+[command]
+module = "src.tasks.ball_detection.scripts.train_staged"
+args = [
+  "paths.output_root=outputs/colab",
+  "run.output_dir=ball_detection/staged",
+  "run.gpus=1",
+]
+
+[[inputs]]
+source = "data/tennis/tracknet"
+destination = "data/tennis/tracknet"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false

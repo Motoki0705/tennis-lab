@@ -1,0 +1,14 @@
+{
+  "task": "plcs",
+  "checkpoint": "plcs-axial-reference-corners-v3-4-t128-seed42-epoch47.ckpt",
+  "sha256": "8aada6a437149cee94f3810e043b6183294ef3be1e4e4334f567b06a8677b47c",
+  "selection_metric": "val/position_error_m",
+  "selection_mode": "min",
+  "best_validation_score": 0.10781466960906982,
+  "epoch": 47,
+  "source_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-axial-reference/outputs/plcs/axial_reference_corners_v3-4_t128/logs/version_0/checkpoints/plcs-epoch=47.ckpt",
+  "training_completed_epochs": 50,
+  "selection_scope": "full PLCS run",
+  "architecture_branch": "feat/plcs-axial-reference",
+  "architecture_commit": "0dafcdee375981846d1bc34835d780937941935b"
+}

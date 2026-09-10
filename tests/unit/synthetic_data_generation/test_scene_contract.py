@@ -91,7 +91,7 @@ def test_rigid_transform_rejects_reflection() -> None:
 def test_court_instance_requires_fit_and_holdout_acceptance() -> None:
     transform = _rigid(translation=(1.0, 2.0, 3.0))
 
-    with pytest.raises(ValueError, match="fit- and holdout-accepted"):
+    with pytest.raises(ValueError, match="automatic acceptance or explicit human confirmation"):
         CourtInstance(
             court_instance_id="court-001",
             candidate_id="candidate-001",
