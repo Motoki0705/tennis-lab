@@ -1,0 +1,11 @@
+{
+  "id": "run-court-pose-b01-group-02524-epoch05",
+  "date": "2026-09-11",
+  "provider": "codex",
+  "commit": "ec54c5d8d246c5ce6bf45eee5e02dcfe28277792",
+  "branch": "codex/court-pose-predictor",
+  "device": "cpu",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0/checkpoints/court-detection-epoch=05.ckpt",
+  "dataset_root": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/datasets/court",
+  "trajectory_group_id": "group-02524"
+}
