@@ -1,0 +1,16 @@
+{
+  "run_id": "1789012422042855067_570266_court_b00_regenerate",
+  "name": "court_b00_regenerate",
+  "command": "PYTHONPATH=. .venv/bin/python outputs/court-b00-b03-generation/run_requested.py outputs/court-b00-b03-generation/B00-requested.yaml",
+  "provider": "codex",
+  "session": "01a088da-0867-7e43-99b5-415e56dc292d",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ecf64a7aa6e21ed11e619cb75360ef44377aea8b",
+  "branch": "codex/court-sfm-bounded",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "repo_root": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "captured_at": "2026-09-10T13:03:46+09:00"
+}
