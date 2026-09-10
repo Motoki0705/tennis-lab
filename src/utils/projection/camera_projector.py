@@ -11,6 +11,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.schema.court import (
     BASELINE_CLEAR,
     HALF_DOUBLES_WIDTH,
@@ -177,6 +178,8 @@ class CameraConfig:
     broadcast_height_range: tuple[float, float] | None
     broadcast_court_width_frac_range: tuple[float, float] | None
 
+    fixed_camera_indices: tuple[int, ...] | None = None
+
 
 @dataclass
 class CameraView:
@@ -257,7 +260,12 @@ class CameraProjector:
         ]
 
         cams: list[Camera] = []
-        for base_center in corners + baseline_midpoints:
+        centers = corners + baseline_midpoints
+        candidates = camera_candidate_indices(
+            cfg.fixed_camera_indices, capacity=len(centers)
+        )
+        for index in range(len(centers)) if candidates is None else candidates:
+            base_center = centers[index]
             dx, dy, dz = self._sample_uniform_offset_in_ball(
                 cfg.fixed_position_noise_radius
             )
@@ -406,6 +414,8 @@ class CameraProjector:
         Raises on an unknown layout rather than silently falling back.
         """
         layout = self.config.layout
+        if self.config.fixed_camera_indices is not None and layout != FIXED_LAYOUT:
+            raise ValueError("fixed_camera_indices requires the fixed camera layout.")
         if layout == FIXED_LAYOUT:
             return self.fixed_cameras()
         if layout == BROADCAST_LAYOUT:

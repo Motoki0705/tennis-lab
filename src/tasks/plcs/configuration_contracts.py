@@ -21,6 +21,7 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.configuration.paths import PathRole
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.paths import PROJECT_ROOT
 
 __all__ = ["PLCSGenerationComponents", "PLCSPathConfig"]
@@ -98,9 +99,7 @@ def _ordered_range(
     )
     low, high = (float(cast("float | int", item)) for item in values)
     if low > high:
-        raise SemanticConfigurationError(
-            f"{path}.{key} must be ordered low-to-high."
-        )
+        raise SemanticConfigurationError(f"{path}.{key} must be ordered low-to-high.")
     if positive and low <= 0.0:
         raise SemanticConfigurationError(f"{path}.{key} values must be positive.")
     if upper_bound is not None and high > upper_bound:
@@ -205,6 +204,7 @@ def _validate_camera(root: Mapping[str, object]) -> None:
         "hfov_deg",
         "image_size",
         "fixed_look_at",
+        "fixed_camera_indices",
         "fixed_baseline_clear_extra",
         "fixed_position_noise_radius",
         "fixed_look_at_xy_radius",
@@ -247,7 +247,19 @@ def _validate_camera(root: Mapping[str, object]) -> None:
         "broadcast_height_range",
         "broadcast_court_width_frac_range",
     }
-    for key in camera_fields - {"layout", "image_size", "fixed_look_at"}:
+    candidates = camera_candidate_indices(
+        camera.get("fixed_camera_indices"), capacity=6
+    )
+    if candidates is not None and layout != "fixed":
+        raise SemanticConfigurationError(
+            "camera.fixed_camera_indices requires layout=fixed."
+        )
+    for key in camera_fields - {
+        "layout",
+        "image_size",
+        "fixed_look_at",
+        "fixed_camera_indices",
+    }:
         if key in optional_ranges and camera[key] is None:
             continue
         if key in optional_ranges:
@@ -271,9 +283,7 @@ def _validate_camera(root: Mapping[str, object]) -> None:
     for key in {"hfov_deg", "broadcast_hfov_deg"}:
         angle = _number(camera, key, path="camera")
         if not 0.0 < angle < 180.0:
-            raise SemanticConfigurationError(
-                f"camera.{key} must be within (0, 180)."
-            )
+            raise SemanticConfigurationError(f"camera.{key} must be within (0, 180).")
     for key in {
         "fixed_baseline_clear_extra",
         "fixed_position_noise_radius",

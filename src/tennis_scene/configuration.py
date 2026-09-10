@@ -710,6 +710,7 @@ class ClipStudioGUIRuntimeConfig:
     seek_grab_threshold: int
     window_name: str
     zoom_step: float
+    port: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -742,6 +743,7 @@ _GUI_SCHEMA = StrictConfigSchema(
         "seek_grab_threshold": ConfigField.of(int),
         "window_name": ConfigField.of(str),
         "zoom_step": ConfigField.of(float),
+        "port": ConfigField.of(int),
     },
 )
 _AUDIO_SCHEMA = StrictConfigSchema(
@@ -800,6 +802,9 @@ def parse_clip_studio_config(cfg: DictConfig) -> ClipStudioRuntimeConfig:
     tile_width = cast(int, gui["tile_width"])
     cache_frames = cast(int, gui["cache_frames"])
     seek_grab_threshold = cast(int, gui["seek_grab_threshold"])
+    port = cast(int, gui["port"])
+    if not 1 <= port <= 65535:
+        raise SemanticConfigurationError("gui.port must be between 1 and 65535.")
     zoom_step = cast(float, gui["zoom_step"])
     for field_name, number in (
         ("canvas_width", canvas_width),
@@ -837,6 +842,7 @@ def parse_clip_studio_config(cfg: DictConfig) -> ClipStudioRuntimeConfig:
             seek_grab_threshold=seek_grab_threshold,
             window_name=window_name,
             zoom_step=zoom_step,
+            port=port,
         ),
         audio_sync=AudioSyncRuntimeConfig(
             sample_rate=sample_rate,

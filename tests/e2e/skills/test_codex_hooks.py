@@ -81,7 +81,7 @@ def test_all_subagents_bypass_the_root_large_read_guard(tmp_path: Path) -> None:
     evidence = tmp_path / "large.txt"
     evidence.write_bytes(b"large evidence\n" * THRESHOLD)
 
-    for agent_type in ("codebase_scout", "issue_implementer"):
+    for agent_type in ("explorer", "worker"):
         payload_overrides = {
             "agent_id": f"{agent_type}-thread",
             "agent_type": agent_type,
@@ -250,7 +250,7 @@ def test_non_read_and_malformed_input_fail_open(tmp_path: Path) -> None:
         assert result.stderr == ""
 
 
-def test_deny_json_instructs_fresh_scout_delegation_and_wait(tmp_path: Path) -> None:
+def test_deny_json_instructs_fresh_explorer_delegation_and_wait(tmp_path: Path) -> None:
     evidence = tmp_path / "large.txt"
     evidence.write_bytes(b"x" * THRESHOLD)
 
@@ -262,7 +262,7 @@ def test_deny_json_instructs_fresh_scout_delegation_and_wait(tmp_path: Path) -> 
     assert hook_output["hookEventName"] == "PreToolUse"
     assert hook_output["permissionDecision"] == "deny"
     assert hook_output["permissionDecisionReason"]
-    assert 'agent_type="codebase_scout"' in instruction
+    assert 'agent_type="explorer"' in instruction
     assert 'fork_turns="none"' in instruction
     assert "terminal-only summary" in instruction
     assert "wait for that summary" in instruction
