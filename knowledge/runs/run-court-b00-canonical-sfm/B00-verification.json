@@ -1,0 +1,80 @@
+{
+  "scene": "B00",
+  "schema": "canonical_court_dataset_v3",
+  "alignment_schema": "semantic_multi_court_alignment_v2",
+  "courts": 2,
+  "accepted_frames": 2176,
+  "rejected_frames": 112,
+  "minimum_expanded_hull_clearance_m": 0.9119301170375458,
+  "metrics": {
+    "proposal_count": 2288,
+    "accepted_frame_count": 2176,
+    "rejected_frame_count": 112,
+    "accepted_fraction": 0.951048951048951,
+    "trajectory_group_count": 35,
+    "maximum_adjacent_step_m": 1.04610449777055,
+    "split_frame_counts": {
+      "test": 238,
+      "train": 1718,
+      "validation": 220
+    },
+    "split_group_counts": {
+      "test": 3,
+      "train": 28,
+      "validation": 4
+    },
+    "coverage_counts": {
+      "full": 114,
+      "near_full": 1049,
+      "none": 255,
+      "partial": 2371,
+      "sparse": 563
+    },
+    "renderer_visible_points_by_class": {
+      "far_doubles_left": 3466,
+      "far_doubles_right": 3517,
+      "near_doubles_left": 254,
+      "near_doubles_right": 261,
+      "far_singles_left": 3507,
+      "near_singles_left": 273,
+      "far_singles_right": 3543,
+      "near_singles_right": 284,
+      "far_service_left": 3375,
+      "far_service_right": 3436,
+      "near_service_left": 1440,
+      "near_service_right": 1445,
+      "far_service_t": 3498,
+      "near_service_t": 1647
+    },
+    "split_leakage_count": 0,
+    "court_sample_counts": {
+      "court-000": 1036,
+      "court-001": 1140
+    },
+    "split_court_sample_counts": {
+      "test": {
+        "court-000": 104,
+        "court-001": 134
+      },
+      "train": {
+        "court-000": 794,
+        "court-001": 924
+      },
+      "validation": {
+        "court-000": 138,
+        "court-001": 82
+      }
+    }
+  },
+  "trajectory_shapes": {
+    "circle": 8,
+    "ellipse": 9,
+    "rectangle": 9,
+    "superellipse": 9
+  },
+  "hfov_degrees": [
+    75.0,
+    92.5,
+    110.0
+  ]
+}

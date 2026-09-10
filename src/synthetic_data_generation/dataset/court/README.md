@@ -29,6 +29,103 @@ camera-side switch is one proper half-turn in court XY, shared by the KP
 permutation and canonical camera transform. V2 artifacts and checkpoints are
 never treated as V3.
 
+## SfM-bounded camera generation
+
+Select `dataset/court=sfm_bounded` for the v3 label family with bounded camera
+placement and independently sampled look-at offsets. Legacy `train`, `v1`,
+`v2`, and `v3` presets keep their existing generation settings. The numeric
+policy is owned by `configs/dataset/court/sfm_bounded.yaml`.
+
+`trajectory.sfm_boundary_margin_m` explicitly enables the boundary heuristic.
+In this mode the complex orbit centre is the mean of accepted court centres,
+projected onto the reference court plane. Scene bounds can include distant
+background geometry and therefore do not define the bounded orbit centre.
+Legacy presets keep their previous scene-bounds centre.
+`trajectory.sfm_complex_center_on_hull=true` explicitly places the complex
+orbit centre at the captured-camera XY hull's vertex mean instead. This helps
+asymmetric capture footprints use the observed space on both sides of a court.
+Per-court orbit centres and look-at targets retain the actual court geometry;
+the setting does not shift court labels or relax the boundary. It requires
+explicit SfM bounds. The default is false.
+`trajectory.sfm_boundary_expansion_percent` allows controlled extrapolation:
+`5.0` expands the horizontal hull by a linear factor of 1.05 about the mean of
+its vertices, before applying the inward metric margin. This origin belongs
+to the hull, not each orbit, and is independent of camera density. Thus all
+court centres share the same permitted boundary in a common court plane.
+The captured q90 radius cap expands by the same factor. Zero (also the default
+when omitted) preserves the previous boundary exactly. Expansion is an upper
+allowance, not a requirement to place cameras outside: the margin and nested
+radius scales can keep a path inside. Negative or non-finite values and an
+expansion without explicit SfM bounds are rejected.
+For example, use `dataset.court.trajectory.sfm_boundary_expansion_percent=5.0`
+with the `sfm_bounded` preset. The percentage is a distance scale, not an area
+percentage; a factor of 1.05 increases hull area by 1.05 squared.
+
+Captured public-export camera centres are first converted to metres. For each
+complex/court centre, their XY convex hull in that centre's court plane defines
+inward-offset half-planes. Each candidate's shape, orientation and axis ratio
+are used to solve the largest admissible major half-extent analytically; the
+resolved base radius is the smaller of that limit and the captured q90 radius.
+Configured radius scales then generate nested shapes inside that boundary.
+The supported footprints are circles, ellipses, rectangles (including squares),
+and superellipses with unit boundary `|x|^4 + |y|^4 = 1`. The latter have flattened
+sides and rounded corners; they are not rectangles with circular fillets.
+`radius_x_m` and `radius_y_m` denote half-extents for every family, so rectangle
+width and height are twice those values. The analytic support is L2 for
+circles/ellipses, L1 for rectangles, and L(4/3) for superellipses. Rectangle
+corners are constrained even if an arc-length sample does not land on them. The entire curve satisfies the margin, including points between
+samples. Heights and vertical profiles remain config-owned. Fewer than three
+cameras, collinear camera support, an orbit centre outside the inset hull, or
+radius scales above one fail explicitly; no unconstrained orbit is substituted.
+
+`trajectory.spatial_coverage_cell_m` enables position-aware selection after
+boundary fitting. Every path is mapped into one shared XY grid in the first
+resolved centre's metric plane. Within the existing coverage-mode objective,
+new typed parameter values have priority, then shape-use balance, then the
+number of previously unoccupied cells, then the existing balance/tie criteria.
+This prevents new shapes from displacing all circle/ellipse variants while
+using more of the available camera area. The grid is shared across courts;
+per-court grids must not count identical scene locations as different cells.
+The selector retains the proposal budget, minimum frames/groups and complete
+typed-parameter coverage. Cheapest remaining-group costs are computed once per
+iteration, preserving the same reservation semantics without repeated sorting
+for every candidate.
+
+This is a horizontal camera-position heuristic. A convex hull can bridge
+unobserved gaps, and remaining height/view-direction extrapolation can still
+produce artifacts. It does not certify 3DGS image quality. Moving cameras inward
+also changes framing, so the bounded preset uses a wider HFOV range; existing
+pre-render semantic and dataset acceptance gates remain active. Before the first
+NHT render, the geometric evaluation rejects plans whose remaining candidates
+cannot meet the minimum accepted frame count/fraction, leave a trajectory group
+empty, or lack full/near-full/partial geometric coverage. Errors report candidate
+and required counts plus missing coverage. This is only an upper-bound feasibility
+check: renderer visibility and the existing post-render release gates still
+control acceptance.
+
+`view.look_at_jitter_radius_m` is an explicit v3-only extension. Each sample
+looks at a point drawn uniformly by area from a disk in its resolved court's
+local XY plane, at the configured look-at height. The RNG uses
+`SeedSequence([target_court.binding.selection_seed, sample_index])`; this
+reproduces the same target independently of render batching and rejection.
+A positive radius is serialized in each view record and validated against the
+requested configuration. Its absence denotes the existing exact-centre view;
+v1/v2 reject jitter. The renderer and persisted-dataset reader recompute the
+same point and validate the camera forward axis. KP14 channel identities and
+the canonical camera transform remain unchanged. Position samples still belong
+to closed shape groups, but rectangle paths have corners and independent
+look-at offsets do not promise smooth temporal camera motion.
+
+Implementation: `components/camera_sampling/shapes.py` owns the shared unit
+boundaries and support functions; `sfm_bounds.py` fits them to the captured
+boundary; `sampling.py` samples their 3-D arc length; `selection.py` applies
+bounds and budgeted spatial selection; `targeting.py` owns target offsets. Unit tests cover full-curve containment,
+scene-frame invariance, degenerate/outside support, bounded uniform-area jitter,
+altered-target rejection, analytic shape supports, non-planar rectangle sampling,
+and shared-grid coverage improvement with all shape families retained.
+The renderer integration test includes the
+`sfm_bounded` preset through publication and strict rereading.
+
 ## Confirmed v1 behaviour
 
 The current label payload is often described as seven keypoints, but its exact

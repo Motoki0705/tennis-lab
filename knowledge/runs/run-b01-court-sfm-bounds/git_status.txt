@@ -1,0 +1,10 @@
+ M src/synthetic_data_generation/configuration.py
+ M src/synthetic_data_generation/dataset/court/assembler.py
+ M src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
+ M src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
+ M src/synthetic_data_generation/dataset/court/contracts.py
+ M src/synthetic_data_generation/dataset/court/rendering/nht.py
+ T third_party/nht
+?? src/synthetic_data_generation/configs/dataset/court/sfm_bounded.yaml
+?? src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_bounds.py
+?? tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_bounds.py

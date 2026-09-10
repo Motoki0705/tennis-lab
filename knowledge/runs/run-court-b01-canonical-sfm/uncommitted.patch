@@ -1,0 +1,30 @@
+diff --git a/third_party/dinov3 b/third_party/dinov3
+deleted file mode 160000
+index 4add2551..00000000
+--- a/third_party/dinov3
++++ /dev/null
+@@ -1 +0,0 @@
+-Subproject commit 4add255125e6cbf446c6a43c5f3028aa41b63648
+diff --git a/third_party/dinov3 b/third_party/dinov3
+new file mode 120000
+index 00000000..18aa086a
+--- /dev/null
++++ b/third_party/dinov3
+@@ -0,0 +1 @@
++/home/kamimura/projects/tennis-lab/third_party/dinov3
+\ No newline at end of file
+diff --git a/third_party/nht b/third_party/nht
+deleted file mode 160000
+index 41a8d19a..00000000
+--- a/third_party/nht
++++ /dev/null
+@@ -1 +0,0 @@
+-Subproject commit 41a8d19ae27b65565c7437e8179d760e4aa4ea02
+diff --git a/third_party/nht b/third_party/nht
+new file mode 120000
+index 00000000..db90a487
+--- /dev/null
++++ b/third_party/nht
+@@ -0,0 +1 @@
++/home/kamimura/projects/tennis-lab/third_party/nht
+\ No newline at end of file

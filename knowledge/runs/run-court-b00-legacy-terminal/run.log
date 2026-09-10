@@ -1,0 +1,20 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789012422042855067_570266_court_b00_regenerate (commit=ecf64a7aa6e2 provider=codex session=01a088da-0867-7e43-99b5-415e56dc292d)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/court-b00-b03-generation/run_requested.py", line 8, in <module>
+    manifest=runner.run(runtime.request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/src/synthetic_data_generation/pipeline/runner.py", line 61, in run
+    return self._run_locked(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/src/synthetic_data_generation/pipeline/runner.py", line 80, in _run_locked
+    self._preflight_before_invalidation(request, manifest, plan)
+  File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/src/synthetic_data_generation/pipeline/runner.py", line 198, in _preflight_before_invalidation
+    if not _resolved_configuration_is_reusable(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/src/synthetic_data_generation/pipeline/runner.py", line 325, in _resolved_configuration_is_reusable
+    existing = _configuration_authority(existing_yaml)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/src/synthetic_data_generation/pipeline/runner.py", line 310, in _configuration_authority
+    raise ValueError("resolved-config.yaml must contain request.through_stage.")
+ValueError: resolved-config.yaml must contain request.through_stage.
+exit_code=1

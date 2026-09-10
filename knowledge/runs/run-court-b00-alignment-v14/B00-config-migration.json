@@ -1,0 +1,7 @@
+{
+  "change": {
+    "request.through_stage": "report"
+  },
+  "reason": "Explicitly restore the legacy invocation terminal from its completed report stage; no reconstruction/alignment policy changed.",
+  "original_copy": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/court-b00-b03-generation/before/B00/resolved-config.yaml"
+}
