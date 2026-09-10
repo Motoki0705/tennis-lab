@@ -1,0 +1,256 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: outputs
+  artifact_root: assets
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+data:
+  source:
+    kind: synthetic_court
+    schema: v3
+    keypoint_court_scope: target_court
+    workspace_root: synthetic_data_generation/scenes
+    scene_ids:
+    - B00
+  processing:
+    derived_target_root: court_detection/derived_targets
+    targets:
+    - kind: kp
+      sigma_ratio: 0.01
+    - kind: seg
+      target_schema: court_cell_segmentation_v1
+    - kind: line
+      target_schema: court_line_binary_v1
+  augmentation:
+    train_scales:
+    - 256
+    val_short_side: 256
+    crop_scale:
+    - 1.0
+    - 1.0
+    crop_ratio:
+    - 1.0
+    - 1.0
+    hflip_prob: 0.0
+    affine_degrees: 0.0
+    affine_translate:
+    - 0.0
+    - 0.0
+    affine_scale:
+    - 1.0
+    - 1.0
+    affine_shear: 0.0
+    perspective_distortion: 0.0
+    perspective_prob: 0.0
+    color_jitter:
+    - 0.2
+    - 0.2
+    - 0.2
+    - 0.05
+    gaussian_blur_kernel:
+    - 3
+    - 5
+    gaussian_blur_sigma:
+    - 0.1
+    - 1.5
+    gaussian_blur_prob: 0.2
+    min_visible_kp: 0
+    visibility_max_retries: 1
+    preserve_fx_fy: true
+    canvas_size: null
+    patch_size: 16
+  batch_size: 8
+  num_workers: 4
+  pin_memory: true
+model:
+  encoder:
+    name: dinov3
+    backbone_name: dinov3_vitb16
+    repository_path: dinov3
+    checkpoint_path: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+    strict: true
+    train_mode: frozen
+    last_n_blocks: 0
+    out_indices:
+    - 2
+    - 5
+    - 8
+    - 11
+    layer_mode: uniform
+    lora:
+      enabled: true
+      rank: 8
+      alpha: 16.0
+      dropout: 0.0
+      target_modules:
+      - qkv
+      - proj
+      - fc1
+      - fc2
+  transformer_encoder:
+    name: transformer
+    enabled: true
+    dim: 768
+    depth: 8
+    num_heads: 12
+    head_dim: 64
+    ffn_dim: 2048
+    rope_dim: 64
+    rope_theta: 10000.0
+    dropout: 0.0
+    attention_type: mha
+    n_kv_heads: null
+    ffn_type: swiglu
+  decoder:
+    name: dpt
+    size: large
+    channels: 512
+    reassemble_factors:
+    - 4.0
+    - 2.0
+    - 1.0
+    - 0.5
+  name: court_hierarchical
+  in_channels: 3
+loss:
+  seg:
+    ce_weight: 1.0
+    dice_weight: 1.0
+    weight: 1.0
+  kp:
+    focal_gamma: 2.0
+    weight: 1.0
+  line:
+    bce_weight: 1.0
+    dice_weight: 1.0
+    pos_weight: 8.0
+    weight: 1.0
+  pose:
+    enabled: true
+    translation_weight: 1.0
+    rotation_weight: 1.0
+    focal_weight: 1.0
+  consistency:
+    enabled: false
+    weight: 0.0
+    temperature: 1.0
+    huber_delta: 0.01
+    min_depth_m: 0.1
+    depth_scale_m: 1.0
+    cheirality_weight: 0.0
+    warmup_fraction: 0.0
+    gradient_flow: both
+training:
+  trainer:
+    max_epochs: 20
+    gradient_clip_val: 1.0
+    deterministic: warn
+    precision: bf16-mixed
+    log_every_n_steps: 50
+    check_val_every_n_epoch: 3
+    accumulate_grad_batches: 1
+    reload_dataloaders_every_n_epochs: 0
+    enable_progress_bar: true
+    enable_model_summary: true
+    benchmark: false
+  learning_rate: 0.0001
+  weight_decay: 1.0
+  warmup_epochs: 3
+  warmup_steps: null
+  min_lr: 1.0e-06
+  steps_per_epoch: null
+  optimizer:
+    name: adamw
+    betas:
+    - 0.9
+    - 0.999
+  compile:
+    enabled: true
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+  matmul_precision: high
+  allow_tf32: true
+  checkpoint:
+    enabled: true
+    filename: court-detection-{epoch:02d}
+    monitor: val/loss
+    mode: min
+    save_top_k: 2
+    save_last: true
+  early_stopping:
+    enabled: true
+    monitor: val/loss
+    mode: min
+    patience: 10
+    min_delta: 1.0e-05
+    check_on_train_epoch_end: false
+  lr_monitor:
+    enabled: true
+    interval: epoch
+  qualitative_logging:
+    enabled: true
+    every_n_epochs: 5
+    num_samples: 4
+    selection_mode: random
+    selected_indices: null
+    fps: 6
+  gan:
+    enabled: false
+    target_weight: 0.0
+    warmup_epochs: 1
+    generator_gradient_clip_val: null
+    discriminator_gradient_clip_val: null
+    transition:
+      start_epoch: 0
+run:
+  seed: 42
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: true
+  output_dir: court_detection/mixed-source/dense-pose-lora-b8-e20-s42
+render_style:
+  draw:
+    kp_radius: 4
+    kp_color_rgb:
+    - 96
+    - 255
+    - 128
+    kp_thickness: -1
+    line_threshold: 0.5
+  layout:
+    header_height: 36
+    display_width: 640
+    tile_gap: 12
+    text_scale: 0.52
+    text_thickness: 1
+    background_rgb:
+    - 18
+    - 18
+    - 18
+    text_color_rgb:
+    - 245
+    - 245
+    - 245
+    panel_label_height: 24
+mixed:
+  sources:
+    tennis_court_detector:
+      kind: tennis_court_detector
+      root: court
+      split_mapping:
+        train: train
+        val: val
+        test: null
+      excluded_sample_ids:
+      - QszoUKyCOHo_600
+    synthetic_court: ${data.source}
+  train_batch_counts:
+    synthetic_court: 4
+    tennis_court_detector: 4
