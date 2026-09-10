@@ -150,3 +150,5 @@ camera_view_v2 representation; the loader aligns its semantic ordering to the
 reference camera **before** selecting the first 14 points. Disk schema version
 and the number of model input tokens are independent. The earlier KP20 run is
 not a compatible initialization or resume checkpoint for this KP14 recipe.
+Use Colab job `blcs_axial_reference_kp14` for a new 50-epoch run (L4, BS16,
+seed 42, compile enabled); this job protects the point counts and resume setting.

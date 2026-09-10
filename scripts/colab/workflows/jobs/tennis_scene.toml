@@ -1,0 +1,71 @@
+schema_version = 1
+name = "tennis_scene"
+description = "Run the integrated multiview tennis-scene reconstruction pipeline."
+accelerator = "gpu"
+timeout_seconds = 86400
+setup = ["base", "submodules", "cuda_ops"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.checkpoint_root",
+  "paths.artifact_root",
+  "paths.output_root",
+  "paths.external_asset_root",
+  "video_paths",
+  "camera_ids",
+  "output_name",
+  "device",
+  "court_kp.checkpoint",
+  "court_kp.mode",
+  "court_kp.output_path",
+  "gvhmr.gvhmr_checkpoint",
+  "gvhmr.yolo_checkpoint",
+  "gvhmr.dino_checkpoint",
+  "gvhmr.dino_repository",
+  "gvhmr.vitpose_checkpoint",
+  "gvhmr.hmr2_checkpoint",
+  "gvhmr.body_models_dir",
+  "gvhmr.track_selection",
+  "gvhmr.output_path",
+  "player_association.source",
+  "player_association.mode",
+  "player_association.output_path",
+  "player_association.load_path",
+  "ball_detection.checkpoint",
+  "ball_detection.output_path",
+  "plcs.checkpoint",
+  "plcs.output_path",
+  "blcs.checkpoint",
+  "blcs.output_path",
+]
+outputs = ["outputs/colab/tennis_scene/run.npz", "outputs/colab/tennis_scene/run.metadata.json"]
+
+[command]
+module = "src.tennis_scene.scripts.run_pipeline"
+args = [
+  "paths.output_root=outputs/colab",
+  "paths.artifact_root=data",
+  "output_name=run",
+  "device=cuda",
+  "player_association.source=load",
+  "player_association.load_path=tennis_scene/player_association_result.json",
+]
+
+[[inputs]]
+source = "data/samples"
+destination = "data/samples"
+writable = false
+
+[[inputs]]
+source = "ckpt"
+destination = "ckpt"
+writable = false
+
+[[inputs]]
+source = "data/tennis_scene/player_association_result.json"
+destination = "data/tennis_scene/player_association_result.json"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false

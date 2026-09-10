@@ -1,0 +1,51 @@
+schema_version = 1
+output_storage = "drive"
+name = "court_detection_mixed"
+description = "Train Court Detection on the fixed-ratio synthetic and real mix."
+accelerator = "gpu"
+timeout_seconds = 86400
+setup = ["base", "submodules"]
+protected_override_keys = [
+  "paths.data_root",
+  "paths.external_asset_root",
+  "paths.output_root",
+  "data/source",
+  "data/processing",
+  "data.source.workspace_root",
+  "mixed.sources.synthetic_court.workspace_root",
+  "mixed.sources.tennis_court_detector.root",
+  "data.processing.derived_target_root",
+  "model.encoder.repository_path",
+  "model.encoder.checkpoint_path",
+  "run.output_dir",
+  "run.gpus",
+]
+outputs = ["outputs/colab/court_detection/mixed"]
+
+[command]
+module = "src.tasks.court_detection.scripts.train_mixed"
+args = [
+  "paths.output_root=outputs/colab",
+  "run.output_dir=court_detection/mixed",
+  "run.gpus=1",
+]
+
+[[inputs]]
+source = "data/synthetic_data_generation/scenes"
+destination = "data/synthetic_data_generation/scenes"
+writable = false
+
+[[inputs]]
+source = "data/court"
+destination = "data/court"
+writable = false
+
+[[inputs]]
+source = "data/court_detection/derived_targets"
+destination = "data/court_detection/derived_targets"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false
