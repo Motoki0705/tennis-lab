@@ -44,6 +44,22 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
         assert boundaries[module].validator_callable == validator_callable
 
 
+def test_manual_court_editor_has_an_explicit_non_hydra_path_boundary() -> None:
+    boundary = next(
+        boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.module
+        == "src.synthetic_data_generation.scripts.edit_alignment"
+    )
+
+    assert boundary.domain == "manual_court_alignment"
+    assert boundary.validator_key == "synthetic.manual_court_alignment"
+    assert boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+    assert boundary.executable_module
+
+
 def test_task_local_generation_and_visualization_boundaries_remain_in_inventory() -> (
     None
 ):

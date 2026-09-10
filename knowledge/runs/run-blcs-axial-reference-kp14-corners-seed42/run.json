@@ -1,0 +1,18 @@
+{
+  "provider": "codex",
+  "session": "01a08470-1d91-72d3-8da6-13497c8b30d1",
+  "run_id": "20260909t142241z-9b25420d",
+  "repro": {
+    "commit": "41da7f0aedbad30bf0cc65852b2ee979b9e05d11",
+    "branch": "tmp/blcs-axial-reference-colab",
+    "remote": "https://github.com/Motoki0705/tennis-lab.git",
+    "command": "bash scripts/colab/run.sh run blcs_axial_reference_kp14 --gpu L4 --drive-mode mount --download-to outputs/colab_downloads --keep-on-failure",
+    "commit_scope": "exact Colab source revision"
+  },
+  "output_dir": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tmp-blcs-axial-reference-colab/outputs/colab_restart/kp14_completed/outputs/colab/blcs_axial_reference_kp14",
+  "predictions_available": false,
+  "missing_artifacts": [
+    "test predictions were not exported"
+  ],
+  "test_scope": "in-memory model after fit (runner.py trainer.test without ckpt_path)"
+}

@@ -28,6 +28,7 @@ from src.synthetic_data_generation.scene_contract import (
 )
 
 ALIGNMENT_SCHEMA = "semantic_multi_court_alignment_v2"
+MANUAL_ALIGNMENT_SCHEMA = "human_confirmed_multi_court_alignment_v1"
 ALIGNMENT_COORDINATE_CONVENTION = (
     f"metric_scene_from_court_column_vectors;{COURT_AXES_METRES}"
 )
@@ -2970,8 +2971,11 @@ class CandidateAlignment:
     court_from_scene: RigidTransform
     fit: PartitionAssessment
     holdout: PartitionAssessment
+    human_confirmed: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.human_confirmed) is not bool:
+            raise TypeError("human_confirmed must be a boolean.")
         _identifier(self.court_instance_id, name="court_instance_id")
         _identifier(self.candidate_id, name="candidate_id")
         forward = self.court_from_scene.matrix() @ self.scene_from_court.matrix()
@@ -2987,8 +2991,8 @@ class CandidateAlignment:
 
     @property
     def accepted(self) -> bool:
-        """Return true only when both independent partitions pass."""
-        return (
+        """Accept explicit human confirmation or both automatic partition gates."""
+        return self.human_confirmed or (
             self.fit.status is AlignmentStatus.ACCEPTED
             and self.holdout.status is AlignmentStatus.ACCEPTED
         )
@@ -3002,9 +3006,13 @@ class CandidateAlignment:
             candidate_id=self.candidate_id,
             scene_from_court=self.scene_from_court,
             court_from_scene=self.court_from_scene,
-            fit_status=self.fit.status.value,
+            fit_status="human_confirmed"
+            if self.human_confirmed
+            else self.fit.status.value,
             fit_metrics=_assessment_metrics(self.fit),
-            holdout_status=self.holdout.status.value,
+            holdout_status="human_confirmed"
+            if self.human_confirmed
+            else self.holdout.status.value,
             holdout_metrics=_assessment_metrics(self.holdout),
         )
 
@@ -3018,6 +3026,7 @@ class CandidateAlignment:
             "fit": self.fit.to_dict(),
             "holdout": self.holdout.to_dict(),
             "accepted": self.accepted,
+            **({"human_confirmed": True} if self.human_confirmed else {}),
         }
 
     @classmethod
@@ -3027,6 +3036,7 @@ class CandidateAlignment:
         *,
         policy: AlignmentAcceptancePolicy,
         partitions: AlignmentPartitions,
+        human_confirmed: bool = False,
     ) -> Self:
         """Parse one candidate and recompute transform/status invariants."""
         raw = _strict_mapping(
@@ -3039,9 +3049,12 @@ class CandidateAlignment:
                 "fit",
                 "holdout",
                 "accepted",
-            },
+            }
+            | ({"human_confirmed"} if human_confirmed else set()),
             name="candidate alignment",
         )
+        if human_confirmed and raw["human_confirmed"] is not True:
+            raise ValueError("Manual candidates require explicit human confirmation.")
         fit = PartitionAssessment.from_dict(raw["fit"], thresholds=policy.fit)
         holdout = PartitionAssessment.from_dict(
             raw["holdout"], thresholds=policy.holdout
@@ -3069,6 +3082,7 @@ class CandidateAlignment:
             ),
             fit=fit,
             holdout=holdout,
+            human_confirmed=human_confirmed,
         )
         if _boolean(raw["accepted"], name="accepted") != result.accepted:
             raise ValueError(
@@ -3091,6 +3105,10 @@ class AlignmentResult:
         if not isinstance(self.metric_adapter, MetricSceneAdapter):
             raise TypeError("metric_adapter must be a MetricSceneAdapter.")
         candidates = tuple(self.candidates)
+        if len({candidate.human_confirmed for candidate in candidates}) > 1:
+            raise ValueError(
+                "Automatic and human-confirmed candidates cannot be mixed."
+            )
         if not candidates:
             raise ValueError("Alignment result must retain every evaluated candidate.")
         court_ids = [candidate.court_instance_id for candidate in candidates]
@@ -3125,7 +3143,9 @@ class AlignmentResult:
     def to_dict(self) -> dict[str, object]:
         """Return the canonical fixed-path alignment document."""
         return {
-            "schema": ALIGNMENT_SCHEMA,
+            "schema": MANUAL_ALIGNMENT_SCHEMA
+            if self.candidates[0].human_confirmed
+            else ALIGNMENT_SCHEMA,
             "coordinate_convention": ALIGNMENT_COORDINATE_CONVENTION,
             "metric_scene_adapter": self.metric_adapter.to_dict(),
             "partitions": self.partitions.to_dict(),
@@ -3150,7 +3170,7 @@ class AlignmentResult:
             },
             name="alignment result",
         )
-        if raw["schema"] != ALIGNMENT_SCHEMA:
+        if raw["schema"] not in (ALIGNMENT_SCHEMA, MANUAL_ALIGNMENT_SCHEMA):
             raise ValueError(f"Unsupported alignment schema: {raw['schema']!r}.")
         if raw["coordinate_convention"] != ALIGNMENT_COORDINATE_CONVENTION:
             raise ValueError("Unsupported alignment coordinate convention.")
@@ -3162,6 +3182,7 @@ class AlignmentResult:
                 candidate,
                 policy=policy,
                 partitions=partitions,
+                human_confirmed=raw["schema"] == MANUAL_ALIGNMENT_SCHEMA,
             )
             for candidate in candidates_raw
         )

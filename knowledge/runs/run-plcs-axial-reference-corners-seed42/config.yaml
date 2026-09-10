@@ -1,0 +1,244 @@
+court_keypoints:
+  selector: camera_view_v2
+model:
+  name: plcs_multiview_axial_reference
+  io:
+    input_profile: multiview
+  hidden_dim: 512
+  num_layers: 8
+  num_heads: 8
+  ffn_dim: 1408
+  ffn_type: swiglu
+  dropout: 0.1
+  invisible_init_std: 0.02
+  max_views: 4
+  max_seq_len: 256
+  rope_dim: 16
+  rope_theta_time: 1000.0
+  rope_theta_camera: 1000.0
+  predict_canonical_pose: true
+  canonical_pose_readout: temporal_decomposition
+  target_frame_contract: reference_camera_court_rzpi_v1
+  axial_rope_contract: time_camera_reference_selector_v1
+  reference_selector_mode: reference
+data:
+  augmentation:
+    enabled: true
+    uv_scale:
+      enabled: false
+      prob: 1.0
+      scale_range:
+      - 1.0
+      - 1.0
+      apply_to_human: true
+      apply_to_court: true
+    gaussian_noise:
+      enabled: true
+      prob: 1.0
+      human_std: 0.003
+      court_std: 0.0001
+    visibility_dropout:
+      enabled: true
+      prob: 1.0
+      human_drop_prob: 0.08
+      court_drop_prob: 0.05
+    temporal_jitter:
+      enabled: true
+      prob: 1.0
+      human_jitter_std: 0.002
+      human_drift_std: 0.001
+      court_jitter_std: 0.0
+      court_drift_std: 0.0
+      drift_decay: 0.85
+    burst_dropout:
+      enabled: true
+      prob: 0.3
+      human_track_prob: 1.0
+      court_track_prob: 0.1
+      min_len: 2
+      max_len: 12
+      max_bursts: 1
+    false_positive:
+      enabled: true
+      prob: 1.0
+      human_prob_absent: 0.05
+      human_prob_after_dropout: 0.02
+      human_after_dropout_window: 2
+      court_prob_absent: 0.0
+      court_prob_after_dropout: 0.0
+      court_after_dropout_window: 0
+    edge_degradation:
+      enabled: true
+      prob: 1.0
+      edge_margin: 0.1
+      human_noise_std: 0.002
+      human_drop_prob: 0.03
+      human_clip_out_prob: 0.01
+      court_noise_std: 0.001
+      court_drop_prob: 0.01
+      court_clip_out_prob: 0.0
+    speed_conditioned:
+      enabled: true
+      prob: 1.0
+      human_frame_prob: 0.05
+      human_speed_threshold: 0.02
+      human_lag_overshoot_range:
+      - -0.15
+      - 0.2
+      human_noise_std: 0.001
+      court_frame_prob: 0.0
+      court_speed_threshold: 0.02
+      court_lag_overshoot_range:
+      - 0.0
+      - 0.0
+      court_noise_std: 0.0
+  min_cameras: 3
+  camera_mode: random
+  num_views_range:
+  - 3
+  - 4
+  batch_size: 4
+  camera_candidates:
+  - 0
+  - 1
+  - 2
+  - 3
+  backend: default
+  scene_dir: plcs/single_object_camera_view_v2
+  adapter_camera_index: 0
+  num_court_kp: 14
+  num_workers: 4
+  pin_memory: true
+  mode: multiview_sequence
+  seq_len_range:
+  - 128
+  - 128
+  evaluation_reference_camera_id: camera_0
+training:
+  mcmc:
+    enabled: false
+    noise_scale: 1.0
+    temperature: 1.0
+    warmup_epochs: 0
+    decay: cosine
+    target: all
+  trainer:
+    max_epochs: 50
+    gradient_clip_val: 1.0
+    deterministic: true
+    precision: bf16-mixed
+    log_every_n_steps: 50
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 1
+    reload_dataloaders_every_n_epochs: 0
+    enable_progress_bar: true
+    enable_model_summary: true
+    benchmark: false
+  learning_rate: 0.0001
+  weight_decay: 0.1
+  warmup_steps: 1000
+  warmup_epochs: null
+  min_lr: 1.0e-06
+  steps_per_epoch: null
+  optimizer:
+    betas:
+    - 0.9
+    - 0.999
+  compile:
+    enabled: true
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+  matmul_precision: high
+  allow_tf32: true
+  checkpoint:
+    enabled: true
+    filename: plcs-{epoch:02d}
+    monitor: val/position_error_m
+    mode: min
+    save_top_k: 3
+    save_last: true
+  early_stopping:
+    enabled: false
+    monitor: val/position_error_m
+    mode: min
+    patience: 10
+    min_delta: 2.0e-05
+    check_on_train_epoch_end: false
+  lr_monitor:
+    enabled: true
+    interval: step
+  qualitative_logging:
+    enabled: false
+    every_n_epochs: 10
+    num_samples: 4
+    selection_mode: random
+    selected_indices: null
+  gan:
+    enabled: false
+    target_weight: 0.0
+    warmup_epochs: 1
+    generator_gradient_clip_val: null
+    discriminator_gradient_clip_val: null
+    transition:
+      start_epoch: 0
+loss:
+  position_weight: 1.0
+  position_smooth_l1_beta: 0.1
+  rotation_weight: 0.1
+  angle_weight: 0.1
+  position_smoothness_weight: 0.0
+  canonical_pose_weight: 1.0
+  canonical_pose_smooth_l1_beta: 1.0
+  reprojection_weight: 1.0
+  reprojection_smooth_l1_beta: 0.01
+  joint_angle_weight: 0.0
+  torsion_angle_weight: 0.0
+  torso_twist_weight: 0.0
+  bone_length_weight: 0.0
+  joint_angle_velocity_weight: 0.0
+  torsion_angle_velocity_weight: 0.0
+  torso_twist_velocity_weight: 0.0
+  joint_angle_velocity_angle_weights: null
+  torsion_angle_velocity_angle_weights: null
+metrics:
+  position_threshold_m: 0.5
+  angle_threshold_deg: 15.0
+  velocity_threshold_m: 1.0
+qualitative:
+  fps: 30.0
+  style:
+    theme: dark
+    show_shadow: true
+    show_trail: true
+    trail_length: 60
+    show_hud: true
+    show_minimap: true
+  view_3d:
+    preset: broadcast
+    mode: static
+    elev: null
+    azim: null
+    zoom: null
+    orbit_period_s: 10.0
+    keyframes: null
+run:
+  output_dir: plcs/axial_reference_corners_v3-4_t128
+  seed: 42
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: true
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: outputs
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: data
+external_assets:
+  smplh_model_path: smplx/smplh

@@ -609,6 +609,51 @@ class PipelineRuntimeConfig:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ReferenceClipPaths:
+    """Resolved path authority for the reference-clip reconstruction boundary."""
+
+    roots: RuntimePathRoots
+    resolver: PathResolver
+    clip_dir: Path
+    output_dir: Path
+    dino_checkpoint: Path
+    dino_repository: Path
+    vitpose_checkpoint: Path
+    plcs_checkpoint: Path
+    blcs_checkpoint: Path
+
+    @classmethod
+    def from_config(cls, cfg: DictConfig) -> ReferenceClipPaths:
+        """Resolve every configured path before observation or inference begins."""
+        value = _plain(cfg)
+        roots, resolver = _roots(value["paths"])
+        people = _mapping(value["people"], name="people")
+        return cls(
+            roots=roots,
+            resolver=resolver,
+            clip_dir=resolver.resolve(PathRole.DATA, cast(str, value["clip_dir"])),
+            output_dir=resolver.resolve(
+                PathRole.OUTPUT, cast(str, value["output_dir"])
+            ),
+            dino_checkpoint=resolver.resolve(
+                PathRole.CHECKPOINT, cast(str, people["dino_checkpoint"])
+            ),
+            dino_repository=resolver.resolve(
+                PathRole.EXTERNAL_ASSET, cast(str, people["dino_repository"])
+            ),
+            vitpose_checkpoint=resolver.resolve(
+                PathRole.EXTERNAL_ASSET, cast(str, people["vitpose_checkpoint"])
+            ),
+            plcs_checkpoint=resolver.resolve(
+                PathRole.CHECKPOINT, cast(str, value["plcs_checkpoint"])
+            ),
+            blcs_checkpoint=resolver.resolve(
+                PathRole.CHECKPOINT, cast(str, value["blcs_checkpoint"])
+            ),
+        )
+
+
 _EXPORT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.export",
     fields={
@@ -1180,6 +1225,11 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
 def validate_pipeline_boundary(cfg: DictConfig) -> None:
     """Validate the complete reconstruction pipeline boundary."""
     PipelineRuntimeConfig.from_config(cfg)
+
+
+def validate_reference_clip_boundary(cfg: DictConfig) -> None:
+    """Validate and resolve all reference-clip paths before side effects."""
+    ReferenceClipPaths.from_config(cfg)
 
 
 def validate_clip_studio_boundary(cfg: DictConfig) -> None:
