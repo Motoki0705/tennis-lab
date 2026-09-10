@@ -1124,6 +1124,7 @@ class CourtTrajectoryPolicy:
     curve_modes: tuple[OrbitCurveMode, ...]
     sfm_boundary_margin_m: float | None
     sfm_boundary_expansion_percent: float
+    sfm_complex_center_on_hull: bool
     spatial_coverage_cell_m: float | None
 
     @classmethod
@@ -1142,6 +1143,7 @@ class CourtTrajectoryPolicy:
                 "curve_modes",
                 "sfm_boundary_margin_m",
                 "sfm_boundary_expansion_percent",
+                "sfm_complex_center_on_hull",
                 "spatial_coverage_cell_m",
             },
         )
@@ -1180,6 +1182,7 @@ class CourtTrajectoryPolicy:
             ),
             sfm_boundary_margin_m=(None if raw["sfm_boundary_margin_m"] is None else _number(raw, "sfm_boundary_margin_m", path=path)),
             sfm_boundary_expansion_percent=_number(raw, "sfm_boundary_expansion_percent", path=path),
+            sfm_complex_center_on_hull=_flag(raw, "sfm_complex_center_on_hull", path=path),
             spatial_coverage_cell_m=(None if raw["spatial_coverage_cell_m"] is None else _number(raw, "spatial_coverage_cell_m", path=path)),
         )
         if result.sfm_boundary_margin_m is not None:
@@ -1188,6 +1191,8 @@ class CourtTrajectoryPolicy:
                 raise SemanticConfigurationError(
                     "SfM bounds require non-negative margin and radius scales <= 1."
                 )
+        if result.sfm_complex_center_on_hull and result.sfm_boundary_margin_m is None:
+            raise SemanticConfigurationError("Captured-hull complex centre requires explicit SfM bounds.")
         expansion = result.sfm_boundary_expansion_percent
         if expansion < 0.0 or (expansion > 0.0 and result.sfm_boundary_margin_m is None):
             raise SemanticConfigurationError(

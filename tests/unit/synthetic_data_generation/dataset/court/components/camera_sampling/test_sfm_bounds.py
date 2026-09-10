@@ -302,3 +302,36 @@ def test_bounded_complex_center_ignores_background_bounds(
     center = reference.court_from_scene.apply(actual[0].scene_from_center.matrix()[:3, 3][None, :])[0]
     np.testing.assert_allclose(center[:2], local[:, :2].mean(axis=0))
     assert center[2] == pytest.approx(0.0, abs=1e-10)
+
+
+def test_captured_hull_center_moves_only_complex_orbits(
+    captured_cameras: tuple[SceneCamera, ...], multi_court_layout: MultiCourtLayout
+) -> None:
+    ordinary = derive_orbit_centers(captured_cameras, multi_court_layout, use_court_centroid=True)
+    shifted = derive_orbit_centers(captured_cameras, multi_court_layout, use_court_centroid=True, use_captured_hull_centroid=True)
+    ref = multi_court_layout.court(shifted[0].reference_court_instance_id)
+    xy = ref.court_from_scene.apply(np.array([c.camera_to_scene.matrix()[:3, 3] for c in captured_cameras]))[:, :2]
+    hull = ConvexHull(xy)
+    actual = ref.court_from_scene.apply(shifted[0].scene_from_center.matrix()[:3, 3][None, :])[0]
+    np.testing.assert_allclose(actual[:2], xy[hull.vertices].mean(axis=0))
+    assert actual[2] == pytest.approx(0.0, abs=1e-10)
+    assert shifted[1:] == ordinary[1:]
+    # Repeated interior/captured samples must not bias the hull-owned origin.
+    repeated = derive_orbit_centers((*captured_cameras, *captured_cameras[:2]), multi_court_layout, use_captured_hull_centroid=True)
+    assert repeated[0].scene_from_center == shifted[0].scene_from_center
+
+
+def test_captured_hull_center_requires_explicit_bounds() -> None:
+    from dataclasses import asdict
+
+    from src.synthetic_data_generation.configuration import (
+        CourtTrajectoryPolicy,
+        SemanticConfigurationError,
+    )
+
+    raw = json.loads(json.dumps(asdict(_composed_configuration("sfm_bounded").trajectory)))
+    raw["sfm_complex_center_on_hull"] = True
+    assert CourtTrajectoryPolicy.from_mapping(raw).sfm_complex_center_on_hull
+    raw["sfm_boundary_margin_m"] = None
+    with pytest.raises(SemanticConfigurationError, match="Captured-hull"):
+        CourtTrajectoryPolicy.from_mapping(raw)

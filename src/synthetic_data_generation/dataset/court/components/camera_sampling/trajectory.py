@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 
 import numpy as np
+from scipy.spatial import ConvexHull, QhullError
 
 from src.synthetic_data_generation.configuration import CourtTrajectoryPolicy
 from src.synthetic_data_generation.dataset.court.contracts import (
@@ -30,6 +31,7 @@ def derive_orbit_centers(
     layout: MultiCourtLayout,
     *,
     use_court_centroid: bool = False,
+    use_captured_hull_centroid: bool = False,
 ) -> tuple[OrbitCenter, ...]:
     """Derive complex and per-court radii from captured camera offsets.
 
@@ -38,6 +40,8 @@ def derive_orbit_centers(
     plane; court centres are their exact accepted local origins.
     SfM-bounded generation explicitly uses the accepted-court centroid instead
     of scene bounds, which can include distant background outliers.
+    An explicit captured-hull option moves only the complex orbit centre to
+    the planar hull vertex mean; target courts and per-court centres stay fixed.
     """
     captured = tuple(cameras)
     if not captured:
@@ -53,6 +57,13 @@ def derive_orbit_centers(
         else np.mean(bounds, axis=0)
     )
     midpoint_reference = reference.court_from_scene.apply(midpoint_scene[None, :])[0]
+    if use_captured_hull_centroid:
+        captured_xy = reference.court_from_scene.apply(camera_centers_scene)[:, :2]
+        try:
+            hull = ConvexHull(captured_xy)
+        except QhullError as error:
+            raise ValueError("Captured-hull complex centre requires planar camera support.") from error
+        midpoint_reference[:2] = captured_xy[hull.vertices].mean(axis=0)
     midpoint_reference[2] = 0.0
     complex_transform = reference.scene_from_court.matrix()
     complex_transform[:3, 3] = reference.scene_from_court.apply(

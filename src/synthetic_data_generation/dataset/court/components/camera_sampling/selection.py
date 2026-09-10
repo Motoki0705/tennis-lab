@@ -120,6 +120,7 @@ def build_court_dataset_plan(
     centers = derive_orbit_centers(
         camera_tuple, layout,
         use_court_centroid=configuration.trajectory.sfm_boundary_margin_m is not None,
+        use_captured_hull_centroid=configuration.trajectory.sfm_complex_center_on_hull,
     )
     candidates = generate_trajectory_candidates(
         configuration.trajectory,
