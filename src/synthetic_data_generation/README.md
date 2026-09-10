@@ -47,6 +47,13 @@ To rerun a valid downstream suffix, set `request.from_stage`, for example:
   request.from_stage=alignment
 ```
 
+An alignment rerun may change `alignment`, `dataset`, and `request.targets`,
+because alignment and all dataset/report descendants are invalidated. Retained
+upstream authority (including roots, camera, profile, pipeline, and existing NHT
+values) must still match. Legacy NHT configuration may add only the nonempty
+`training_python_path` and `trainer_path` runtime paths; replacing existing values
+or adding other NHT options is rejected before any publication is invalidated.
+
 To stop after court alignment without constructing or running dataset/report
 handlers, set the explicit terminal stage:
 

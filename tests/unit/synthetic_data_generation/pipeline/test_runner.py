@@ -1184,3 +1184,75 @@ def test_definition_rejects_handler_summary_type_at_execution(tmp_path: Path) ->
         runner.workspace.run_manifest_path.read_text(encoding="utf-8")
     )
     assert persisted["stages"]["ingest"]["status"] == "failed"
+
+
+def _tree_snapshot(root: Path) -> dict[str, bytes]:
+    return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+
+
+def _alignment_reuse_config_yaml(*, updated: bool, mutation: str = "") -> str:
+    config = yaml.safe_load(_court_reuse_config_yaml(
+        from_stage=StageName.ALIGNMENT if updated else StageName.INGEST,
+        targets=frozenset({DatasetTarget.COURT}) if updated else frozenset(DatasetTarget),
+        court_schema_version="v3" if updated else "v1",
+        nht={"backend": "public-cli", "training_python_path": "/stable/python"},
+    ))
+    config.update({
+        "alignment": {"evidence_schema": "v14" if updated else "v11"},
+        "roots": {"data": "/stable/data"},
+        "camera": {"profile": "stable"},
+        "profile": {"scene_id": "stable"},
+    })
+    if updated:
+        config["nht"]["trainer_path"] = "/runtime/trainer.py"
+        config["dataset"]["blcs"] = {"schema": "changed-descendant"}
+    if mutation in {"roots", "camera", "profile", "pipeline"}:
+        config[mutation] = {"changed": True}
+    elif mutation == "existing-nht":
+        config["nht"]["training_python_path"] = "/different/python"
+    elif mutation == "removed-nht":
+        del config["nht"]["backend"]
+    elif mutation == "extra-nht":
+        config["nht"]["workspace_path"] = "/unowned/path"
+    elif mutation == "blank-nht":
+        config["nht"]["trainer_path"] = " "
+    elif mutation == "nonstring-nht":
+        config["nht"]["trainer_path"] = 7
+    return yaml.safe_dump(config)
+
+
+def test_alignment_config_upgrade_reuses_upstream_and_invalidates_all_descendants(
+    tmp_path: Path,
+) -> None:
+    first_registry, _ = _registry(payload="retained")
+    first = _runner(tmp_path, first_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=False))
+    first.run(_request(tmp_path, targets=frozenset(DatasetTarget)))
+    reconstruction = first.workspace.root / "reconstruction/export/scene.json"
+    before = reconstruction.read_bytes()
+    second_registry, handlers = _registry(payload="upgraded")
+    second = _runner(tmp_path, second_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=True))
+    second.run(_request(tmp_path, from_stage=StageName.ALIGNMENT, targets=frozenset({DatasetTarget.COURT})))
+    assert reconstruction.read_bytes() == before
+    assert handlers[StageName.INGEST].execute_calls == 0
+    assert handlers[StageName.RECONSTRUCTION].execute_calls == 0
+    assert handlers[StageName.ALIGNMENT].execute_calls == 1
+    assert handlers[StageName.COURT_DATASET].execute_calls == 1
+    assert not (second.workspace.root / "datasets/blcs").exists()
+    assert not (second.workspace.root / "datasets/plcs").exists()
+    assert (second.workspace.root / "alignment/alignment.json").read_text() == "upgraded"
+
+
+@pytest.mark.parametrize("mutation", ["roots", "camera", "profile", "pipeline", "existing-nht", "removed-nht", "extra-nht", "blank-nht", "nonstring-nht"])
+def test_alignment_config_upgrade_rejects_upstream_changes_before_mutation(
+    tmp_path: Path, mutation: str,
+) -> None:
+    first_registry, _ = _registry(payload="retained")
+    first = _runner(tmp_path, first_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=False))
+    first.run(_request(tmp_path, targets=frozenset(DatasetTarget)))
+    before = _tree_snapshot(first.workspace.root)
+    second_registry, handlers = _registry(payload="forbidden")
+    second = _runner(tmp_path, second_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=True, mutation=mutation))
+    with pytest.raises(ValueError, match="Resolved configuration changed"):
+        second.run(_request(tmp_path, from_stage=StageName.ALIGNMENT, targets=frozenset({DatasetTarget.COURT})))
+    assert _tree_snapshot(first.workspace.root) == before
+    assert all(handler.execute_calls == 0 for handler in handlers.values())
