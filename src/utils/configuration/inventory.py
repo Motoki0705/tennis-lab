@@ -298,6 +298,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "synthetic.manual_court_alignment",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.synthetic_data_generation.scripts.review_court_dataset": (
+        "synthetic.court_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -338,6 +342,12 @@ _RUNTIME_BOUNDARIES = (
         "src.synthetic_data_generation.scripts.edit_alignment",
         "main",
         domain="manual_court_alignment",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.review_court_dataset",
+        "main",
+        domain="synthetic_data_generation",
         executable_module=True,
     ),
     _runtime_boundary(

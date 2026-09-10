@@ -26,6 +26,10 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
             "src.synthetic_data_generation.visualization.publication.configuration."
             "validate_publication_boundary",
         ),
+        "src.synthetic_data_generation.scripts.review_court_dataset": (
+            "synthetic.court_review",
+            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+        ),
         "src.synthetic_data_generation.scripts.run_scene_pipeline": (
             "synthetic.scene_pipeline",
             "src.synthetic_data_generation.configuration."
