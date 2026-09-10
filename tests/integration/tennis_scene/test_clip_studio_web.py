@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from src.tennis_scene.clip_studio.project import ClipSource, ClipStudioProject
 from src.tennis_scene.clip_studio.web.app import create_app
@@ -26,6 +26,7 @@ def web_client(tmp_path):
     cfg = OmegaConf.load(
         Path(__file__).parents[3] / "src/tennis_scene/configs/clip_studio.yaml"
     )
+    assert isinstance(cfg, DictConfig)
     del cfg["defaults"]
     del cfg["hydra"]
     cfg.paths = {
@@ -206,3 +207,63 @@ def test_cancel_stops_active_encoder_and_removes_unpublished_output(web_client):
     jobs.export = replace(jobs.export, fps=10.0, width=64, height=48)
     client.post("/api/jobs", json={"revision": 1, "kind": "export"})
     assert wait_job(client)["status"] == "done"
+
+
+@pytest.mark.parametrize("missing_timestamp", [False, True])
+def test_recording_time_startup_notice_and_saved_sync(web_client, missing_timestamp):
+    from dataclasses import replace
+
+    import av
+
+    from src.tennis_scene.clip_studio.initialization import load_or_create_project
+
+    _, runtime = web_client
+    paths = []
+    for index in range(2):
+        path = runtime.export.resolver.roots.data_root / f"camera{index}.mp4"
+        with av.open(str(path), mode="w") as output:
+            if not (missing_timestamp and index == 1):
+                output.metadata["creation_time"] = f"2026-07-09T16:08:0{index}Z"
+            stream = output.add_stream("libx264", rate=10)
+            stream.width = 64
+            stream.height = 48
+            stream.pix_fmt = "yuv420p"
+            for _ in range(30):
+                frame = av.VideoFrame.from_ndarray(
+                    np.full((48, 64, 3), 80, dtype=np.uint8), format="rgb24"
+                )
+                output.mux(stream.encode(frame))
+            output.mux(stream.encode())
+        paths.append(path)
+    runtime = replace(runtime, video_paths=tuple(paths), camera_ids=("cam0", "cam1"))
+    project, notice = load_or_create_project(runtime)
+    assert notice is not None
+    assert notice.warning == missing_timestamp
+    assert [s.offset_sec for s in project.sources] == (
+        [0, 0] if missing_timestamp else [1, 0]
+    )
+    with TestClient(create_app(runtime, project, startup_notice=notice)) as client:
+        response = client.get("/api/startup-notice").json()
+        assert response["warning"] == missing_timestamp
+        if missing_timestamp:
+            assert (
+                "cam1" in response["message"] and "creation_time" in response["message"]
+            )
+        assert 'id="startup-notice"' in client.get("/").text
+        assert client.get("/api/frame/0?time=0&revision=0").headers[
+            "x-frame-index"
+        ] == ("0" if missing_timestamp else "10")
+        assert (
+            client.post(
+                "/api/edit",
+                json={"revision": 0, "action": "offsets", "offsets_sec": [0.75, 0]},
+            ).status_code
+            == 200
+        )
+        assert client.get("/api/startup-notice").json() == response
+    project, notice = load_or_create_project(
+        replace(runtime, video_paths=None, camera_ids=None)
+    )
+    assert [s.offset_sec for s in project.sources] == [0.75, 0]
+    with TestClient(create_app(runtime, project, startup_notice=notice)) as client:
+        assert client.get("/api/startup-notice").json() is None

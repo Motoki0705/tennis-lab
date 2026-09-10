@@ -82,6 +82,7 @@ metadata欠落、不明なidentity、scale/単位不一致はload/resume/evaluat
 再生成し、checkpointは新契約で再学習してください。
 
 ### `video/`
+- **`metadata.py`**: コンテナの `creation_time` をUTCへ正規化する `read_creation_time()`。欠落・不正・取得失敗は `CreationTimeError` で明示する。
 - **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`、一括 RGB 読み出し `read_video_rgb()`、smart-seek 付きランダムアクセス `RandomAccessVideoReader`。
 - **`audio.py`**: PyAV ベースの音声トラック読み出し `read_audio_mono()` と RMS `audio_envelope()`。音声ベースのカメラ同期が主な用途。
 - **`writer.py`**: PyAV ベースの H.264 `VideoWriter`（fps / CRF 指定）と `save_video_rgb()`。
