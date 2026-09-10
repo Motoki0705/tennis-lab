@@ -26,6 +26,7 @@ class TrackRequest:
     video_path: str | Path
     num_tracks: int
     interactive: bool
+    footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None
 
 
 @dataclass(frozen=True)

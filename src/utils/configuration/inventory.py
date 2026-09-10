@@ -188,6 +188,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_clips": "tennis_scene.export_clips",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
+    "src.tennis_scene.scripts.reconstruct_reference_clip": "tennis_scene.reference_clip",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
     "src.tennis_scene.scripts.visualize_tasks": "tennis_scene.visualize_tasks",
@@ -254,6 +255,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_clips": "src.tennis_scene.configuration.validate_export_clips_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
+    "src.tennis_scene.scripts.reconstruct_reference_clip": "src.tennis_scene.configuration.validate_reference_clip_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
     "src.tennis_scene.scripts.visualize_tasks": "src.tennis_scene.configuration.validate_visualize_tasks_boundary",
@@ -292,6 +294,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "automation.chatgpt_mcp",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.synthetic_data_generation.scripts.edit_alignment": (
+        "synthetic.manual_court_alignment",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -327,6 +333,12 @@ _RUNTIME_BOUNDARIES = (
         "src.automation.chatgpt_mcp.cli",
         "main",
         domain="automation",
+    ),
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.edit_alignment",
+        "main",
+        domain="manual_court_alignment",
+        executable_module=True,
     ),
     _runtime_boundary(
         "synthetic_data_generation",
@@ -437,6 +449,9 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_clips"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
+    _runtime_boundary(
+        "tennis_scene", "src.tennis_scene.scripts.reconstruct_reference_clip"
+    ),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualization"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualize_tasks"),

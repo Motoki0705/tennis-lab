@@ -1,0 +1,18 @@
+{
+  "provider": "codex",
+  "session": "01a08470-1d91-72d3-8da6-13497c8b30d1",
+  "run_id": "run-plcs-axial-reference-corners-seed42",
+  "repro": {
+    "commit": "0dafcdee375981846d1bc34835d780937941935b",
+    "branch": "feat/plcs-axial-reference",
+    "remote": "https://github.com/Motoki0705/tennis-lab.git",
+    "command": ".venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_axial_reference",
+    "commit_scope": "architecture snapshot from checkpoint metadata; exact launch commit unavailable"
+  },
+  "output_dir": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-axial-reference/outputs/plcs/axial_reference_corners_v3-4_t128",
+  "predictions_available": false,
+  "missing_artifacts": [
+    "test predictions were not exported"
+  ],
+  "test_scope": "in-memory model after fit (runner.py trainer.test without ckpt_path)"
+}
