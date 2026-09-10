@@ -50,7 +50,7 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
-- `inference/`: single-head predictorはmulti-head checkpointから対象headを明示選択します。
+- `inference/`: dense single-head predictorはmulti-head checkpointから対象headを明示選択します。pose有効checkpointは`CourtPosePredictor`がカメラの並進・回転・元画像pixel単位の焦点距離と全dense headを返します。
 - `visualization/`: bundle-awareなprediction/rendering surface。
 
 設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。syntheticの`schema=v1|v2|v3`はtyped configで必須で、directory内容から自動推測しません。v2/v3の`train / validation / test`は学習側`train / val / test`へ一意に変換し、空splitやtrajectory group leakageを拒否します。TennisCourtDetectorにtest splitがない既定設定は`data.source.split_mapping.test: null`であり、validationをtestとして代用しません。
@@ -93,6 +93,7 @@ Synthetic V3の座標・camera authority・KP semanticの定義は、このconsu
 - `scripts/preview_augmentation.py`: 選択target全部を共有geometry上で確認するaugmentation preview。
 - `scripts/train.py`: Hydra学習entry point。
 - `scripts/visualize.py`: checkpointに保存されたtarget bundleを使うprediction visualization。
+- `scripts/evaluate_pose_trajectory.py`: Synthetic Court V3の1 trajectoryをpose checkpointで逐次CPU評価し、frame別JSON・誤差曲線・overlayを保存。checkpointロード前にRAM余力を検査し、保守的な必要量を満たさない場合は停止します。
 
 YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習契約はordered KP14です。20点annotationからKP14への変換は別の明示的なデータ準備工程を必要とします。
 
