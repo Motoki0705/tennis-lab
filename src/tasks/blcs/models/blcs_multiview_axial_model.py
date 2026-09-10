@@ -302,6 +302,9 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             predict_velocity=predict_velocity,
         )
 
+        self._register_token_frequencies()
+
+    def _register_token_frequencies(self) -> None:
         token_freqs = precompute_freqs_cis_nd(
             dim=self.rope_dim,
             pos=self._build_token_positions(
@@ -415,6 +418,40 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
         batch_size, n_cams, seq_len_in = ball_uv.shape[:3]
+        camera_freqs = self._camera_freqs(
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+        )
+        time_freqs = self._time_freqs(
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+        )
+        x, frame_valid = self._encode_views(
+            ball_uv, ball_vis, court_kp, court_vis, padding_mask,
+            camera_freqs, time_freqs,
+        )
+        x = x[:, :, 0, :]
+        x = self.final_norm(x)
+
+        outputs = cast("dict[str, Tensor]", self.output_head(x))
+        return cast(
+            "dict[str, Tensor]",
+            mask_trajectory_outputs(outputs, frame_valid),
+        )
+
+    def _encode_views(
+        self,
+        ball_uv: Tensor,
+        ball_vis: Tensor,
+        court_kp: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
+        camera_freqs: Tensor,
+        time_freqs: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        batch_size, n_cams, seq_len_in = ball_uv.shape[:3]
         masks = build_axial_padding_masks(
             padding_mask,
             time_window_radius=self.time_window_radius,
@@ -437,16 +474,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         )
         x = x * masks.context_valid.permute(0, 2, 1).unsqueeze(-1)
 
-        camera_freqs = self._camera_freqs(
-            batch_size=batch_size,
-            seq_len=seq_len_in,
-            n_cams=n_cams,
-        )
-        time_freqs = self._time_freqs(
-            batch_size=batch_size,
-            seq_len=seq_len_in,
-            n_cams=n_cams,
-        )
         for stage in self.stages:
             x = stage(
                 x,
@@ -456,14 +483,6 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 camera_freqs,
                 time_freqs,
             )
-
-        x = x[:, :, 0, :]
-        x = self.final_norm(x)
-
-        outputs = cast("dict[str, Tensor]", self.output_head(x))
-        return cast(
-            "dict[str, Tensor]",
-            mask_trajectory_outputs(outputs, masks.frame_valid),
-        )
+        return x, masks.frame_valid
 
     token_freqs_cis: Tensor

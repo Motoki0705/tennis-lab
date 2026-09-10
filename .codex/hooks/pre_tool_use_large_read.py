@@ -3,7 +3,7 @@
 
 Codex command hooks cannot spawn built-in agents. This hook therefore only
 blocks the pending tool call and tells the active Codex agent to delegate the
-same evidence request to a fresh ``codebase_scout``.
+same evidence request to a fresh subagent.
 
 Malformed hook input fails open. Once a valid Bash command is recognized as a
 read candidate, however, an input whose output cannot be bounded safely is
@@ -1016,7 +1016,7 @@ def _deny_payload(reason: str, command: str) -> dict[str, object]:
     request = command if len(command) <= 500 else f"{command[:497]}..."
     instruction = (
         "Do not retry this large read in the root thread. Delegate the same evidence "
-        f"request ({request!r}) with spawn_agent using agent_type=\"codebase_scout\" "
+        f"request ({request!r}) with spawn_agent using agent_type=\"explorer\" "
         "and fork_turns=\"none\". Ask for a terminal-only summary, then wait for that "
         "summary before continuing. This command hook cannot spawn built-in agents; "
         "the active Codex agent must perform the delegation."

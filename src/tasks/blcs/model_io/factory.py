@@ -29,12 +29,18 @@ from src.tasks.blcs.model_io.adapters import (
     TrackQueryReferenceModelIOAdapter,
     TrajectoryModelIOAdapter,
 )
+from src.tasks.blcs.model_io.axial_reference import (
+    AxialReferenceTrajectoryModelIOAdapter,
+)
 from src.tasks.blcs.model_io.contracts import (
     BLCSTrackQueryPrediction,
     BLCSTrajectoryPrediction,
 )
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
+from src.tasks.blcs.models.blcs_multiview_axial_reference_model import (
+    BLCSMultiViewAxialReferenceModel,
+)
 from src.tasks.blcs.models.blcs_track_query_model import BLCSTrackQueryModel
 from src.tasks.blcs.models.blcs_track_query_reference_model import (
     BLCSTrackQueryReferenceModel,
@@ -75,8 +81,10 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             "TrajectoryBoundModelIO", bind_model_io(single_model, single_adapter)
         )
     if isinstance(model_config, AxialModelConfig):
-        axial_model = BLCSMultiViewAxialModel.from_config(model_config)
-        axial_adapter = AxialTrajectoryModelIOAdapter(
+        model_type = BLCSMultiViewAxialReferenceModel if model_config.name == "blcs_multiview_axial_reference" else BLCSMultiViewAxialModel
+        adapter_type = AxialReferenceTrajectoryModelIOAdapter if model_config.name == "blcs_multiview_axial_reference" else AxialTrajectoryModelIOAdapter
+        axial_model = model_type.from_config(model_config)
+        axial_adapter = adapter_type(
             num_court_tokens=model_config.num_court_tokens,
             max_seq_len=model_config.max_seq_len,
             predict_velocity=model_config.predict_velocity,

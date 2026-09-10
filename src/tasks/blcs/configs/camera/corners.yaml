@@ -1,0 +1,7 @@
+defaults:
+  - default
+  - _self_
+
+fixed_camera_indices: [0, 1, 2, 3]
+fixed_position_noise_radius: 1.0
+fixed_look_at_xy_radius: 1.0

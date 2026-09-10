@@ -136,6 +136,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
                     tuple(view.camera_id for view in complete_views),
                     cameras.indices,
                     requested_camera_id=self.reference_camera_id,
+                    candidate_camera_indices=self.config.camera_candidates,
                     rng=self.rng,
                 )
             )
