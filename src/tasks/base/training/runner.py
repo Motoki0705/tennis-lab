@@ -27,6 +27,7 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.base.training.colab_progress import ColabProgressCallback
 from src.tasks.base.training.compilation import compile_modules
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
@@ -308,6 +309,9 @@ class BaseTrainingRunner:
     ) -> list[Any]:
         """Build all callbacks from config."""
         callbacks: list[Any] = []
+        progress_path = os.environ.get("TENNIS_LAB_COLAB_PROGRESS_PATH")
+        if progress_path:
+            callbacks.append(ColabProgressCallback(Path(progress_path)))
 
         # Checkpoint callback (required)
         runtime = self.validate_runtime_config(config)

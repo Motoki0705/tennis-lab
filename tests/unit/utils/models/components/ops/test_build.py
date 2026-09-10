@@ -312,7 +312,6 @@ def test_enabled_setup_spec_load_delegates_canonical_validation(
     assert "dino_ops_build.source_role" in completed.stderr
 
 
-
 def test_operation_loader_rejects_preloaded_module_from_another_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -335,7 +334,9 @@ def test_prepare_dino_ops_sources_patches_copy_only(tmp_path: Path) -> None:
     cuda_source = source / "cuda/ms_deform_attn_cuda.cu"
     cuda_source.parent.mkdir(parents=True)
     original = f"{_LEGACY_DISPATCH}\n{_LEGACY_DISPATCH}\n"
+    original += "value.type().is_cuda();\n"
     cuda_source.write_text(original)
+    (source / "ms_deform_attn.h").write_text("value.type().is_cuda();\n")
     destination = tmp_path / "build_src"
 
     result = build_module._prepare_dino_ops_sources(source, destination)
@@ -345,6 +346,9 @@ def test_prepare_dino_ops_sources_patches_copy_only(tmp_path: Path) -> None:
     generated = (destination / "cuda/ms_deform_attn_cuda.cu").read_text()
     assert _LEGACY_DISPATCH not in generated
     assert generated.count(_MODERN_DISPATCH) == 2
+    assert ".type().is_cuda()" not in generated
+    assert (source / "ms_deform_attn.h").read_text() == "value.type().is_cuda();\n"
+    assert (destination / "ms_deform_attn.h").read_text() == "value.is_cuda();\n"
 
 
 def test_prepare_dino_ops_sources_requires_initialized_submodule(

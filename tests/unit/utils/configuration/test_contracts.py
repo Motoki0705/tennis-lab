@@ -158,7 +158,13 @@ def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None
         assert boundary.path_role_authorities
 
 
-def test_synthetic_registry_exposes_only_the_canonical_production_boundaries() -> None:
+def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
+    manual_boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id
+        == "src.synthetic_data_generation.scripts.edit_alignment:main"
+    )
     publication_boundary = next(
         contract
         for contract in BOUNDARY_CONTRACTS
@@ -184,6 +190,7 @@ def test_synthetic_registry_exposes_only_the_canonical_production_boundaries() -
         if contract.boundary_id.startswith("src.synthetic_data_generation")
     }
     assert synthetic_boundaries == {
+        "src.synthetic_data_generation.scripts.edit_alignment:main",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
         "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
         "src.synthetic_data_generation.scripts.visualize_dataset:main",
@@ -204,6 +211,10 @@ def test_synthetic_registry_exposes_only_the_canonical_production_boundaries() -
         "src.synthetic_data_generation.visualization.publication.configuration."
         "validate_publication_boundary"
     )
+    assert manual_boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+    assert any("path-role:data" in value for value in manual_boundary.path_role_authorities)
 
 
 def test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles() -> None:
