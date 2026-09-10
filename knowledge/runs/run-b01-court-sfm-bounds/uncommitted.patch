@@ -1,0 +1,512 @@
+diff --git a/src/synthetic_data_generation/configuration.py b/src/synthetic_data_generation/configuration.py
+index 698a607a..9535c6c1 100644
+--- a/src/synthetic_data_generation/configuration.py
++++ b/src/synthetic_data_generation/configuration.py
+@@ -1122,6 +1122,7 @@ class CourtTrajectoryPolicy:
+     base_heights_m: tuple[float, ...]
+     vertical_modulations_m: tuple[float, ...]
+     curve_modes: tuple[OrbitCurveMode, ...]
++    sfm_boundary_margin_m: float | None = None
+ 
+     @classmethod
+     def from_mapping(cls, value: object) -> CourtTrajectoryPolicy:
+@@ -1137,7 +1138,12 @@ class CourtTrajectoryPolicy:
+                 "base_heights_m",
+                 "vertical_modulations_m",
+                 "curve_modes",
+-            },
++            }
++            | (
++                {"sfm_boundary_margin_m"}
++                if isinstance(value, Mapping) and "sfm_boundary_margin_m" in value
++                else set()
++            ),
+         )
+         path = "dataset.court.trajectory"
+         result = cls(
+@@ -1173,6 +1179,13 @@ class CourtTrajectoryPolicy:
+                 enum_type=OrbitCurveMode,
+             ),
+         )
++        if "sfm_boundary_margin_m" in raw:
++            margin = _number(raw, "sfm_boundary_margin_m", path=path)
++            if margin < 0.0 or result.captured_offset_scale_range[1] > 1.0:
++                raise SemanticConfigurationError(
++                    "SfM bounds require non-negative margin and radius scales <= 1."
++                )
++            object.__setattr__(result, "sfm_boundary_margin_m", margin)
+         if set(result.shapes) != set(OrbitShape):
+             raise SemanticConfigurationError(
+                 "Court trajectory shapes must be circle and ellipse."
+@@ -1220,6 +1233,7 @@ class CourtViewPolicy:
+     coverage_modes: tuple[OrbitCoverageMode, ...]
+     look_at_height_m: tuple[float, float]
+     hfov_degrees: tuple[float, float]
++    look_at_jitter_radius_m: float = 0.0
+ 
+     @classmethod
+     def from_mapping(
+@@ -1231,7 +1245,12 @@ class CourtViewPolicy:
+         raw = _exact(
+             value,
+             path="dataset.court.view",
+-            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees"},
++            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees"}
++            | (
++                {"look_at_jitter_radius_m"}
++                if isinstance(value, Mapping) and "look_at_jitter_radius_m" in value
++                else set()
++            ),
+         )
+         path = "dataset.court.view"
+         result = cls(
+@@ -1252,6 +1271,13 @@ class CourtViewPolicy:
+             ),
+             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
+         )
++        if "look_at_jitter_radius_m" in raw:
++            radius = _number(raw, "look_at_jitter_radius_m", path=path)
++            if radius < 0.0 or schema_version is not CourtDatasetSchemaVersion.V3:
++                raise SemanticConfigurationError(
++                    "Look-at jitter requires v3 and a non-negative radius."
++                )
++            object.__setattr__(result, "look_at_jitter_radius_m", radius)
+         if not isinstance(schema_version, CourtDatasetSchemaVersion):
+             raise ConfigurationTypeError(
+                 "dataset.court.schema_version must be a CourtDatasetSchemaVersion."
+@@ -2477,12 +2503,9 @@ class ScenePipelineConfiguration:
+             dataset["plcs"],
+             resolver=resolver,
+         )
+-        if (
+-            DatasetTarget.PLCS in request.active_targets
+-            and (
+-                request.scene_id not in plcs.scene_splits
+-                or plcs.scene_splits[request.scene_id] != plcs.split
+-            )
++        if DatasetTarget.PLCS in request.active_targets and (
++            request.scene_id not in plcs.scene_splits
++            or plcs.scene_splits[request.scene_id] != plcs.split
+         ):
+             raise SemanticConfigurationError(
+                 "dataset.plcs.scene_splits must explicitly bind request.scene_id "
+diff --git a/src/synthetic_data_generation/dataset/court/assembler.py b/src/synthetic_data_generation/dataset/court/assembler.py
+index aad54019..33da85f9 100644
+--- a/src/synthetic_data_generation/dataset/court/assembler.py
++++ b/src/synthetic_data_generation/dataset/court/assembler.py
+@@ -1310,6 +1310,8 @@ def _validate_semantic_sample_record(
+             camera=camera,
+             target_court=target,
+             look_at_height_m=view.look_at_height_m,
++            look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++            sample_index=camera.source_frame_index,
+         )
+     expected_metadata = {
+         "target_court": expected_target_court,
+@@ -1806,9 +1808,7 @@ def _validate_split_diagnostic(
+             target = group["target_court"]
+             if not isinstance(target, Mapping):
+                 raise TypeError("Court v1 group target must be a mapping.")
+-            expected_group["target_court_instance_id"] = target[
+-                "court_instance_id"
+-            ]
++            expected_group["target_court_instance_id"] = target["court_instance_id"]
+         else:
+             policy = TargetCourtPolicyV2.from_mapping(group["target_court_policy"])
+             expected_group["target_court_policy"] = policy.to_dict()
+@@ -1913,8 +1913,7 @@ def _validate_v2_target_resolution_diagnostic(
+             sorted(
+                 candidate_id
+                 for candidate_id, distance in distances.items()
+-                if distance
+-                <= minimum_distance + NEAREST_COURT_TIE_TOLERANCE_M
++                if distance <= minimum_distance + NEAREST_COURT_TIE_TOLERANCE_M
+             )
+         )
+         if policy.centre_court_instance_id is not None:
+@@ -2005,7 +2004,9 @@ def _court_centers_from_published_projection(
+                 )
+                 scene_xyz = point.get("scene_xyz_m")
+                 if not isinstance(scene_xyz, list) or len(scene_xyz) != 3:
+-                    raise TypeError("Court projected scene point must be a three-vector.")
++                    raise TypeError(
++                        "Court projected scene point must be a three-vector."
++                    )
+                 if physical_index in points_by_index:
+                     raise ValueError("Court projected physical indices are duplicated.")
+                 points_by_index[physical_index] = np.asarray(
+@@ -2075,10 +2076,7 @@ def _validate_parameter_table_diagnostic(
+             expected_row["target_court_policy"] = policy.to_dict()
+         if set(row) != set(expected_row):
+             raise ValueError("Court parameter-table row schema is invalid.")
+-        trajectory_row = {
+-            key: row[key]
+-            for key in trajectory
+-        }
++        trajectory_row = {key: row[key] for key in trajectory}
+         OrbitTrajectorySpec.from_mapping(trajectory_row)
+         view_ids = row["view_ids"]
+         if not isinstance(view_ids, list) or any(
+@@ -2165,9 +2163,7 @@ def _validate_acceptance_diagnostic(
+     rejected_count = _mapping_integer(value, "rejected_count", minimum=0)
+     accepted_fraction = _mapping_float(value, "accepted_fraction")
+     accepted = _mapping_sequence(dataset["samples"], name="samples")
+-    rejected = _mapping_sequence(
+-        dataset["rejected_samples"], name="rejected_samples"
+-    )
++    rejected = _mapping_sequence(dataset["rejected_samples"], name="rejected_samples")
+     accepted_sample_ids = value["accepted_sample_ids"]
+     if not isinstance(accepted_sample_ids, list) or any(
+         not isinstance(sample_id, str) for sample_id in accepted_sample_ids
+@@ -2182,9 +2178,7 @@ def _validate_acceptance_diagnostic(
+         for name, count in metric_coverage.items()
+     ):
+         raise TypeError("Court metric coverage counts are invalid.")
+-    expected_coverage = {
+-        name: count for name, count in metric_coverage.items()
+-    }
++    expected_coverage = {name: count for name, count in metric_coverage.items()}
+     _require_exact_count_mapping(
+         value["coverage_counts"],
+         expected=expected_coverage,
+@@ -2293,12 +2287,16 @@ def _require_exact_count_mapping(
+     expected: Mapping[str, int],
+     name: str,
+ ) -> None:
+-    if not isinstance(value, Mapping) or set(value) != set(expected) or any(
+-        not isinstance(key, str)
+-        or isinstance(count, bool)
+-        or not isinstance(count, int)
+-        or count < 0
+-        for key, count in value.items()
++    if (
++        not isinstance(value, Mapping)
++        or set(value) != set(expected)
++        or any(
++            not isinstance(key, str)
++            or isinstance(count, bool)
++            or not isinstance(count, int)
++            or count < 0
++            for key, count in value.items()
++        )
+     ):
+         raise ValueError(f"Court {name} metric inventory is invalid.")
+     if dict(value) != dict(expected):
+@@ -2311,8 +2309,10 @@ def _require_exact_nested_count_mapping(
+     expected: Mapping[str, Mapping[str, int]],
+     name: str,
+ ) -> None:
+-    if not isinstance(value, Mapping) or set(value) != set(expected) or any(
+-        not isinstance(key, str) for key in value
++    if (
++        not isinstance(value, Mapping)
++        or set(value) != set(expected)
++        or any(not isinstance(key, str) for key in value)
+     ):
+         raise ValueError(f"Court {name} metric inventory is invalid.")
+     for split, expected_counts in expected.items():
+@@ -2334,9 +2334,7 @@ def _validate_trajectory_plan_diagnostic(
+     if not isinstance(value, Mapping) or set(value) != keys:
+         raise ValueError("Court trajectory-plan diagnostic schema is invalid.")
+     plan_policy = _parse_canonical_sampling_policy(value["policy"])
+-    dataset_policy = _parse_canonical_sampling_policy(
+-        dataset["sampling_policy"]
+-    )
++    dataset_policy = _parse_canonical_sampling_policy(dataset["sampling_policy"])
+     if (
+         value["schema"] != definition.plan_schema
+         or value["scene_id"] != dataset["scene_id"]
+@@ -2347,9 +2345,7 @@ def _validate_trajectory_plan_diagnostic(
+         raise ValueError("Court trajectory-plan diagnostic disagrees with dataset.")
+     planned = _mapping_sequence(value["samples"], name="planned samples")
+     accepted = _mapping_sequence(dataset["samples"], name="samples")
+-    rejected = _mapping_sequence(
+-        dataset["rejected_samples"], name="rejected_samples"
+-    )
++    rejected = _mapping_sequence(dataset["rejected_samples"], name="rejected_samples")
+     records = tuple(
+         sorted(
+             (*accepted, *rejected),
+@@ -2497,9 +2493,7 @@ def _validate_published_ambiguity_reason(
+             "A null Court v2/v3 projection requires exactly one ambiguity reason."
+         )
+     reason = reasons[0]
+-    court_id = reason.removeprefix(
+-        f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:"
+-    )
++    court_id = reason.removeprefix(f"{AMBIGUOUS_CAMERA_RELATIVE_NEAR_FAR_REASON}:")
+     try:
+         scene_from_court = published_court_geometry[court_id]
+     except KeyError as error:
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
+index 3bf1dcac..8160feb9 100644
+--- a/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
+@@ -17,6 +17,9 @@ from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+ from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
+     sample_uniform_arc_length,
+ )
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.sfm_bounds import (
++    bound_trajectory_candidates,
++)
+ from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
+     resolve_target_court,
+     resolved_court_look_at_scene,
+@@ -121,6 +124,13 @@ def build_court_dataset_plan(
+         seed=policy.seed,
+         stable_field_order=policy.stable_field_order,
+     )
++    if configuration.trajectory.sfm_boundary_margin_m is not None:
++        candidates = bound_trajectory_candidates(
++            candidates,
++            centers=centers,
++            cameras=camera_tuple,
++            margin_m=configuration.trajectory.sfm_boundary_margin_m,
++        )
+     first_group_view_count = len(
+         _target_modes_for_group(group_index=0, configuration=configuration)
+     )
+@@ -853,6 +863,7 @@ def _views_for_group_v2(
+                 low_height if (group_index + target_index) % 2 == 0 else high_height
+             ),
+             hfov_degrees=hfov_by_coverage[coverage],
++            look_at_jitter_radius_m=configuration.view.look_at_jitter_radius_m,
+         )
+         for target_index, target in enumerate(targets)
+     )
+@@ -985,9 +996,6 @@ def _plan_samples_v2(
+ ) -> tuple[PlannedCourtSampleV2, ...]:
+     """Resolve sample target, then construct its look-at pose in that order."""
+     template = cameras[0]
+-    complex_center = next(
+-        center for center in centers if center.court_instance_id is None
+-    )
+     samples: list[PlannedCourtSampleV2] = []
+     for group in groups:
+         path = paths_by_group[group.trajectory_group_id]
+@@ -1005,11 +1013,12 @@ def _plan_samples_v2(
+                     layout=layout,
+                     selection_seed=selection_seed,
+                 )
+-                target_scene = _target_scene_v2(
+-                    view,
++                target_scene = resolved_court_look_at_scene(
+                     target_court=resolved_target,
+                     layout=layout,
+-                    complex_center=complex_center,
++                    look_at_height_m=view.look_at_height_m,
++                    look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++                    sample_index=len(samples),
+                 )
+                 camera_to_scene = _look_at_opencv(
+                     center_scene,
+@@ -1033,6 +1042,8 @@ def _plan_samples_v2(
+                         target_court=resolved_target,
+                         layout=layout,
+                         look_at_height_m=view.look_at_height_m,
++                        look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++                        sample_index=sample_index,
+                     )
+                 samples.append(
+                     PlannedCourtSampleV2(
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
+index a7c9fd7b..34e5e5d6 100644
+--- a/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
+@@ -119,11 +119,30 @@ def nearest_court_tie_ids(
+     )
+ 
+ 
++def sample_look_at_offset(
++    *, radius_m: float, seed: int, sample_index: int
++) -> NDArray[np.float64]:
++    """Uniform-area XY disk, independently reproducible for each planned camera."""
++    if isinstance(radius_m, bool) or not math.isfinite(radius_m) or radius_m < 0.0:
++        raise ValueError("Jitter radius must be finite and non-negative.")
++    if any(
++        isinstance(v, bool) or not isinstance(v, int) or v < 0
++        for v in (seed, sample_index)
++    ):
++        raise ValueError("Jitter seed and sample index must be non-negative integers.")
++    rng = np.random.default_rng(np.random.SeedSequence([seed, sample_index]))
++    radius = radius_m * math.sqrt(float(rng.random()))
++    angle = float(rng.uniform(0.0, 2.0 * math.pi))
++    return np.array((radius * math.cos(angle), radius * math.sin(angle), 0.0))
++
++
+ def resolved_court_look_at_scene(
+     *,
+     target_court: ResolvedTargetCourtV2,
+     layout: MultiCourtLayout,
+     look_at_height_m: float,
++    look_at_jitter_radius_m: float = 0.0,
++    sample_index: int = 0,
+ ) -> NDArray[np.float64]:
+     """Transform local ``(0, 0, height)`` through the resolved court."""
+     if not isinstance(target_court, ResolvedTargetCourtV2):
+@@ -138,7 +157,14 @@ def resolved_court_look_at_scene(
+     court = layout.court(target_court.binding.court_instance_id)
+     _require_binding_matches_layout(target_court.binding, layout=layout)
+     transformed = court.scene_from_court.apply(
+-        np.asarray(((0.0, 0.0, height),), dtype=np.float64)
++        (
++            sample_look_at_offset(
++                radius_m=look_at_jitter_radius_m,
++                seed=target_court.binding.selection_seed,
++                sample_index=sample_index,
++            )
++            + np.array((0.0, 0.0, height))
++        )[None, :]
+     )[0]
+     return np.asarray(transformed, dtype=np.float64)
+ 
+@@ -176,6 +202,8 @@ def validate_camera_looks_at_resolved_court(
+     target_court: ResolvedTargetCourtV2,
+     layout: MultiCourtLayout,
+     look_at_height_m: float,
++    look_at_jitter_radius_m: float = 0.0,
++    sample_index: int = 0,
+     atol: float = CAMERA_FORWARD_AXIS_ATOL,
+ ) -> None:
+     """Require OpenCV local +Z to point at the resolved local court target."""
+@@ -183,6 +211,8 @@ def validate_camera_looks_at_resolved_court(
+         target_court=target_court,
+         layout=layout,
+         look_at_height_m=look_at_height_m,
++        look_at_jitter_radius_m=look_at_jitter_radius_m,
++        sample_index=sample_index,
+     )
+     _validate_camera_forward_axis(
+         camera=camera,
+@@ -196,6 +226,8 @@ def validate_camera_looks_at_resolved_binding(
+     camera: SceneCamera,
+     target_court: ResolvedTargetCourtV2,
+     look_at_height_m: float,
++    look_at_jitter_radius_m: float = 0.0,
++    sample_index: int = 0,
+     atol: float = CAMERA_FORWARD_AXIS_ATOL,
+ ) -> None:
+     """Validate a persisted camera against its sample-owned court binding."""
+@@ -209,7 +241,14 @@ def validate_camera_looks_at_resolved_binding(
+     if not math.isfinite(height) or height < 0.0:
+         raise ValueError("look_at_height_m must be finite and non-negative.")
+     target_scene = target_court.binding.scene_from_court.apply(
+-        np.asarray(((0.0, 0.0, height),), dtype=np.float64)
++        (
++            sample_look_at_offset(
++                radius_m=look_at_jitter_radius_m,
++                seed=target_court.binding.selection_seed,
++                sample_index=sample_index,
++            )
++            + np.array((0.0, 0.0, height))
++        )[None, :]
+     )[0]
+     _validate_camera_forward_axis(
+         camera=camera,
+diff --git a/src/synthetic_data_generation/dataset/court/contracts.py b/src/synthetic_data_generation/dataset/court/contracts.py
+index 633de442..a5037d8e 100644
+--- a/src/synthetic_data_generation/dataset/court/contracts.py
++++ b/src/synthetic_data_generation/dataset/court/contracts.py
+@@ -482,6 +482,7 @@ class OrbitViewSpecV2:
+     coverage_mode: OrbitCoverageMode
+     look_at_height_m: float
+     hfov_degrees: float
++    look_at_jitter_radius_m: float = 0.0
+ 
+     def __post_init__(self) -> None:
+         _text(self.view_id, name="view_id")
+@@ -499,6 +500,10 @@ class OrbitViewSpecV2:
+             )
+         if not isinstance(self.coverage_mode, OrbitCoverageMode):
+             raise TypeError("coverage_mode must be an OrbitCoverageMode.")
++        radius = _finite(self.look_at_jitter_radius_m, name="look_at_jitter_radius_m")
++        if radius < 0.0:
++            raise ValueError("look_at_jitter_radius_m must be non-negative.")
++        object.__setattr__(self, "look_at_jitter_radius_m", radius)
+         height = _finite(self.look_at_height_m, name="look_at_height_m")
+         hfov = _finite(self.hfov_degrees, name="hfov_degrees")
+         if height < 0.0:
+@@ -516,11 +521,12 @@ class OrbitViewSpecV2:
+             self.coverage_mode,
+             self.look_at_height_m,
+             self.hfov_degrees,
++            self.look_at_jitter_radius_m,
+         )
+ 
+     def to_dict(self) -> dict[str, object]:
+         """Return the strict v2 view record without a static court binding."""
+-        return {
++        record: dict[str, object] = {
+             "view_id": self.view_id,
+             "target_kind": self.target_kind.value,
+             "target_mode": self.target_mode.value,
+@@ -529,6 +535,10 @@ class OrbitViewSpecV2:
+             "hfov_degrees": self.hfov_degrees,
+         }
+ 
++        if self.look_at_jitter_radius_m > 0.0:
++            record["look_at_jitter_radius_m"] = self.look_at_jitter_radius_m
++        return record
++
+     @classmethod
+     def from_mapping(cls, value: object) -> Self:
+         """Parse one exact v2 view and reject v1's static target field."""
+@@ -541,10 +551,18 @@ class OrbitViewSpecV2:
+                 "coverage_mode",
+                 "look_at_height_m",
+                 "hfov_degrees",
+-            },
++            }
++            | (
++                {"look_at_jitter_radius_m"}
++                if isinstance(value, Mapping) and "look_at_jitter_radius_m" in value
++                else set()
++            ),
+             name="v2 orbit view",
+         )
+         return cls(
++            look_at_jitter_radius_m=_finite(
++                raw.get("look_at_jitter_radius_m", 0.0), name="look_at_jitter_radius_m"
++            ),
+             view_id=_text(raw["view_id"], name="view_id"),
+             target_kind=OrbitTargetKind(_text(raw["target_kind"], name="target_kind")),
+             target_mode=OrbitTargetMode(_text(raw["target_mode"], name="target_mode")),
+@@ -1034,9 +1052,7 @@ class OrbitCenter:
+             name="center_scene_m",
+         )
+         center = cls(
+-            center_kind=OrbitCenterKind(
+-                _text(raw["center_kind"], name="center_kind")
+-            ),
++            center_kind=OrbitCenterKind(_text(raw["center_kind"], name="center_kind")),
+             court_instance_id=_optional_text(
+                 raw["court_instance_id"],
+                 name="court_instance_id",
+diff --git a/src/synthetic_data_generation/dataset/court/rendering/nht.py b/src/synthetic_data_generation/dataset/court/rendering/nht.py
+index ac3798ca..b45028af 100644
+--- a/src/synthetic_data_generation/dataset/court/rendering/nht.py
++++ b/src/synthetic_data_generation/dataset/court/rendering/nht.py
+@@ -326,6 +326,8 @@ def _validate_plan_alignment(
+                 target_court=sample.target_court,
+                 layout=alignment.layout,
+                 look_at_height_m=view.look_at_height_m,
++                look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++                sample_index=sample.sample_index,
+             )
+         return
+     for group_v1 in plan.groups:
+diff --git a/third_party/nht b/third_party/nht
+deleted file mode 160000
+index 41a8d19a..00000000
+--- a/third_party/nht
++++ /dev/null
+@@ -1 +0,0 @@
+-Subproject commit 41a8d19ae27b65565c7437e8179d760e4aa4ea02
+diff --git a/third_party/nht b/third_party/nht
+new file mode 120000
+index 00000000..db90a487
+--- /dev/null
++++ b/third_party/nht
+@@ -0,0 +1 @@
++/home/kamimura/projects/tennis-lab/third_party/nht
+\ No newline at end of file

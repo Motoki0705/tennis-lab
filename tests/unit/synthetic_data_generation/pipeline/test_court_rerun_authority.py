@@ -9,8 +9,8 @@ import yaml
 
 from src.synthetic_data_generation.pipeline.runner import (
     _configuration_authority,
-    _court_report_scoped_authorities_match,
     _court_report_scoped_authority,
+    _scoped_authorities_match,
 )
 
 pytestmark = pytest.mark.unit
@@ -23,7 +23,7 @@ def _authority(
     plcs: str,
     pipeline_seed: int = 695,
 ) -> Mapping[str, object]:
-    return _configuration_authority(
+    return dict(_configuration_authority(
         yaml.safe_dump(
             {
                 "request": {
@@ -43,7 +43,7 @@ def _authority(
             },
             sort_keys=False,
         )
-    )
+    ))
 
 
 def _scoped(authority: Mapping[str, object]) -> Mapping[str, object]:
@@ -52,7 +52,7 @@ def _scoped(authority: Mapping[str, object]) -> Mapping[str, object]:
         require_court_target=True,
     )
     assert value is not None
-    return value
+    return dict(value)
 
 
 def test_court_rerun_ignores_all_dataset_stage_config_changes() -> None:
@@ -63,7 +63,7 @@ def test_court_rerun_ignores_all_dataset_stage_config_changes() -> None:
 
     assert "dataset" not in existing
     assert "dataset" not in requested
-    assert _court_report_scoped_authorities_match(existing, requested)
+    assert _scoped_authorities_match(existing, requested)
 
 
 def test_court_rerun_still_rejects_shared_pipeline_changes() -> None:
@@ -77,4 +77,4 @@ def test_court_rerun_still_rejects_shared_pipeline_changes() -> None:
         )
     )
 
-    assert not _court_report_scoped_authorities_match(existing, requested)
+    assert not _scoped_authorities_match(existing, requested)

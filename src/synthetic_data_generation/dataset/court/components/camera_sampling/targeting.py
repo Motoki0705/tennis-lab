@@ -119,11 +119,32 @@ def nearest_court_tie_ids(
     )
 
 
+def sample_look_at_offset(
+    *, radius_m: float, seed: int, sample_index: int
+) -> NDArray[np.float64]:
+    """Uniform-area XY disk, independently reproducible for each planned camera."""
+    if isinstance(radius_m, bool) or not math.isfinite(radius_m) or radius_m < 0.0:
+        raise ValueError("Jitter radius must be finite and non-negative.")
+    if any(
+        isinstance(v, bool) or not isinstance(v, int) or v < 0
+        for v in (seed, sample_index)
+    ):
+        raise ValueError("Jitter seed and sample index must be non-negative integers.")
+    if radius_m == 0.0:
+        return np.zeros(3, dtype=np.float64)
+    rng = np.random.default_rng(np.random.SeedSequence([seed, sample_index]))
+    radius = radius_m * math.sqrt(float(rng.random()))
+    angle = float(rng.uniform(0.0, 2.0 * math.pi))
+    return np.array((radius * math.cos(angle), radius * math.sin(angle), 0.0))
+
+
 def resolved_court_look_at_scene(
     *,
     target_court: ResolvedTargetCourtV2,
     layout: MultiCourtLayout,
     look_at_height_m: float,
+    look_at_jitter_radius_m: float = 0.0,
+    sample_index: int = 0,
 ) -> NDArray[np.float64]:
     """Transform local ``(0, 0, height)`` through the resolved court."""
     if not isinstance(target_court, ResolvedTargetCourtV2):
@@ -138,7 +159,14 @@ def resolved_court_look_at_scene(
     court = layout.court(target_court.binding.court_instance_id)
     _require_binding_matches_layout(target_court.binding, layout=layout)
     transformed = court.scene_from_court.apply(
-        np.asarray(((0.0, 0.0, height),), dtype=np.float64)
+        (
+            sample_look_at_offset(
+                radius_m=look_at_jitter_radius_m,
+                seed=target_court.binding.selection_seed,
+                sample_index=sample_index,
+            )
+            + np.array((0.0, 0.0, height))
+        )[None, :]
     )[0]
     return np.asarray(transformed, dtype=np.float64)
 
@@ -176,6 +204,8 @@ def validate_camera_looks_at_resolved_court(
     target_court: ResolvedTargetCourtV2,
     layout: MultiCourtLayout,
     look_at_height_m: float,
+    look_at_jitter_radius_m: float = 0.0,
+    sample_index: int = 0,
     atol: float = CAMERA_FORWARD_AXIS_ATOL,
 ) -> None:
     """Require OpenCV local +Z to point at the resolved local court target."""
@@ -183,6 +213,8 @@ def validate_camera_looks_at_resolved_court(
         target_court=target_court,
         layout=layout,
         look_at_height_m=look_at_height_m,
+        look_at_jitter_radius_m=look_at_jitter_radius_m,
+        sample_index=sample_index,
     )
     _validate_camera_forward_axis(
         camera=camera,
@@ -196,6 +228,8 @@ def validate_camera_looks_at_resolved_binding(
     camera: SceneCamera,
     target_court: ResolvedTargetCourtV2,
     look_at_height_m: float,
+    look_at_jitter_radius_m: float = 0.0,
+    sample_index: int = 0,
     atol: float = CAMERA_FORWARD_AXIS_ATOL,
 ) -> None:
     """Validate a persisted camera against its sample-owned court binding."""
@@ -209,7 +243,14 @@ def validate_camera_looks_at_resolved_binding(
     if not math.isfinite(height) or height < 0.0:
         raise ValueError("look_at_height_m must be finite and non-negative.")
     target_scene = target_court.binding.scene_from_court.apply(
-        np.asarray(((0.0, 0.0, height),), dtype=np.float64)
+        (
+            sample_look_at_offset(
+                radius_m=look_at_jitter_radius_m,
+                seed=target_court.binding.selection_seed,
+                sample_index=sample_index,
+            )
+            + np.array((0.0, 0.0, height))
+        )[None, :]
     )[0]
     _validate_camera_forward_axis(
         camera=camera,

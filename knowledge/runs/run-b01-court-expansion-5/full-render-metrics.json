@@ -1,0 +1,1070 @@
+{
+  "rendered_count": 118,
+  "pre_render_rejected_count": 14,
+  "accepted_count": 118,
+  "proposals": 132,
+  "accepted_by_group": {
+    "group-00096": 3,
+    "group-00119": 4,
+    "group-00175": 4,
+    "group-00205": 4,
+    "group-00216": 3,
+    "group-00283": 4,
+    "group-00458": 7,
+    "group-00648": 3,
+    "group-00665": 4,
+    "group-00728": 4,
+    "group-00743": 4,
+    "group-00783": 3,
+    "group-00966": 6,
+    "group-01500": 4,
+    "group-01539": 3,
+    "group-01624": 3,
+    "group-01647": 3,
+    "group-01698": 4,
+    "group-01883": 5,
+    "group-01911": 5,
+    "group-02370": 17,
+    "group-02437": 3,
+    "group-02519": 3,
+    "group-02524": 4,
+    "group-02587": 4,
+    "group-02594": 3,
+    "group-02665": 4
+  },
+  "coverage": {
+    "sparse": 55,
+    "partial": 148,
+    "none": 58,
+    "near_full": 67,
+    "full": 26
+  },
+  "visible_classes": {
+    "far_doubles_left": 114,
+    "far_doubles_right": 114,
+    "far_singles_left": 114,
+    "far_singles_right": 115,
+    "far_service_left": 115,
+    "far_service_right": 115,
+    "far_service_t": 118,
+    "near_service_t": 79,
+    "near_service_left": 69,
+    "near_service_right": 63,
+    "near_doubles_right": 27,
+    "near_singles_right": 29,
+    "near_doubles_left": 27,
+    "near_singles_left": 26
+  },
+  "frames": [
+    {
+      "sample_id": "court-sample-000000",
+      "group_id": "group-00096",
+      "accepted": true,
+      "visible_point_count": 14,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000000/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000026",
+      "group_id": "group-00096",
+      "accepted": true,
+      "visible_point_count": 7,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000026/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000039",
+      "group_id": "group-00096",
+      "accepted": true,
+      "visible_point_count": 15,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000039/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000040",
+      "group_id": "group-00119",
+      "accepted": true,
+      "visible_point_count": 20,
+      "alpha_below_0_5_fraction": 4.2561341533485136e-05,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000040/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000055",
+      "group_id": "group-00119",
+      "accepted": true,
+      "visible_point_count": 4,
+      "alpha_below_0_5_fraction": 0.04574376911632982,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000055/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000071",
+      "group_id": "group-00119",
+      "accepted": true,
+      "visible_point_count": 13,
+      "alpha_below_0_5_fraction": 0.006155917670888623,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000071/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000087",
+      "group_id": "group-00119",
+      "accepted": true,
+      "visible_point_count": 20,
+      "alpha_below_0_5_fraction": 0.0005088014919684814,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000087/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000088",
+      "group_id": "group-00175",
+      "accepted": true,
+      "visible_point_count": 14,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000088/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000111",
+      "group_id": "group-00175",
+      "accepted": true,
+      "visible_point_count": 15,
+      "alpha_below_0_5_fraction": 0.01699358291046061,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000111/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000135",
+      "group_id": "group-00175",
+      "accepted": true,
+      "visible_point_count": 14,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000135/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000159",
+      "group_id": "group-00175",
+      "accepted": true,
+      "visible_point_count": 13,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000159/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000160",
+      "group_id": "group-00205",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000160/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000189",
+      "group_id": "group-00205",
+      "accepted": true,
+      "visible_point_count": 12,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000189/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000218",
+      "group_id": "group-00205",
+      "accepted": true,
+      "visible_point_count": 9,
+      "alpha_below_0_5_fraction": 0.00033855612583454087,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000218/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000247",
+      "group_id": "group-00205",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000247/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000282",
+      "group_id": "group-00216",
+      "accepted": true,
+      "visible_point_count": 26,
+      "alpha_below_0_5_fraction": 0.009409925691766895,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000282/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000316",
+      "group_id": "group-00216",
+      "accepted": true,
+      "visible_point_count": 26,
+      "alpha_below_0_5_fraction": 0.10640915765301286,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000316/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000351",
+      "group_id": "group-00216",
+      "accepted": true,
+      "visible_point_count": 28,
+      "alpha_below_0_5_fraction": 0.0220467749143453,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000351/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000352",
+      "group_id": "group-00283",
+      "accepted": true,
+      "visible_point_count": 4,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000352/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000367",
+      "group_id": "group-00283",
+      "accepted": true,
+      "visible_point_count": 22,
+      "alpha_below_0_5_fraction": 0.018378761116732218,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000367/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000383",
+      "group_id": "group-00283",
+      "accepted": true,
+      "visible_point_count": 9,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000383/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000399",
+      "group_id": "group-00283",
+      "accepted": true,
+      "visible_point_count": 4,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000399/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000408",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000408/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000409",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000409/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000410",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 17,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000410/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000411",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 15,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000411/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000412",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 15,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000412/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000413",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 16,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000413/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000426",
+      "group_id": "group-00458",
+      "accepted": true,
+      "visible_point_count": 9,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000426/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000466",
+      "group_id": "group-00648",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000466/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000492",
+      "group_id": "group-00648",
+      "accepted": true,
+      "visible_point_count": 20,
+      "alpha_below_0_5_fraction": 0.02596048372899259,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000492/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000519",
+      "group_id": "group-00648",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 4.836516083350584e-05,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000519/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000520",
+      "group_id": "group-00665",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000520/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000543",
+      "group_id": "group-00665",
+      "accepted": true,
+      "visible_point_count": 8,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000543/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000567",
+      "group_id": "group-00665",
+      "accepted": true,
+      "visible_point_count": 8,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000567/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000591",
+      "group_id": "group-00665",
+      "accepted": true,
+      "visible_point_count": 12,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000591/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000592",
+      "group_id": "group-00728",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000592/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000615",
+      "group_id": "group-00728",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000615/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000639",
+      "group_id": "group-00728",
+      "accepted": true,
+      "visible_point_count": 10,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000639/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000663",
+      "group_id": "group-00728",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000663/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000664",
+      "group_id": "group-00743",
+      "accepted": true,
+      "visible_point_count": 20,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000664/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000693",
+      "group_id": "group-00743",
+      "accepted": true,
+      "visible_point_count": 21,
+      "alpha_below_0_5_fraction": 0.004836516083350583,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000693/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000722",
+      "group_id": "group-00743",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000722/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000751",
+      "group_id": "group-00743",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000751/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000791",
+      "group_id": "group-00783",
+      "accepted": true,
+      "visible_point_count": 28,
+      "alpha_below_0_5_fraction": 0.0001779837918673015,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000791/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000831",
+      "group_id": "group-00783",
+      "accepted": true,
+      "visible_point_count": 29,
+      "alpha_below_0_5_fraction": 0.06175070274578691,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000831/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000871",
+      "group_id": "group-00783",
+      "accepted": true,
+      "visible_point_count": 32,
+      "alpha_below_0_5_fraction": 0.0038189130994136207,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000871/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000872",
+      "group_id": "group-00966",
+      "accepted": true,
+      "visible_point_count": 10,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000872/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000887",
+      "group_id": "group-00966",
+      "accepted": true,
+      "visible_point_count": 30,
+      "alpha_below_0_5_fraction": 0.0003366215194012006,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000887/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000889",
+      "group_id": "group-00966",
+      "accepted": true,
+      "visible_point_count": 30,
+      "alpha_below_0_5_fraction": 0.0001683107597006003,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000889/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000893",
+      "group_id": "group-00966",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.00020506828193406475,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000893/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000914",
+      "group_id": "group-00966",
+      "accepted": true,
+      "visible_point_count": 4,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000914/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000935",
+      "group_id": "group-00966",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000935/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000936",
+      "group_id": "group-01500",
+      "accepted": true,
+      "visible_point_count": 9,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000936/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000957",
+      "group_id": "group-01500",
+      "accepted": true,
+      "visible_point_count": 4,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000957/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000978",
+      "group_id": "group-01500",
+      "accepted": true,
+      "visible_point_count": 8,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000978/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-000999",
+      "group_id": "group-01500",
+      "accepted": true,
+      "visible_point_count": 10,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-000999/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001037",
+      "group_id": "group-01539",
+      "accepted": true,
+      "visible_point_count": 22,
+      "alpha_below_0_5_fraction": 0.019518244305969615,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001037/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001074",
+      "group_id": "group-01539",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 0.047523607035002836,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001074/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001111",
+      "group_id": "group-01539",
+      "accepted": true,
+      "visible_point_count": 28,
+      "alpha_below_0_5_fraction": 0.00099438770673688,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001111/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001157",
+      "group_id": "group-01624",
+      "accepted": true,
+      "visible_point_count": 20,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001157/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001202",
+      "group_id": "group-01624",
+      "accepted": true,
+      "visible_point_count": 21,
+      "alpha_below_0_5_fraction": 0.0022750971656081147,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001202/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001247",
+      "group_id": "group-01624",
+      "accepted": true,
+      "visible_point_count": 26,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001247/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001293",
+      "group_id": "group-01647",
+      "accepted": true,
+      "visible_point_count": 33,
+      "alpha_below_0_5_fraction": 0.009224203474166233,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001293/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001338",
+      "group_id": "group-01647",
+      "accepted": true,
+      "visible_point_count": 33,
+      "alpha_below_0_5_fraction": 0.07640341187190584,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001338/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001383",
+      "group_id": "group-01647",
+      "accepted": true,
+      "visible_point_count": 30,
+      "alpha_below_0_5_fraction": 0.0023002470492415376,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001383/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001384",
+      "group_id": "group-01698",
+      "accepted": true,
+      "visible_point_count": 13,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001384/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001426",
+      "group_id": "group-01698",
+      "accepted": true,
+      "visible_point_count": 15,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001426/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001468",
+      "group_id": "group-01698",
+      "accepted": true,
+      "visible_point_count": 16,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001468/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001511",
+      "group_id": "group-01698",
+      "accepted": true,
+      "visible_point_count": 14,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001511/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001512",
+      "group_id": "group-01883",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001512/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001521",
+      "group_id": "group-01883",
+      "accepted": true,
+      "visible_point_count": 28,
+      "alpha_below_0_5_fraction": 0.003604171785312855,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001521/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001541",
+      "group_id": "group-01883",
+      "accepted": true,
+      "visible_point_count": 32,
+      "alpha_below_0_5_fraction": 0.07549801606110261,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001541/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001570",
+      "group_id": "group-01883",
+      "accepted": true,
+      "visible_point_count": 10,
+      "alpha_below_0_5_fraction": 1.9346064333402332e-06,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001570/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001599",
+      "group_id": "group-01883",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001599/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001600",
+      "group_id": "group-01911",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001600/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001609",
+      "group_id": "group-01911",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001609/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001626",
+      "group_id": "group-01911",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0001973298562007038,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001626/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001652",
+      "group_id": "group-01911",
+      "accepted": true,
+      "visible_point_count": 7,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001652/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001679",
+      "group_id": "group-01911",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001679/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001680",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001680/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001703",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 4,
+      "alpha_below_0_5_fraction": 0.0026136532914426552,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001703/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001727",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001727/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001728",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001728/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001729",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001729/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001730",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001730/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001731",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 29,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001731/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001732",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 28,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001732/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001733",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 29,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001733/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001735",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 28,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001735/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001736",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 30,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001736/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001737",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 25,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001737/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001738",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001738/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001739",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 24,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001739/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001740",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001740/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001741",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001741/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001751",
+      "group_id": "group-02370",
+      "accepted": true,
+      "visible_point_count": 12,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001751/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001781",
+      "group_id": "group-02437",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001781/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001810",
+      "group_id": "group-02437",
+      "accepted": true,
+      "visible_point_count": 11,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001810/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001839",
+      "group_id": "group-02437",
+      "accepted": true,
+      "visible_point_count": 13,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001839/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001874",
+      "group_id": "group-02519",
+      "accepted": true,
+      "visible_point_count": 13,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001874/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001908",
+      "group_id": "group-02519",
+      "accepted": true,
+      "visible_point_count": 13,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001908/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001943",
+      "group_id": "group-02519",
+      "accepted": true,
+      "visible_point_count": 16,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001943/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001944",
+      "group_id": "group-02524",
+      "accepted": true,
+      "visible_point_count": 17,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001944/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001970",
+      "group_id": "group-02524",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.03374727462318703,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001970/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-001996",
+      "group_id": "group-02524",
+      "accepted": true,
+      "visible_point_count": 15,
+      "alpha_below_0_5_fraction": 0.00018765682403400265,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-001996/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002023",
+      "group_id": "group-02524",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002023/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002024",
+      "group_id": "group-02587",
+      "accepted": true,
+      "visible_point_count": 16,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002024/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002055",
+      "group_id": "group-02587",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.07481123077726683,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002055/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002087",
+      "group_id": "group-02587",
+      "accepted": true,
+      "visible_point_count": 19,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002087/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002119",
+      "group_id": "group-02587",
+      "accepted": true,
+      "visible_point_count": 18,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002119/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002162",
+      "group_id": "group-02594",
+      "accepted": true,
+      "visible_point_count": 27,
+      "alpha_below_0_5_fraction": 0.045142106515561005,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002162/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002204",
+      "group_id": "group-02594",
+      "accepted": true,
+      "visible_point_count": 31,
+      "alpha_below_0_5_fraction": 0.11387093466640615,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002204/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002247",
+      "group_id": "group-02594",
+      "accepted": true,
+      "visible_point_count": 34,
+      "alpha_below_0_5_fraction": 0.025716723318391723,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002247/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002248",
+      "group_id": "group-02665",
+      "accepted": true,
+      "visible_point_count": 27,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002248/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002287",
+      "group_id": "group-02665",
+      "accepted": true,
+      "visible_point_count": 32,
+      "alpha_below_0_5_fraction": 0.12102510925689833,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002287/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002327",
+      "group_id": "group-02665",
+      "accepted": true,
+      "visible_point_count": 34,
+      "alpha_below_0_5_fraction": 0.017032275039127416,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002327/rgb.png"
+    },
+    {
+      "sample_id": "court-sample-002367",
+      "group_id": "group-02665",
+      "accepted": true,
+      "visible_point_count": 27,
+      "alpha_below_0_5_fraction": 0.0,
+      "rgb_preview": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/b01-court-expansion-5/renders-00/court-sample-002367/rgb.png"
+    }
+  ],
+  "pre_render_rejected": [
+    {
+      "sample_id": "court-sample-000013",
+      "reason": "insufficient_semantic_coverage"
+    },
+    {
+      "sample_id": "court-sample-000248",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-000400",
+      "reason": "insufficient_semantic_coverage"
+    },
+    {
+      "sample_id": "court-sample-000439",
+      "reason": "insufficient_semantic_coverage"
+    },
+    {
+      "sample_id": "court-sample-000440",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-000752",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-000888",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-001000",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-001112",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-001248",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-001734",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-001752",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-001840",
+      "reason": "ambiguous_near_far"
+    },
+    {
+      "sample_id": "court-sample-002120",
+      "reason": "ambiguous_near_far"
+    }
+  ],
+  "acceptance_fraction": 0.8939393939393939,
+  "gates": {
+    "minimum_frames": true,
+    "minimum_fraction": true,
+    "every_group": true,
+    "coverage_modes": true,
+    "all_kp14_classes": true
+  }
+}

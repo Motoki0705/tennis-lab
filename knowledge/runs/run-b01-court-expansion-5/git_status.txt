@@ -1,0 +1,27 @@
+AM src/synthetic_data_generation/configs/dataset/court/sfm_bounded.yaml
+ M src/synthetic_data_generation/configuration.py
+ M src/synthetic_data_generation/dataset/court/README.md
+ M src/synthetic_data_generation/dataset/court/assembler.py
+ M src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py
+ M src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
+AM src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_bounds.py
+A  src/synthetic_data_generation/dataset/court/components/camera_sampling/shapes.py
+ M src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
+ M src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py
+ M src/synthetic_data_generation/dataset/court/contracts.py
+ M src/synthetic_data_generation/dataset/court/rendering/nht.py
+ M tests/integration/synthetic_data_generation/test_configuration.py
+ M tests/integration/synthetic_data_generation/test_court_dataset.py
+ M tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py
+AM tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_bounds.py
+A  tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_shapes.py
+?? knowledge/nodes/run-b01-court-sfm-bounds-full.md
+?? knowledge/nodes/run-b01-court-sfm-bounds-gpu-mismatch.md
+?? knowledge/nodes/run-b01-court-sfm-bounds.md
+?? knowledge/nodes/run-b01-court-shapes-balanced.md
+?? knowledge/nodes/run-b01-court-shapes-only.md
+?? knowledge/runs/run-b01-court-sfm-bounds-full/
+?? knowledge/runs/run-b01-court-sfm-bounds-gpu-mismatch/
+?? knowledge/runs/run-b01-court-sfm-bounds/
+?? knowledge/runs/run-b01-court-shapes-balanced/
+?? knowledge/runs/run-b01-court-shapes-only/

@@ -7,6 +7,9 @@ import math
 import numpy as np
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.shapes import (
+    unit_shape_points,
+)
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenter,
     OrbitPathSamples,
@@ -23,7 +26,7 @@ def sample_uniform_arc_length(
     center: OrbitCenter,
     policy: OrbitSamplingPolicy,
 ) -> OrbitPathSamples:
-    """Sample a smooth closed 3-D curve with a strict maximum adjacent step."""
+    """Sample a closed 3-D curve with a strict maximum adjacent step."""
     if policy.mode is not OrbitSamplingMode.UNIFORM_ARC_LENGTH:
         raise ValueError(f"Unknown orbit sampling mode: {policy.mode!r}.")
     if center.key() != (
@@ -78,10 +81,7 @@ def _points_local(
 ) -> NDArray[np.float64]:
     major = trajectory.radius_x_m
     minor = trajectory.radius_y_m
-    unrotated = np.stack(
-        (major * np.cos(theta), minor * np.sin(theta)),
-        axis=1,
-    )
+    unrotated = unit_shape_points(trajectory.shape, theta) * np.asarray((major, minor))
     cosine = math.cos(trajectory.orientation_radians)
     sine = math.sin(trajectory.orientation_radians)
     rotation = np.asarray(((cosine, -sine), (sine, cosine)), dtype=np.float64)

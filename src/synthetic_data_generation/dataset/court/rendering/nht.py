@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,6 +105,7 @@ class CourtNHTRenderer:
             raise ValueError("Court plan scene_id disagrees with NHT scene export.")
         _validate_plan_alignment(plan, alignment)
         pre_render = validate_pre_render_plan(plan, alignment=alignment)
+        validate_pre_render_feasibility(plan, pre_render)
         rejected_ids = set(pre_render.rejected_sample_ids)
         renderable_samples = tuple(
             sample for sample in plan.samples if sample.sample_id not in rejected_ids
@@ -271,6 +273,52 @@ def validate_pre_render_plan(
     )
 
 
+def validate_pre_render_feasibility(
+    plan: CourtDatasetPlanAny,
+    evaluation: CourtPreRenderEvaluation,
+) -> None:
+    """Reject impossible release gates using geometry-only upper bounds.
+
+    A passing check does not predict renderer visibility: alpha/depth and the
+    existing post-render release gates still decide actual acceptance.
+    """
+    rejected = set(evaluation.rejected_sample_ids)
+    candidates = tuple(sample for sample in plan.samples if sample.sample_id not in rejected)
+    candidate_count = len(candidates)
+    candidate_fraction = candidate_count / plan.proposal_count if plan.proposal_count else 0.0
+    by_group = Counter(sample.trajectory_group_id for sample in candidates)
+    camera_ids = {sample.camera.camera_id for sample in candidates}
+    coverage_counts = Counter(
+        court.coverage_mode
+        for projection in evaluation.projections
+        if projection.camera_id in camera_ids
+        for court in projection.courts
+    )
+    zero_groups = [
+        group.trajectory_group_id for group in plan.groups
+        if by_group[group.trajectory_group_id] == 0
+    ]
+    missing_coverage = sorted({"full", "near_full", "partial"} - set(coverage_counts))
+    failures: list[str] = []
+    if candidate_count < plan.policy.minimum_accepted_frames:
+        failures.append(f"candidate_count={candidate_count} < required_frames={plan.policy.minimum_accepted_frames}")
+    if candidate_fraction < plan.policy.minimum_accepted_fraction:
+        failures.append(
+            f"maximum_accepted_fraction={candidate_count}/{plan.proposal_count} "
+            f"({candidate_fraction:.6f}) < required_fraction={plan.policy.minimum_accepted_fraction}"
+        )
+    if zero_groups:
+        failures.append(f"groups_with_zero_candidates={zero_groups}")
+    if missing_coverage:
+        failures.append(f"missing_geometric_coverage={missing_coverage}; coverage_counts={dict(coverage_counts)}")
+    if failures:
+        raise ValueError(
+            f"Court pre-render feasibility failed ({candidate_count}/{plan.proposal_count} candidates): "
+            + "; ".join(failures)
+            + ". No NHT render was started; geometry cannot satisfy the release gates."
+        )
+
+
 def _discard_stale_shard(output_directory: Path, *, attempt_root: Path) -> None:
     """Remove only a stale shard contained by the current attempt directory."""
     resolved = output_directory.resolve(strict=False)
@@ -326,6 +374,8 @@ def _validate_plan_alignment(
                 target_court=sample.target_court,
                 layout=alignment.layout,
                 look_at_height_m=view.look_at_height_m,
+                look_at_jitter_radius_m=view.look_at_jitter_radius_m,
+                sample_index=sample.sample_index,
             )
         return
     for group_v1 in plan.groups:
@@ -348,4 +398,5 @@ __all__ = [
     "CourtNHTRenderer",
     "CourtPreRenderEvaluation",
     "validate_pre_render_plan",
+    "validate_pre_render_feasibility",
 ]

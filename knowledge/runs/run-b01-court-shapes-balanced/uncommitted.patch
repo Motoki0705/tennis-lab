@@ -1,0 +1,1100 @@
+diff --git a/src/synthetic_data_generation/configs/dataset/court/sfm_bounded.yaml b/src/synthetic_data_generation/configs/dataset/court/sfm_bounded.yaml
+new file mode 100644
+index 00000000..30c9daa9
+--- /dev/null
++++ b/src/synthetic_data_generation/configs/dataset/court/sfm_bounded.yaml
+@@ -0,0 +1,14 @@
++# Camera placement policy; KP identities remain the v3 camera-view contract.
++defaults:
++  - v3
++  - _self_
++
++trajectory:
++  shapes: [circle, ellipse, rectangle, superellipse]
++  captured_offset_scale_range: [0.65, 0.95]
++  sfm_boundary_margin_m: 0.5
++  spatial_coverage_cell_m: 1.0
++
++view:
++  look_at_jitter_radius_m: 1.0
++  hfov_degrees: [45.0, 90.0]
+diff --git a/src/synthetic_data_generation/configuration.py b/src/synthetic_data_generation/configuration.py
+index 698a607a..1ee8aa58 100644
+--- a/src/synthetic_data_generation/configuration.py
++++ b/src/synthetic_data_generation/configuration.py
+@@ -1122,6 +1122,8 @@ class CourtTrajectoryPolicy:
+     base_heights_m: tuple[float, ...]
+     vertical_modulations_m: tuple[float, ...]
+     curve_modes: tuple[OrbitCurveMode, ...]
++    sfm_boundary_margin_m: float | None = None
++    spatial_coverage_cell_m: float | None = None
+ 
+     @classmethod
+     def from_mapping(cls, value: object) -> CourtTrajectoryPolicy:
+@@ -1137,7 +1139,12 @@ class CourtTrajectoryPolicy:
+                 "base_heights_m",
+                 "vertical_modulations_m",
+                 "curve_modes",
+-            },
++            }
++            | (
++                {key for key in ("sfm_boundary_margin_m", "spatial_coverage_cell_m") if key in value}
++                if isinstance(value, Mapping)
++                else set()
++            ),
+         )
+         path = "dataset.court.trajectory"
+         result = cls(
+@@ -1173,9 +1180,21 @@ class CourtTrajectoryPolicy:
+                 enum_type=OrbitCurveMode,
+             ),
+         )
+-        if set(result.shapes) != set(OrbitShape):
++        if "sfm_boundary_margin_m" in raw:
++            margin = _number(raw, "sfm_boundary_margin_m", path=path)
++            if margin < 0.0 or result.captured_offset_scale_range[1] > 1.0:
++                raise SemanticConfigurationError(
++                    "SfM bounds require non-negative margin and radius scales <= 1."
++                )
++            object.__setattr__(result, "sfm_boundary_margin_m", margin)
++        if "spatial_coverage_cell_m" in raw:
++            cell_m = _number(raw, "spatial_coverage_cell_m", path=path)
++            if cell_m <= 0.0 or result.sfm_boundary_margin_m is None:
++                raise SemanticConfigurationError("Spatial coverage requires a positive cell size and explicit SfM bounds.")
++            object.__setattr__(result, "spatial_coverage_cell_m", cell_m)
++        if not {OrbitShape.CIRCLE, OrbitShape.ELLIPSE}.issubset(result.shapes):
+             raise SemanticConfigurationError(
+-                "Court trajectory shapes must be circle and ellipse."
++                "Court trajectory shapes must include circle and ellipse."
+             )
+         if 1.0 not in result.axis_ratios or not any(
+             ratio <= 0.8 for ratio in result.axis_ratios
+@@ -1220,6 +1239,7 @@ class CourtViewPolicy:
+     coverage_modes: tuple[OrbitCoverageMode, ...]
+     look_at_height_m: tuple[float, float]
+     hfov_degrees: tuple[float, float]
++    look_at_jitter_radius_m: float = 0.0
+ 
+     @classmethod
+     def from_mapping(
+@@ -1231,7 +1251,12 @@ class CourtViewPolicy:
+         raw = _exact(
+             value,
+             path="dataset.court.view",
+-            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees"},
++            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees"}
++            | (
++                {"look_at_jitter_radius_m"}
++                if isinstance(value, Mapping) and "look_at_jitter_radius_m" in value
++                else set()
++            ),
+         )
+         path = "dataset.court.view"
+         result = cls(
+@@ -1252,6 +1277,13 @@ class CourtViewPolicy:
+             ),
+             hfov_degrees=_ordered_range(raw, "hfov_degrees", path=path, positive=True),
+         )
++        if "look_at_jitter_radius_m" in raw:
++            radius = _number(raw, "look_at_jitter_radius_m", path=path)
++            if radius < 0.0 or schema_version is not CourtDatasetSchemaVersion.V3:
++                raise SemanticConfigurationError(
++                    "Look-at jitter requires v3 and a non-negative radius."
++                )
++            object.__setattr__(result, "look_at_jitter_radius_m", radius)
+         if not isinstance(schema_version, CourtDatasetSchemaVersion):
+             raise ConfigurationTypeError(
+                 "dataset.court.schema_version must be a CourtDatasetSchemaVersion."
+diff --git a/src/synthetic_data_generation/dataset/court/README.md b/src/synthetic_data_generation/dataset/court/README.md
+index b76d41ed..befa5dfb 100644
+--- a/src/synthetic_data_generation/dataset/court/README.md
++++ b/src/synthetic_data_generation/dataset/court/README.md
+@@ -29,6 +29,51 @@ camera-side switch is one proper half-turn in court XY, shared by the KP
+ permutation and canonical camera transform. V2 artifacts and checkpoints are
+ never treated as V3.
+ 
++## SfM-bounded camera generation
++
++Select `dataset/court=sfm_bounded` for the v3 label family with bounded camera
++placement and independently sampled look-at offsets. Legacy `train`, `v1`,
++`v2`, and `v3` presets keep their existing generation settings. The numeric
++policy is owned by `configs/dataset/court/sfm_bounded.yaml`.
++
++`trajectory.sfm_boundary_margin_m` explicitly enables the boundary heuristic.
++Captured public-export camera centres are first converted to metres. For each
++complex/court centre, their XY convex hull in that centre's court plane defines
++inward-offset half-planes. Each candidate's ellipse orientation and axis ratio
++are used to solve the largest admissible major radius analytically; the
++resolved base radius is the smaller of that limit and the captured q90 radius.
++Configured radius scales then generate nested circles/ellipses inside that
++boundary. The entire curve satisfies the margin, including points between
++samples. Heights and vertical profiles remain config-owned. Fewer than three
++cameras, collinear camera support, an orbit centre outside the inset hull, or
++radius scales above one fail explicitly; no unconstrained orbit is substituted.
++
++This is a horizontal camera-position heuristic. A convex hull can bridge
++unobserved gaps, and remaining height/view-direction extrapolation can still
++produce artifacts. It does not certify 3DGS image quality. Moving cameras inward
++also changes framing, so the bounded preset uses a wider HFOV range; existing
++pre-render semantic and dataset acceptance gates remain active.
++
++`view.look_at_jitter_radius_m` is an explicit v3-only extension. Each sample
++looks at a point drawn uniformly by area from a disk in its resolved court's
++local XY plane, at the configured look-at height. The RNG uses
++`SeedSequence([target_court.binding.selection_seed, sample_index])`; this
++reproduces the same target independently of render batching and rejection.
++A positive radius is serialized in each view record and validated against the
++requested configuration. Its absence denotes the existing exact-centre view;
++v1/v2 reject jitter. The renderer and persisted-dataset reader recompute the
++same point and validate the camera forward axis. KP14 channel identities and
++the canonical camera transform remain unchanged. Position samples still belong
++to circle/ellipse groups, but their independent look-at offsets do not promise
++smooth temporal camera motion.
++
++Implementation: `components/camera_sampling/sfm_bounds.py` owns the analytic
++boundary, `selection.py` applies it before budget selection, and `targeting.py`
++owns deterministic target offsets. Unit tests cover full-curve containment,
++scene-frame invariance, degenerate/outside support, bounded uniform-area jitter,
++and altered-target rejection. The renderer integration test includes the
++`sfm_bounded` preset through publication and strict rereading.
++
+ ## Confirmed v1 behaviour
+ 
+ The current label payload is often described as seven keypoints, but its exact
+diff --git a/src/synthetic_data_generation/dataset/court/assembler.py b/src/synthetic_data_generation/dataset/court/assembler.py
+index aad54019..063edba7 100644
+--- a/src/synthetic_data_generation/dataset/court/assembler.py
++++ b/src/synthetic_data_generation/dataset/court/assembler.py
+@@ -867,6 +867,10 @@ def validate_court_dataset(
+     _validate_metric_schema(metrics, definition=definition)
+     for group in groups:
+         _validate_group_record(group, definition=definition)
++        if expected_configuration is not None and _uses_resolved_target_version(definition.version):
++            for view_value in _mapping_sequence(group["views"], name="views"):
++                if OrbitViewSpecV2.from_mapping(view_value).look_at_jitter_radius_m != expected_configuration.view.look_at_jitter_radius_m:
++                    raise ValueError("Court view jitter disagrees with the requested configuration.")
+     group_ids = [_nested_group_id(group) for group in groups]
+     if not group_ids or len(group_ids) != len(set(group_ids)):
+         raise ValueError("Court trajectory group IDs must be non-empty and unique.")
+@@ -1310,6 +1314,8 @@ def _validate_semantic_sample_record(
+             camera=camera,
+             target_court=target,
+             look_at_height_m=view.look_at_height_m,
++            look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++            sample_index=camera.source_frame_index,
+         )
+     expected_metadata = {
+         "target_court": expected_target_court,
+@@ -1576,7 +1582,9 @@ def _validate_group_record(
+         if not _uses_resolved_target_version(definition.version):
+             OrbitViewSpec.from_mapping(view)
+         else:
+-            OrbitViewSpecV2.from_mapping(view)
++            parsed_view = OrbitViewSpecV2.from_mapping(view)
++            if definition.version is CourtDatasetSchemaVersion.V2 and parsed_view.look_at_jitter_radius_m != 0.0:
++                raise ValueError("Court v2 does not support look-at jitter.")
+     center = OrbitCenter.from_mapping(group["center"])
+     if center.key() != (
+         trajectory.center_kind,
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py
+index f55caad2..52e75466 100644
+--- a/src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/sampling.py
+@@ -7,6 +7,9 @@ import math
+ import numpy as np
+ from numpy.typing import NDArray
+ 
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.shapes import (
++    unit_shape_points,
++)
+ from src.synthetic_data_generation.dataset.court.contracts import (
+     OrbitCenter,
+     OrbitPathSamples,
+@@ -23,7 +26,7 @@ def sample_uniform_arc_length(
+     center: OrbitCenter,
+     policy: OrbitSamplingPolicy,
+ ) -> OrbitPathSamples:
+-    """Sample a smooth closed 3-D curve with a strict maximum adjacent step."""
++    """Sample a closed 3-D curve with a strict maximum adjacent step."""
+     if policy.mode is not OrbitSamplingMode.UNIFORM_ARC_LENGTH:
+         raise ValueError(f"Unknown orbit sampling mode: {policy.mode!r}.")
+     if center.key() != (
+@@ -78,10 +81,7 @@ def _points_local(
+ ) -> NDArray[np.float64]:
+     major = trajectory.radius_x_m
+     minor = trajectory.radius_y_m
+-    unrotated = np.stack(
+-        (major * np.cos(theta), minor * np.sin(theta)),
+-        axis=1,
+-    )
++    unrotated = unit_shape_points(trajectory.shape, theta) * np.asarray((major, minor))
+     cosine = math.cos(trajectory.orientation_radians)
+     sine = math.sin(trajectory.orientation_radians)
+     rotation = np.asarray(((cosine, -sine), (sine, cosine)), dtype=np.float64)
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
+index 3bf1dcac..dc8ab061 100644
+--- a/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/selection.py
+@@ -17,6 +17,9 @@ from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
+ from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
+     sample_uniform_arc_length,
+ )
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.sfm_bounds import (
++    bound_trajectory_candidates,
++)
+ from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
+     resolve_target_court,
+     resolved_court_look_at_scene,
+@@ -121,6 +124,13 @@ def build_court_dataset_plan(
+         seed=policy.seed,
+         stable_field_order=policy.stable_field_order,
+     )
++    if configuration.trajectory.sfm_boundary_margin_m is not None:
++        candidates = bound_trajectory_candidates(
++            candidates,
++            centers=centers,
++            cameras=camera_tuple,
++            margin_m=configuration.trajectory.sfm_boundary_margin_m,
++        )
+     first_group_view_count = len(
+         _target_modes_for_group(group_index=0, configuration=configuration)
+     )
+@@ -129,6 +139,7 @@ def build_court_dataset_plan(
+         centers=centers,
+         policy=policy,
+         first_group_view_count=first_group_view_count,
++        spatial_coverage_cell_m=configuration.trajectory.spatial_coverage_cell_m,
+     )
+     split_by_group = assign_group_disjoint_splits(
+         tuple(item.trajectory.trajectory_group_id for item in selected),
+@@ -352,6 +363,7 @@ def select_budgeted_coverage(
+     centers: Sequence[OrbitCenter],
+     policy: OrbitSamplingPolicy,
+     first_group_view_count: int = 2,
++    spatial_coverage_cell_m: float | None = None,
+ ) -> tuple[SelectedTrajectory, ...]:
+     """Maximize ordered typed token families within one explicit frame budget.
+ 
+@@ -401,6 +413,20 @@ def select_budgeted_coverage(
+                 path=sample_uniform_arc_length(candidate, center, policy),
+             )
+         )
++    spatial_cells: dict[str, set[tuple[int, int]]] = {}
++    covered_cells: set[tuple[int, int]] = set()
++    if spatial_coverage_cell_m is not None:
++        if not math.isfinite(spatial_coverage_cell_m) or spatial_coverage_cell_m <= 0.0:
++            raise ValueError("Spatial coverage cell size must be finite and positive.")
++        # One shared metric frame for every orbit centre. Using per-centre
++        # grids would incorrectly count identical scene locations as novel.
++        common_from_scene = centers[0].scene_from_center.inverse()
++        for item in resolved:
++            xy = common_from_scene.apply(item.path.points_scene_m)[:, :2]
++            cells = np.floor(xy / spatial_coverage_cell_m).astype(np.int64)
++            spatial_cells[item.trajectory.trajectory_group_id] = {
++                (int(x), int(y)) for x, y in cells
++            }
+     all_tokens = set().union(
+         *(
+             _objective_tokens(item.trajectory, policy.coverage_objective)
+@@ -452,21 +478,18 @@ def select_budgeted_coverage(
+         if requirements_met:
+             break
+         feasible: list[tuple[SelectedTrajectory, int]] = []
++        remaining_group_count = max(0, policy.minimum_trajectory_groups - len(selected) - 1)
++        completion_costs = sorted(len(item.path.theta_radians) for item in remaining)
++        minimum_other_cost = sum(completion_costs[:remaining_group_count])
+         for item in remaining:
+             view_count = first_group_view_count if not selected else 1
+-            cost = len(item.path.theta_radians) * view_count
+-            remaining_group_count = max(
+-                0,
+-                policy.minimum_trajectory_groups - len(selected) - 1,
+-            )
+-            completion_costs = sorted(
+-                len(other.path.theta_radians)
+-                for other in remaining
+-                if other is not item
+-            )
+-            if len(completion_costs) < remaining_group_count:
++            path_cost = len(item.path.theta_radians)
++            cost = path_cost * view_count
++            if len(completion_costs) - 1 < remaining_group_count:
+                 continue
+-            minimum_completion_cost = sum(completion_costs[:remaining_group_count])
++            minimum_completion_cost = minimum_other_cost
++            if remaining_group_count and path_cost <= completion_costs[remaining_group_count - 1]:
++                minimum_completion_cost += completion_costs[remaining_group_count] - path_cost
+             if (
+                 proposal_count + cost + minimum_completion_cost
+                 <= policy.proposal_budget
+@@ -481,12 +504,13 @@ def select_budgeted_coverage(
+             parts: list[int] = []
+             for objective in policy.coverage_objective:
+                 family_tokens = _objective_tokens(trajectory, (objective,))
+-                parts.extend(
+-                    (
+-                        len(family_tokens - covered),
+-                        -sum(token_counts[token] for token in family_tokens),
+-                    )
+-                )
++                parts.append(len(family_tokens - covered))
++                if spatial_coverage_cell_m is not None and objective is OrbitCoverageObjective.COVERAGE_MODE:
++                    # Keep the added shapes from crowding out circles/ellipses,
++                    # then prefer views in previously unused shared XY cells.
++                    parts.append(-stable_token_counts[(OrbitStableField.SHAPE, trajectory.shape.value)])
++                    parts.append(len(spatial_cells[trajectory.trajectory_group_id] - covered_cells))
++                parts.append(-sum(token_counts[token] for token in family_tokens))
+             for field in policy.stable_field_order:
+                 stable_token = (field, trajectory_field_value(trajectory, field))
+                 parts.extend(
+@@ -513,6 +537,8 @@ def select_budgeted_coverage(
+             policy.coverage_objective,
+         )
+         covered.update(tokens)
++        if spatial_coverage_cell_m is not None:
++            covered_cells.update(spatial_cells[chosen.trajectory.trajectory_group_id])
+         token_counts.update(tokens)
+         stable_token_counts.update(
+             (field, trajectory_field_value(chosen.trajectory, field))
+@@ -853,6 +879,7 @@ def _views_for_group_v2(
+                 low_height if (group_index + target_index) % 2 == 0 else high_height
+             ),
+             hfov_degrees=hfov_by_coverage[coverage],
++            look_at_jitter_radius_m=configuration.view.look_at_jitter_radius_m,
+         )
+         for target_index, target in enumerate(targets)
+     )
+@@ -985,9 +1012,6 @@ def _plan_samples_v2(
+ ) -> tuple[PlannedCourtSampleV2, ...]:
+     """Resolve sample target, then construct its look-at pose in that order."""
+     template = cameras[0]
+-    complex_center = next(
+-        center for center in centers if center.court_instance_id is None
+-    )
+     samples: list[PlannedCourtSampleV2] = []
+     for group in groups:
+         path = paths_by_group[group.trajectory_group_id]
+@@ -1005,11 +1029,12 @@ def _plan_samples_v2(
+                     layout=layout,
+                     selection_seed=selection_seed,
+                 )
+-                target_scene = _target_scene_v2(
+-                    view,
++                target_scene = resolved_court_look_at_scene(
+                     target_court=resolved_target,
+                     layout=layout,
+-                    complex_center=complex_center,
++                    look_at_height_m=view.look_at_height_m,
++                    look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++                    sample_index=len(samples),
+                 )
+                 camera_to_scene = _look_at_opencv(
+                     center_scene,
+@@ -1033,6 +1058,8 @@ def _plan_samples_v2(
+                         target_court=resolved_target,
+                         layout=layout,
+                         look_at_height_m=view.look_at_height_m,
++                        look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++                        sample_index=sample_index,
+                     )
+                 samples.append(
+                     PlannedCourtSampleV2(
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_bounds.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_bounds.py
+new file mode 100644
+index 00000000..24210234
+--- /dev/null
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/sfm_bounds.py
+@@ -0,0 +1,76 @@
++"""Analytic containment of complete orbit shapes in the captured-camera XY hull.
++
++This is a camera-position heuristic, not a guarantee of 3DGS image quality.
++Each centre uses its own metric court plane; height remains config-owned.
++"""
++
++from __future__ import annotations
++
++import math
++from collections.abc import Sequence
++from dataclasses import replace
++
++import numpy as np
++from scipy.spatial import ConvexHull, QhullError
++
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.shapes import (
++    shape_support,
++)
++from src.synthetic_data_generation.dataset.court.contracts import (
++    OrbitCenter,
++    OrbitTrajectorySpec,
++)
++from src.synthetic_data_generation.scene_contract import SceneCamera
++
++
++def bound_trajectory_candidates(
++    candidates: Sequence[OrbitTrajectorySpec],
++    *,
++    centers: Sequence[OrbitCenter],
++    cameras: Sequence[SceneCamera],
++    margin_m: float,
++) -> tuple[OrbitTrajectorySpec, ...]:
++    """Fit each unit-scale shape inside every inward-offset hull half-plane.
++
++    For normal n and shape map A, use the exact support at A.T n.
++    The minimum half-plane allowance therefore bounds the entire curve, not
++    just sampled vertices. Radius scales in (0, 1] retain nested diversity.
++    Missing planar support and centres outside the inset hull fail explicitly.
++    """
++    if not math.isfinite(margin_m) or margin_m < 0.0:
++        raise ValueError("SfM boundary margin must be finite and non-negative.")
++    if len(cameras) < 3:
++        raise ValueError("SfM bounds require at least three captured cameras.")
++    captured = np.stack([camera.camera_to_scene.matrix()[:3, 3] for camera in cameras])
++    hulls = {}
++    for center in centers:
++        local = center.scene_from_center.inverse().apply(captured)
++        try:
++            hull = ConvexHull(local[:, :2])
++        except QhullError as error:
++            raise ValueError(
++                f"SfM cameras have no planar support for {center.key()}."
++            ) from error
++        normals = hull.equations[:, :2]
++        allowance = -hull.equations[:, 2] - margin_m
++        if np.any(allowance <= 0.0):
++            raise ValueError(
++                f"Orbit centre {center.key()} is outside the inset SfM boundary."
++            )
++        hulls[center.key()] = normals, allowance
++    bounded = []
++    for candidate in candidates:
++        if not 0.0 < candidate.radius_scale <= 1.0:
++            raise ValueError("SfM-bounded radius scales must be in (0, 1].")
++        normals, allowance = hulls[
++            candidate.center_kind, candidate.center_court_instance_id
++        ]
++        angle = candidate.orientation_radians
++        rotation = np.array(
++            ((math.cos(angle), -math.sin(angle)), (math.sin(angle), math.cos(angle)))
++        )
++        shape_map = rotation @ np.diag((1.0, candidate.axis_ratio))
++        support = shape_support(candidate.shape, normals @ shape_map)
++        radius = min(candidate.base_radius_m, float(np.min(allowance / support)))
++        bounded.append(replace(candidate, base_radius_m=radius))
++    return tuple(bounded)
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/shapes.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/shapes.py
+new file mode 100644
+index 00000000..615aaffc
+--- /dev/null
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/shapes.py
+@@ -0,0 +1,47 @@
++"""Planar orbit boundaries and their exact half-plane support functions."""
++
++from __future__ import annotations
++
++import numpy as np
++from numpy.typing import NDArray
++
++from src.synthetic_data_generation.dataset.court.contracts import OrbitShape
++
++
++def unit_shape_points(
++    shape: OrbitShape, theta: NDArray[np.float64]
++) -> NDArray[np.float64]:
++    """Intersect angular rays with an L2, L4, or rectangular unit boundary.
++
++    A superellipse is |x|^4 + |y|^4 = 1, giving flattened sides and rounded
++    corners. A rectangle is max(|x|, |y|) = 1. Scaling by the two half-extents
++    and rotating are owned by the caller, identically for every shape.
++    """
++    directions = np.stack((np.cos(theta), np.sin(theta)), axis=-1)
++    if shape in (OrbitShape.CIRCLE, OrbitShape.ELLIPSE):
++        return directions
++    if shape is OrbitShape.RECTANGLE:
++        radii = np.max(np.abs(directions), axis=-1)
++    elif shape is OrbitShape.SUPERELLIPSE:
++        radii = np.sum(directions**4, axis=-1) ** 0.25
++    else:
++        raise ValueError(f"Unsupported orbit shape: {shape!r}.")
++    return directions / radii[..., None]
++
++
++def shape_support(
++    shape: OrbitShape, normals_in_shape_frame: NDArray[np.float64]
++) -> NDArray[np.float64]:
++    """Return max(n dot x) over a unit shape, including all unsampled corners.
++
++    The support norm is dual to the boundary norm: L2 -> L2, L4 -> L(4/3),
++    and the rectangle's L-infinity -> L1. Input normals already incorporate
++    the orbit's rotation and axis ratio.
++    """
++    if shape in (OrbitShape.CIRCLE, OrbitShape.ELLIPSE):
++        return np.linalg.norm(normals_in_shape_frame, axis=-1)
++    if shape is OrbitShape.RECTANGLE:
++        return np.sum(np.abs(normals_in_shape_frame), axis=-1)
++    if shape is OrbitShape.SUPERELLIPSE:
++        return np.sum(np.abs(normals_in_shape_frame) ** (4.0 / 3.0), axis=-1) ** 0.75
++    raise ValueError(f"Unsupported orbit shape: {shape!r}.")
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
+index a7c9fd7b..811e28f8 100644
+--- a/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/targeting.py
+@@ -119,11 +119,32 @@ def nearest_court_tie_ids(
+     )
+ 
+ 
++def sample_look_at_offset(
++    *, radius_m: float, seed: int, sample_index: int
++) -> NDArray[np.float64]:
++    """Uniform-area XY disk, independently reproducible for each planned camera."""
++    if isinstance(radius_m, bool) or not math.isfinite(radius_m) or radius_m < 0.0:
++        raise ValueError("Jitter radius must be finite and non-negative.")
++    if any(
++        isinstance(v, bool) or not isinstance(v, int) or v < 0
++        for v in (seed, sample_index)
++    ):
++        raise ValueError("Jitter seed and sample index must be non-negative integers.")
++    if radius_m == 0.0:
++        return np.zeros(3, dtype=np.float64)
++    rng = np.random.default_rng(np.random.SeedSequence([seed, sample_index]))
++    radius = radius_m * math.sqrt(float(rng.random()))
++    angle = float(rng.uniform(0.0, 2.0 * math.pi))
++    return np.array((radius * math.cos(angle), radius * math.sin(angle), 0.0))
++
++
+ def resolved_court_look_at_scene(
+     *,
+     target_court: ResolvedTargetCourtV2,
+     layout: MultiCourtLayout,
+     look_at_height_m: float,
++    look_at_jitter_radius_m: float = 0.0,
++    sample_index: int = 0,
+ ) -> NDArray[np.float64]:
+     """Transform local ``(0, 0, height)`` through the resolved court."""
+     if not isinstance(target_court, ResolvedTargetCourtV2):
+@@ -138,7 +159,14 @@ def resolved_court_look_at_scene(
+     court = layout.court(target_court.binding.court_instance_id)
+     _require_binding_matches_layout(target_court.binding, layout=layout)
+     transformed = court.scene_from_court.apply(
+-        np.asarray(((0.0, 0.0, height),), dtype=np.float64)
++        (
++            sample_look_at_offset(
++                radius_m=look_at_jitter_radius_m,
++                seed=target_court.binding.selection_seed,
++                sample_index=sample_index,
++            )
++            + np.array((0.0, 0.0, height))
++        )[None, :]
+     )[0]
+     return np.asarray(transformed, dtype=np.float64)
+ 
+@@ -176,6 +204,8 @@ def validate_camera_looks_at_resolved_court(
+     target_court: ResolvedTargetCourtV2,
+     layout: MultiCourtLayout,
+     look_at_height_m: float,
++    look_at_jitter_radius_m: float = 0.0,
++    sample_index: int = 0,
+     atol: float = CAMERA_FORWARD_AXIS_ATOL,
+ ) -> None:
+     """Require OpenCV local +Z to point at the resolved local court target."""
+@@ -183,6 +213,8 @@ def validate_camera_looks_at_resolved_court(
+         target_court=target_court,
+         layout=layout,
+         look_at_height_m=look_at_height_m,
++        look_at_jitter_radius_m=look_at_jitter_radius_m,
++        sample_index=sample_index,
+     )
+     _validate_camera_forward_axis(
+         camera=camera,
+@@ -196,6 +228,8 @@ def validate_camera_looks_at_resolved_binding(
+     camera: SceneCamera,
+     target_court: ResolvedTargetCourtV2,
+     look_at_height_m: float,
++    look_at_jitter_radius_m: float = 0.0,
++    sample_index: int = 0,
+     atol: float = CAMERA_FORWARD_AXIS_ATOL,
+ ) -> None:
+     """Validate a persisted camera against its sample-owned court binding."""
+@@ -209,7 +243,14 @@ def validate_camera_looks_at_resolved_binding(
+     if not math.isfinite(height) or height < 0.0:
+         raise ValueError("look_at_height_m must be finite and non-negative.")
+     target_scene = target_court.binding.scene_from_court.apply(
+-        np.asarray(((0.0, 0.0, height),), dtype=np.float64)
++        (
++            sample_look_at_offset(
++                radius_m=look_at_jitter_radius_m,
++                seed=target_court.binding.selection_seed,
++                sample_index=sample_index,
++            )
++            + np.array((0.0, 0.0, height))
++        )[None, :]
+     )[0]
+     _validate_camera_forward_axis(
+         camera=camera,
+diff --git a/src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py b/src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py
+index 4abc66e8..4767566d 100644
+--- a/src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py
++++ b/src/synthetic_data_generation/dataset/court/components/camera_sampling/trajectory.py
+@@ -145,6 +145,8 @@ def generate_trajectory_candidates(
+             if not ellipse_ratios:
+                 raise ValueError("Ellipse configuration produced no valid axis ratio.")
+             shape_ratios.extend((shape, ratio) for ratio in ellipse_ratios)
++        elif shape in (OrbitShape.RECTANGLE, OrbitShape.SUPERELLIPSE):
++            shape_ratios.extend((shape, ratio) for ratio in policy.axis_ratios)
+         else:  # pragma: no cover - finite enum construction makes this unreachable
+             raise ValueError(f"Unsupported configured orbit shape: {shape!r}.")
+     vertical_profiles: list[tuple[OrbitCurveMode, float, int, float]] = []
+diff --git a/src/synthetic_data_generation/dataset/court/contracts.py b/src/synthetic_data_generation/dataset/court/contracts.py
+index 633de442..b38d300f 100644
+--- a/src/synthetic_data_generation/dataset/court/contracts.py
++++ b/src/synthetic_data_generation/dataset/court/contracts.py
+@@ -42,6 +42,8 @@ class OrbitShape(StrEnum):
+ 
+     CIRCLE = "circle"
+     ELLIPSE = "ellipse"
++    RECTANGLE = "rectangle"
++    SUPERELLIPSE = "superellipse"
+ 
+ 
+ class OrbitCenterKind(StrEnum):
+@@ -283,12 +285,12 @@ class OrbitTrajectorySpec:
+ 
+     @property
+     def radius_x_m(self) -> float:
+-        """Return the major radius in metres."""
++        """Return the major half-extent in metres (half-width for rectangles)."""
+         return self.base_radius_m * self.radius_scale
+ 
+     @property
+     def radius_y_m(self) -> float:
+-        """Return the minor radius in metres."""
++        """Return the minor half-extent in metres (half-height for rectangles)."""
+         return self.radius_x_m * self.axis_ratio
+ 
+     def semantic_key(self) -> tuple[object, ...]:
+@@ -353,7 +355,9 @@ class OrbitTrajectorySpec:
+                 raw["trajectory_group_id"], name="trajectory_group_id"
+             ),
+             shape=OrbitShape(_text(raw["shape"], name="shape")),
+-            center_kind=OrbitCenterKind(_text(raw["center_kind"], name="center_kind")),
++            center_kind=OrbitCenterKind(
++                _text(raw["center_kind"], name="center_kind")
++            ),
+             center_court_instance_id=_optional_text(
+                 raw["center_court_instance_id"],
+                 name="center_court_instance_id",
+@@ -482,6 +486,7 @@ class OrbitViewSpecV2:
+     coverage_mode: OrbitCoverageMode
+     look_at_height_m: float
+     hfov_degrees: float
++    look_at_jitter_radius_m: float = 0.0
+ 
+     def __post_init__(self) -> None:
+         _text(self.view_id, name="view_id")
+@@ -499,6 +504,10 @@ class OrbitViewSpecV2:
+             )
+         if not isinstance(self.coverage_mode, OrbitCoverageMode):
+             raise TypeError("coverage_mode must be an OrbitCoverageMode.")
++        radius = _finite(self.look_at_jitter_radius_m, name="look_at_jitter_radius_m")
++        if radius < 0.0:
++            raise ValueError("look_at_jitter_radius_m must be non-negative.")
++        object.__setattr__(self, "look_at_jitter_radius_m", radius)
+         height = _finite(self.look_at_height_m, name="look_at_height_m")
+         hfov = _finite(self.hfov_degrees, name="hfov_degrees")
+         if height < 0.0:
+@@ -516,11 +525,12 @@ class OrbitViewSpecV2:
+             self.coverage_mode,
+             self.look_at_height_m,
+             self.hfov_degrees,
++            self.look_at_jitter_radius_m,
+         )
+ 
+     def to_dict(self) -> dict[str, object]:
+         """Return the strict v2 view record without a static court binding."""
+-        return {
++        record: dict[str, object] = {
+             "view_id": self.view_id,
+             "target_kind": self.target_kind.value,
+             "target_mode": self.target_mode.value,
+@@ -529,6 +539,10 @@ class OrbitViewSpecV2:
+             "hfov_degrees": self.hfov_degrees,
+         }
+ 
++        if self.look_at_jitter_radius_m > 0.0:
++            record["look_at_jitter_radius_m"] = self.look_at_jitter_radius_m
++        return record
++
+     @classmethod
+     def from_mapping(cls, value: object) -> Self:
+         """Parse one exact v2 view and reject v1's static target field."""
+@@ -541,10 +555,18 @@ class OrbitViewSpecV2:
+                 "coverage_mode",
+                 "look_at_height_m",
+                 "hfov_degrees",
+-            },
++            }
++            | (
++                {"look_at_jitter_radius_m"}
++                if isinstance(value, Mapping) and "look_at_jitter_radius_m" in value
++                else set()
++            ),
+             name="v2 orbit view",
+         )
+         return cls(
++            look_at_jitter_radius_m=_finite(
++                raw.get("look_at_jitter_radius_m", 0.0), name="look_at_jitter_radius_m"
++            ),
+             view_id=_text(raw["view_id"], name="view_id"),
+             target_kind=OrbitTargetKind(_text(raw["target_kind"], name="target_kind")),
+             target_mode=OrbitTargetMode(_text(raw["target_mode"], name="target_mode")),
+@@ -1513,6 +1535,10 @@ class CourtDatasetPlanV2:
+         _text(self.profile, name="profile")
+         if not self.groups:
+             raise ValueError("Court plan must contain trajectory groups.")
++        if self.schema_version is CourtDatasetSchemaVersion.V2 and any(
++            view.look_at_jitter_radius_m != 0.0 for group in self.groups for view in group.views
++        ):
++            raise ValueError("Court v2 does not support look-at jitter.")
+         group_ids = [group.trajectory_group_id for group in self.groups]
+         trajectory_ids = [group.trajectory.trajectory_id for group in self.groups]
+         if len(group_ids) != len(set(group_ids)):
+diff --git a/src/synthetic_data_generation/dataset/court/rendering/nht.py b/src/synthetic_data_generation/dataset/court/rendering/nht.py
+index ac3798ca..b45028af 100644
+--- a/src/synthetic_data_generation/dataset/court/rendering/nht.py
++++ b/src/synthetic_data_generation/dataset/court/rendering/nht.py
+@@ -326,6 +326,8 @@ def _validate_plan_alignment(
+                 target_court=sample.target_court,
+                 layout=alignment.layout,
+                 look_at_height_m=view.look_at_height_m,
++                look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++                sample_index=sample.sample_index,
+             )
+         return
+     for group_v1 in plan.groups:
+diff --git a/tests/integration/synthetic_data_generation/test_configuration.py b/tests/integration/synthetic_data_generation/test_configuration.py
+index 96502179..5647e8a3 100644
+--- a/tests/integration/synthetic_data_generation/test_configuration.py
++++ b/tests/integration/synthetic_data_generation/test_configuration.py
+@@ -166,7 +166,7 @@ def test_court_selectors_compose_and_validate_exact_typed_versions(
+     court = _compose(selector).court
+ 
+     assert court.schema_version is version
+-    assert set(court.trajectory.shapes) == set(OrbitShape)
++    assert set(court.trajectory.shapes) == {OrbitShape.CIRCLE, OrbitShape.ELLIPSE}
+     assert set(court.trajectory.center_kinds) == set(OrbitCenterKind)
+     assert set(court.trajectory.curve_modes) == set(OrbitCurveMode)
+     assert set(court.view.target_modes) == target_modes
+diff --git a/tests/integration/synthetic_data_generation/test_court_dataset.py b/tests/integration/synthetic_data_generation/test_court_dataset.py
+index b3694273..b58e14d4 100644
+--- a/tests/integration/synthetic_data_generation/test_court_dataset.py
++++ b/tests/integration/synthetic_data_generation/test_court_dataset.py
+@@ -203,6 +203,15 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
+             "v3",
+             "court_dataset_performance_v4",
+         ),
++        (
++            "sfm_bounded",
++            CourtDatasetPlanV3,
++            "canonical_court_dataset_v3",
++            "canonical_court_sample_v3",
++            "court_renderer_semantic_manifest_v3",
++            "v3",
++            "court_dataset_performance_v4",
++        ),
+     ],
+ )
+ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostics(
+@@ -284,7 +293,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
+         )
+         assert set(serialized_physical_indices) == set(range(14))
+ 
+-    if selector == "v3":
++    if selector in ("v3", "sfm_bounded"):
+         camera = SceneCamera.from_dict(first_record["camera"])
+         layout_by_id = {
+             court.court_instance_id: court for court in _alignment().layout.courts
+diff --git a/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py b/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py
+index 99293521..569c69eb 100644
+--- a/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py
++++ b/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sampling.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
+ import numpy as np
++import pytest
+ 
+ from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
+     sample_uniform_arc_length,
+@@ -19,7 +20,8 @@ from src.synthetic_data_generation.dataset.court.contracts import (
+ from src.synthetic_data_generation.scene_contract import RigidTransform
+ 
+ 
+-def test_uniform_3d_arc_length_bounds_closed_step() -> None:
++@pytest.mark.parametrize("shape", [OrbitShape.ELLIPSE, OrbitShape.RECTANGLE, OrbitShape.SUPERELLIPSE])
++def test_uniform_3d_arc_length_bounds_closed_step(shape: OrbitShape) -> None:
+     center = OrbitCenter(
+         center_kind=OrbitCenterKind.COMPLEX,
+         court_instance_id=None,
+@@ -33,7 +35,7 @@ def test_uniform_3d_arc_length_bounds_closed_step() -> None:
+     trajectory = OrbitTrajectorySpec(
+         trajectory_id="trajectory-a",
+         trajectory_group_id="group-a",
+-        shape=OrbitShape.ELLIPSE,
++        shape=shape,
+         center_kind=OrbitCenterKind.COMPLEX,
+         center_court_instance_id=None,
+         base_radius_m=20.0,
+@@ -65,4 +67,6 @@ def test_uniform_3d_arc_length_bounds_closed_step() -> None:
+     assert np.ptp(samples.points_scene_m[:, 2]) > 3.9
+     assert len(samples.theta_radians) % policy.sample_count_multiple == 0
+     assert samples.adjacent_steps_m.max() <= 1.05 + 1.0e-9
+-    assert samples.adjacent_steps_m.max() / samples.adjacent_steps_m.min() < 1.03
++    assert OrbitTrajectorySpec.from_mapping(trajectory.to_dict()) == trajectory
++    if shape is not OrbitShape.RECTANGLE:
++        assert samples.adjacent_steps_m.max() / samples.adjacent_steps_m.min() < 1.03
+diff --git a/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_bounds.py b/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_bounds.py
+new file mode 100644
+index 00000000..8765d912
+--- /dev/null
++++ b/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_sfm_bounds.py
+@@ -0,0 +1,195 @@
++import numpy as np
++import pytest
++from scipy.spatial import ConvexHull
++
++from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
++    sample_uniform_arc_length,
++)
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
++    build_court_dataset_plan,
++)
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.sfm_bounds import (
++    bound_trajectory_candidates,
++)
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.targeting import (
++    sample_look_at_offset,
++    validate_camera_looks_at_resolved_binding,
++)
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.trajectory import (
++    derive_orbit_centers,
++    generate_trajectory_candidates,
++)
++from src.synthetic_data_generation.dataset.court.contracts import (
++    CourtDatasetPlanV3,
++    OrbitSamplingPolicy,
++    OrbitViewSpecV2,
++)
++from src.synthetic_data_generation.scene_contract import MultiCourtLayout, SceneCamera
++from tests.unit.synthetic_data_generation.dataset.court.components.camera_sampling.test_selection import (
++    _composed_configuration,
++)
++
++
++def test_complete_shapes_stay_inside_inset_sfm_hull(
++    captured_cameras: tuple[SceneCamera, ...], multi_court_layout: MultiCourtLayout
++) -> None:
++    config = _composed_configuration("sfm_bounded")
++    policy = OrbitSamplingPolicy.from_configuration(config.sampling)
++    centers = derive_orbit_centers(captured_cameras, multi_court_layout)
++    candidates = generate_trajectory_candidates(
++        config.trajectory,
++        centers,
++        seed=policy.seed,
++        stable_field_order=policy.stable_field_order,
++    )
++    bounded = bound_trajectory_candidates(
++        candidates, centers=centers, cameras=captured_cameras, margin_m=0.5
++    )
++    hull = ConvexHull(
++        np.array([c.camera_to_scene.matrix()[:2, 3] for c in captured_cameras])
++    )
++    by_key = {c.key(): c for c in centers}
++    # Every family, including rotated elongated ellipses and off-centre courts.
++    for candidate in bounded:
++        path = sample_uniform_arc_length(
++            candidate,
++            by_key[candidate.center_kind, candidate.center_court_instance_id],
++            policy,
++        )
++        distances = (
++            path.points_scene_m[:, :2] @ hull.equations[:, :2].T + hull.equations[:, 2]
++        )
++        assert np.max(distances) <= -0.5 + 1e-9
++    assert len(bounded) == len(candidates)
++    assert any(
++        b.base_radius_m < c.base_radius_m
++        for b, c in zip(bounded, candidates, strict=True)
++    )
++    assert {b.radius_scale for b in bounded} == {0.65, 0.8, 0.95}
++
++
++def test_unobserved_or_degenerate_boundary_fails(
++    captured_cameras: tuple[SceneCamera, ...], multi_court_layout: MultiCourtLayout
++) -> None:
++    centers = derive_orbit_centers(captured_cameras, multi_court_layout)
++    with pytest.raises(ValueError, match="outside"):
++        bound_trajectory_candidates(
++            (), centers=centers, cameras=captured_cameras, margin_m=100.0
++        )
++    repeated = (captured_cameras[0],) * 3
++    with pytest.raises(ValueError, match="planar support"):
++        bound_trajectory_candidates((), centers=centers, cameras=repeated, margin_m=0.0)
++
++
++def test_jitter_is_reproducible_uniform_area_and_bounded() -> None:
++    offsets = np.stack(
++        [
++            sample_look_at_offset(radius_m=1.0, seed=695, sample_index=i)
++            for i in range(2000)
++        ]
++    )
++    np.testing.assert_array_equal(
++        offsets[100], sample_look_at_offset(radius_m=1.0, seed=695, sample_index=100)
++    )
++    squared = np.sum(offsets[:, :2] ** 2, axis=1)
++    assert squared.max() <= 1.0
++    assert squared.mean() == pytest.approx(0.5, abs=0.03)
++    np.testing.assert_allclose(offsets.mean(axis=0), 0.0, atol=0.04)
++    assert not np.array_equal(
++        offsets[100], sample_look_at_offset(radius_m=1.0, seed=696, sample_index=100)
++    )
++    np.testing.assert_array_equal(
++        sample_look_at_offset(radius_m=0.0, seed=695, sample_index=100), np.zeros(3)
++    )
++
++
++def test_bounded_plan_roundtrip_and_jitter_tamper_detection(
++    captured_cameras: tuple[SceneCamera, ...],
++    multi_court_layout: MultiCourtLayout,
++    identity_metric_adapter: MetricSceneAdapter,
++) -> None:
++    config = _composed_configuration("sfm_bounded")
++    plan = build_court_dataset_plan(
++        scene_id="fixture",
++        profile="test",
++        cameras=captured_cameras,
++        layout=multi_court_layout,
++        configuration=config,
++        metric_adapter=identity_metric_adapter,
++    )
++    assert isinstance(plan, CourtDatasetPlanV3)
++    groups = {g.trajectory_group_id: g for g in plan.groups}
++    for sample in plan.samples[::71]:
++        view = groups[sample.trajectory_group_id].views[0]
++        assert OrbitViewSpecV2.from_mapping(view.to_dict()) == view
++        validate_camera_looks_at_resolved_binding(
++            camera=sample.camera,
++            target_court=sample.target_court,
++            look_at_height_m=view.look_at_height_m,
++            look_at_jitter_radius_m=view.look_at_jitter_radius_m,
++            sample_index=sample.sample_index,
++        )
++        with pytest.raises(ValueError, match="forward axis"):
++            validate_camera_looks_at_resolved_binding(
++                camera=sample.camera,
++                target_court=sample.target_court,
++                look_at_height_m=view.look_at_height_m,
++                look_at_jitter_radius_m=0.0,
++                sample_index=sample.sample_index,
++            )
++
++
++def test_bounds_are_invariant_to_scene_frame(
++    captured_cameras: tuple[SceneCamera, ...], multi_court_layout: MultiCourtLayout
++) -> None:
++    from dataclasses import replace
++
++    from scipy.spatial.transform import Rotation
++
++    from src.synthetic_data_generation.scene_contract import RigidTransform
++
++    config = _composed_configuration("sfm_bounded")
++    policy = OrbitSamplingPolicy.from_configuration(config.sampling)
++    centers = derive_orbit_centers(captured_cameras, multi_court_layout)
++    candidates = generate_trajectory_candidates(
++        config.trajectory,
++        centers,
++        seed=policy.seed,
++        stable_field_order=policy.stable_field_order,
++    )
++    expected = bound_trajectory_candidates(
++        candidates, centers=centers, cameras=captured_cameras, margin_m=0.5
++    )
++    transform = np.eye(4)
++    transform[:3, :3] = Rotation.from_euler(
++        "xyz", [25, -15, 70], degrees=True
++    ).as_matrix()
++    transform[:3, 3] = [100, -40, 12]
++    rotated_centers = tuple(
++        replace(
++            c,
++            scene_from_center=RigidTransform.from_matrix(
++                transform @ c.scene_from_center.matrix()
++            ),
++        )
++        for c in centers
++    )
++    rotated_cameras = tuple(
++        replace(
++            c,
++            camera_to_scene=RigidTransform.from_matrix(
++                transform @ c.camera_to_scene.matrix()
++            ),
++        )
++        for c in captured_cameras
++    )
++    actual = bound_trajectory_candidates(
++        candidates, centers=rotated_centers, cameras=rotated_cameras, margin_m=0.5
++    )
++    np.testing.assert_allclose(
++        [c.base_radius_m for c in actual],
++        [c.base_radius_m for c in expected],
++        atol=1e-10,
++        rtol=0,
++    )
+diff --git a/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_shapes.py b/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_shapes.py
+new file mode 100644
+index 00000000..3a6d20c5
+--- /dev/null
++++ b/tests/unit/synthetic_data_generation/dataset/court/components/camera_sampling/test_shapes.py
+@@ -0,0 +1,40 @@
++import numpy as np
++import pytest
++
++from src.synthetic_data_generation.dataset.court.components.camera_sampling.shapes import (
++    shape_support,
++    unit_shape_points,
++)
++from src.synthetic_data_generation.dataset.court.contracts import OrbitShape
++
++
++@pytest.mark.parametrize('shape', list(OrbitShape))
++def test_analytic_support_contains_entire_boundary(shape: OrbitShape) -> None:
++    theta = np.linspace(0.0, 2 * np.pi, 32768, endpoint=False)
++    points = unit_shape_points(shape, theta)
++    angle = .73
++    rotation = np.array(((np.cos(angle), -np.sin(angle)), (np.sin(angle), np.cos(angle))))
++    shape_map = rotation @ np.diag((2.1, .7))
++    normal_angles = np.linspace(0.0, 2 * np.pi, 31, endpoint=False)
++    normals = np.column_stack((np.cos(normal_angles), np.sin(normal_angles)))
++    transformed_normals = normals @ shape_map
++    exact = shape_support(shape, transformed_normals)
++    measured = np.max(points @ transformed_normals.T, axis=0)
++    assert np.all(measured <= exact + 1e-12)
++    np.testing.assert_allclose(measured, exact, atol=1e-6, rtol=0)
++
++
++def test_rectangle_reaches_corners_not_reached_by_ellipse() -> None:
++    theta = np.arange(8) * np.pi / 4
++    rectangle = unit_shape_points(OrbitShape.RECTANGLE, theta)
++    ellipse = unit_shape_points(OrbitShape.ELLIPSE, theta)
++    rounded = unit_shape_points(OrbitShape.SUPERELLIPSE, theta)
++    np.testing.assert_allclose(rectangle[1], (1, 1))
++    assert np.linalg.norm(ellipse[1]) < np.linalg.norm(rounded[1]) < np.linalg.norm(rectangle[1])
++    np.testing.assert_allclose(np.sum(rounded**4, axis=1), 1.0)
++    np.testing.assert_allclose(np.max(abs(rectangle), axis=1), 1.0)
++    # Same axis-aligned square bound, but a diagonal cut must constrain a
++    # rectangle more than an ellipse to keep its corners inside the hull.
++    diagonal = np.array([[1., 1.]])
++    assert shape_support(OrbitShape.RECTANGLE, diagonal)[0] == pytest.approx(2.)
++    assert shape_support(OrbitShape.ELLIPSE, diagonal)[0] == pytest.approx(np.sqrt(2))

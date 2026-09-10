@@ -1,0 +1,35 @@
+{
+  "sfm_bounded": {
+    "groups": 27,
+    "proposals": 2368,
+    "outside_sfm_hull_count": 25,
+    "minimum_boundary_clearance_m": -0.33871872867324004,
+    "geometric_gates": {
+      "pre_render_accepted": 2297,
+      "pre_render_rejected": 37,
+      "ambiguous": 34
+    },
+    "court_coverage": {
+      "sparse": 871,
+      "partial": 2671,
+      "none": 1325,
+      "near_full": 1157,
+      "full": 978
+    },
+    "base_heights_m": [
+      1.5,
+      2.25,
+      3.0
+    ],
+    "radius_scales": [
+      0.65,
+      0.8,
+      0.95
+    ],
+    "axis_ratios": [
+      0.65,
+      0.8,
+      1.0
+    ]
+  }
+}

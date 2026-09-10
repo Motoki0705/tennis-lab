@@ -1,0 +1,16 @@
+{
+  "run_id": "1789004299155132951_202122_b01_court_sfm_bounds_full",
+  "name": "b01_court_sfm_bounds_full",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. .venv/bin/python outputs/b01-court-bounds-wide/full_render_check.py",
+  "provider": "codex",
+  "session": "01a088da-0867-7e43-99b5-415e56dc292d",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "96b98a17ee067d9956cafcfb65448d527910349b",
+  "branch": "codex/court-sfm-bounded",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "repo_root": "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded",
+  "captured_at": "2026-09-10T10:38:19+09:00"
+}

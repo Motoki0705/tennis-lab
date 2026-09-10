@@ -25,7 +25,7 @@ from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 
-_LEGACY_COURT_REUSE_ADDITIVE_NHT_KEYS = frozenset(
+_LEGACY_REUSE_ADDITIVE_NHT_KEYS = frozenset(
     {"training_python_path", "trainer_path"}
 )
 
@@ -321,9 +321,15 @@ def _resolved_configuration_is_reusable(
     request: ScenePipelineRequest,
     plan: StageExecutionPlan,
 ) -> bool:
-    """Compare exact config authority with one narrow Court/report exception."""
+    """Compare retained authority with explicit alignment and Court suffix scopes."""
     existing = _configuration_authority(existing_yaml)
     requested = _configuration_authority(requested_yaml)
+    if plan.cursor.name is StageName.ALIGNMENT:
+        alignment_existing = _alignment_scoped_authority(existing)
+        alignment_requested = _alignment_scoped_authority(requested)
+        if alignment_existing is None or alignment_requested is None:
+            return existing == requested
+        return _scoped_authorities_match(alignment_existing, alignment_requested)
     if plan.cursor.name is not StageName.COURT_DATASET or request.targets != frozenset(
         {DatasetTarget.COURT}
     ):
@@ -336,13 +342,13 @@ def _resolved_configuration_is_reusable(
     )
     if scoped_existing is None or scoped_requested is None:
         return existing == requested
-    return _court_report_scoped_authorities_match(
+    return _scoped_authorities_match(
         scoped_existing,
         scoped_requested,
     )
 
 
-def _court_report_scoped_authorities_match(
+def _scoped_authorities_match(
     existing: Mapping[str, object],
     requested: Mapping[str, object],
 ) -> bool:
@@ -363,7 +369,7 @@ def _court_report_scoped_authorities_match(
     requested_only_keys = requested_keys - existing_keys
     if (
         not requested_only_keys
-        or not requested_only_keys <= _LEGACY_COURT_REUSE_ADDITIVE_NHT_KEYS
+        or not requested_only_keys <= _LEGACY_REUSE_ADDITIVE_NHT_KEYS
         or existing_keys - requested_keys
     ):
         return False
@@ -377,6 +383,24 @@ def _court_report_scoped_authorities_match(
     normalized_requested = dict(requested)
     normalized_requested["nht"] = dict(existing_nht)
     return existing == normalized_requested
+
+
+def _alignment_scoped_authority(
+    authority: Mapping[str, object],
+) -> Mapping[str, object] | None:
+    """Exclude only alignment and its invalidated descendants' configuration."""
+    scoped = deepcopy(dict(authority))
+    if not isinstance(scoped.get("alignment"), dict):
+        return None
+    if not isinstance(scoped.get("dataset"), dict):
+        return None
+    request = scoped.get("request")
+    if not isinstance(request, dict):
+        return None
+    del scoped["alignment"]
+    del scoped["dataset"]
+    request.pop("targets", None)
+    return scoped
 
 
 def _court_report_scoped_authority(

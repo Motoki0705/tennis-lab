@@ -11,12 +11,17 @@ trajectory:
   base_heights_m: [1.5, 2.25, 3.0]
   vertical_modulations_m: [0.0, 0.25, 0.5]
   curve_modes: [planar, sinusoidal_height]
+  sfm_boundary_margin_m: null
+  sfm_boundary_expansion_percent: 0.0
+  sfm_complex_center_on_hull: false
+  spatial_coverage_cell_m: null
 
 view:
   target_modes: [court_center, complex_center, near_baseline, far_baseline]
   coverage_modes: [full, near_full, partial]
   look_at_height_m: [0.0, 1.5]
   hfov_degrees: [35.0, 75.0]
+  look_at_jitter_radius_m: 0.0
 
 sampling:
   mode: uniform_arc_length
