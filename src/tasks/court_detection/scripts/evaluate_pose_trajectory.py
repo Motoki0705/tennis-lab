@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 from omegaconf import OmegaConf
 from PIL import Image
@@ -88,11 +89,10 @@ def main() -> int:
         labels_path = dataset_root / _text(sample["labels"], name="sample.labels")
         labels = _mapping(json.loads(labels_path.read_text()), name="sample labels")
         target, target_court_id = _target_pose(labels)
-        with Image.open(image_path) as loaded:
-            image = loaded.convert("RGB")
-            started = time.perf_counter()
-            prediction = predictor.predict(image)
-            inference_seconds.append(time.perf_counter() - started)
+        image = _load_rgb(image_path, sample=sample)
+        started = time.perf_counter()
+        prediction = predictor.predict(image)
+        inference_seconds.append(time.perf_counter() - started)
         rows.append(
             _measure_sample(
                 sample,
@@ -206,6 +206,8 @@ def _measure_sample(
             sample["trajectory_frame_index"],
             name="sample.trajectory_frame_index",
         ),
+        "height": _integer(sample["height"], name="sample.height"),
+        "width": _integer(sample["width"], name="sample.width"),
         "split": _text(sample["split"], name="sample.split"),
         "rgb": _text(sample["rgb"], name="sample.rgb"),
         "translation_error_m": float(translation_error[0]),
@@ -341,8 +343,7 @@ def _plot_overlays(
     for axis, index in zip(axes.flat, indices, strict=True):
         row = rows[index]
         image_path = dataset_root / cast(str, row["rgb"])
-        with Image.open(image_path) as loaded:
-            axis.imshow(loaded.convert("RGB"))
+        axis.imshow(_load_rgb(image_path, sample=row))
         visible = torch.tensor(row["target_visible"], dtype=torch.bool)
         target = torch.tensor(row["target_keypoints_xy"])[visible]
         predicted = torch.tensor(row["predicted_pose_keypoints_xy"])[visible]
@@ -382,6 +383,26 @@ def _select_trajectory(
         )
     )
     return selected
+
+
+def _load_rgb(image_path: Path, *, sample: Mapping[str, object]) -> Image.Image:
+    """Load the strict float32 RGB payload published by Synthetic Court V3."""
+
+    if image_path.suffix != ".npy":
+        raise ValueError(f"Synthetic Court V3 RGB must be a .npy file: {image_path}")
+    rgb = np.load(image_path, allow_pickle=False)
+    expected = (
+        _integer(sample["height"], name="sample.height"),
+        _integer(sample["width"], name="sample.width"),
+        3,
+    )
+    if rgb.dtype != np.float32 or rgb.shape != expected:
+        raise ValueError(
+            "Synthetic Court V3 RGB must be float32 [H,W,3] matching the manifest."
+        )
+    if not np.isfinite(rgb).all() or np.any(rgb < 0.0) or np.any(rgb > 1.0):
+        raise ValueError("Synthetic Court V3 RGB must be finite and remain in [0,1].")
+    return Image.fromarray(np.round(rgb * 255.0).astype(np.uint8), mode="RGB")
 
 
 def _checkpoint_resolver(

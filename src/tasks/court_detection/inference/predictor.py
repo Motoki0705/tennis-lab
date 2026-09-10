@@ -10,6 +10,7 @@ from typing import Any, Protocol, Self, cast
 
 import numpy as np
 import torch
+from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 from torch import Tensor
 
@@ -103,7 +104,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             resolver=resolver,
             device=device,
             weights_only=False,
-            **kwargs,
+            **_checkpoint_load_kwargs(kwargs),
         )
         adapter = lightning_module.model_io
         adapter.validate_model_pair(lightning_module.model)
@@ -218,7 +219,7 @@ class CourtPosePredictor(BasePredictor[CourtPosePrediction]):
             resolver=resolver,
             device=device,
             weights_only=False,
-            **kwargs,
+            **_checkpoint_load_kwargs(kwargs),
         )
         runtime = CourtTrainingConfig.from_config(lightning_module.config)
         adapter = lightning_module.model_io
@@ -329,6 +330,28 @@ def _dense_logits(output: object) -> CourtLogits:
             "Court dense predictor requires mapping or CourtModelOutput."
         )
     return cast(CourtLogits, output)
+
+
+def _checkpoint_load_kwargs(kwargs: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove run-only mixed-source data configuration before model restore.
+
+    Mixed-source training builds and serializes the ordinary Court model from the
+    standard config. Its saved run YAML additionally contains a top-level
+    ``mixed`` data-loader section, which is deliberately outside that model
+    configuration contract.
+    """
+
+    result = dict(kwargs)
+    config = result.get("config")
+    if not isinstance(config, DictConfig) or "mixed" not in config:
+        return result
+    unresolved = OmegaConf.to_container(config, resolve=False)
+    if not isinstance(unresolved, dict):
+        raise TypeError("Court checkpoint config must resolve to a mapping.")
+    standard = dict(unresolved)
+    standard.pop("mixed")
+    result["config"] = OmegaConf.create(standard)
+    return result
 
 
 def _pose_in_source_pixels(

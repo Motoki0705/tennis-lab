@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 from numpy.typing import NDArray
+from omegaconf import OmegaConf
 from torch import nn
 
 from src.tasks.base.model_io import bind_model_io
@@ -22,6 +23,7 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.inference.predictor import (
     CourtKeypointPredictor,
     CourtPosePredictor,
+    _checkpoint_load_kwargs,
 )
 from src.tasks.court_detection.model_io.adapters import (
     CourtModelIOAdapter,
@@ -303,6 +305,24 @@ def test_pose_predictor_rejects_dense_only_adapter() -> None:
             torch.device("cpu"),
             patch_size=4,
         )
+
+
+def test_checkpoint_load_kwargs_removes_mixed_training_extension() -> None:
+    config = OmegaConf.create(
+        {
+            "paths": {"project_root": "/runtime/project"},
+            "model": {"name": "pose"},
+            "mixed": {"sources": {"synthetic": "unused-at-inference"}},
+        }
+    )
+
+    result = _checkpoint_load_kwargs({"config": config, "strict": True})
+
+    assert result["strict"] is True
+    assert result["config"].paths.project_root == "/runtime/project"
+    assert result["config"].model.name == "pose"
+    assert "mixed" not in result["config"]
+    assert "mixed" in config
 
 
 def test_pose_preprocessing_uses_isotropic_long_side_and_patch_padding() -> None:
