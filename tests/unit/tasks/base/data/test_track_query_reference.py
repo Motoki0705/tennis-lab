@@ -364,3 +364,13 @@ def test_batch_contract_rejects_index_identity_padding_mask_and_transform_errors
     batch[field] = value
     with pytest.raises(ReferenceViewBatchError, match=message):
         validate_reference_view_batch(**batch)
+
+
+def test_evaluation_reference_cannot_escape_explicit_camera_pool() -> None:
+    ids = ("corner_a", "center", "corner_b", "corner_c", "corner_d")
+    with pytest.raises(ReferenceViewSelectionError, match="outside camera_candidates"):
+        include_evaluation_reference_camera(ids, (0,2,3), requested_camera_id="center", rng=np.random.default_rng(42), candidate_camera_indices=(0,2,3,4))
+    selected = include_evaluation_reference_camera(ids, (0,2,3), requested_camera_id="corner_d", rng=np.random.default_rng(42), candidate_camera_indices=(0,2,3,4))
+    assert 4 in selected
+    assert len(selected) == 3
+    assert set(selected) <= {0,2,3,4}

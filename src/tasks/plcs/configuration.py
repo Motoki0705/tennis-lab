@@ -37,6 +37,7 @@ from src.utils.configuration import (
     SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.device import DeviceSelectionError, resolve_device
 from src.utils.hydra import register_boundary_validator
 from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
@@ -290,6 +291,16 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
     ),
 }
 
+_MODEL_FIELDS["plcs_multiview_axial_reference"] = _MODEL_FIELDS[
+    "plcs_multiview_axial"
+] | frozenset(
+    {
+        "target_frame_contract",
+        "axial_rope_contract",
+        "reference_selector_mode",
+    }
+)
+
 _TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query",
@@ -365,6 +376,7 @@ class PLCSModelConfig:
         expected_profile = {
             "plcs": "frame",
             "plcs_multiview_axial": "multiview",
+            "plcs_multiview_axial_reference": "multiview",
             "plcs_multiview_axial_split": "multiview",
             "plcs_multiview_axial_camtoken": "multiview",
             "plcs_track_query": None,
@@ -408,6 +420,22 @@ class PLCSModelConfig:
                 "model.rope_dim must be non-negative, even, and no larger than "
                 f"the attention head dimension ({head_dim})."
             )
+        if name == "plcs_multiview_axial_reference":
+            from src.tasks.plcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
+
+            for key in (
+                "target_frame_contract",
+                "axial_rope_contract",
+                "reference_selector_mode",
+            ):
+                if mapping[key] != AXIAL_REFERENCE_CONTRACT[key]:
+                    raise SemanticConfigurationError(
+                        f"model.{key} does not match the axial reference contract."
+                    )
+            if rope_dim < 6:
+                raise SemanticConfigurationError(
+                    "Axial reference requires rope_dim >= 6."
+                )
         number_fields = {
             "rope_theta",
             "rope_theta_time",
@@ -736,6 +764,7 @@ _DATA_COMMON = {
     "num_workers",
     "pin_memory",
     "camera_mode",
+    "camera_candidates",
     "num_views_range",
     "seq_len_range",
     "augmentation",
@@ -790,17 +819,26 @@ class PLCSDataConfig:
                 allowed
                 - {
                     "seq_stride",
+                    "camera_candidates",
                     "min_cameras",
                     "evaluation_reference_camera_id",
                 }
                 | (
                     {"evaluation_reference_camera_id"}
                     if model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES
+                    or model.name == "plcs_multiview_axial_reference"
                     else set()
                 )
             ),
             allowed=allowed,
         )
+        candidates = camera_candidate_indices(mapping.get("camera_candidates"))
+        if candidates is not None and len(candidates) < int(
+            cast(Sequence[int], mapping["num_views_range"])[1]
+        ):
+            raise SemanticConfigurationError(
+                "data.camera_candidates cannot provide num_views_range."
+            )
         if backend == "chunked":
             chunk = ChunkDataConfig.from_validated_task_mapping(
                 mapping,
@@ -852,6 +890,8 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     f"data.{key} must be a positive ordered range."
                 )
+        if model.name == "plcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+            raise SemanticConfigurationError("Axial reference data requires 3 or 4 cameras.")
         if "max_views" in model.values and num_views_range[1] > model.integer(
             "max_views"
         ):
@@ -1018,10 +1058,13 @@ class PLCSTrainingConfig:
         court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(
             value
         ).contract
-        if model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES:
+        if (
+            model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES
+            or model.name == "plcs_multiview_axial_reference"
+        ):
             if court_keypoint_contract.selector != "camera_view_v2":
                 raise SemanticConfigurationError(
-                    "Reference track-query models require "
+                    "Reference PLCS models require "
                     "court_keypoints.selector='camera_view_v2'."
                 )
         elif (
@@ -1478,6 +1521,7 @@ def _validate_script_boundary(
             "augmentation",
             "min_cameras",
             "camera_mode",
+            "camera_candidates",
             "num_views_range",
             "batch_size",
             "num_workers",
@@ -1489,9 +1533,10 @@ def _validate_script_boundary(
         data = _exact(
             require_config_mapping(root, "data", path="configuration"),
             path="data",
-            required=data_fields,
+            required=data_fields - {"camera_candidates"},
             allowed=data_fields,
         )
+        camera_candidate_indices(data.get("camera_candidates"))
         validate_augmentation(data["augmentation"])
         backend = _string(data, "backend", path="data")
         if backend != "default":

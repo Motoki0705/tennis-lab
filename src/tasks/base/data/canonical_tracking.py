@@ -22,6 +22,7 @@ from src.tasks.base.data.lifecycle_slots import (
 from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tasks.base.data.rng import require_run_seed
 from src.tasks.base.data.scene_dataset import SceneDatasetBase, SceneDatasetConfig
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
 )
@@ -106,6 +107,7 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
 
         super().__init__(
             config=SceneDatasetConfig(
+                camera_candidates=camera_candidate_indices(data_cfg.get("camera_candidates")),
                 scene_dir=Path(scene_dir),
                 split_file=Path(split_file),
                 seq_len_range=seq_len_range,

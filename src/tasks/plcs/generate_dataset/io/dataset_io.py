@@ -176,8 +176,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
                 or value < 0
             ):
                 raise InvalidCourtKeypointMetadataError(
-                    f"{root_path}.stats.{key}: expected a finite non-negative "
-                    "number."
+                    f"{root_path}.stats.{key}: expected a finite non-negative number."
                 )
             if value != 0:
                 reject()
@@ -357,6 +356,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
                 "file": dirname,
                 "scene_id": scene.meta["scene_id"],
                 "motion_category": scene.meta["motion_category"],
+                "motion_source": scene.meta["motion_source"],
                 "num_frames": int(scene.meta["num_frames"]),
                 "num_cameras_sampled": scene.meta["num_cameras_sampled"],
                 "num_cameras": len(scene.cameras),
@@ -366,6 +366,54 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         self.scene_counter += 1
 
         return scene_path
+
+    def save_motion_group_splits(
+        self, *, val_ratio: float, test_ratio: float, seed: int
+    ) -> None:
+        """Keep every scene derived from one source motion in a single split."""
+        from collections import Counter
+
+        from src.utils.data.splits import GroupSplitConfig, make_group_split_map
+        from src.utils.io import save_json
+
+        sources = [str(record["motion_source"]) for record in self.scene_records]
+        if any(not source for source in sources):
+            raise ValueError("Grouped PLCS splits require nonempty motion_source.")
+        assignments = make_group_split_map(
+            Counter(sources),
+            GroupSplitConfig(val_ratio=val_ratio, test_ratio=test_ratio, seed=seed),
+        )
+        splits: dict[str, list[str]] = {"train": [], "val": [], "test": []}
+        for record, source in zip(self.scene_records, sources, strict=True):
+            splits[assignments[source]].append(str(record["file"]))
+        if any(
+            not splits[name]
+            for name, ratio in (
+                ("train", 1 - val_ratio - test_ratio),
+                ("val", val_ratio),
+                ("test", test_ratio),
+            )
+            if ratio > 0
+        ):
+            raise ValueError(
+                "Insufficient source motions for nonempty requested splits."
+            )
+        for name, files in splits.items():
+            (self.output_dir / f"{name}.txt").write_text(
+                "".join(f"{file}\n" for file in sorted(files))
+            )
+        save_json(
+            {
+                "split_group": "motion_source",
+                "seed": seed,
+                "train_ratio": 1 - val_ratio - test_ratio,
+                "val_ratio": val_ratio,
+                "test_ratio": test_ratio,
+                "n_scenes": {name: len(files) for name, files in splits.items()},
+                "source_assignments": assignments,
+            },
+            self.output_dir / "split_info.json",
+        )
 
     def save_meta_json(self, config: dict | None = None) -> None:
         """Save root metadata with the exact task-qualified CourtKP20 marker."""

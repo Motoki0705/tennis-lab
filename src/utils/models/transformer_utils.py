@@ -82,9 +82,8 @@ def build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
     """
     valid_fixed = valid.bool()
     fully_masked = ~valid_fixed.any(dim=1)
-    if fully_masked.any():
-        valid_fixed = valid_fixed.clone()
-        valid_fixed[fully_masked, 0] = True
+    valid_fixed = valid_fixed.clone()
+    valid_fixed[:, 0] = valid_fixed[:, 0] | fully_masked
     attn_mask = valid_fixed[:, None, :].expand(
         valid_fixed.shape[0],
         valid_fixed.shape[1],

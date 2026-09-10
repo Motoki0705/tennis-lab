@@ -36,6 +36,7 @@ from src.tasks.blcs.data.court_view import (
     validate_blcs_dataset_court_keypoints,
 )
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
+from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
 )
@@ -115,6 +116,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         data_cfg: dict,
     ) -> SceneDatasetConfig:
         return SceneDatasetConfig(
+            camera_candidates=camera_candidate_indices(
+                data_cfg.get("camera_candidates")
+            ),
             scene_dir=Path(scene_dir),
             split_file=Path(split_file),
             seq_len_range=self.seq_len_range,
@@ -142,6 +146,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                     tuple(view.camera_id for view in court_views),
                     cams.indices,
                     requested_camera_id=self.reference_camera_id,
+                    candidate_camera_indices=self.config.camera_candidates,
                     rng=self.rng,
                 )
             )
@@ -152,9 +157,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             contract=self.court_keypoint_contract,
             rng=self.rng,
             training=self.augment,
-            reference_camera_id=(
-                None if self.augment else self.reference_camera_id
-            ),
+            reference_camera_id=(None if self.augment else self.reference_camera_id),
         )
         # Use camera trajectory length to guard against metadata drift.
         primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
@@ -182,9 +185,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 scene.get_camera_array(cam_idx, "ball_vis", window=window)
             ).float()
             source_view = (
-                frame.selected_views[selected_index]
-                if frame.selected_views
-                else None
+                frame.selected_views[selected_index] if frame.selected_views else None
             )
             court_kp = torch.from_numpy(
                 align_blcs_court_array(
@@ -464,9 +465,7 @@ def collate_multiview_trajectories(
         "court_reference_provenance": tuple(
             sample["court_reference_provenance"] for sample in batch
         ),
-        "selected_camera_ids": tuple(
-            sample["selected_camera_ids"] for sample in batch
-        ),
+        "selected_camera_ids": tuple(sample["selected_camera_ids"] for sample in batch),
     }
     collated.update(
         collate_blcs_reference_fields(
