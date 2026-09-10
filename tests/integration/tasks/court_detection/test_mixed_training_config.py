@@ -7,7 +7,10 @@ from pathlib import Path
 import pytest
 from hydra import compose, initialize_config_dir
 
-from src.tasks.court_detection.configuration import TennisCourtDetectorSourceConfig
+from src.tasks.court_detection.configuration import (
+    CourtTrainingConfig,
+    TennisCourtDetectorSourceConfig,
+)
 from src.tasks.court_detection.training.runner_mixed import (
     resolve_mixed_training_config,
 )
@@ -42,26 +45,28 @@ def test_train_mixed_config_reuses_two_sources_with_canonical_kp_scope() -> None
     assert tennis.excluded_sample_ids == ("QszoUKyCOHo_600",)
 
 
-def test_pose_overrides_keep_consistency_disabled_and_synthetic_only() -> None:
+def test_pose_preset_is_default_for_mixed_training_and_synthetic_only() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_mixed",
             overrides=[
                 "data/augmentation=pose_safe",
-                "loss.pose.enabled=true",
-                "loss.pose.translation_weight=1.0",
-                "loss.pose.rotation_weight=1.0",
-                "loss.pose.focal_weight=1.0",
-                "loss.consistency.enabled=false",
                 "run.output_dir=court_detection/mixed-source/dense-pose-test",
             ],
         )
 
     standard, mixed = resolve_mixed_training_config(config)
     synthetic = mixed.sources["synthetic_court"]
+    runtime = CourtTrainingConfig.from_config(standard)
 
-    assert standard.loss.pose.enabled
-    assert not standard.loss.consistency.enabled
+    assert runtime.loss.pose.enabled
+    assert (
+        runtime.loss.pose.translation_weight,
+        runtime.loss.pose.rotation_weight,
+        runtime.loss.pose.focal_weight,
+    ) == (1.0, 1.0, 1.0)
+    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    assert not runtime.loss.consistency.enabled
     assert synthetic.kind == "synthetic_court"
     assert synthetic.keypoint_court_scope == "target_court"
 

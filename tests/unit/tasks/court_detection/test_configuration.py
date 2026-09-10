@@ -347,10 +347,33 @@ def test_pose_supervision_requires_explicit_transformer_and_weights() -> None:
         CourtTrainingConfig.from_config(no_transformer)
 
 
-def test_default_is_the_only_court_loss_config() -> None:
+def test_court_loss_presets_are_explicit() -> None:
     loss_configs = _CONFIG_DIR / "loss"
 
-    assert {path.name for path in loss_configs.glob("*.yaml")} == {"default.yaml"}
+    assert {path.name for path in loss_configs.glob("*.yaml")} == {
+        "default.yaml",
+        "pose.yaml",
+    }
+
+
+def test_pose_loss_preset_keeps_dense_heads_and_enables_pose() -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose(
+            "synthetic_court",
+            "loss=pose",
+            "data.source.keypoint_court_scope=target_court",
+            "data/augmentation=pose_safe",
+        )
+    )
+
+    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    assert runtime.loss.pose.enabled
+    assert (
+        runtime.loss.pose.translation_weight,
+        runtime.loss.pose.rotation_weight,
+        runtime.loss.pose.focal_weight,
+    ) == (1.0, 1.0, 1.0)
+    assert not runtime.loss.consistency.enabled
 
 
 def test_pose_only_overrides_keep_kp_contract_with_zero_dense_weights() -> None:

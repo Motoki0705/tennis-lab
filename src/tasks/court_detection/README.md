@@ -57,9 +57,9 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoderを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
 
-Lossは `configs/loss/default.yaml` の単一schemaで管理し、KP/SEG/LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。
+Loss presetは `configs/loss/` で管理し、KP/SEG/LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。`default`はdense-only、`pose`はdense lossを維持しながら3種のpose lossを各weight 1.0で有効化します。
 
-pose-only objectiveは専用loss presetを持ちません。`loss=default`をcomposeし、明示的なoverrideでKP/SEG/LINEのhead weightを0、poseのtranslation/rotation/focal weightを1、consistencyを無効にします。V3 target-court KP14のgeometry・data・head contractは保持されるためdense branchはforwardされますが、dense headにはdense loss由来のgradientは流れません。通常のdense-only設定では0 weightを許可しません。
+pose-only objectiveは専用loss presetを持ちません。`loss=pose`をcomposeし、明示的なoverrideでKP/SEG/LINEのhead weightを0にします。V3 target-court KP14のgeometry・data・head contractは保持されるためdense branchはforwardされますが、dense headにはdense loss由来のgradientは流れません。通常のdense-only設定では0 weightを許可しません。
 
 ```bash
 # DINOv3 + DPT + LoRA
@@ -78,11 +78,8 @@ python -m src.tasks.court_detection.scripts.train \
   data.source.keypoint_court_scope=target_court \
   data/processing=kp data/augmentation=pose_safe \
   model/encoder=dinov3 model/transformer_encoder=default model/decoder=dpt \
-  loss=default \
+  loss=pose \
   loss.kp.weight=0.0 loss.seg.weight=0.0 loss.line.weight=0.0 \
-  loss.pose.enabled=true \
-  loss.pose.translation_weight=1.0 \
-  loss.pose.rotation_weight=1.0 loss.pose.focal_weight=1.0 \
   loss.consistency.enabled=false
 ```
 
@@ -107,17 +104,14 @@ YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習�
 # 両sourceのKP / SEG / LINEだけを学習
 python -m src.tasks.court_detection.scripts.train_mixed \
   data/processing=all data/augmentation=pose_safe \
-  loss.pose.enabled=false loss.consistency.enabled=false \
+  loss=default \
   run.output_dir=court_detection/mixed-source/dense-only \
   run.test_after_fit=true
 
 # dense lossは全sample、pose lossはSynthetic Court V3 sampleだけで学習
 python -m src.tasks.court_detection.scripts.train_mixed \
   data/processing=all data/augmentation=pose_safe \
-  loss.pose.enabled=true \
-  loss.pose.translation_weight=1.0 \
-  loss.pose.rotation_weight=1.0 loss.pose.focal_weight=1.0 \
-  loss.consistency.enabled=false \
+  loss=pose \
   run.output_dir=court_detection/mixed-source/dense-pose \
   run.test_after_fit=true
 ```
