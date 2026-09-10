@@ -2,13 +2,14 @@ defaults:
   - paths: default
   - data: default
   - model: hierarchical
-  - loss: default
+  - loss: pose
   - training: default
   - run: train_mixed
   - render_style: default
   - data/source@mixed.sources.tennis_court_detector: tennis_court_detector
   - override data/source: synthetic_court
   - override data/processing: all
+  - override data/augmentation: pose_safe
   - _self_
 
 mixed:
