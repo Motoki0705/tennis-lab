@@ -145,6 +145,8 @@ def generate_trajectory_candidates(
             if not ellipse_ratios:
                 raise ValueError("Ellipse configuration produced no valid axis ratio.")
             shape_ratios.extend((shape, ratio) for ratio in ellipse_ratios)
+        elif shape in (OrbitShape.RECTANGLE, OrbitShape.SUPERELLIPSE):
+            shape_ratios.extend((shape, ratio) for ratio in policy.axis_ratios)
         else:  # pragma: no cover - finite enum construction makes this unreachable
             raise ValueError(f"Unsupported configured orbit shape: {shape!r}.")
     vertical_profiles: list[tuple[OrbitCurveMode, float, int, float]] = []

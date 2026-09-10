@@ -326,6 +326,8 @@ def _validate_plan_alignment(
                 target_court=sample.target_court,
                 layout=alignment.layout,
                 look_at_height_m=view.look_at_height_m,
+                look_at_jitter_radius_m=view.look_at_jitter_radius_m,
+                sample_index=sample.sample_index,
             )
         return
     for group_v1 in plan.groups:

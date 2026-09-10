@@ -1,0 +1,68 @@
+{
+  "v3": {
+    "groups": 24,
+    "proposals": 4800,
+    "outside_sfm_hull_count": 3769,
+    "minimum_boundary_clearance_m": -44.90487345708799,
+    "geometric_gates": {
+      "pre_render_accepted": 4743,
+      "pre_render_rejected": 31,
+      "ambiguous": 26
+    },
+    "court_coverage": {
+      "partial": 3381,
+      "sparse": 1844,
+      "none": 1321,
+      "near_full": 2573,
+      "full": 5203
+    },
+    "base_heights_m": [
+      1.5,
+      2.25,
+      3.0
+    ],
+    "radius_scales": [
+      0.85,
+      1.025,
+      1.2
+    ],
+    "axis_ratios": [
+      0.65,
+      0.8,
+      1.0
+    ]
+  },
+  "sfm_bounded": {
+    "groups": 47,
+    "proposals": 2288,
+    "outside_sfm_hull_count": 0,
+    "minimum_boundary_clearance_m": 0.6938413116579625,
+    "geometric_gates": {
+      "pre_render_accepted": 2015,
+      "ambiguous": 46,
+      "pre_render_rejected": 227
+    },
+    "court_coverage": {
+      "none": 2346,
+      "partial": 2909,
+      "sparse": 1055,
+      "near_full": 327,
+      "full": 89
+    },
+    "base_heights_m": [
+      1.5,
+      2.25,
+      3.0
+    ],
+    "radius_scales": [
+      0.65,
+      0.8,
+      0.95
+    ],
+    "axis_ratios": [
+      0.65,
+      0.8,
+      1.0
+    ]
+  }
+}

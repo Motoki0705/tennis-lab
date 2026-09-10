@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
     sample_uniform_arc_length,
@@ -19,7 +20,8 @@ from src.synthetic_data_generation.dataset.court.contracts import (
 from src.synthetic_data_generation.scene_contract import RigidTransform
 
 
-def test_uniform_3d_arc_length_bounds_closed_step() -> None:
+@pytest.mark.parametrize("shape", [OrbitShape.ELLIPSE, OrbitShape.RECTANGLE, OrbitShape.SUPERELLIPSE])
+def test_uniform_3d_arc_length_bounds_closed_step(shape: OrbitShape) -> None:
     center = OrbitCenter(
         center_kind=OrbitCenterKind.COMPLEX,
         court_instance_id=None,
@@ -33,7 +35,7 @@ def test_uniform_3d_arc_length_bounds_closed_step() -> None:
     trajectory = OrbitTrajectorySpec(
         trajectory_id="trajectory-a",
         trajectory_group_id="group-a",
-        shape=OrbitShape.ELLIPSE,
+        shape=shape,
         center_kind=OrbitCenterKind.COMPLEX,
         center_court_instance_id=None,
         base_radius_m=20.0,
@@ -65,4 +67,6 @@ def test_uniform_3d_arc_length_bounds_closed_step() -> None:
     assert np.ptp(samples.points_scene_m[:, 2]) > 3.9
     assert len(samples.theta_radians) % policy.sample_count_multiple == 0
     assert samples.adjacent_steps_m.max() <= 1.05 + 1.0e-9
-    assert samples.adjacent_steps_m.max() / samples.adjacent_steps_m.min() < 1.03
+    assert OrbitTrajectorySpec.from_mapping(trajectory.to_dict()) == trajectory
+    if shape is not OrbitShape.RECTANGLE:
+        assert samples.adjacent_steps_m.max() / samples.adjacent_steps_m.min() < 1.03

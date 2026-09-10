@@ -42,6 +42,8 @@ class OrbitShape(StrEnum):
 
     CIRCLE = "circle"
     ELLIPSE = "ellipse"
+    RECTANGLE = "rectangle"
+    SUPERELLIPSE = "superellipse"
 
 
 class OrbitCenterKind(StrEnum):
@@ -283,12 +285,12 @@ class OrbitTrajectorySpec:
 
     @property
     def radius_x_m(self) -> float:
-        """Return the major radius in metres."""
+        """Return the major half-extent in metres (half-width for rectangles)."""
         return self.base_radius_m * self.radius_scale
 
     @property
     def radius_y_m(self) -> float:
-        """Return the minor radius in metres."""
+        """Return the minor half-extent in metres (half-height for rectangles)."""
         return self.radius_x_m * self.axis_ratio
 
     def semantic_key(self) -> tuple[object, ...]:
@@ -353,7 +355,9 @@ class OrbitTrajectorySpec:
                 raw["trajectory_group_id"], name="trajectory_group_id"
             ),
             shape=OrbitShape(_text(raw["shape"], name="shape")),
-            center_kind=OrbitCenterKind(_text(raw["center_kind"], name="center_kind")),
+            center_kind=OrbitCenterKind(
+                _text(raw["center_kind"], name="center_kind")
+            ),
             center_court_instance_id=_optional_text(
                 raw["center_court_instance_id"],
                 name="center_court_instance_id",
@@ -482,6 +486,7 @@ class OrbitViewSpecV2:
     coverage_mode: OrbitCoverageMode
     look_at_height_m: float
     hfov_degrees: float
+    look_at_jitter_radius_m: float = 0.0
 
     def __post_init__(self) -> None:
         _text(self.view_id, name="view_id")
@@ -499,6 +504,10 @@ class OrbitViewSpecV2:
             )
         if not isinstance(self.coverage_mode, OrbitCoverageMode):
             raise TypeError("coverage_mode must be an OrbitCoverageMode.")
+        radius = _finite(self.look_at_jitter_radius_m, name="look_at_jitter_radius_m")
+        if radius < 0.0:
+            raise ValueError("look_at_jitter_radius_m must be non-negative.")
+        object.__setattr__(self, "look_at_jitter_radius_m", radius)
         height = _finite(self.look_at_height_m, name="look_at_height_m")
         hfov = _finite(self.hfov_degrees, name="hfov_degrees")
         if height < 0.0:
@@ -516,11 +525,12 @@ class OrbitViewSpecV2:
             self.coverage_mode,
             self.look_at_height_m,
             self.hfov_degrees,
+            self.look_at_jitter_radius_m,
         )
 
     def to_dict(self) -> dict[str, object]:
         """Return the strict v2 view record without a static court binding."""
-        return {
+        record: dict[str, object] = {
             "view_id": self.view_id,
             "target_kind": self.target_kind.value,
             "target_mode": self.target_mode.value,
@@ -528,6 +538,10 @@ class OrbitViewSpecV2:
             "look_at_height_m": self.look_at_height_m,
             "hfov_degrees": self.hfov_degrees,
         }
+
+        if self.look_at_jitter_radius_m > 0.0:
+            record["look_at_jitter_radius_m"] = self.look_at_jitter_radius_m
+        return record
 
     @classmethod
     def from_mapping(cls, value: object) -> Self:
@@ -541,10 +555,18 @@ class OrbitViewSpecV2:
                 "coverage_mode",
                 "look_at_height_m",
                 "hfov_degrees",
-            },
+            }
+            | (
+                {"look_at_jitter_radius_m"}
+                if isinstance(value, Mapping) and "look_at_jitter_radius_m" in value
+                else set()
+            ),
             name="v2 orbit view",
         )
         return cls(
+            look_at_jitter_radius_m=_finite(
+                raw.get("look_at_jitter_radius_m", 0.0), name="look_at_jitter_radius_m"
+            ),
             view_id=_text(raw["view_id"], name="view_id"),
             target_kind=OrbitTargetKind(_text(raw["target_kind"], name="target_kind")),
             target_mode=OrbitTargetMode(_text(raw["target_mode"], name="target_mode")),
@@ -1513,6 +1535,10 @@ class CourtDatasetPlanV2:
         _text(self.profile, name="profile")
         if not self.groups:
             raise ValueError("Court plan must contain trajectory groups.")
+        if self.schema_version is CourtDatasetSchemaVersion.V2 and any(
+            view.look_at_jitter_radius_m != 0.0 for group in self.groups for view in group.views
+        ):
+            raise ValueError("Court v2 does not support look-at jitter.")
         group_ids = [group.trajectory_group_id for group in self.groups]
         trajectory_ids = [group.trajectory.trajectory_id for group in self.groups]
         if len(group_ids) != len(set(group_ids)):

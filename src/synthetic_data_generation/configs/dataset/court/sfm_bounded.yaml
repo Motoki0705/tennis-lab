@@ -1,0 +1,15 @@
+# Camera placement policy; KP identities remain the v3 camera-view contract.
+defaults:
+  - v3
+  - _self_
+
+trajectory:
+  shapes: [circle, ellipse, rectangle, superellipse]
+  captured_offset_scale_range: [0.65, 0.95]
+  sfm_boundary_margin_m: 0.5
+  sfm_boundary_expansion_percent: 0.0
+  spatial_coverage_cell_m: 1.0
+
+view:
+  look_at_jitter_radius_m: 1.0
+  hfov_degrees: [45.0, 90.0]
