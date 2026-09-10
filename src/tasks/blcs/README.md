@@ -143,3 +143,10 @@ The Colab L4 entry is `scripts/colab/train/blcs_axial_reference.sh`, dispatched 
 the `blcs_axial_reference` workflow job. Its dataset archive is validated before
 extraction onto VM local disk. See [Colab workflow](../../../scripts/colab/README.md)
 for authentication and artifact lifecycle.
+
+The axial-reference recipe uses **KP14** (`model.num_court_tokens=14`,
+`data.num_court_kp=14`). The generated dataset retains the complete 20-point
+camera_view_v2 representation; the loader aligns its semantic ordering to the
+reference camera **before** selecting the first 14 points. Disk schema version
+and the number of model input tokens are independent. The earlier KP20 run is
+not a compatible initialization or resume checkpoint for this KP14 recipe.
