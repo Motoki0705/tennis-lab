@@ -3,8 +3,10 @@
 このディレクトリは、`tennis-lab` の非対話処理をローカル端末からGoogle
 Colabへ送る統一入口です。session作成、Drive接続、入力のVM local diskへのstage、
 repository環境の構築、処理実行、成果物の検証・Driveへのatomic publish、必要なら
-local download、session停止までを `scripts/colab/run.sh` が管理します。学習jobはDriveへcheckpoint・TensorBoard・設定を直接保存します。入力はVM local diskへ
-copyします。GUIやOpenCVのinteractive modeはcatalogへ登録しません。
+local download、session停止までを `scripts/colab/run.sh` が管理します。学習jobはVM
+localへ出力し、runnerがcheckpoint・TensorBoard・設定をrcloneでDriveへ同期します。
+入力はVM local diskへcopyします。GUIやOpenCVのinteractive modeはcatalogへ登録しません。
+配置の正本と拡張時の監修手順は [STORAGE_LAYOUT.md](STORAGE_LAYOUT.md) を参照してください。
 
 ## 前提条件
 
@@ -48,14 +50,14 @@ extension、NHTをVM内に構築します。
 入力とpublish済み成果物は、どちらの方式でも既定ではDriveの
 `tennis_lab/` 配下に置きます。
 
-- `--drive-mode mount`（既定）は `colab new` の認証後に `colab drivemount` を実行します。
+- `--drive-mode mount`は `colab new` の認証後に `colab drivemount` を実行します。
   Drive mount固有のGoogle OAuth URLが端末に表示されるため、browserで同意し、端末の指示に従ってEnterを押して続行します。
   初回のColab CLI認証で求められるcode入力とは別の手順です。人間が操作できる端末向けで、完全headlessでは
   ありません。CLIの対話待ちは最大600秒です。CLIの終了コードだけには依存せず、VM側で
   `/content/drive`が実際のmountpointであり`MyDrive`を提供することを確認してから入力stageや
   学習を開始します。未mountの同名directoryへ出力することはありません。
-- `--drive-mode rclone`はbrowser操作済みのrclone configを使うheadless方式
-  です。Driveへ直接出力する学習jobでは使用できません。local hostにも `rclone` が必要です。別端末で `rclone config` を完了して
+- `--drive-mode rclone`（既定）はbrowser操作済みのrclone configを使うheadless方式
+  で、学習jobを含めてDrive mountの追加承認を必要としません。local hostにも `rclone` が必要です。別端末で `rclone config` を完了して
   configを安全に転送するか、既存configを指定し、owner以外が読めないようにします。
 
 ```bash
@@ -81,11 +83,11 @@ bash scripts/colab/run.sh jobs --json
 代表的な一連の操作は次のとおりです。
 
 ```bash
-# 対話mount。完了後、VM停止前にartifactをlocalへ取得する
+# headless学習。既存rclone credentialを一時転送する
 bash scripts/colab/run.sh run ball_detection \
-  --drive-mode mount --download-to ./colab-artifacts
+  --drive-mode rclone --download-to ./colab-artifacts
 
-# headless rclone。生成・前処理などlocal出力job向け
+# 生成・前処理jobも同じ認証方式を使える
 bash scripts/colab/run.sh run court_detection_materialize_targets \
   --drive-mode rclone --rclone-config ~/.config/rclone/rclone.conf \
   --download-to ./colab-artifacts
@@ -127,26 +129,20 @@ bash scripts/colab/run.sh run slcs --gpu A100 --dry-run -- \
 
 ## 学習出力と進捗確認
 
-学習job TOMLは `output_storage = "drive"` を必ず指定します。このjobはmount方式を
-要求し、rclone指定はVMを作る前に拒否します。runnerが予約済みの
-`paths.output_root=outputs/colab` を次の絶対パスへ解決します。利用者によるDriveパスの
-Hydra overrideやsymlinkによる迂回は不要です。
+学習job TOMLは `output_storage = "drive"` を必ず指定します。rclone modeではrunnerが
+予約済みの`paths.output_root=outputs/colab`へlocal出力し、workflowから注入された
+`run.artifact_store`を通じて次のremote treeへ同期します。利用者によるartifact storeの
+Hydra overrideやsymlinkによる迂回は許可しません。
 
 ```text
-MyDrive/<drive-root>/colab-live/<run-id>/
-  request.json
-  status.json
-  progress.json
-  training-progress.json
-  attempt-1.log
-  outputs/colab/<job-output>/
-    config.yaml
-    logs/.../checkpoints/...
+<remote>:<drive-root>/colab-live/<run-id>/training/
+  config.yaml
+  logs/.../checkpoints/...
 ```
 
-checkpoint、TensorBoard、設定など、学習コードがoutput root配下へ生成したファイルは
-生成時からDriveへ保存されます。正常終了後の検証済みbundleは従来どおり別の
-`colab-runs/<run-id>/` へ公開します。失敗しても `colab-live` は削除しません。
+checkpointはlocal保存直後にatomic uploadし、その他の出力は周期同期します。正常終了後の
+検証済みbundleは従来どおり別の`colab-runs/<run-id>/`へ公開します。失敗しても
+`colab-live`は削除しません。
 Driveへの書き込み失敗はエラーとして扱い、VMローカルへの切り替えはしません。
 ただし、書き込み途中のファイルまで完全性を保証する仕組みではありません。
 
@@ -189,6 +185,7 @@ HTTPS URLからcloneします。したがってdirty/uncommittedなsubmodule変�
 
 job TOMLの各 `inputs` はDrive rootからの相対 `source` とVM repositoryからの相対
 `destination` を宣言します。全入力をVM local diskへcopyしてSHA-256 manifestを作り、
+通常は同じrepository相対pathを指定し、外部library配置だけを明示的なstage adapterとします。
 処理後は全 `outputs` が実在することを確認して `artifacts.tar.gz` にまとめます。最終
 bundleは次へ一度だけatomic publishされ、同じrun idを上書きしません。
 
@@ -305,6 +302,7 @@ protected_override_keys = [
   "paths.output_root",
   "data.scene_dir",
   "run.output_dir",
+  "run.artifact_store",
   "run.gpus",
 ]
 outputs = ["outputs/colab/my_training_job"]

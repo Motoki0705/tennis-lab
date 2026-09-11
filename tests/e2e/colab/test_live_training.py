@@ -91,6 +91,59 @@ def test_drive_live_directory_rejects_other_request(
         remote._prepare_live_output(request)
 
 
+def test_rclone_training_stays_local_and_receives_managed_artifact_store(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    script = repo / "train.py"
+    script.write_text(
+        """import json, os, pathlib, sys
+root=pathlib.Path(sys.argv[1].split('=',1)[1])/'test'
+root.mkdir(parents=True)
+(root/'invocation.json').write_text(json.dumps({'argv': sys.argv[2:], 'rclone_config': os.environ.get('RCLONE_CONFIG')}))
+""",
+        encoding="utf-8",
+    )
+    request = {
+        "run_id": "rclone-test-0001",
+        "request_digest": "a" * 64,
+        "drive": {"mode": "rclone", "root": "team/training", "remote": "drive"},
+        "job": {
+            "output_storage": "drive",
+            "timeout_seconds": 20,
+            "argv": [sys.executable, str(script), "paths.output_root=outputs/colab"],
+            "outputs": ["outputs/colab/test"],
+        },
+    }
+    environment = {**os.environ, "RCLONE_CONFIG": "/run/secrets/rclone.conf"}
+
+    remote._run_monitored_job(
+        request,
+        repo,
+        workspace,
+        {"attempt": 1},
+        environment,
+        live_root=None,
+    )
+
+    invocation = json.loads(
+        (repo / "outputs/colab/test/invocation.json").read_text(encoding="utf-8")
+    )
+    assert invocation["rclone_config"] == "/run/secrets/rclone.conf"
+    assert invocation["argv"] == [
+        "run.artifact_store.mode=rclone",
+        "run.artifact_store.remote=drive",
+        "run.artifact_store.remote_root=team/training/colab-live/rclone-test-0001/training",
+        "run.artifact_store.sync_interval_seconds=60",
+    ]
+    assert remote._prepare_live_output(request) is None
+    manifest, _ = remote._collect_outputs(request, repo, workspace / "bundle")
+    assert manifest[0]["declared_path"] == "outputs/colab/test"
+
+
 def test_drive_output_rejects_an_unmounted_local_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

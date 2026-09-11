@@ -1165,6 +1165,7 @@ def validate_training(config: DictConfig) -> None:
             "fast_dev_run",
             "dry_run",
             "test_after_fit",
+            "artifact_store",
         },
     )
     training = as_mapping(root["training"], path="training")

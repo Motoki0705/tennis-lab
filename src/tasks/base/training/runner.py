@@ -12,7 +12,7 @@ import types
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
@@ -27,11 +27,17 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.base.training.artifact_store import (
+    ArtifactSyncCallback,
+    PublishingCheckpointIO,
+    build_artifact_store,
+)
 from src.tasks.base.training.colab_progress import ColabProgressCallback
 from src.tasks.base.training.compilation import compile_modules
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
 from src.tasks.base.training.repro import resolve_queue_repro_dir
+from src.utils.artifact_store import ArtifactStore
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import select_accelerator
 from src.utils.paths import PROJECT_ROOT
@@ -63,30 +69,53 @@ class BaseTrainingRunner:
             self.run_dry_run(config, output_dir)
             return
 
-        datamodule = self.build_datamodule(config)
-        steps_per_epoch = self.resolve_steps_per_epoch(
-            config, datamodule, train_loader=None
-        )
-        lightning_module = self.build_lightning_module(
-            config, datamodule, steps_per_epoch=steps_per_epoch
-        )
-        self.maybe_load_init_weights(runtime, lightning_module)
-        self.maybe_compile_models(runtime, lightning_module)
-
-        logger = self.build_logger(config, output_dir)
-        callbacks = self.build_callbacks(config, datamodule, logger)
-        trainer = self.build_trainer(config, callbacks, logger)
-        resume_ckpt = self.resolve_resume(runtime, output_dir)
-
-        with self.resume_checkpoint_load_env(resume_ckpt):
-            trainer.fit(
-                lightning_module,
-                datamodule=datamodule,
-                ckpt_path=resume_ckpt,
+        artifact_store = self.build_artifact_store(runtime, output_dir)
+        artifact_store.publish_file(output_dir / "config.yaml")
+        try:
+            datamodule = self.build_datamodule(config)
+            steps_per_epoch = self.resolve_steps_per_epoch(
+                config, datamodule, train_loader=None
             )
+            lightning_module = self.build_lightning_module(
+                config, datamodule, steps_per_epoch=steps_per_epoch
+            )
+            self.maybe_load_init_weights(runtime, lightning_module)
+            self.maybe_compile_models(runtime, lightning_module)
 
-        if not self.skip_test(config):
-            trainer.test(lightning_module, datamodule=datamodule)
+            logger = self.build_logger(config, output_dir)
+            callbacks = self.build_callbacks(
+                config,
+                datamodule,
+                logger,
+                artifact_store=artifact_store,
+            )
+            trainer = self.build_trainer(
+                config,
+                callbacks,
+                logger,
+                artifact_store=artifact_store,
+            )
+            resume_ckpt = self.resolve_resume(runtime, output_dir)
+
+            with self.resume_checkpoint_load_env(resume_ckpt):
+                trainer.fit(
+                    lightning_module,
+                    datamodule=datamodule,
+                    ckpt_path=resume_ckpt,
+                )
+
+            if not self.skip_test(config):
+                trainer.test(lightning_module, datamodule=datamodule)
+        except BaseException as training_error:
+            try:
+                artifact_store.sync_tree()
+            except BaseException as sync_error:
+                raise BaseExceptionGroup(
+                    "training and final artifact synchronization both failed",
+                    [training_error, sync_error],
+                ) from training_error
+            raise
+        artifact_store.sync_tree()
 
         print(f"Training complete. Outputs saved to {output_dir}")
 
@@ -114,6 +143,12 @@ class BaseTrainingRunner:
         """Prepare output directory path."""
         output_dir: Path = config.run.output_dir
         return output_dir
+
+    def build_artifact_store(
+        self, config: TrainingRuntimeConfig, output_dir: Path
+    ) -> ArtifactStore:
+        """Construct the selected durability backend for this local run tree."""
+        return build_artifact_store(config.run.artifact_store, local_root=output_dir)
 
     def _gan_enabled(self, config: Any) -> bool:
         runtime = self.validate_runtime_config(config)
@@ -192,13 +227,11 @@ class BaseTrainingRunner:
                 "training.compile.enabled=true requires a BaseLightningModule "
                 "with explicit compilation_targets()."
             )
-        return cast(
-            tuple[str, ...],
-            compile_modules(
-                lightning_module.compilation_targets(),
-                compile_config,
-            ),
+        compiled_targets: tuple[str, ...] = compile_modules(
+            lightning_module.compilation_targets(),
+            compile_config,
         )
+        return compiled_targets
 
     @contextmanager
     def resume_checkpoint_load_env(self, resume_ckpt: str | None) -> Iterator[None]:
@@ -305,7 +338,12 @@ class BaseTrainingRunner:
         )
 
     def build_callbacks(
-        self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
+        self,
+        config: Any,
+        datamodule: pl.LightningDataModule,
+        logger: TensorBoardLogger,
+        *,
+        artifact_store: ArtifactStore | None = None,
     ) -> list[Any]:
         """Build all callbacks from config."""
         callbacks: list[Any] = []
@@ -315,6 +353,15 @@ class BaseTrainingRunner:
 
         # Checkpoint callback (required)
         runtime = self.validate_runtime_config(config)
+        if artifact_store is not None and artifact_store.enabled:
+            interval = runtime.run.artifact_store.sync_interval_seconds
+            if interval is None:
+                raise RuntimeError(
+                    "enabled artifact store has no sync_interval_seconds"
+                )
+            callbacks.append(
+                ArtifactSyncCallback(artifact_store, interval_seconds=interval)
+            )
         checkpoint_cfg = runtime.training.checkpoint
         if checkpoint_cfg.enabled:
             validated_log_dir = runtime.resolver.validate(
@@ -387,7 +434,12 @@ class BaseTrainingRunner:
         return callbacks
 
     def build_trainer(
-        self, config: Any, callbacks: list[Any], logger: TensorBoardLogger
+        self,
+        config: Any,
+        callbacks: list[Any],
+        logger: TensorBoardLogger,
+        *,
+        artifact_store: ArtifactStore | None = None,
     ) -> pl.Trainer:
         """Build PyTorch Lightning Trainer from config."""
         accelerator, devices = self.select_devices(config)
@@ -429,6 +481,8 @@ class BaseTrainingRunner:
         )
         kwargs["enable_progress_bar"] = trainer_cfg.enable_progress_bar
         kwargs["enable_model_summary"] = trainer_cfg.enable_model_summary
+        if artifact_store is not None and artifact_store.enabled:
+            kwargs["plugins"] = [PublishingCheckpointIO(artifact_store)]
 
         return pl.Trainer(**kwargs)
 

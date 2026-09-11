@@ -151,6 +151,17 @@ SLCS_RUN_SCHEMA = _schema(
         "fast_dev_run": ConfigField.of(bool),
         "dry_run": ConfigField.of(bool),
         "test_after_fit": ConfigField.of(bool),
+        "artifact_store": _mapping(
+            _schema(
+                "run.artifact_store",
+                {
+                    "mode": ConfigField.of(str),
+                    "remote": ConfigField.of(str, type(None)),
+                    "remote_root": ConfigField.of(str, type(None)),
+                    "sync_interval_seconds": ConfigField.of(int, type(None)),
+                },
+            )
+        ),
     },
 )
 SLCS_TRAINER_SCHEMA = _schema(

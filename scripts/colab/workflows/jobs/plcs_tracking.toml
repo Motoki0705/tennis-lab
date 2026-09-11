@@ -10,6 +10,7 @@ protected_override_keys = [
   "paths.output_root",
   "data.scene_dir",
   "run.output_dir",
+  "run.artifact_store",
   "run.gpus",
 ]
 outputs = ["outputs/colab/plcs_tracking"]

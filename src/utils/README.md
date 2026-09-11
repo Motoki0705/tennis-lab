@@ -14,6 +14,7 @@
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
+- **`artifact_store/`**: taskやLightningに依存しないlocal artifact treeの永続化契約と、headlessな`RcloneArtifactStore`。credentialはconfig値ではなく呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
 
 ### `configuration/`
 - **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
