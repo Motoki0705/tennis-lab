@@ -9,10 +9,33 @@ from src.tennis_scene.clip_studio.migration import (
     apply_video_clip_migration,
     plan_video_clip_migration,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.video_clip_migration",
+    fields=(
+        BoundaryPathField(
+            "data_root",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+    ),
+)
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--dataset-id", required=True)
     parser.add_argument(
@@ -20,12 +43,24 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Perform the migration. Without this flag, only print the validated plan.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
 
-
-def main() -> int:
-    args = _parse_args()
-    plan = plan_video_clip_migration(args.data_root, args.dataset_id)
+    data_root = args.data_root.expanduser().resolve()
+    roots = RuntimePathRoots(
+        project_root=data_root.parent,
+        data_root=data_root,
+        checkpoint_root=data_root,
+        artifact_root=data_root,
+        output_root=data_root,
+        cache_root=data_root,
+        external_asset_root=data_root,
+    )
+    paths = PATH_BOUNDARY.validate(
+        {"data_root": data_root}, resolver=PathResolver(roots)
+    )
+    plan = plan_video_clip_migration(
+        paths.declared("data_root").path, args.dataset_id
+    )
     for video in plan.videos:
         print(f"{video.raw_directory} -> {plan.raw_dataset_directory / video.video_id}")
     print(f"processed -> {plan.processed_directory}")
