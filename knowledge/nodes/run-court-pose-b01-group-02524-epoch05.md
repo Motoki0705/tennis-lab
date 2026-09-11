@@ -26,7 +26,7 @@ metrics:
   inference_seconds_mean: 0.4416888580253726
   peak_rss_bytes: 3009228800
 repro:
-  commit: ec54c5d8d246c5ce6bf45eee5e02dcfe28277792
+  commit: 7f2d909c
   branch: codex/court-pose-predictor
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash knowledge/runs/run-court-pose-b01-group-02524-epoch05/repro.sh
@@ -38,7 +38,8 @@ artifacts:
   runtime_config: knowledge/runs/run-court-pose-b01-group-02524-epoch05/config.yaml
   source_checkpoint: outputs/court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0/checkpoints/court-detection-epoch=05.ckpt
   log: .training_queue/logs/1789052279895515108_1993066_court_mixed_pose_lora_b8_e20_s42.log
-parents: []
+parents:
+- run-court-mixed-pose-lora-b8-e20-s42
 relations: []
 tags:
 - court-detection
