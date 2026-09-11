@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0/checkpoints

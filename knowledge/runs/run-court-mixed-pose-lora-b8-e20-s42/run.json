@@ -1,0 +1,16 @@
+{
+  "run_id": "1789052279895515108_1993066_court_mixed_pose_lora_b8_e20_s42",
+  "name": "court_mixed_pose_lora_b8_e20_s42",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.court_detection.scripts.train_mixed training=lora data.batch_size=8 mixed.train_batch_counts.synthetic_court=4 mixed.train_batch_counts.tennis_court_detector=4 run.test_after_fit=true run.output_dir=court_detection/mixed-source/dense-pose-lora-b8-e20-s42",
+  "provider": "codex",
+  "session": "01a06e82-4115-7af1-b52d-c011c61cfa56",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "379b5a66dd5ce756a29c5dd3f398b448b9526694",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-09-10T23:58:00+09:00"
+}
