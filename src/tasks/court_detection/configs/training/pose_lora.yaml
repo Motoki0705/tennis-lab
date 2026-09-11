@@ -1,0 +1,9 @@
+defaults:
+  - default
+  - _lora
+  - _self_
+
+# Select best checkpoints by the direct camera-pose objective. The independent
+# last-state callback still writes last.ckpt after every training epoch.
+checkpoint:
+  monitor: val/loss_direct_pose
