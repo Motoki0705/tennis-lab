@@ -12,18 +12,19 @@ concurrency:
 
 jobs:
   lint-and-test:
-    name: Python / ${{ matrix.lane }}
+    name: Python / shard-${{ matrix.shard }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Keep two workers per shard; native libraries use one thread each.
+      PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - lane: remainder
-            install_system_dependencies: true
-          - lane: long-tail
-            install_system_dependencies: false
-          - lane: scene-pipeline
-            install_system_dependencies: false
+        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -35,20 +36,43 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
+          prune-cache: false
+          cache-dependency-glob: uv.lock
+          cache-suffix: cpu
+
+      - name: Install locked CPU environment
+        run: uv sync --locked --no-group gpu --group cpu
+
+      - name: Verify CPU backend
+        run: |
+          .venv/bin/python - <<'PY'
+          import torch
+          import torchvision
+          assert torch.version.cuda is None, torch.__version__
+          print(f"torch={torch.__version__}, torchvision={torchvision.__version__}")
+          PY
 
       - name: Install system dependencies
-        if: matrix.install_system_dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg rclone
 
-      - name: Project checks for ${{ matrix.lane }} lane
-        run: uv run --locked spin ci --lane "${{ matrix.lane }}"
+      - name: Project checks for shard ${{ matrix.shard }}
+        run: .venv/bin/python -m spin ci --shard "${{ matrix.shard }}" --shards "${{ strategy.job-total }}"
+
+      - name: Upload test results and timings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-shard-${{ matrix.shard }}
+          path: artifacts/ci/shard-${{ matrix.shard }}/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Validate formal knowledge
-        if: matrix.lane == 'remainder'
+        if: matrix.shard == 1
         run: |
-          uv run --locked python \
+          .venv/bin/python \
             .agents/skills/knowledge-control/scripts/kg_validate.py
 
   knowledge-webui:
