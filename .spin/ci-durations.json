@@ -39,7 +39,6 @@
     "tests/integration/synthetic_data_generation/test_blcs_dataset.py": 0.448,
     "tests/integration/synthetic_data_generation/test_blcs_mesh_rendering.py": 0.037,
     "tests/integration/synthetic_data_generation/test_configuration.py": 0.0,
-    "tests/integration/synthetic_data_generation/test_court_dataset.py": 518.075,
     "tests/integration/synthetic_data_generation/test_cross_domain_cpu.py": 0.014,
     "tests/integration/synthetic_data_generation/test_dataset_performance.py": 0.425,
     "tests/integration/synthetic_data_generation/test_dataset_visualization.py": 0.167,

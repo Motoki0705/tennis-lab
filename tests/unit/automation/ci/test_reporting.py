@@ -85,9 +85,10 @@ def test_junit_sums_parameterized_cases_and_rejects_unassigned_files(
 
 
 def _reports(tmp_path: Path) -> tuple[Path, Path]:
-    excluded = tmp_path / next(iter(CI_EXCLUDED_FILES))
-    excluded.parent.mkdir(parents=True)
-    excluded.touch()
+    for name in CI_EXCLUDED_FILES:
+        excluded = tmp_path / name
+        excluded.parent.mkdir(parents=True, exist_ok=True)
+        excluded.touch()
     root = tmp_path / "reports"
     for index in (1, 2):
         name = f"tests/test_{index}.py"

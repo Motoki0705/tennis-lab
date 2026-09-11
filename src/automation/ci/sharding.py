@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 CI_EXCLUDED_FILES = {
+    "tests/integration/synthetic_data_generation/test_court_dataset.py": "Long court dataset generation integration; run explicitly with spin test.",
     "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py": "Long scene generation/recovery integration; run explicitly with spin test.",
 }
 DEFAULT_FILE_SECONDS = 1.0
