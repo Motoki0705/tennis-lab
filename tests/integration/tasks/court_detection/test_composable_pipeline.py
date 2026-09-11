@@ -438,6 +438,7 @@ def _compose_mixed(tmp_path: Path) -> DictConfig:
             config_name="train_mixed",
             overrides=[
                 "data/augmentation=pose_safe",
+                "loss=default",
                 "model/encoder=default",
                 "model/transformer_encoder=none",
                 "model/decoder=fpn",
