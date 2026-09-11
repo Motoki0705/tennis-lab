@@ -1,4 +1,4 @@
-name: Expanded Commons tennis video inventory
+name: Probe TennisVL public archive
 
 on:
   push:
@@ -9,157 +9,129 @@ permissions:
   contents: read
 
 jobs:
-  inventory:
+  probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 15
     steps:
-      - name: Search Commons by tennis players, events, and actions
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install probe dependencies
+        run: python -m pip install --upgrade requests beautifulsoup4 gdown remotezip
+
+      - name: Probe Drive archive without downloading it
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/commons-expanded
-          cat > /tmp/commons_expanded.py <<'PY'
+          mkdir -p artifacts/tennisvl-probe
+          cat > /tmp/probe_drive.py <<'PY'
           from __future__ import annotations
 
-          import collections
-          import html
           import json
-          import random
           import re
-          import time
-          import urllib.error
           import urllib.parse
-          import urllib.request
           from pathlib import Path
 
-          API = "https://commons.wikimedia.org/w/api.php"
-          HEADERS = {"User-Agent": "tennis-video-survey/2.0 (research dataset curation; Motoki0705/tennis-lab)"}
-          OUT = Path("artifacts/commons-expanded")
-          TERMS = [
-              "tennis", "tennis match", "tennis rally", "tennis practice", "tennis training",
-              "tennis serve", "tennis forehand", "tennis backhand", "tennis ball", "wheelchair tennis",
-              "ATP tennis", "WTA tennis", "Davis Cup tennis", "Billie Jean King Cup tennis",
-              "US Open tennis", "Wimbledon tennis", "Roland Garros tennis", "French Open tennis",
-              "Australian Open tennis", "Olympic tennis",
-              "Roger Federer tennis", "Rafael Nadal tennis", "Novak Djokovic tennis", "Andy Murray tennis",
-              "Serena Williams tennis", "Venus Williams tennis", "Naomi Osaka tennis", "Kei Nishikori tennis",
-              "Carlos Alcaraz tennis", "Jannik Sinner tennis", "Iga Swiatek tennis", "Coco Gauff tennis",
-              "Aryna Sabalenka tennis", "Daniil Medvedev tennis", "Alexander Zverev tennis",
-              "Stefanos Tsitsipas tennis", "Dominic Thiem tennis", "Stan Wawrinka tennis",
-              "Maria Sharapova tennis", "Steffi Graf tennis", "Andre Agassi tennis", "Monica Seles tennis",
-              "Martina Navratilova tennis", "Suzanne Lenglen tennis",
+          import requests
+          from bs4 import BeautifulSoup
+
+          FILE_ID = "1tGdYvJxKKLIMByrNj_5D56cr-n_u1Syc"
+          OUT = Path("artifacts/tennisvl-probe")
+          session = requests.Session()
+          session.headers.update({
+              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/octet-stream;q=0.9,*/*;q=0.8",
+          })
+
+          def safe_headers(response: requests.Response) -> dict[str, str]:
+              keep = {
+                  "content-type", "content-length", "content-range", "accept-ranges",
+                  "content-disposition", "x-goog-stored-content-length", "x-goog-hash",
+                  "etag", "last-modified", "server",
+              }
+              return {k: v for k, v in response.headers.items() if k.lower() in keep}
+
+          def summarize(label: str, response: requests.Response) -> dict:
+              return {
+                  "label": label,
+                  "status": response.status_code,
+                  "final_url_origin_path": urllib.parse.urlsplit(response.url)._replace(query="", fragment="").geturl(),
+                  "headers": safe_headers(response),
+                  "cookies": sorted(session.cookies.keys()),
+              }
+
+          results: list[dict] = []
+          candidates = [
+              f"https://drive.usercontent.google.com/download?id={FILE_ID}&export=download&confirm=t",
+              f"https://drive.google.com/uc?export=download&id={FILE_ID}&confirm=t",
+              f"https://docs.google.com/uc?export=download&id={FILE_ID}&confirm=t",
           ]
-
-          def fetch(params: dict, attempts: int = 8) -> dict:
-              params = dict(params)
-              params.update({"format": "json", "formatversion": "2", "maxlag": "5"})
-              url = API + "?" + urllib.parse.urlencode(params)
-              last = None
-              for attempt in range(attempts):
-                  try:
-                      req = urllib.request.Request(url, headers=HEADERS)
-                      with urllib.request.urlopen(req, timeout=75) as response:
-                          return json.load(response)
-                  except urllib.error.HTTPError as exc:
-                      last = exc
-                      if exc.code not in {429, 500, 502, 503, 504}:
-                          raise
-                      retry = exc.headers.get("Retry-After")
-                      delay = float(retry) if retry and retry.isdigit() else min(90.0, 7.0 * 2**attempt)
-                      print(f"retry HTTP {exc.code}: {delay:.1f}s", flush=True)
-                      time.sleep(delay + random.random())
-                  except Exception as exc:
-                      last = exc
-                      delay = min(60.0, 5.0 * 2**attempt)
-                      print(f"retry {type(exc).__name__}: {exc}: {delay:.1f}s", flush=True)
-                      time.sleep(delay + random.random())
-              raise RuntimeError(f"request failed after retries: {last}")
-
-          def clean(value: object) -> str:
-              text = html.unescape(str(value or ""))
-              text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
-              text = re.sub(r"<[^>]+>", " ", text)
-              return re.sub(r"\s+", " ", text).strip()
-
-          rows: dict[int, dict] = {}
-          log: list[dict] = []
-          for index, term in enumerate(TERMS, 1):
-              query = f'"{term}" filetype:video'
-              print(f"QUERY {index}/{len(TERMS)} {query}", flush=True)
+          working_url = None
+          for idx, url in enumerate(candidates, 1):
               try:
-                  data = fetch({
-                      "action": "query", "generator": "search", "gsrsearch": query,
-                      "gsrnamespace": "6", "gsrlimit": "500",
-                      "prop": "imageinfo|categories",
-                      "iiprop": "url|size|mime|mediatype|extmetadata|derivatives",
-                      "cllimit": "500",
-                  })
-                  pages = (data.get("query") or {}).get("pages") or []
-                  video_count = 0
-                  for page in pages:
-                      ii = (page.get("imageinfo") or [{}])[0]
-                      mime = str(ii.get("mime") or "")
-                      if not mime.startswith("video/"):
-                          continue
-                      video_count += 1
-                      pageid = int(page["pageid"])
-                      ext = ii.get("extmetadata") or {}
-                      def meta(name: str) -> str:
-                          return clean((ext.get(name) or {}).get("value"))
-                      derivatives = []
-                      for derivative in ii.get("derivatives") or []:
-                          derivatives.append({k: derivative.get(k) for k in (
-                              "src", "type", "width", "height", "bandwidth", "transcodekey",
-                          )})
-                      row = rows.setdefault(pageid, {
-                          "pageid": pageid,
-                          "title": page.get("title"),
-                          "page_url": ii.get("descriptionurl"),
-                          "media_url": str(ii.get("url") or "").split("?", 1)[0],
-                          "mime": mime, "width": ii.get("width"), "height": ii.get("height"),
-                          "size_bytes": ii.get("size"),
-                          "license": meta("LicenseShortName") or meta("UsageTerms"),
-                          "license_url": meta("LicenseUrl"), "artist": meta("Artist"),
-                          "credit": meta("Credit"), "description": meta("ImageDescription"),
-                          "date_time_original": meta("DateTimeOriginal"),
-                          "categories": sorted(str(c.get("title") or "").removeprefix("Category:") for c in (page.get("categories") or [])),
-                          "derivatives": derivatives, "search_terms": [],
-                      })
-                      if term not in row["search_terms"]:
-                          row["search_terms"].append(term)
-                  log.append({"term": term, "returned_pages": len(pages), "videos": video_count, "status": "success"})
-                  print(f"  pages={len(pages)} videos={video_count} unique={len(rows)}", flush=True)
+                  response = session.get(url, headers={"Range": "bytes=0-0"}, stream=True, timeout=90, allow_redirects=True)
+                  results.append(summarize(f"direct_{idx}", response))
+                  ctype = response.headers.get("Content-Type", "").lower()
+                  if response.status_code == 206 or (
+                      response.status_code == 200 and "application" in ctype and "text/html" not in ctype
+                  ):
+                      working_url = response.url
+                      response.close()
+                      break
+                  body = response.raw.read(200_000, decode_content=True)
+                  response.close()
+                  (OUT / f"direct_{idx}_body.bin").write_bytes(body)
+                  if "html" in ctype or body.lstrip().startswith(b"<"):
+                      soup = BeautifulSoup(body, "html.parser")
+                      form = soup.find("form")
+                      if form and form.get("action"):
+                          action = urllib.parse.urljoin(response.url, form.get("action"))
+                          params = {
+                              inp.get("name"): inp.get("value", "")
+                              for inp in form.find_all("input")
+                              if inp.get("name")
+                          }
+                          follow = session.get(action, params=params, headers={"Range": "bytes=0-0"}, stream=True, timeout=90, allow_redirects=True)
+                          results.append(summarize(f"form_{idx}", follow))
+                          follow_ctype = follow.headers.get("Content-Type", "").lower()
+                          if follow.status_code == 206 or (
+                              follow.status_code == 200 and "application" in follow_ctype and "text/html" not in follow_ctype
+                          ):
+                              working_url = follow.url
+                              follow.close()
+                              break
+                          follow_body = follow.raw.read(200_000, decode_content=True)
+                          (OUT / f"form_{idx}_body.bin").write_bytes(follow_body)
+                          follow.close()
               except Exception as exc:
-                  log.append({"term": term, "status": "failed", "error": f"{type(exc).__name__}: {exc}"})
-                  print(f"  FAILED {type(exc).__name__}: {exc}", flush=True)
-              json.dump(sorted(rows.values(), key=lambda r: r["pageid"]), open(OUT / "candidates.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-              json.dump(log, open(OUT / "query_log.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-              time.sleep(3.5 + random.random())
+                  results.append({"label": f"direct_{idx}", "error": f"{type(exc).__name__}: {exc}"})
 
-          candidates = sorted(rows.values(), key=lambda r: (r["title"] or "").casefold())
-          json.dump(candidates, open(OUT / "candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          json.dump(log, open(OUT / "query_log.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          license_counts = collections.Counter((r["license"] or "UNKNOWN") for r in candidates)
-          summary = {
-              "unique_video_files": len(candidates),
-              "successful_queries": sum(x["status"] == "success" for x in log),
-              "failed_queries": sum(x["status"] == "failed" for x in log),
-              "license_counts": dict(license_counts.most_common()),
-          }
-          json.dump(summary, open(OUT / "summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          print(json.dumps(summary, ensure_ascii=False, indent=2))
-          for row in candidates:
-              print(json.dumps({k: row.get(k) for k in ("pageid", "title", "width", "height", "size_bytes", "license", "search_terms")}, ensure_ascii=False))
-          if len(candidates) < 130:
-              raise SystemExit(f"Only {len(candidates)} candidates found")
+          result = {"file_id": FILE_ID, "probes": results, "working": bool(working_url)}
+          if working_url:
+              parsed = urllib.parse.urlsplit(working_url)
+              result["working_url_origin_path"] = parsed._replace(query="", fragment="").geturl()
+              # Never persist the signed URL itself; only test suffix range access.
+              suffix = session.get(working_url, headers={"Range": "bytes=-65536"}, stream=True, timeout=120, allow_redirects=True)
+              result["suffix_probe"] = summarize("suffix", suffix)
+              suffix_bytes = suffix.content
+              suffix.close()
+              (OUT / "zip_suffix.bin").write_bytes(suffix_bytes)
+              result["suffix_bytes"] = len(suffix_bytes)
+              result["has_zip_eocd_signature"] = b"PK\x05\x06" in suffix_bytes
+          json.dump(result, open(OUT / "probe.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          if not working_url:
+              raise SystemExit("No byte-range-capable download response was obtained")
           PY
-          python /tmp/commons_expanded.py | tee artifacts/commons-expanded/inventory.log
+          python /tmp/probe_drive.py | tee artifacts/tennisvl-probe/probe.log
 
-      - name: Upload expanded inventory
+      - name: Upload probe evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-commons-expanded
-          path: artifacts/commons-expanded/
+          name: tennisvl-archive-probe
+          path: artifacts/tennisvl-probe/
           if-no-files-found: error
           retention-days: 7
