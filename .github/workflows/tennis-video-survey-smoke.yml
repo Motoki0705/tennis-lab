@@ -11,7 +11,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -23,60 +23,121 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "yt-dlp[default,curl-cffi]"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg jq
+          sudo apt-get install -y --no-install-recommends ffmpeg
           yt-dlp --version
           ffmpeg -version | head -1
 
-      - name: Resolve a public stream through Piped
+      - name: Resolve public stream through Invidious
         id: resolve
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           mkdir -p artifacts/smoke
-          VIDEO_ID="HvZDFZ2FmvI"
-          instances=(
-            "https://pipedapi.kavin.rocks"
-            "https://pipedapi-libre.kavin.rocks"
-            "https://pipedapi.leptons.xyz"
-            "https://pipedapi.nosebs.ru"
-            "https://piped-api.privacy.com.de"
-            "https://pipedapi.adminforge.de"
-            "https://api.piped.yt"
-            "https://pipedapi.drgns.space"
-            "https://pipedapi.owo.si"
-            "https://pipedapi.ducks.party"
-            "https://piped-api.codespace.cz"
-            "https://pipedapi.reallyaweso.me"
-            "https://api.piped.private.coffee"
-            "https://pipedapi.darkness.services"
-            "https://pipedapi.orangenet.cc"
-          )
-          : > artifacts/smoke/piped-attempts.log
-          for api in "${instances[@]}"; do
-            echo "TRY $api" | tee -a artifacts/smoke/piped-attempts.log
-            status="$(curl -L --compressed --connect-timeout 8 --max-time 35 \
-              -A 'Mozilla/5.0' -sS -w '%{http_code}' \
-              -o artifacts/smoke/piped-candidate.json \
-              "$api/streams/$VIDEO_ID" 2>> artifacts/smoke/piped-attempts.log || true)"
-            bytes="$(wc -c < artifacts/smoke/piped-candidate.json 2>/dev/null || echo 0)"
-            echo "HTTP $status bytes=$bytes" | tee -a artifacts/smoke/piped-attempts.log
-            if [[ "$status" == "200" ]] && jq -e '.videoStreams | length > 0' artifacts/smoke/piped-candidate.json >/dev/null 2>&1; then
-              cp artifacts/smoke/piped-candidate.json artifacts/smoke/piped.json
-              printf '%s\n' "$api" > artifacts/smoke/piped-instance.txt
-              break
-            fi
-          done
-          test -s artifacts/smoke/piped.json
-          jq -r '
-            ([.videoStreams[] | select(.url != null and (.videoOnly == false) and ((.height // 99999) <= 360))] | sort_by(.height, .bitrate) | last)
-            // ([.videoStreams[] | select(.url != null)] | sort_by(.height, .bitrate) | first)
-            | .url
-          ' artifacts/smoke/piped.json > artifacts/smoke/stream-url.txt
-          test -s artifacts/smoke/stream-url.txt
-          jq '{title, duration, uploadDate, uploader, thumbnailUrl, stream_count: (.videoStreams | length)}' \
-            artifacts/smoke/piped.json > artifacts/smoke/piped-summary.json
-          cat artifacts/smoke/piped-summary.json
+          python - <<'PY' 2>&1 | tee artifacts/smoke/invidious-attempts.log
+          from __future__ import annotations
+
+          import json
+          import socket
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          video_id = "HvZDFZ2FmvI"
+          out = Path("artifacts/smoke")
+          headers = {
+              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+              "Accept": "application/json,text/plain,*/*",
+          }
+
+          def fetch_json(url: str, timeout: float = 20.0):
+              req = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(req, timeout=timeout) as response:
+                  return json.load(response)
+
+          candidates: list[str] = []
+          try:
+              rows = fetch_json("https://api.invidious.io/instances.json?sort_by=health", timeout=25)
+              for host, meta in rows:
+                  details = meta.get("details") or {}
+                  uri = details.get("uri")
+                  if details.get("api") and isinstance(uri, str) and uri.startswith("https://"):
+                      candidates.append(uri.rstrip("/"))
+              print(f"Central registry returned {len(candidates)} API-enabled HTTPS instances")
+          except Exception as exc:
+              print(f"Central registry failed: {type(exc).__name__}: {exc}")
+
+          candidates.extend([
+              "https://yewtu.be",
+              "https://inv.nadeko.net",
+              "https://invidious.private.coffee",
+              "https://invidious.nerdvpn.de",
+              "https://inv.us.projectsegfau.lt",
+              "https://invidious.projectsegfau.lt",
+              "https://invidious.perennialte.ch",
+              "https://invidious.protokolla.fi",
+              "https://invidious.0011.lt",
+              "https://iv.ggtyler.dev",
+              "https://invidious.materialio.us",
+              "https://invidious.privacyredirect.com",
+              "https://inv.tux.pizza",
+              "https://invidious.flokinet.to",
+          ])
+          candidates = list(dict.fromkeys(candidates))
+
+          selected = None
+          selected_base = None
+          errors: list[dict[str, str]] = []
+          for base in candidates[:60]:
+              url = f"{base}/api/v1/videos/{video_id}?local=true"
+              print(f"TRY {url}", flush=True)
+              try:
+                  data = fetch_json(url)
+                  streams = list(data.get("formatStreams") or []) + list(data.get("adaptiveFormats") or [])
+                  usable = [s for s in streams if isinstance(s, dict) and s.get("url")]
+                  if not usable:
+                      raise RuntimeError(data.get("error") or "no stream URLs")
+                  selected = data
+                  selected_base = base
+                  print(f"OK {base}: {len(usable)} usable streams")
+                  break
+              except Exception as exc:
+                  msg = f"{type(exc).__name__}: {exc}"
+                  errors.append({"base": base, "error": msg})
+                  print(f"FAIL {base}: {msg}")
+
+          json.dump(errors, open(out / "invidious-errors.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          if selected is None or selected_base is None:
+              raise SystemExit("No Invidious instance returned a usable stream")
+
+          streams = list(selected.get("formatStreams") or []) + list(selected.get("adaptiveFormats") or [])
+          usable = [s for s in streams if isinstance(s, dict) and s.get("url")]
+          muxed = [s for s in usable if s in (selected.get("formatStreams") or [])]
+          under = [s for s in muxed if isinstance(s.get("height"), int) and s["height"] <= 360]
+          pool = under or muxed or usable
+          pool.sort(key=lambda s: (s.get("height") or 99999, s.get("bitrate") or 10**18))
+          chosen = pool[-1] if under else pool[0]
+          stream_url = str(chosen["url"])
+          if stream_url.startswith("/"):
+              stream_url = urllib.parse.urljoin(selected_base + "/", stream_url.lstrip("/"))
+          (out / "stream-url.txt").write_text(stream_url, encoding="utf-8")
+          (out / "invidious-instance.txt").write_text(selected_base + "\n", encoding="utf-8")
+          summary = {
+              "video_id": video_id,
+              "title": selected.get("title"),
+              "length_seconds": selected.get("lengthSeconds"),
+              "author": selected.get("author"),
+              "published": selected.get("published"),
+              "instance": selected_base,
+              "chosen_stream": {
+                  key: chosen.get(key)
+                  for key in ("itag", "type", "quality", "qualityLabel", "width", "height", "fps", "container", "encoding", "audioQuality")
+              },
+          }
+          json.dump(summary, open(out / "invidious-summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          PY
 
       - name: Download six seconds with yt-dlp Generic extractor
         id: download
@@ -85,14 +146,15 @@ jobs:
         run: |
           set -o pipefail
           if [[ ! -s artifacts/smoke/stream-url.txt ]]; then
-            echo 'No Piped stream URL was resolved.' | tee artifacts/smoke/yt-dlp.log
+            echo 'No Invidious stream URL was resolved.' | tee artifacts/smoke/yt-dlp.log
             exit 1
           fi
           STREAM_URL="$(cat artifacts/smoke/stream-url.txt)"
+          REFERER="$(cat artifacts/smoke/invidious-instance.txt)"
           yt-dlp \
             --verbose \
             --impersonate chrome \
-            --referer "https://piped.video/" \
+            --referer "$REFERER/" \
             --download-sections "*00:00:00-00:00:06" \
             --force-keyframes-at-cuts \
             --downloader ffmpeg \
@@ -114,13 +176,13 @@ jobs:
             printf '%s\n' 'No downloaded video was available for frame extraction.' > artifacts/smoke/no-video.txt
           fi
           find artifacts/smoke -maxdepth 1 -type f -printf '%f\t%s bytes\n' | sort > artifacts/smoke/files.txt
-          rm -f artifacts/smoke/stream-url.txt artifacts/smoke/piped-candidate.json
+          rm -f artifacts/smoke/stream-url.txt
 
       - name: Upload smoke-test evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-smoke-piped
+          name: tennis-video-survey-smoke-invidious
           path: artifacts/smoke/
           if-no-files-found: error
           retention-days: 7
