@@ -9,202 +9,61 @@ permissions:
   contents: read
 
 jobs:
-  commons-smoke:
+  discover-categories:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Install yt-dlp and ffmpeg
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "yt-dlp[default,curl-cffi]"
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
-          yt-dlp --version
-          ffmpeg -version | head -1
-
-      - name: Discover five open-license tennis videos
+      - name: Discover Wikimedia Commons tennis categories
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/commons-smoke
-          cat > /tmp/discover.py <<'PY'
+          mkdir -p artifacts/category-discovery
+          cat > /tmp/discover_categories.py <<'PY'
           from __future__ import annotations
 
-          import csv
-          import html
           import json
-          import re
           import urllib.parse
           import urllib.request
           from pathlib import Path
 
           API = "https://commons.wikimedia.org/w/api.php"
-          SEARCHES = [
-              "tennis match filetype:video",
-              "tennis serve filetype:video",
-              "tennis practice filetype:video",
-              "wheelchair tennis filetype:video",
-              "tennis doubles filetype:video",
-              "tennis ball filetype:video",
-          ]
-          headers = {"User-Agent": "tennis-video-survey/1.0 (research dataset curation)"}
-          rows: dict[int, dict] = {}
-          for term in SEARCHES:
-              params = {
-                  "action": "query",
-                  "generator": "search",
-                  "gsrsearch": term,
-                  "gsrnamespace": "6",
-                  "gsrlimit": "100",
-                  "prop": "imageinfo|categories",
-                  "iiprop": "url|size|mime|extmetadata",
-                  "cllimit": "max",
-                  "format": "json",
-                  "formatversion": "2",
-                  "origin": "*",
-              }
+          HEADERS = {"User-Agent": "tennis-video-survey/1.0 (research dataset curation)"}
+
+          def request(params):
               url = API + "?" + urllib.parse.urlencode(params)
-              req = urllib.request.Request(url, headers=headers)
+              req = urllib.request.Request(url, headers=HEADERS)
               with urllib.request.urlopen(req, timeout=45) as response:
-                  data = json.load(response)
-              for page in (data.get("query") or {}).get("pages", []):
-                  ii = (page.get("imageinfo") or [{}])[0]
-                  mime = str(ii.get("mime") or "")
-                  if not mime.startswith("video/"):
-                      continue
-                  title = str(page.get("title") or "")
-                  cats = [str(c.get("title") or "") for c in page.get("categories") or []]
-                  haystack = (title + " " + " ".join(cats)).lower()
-                  if any(x in haystack for x in ("table tennis", "ping pong", "badminton", "video game")):
-                      continue
-                  ext = ii.get("extmetadata") or {}
-                  def value(name: str) -> str:
-                      raw = str((ext.get(name) or {}).get("value") or "")
-                      return re.sub(r"<[^>]+>", " ", html.unescape(raw)).strip()
-                  rows[int(page["pageid"])] = {
-                      "pageid": page["pageid"],
-                      "title": title,
-                      "page_url": ii.get("descriptionurl"),
-                      "media_url": ii.get("url"),
-                      "mime": mime,
-                      "width": ii.get("width"),
-                      "height": ii.get("height"),
-                      "size_bytes": ii.get("size"),
-                      "license": value("LicenseShortName") or value("UsageTerms"),
-                      "license_url": value("LicenseUrl"),
-                      "artist": value("Artist"),
-                      "description": value("ImageDescription"),
-                      "categories": cats,
-                      "search_terms": [term],
-                  }
-          selected = sorted(rows.values(), key=lambda r: (r.get("size_bytes") or 10**18, r["title"]))[:5]
-          out = Path("artifacts/commons-smoke")
-          json.dump(selected, open(out / "manifest.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          with open(out / "manifest.csv", "w", newline="", encoding="utf-8") as f:
-              writer = csv.DictWriter(f, fieldnames=[
-                  "pageid", "title", "page_url", "media_url", "mime", "width", "height",
-                  "size_bytes", "license", "license_url", "artist", "description",
-              ])
-              writer.writeheader()
-              for row in selected:
-                  writer.writerow({k: row.get(k) for k in writer.fieldnames})
-          print(f"discovered={len(rows)} selected={len(selected)}")
-          for i, row in enumerate(selected, 1):
-              print(i, row["title"], row["mime"], row["size_bytes"], row["license"])
-          if len(selected) < 5:
-              raise SystemExit("Fewer than five usable Commons videos found")
+                  return json.load(response)
+
+          output = {}
+          output["allcategories"] = request({
+              "action": "query", "list": "allcategories", "acprefix": "Tennis",
+              "aclimit": "500", "acprop": "size", "format": "json", "formatversion": "2",
+          }).get("query", {}).get("allcategories", [])
+          output["category_search"] = request({
+              "action": "query", "list": "search", "srnamespace": "14",
+              "srsearch": "tennis video OR videos", "srlimit": "500",
+              "format": "json", "formatversion": "2",
+          }).get("query", {}).get("search", [])
+          output["file_search"] = request({
+              "action": "query", "list": "search", "srnamespace": "6",
+              "srsearch": "tennis incategory:Videos filetype:video",
+              "srlimit": "100", "format": "json", "formatversion": "2",
+          }).get("query", {}).get("search", [])
+          path = Path("artifacts/category-discovery/categories.json")
+          json.dump(output, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          for row in output["allcategories"]:
+              print("ALLCATEGORY", json.dumps(row, ensure_ascii=False))
+          for row in output["category_search"]:
+              print("SEARCH", row.get("title"))
+          print("file_search_count", len(output["file_search"]))
           PY
-          python /tmp/discover.py | tee artifacts/commons-smoke/discovery.log
+          python /tmp/discover_categories.py | tee artifacts/category-discovery/categories.log
 
-      - name: Download middle clips with yt-dlp and extract frames
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > /tmp/sample.py <<'PY'
-          from __future__ import annotations
-
-          import json
-          import math
-          import pathlib
-          import subprocess
-          import sys
-          import time
-
-          root = pathlib.Path("artifacts/commons-smoke")
-          rows = json.load(open(root / "manifest.json", encoding="utf-8"))
-          results = []
-          for index, row in enumerate(rows, 1):
-              item = root / f"item_{index:03d}"
-              item.mkdir(parents=True, exist_ok=True)
-              url = row["media_url"]
-              status = {"index": index, "title": row["title"], "media_url": url}
-              try:
-                  probe = subprocess.run(
-                      ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", url],
-                      check=True, text=True, capture_output=True, timeout=90,
-                  )
-                  duration = float(probe.stdout.strip())
-                  start = max(0.0, min(duration * 0.45, max(0.0, duration - 6.0)))
-                  end = min(duration, start + 6.0)
-                  status.update({"duration_seconds": duration, "sample_start_seconds": start, "sample_end_seconds": end})
-                  output_template = str(item / "sample.%(ext)s")
-                  cmd = [
-                      "yt-dlp", "--verbose", "--no-playlist", "--impersonate", "chrome",
-                      "--downloader", "ffmpeg", "--download-sections", f"*{start:.3f}-{end:.3f}",
-                      "--force-keyframes-at-cuts", "--merge-output-format", "mp4",
-                      "-o", output_template, url,
-                  ]
-                  with open(item / "yt-dlp.log", "w", encoding="utf-8") as log:
-                      proc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, text=True, timeout=180)
-                  if proc.returncode != 0:
-                      raise RuntimeError(f"yt-dlp returned {proc.returncode}")
-                  videos = sorted(p for p in item.iterdir() if p.suffix.lower() in {".mp4", ".webm", ".ogv", ".mkv"})
-                  if not videos:
-                      raise RuntimeError("yt-dlp produced no video file")
-                  video = videos[0]
-                  subprocess.run([
-                      "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(video),
-                      "-vf", "fps=0.67,scale=640:-2", str(item / "frame_%02d.jpg"),
-                  ], check=True, timeout=90)
-                  frames = sorted(item.glob("frame_*.jpg"))
-                  status.update({"download_status": "success", "sample_file": video.name, "sample_bytes": video.stat().st_size, "frame_count": len(frames)})
-              except Exception as exc:
-                  status.update({"download_status": "failed", "error": f"{type(exc).__name__}: {exc}", "frame_count": 0})
-              json.dump(status, open(item / "result.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-              results.append(status)
-              print(json.dumps(status, ensure_ascii=False), flush=True)
-          json.dump(results, open(root / "results.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          successes = sum(r.get("download_status") == "success" for r in results)
-          print(f"successes={successes}/{len(results)}")
-          if successes == 0:
-              raise SystemExit("No Commons videos were downloaded")
-          PY
-          python /tmp/sample.py | tee artifacts/commons-smoke/sampling.log
-
-      - name: Create contact sheet and remove sample videos
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          mapfile -t frames < <(find artifacts/commons-smoke -type f -name 'frame_*.jpg' | sort)
-          if (( ${#frames[@]} > 0 )); then
-            printf "file '%s'\n" "${frames[@]}" > /tmp/frames.txt
-            montage "${frames[@]}" -thumbnail '320x180>' -tile 5x -geometry +4+24 \
-              artifacts/commons-smoke/contact_sheet.jpg 2>/dev/null || true
-          fi
-          find artifacts/commons-smoke -type f \( -name '*.mp4' -o -name '*.webm' -o -name '*.ogv' -o -name '*.mkv' \) -delete
-          find artifacts/commons-smoke -type f -printf '%P\t%s bytes\n' | sort > artifacts/commons-smoke/files.txt
-
-      - name: Upload evidence
-        if: always()
+      - name: Upload discovery evidence
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-commons-smoke
-          path: artifacts/commons-smoke/
+          name: tennis-video-survey-category-discovery
+          path: artifacts/category-discovery/
           if-no-files-found: error
           retention-days: 7
