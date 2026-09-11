@@ -14,6 +14,10 @@ from src.tasks.court_detection.data.contracts import CourtInstance2D
 from src.tasks.court_detection.data.target_generation.rasterization import (
     CourtPlaneRasterizer,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    line_target_definition,
+)
 from src.utils.schema.court import (
     CENTER_MARK_LENGTH,
     COURT_SKELETON,
@@ -25,8 +29,9 @@ from src.utils.schema.court import (
 Float32Array: TypeAlias = NDArray[np.float32]
 UInt8Array: TypeAlias = NDArray[np.uint8]
 
-DEFAULT_LINE_WIDTH_METRES = 0.05
-DEFAULT_BASELINE_WIDTH_METRES = 0.10
+_DEFAULT_DEFINITION = line_target_definition(LINE_TARGET_SCHEMA)
+DEFAULT_LINE_WIDTH_METRES = _DEFAULT_DEFINITION.line_width_metres
+DEFAULT_BASELINE_WIDTH_METRES = _DEFAULT_DEFINITION.baseline_width_metres
 
 
 @dataclass(frozen=True, slots=True)

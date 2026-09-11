@@ -17,6 +17,10 @@ from src.tasks.court_detection.configuration import (
     CourtTransformerEncoderConfig,
     SyntheticCourtSourceConfig,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    LINE_TARGET_SCHEMA_V1,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -192,6 +196,29 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
         kind: (branch.hidden_channels, branch.depth)
         for kind, branch in runtime.model.dense_head.branches.items()
     } == {"kp": (256, 2), "seg": (256, 2), "line": (256, 2)}
+
+
+def test_current_line_schema_uses_wide_physical_target() -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose("synthetic_court", "data/processing=all")
+    )
+
+    line = next(
+        target for target in runtime.data.processing.targets if target.kind == "line"
+    )
+    assert line.target_schema == LINE_TARGET_SCHEMA
+
+
+def test_legacy_line_schema_remains_loadable_for_checkpoint_inference() -> None:
+    config = _compose("synthetic_court", "data/processing=all")
+    config.data.processing.targets[2].target_schema = LINE_TARGET_SCHEMA_V1
+
+    runtime = CourtTrainingConfig.from_config(config)
+
+    line = next(
+        target for target in runtime.data.processing.targets if target.kind == "line"
+    )
+    assert line.target_schema == LINE_TARGET_SCHEMA_V1
 
 
 def test_legacy_model_config_explicitly_warns_and_restores_linear_head() -> None:
