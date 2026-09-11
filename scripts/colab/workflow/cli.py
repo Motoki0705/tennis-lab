@@ -1449,10 +1449,6 @@ def command_run(args: argparse.Namespace) -> int:
             f"unknown job {args.job!r}; available: {', '.join(sorted(jobs))}"
         )
     job = jobs[args.job]
-    if job.output_storage == "drive" and args.drive_mode != "mount":
-        raise WorkflowError(
-            "this training job writes directly to Drive; use --drive-mode mount"
-        )
     _validate_overrides(job, args.overrides)
     if any("/content/drive" in item for item in args.overrides):
         raise WorkflowError(
@@ -2096,7 +2092,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--ref", default="HEAD", help="git ref resolved to an exact SHA"
     )
     run_parser.add_argument(
-        "--drive-mode", choices=("rclone", "mount"), default="mount"
+        "--drive-mode", choices=("rclone", "mount"), default="rclone"
     )
     run_parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
     run_parser.add_argument("--rclone-config")

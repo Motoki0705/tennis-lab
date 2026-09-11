@@ -282,6 +282,10 @@ def load_job(path: Path) -> Job:
         raise WorkflowError(
             "Drive outputs require paths.output_root=outputs/colab and outputs below it"
         )
+    if output_storage == "drive" and "run.artifact_store" not in protected_override_keys:
+        raise WorkflowError(
+            "Drive outputs require run.artifact_store in protected_override_keys"
+        )
 
     return Job(
         name=name,

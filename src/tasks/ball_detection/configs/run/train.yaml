@@ -11,3 +11,8 @@ dry_run: false
 # Final-test evaluation is normally retained for backwards compatibility.
 # Controlled experiments set this false while tuning on validation data.
 test_after_fit: true
+artifact_store:
+  mode: local
+  remote: null
+  remote_root: null
+  sync_interval_seconds: null

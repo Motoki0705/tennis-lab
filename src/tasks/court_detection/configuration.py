@@ -1403,6 +1403,7 @@ class CourtTrainingConfig:
                 "fast_dev_run",
                 "dry_run",
                 "test_after_fit",
+                "artifact_store",
             },
             path="run",
         )
