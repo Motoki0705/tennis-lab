@@ -9,6 +9,17 @@ export function timecode(value) {
   return sign + [Math.floor(ms / 3600000), Math.floor(ms / 60000) % 60,
     Math.floor(ms / 1000) % 60].map(n => String(n).padStart(2, '0')).join(':') + '.' + String(ms % 1000).padStart(3, '0');
 }
+export function zoomView(view, factor, anchorX, anchorY) {
+  if (!Number.isFinite(factor) || factor <= 0) throw new RangeError('Zoom factor must be positive and finite');
+  const scale = clamp(view.scale * factor, 1, 8);
+  const ratio = scale / view.scale;
+  const x = clamp(anchorX, 0, 1), y = clamp(anchorY, 0, 1);
+  return {
+    scale,
+    offsetX: clamp(x - (x - view.offsetX) * ratio, 1 - scale, 0),
+    offsetY: clamp(y - (y - view.offsetY) * ratio, 1 - scale, 0),
+  };
+}
 
 export class Playback {
   constructor(container, onTime, onStatus, onSelect) {
@@ -36,15 +47,24 @@ export class Playback {
         const tile = document.createElement('article'); tile.className = 'viewer';
         const head = document.createElement('div'); head.className = 'viewer-head';
         const title = document.createElement('span'); title.textContent = source.camera_id;
-        const button = document.createElement('button'); button.textContent = 'フォーカス';
-        button.onclick = () => this.onSelect(index);
-        head.append(title, button);
+        const controls = document.createElement('div'); controls.className = 'viewer-controls';
+        const zoomReadout = document.createElement('span'); zoomReadout.className = 'zoom-readout'; zoomReadout.textContent = '100%';
+        const reset = document.createElement('button'); reset.textContent = '等倍'; reset.hidden = true;
+        reset.setAttribute('aria-label', `${source.camera_id} の拡大表示を等倍に戻す`);
+        const focus = document.createElement('button'); focus.textContent = 'フォーカス';
+        focus.onclick = () => this.onSelect(index);
+        controls.append(zoomReadout, reset, focus); head.append(title, controls);
         const picture = document.createElement('div'); picture.className = 'picture';
+        picture.title = 'Ctrl + ホイールでポインター位置を中心に拡大・縮小';
         const video = document.createElement('video'); video.preload = 'metadata'; video.muted = true; video.playsInline = true;
         video.src = `/api/media/${index}`;
         const img = document.createElement('img'); img.alt = `${source.camera_id} の確認フレーム`;
         const label = document.createElement('span'); label.className = 'frame-label';
         picture.append(video, img, label); tile.append(head, picture); this.container.append(tile);
+        const tileState = {tile, picture, video, img, label, zoomReadout, reset, url: null,
+          view: {scale: 1, offsetX: 0, offsetY: 0}};
+        picture.addEventListener('wheel', event => this.zoom(index, event), {passive: false});
+        reset.onclick = () => this.resetZoom(index);
         video.addEventListener('error', () => {
           label.textContent = 'ブラウザがこの動画を再生できません。H.264 MP4を用意してください。停止フレームは確認できます。';
           label.classList.add('error');
@@ -56,7 +76,7 @@ export class Playback {
             else { this.time = source.duration_sec - this.project.sources[index].offset_sec; this.pause(); }
           }
         });
-        this.tiles.push({tile, video, img, label, url: null});
+        this.tiles.push(tileState);
       });
     }
     this.time = clamp(this.time, ...project.extent);
@@ -71,6 +91,27 @@ export class Playback {
   }
   select(index) { this.pause(false); this.selected = index; ++this.generation; this.layout(); this.seek(this.time); }
   setFocus(focus) { this.pause(false); this.focus = focus; ++this.generation; this.layout(); this.seek(this.time); }
+  zoom(index, event) {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    const tile = this.tiles[index], rect = tile.picture.getBoundingClientRect();
+    if (!rect.width || !rect.height || !event.deltaY) return;
+    const units = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rect.height : 1;
+    const delta = clamp(event.deltaY * units, -500, 500);
+    tile.view = zoomView(tile.view, Math.exp(-delta * 0.002),
+      (event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
+    this.applyZoom(tile);
+  }
+  resetZoom(index) {
+    this.tiles[index].view = {scale: 1, offsetX: 0, offsetY: 0};
+    this.applyZoom(this.tiles[index]);
+  }
+  applyZoom(tile) {
+    const transform = `translate(${tile.view.offsetX * 100}%, ${tile.view.offsetY * 100}%) scale(${tile.view.scale})`;
+    tile.video.style.transform = transform; tile.img.style.transform = transform;
+    tile.zoomReadout.textContent = `${Math.round(tile.view.scale * 100)}%`;
+    tile.reset.hidden = tile.view.scale === 1;
+  }
   seek(time) {
     this.pause(false);
     this.time = clamp(time, ...this.project.extent);

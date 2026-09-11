@@ -2,7 +2,7 @@
 // node --test tests/e2e/tennis_scene/playback.test.mjs
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {Playback, stepSeconds} from '../../../src/tennis_scene/clip_studio/web/static/playback.js';
+import {Playback, stepSeconds, zoomView} from '../../../src/tennis_scene/clip_studio/web/static/playback.js';
 
 globalThis.cancelAnimationFrame = () => {};
 globalThis.requestAnimationFrame = () => 1;
@@ -63,4 +63,22 @@ test('playback rate does not change configured keyboard step',()=>{
   assert.equal(stepSeconds('5',30),5);
   assert.equal(stepSeconds('5',30,10),50);
   assert.equal(stepSeconds('frame',60),1/60);
+});
+
+test('per-camera zoom keeps the pointer anchor fixed and resets at one',()=>{
+  const anchor={x:0.75,y:0.2};
+  const initial={scale:1,offsetX:0,offsetY:0};
+  const zoomed=zoomView(initial,2,anchor.x,anchor.y);
+  assert.deepEqual(zoomed,{scale:2,offsetX:-0.75,offsetY:-0.2});
+  assert.equal((anchor.x-zoomed.offsetX)/zoomed.scale,anchor.x);
+  assert.equal((anchor.y-zoomed.offsetY)/zoomed.scale,anchor.y);
+  assert.deepEqual(zoomView(zoomed,0.01,0.1,0.9),initial);
+});
+
+test('zoom clamps translation to the visible image boundaries',()=>{
+  const view=zoomView({scale:4,offsetX:-3,offsetY:0},2,0,1);
+  assert.equal(view.scale,8);
+  assert.equal(view.offsetX,-6);
+  assert.equal(view.offsetY,-1);
+  assert.throws(()=>zoomView(view,0,0.5,0.5),/positive and finite/);
 });

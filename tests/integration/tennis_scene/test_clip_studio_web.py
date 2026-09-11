@@ -76,6 +76,29 @@ def test_ranged_media_and_exact_source_frame(web_client):
     assert client.get("/api/media/99").status_code == 404
 
 
+def test_sync_controls_share_a_collapsible_media_area_with_video(web_client):
+    client, _ = web_client
+    index = client.get("/").text
+    assert (
+        '<button id="sync-toggle" aria-expanded="false" '
+        'aria-controls="sync-panel">同期調整を開く</button>'
+    ) in index
+    assert (
+        '<div class="media-check">\n'
+        '<div id="viewers" class="viewers focus"></div>\n'
+        '<section id="sync-panel" aria-labelledby="sync-title" hidden>'
+    ) in index
+
+    stylesheet = client.get("/static/style.css").text
+    assert ".media-check{display:grid;grid-template-columns:minmax(0,1fr)" in stylesheet
+    assert ".media-check.sync-visible{" in stylesheet
+    assert "#sync-panel[hidden]{display:none}" in stylesheet
+    assert (
+        "@media(max-width:850px){.media-check.sync-visible{grid-template-columns:1fr}"
+        in stylesheet
+    )
+
+
 def test_autosave_revision_and_cross_origin_protection(web_client):
     client, runtime = web_client
     body = {"revision": 0, "action": "create", "start_sec": 0.5, "end_sec": 1.0}

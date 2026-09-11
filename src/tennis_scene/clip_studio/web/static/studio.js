@@ -16,6 +16,12 @@ function bind(id, handler, event = 'click') {
     Promise.resolve().then(() => handler(e)).catch(error => status(error.message, true));
   });
 }
+function setSyncPanel(visible) {
+  $('sync-panel').hidden = !visible;
+  $('sync-toggle').setAttribute('aria-expanded', visible);
+  $('sync-toggle').textContent = visible ? '同期調整を閉じる' : '同期調整を開く';
+  $('sync-panel').parentElement.classList.toggle('sync-visible', visible);
+}
 const playback = new Playback($('viewers'), (time, playing) => {
   $('time').textContent = timecode(time); $('seek-time').value = time.toFixed(3);
   $('seek').value = time; $('play').textContent = playing ? 'Ⅱ 停止' : '▶ 再生';
@@ -114,6 +120,8 @@ function step(direction, multiplier = 1) {
   clearLoop(); playback.seek(playback.time + direction * stepSeconds($('step').value, project.sources[playback.selected].fps, multiplier));
 }
 bind('focus', () => setMode(true)); bind('compare', () => setMode(false));
+bind('sync-toggle', () => setSyncPanel($('sync-panel').hidden));
+bind('sync-close', () => setSyncPanel(false));
 function setMode(focus) {
   playback.setFocus(focus);
   ['focus','compare'].forEach(id => { const active = (id === 'focus') === focus; $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', active); });
