@@ -30,27 +30,92 @@ from src.tasks.court_detection.geometry.pose import (
 from src.tasks.court_detection.inference import CourtPosePredictor
 from src.tasks.court_detection.model_io.contracts import CourtKeypointPrediction
 from src.tasks.court_detection.training.losses import rotation_geodesic_radians
-from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 
 _GIB = 1024**3
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="court_detection.evaluate_pose_trajectory",
+    fields=(
+        BoundaryPathField(
+            "checkpoint",
+            PathRole.CHECKPOINT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "runtime_config",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "runtime_project_root",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "dataset_root",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "output_dir",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+        ),
+    ),
+)
 
 
 def main() -> int:
     args = _parse_args()
-    checkpoint = _existing_absolute_file(args.checkpoint, name="checkpoint")
-    runtime_config_path = _existing_absolute_file(
-        args.runtime_config,
-        name="runtime_config",
-    )
-    runtime_project_root = _existing_absolute_directory(
+    checkpoint = _absolute_path(args.checkpoint, name="checkpoint")
+    runtime_config_path = _absolute_path(args.runtime_config, name="runtime_config")
+    runtime_project_root = _absolute_path(
         args.runtime_project_root,
         name="runtime_project_root",
     )
-    dataset_root = _existing_absolute_directory(
-        args.dataset_root,
-        name="dataset_root",
-    )
+    dataset_root = _absolute_path(args.dataset_root, name="dataset_root")
     output_dir = _absolute_path(args.output_dir, name="output_dir")
+    resolver = _runtime_resolver(
+        checkpoint=checkpoint,
+        runtime_project_root=runtime_project_root,
+        dataset_root=dataset_root,
+        output_dir=output_dir,
+    )
+    paths = PATH_BOUNDARY.validate(
+        {
+            "checkpoint": checkpoint,
+            "runtime_config": runtime_config_path,
+            "runtime_project_root": runtime_project_root,
+            "dataset_root": dataset_root,
+            "output_dir": output_dir,
+        },
+        resolver=resolver,
+    )
+    checkpoint = paths.declared("checkpoint").path
+    runtime_config_path = paths.declared("runtime_config").path
+    runtime_project_root = paths.declared("runtime_project_root").path
+    dataset_root = paths.declared("dataset_root").path
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise FileExistsError(f"Output directory already exists: {output_dir}")
     memory = assess_cpu_checkpoint_memory(checkpoint)
@@ -68,7 +133,6 @@ def main() -> int:
         manifest,
         trajectory_group_id=args.trajectory_group_id,
     )
-    resolver = _checkpoint_resolver(checkpoint, dataset_root, output_dir)
     runtime_config = OmegaConf.load(runtime_config_path)
     runtime_config.paths.project_root = str(runtime_project_root)
     load_started = time.perf_counter()
@@ -405,21 +469,22 @@ def _load_rgb(image_path: Path, *, sample: Mapping[str, object]) -> Image.Image:
     return Image.fromarray(np.round(rgb * 255.0).astype(np.uint8), mode="RGB")
 
 
-def _checkpoint_resolver(
+def _runtime_resolver(
+    *,
     checkpoint: Path,
+    runtime_project_root: Path,
     dataset_root: Path,
     output_dir: Path,
 ) -> PathResolver:
-    project_root = Path(__file__).resolve().parents[4]
     return PathResolver(
         RuntimePathRoots(
-            project_root=project_root,
+            project_root=runtime_project_root,
             data_root=dataset_root,
             checkpoint_root=checkpoint.parent,
             artifact_root=output_dir.parent,
             output_root=output_dir.parent,
-            cache_root=(project_root / ".cache").resolve(),
-            external_asset_root=(project_root / "third_party").resolve(),
+            cache_root=(runtime_project_root / ".cache").resolve(),
+            external_asset_root=(runtime_project_root / "third_party").resolve(),
         )
     )
 
@@ -439,20 +504,6 @@ def _absolute_path(value: Path, *, name: str) -> Path:
     if not value.is_absolute():
         raise ValueError(f"{name} must be an absolute path: {value}")
     return value.resolve(strict=False)
-
-
-def _existing_absolute_file(value: Path, *, name: str) -> Path:
-    path = _absolute_path(value, name=name)
-    if not path.is_file():
-        raise FileNotFoundError(f"{name} is not a file: {path}")
-    return path
-
-
-def _existing_absolute_directory(value: Path, *, name: str) -> Path:
-    path = _absolute_path(value, name=name)
-    if not path.is_dir():
-        raise FileNotFoundError(f"{name} is not a directory: {path}")
-    return path
 
 
 def _mapping(value: object, *, name: str) -> Mapping[str, object]:
