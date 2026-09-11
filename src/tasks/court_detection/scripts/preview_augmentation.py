@@ -4,6 +4,7 @@ Usage:
     python -m src.tasks.court_detection.scripts.preview_augmentation
     python -m src.tasks.court_detection.scripts.preview_augmentation data/processing=all
     python -m src.tasks.court_detection.scripts.preview_augmentation data/source=synthetic_court preview.split=val
+    python -m src.tasks.court_detection.scripts.preview_augmentation data/source=synthetic_court data/augmentation=pose_safe preview.require_pose=true
     python -m src.tasks.court_detection.scripts.preview_augmentation preview.sample_indices=[0,8,16]
 
 Notes:
@@ -12,6 +13,8 @@ Notes:
       panels are produced by building the dataset with `is_train=True` (full
       training pipeline) while the "original" panel uses `is_train=False`
       (deterministic validation resize only).
+    - preview.require_pose must match the intended loss route. When true, the
+      pipeline uses the same aspect-preserving camera-pose geometry as training.
     - Each row is one exact dataset draw. Columns separately expose RGB, the
       actual KP heatmap, categorical SEG mask, and binary LINE mask passed to
       the losses; no target is hidden beneath another target's overlay.
@@ -69,6 +72,7 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
     preview = require_config_mapping(root, "preview", path="configuration")
     expected = {
         "split",
+        "require_pose",
         "sample_indices",
         "max_samples",
         "num_augmented",
@@ -81,6 +85,7 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
         raise ValueError(f"preview requires exactly {sorted(expected)}.")
     for key in ("max_samples", "num_augmented", "seed"):
         require_config_value(preview, key, int, path="preview")
+    require_config_value(preview, "require_pose", bool, path="preview")
     if cast("int", preview["max_samples"]) <= 0:
         raise ValueError("preview.max_samples must be positive.")
     if cast("int", preview["num_augmented"]) < 1:
@@ -157,8 +162,13 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
-    base_dataset = _dataset(data, split=split_name, is_train=False)
-    augmented_dataset = _dataset(data, split=split_name, is_train=True)
+    require_pose = bool(cfg.preview.require_pose)
+    base_dataset = _dataset(
+        data, split=split_name, is_train=False, require_pose=require_pose
+    )
+    augmented_dataset = _dataset(
+        data, split=split_name, is_train=True, require_pose=require_pose
+    )
 
     target_kinds = tuple(target.kind for target in data.processing.targets)
     seed = int(cfg.preview.seed)
@@ -222,6 +232,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             "targets": list(target_kinds),
             "split": split_name,
             "num_augmented": num_augmented,
+            "require_pose": require_pose,
             "output_image": str(image_path),
             "variants": variant_metadata,
         }
@@ -245,10 +256,15 @@ def _dataset(
     *,
     split: str,
     is_train: bool,
+    require_pose: bool,
 ) -> CourtDetectionDataset:
     if split not in {"train", "val"}:
         raise ValueError("Preview split must be train or val.")
-    pipeline = build_court_processing_pipeline(data, is_train=is_train)
+    pipeline = build_court_processing_pipeline(
+        data,
+        is_train=is_train,
+        require_pose=require_pose,
+    )
     records = pipeline.input_layer.records(cast("CourtSourceSplit", split))
     return CourtDetectionDataset(records, pipeline=pipeline)
 
@@ -301,7 +317,7 @@ def _configured_sigma_ratio(data: CourtDataConfig) -> float | None:
         if target.kind == "kp":
             if target.sigma_ratio is None:  # pragma: no cover - typed config owns it
                 raise ValueError("Configured KP target has no sigma_ratio.")
-            return target.sigma_ratio
+            return float(target.sigma_ratio)
     return None
 
 

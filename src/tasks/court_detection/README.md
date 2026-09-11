@@ -106,7 +106,7 @@ python -m src.tasks.court_detection.scripts.preview_augmentation \
   data/source=synthetic_court \
   data.source.keypoint_court_scope=target_court \
   data/processing=all data/augmentation=pose_safe \
-  preview.split=val preview.max_samples=4
+  preview.require_pose=true preview.split=val preview.max_samples=4
 
 # TennisCourtDetector側を確認
 python -m src.tasks.court_detection.scripts.preview_augmentation \
