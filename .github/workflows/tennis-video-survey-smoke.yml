@@ -23,34 +23,100 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "yt-dlp[default,curl-cffi]"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          sudo apt-get install -y --no-install-recommends ffmpeg jq
           yt-dlp --version
           ffmpeg -version | head -1
 
-      - name: Download a six-second observation sample
-        id: download
+      - name: Resolve a public stream through Piped
+        id: resolve
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           mkdir -p artifacts/smoke
-          URL="https://www.youtube.com/watch?v=HvZDFZ2FmvI"
+          VIDEO_ID="HvZDFZ2FmvI"
+          instances=(
+            "https://pipedapi.kavin.rocks"
+            "https://pipedapi-libre.kavin.rocks"
+            "https://pipedapi.leptons.xyz"
+            "https://pipedapi.nosebs.ru"
+            "https://piped-api.privacy.com.de"
+            "https://pipedapi.adminforge.de"
+            "https://api.piped.yt"
+            "https://pipedapi.drgns.space"
+            "https://pipedapi.owo.si"
+            "https://pipedapi.ducks.party"
+            "https://piped-api.codespace.cz"
+            "https://pipedapi.reallyaweso.me"
+            "https://api.piped.private.coffee"
+            "https://pipedapi.darkness.services"
+            "https://pipedapi.orangenet.cc"
+          )
+          : > artifacts/smoke/piped-attempts.log
+          for api in "${instances[@]}"; do
+            echo "TRY $api" | tee -a artifacts/smoke/piped-attempts.log
+            status="$(curl -L --compressed --connect-timeout 8 --max-time 35 \
+              -A 'Mozilla/5.0' -sS -w '%{http_code}' \
+              -o artifacts/smoke/piped-candidate.json \
+              "$api/streams/$VIDEO_ID" 2>> artifacts/smoke/piped-attempts.log || true)"
+            bytes="$(wc -c < artifacts/smoke/piped-candidate.json 2>/dev/null || echo 0)"
+            echo "HTTP $status bytes=$bytes" | tee -a artifacts/smoke/piped-attempts.log
+            if [[ "$status" == "200" ]] && python - artifacts/smoke/piped-candidate.json <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding='utf-8'))
+except Exception:
+    raise SystemExit(1)
+raise SystemExit(0 if d.get('videoStreams') else 1)
+PY
+            then
+              cp artifacts/smoke/piped-candidate.json artifacts/smoke/piped.json
+              printf '%s\n' "$api" > artifacts/smoke/piped-instance.txt
+              break
+            fi
+          done
+          test -s artifacts/smoke/piped.json
+          python - artifacts/smoke/piped.json artifacts/smoke/stream-url.txt <<'PY'
+import json, sys
+src, dst = sys.argv[1:]
+d = json.load(open(src, encoding='utf-8'))
+streams = [s for s in d.get('videoStreams', []) if s.get('url')]
+muxed = [s for s in streams if not s.get('videoOnly')]
+choices = muxed or streams
+under = [s for s in choices if isinstance(s.get('height'), int) and s['height'] <= 360]
+choices = under or choices
+choices.sort(key=lambda s: (s.get('height') or 10**9, s.get('bitrate') or 10**18))
+if not choices:
+    raise SystemExit('No usable stream URL')
+chosen = choices[-1] if under else choices[0]
+open(dst, 'w', encoding='utf-8').write(chosen['url'])
+summary = {k: d.get(k) for k in ('title', 'duration', 'uploadDate', 'uploader', 'thumbnailUrl')}
+summary['chosen_stream'] = {k: chosen.get(k) for k in ('format', 'quality', 'width', 'height', 'fps', 'codec', 'videoOnly')}
+json.dump(summary, open('artifacts/smoke/piped-summary.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+print(json.dumps(summary, ensure_ascii=False))
+PY
+
+      - name: Download six seconds with yt-dlp Generic extractor
+        id: download
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          if [[ ! -s artifacts/smoke/stream-url.txt ]]; then
+            echo 'No Piped stream URL was resolved.' | tee artifacts/smoke/yt-dlp.log
+            exit 1
+          fi
+          STREAM_URL="$(cat artifacts/smoke/stream-url.txt)"
           yt-dlp \
             --verbose \
-            --no-playlist \
-            --write-info-json \
-            --write-thumbnail \
-            --convert-thumbnails jpg \
+            --impersonate chrome \
+            --referer "https://piped.video/" \
             --download-sections "*00:00:00-00:00:06" \
             --force-keyframes-at-cuts \
-            --js-runtimes node \
-            --remote-components ejs:github \
-            --extractor-args "youtube:player_client=android_vr,web_safari" \
-            --impersonate chrome \
-            -f "bv*[height<=360]+ba/b[height<=360]/worst" \
+            --downloader ffmpeg \
             --merge-output-format mp4 \
-            -o "artifacts/smoke/%(id)s.%(ext)s" \
-            "$URL" 2>&1 | tee artifacts/smoke/yt-dlp.log
+            -o "artifacts/smoke/sample.%(ext)s" \
+            "$STREAM_URL" 2>&1 | tee artifacts/smoke/yt-dlp.log
 
       - name: Extract representative frames
         if: always()
@@ -66,12 +132,13 @@ jobs:
             printf '%s\n' 'No downloaded video was available for frame extraction.' > artifacts/smoke/no-video.txt
           fi
           find artifacts/smoke -maxdepth 1 -type f -printf '%f\t%s bytes\n' | sort > artifacts/smoke/files.txt
+          rm -f artifacts/smoke/stream-url.txt artifacts/smoke/piped-candidate.json
 
       - name: Upload smoke-test evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-smoke
+          name: tennis-video-survey-smoke-piped
           path: artifacts/smoke/
           if-no-files-found: error
           retention-days: 7
