@@ -15,6 +15,7 @@ protected_override_keys = [
   "model.backbone.repository_path",
   "model.backbone.checkpoint_path",
   "run.output_dir",
+  "run.artifact_store",
   "run.gpus",
 ]
 outputs = ["outputs/colab/ball_detection/staged"]

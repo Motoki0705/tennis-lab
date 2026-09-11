@@ -6,3 +6,8 @@ init_weights: null
 fast_dev_run: false
 dry_run: false
 test_after_fit: true
+artifact_store:
+  mode: local
+  remote: null
+  remote_root: null
+  sync_interval_seconds: null

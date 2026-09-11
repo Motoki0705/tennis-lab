@@ -5,7 +5,7 @@ description = "Resume BLCS axial reference with optimizer state from a staged ch
 accelerator = "gpu"
 timeout_seconds = 172800
 setup = ["base"]
-protected_override_keys = ["paths.data_root", "paths.output_root", "data.scene_dir", "run.output_dir", "run.gpus", "run.resume", "paths.checkpoint_root"]
+protected_override_keys = ["paths.data_root", "paths.output_root", "data.scene_dir", "run.output_dir", "run.artifact_store", "run.gpus", "run.resume", "paths.checkpoint_root"]
 outputs = ["outputs/colab/blcs_axial_reference_resume"]
 
 [command]

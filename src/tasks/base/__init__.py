@@ -1,6 +1,7 @@
 """Base module for shared abstractions."""
 
 from src.tasks.base.configuration import (
+    ArtifactStoreConfig,
     BaseDataConfig,
     BaseRunConfig,
     BaseTrainingConfig,
@@ -31,6 +32,7 @@ from src.tasks.base.training import (
 )
 
 __all__ = [
+    "ArtifactStoreConfig",
     "BaseDataConfig",
     "BaseDatasetWriter",
     "BaseLightningModule",

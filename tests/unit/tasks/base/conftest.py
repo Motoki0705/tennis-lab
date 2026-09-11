@@ -40,6 +40,12 @@ def make_training_config(tmp_path: Path):
             "fast_dev_run": False,
             "dry_run": False,
             "test_after_fit": False,
+            "artifact_store": {
+                "mode": "local",
+                "remote": None,
+                "remote_root": None,
+                "sync_interval_seconds": None,
+            },
         }
         run_config.update(run or {})
         trainer_config: dict[str, Any] = {

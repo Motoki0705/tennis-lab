@@ -11,6 +11,7 @@ protected_override_keys = [
   "data.dataset_root",
   "data.split_file",
   "run.output_dir",
+  "run.artifact_store",
   "run.gpus",
 ]
 outputs = ["outputs/colab/slcs"]
