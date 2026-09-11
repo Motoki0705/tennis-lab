@@ -57,7 +57,6 @@ def test_run_compiles_after_init_weights_and_before_trainer_construction(
     monkeypatch.setattr(runner, "prepare_config", lambda _: None)
     monkeypatch.setattr(runner, "seed_everything", lambda _: None)
     monkeypatch.setattr(runner, "apply_runtime_settings", lambda _: None)
-    monkeypatch.setattr(runner, "save_config", lambda *_: None)
     monkeypatch.setattr(runner, "build_datamodule", lambda _: datamodule)
     monkeypatch.setattr(runner, "resolve_steps_per_epoch", lambda *_, **__: None)
     monkeypatch.setattr(
@@ -75,7 +74,7 @@ def test_run_compiles_after_init_weights_and_before_trainer_construction(
 
     monkeypatch.setattr(runner, "maybe_compile_models", compile_models)
     monkeypatch.setattr(runner, "build_logger", lambda *_: cast(Any, False))
-    monkeypatch.setattr(runner, "build_callbacks", lambda *_: [])
+    monkeypatch.setattr(runner, "build_callbacks", lambda *_, **__: [])
 
     def build_trainer(*args: object, **kwargs: object) -> _Trainer:
         del args, kwargs

@@ -1149,6 +1149,7 @@ class PLCSTrainingConfig:
             "fast_dev_run",
             "dry_run",
             "test_after_fit",
+            "artifact_store",
         }
         _exact(
             require_config_mapping(root, "run", path="configuration"),

@@ -532,6 +532,10 @@ def _validate_job(value: Any) -> dict[str, Any]:
         or any(not item.startswith("outputs/colab/") for item in outputs)
     ):
         raise RemoteWorkflowError("Drive outputs require the reserved output root")
+    if storage == "drive" and "run.artifact_store" not in protected:
+        raise RemoteWorkflowError(
+            "Drive outputs require run.artifact_store in protected_override_keys"
+        )
     return job
 
 
@@ -1399,12 +1403,15 @@ def _output_base(request: dict[str, Any], repo: Path) -> Path:
     return (
         _live_root(request)
         if request["job"].get("output_storage", "local") == "drive"
+        and request["drive"]["mode"] == "mount"
         else repo
     )
 
 
 def _prepare_live_output(request: dict[str, Any]) -> Path | None:
     if request["job"].get("output_storage", "local") != "drive":
+        return None
+    if request["drive"]["mode"] == "rclone":
         return None
     root = _live_root(request)
     marker = _child(root, "request.json", "live request")
@@ -1437,6 +1444,24 @@ def _run_monitored_job(
             else arg
             for arg in argv
         ]
+    if request["job"].get("output_storage", "local") == "drive" and request[
+        "drive"
+    ]["mode"] == "rclone":
+        drive = request["drive"]
+        remote_root = PurePosixPath(
+            _strict_relative(drive["root"], "drive.root"),
+            "colab-live",
+            request["run_id"],
+            "training",
+        ).as_posix()
+        argv.extend(
+            [
+                "run.artifact_store.mode=rclone",
+                f"run.artifact_store.remote={drive['remote']}",
+                f"run.artifact_store.remote_root={remote_root}",
+                "run.artifact_store.sync_interval_seconds=60",
+            ]
+        )
     environment["PYTHONUNBUFFERED"] = "1"
     environment["TENNIS_LAB_COLAB_PROGRESS_PATH"] = str(
         monitor_root / "training-progress.json"
@@ -1712,7 +1737,10 @@ def _write_status(path: Path, status: dict[str, Any], step: str) -> None:
     request_path = path.parent / "request.json"
     if request_path.is_file():
         request = _read_json_object(request_path, "request")
-        if request["job"].get("output_storage", "local") == "drive":
+        if (
+            request["job"].get("output_storage", "local") == "drive"
+            and request["drive"]["mode"] == "mount"
+        ):
             root = _live_root(request)
             if (root / "request.json").is_file():
                 _atomic_json(root / "status.json", status)
@@ -2138,6 +2166,8 @@ def _execute_action() -> int:
         environment = os.environ.copy()
         environment["TENNIS_LAB_COLAB_RUN_ID"] = request["run_id"]
         environment["PATH"] = f"{repo / '.venv/bin'}:{environment.get('PATH', '')}"
+        if config_path is not None:
+            environment["RCLONE_CONFIG"] = str(config_path)
         _run_monitored_job(request, repo, workspace, status, environment, live_root)
         _write_status(status_path, status, "collecting_outputs")
         bundle = workspace / "bundle"

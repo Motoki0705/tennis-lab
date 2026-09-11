@@ -45,11 +45,13 @@ CompileMode: TypeAlias = Literal[
     "max-autotune",
     "max-autotune-no-cudagraphs",
 ]
+ArtifactStoreMode: TypeAlias = Literal["local", "rclone"]
 
 __all__ = [
     "BaseDataConfig",
     "BaseRunConfig",
     "BaseTrainingConfig",
+    "ArtifactStoreConfig",
     "CheckpointConfig",
     "ChunkDataConfig",
     "CompileConfig",
@@ -79,6 +81,7 @@ _RUN_KEYS = frozenset(
         "fast_dev_run",
         "dry_run",
         "test_after_fit",
+        "artifact_store",
     }
 )
 _TRAINER_KEYS = frozenset(
@@ -139,6 +142,9 @@ _GAN_KEYS = frozenset(
 )
 _GAN_TRANSITION_KEYS = frozenset({"start_epoch"})
 _COMPILE_KEYS = frozenset({"enabled", "backend", "mode", "fullgraph", "dynamic"})
+_ARTIFACT_STORE_KEYS = frozenset(
+    {"mode", "remote", "remote_root", "sync_interval_seconds"}
+)
 _BASE_DATA_KEYS = frozenset({"scene_dir", "batch_size", "num_workers", "pin_memory"})
 _CHUNK_DATA_KEYS = frozenset({"chunk", "generator_device"})
 _CHUNK_KEYS = frozenset(
@@ -310,6 +316,84 @@ def _optional_non_negative(
 
 
 @dataclass(frozen=True, slots=True)
+class ArtifactStoreConfig:
+    """Durability backend selected for one runner-owned local output tree."""
+
+    mode: ArtifactStoreMode
+    remote: str | None
+    remote_root: str | None
+    sync_interval_seconds: int | None
+
+    @classmethod
+    def from_mapping(cls, value: object) -> ArtifactStoreConfig:
+        mapping = exact_config_mapping(
+            value,
+            path="run.artifact_store",
+            required_keys=_ARTIFACT_STORE_KEYS,
+        )
+        mode = cast(
+            "str",
+            require_config_value(mapping, "mode", str, path="run.artifact_store"),
+        )
+        if mode not in {"local", "rclone"}:
+            raise SemanticConfigurationError(
+                "run.artifact_store.mode must be 'local' or 'rclone'."
+            )
+        remote = cast(
+            "str | None",
+            require_config_value(
+                mapping,
+                "remote",
+                (str, type(None)),
+                path="run.artifact_store",
+            ),
+        )
+        remote_root = cast(
+            "str | None",
+            require_config_value(
+                mapping,
+                "remote_root",
+                (str, type(None)),
+                path="run.artifact_store",
+            ),
+        )
+        interval = cast(
+            "int | None",
+            require_config_value(
+                mapping,
+                "sync_interval_seconds",
+                (int, type(None)),
+                path="run.artifact_store",
+            ),
+        )
+        if mode == "local":
+            if remote is not None or remote_root is not None or interval is not None:
+                raise SemanticConfigurationError(
+                    "local artifact_store requires remote, remote_root, and "
+                    "sync_interval_seconds to be null."
+                )
+        else:
+            if remote is None or not remote.strip():
+                raise SemanticConfigurationError(
+                    "rclone artifact_store requires a non-empty remote."
+                )
+            if remote_root is None or not remote_root.strip():
+                raise SemanticConfigurationError(
+                    "rclone artifact_store requires a non-empty remote_root."
+                )
+            if interval is None or interval <= 0:
+                raise SemanticConfigurationError(
+                    "rclone artifact_store requires a positive sync_interval_seconds."
+                )
+        return cls(
+            mode=cast("ArtifactStoreMode", mode),
+            remote=remote,
+            remote_root=remote_root,
+            sync_interval_seconds=interval,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class BaseRunConfig:
     """Shared training-run settings, with role-based resolved paths."""
 
@@ -321,6 +405,7 @@ class BaseRunConfig:
     fast_dev_run: bool
     dry_run: bool
     test_after_fit: bool
+    artifact_store: ArtifactStoreConfig
 
     @classmethod
     def from_mapping(cls, value: object, *, resolver: PathResolver) -> BaseRunConfig:
@@ -373,6 +458,9 @@ class BaseRunConfig:
             test_after_fit=cast(
                 "bool",
                 require_config_value(mapping, "test_after_fit", bool, path="run"),
+            ),
+            artifact_store=ArtifactStoreConfig.from_mapping(
+                require_config_mapping(mapping, "artifact_store", path="run")
             ),
         )
 

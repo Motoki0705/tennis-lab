@@ -18,6 +18,7 @@ protected_override_keys = [
   "model.encoder.repository_path",
   "model.encoder.checkpoint_path",
   "run.output_dir",
+  "run.artifact_store",
   "run.gpus",
 ]
 outputs = ["outputs/colab/court_detection/mixed"]
