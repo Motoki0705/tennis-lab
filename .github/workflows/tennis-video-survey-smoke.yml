@@ -1,4 +1,4 @@
-name: Probe TennisVL public archive
+name: List TennisVL public archive
 
 on:
   push:
@@ -9,129 +9,118 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  list-archive:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: Install probe dependencies
-        run: python -m pip install --upgrade requests beautifulsoup4 gdown remotezip
+      - name: Install remote ZIP reader
+        run: python -m pip install --upgrade remotezip requests
 
-      - name: Probe Drive archive without downloading it
+      - name: Read central directory by HTTP byte ranges
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/tennisvl-probe
-          cat > /tmp/probe_drive.py <<'PY'
+          mkdir -p artifacts/tennisvl-index
+          cat > /tmp/list_tennisvl.py <<'PY'
           from __future__ import annotations
 
+          import collections
+          import csv
           import json
+          import pathlib
           import re
-          import urllib.parse
-          from pathlib import Path
 
-          import requests
-          from bs4 import BeautifulSoup
+          from remotezip import RemoteZip
 
           FILE_ID = "1tGdYvJxKKLIMByrNj_5D56cr-n_u1Syc"
-          OUT = Path("artifacts/tennisvl-probe")
-          session = requests.Session()
-          session.headers.update({
-              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/octet-stream;q=0.9,*/*;q=0.8",
-          })
+          URL = f"https://drive.usercontent.google.com/download?id={FILE_ID}&export=download&confirm=t"
+          OUT = pathlib.Path("artifacts/tennisvl-index")
 
-          def safe_headers(response: requests.Response) -> dict[str, str]:
-              keep = {
-                  "content-type", "content-length", "content-range", "accept-ranges",
-                  "content-disposition", "x-goog-stored-content-length", "x-goog-hash",
-                  "etag", "last-modified", "server",
+          with RemoteZip(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=180) as archive:
+              infos = archive.infolist()
+
+          rows = []
+          for info in infos:
+              name = info.filename
+              suffix = pathlib.PurePosixPath(name).suffix.lower()
+              row = {
+                  "filename": name,
+                  "is_dir": info.is_dir(),
+                  "suffix": suffix,
+                  "compressed_bytes": info.compress_size,
+                  "uncompressed_bytes": info.file_size,
+                  "compression_method": info.compress_type,
+                  "crc32": f"{info.CRC:08x}",
+                  "date_time": "-".join(map(str, info.date_time)),
               }
-              return {k: v for k, v in response.headers.items() if k.lower() in keep}
+              rows.append(row)
 
-          def summarize(label: str, response: requests.Response) -> dict:
-              return {
-                  "label": label,
-                  "status": response.status_code,
-                  "final_url_origin_path": urllib.parse.urlsplit(response.url)._replace(query="", fragment="").geturl(),
-                  "headers": safe_headers(response),
-                  "cookies": sorted(session.cookies.keys()),
-              }
+          video_exts = {".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v"}
+          videos = [r for r in rows if not r["is_dir"] and r["suffix"] in video_exts]
+          top_dirs = collections.Counter(pathlib.PurePosixPath(r["filename"]).parts[0] if pathlib.PurePosixPath(r["filename"]).parts else "" for r in videos)
+          second_dirs = collections.Counter(
+              "/".join(pathlib.PurePosixPath(r["filename"]).parts[:2])
+              if len(pathlib.PurePosixPath(r["filename"]).parts) >= 2 else pathlib.PurePosixPath(r["filename"]).parts[0]
+              for r in videos
+          )
+          extensions = collections.Counter(r["suffix"] for r in videos)
+          size_buckets = collections.Counter()
+          for r in videos:
+              size = int(r["uncompressed_bytes"])
+              if size < 1_000_000:
+                  bucket = "<1MB"
+              elif size < 5_000_000:
+                  bucket = "1-5MB"
+              elif size < 20_000_000:
+                  bucket = "5-20MB"
+              elif size < 100_000_000:
+                  bucket = "20-100MB"
+              else:
+                  bucket = ">=100MB"
+              size_buckets[bucket] += 1
 
-          results: list[dict] = []
-          candidates = [
-              f"https://drive.usercontent.google.com/download?id={FILE_ID}&export=download&confirm=t",
-              f"https://drive.google.com/uc?export=download&id={FILE_ID}&confirm=t",
-              f"https://docs.google.com/uc?export=download&id={FILE_ID}&confirm=t",
-          ]
-          working_url = None
-          for idx, url in enumerate(candidates, 1):
-              try:
-                  response = session.get(url, headers={"Range": "bytes=0-0"}, stream=True, timeout=90, allow_redirects=True)
-                  results.append(summarize(f"direct_{idx}", response))
-                  ctype = response.headers.get("Content-Type", "").lower()
-                  if response.status_code == 206 or (
-                      response.status_code == 200 and "application" in ctype and "text/html" not in ctype
-                  ):
-                      working_url = response.url
-                      response.close()
-                      break
-                  body = response.raw.read(200_000, decode_content=True)
-                  response.close()
-                  (OUT / f"direct_{idx}_body.bin").write_bytes(body)
-                  if "html" in ctype or body.lstrip().startswith(b"<"):
-                      soup = BeautifulSoup(body, "html.parser")
-                      form = soup.find("form")
-                      if form and form.get("action"):
-                          action = urllib.parse.urljoin(response.url, form.get("action"))
-                          params = {
-                              inp.get("name"): inp.get("value", "")
-                              for inp in form.find_all("input")
-                              if inp.get("name")
-                          }
-                          follow = session.get(action, params=params, headers={"Range": "bytes=0-0"}, stream=True, timeout=90, allow_redirects=True)
-                          results.append(summarize(f"form_{idx}", follow))
-                          follow_ctype = follow.headers.get("Content-Type", "").lower()
-                          if follow.status_code == 206 or (
-                              follow.status_code == 200 and "application" in follow_ctype and "text/html" not in follow_ctype
-                          ):
-                              working_url = follow.url
-                              follow.close()
-                              break
-                          follow_body = follow.raw.read(200_000, decode_content=True)
-                          (OUT / f"form_{idx}_body.bin").write_bytes(follow_body)
-                          follow.close()
-              except Exception as exc:
-                  results.append({"label": f"direct_{idx}", "error": f"{type(exc).__name__}: {exc}"})
+          summary = {
+              "file_id": FILE_ID,
+              "archive_entries": len(rows),
+              "video_entries": len(videos),
+              "total_video_uncompressed_bytes": sum(int(r["uncompressed_bytes"]) for r in videos),
+              "extensions": dict(extensions.most_common()),
+              "size_buckets": dict(size_buckets),
+              "top_directories": dict(top_dirs.most_common(50)),
+              "second_level_directories_top100": dict(second_dirs.most_common(100)),
+          }
+          json.dump(summary, open(OUT / "summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          json.dump(videos, open(OUT / "video_entries.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          with open(OUT / "video_entries.csv", "w", encoding="utf-8", newline="") as handle:
+              writer = csv.DictWriter(handle, fieldnames=list(videos[0]) if videos else list(rows[0]))
+              writer.writeheader()
+              writer.writerows(videos)
+          with open(OUT / "filenames.txt", "w", encoding="utf-8") as handle:
+              for row in videos:
+                  handle.write(row["filename"] + "\n")
 
-          result = {"file_id": FILE_ID, "probes": results, "working": bool(working_url)}
-          if working_url:
-              parsed = urllib.parse.urlsplit(working_url)
-              result["working_url_origin_path"] = parsed._replace(query="", fragment="").geturl()
-              # Never persist the signed URL itself; only test suffix range access.
-              suffix = session.get(working_url, headers={"Range": "bytes=-65536"}, stream=True, timeout=120, allow_redirects=True)
-              result["suffix_probe"] = summarize("suffix", suffix)
-              suffix_bytes = suffix.content
-              suffix.close()
-              (OUT / "zip_suffix.bin").write_bytes(suffix_bytes)
-              result["suffix_bytes"] = len(suffix_bytes)
-              result["has_zip_eocd_signature"] = b"PK\x05\x06" in suffix_bytes
-          json.dump(result, open(OUT / "probe.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          print(json.dumps(result, ensure_ascii=False, indent=2))
-          if not working_url:
-              raise SystemExit("No byte-range-capable download response was obtained")
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          print("FIRST 200 VIDEO ENTRIES")
+          for row in videos[:200]:
+              print(json.dumps(row, ensure_ascii=False))
+          print("LAST 50 VIDEO ENTRIES")
+          for row in videos[-50:]:
+              print(json.dumps(row, ensure_ascii=False))
+          if len(videos) < 100:
+              raise SystemExit(f"Only {len(videos)} video entries were found")
           PY
-          python /tmp/probe_drive.py | tee artifacts/tennisvl-probe/probe.log
+          python /tmp/list_tennisvl.py | tee artifacts/tennisvl-index/index.log
 
-      - name: Upload probe evidence
+      - name: Upload archive index
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennisvl-archive-probe
-          path: artifacts/tennisvl-probe/
+          name: tennisvl-archive-index
+          path: artifacts/tennisvl-index/
           if-no-files-found: error
           retention-days: 7
