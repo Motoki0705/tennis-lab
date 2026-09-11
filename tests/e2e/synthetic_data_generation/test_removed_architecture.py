@@ -55,10 +55,13 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
     }
 )
 
-# These modules hash either detector inputs or immutable manual-alignment evidence.
+# These modules hash detector inputs, manual-alignment evidence, or review cache revisions.
 # The digests validate/reuse the exact measured source; they do not restore the
 # removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
+    Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
+        {"sha256"}
+    ),
     Path("src/synthetic_data_generation/alignment/line_inference_cache.py"): frozenset(
         {"fingerprint", "sha256"}
     ),
