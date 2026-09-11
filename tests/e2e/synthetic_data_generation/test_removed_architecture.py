@@ -74,6 +74,9 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/alignment/manual/source.py"): frozenset(
         {"sha256"}
     ),
+    Path(
+        "src/synthetic_data_generation/dataset/court/review/service.py"
+    ): frozenset({"sha256"}),
 }
 
 

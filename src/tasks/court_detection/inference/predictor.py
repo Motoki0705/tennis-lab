@@ -19,6 +19,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtKeypointPrediction,
     CourtLogits,
     CourtModelIOError,
+    CourtModelOutput,
 )
 from src.tasks.court_detection.model_io.images import prepare_court_image
 from src.tasks.court_detection.training.lightning_module import (
@@ -125,7 +126,11 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
 
         with torch.no_grad():
             call = self.adapter.prepare_images(images)
-            logits = cast(CourtLogits, self.model(*call.model_args))
+            output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
+            self.adapter.validate_logits(output, call)
+            logits = (
+                output.dense_logits if isinstance(output, CourtModelOutput) else output
+            )
         return cast(
             CourtKeypointPrediction,
             self.adapter.decode_prediction(
@@ -143,7 +148,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
 
     @property
     def short_side(self) -> int:
-        return self.adapter.spec.short_side
+        return int(self.adapter.spec.short_side)
 
 
 __all__ = ["CourtKeypointPredictor"]

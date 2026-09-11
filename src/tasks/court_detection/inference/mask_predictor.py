@@ -19,6 +19,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtLinePrediction,
     CourtLogits,
     CourtModelIOError,
+    CourtModelOutput,
     CourtSegmentationPrediction,
 )
 from src.tasks.court_detection.model_io.images import prepare_court_image
@@ -83,7 +84,11 @@ class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
         )
         with torch.no_grad():
             call = self.adapter.prepare_images(images)
-            logits = cast(CourtLogits, self.model(*call.model_args))
+            output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
+            self.adapter.validate_logits(output, call)
+            logits = (
+                output.dense_logits if isinstance(output, CourtModelOutput) else output
+            )
         return cast(
             CourtSegmentationPrediction,
             self.adapter.decode_prediction(
@@ -143,7 +148,11 @@ class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
         )
         with torch.no_grad():
             call = self.adapter.prepare_images(images)
-            logits = cast(CourtLogits, self.model(*call.model_args))
+            output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
+            self.adapter.validate_logits(output, call)
+            logits = (
+                output.dense_logits if isinstance(output, CourtModelOutput) else output
+            )
         return cast(
             CourtLinePrediction,
             self.adapter.decode_prediction(
