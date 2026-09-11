@@ -50,7 +50,7 @@ STATUS_DURATION_SEC = 5.0
 class ClipStudioAppConfig:
     """Runtime configuration of the GUI application."""
 
-    project_path: Path
+    projects_path: Path
     resolver: PathResolver
     export: ExportSettings
     canvas_width: int
@@ -262,9 +262,9 @@ class ClipStudioApp:
 
     # ------------------------------------------------------------ operations
     def _save_project(self, *, reason: str) -> None:
-        self.state.project.save(self.config.project_path, self.config.resolver)
+        self.state.project.save(self.config.projects_path, self.config.resolver)
         self.state.mark_saved()
-        self._set_status(f"{reason}: {self.config.project_path}")
+        self._set_status(f"{reason}: {self.config.projects_path}")
 
     def _run_audio_sync(self) -> None:
         state = self.state

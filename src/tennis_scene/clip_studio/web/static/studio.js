@@ -84,8 +84,8 @@ function renderOffsets() {
   });
 }
 function renderProject(initial = false) {
-  $('recording').textContent = project.recording_id;
-  $('saved').textContent = '保存済み'; $('saved').title = project.project_path;
+  $('video').textContent = `${project.dataset_id} / ${project.video_id}`;
+  $('saved').textContent = '保存済み'; $('saved').title = project.projects_path;
   $('undo').disabled = !project.can_undo; $('redo').disabled = !project.can_redo;
   if (initial) {
     ['camera','reference'].forEach(id => {

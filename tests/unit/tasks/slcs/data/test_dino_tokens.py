@@ -29,14 +29,22 @@ from tests.support.tasks.slcs.dataset import (
 
 def test_spec_grid_and_validation() -> None:
     spec = DinoTokenSpec(
-        backbone="b", patch_size=16, image_height=48, image_width=64,
-        embed_dim=8, frame_stride=10,
+        backbone="b",
+        patch_size=16,
+        image_height=48,
+        image_width=64,
+        embed_dim=8,
+        frame_stride=10,
     )
     assert (spec.grid_h, spec.grid_w, spec.num_tokens) == (3, 4, 12)
     with pytest.raises(DatasetManifestError, match="divisible"):
         DinoTokenSpec(
-            backbone="b", patch_size=16, image_height=50, image_width=64,
-            embed_dim=8, frame_stride=10,
+            backbone="b",
+            patch_size=16,
+            image_height=50,
+            image_width=64,
+            embed_dim=8,
+            frame_stride=10,
         )
 
 
@@ -62,12 +70,14 @@ def test_roundtrip_and_overwrite_protection(synthetic_dataset: SLCSDataIndex) ->
 
 
 def test_spec_mismatch_is_error(synthetic_dataset: SLCSDataIndex) -> None:
-    manifest = ClipManifest.load(
-        synthetic_dataset.clip_dir(synthetic_dataset.clips[0])
-    )
+    manifest = ClipManifest.load(synthetic_dataset.clip_dir(synthetic_dataset.clips[0]))
     wrong = DinoTokenSpec(
-        backbone="other", patch_size=16, image_height=48, image_width=64,
-        embed_dim=8, frame_stride=10,
+        backbone="other",
+        patch_size=16,
+        image_height=48,
+        image_width=64,
+        embed_dim=8,
+        frame_stride=10,
     )
     with pytest.raises(DatasetManifestError, match="expected spec"):
         load_dino_tokens(manifest, "cam0", expected_spec=wrong)
@@ -76,7 +86,7 @@ def test_spec_mismatch_is_error(synthetic_dataset: SLCSDataIndex) -> None:
 def test_non_monotonic_frame_idx_rejected(tmp_path: Path) -> None:
     root = tmp_path / "ds"
     index = build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(recordings=("only",))
+        root, SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
     spec = DEFAULT_FIXTURE_DINO_SPEC
@@ -93,7 +103,7 @@ def test_non_monotonic_frame_idx_rejected(tmp_path: Path) -> None:
 def test_frame_idx_out_of_range_rejected(tmp_path: Path) -> None:
     root = tmp_path / "ds"
     index = build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(recordings=("only",))
+        root, SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
     spec = DEFAULT_FIXTURE_DINO_SPEC
@@ -108,7 +118,7 @@ def test_frame_idx_out_of_range_rejected(tmp_path: Path) -> None:
 def test_missing_archive_is_error(tmp_path: Path) -> None:
     root = tmp_path / "ds"
     index = build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(recordings=("only",))
+        root, SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
     (dino_dir(clip_dir) / "cam0.npz").unlink()

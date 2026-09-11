@@ -67,9 +67,9 @@ class SLCSDataIndex:
         """Resolve a canonical role-relative record path under this dataset."""
         return self.root / str(record.path)
 
-    def recording_ids(self) -> tuple[str, ...]:
-        """Return unique recording identifiers in manifest order."""
-        return tuple(dict.fromkeys(record.recording_id for record in self.clips))
+    def video_ids(self) -> tuple[str, ...]:
+        """Return unique video identifiers in manifest order."""
+        return tuple(dict.fromkeys(record.video_id for record in self.clips))
 
 
 def slcs_annotation_dir(clip_dir: Path) -> Path:
@@ -107,8 +107,7 @@ def _validate_scene_against_manifest(
         )
     if abs(scene.fps - manifest.fps) > 1e-3:
         raise DatasetManifestError(
-            f"{manifest.clip_id}: scene fps={scene.fps} != "
-            f"manifest fps={manifest.fps}."
+            f"{manifest.clip_id}: scene fps={scene.fps} != manifest fps={manifest.fps}."
         )
     if (scene.width, scene.height) != (manifest.width, manifest.height):
         raise DatasetManifestError(

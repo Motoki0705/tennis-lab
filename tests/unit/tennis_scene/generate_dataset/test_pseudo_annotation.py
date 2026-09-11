@@ -18,9 +18,7 @@ def test_generate_publishes_complete_annotation_and_then_skips(
 ) -> None:
     calls = 0
 
-    def runner(
-        video_paths: Sequence[Path], camera_ids: Sequence[str]
-    ) -> SceneResult:
+    def runner(video_paths: Sequence[Path], camera_ids: Sequence[str]) -> SceneResult:
         nonlocal calls
         calls += 1
         assert [path.name for path in video_paths] == ["cam0.mp4"]
@@ -36,10 +34,10 @@ def test_generate_publishes_complete_annotation_and_then_skips(
     assert calls == 1
     assert first[0].annotation_path is not None
     annotation = load_json(first[0].annotation_path)
-    assert annotation["clip_id"] == "match-001/clip_000"
+    assert annotation["clip_id"] == "video_000/clip_000"
     assert annotation["arrays"]["ball_3d"]["shape"] == [3, 3]
     loaded = load_scene_result(first[0].annotation_path.parent / "scene.npz")
-    assert loaded.metadata["dataset_clip_id"] == "match-001/clip_000"
+    assert loaded.metadata["dataset_clip_id"] == "video_000/clip_000"
 
     second = generate_pseudo_annotations(
         structured_dataset,
@@ -55,9 +53,7 @@ def test_contract_mismatch_records_failure_without_completion_marker(
 ) -> None:
     valid_scene_result.num_frames = 2
 
-    def runner(
-        _video_paths: Sequence[Path], _camera_ids: Sequence[str]
-    ) -> SceneResult:
+    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str]) -> SceneResult:
         return valid_scene_result
 
     outcomes = generate_pseudo_annotations(
@@ -69,8 +65,9 @@ def test_contract_mismatch_records_failure_without_completion_marker(
     assert "num_frames 2 != 3" in str(outcomes[0].error)
     annotation_root = (
         structured_dataset
+        / "videos"
+        / "video_000"
         / "clips"
-        / "match-001"
         / "clip_000"
         / "annotations"
     )
@@ -84,9 +81,7 @@ def test_missing_blcs_labels_is_explicit_failure(
 ) -> None:
     valid_scene_result.ball_3d = None
 
-    def runner(
-        _video_paths: Sequence[Path], _camera_ids: Sequence[str]
-    ) -> SceneResult:
+    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str]) -> SceneResult:
         return valid_scene_result
 
     outcomes = generate_pseudo_annotations(

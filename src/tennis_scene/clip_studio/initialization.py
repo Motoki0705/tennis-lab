@@ -6,7 +6,11 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.tennis_scene.clip_studio.project import ClipSource, ClipStudioProject
+from src.tennis_scene.clip_studio.project import (
+    ClipSource,
+    ClipStudioProject,
+    ClipStudioProjects,
+)
 from src.tennis_scene.configuration import ClipStudioRuntimeConfig
 from src.utils.video.metadata import CreationTimeError, read_creation_time
 
@@ -54,22 +58,37 @@ def initialize_recording_offsets(project: ClipStudioProject) -> StartupNotice:
 def load_or_create_project(
     runtime: ClipStudioRuntimeConfig,
 ) -> tuple[ClipStudioProject, StartupNotice | None]:
-    """Existing JSON is authoritative, even with zero offsets or no clips."""
-    path = runtime.export.project_path
+    """Resume one video entry or append a newly initialized project."""
+    path = runtime.export.projects_path
     resolver = runtime.export.resolver
     if path.is_file():
-        if runtime.video_paths is not None or runtime.camera_ids is not None:
+        projects = ClipStudioProjects.load(path, resolver)
+        if projects.dataset_id != runtime.dataset_id:
             raise ValueError(
-                "Existing projects forbid video_paths and camera_ids; remove both keys."
+                f"projects dataset_id {projects.dataset_id!r} != "
+                f"source dataset_id {runtime.dataset_id!r}"
             )
-        return ClipStudioProject.load(path, resolver), None
-    if runtime.video_paths is None or runtime.camera_ids is None:
-        raise ValueError("New projects require video_paths and camera_ids.")
+        existing = projects.projects.get(runtime.video_id)
+        if existing is not None:
+            saved_sources = tuple(
+                (source.path, source.camera_id) for source in existing.sources
+            )
+            discovered_sources = tuple(
+                zip(runtime.video_paths, runtime.camera_ids, strict=True)
+            )
+            if saved_sources != discovered_sources:
+                raise ValueError(
+                    f"saved sources for {runtime.video_id} differ from "
+                    f"the discovered source directory: saved={saved_sources}, "
+                    f"discovered={discovered_sources}"
+                )
+            return existing, None
     missing = [video for video in runtime.video_paths if not video.is_file()]
     if missing:
         raise FileNotFoundError(f"video not found: {missing[0]}")
     project = ClipStudioProject(
-        recording_id=runtime.recording_id,
+        dataset_id=runtime.dataset_id,
+        video_id=runtime.video_id,
         sources=[
             ClipSource(path=video, camera_id=camera_id)
             for video, camera_id in zip(

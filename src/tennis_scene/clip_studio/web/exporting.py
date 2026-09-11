@@ -49,7 +49,7 @@ def publish_export(
     staging: Path, plan: ClipExportPlan, settings: ExportSettings
 ) -> None:
     """Publish only completed media; restore the old directory if indexing fails."""
-    relative = Path("clips") / plan.recording_id / plan.clip_name
+    relative = Path("videos") / plan.video_id / "clips" / plan.clip_name
     source = staging / relative
     destination = settings.output_dir / relative
     destination.parent.mkdir(parents=True, exist_ok=True)

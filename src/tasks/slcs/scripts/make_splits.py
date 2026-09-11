@@ -1,5 +1,5 @@
 """
-Generate the reproducible recording-level train/val/test split file for an
+Generate the reproducible video-level train/val/test split file for an
 issue #634 dataset.
 
 Usage:
@@ -10,8 +10,8 @@ Usage:
 Notes:
     - Configuration is loaded from `src/tasks/slcs/configs/make_splits.yaml`.
     - Dataset and split paths are relative to `paths.data_root`.
-    - The split unit is recording_id (clips of one recording never straddle
-      splits); assignment is deterministic in (seed, ratios, recordings).
+    - The split unit is video_id (clips of one video never straddle splits);
+      assignment is deterministic in (seed, ratios, videos).
     - Refuses to overwrite an existing split file unless splits.overwrite=true,
       because retraining against a silently changed split invalidates
       comparisons.
@@ -27,7 +27,7 @@ from src.tasks.slcs.configuration import SLCSSplitConfig
 from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.splits import (
     generate_overfit_splits,
-    generate_recording_splits,
+    generate_video_splits,
     save_split_file,
 )
 from src.tennis_scene.generate_dataset.manifest import DatasetManifestError
@@ -48,7 +48,7 @@ def run(config: DictConfig) -> None:
     assignments = (
         generate_overfit_splits(index)
         if runtime.overfit
-        else generate_recording_splits(
+        else generate_video_splits(
             index,
             val_ratio=runtime.val_ratio,
             test_ratio=runtime.test_ratio,
@@ -65,7 +65,7 @@ def run(config: DictConfig) -> None:
         test_ratio=test_ratio,
     )
     counts = Counter(assignments.values())
-    print(f"wrote {split_file}: {dict(counts)} over {len(assignments)} recordings")
+    print(f"wrote {split_file}: {dict(counts)} over {len(assignments)} videos")
 
 
 @hydra_main(
