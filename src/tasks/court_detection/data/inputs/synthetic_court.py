@@ -45,9 +45,11 @@ from src.tasks.court_detection.data.contracts import (
     CourtSourceSplit,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
     CourtDerivedTargetStore,
+)
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
 )
 from src.utils.schema.court import (
     CAMERA_VIEW_HALF_TURN_INDEX,
@@ -153,9 +155,11 @@ class SyntheticCourtInput:
         config: SyntheticCourtSourceConfig,
         *,
         target_store: CourtDerivedTargetStore,
+        line_target_schema: str = LINE_TARGET_SCHEMA,
     ) -> None:
         self.config = config
         self.target_store = target_store
+        self.line_target_schema = line_target_schema
         flip_permutation: tuple[int, ...]
         if config.schema == "v1":
             source_schema = COURT_DATASET_SCHEMA
@@ -528,7 +532,7 @@ class SyntheticCourtInput:
                 "line": self.target_store.path_for(
                     source_kind="synthetic_court",
                     derived_key=derived_key,
-                    target_schema=LINE_TARGET_SCHEMA,
+                    target_schema=self.line_target_schema,
                 ),
             },
             payload={

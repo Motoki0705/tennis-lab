@@ -114,7 +114,7 @@ python -m src.tasks.court_detection.scripts.preview_augmentation \
   preview.split=train preview.max_samples=4
 ```
 
-KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。LINE生成の正本は通常線5 cm、baseline 10 cmです。
+KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行LINE schema `court_line_binary_75mm_150mm_v2` は通常線7.5 cm、baseline 15 cmです。旧checkpointが保持する `court_line_binary_v1` は5 cm / 10 cmとして読み取り互換性を維持し、両者のderived target pathは混在しません。
 
 `prepare_youtube_dataset.py` の `workflow.target_preview` は、完成済みYouTube annotationのground KP14からsigmaと物理線幅の候補を比較します。既存annotationだけを読む場合は `enabled=true only=true` を指定します。このYouTube annotation storeは現在のCourt DataModuleへ接続されていないため、このpreviewはtarget候補のauditであり、データを学習へ暗黙に追加しません。
 

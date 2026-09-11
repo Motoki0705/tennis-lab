@@ -18,6 +18,11 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_DEFINITIONS,
+    LINE_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -50,8 +55,6 @@ CourtConsistencyGradientFlow: TypeAlias = Literal[
     "stopgrad_dense",
 ]
 
-SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
-LINE_TARGET_SCHEMA = "court_line_binary_v1"
 DPT_CHANNELS_BY_SIZE: Mapping[CourtDPTSize, int] = MappingProxyType(
     {"tiny": 64, "small": 128, "base": 256, "large": 512}
 )
@@ -634,11 +637,13 @@ class CourtTargetConfig:
             _exact(mapping, {"kind", "target_schema"}, path=path)
             schema = _string(mapping, "target_schema", path=path)
             expected = (
-                SEGMENTATION_TARGET_SCHEMA if kind == "seg" else LINE_TARGET_SCHEMA
+                {SEGMENTATION_TARGET_SCHEMA}
+                if kind == "seg"
+                else set(LINE_TARGET_DEFINITIONS)
             )
-            if schema != expected:
+            if schema not in expected:
                 raise SemanticConfigurationError(
-                    f"{path}.target_schema must be {expected!r}."
+                    f"{path}.target_schema must be one of {sorted(expected)!r}."
                 )
             return cls(
                 kind=cast(CourtTargetKind, kind),

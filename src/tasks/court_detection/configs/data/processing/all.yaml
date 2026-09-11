@@ -5,4 +5,4 @@ targets:
   - kind: seg
     target_schema: court_cell_segmentation_v1
   - kind: line
-    target_schema: court_line_binary_v1
+    target_schema: court_line_binary_75mm_150mm_v2

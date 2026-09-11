@@ -31,6 +31,11 @@ from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,
     validate_derived_target,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    LINE_TARGET_SCHEMA_V1,
+    line_target_definition,
+)
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
@@ -48,7 +53,7 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
     )
     target_specs: tuple[tuple[CourtDenseTargetKind, str], ...] = (
         ("seg", "court_cell_segmentation_v1"),
-        ("line", "court_line_binary_v1"),
+        ("line", LINE_TARGET_SCHEMA),
     )
     refs: dict[CourtDenseTargetKind, Path] = {
         kind: store.path_for(
@@ -183,3 +188,11 @@ def test_line_target_width_is_explicitly_previewable() -> None:
     )
 
     assert np.count_nonzero(wide) > np.count_nonzero(narrow)
+
+
+def test_line_target_schemas_keep_physical_widths_immutable() -> None:
+    legacy = line_target_definition(LINE_TARGET_SCHEMA_V1)
+    current = line_target_definition(LINE_TARGET_SCHEMA)
+
+    assert (legacy.line_width_metres, legacy.baseline_width_metres) == (0.05, 0.10)
+    assert (current.line_width_metres, current.baseline_width_metres) == (0.075, 0.15)
