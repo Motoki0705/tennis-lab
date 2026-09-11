@@ -45,7 +45,8 @@ def test_actions_matrix_covers_every_ci_test_once_and_excludes_manual_integratio
         assert group
         assert group == tuple(sorted(group))
     assert set(CI_EXCLUDED_FILES) == {
-        "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py"
+        "tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
     }
 
 

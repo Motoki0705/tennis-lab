@@ -57,11 +57,12 @@ spin ci --shard 1 --shards 4
 ## CIの実行・拡張
 
 `spin ci` は `local_data` / `cuda` を除外した通常CI対象を実行する。
-長時間の `tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py` は
+長時間のscene pipeline統合テストとコートデータセット生成の統合テストは
 CI対象外とし、必要時に次のコマンドで実行する。
 
 ```bash
 spin test --serial tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py
+spin test --serial tests/integration/synthetic_data_generation/test_court_dataset.py
 ```
 
 通常CIはCPU版PyTorchを使用する。GPU版が既定の開発・学習環境と同じ`uv.lock`で

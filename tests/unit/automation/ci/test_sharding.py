@@ -66,13 +66,17 @@ def test_missing_and_malformed_profiles_fail(tmp_path: Path) -> None:
         read_durations(path)
 
 
-def test_discovery_excludes_only_the_explicit_manual_test(tmp_path: Path) -> None:
-    excluded = tmp_path / next(iter(CI_EXCLUDED_FILES))
-    excluded.parent.mkdir(parents=True)
-    excluded.touch()
+@pytest.mark.parametrize("missing_file", sorted(CI_EXCLUDED_FILES))
+def test_discovery_excludes_only_the_explicit_manual_tests(
+    tmp_path: Path, missing_file: str
+) -> None:
+    for name in CI_EXCLUDED_FILES:
+        excluded = tmp_path / name
+        excluded.parent.mkdir(parents=True, exist_ok=True)
+        excluded.touch()
     normal = tmp_path / "tests/test_new.py"
     normal.touch()
     assert ci_test_files(tmp_path) == ("tests/test_new.py",)
-    excluded.unlink()
+    (tmp_path / missing_file).unlink()
     with pytest.raises(ValueError, match="Stale CI exclusions"):
         ci_test_files(tmp_path)
