@@ -27,7 +27,7 @@ metrics:
   inference_seconds_mean: 0.4436689023877989
   peak_rss_bytes: 3009736704
 repro:
-  commit: dde8036f
+  commit: 7f2d909c
   branch: codex/court-pose-predictor
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash knowledge/runs/run-court-pose-b01-group-02524-last/repro.sh
