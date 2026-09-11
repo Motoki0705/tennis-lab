@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
+      # Public ubuntu runners provide 4 vCPUs; native libraries use one thread each.
+      PYTEST_XDIST_AUTO_NUM_WORKERS: "4"
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"

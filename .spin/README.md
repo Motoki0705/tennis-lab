@@ -85,7 +85,8 @@ GPU環境へ戻す場合は`uv sync --locked`を実行する。
 
 GitHub Actionsの`matrix.shard`が並列数の唯一の設定場所である。例えば
 `[1, 2, 3, 4, 5, 6]`へ変えると6分割になり、各jobは`strategy.job-total`を参照する。
-各shard内ではpytest-xdistの`worksteal`を使用する。ファイル単位の分割のため、
+各shard内ではpytest-xdistの`worksteal`を使用し、Actionsではpublic Ubuntu runnerの
+4 vCPUに合わせて4 worker、数値計算ライブラリは各1 threadで実行する。ファイル単位の分割のため、
 単一ファイルが長くなった場合は独立したテストファイルへの分割を検討する。
 
 計測結果は`artifacts/ci/shard-N/`へ保存する。`junit.xml`、`metrics.json`、
