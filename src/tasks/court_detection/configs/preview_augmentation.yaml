@@ -12,6 +12,7 @@ hydra:
 
 preview:
   split: train
+  require_pose: false
   sample_indices: []
   max_samples: 4
   num_augmented: 3
