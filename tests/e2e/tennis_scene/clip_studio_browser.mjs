@@ -19,9 +19,42 @@ try {
   assert.ok(initial.sources.length >= 2);
   assert.ok(initial.extent[1] > 40);
   assert.equal(await page.locator('.viewer:visible').count(), 1);
+  const picture = page.locator('.viewer:visible .picture');
+  const pictureBox = await picture.boundingBox();
+  assert.ok(pictureBox);
+  const pointer = {x:pictureBox.x + pictureBox.width * 0.75, y:pictureBox.y + pictureBox.height * 0.2};
+  await page.keyboard.down('Control');
+  await page.mouse.move(pointer.x,pointer.y); await page.mouse.wheel(0,-350);
+  await page.keyboard.up('Control');
+  const imageBox = await picture.locator('img:not([hidden])').boundingBox();
+  assert.ok(imageBox && imageBox.width > pictureBox.width);
+  assert.ok(Math.abs((pointer.x-imageBox.x)/imageBox.width-0.75)<0.001);
+  assert.ok(Math.abs((pointer.y-imageBox.y)/imageBox.height-0.2)<0.001);
+  const zoomedReadout = await page.locator('.viewer:visible .zoom-readout').textContent();
+  assert.notEqual(zoomedReadout,'100%');
+  assert.equal(await picture.locator('video,img').evaluateAll(media => media[0].style.transform === media[1].style.transform),true);
   await page.locator('#compare').click();
   assert.equal(await page.locator('.viewer:visible').count(), initial.sources.length);
+  const zoomReadouts = await page.locator('.zoom-readout').allTextContents();
+  assert.equal(zoomReadouts[0],zoomedReadout);
+  assert.ok(zoomReadouts.slice(1).every(readout => readout === '100%'));
   await page.locator('#focus').click();
+  await page.getByRole('button',{name:'cam0 の拡大表示を等倍に戻す'}).click();
+  assert.equal(await page.locator('.viewer:visible .zoom-readout').textContent(),'100%');
+  const syncPanel = page.locator('#sync-panel');
+  assert.equal(await syncPanel.isHidden(), true);
+  const fullWidth = (await page.locator('#viewers').boundingBox()).width;
+  await page.locator('#sync-toggle').click();
+  const [viewersBox, syncBox] = await Promise.all([
+    page.locator('#viewers').boundingBox(), syncPanel.boundingBox(),
+  ]);
+  assert.ok(viewersBox && syncBox);
+  assert.ok(viewersBox.width < fullWidth);
+  assert.ok(syncBox.x >= viewersBox.x + viewersBox.width);
+  assert.ok(Math.abs(syncBox.y - viewersBox.y) < 2);
+  await page.locator('#sync-close').click();
+  assert.equal(await syncPanel.isHidden(), true);
+  assert.equal((await page.locator('#viewers').boundingBox()).width, fullWidth);
   await page.locator('#camera').selectOption('1');
   assert.equal(await page.locator('.viewer.selected:visible').count(), 1);
   await page.locator('#camera').selectOption('0');
@@ -66,7 +99,7 @@ try {
   const after = Number(await page.locator('#seek-time').inputValue());
   assert.ok(after > 21.5 && after < 23.5, `2x playback advanced to ${after}`);
   assert.ok(await page.locator('video').evaluateAll(videos => videos.filter((_,i)=>i!==0).every(v=>v.paused)));
-  await page.locator('#sync-panel').evaluate(el => {el.open=true;});
+  await page.locator('#sync-toggle').click();
   const offset = page.getByRole('spinbutton',{name:'cam1 時差（秒）'});
   await offset.fill('0.25');
   await page.locator('.offset-row').nth(1).getByRole('button',{name:'時差を適用'}).click();
@@ -76,7 +109,12 @@ try {
   assert.ok(Math.abs(saved.clips[0].start_sec-frameTime)<1e-6);
   await page.setViewportSize({width:780,height:1000});
   assert.ok(await page.locator('#seek').isVisible());
+  const [narrowViewersBox, narrowSyncBox] = await Promise.all([
+    page.locator('#viewers').boundingBox(), syncPanel.boundingBox(),
+  ]);
+  assert.ok(narrowViewersBox && narrowSyncBox);
+  assert.ok(narrowSyncBox.y >= narrowViewersBox.y + narrowViewersBox.height);
   assert.deepEqual(errors,[]);
   if(process.env.CLIP_STUDIO_SCREENSHOT) await page.screenshot({path:process.env.CLIP_STUDIO_SCREENSHOT,fullPage:true});
-  console.log('PASS: focus/comparison, keyboard steps, fractional-frame edits, undo, reload, progressive scrubbing, 2x playback, sync offsets, responsive layout');
+  console.log('PASS: focus/comparison, pointer-anchored per-camera zoom, nearby collapsible sync panel, keyboard steps, fractional-frame edits, undo, reload, progressive scrubbing, 2x playback, sync offsets, responsive layout');
 } finally { await browser.close(); }
