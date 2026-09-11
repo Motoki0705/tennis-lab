@@ -41,8 +41,9 @@ DEFAULT_FIXTURE_DINO_SPEC = DinoTokenSpec(
 class SLCSFixtureDatasetConfig:
     """Shape and seed parameters for the test-only dataset composer."""
 
-    recordings: tuple[str, ...] = ("rec-a", "rec-b", "rec-c")
-    clips_per_recording: int = 1
+    dataset_id: str = "fixture_dataset"
+    videos: tuple[str, ...] = ("video_000", "video_001", "video_002")
+    clips_per_video: int = 1
     num_frames: int = 37
     num_players: int = 2
     num_cameras: int = 1
@@ -52,9 +53,7 @@ class SLCSFixtureDatasetConfig:
     fps: float = 30.0
     seed: int = 7
     ball_visibility: float = 0.85
-    dino_spec: DinoTokenSpec = field(
-        default_factory=lambda: DEFAULT_FIXTURE_DINO_SPEC
-    )
+    dino_spec: DinoTokenSpec = field(default_factory=lambda: DEFAULT_FIXTURE_DINO_SPEC)
 
 
 def make_fixture_scene(
@@ -65,9 +64,7 @@ def make_fixture_scene(
     num_frames = config.num_frames
     num_players = config.num_players
     num_cameras = config.num_cameras
-    yaw = rng.uniform(-np.pi, np.pi, size=(num_players, num_frames)).astype(
-        np.float32
-    )
+    yaw = rng.uniform(-np.pi, np.pi, size=(num_players, num_frames)).astype(np.float32)
     position = rng.uniform(-0.5, 0.5, size=(num_players, num_frames, 3)).astype(
         np.float32
     )
@@ -90,13 +87,9 @@ def make_fixture_scene(
         player_position=position,
         player_yaw=yaw,
         smpl_body_pose=np.zeros((num_players, num_frames, 63), dtype=np.float32),
-        smpl_global_orient=np.zeros(
-            (num_players, num_frames, 3), dtype=np.float32
-        ),
+        smpl_global_orient=np.zeros((num_players, num_frames, 3), dtype=np.float32),
         smpl_betas=np.zeros((num_players, 10), dtype=np.float32),
-        ball_uv=rng.uniform(0, 1, size=(num_cameras, num_frames, 2)).astype(
-            np.float32
-        ),
+        ball_uv=rng.uniform(0, 1, size=(num_cameras, num_frames, 2)).astype(np.float32),
         ball_vis=rng.random((num_cameras, num_frames)) < config.ball_visibility,
         ball_3d=ball,
         human_kp_2d=rng.uniform(
@@ -112,7 +105,8 @@ def _export_clip_fixture(
     dataset_root: Path,
     source_root: Path,
     *,
-    recording_id: str,
+    dataset_id: str,
+    video_id: str,
     clip_name: str,
     config: SLCSFixtureDatasetConfig,
     rng: np.random.Generator,
@@ -120,7 +114,7 @@ def _export_clip_fixture(
     cameras: list[CameraExportPlan] = []
     for camera_index in range(config.num_cameras):
         camera_id = f"cam{camera_index}"
-        source_path = source_root / recording_id / clip_name / f"{camera_id}.mp4"
+        source_path = source_root / video_id / clip_name / f"{camera_id}.mp4"
         frames = rng.integers(
             0,
             255,
@@ -139,7 +133,8 @@ def _export_clip_fixture(
             )
         )
     plan = ClipExportPlan(
-        recording_id=recording_id,
+        dataset_id=dataset_id,
+        video_id=video_id,
         clip_name=clip_name,
         global_start_sec=0.0,
         global_end_sec=config.num_frames / config.fps,
@@ -174,13 +169,14 @@ def build_slcs_dataset_fixture(
     source_root = root / ".fixture_sources"
     scenes: dict[str, SceneResult] = {}
     manifests: list[ClipManifest] = []
-    for recording_id in cfg.recordings:
-        for clip_index in range(cfg.clips_per_recording):
+    for video_id in cfg.videos:
+        for clip_index in range(cfg.clips_per_video):
             clip_name = f"clip_{clip_index:03d}"
             manifest = _export_clip_fixture(
                 root,
                 source_root,
-                recording_id=recording_id,
+                dataset_id=cfg.dataset_id,
+                video_id=video_id,
                 clip_name=clip_name,
                 config=cfg,
                 rng=rng,
@@ -193,7 +189,7 @@ def build_slcs_dataset_fixture(
     ) -> SceneResult:
         del camera_ids
         clip_dir = video_paths[0].parent.parent
-        clip_id = f"{clip_dir.parent.name}/{clip_dir.name}"
+        clip_id = f"{clip_dir.parent.parent.name}/{clip_dir.name}"
         return scenes[clip_id]
 
     outcomes = generate_pseudo_annotations(

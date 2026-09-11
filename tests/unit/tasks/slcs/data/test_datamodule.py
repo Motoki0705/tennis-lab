@@ -19,7 +19,7 @@ def test_explicit_overfit_mode_reuses_train_windows_for_all_stages(
     root = tmp_path / "dataset"
     index = build_slcs_dataset_fixture(
         root,
-        SLCSFixtureDatasetConfig(recordings=("only",), num_frames=16),
+        SLCSFixtureDatasetConfig(videos=("video_000",), num_frames=16),
     )
     split_file = root / "splits.json"
     save_split_file(

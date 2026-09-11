@@ -1,4 +1,4 @@
-"""Tests for SLCS recording-level split policies."""
+"""Tests for SLCS video-level split policies."""
 
 from pathlib import Path
 
@@ -9,10 +9,13 @@ from tests.support.tasks.slcs.dataset import (
 )
 
 
-def test_overfit_split_assigns_every_recording_to_train(tmp_path: Path) -> None:
+def test_overfit_split_assigns_every_video_to_train(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
         tmp_path / "dataset",
-        SLCSFixtureDatasetConfig(recordings=("rec-a", "rec-b")),
+        SLCSFixtureDatasetConfig(videos=("video_000", "video_001")),
     )
 
-    assert generate_overfit_splits(index) == {"rec-a": "train", "rec-b": "train"}
+    assert generate_overfit_splits(index) == {
+        "video_000": "train",
+        "video_001": "train",
+    }

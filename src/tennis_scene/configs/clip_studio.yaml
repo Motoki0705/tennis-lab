@@ -2,10 +2,7 @@ defaults:
   - paths: default
   - _self_
 
-project_path: tennis_scene/clip_studio/project.json
-recording_id: recording
-video_paths: null
-camera_ids: null
+source_directory: ???
 gui:
   canvas_width: 1600
   tile_width: 1280
@@ -19,7 +16,6 @@ audio_sync:
   envelope_rate: 100.0
   max_seconds: null
 export:
-  output_dir: tennis_scene/dataset
   fps: null
   width: null
   height: null

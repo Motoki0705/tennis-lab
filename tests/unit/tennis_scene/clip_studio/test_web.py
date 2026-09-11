@@ -12,7 +12,7 @@ def editor(two_camera_project, two_camera_infos, path_resolver):
     return Editor(
         two_camera_project,
         two_camera_infos,
-        path_resolver.roots.artifact_root / "project.json",
+        path_resolver.roots.data_root / "projects.json",
         path_resolver,
     )
 
@@ -34,7 +34,12 @@ def test_edit_undo_redo_survives_reload(editor):
     editor.edit(Edit(revision=3, action="undo"))
     assert len(editor.project.clips) == 2
     editor.edit(Edit(revision=4, action="redo"))
-    loaded = ClipStudioProject.load(editor.path, editor.resolver)
+    loaded = ClipStudioProject.load(
+        editor.path,
+        editor.resolver,
+        dataset_id=editor.project.dataset_id,
+        video_id=editor.project.video_id,
+    )
     assert loaded.to_dict(editor.resolver) == editor.project.to_dict(editor.resolver)
     assert loaded.clips[0].start_sec == 5.5
 
