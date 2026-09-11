@@ -3,6 +3,7 @@ defaults:
   - encoder: dinov3
   - transformer_encoder: default
   - decoder: dpt
+  - dense_head: residual
   - _self_
 
 name: court_hierarchical

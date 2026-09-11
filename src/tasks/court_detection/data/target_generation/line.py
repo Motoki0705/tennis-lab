@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TypeAlias, cast
 
@@ -24,8 +25,8 @@ from src.utils.schema.court import (
 Float32Array: TypeAlias = NDArray[np.float32]
 UInt8Array: TypeAlias = NDArray[np.uint8]
 
-_LINE_WIDTH_METRES = 0.05
-_BASELINE_WIDTH_METRES = 0.10
+DEFAULT_LINE_WIDTH_METRES = 0.05
+DEFAULT_BASELINE_WIDTH_METRES = 0.10
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +36,11 @@ class _MetricLine:
     width_m: float
 
 
-def _metric_lines() -> tuple[_MetricLine, ...]:
+def _metric_lines(
+    *,
+    line_width_metres: float,
+    baseline_width_metres: float,
+) -> tuple[_MetricLine, ...]:
     points: Float32Array = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy()[:, :2]
     baseline_pairs = {(0, 1), (2, 3)}
     result: list[_MetricLine] = []
@@ -47,9 +52,9 @@ def _metric_lines() -> tuple[_MetricLine, ...]:
                 (float(points[first, 0]), float(points[first, 1])),
                 (float(points[second, 0]), float(points[second, 1])),
                 (
-                    _BASELINE_WIDTH_METRES
+                    baseline_width_metres
                     if (first, second) in baseline_pairs
-                    else _LINE_WIDTH_METRES
+                    else line_width_metres
                 ),
             )
         )
@@ -58,19 +63,16 @@ def _metric_lines() -> tuple[_MetricLine, ...]:
             _MetricLine(
                 (0.0, HALF_LENGTH),
                 (0.0, HALF_LENGTH - CENTER_MARK_LENGTH),
-                _LINE_WIDTH_METRES,
+                line_width_metres,
             ),
             _MetricLine(
                 (0.0, -HALF_LENGTH),
                 (0.0, -HALF_LENGTH + CENTER_MARK_LENGTH),
-                _LINE_WIDTH_METRES,
+                line_width_metres,
             ),
         )
     )
     return tuple(result)
-
-
-_METRIC_LINES = _metric_lines()
 
 
 def _segment_quad(line: _MetricLine) -> Float32Array:
@@ -97,10 +99,23 @@ def generate_line_target(
     height: int,
     width: int,
     instances: tuple[CourtInstance2D, ...],
+    line_width_metres: float = DEFAULT_LINE_WIDTH_METRES,
+    baseline_width_metres: float = DEFAULT_BASELINE_WIDTH_METRES,
 ) -> UInt8Array:
     """Render all court instances into one binary uint8 line mask."""
     if height <= 0 or width <= 0 or not instances:
         raise ValueError("Court line generation requires image geometry.")
+    if (
+        not math.isfinite(line_width_metres)
+        or not math.isfinite(baseline_width_metres)
+        or line_width_metres <= 0.0
+        or baseline_width_metres <= 0.0
+    ):
+        raise ValueError("Court line widths must be finite and positive.")
+    metric_lines = _metric_lines(
+        line_width_metres=line_width_metres,
+        baseline_width_metres=baseline_width_metres,
+    )
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
     for instance in instances:
         rasterizer = CourtPlaneRasterizer.from_instance(
@@ -110,7 +125,7 @@ def generate_line_target(
         )
         if rasterizer is None:
             continue
-        for line in _METRIC_LINES:
+        for line in metric_lines:
             polygon = rasterizer.project_polygon(_segment_quad(line))
             if polygon is not None:
                 cv2.fillPoly(output, [polygon], 255)
@@ -134,4 +149,8 @@ def generate_line_target(
     return output
 
 
-__all__ = ["generate_line_target"]
+__all__ = [
+    "DEFAULT_BASELINE_WIDTH_METRES",
+    "DEFAULT_LINE_WIDTH_METRES",
+    "generate_line_target",
+]

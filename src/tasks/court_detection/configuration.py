@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -1090,27 +1091,118 @@ class CourtTransformerEncoderConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CourtDenseHeadBranchConfig:
+    """Capacity of one task-specific dense residual branch."""
+
+    hidden_channels: int
+    depth: int
+
+    @classmethod
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        path: str,
+        normalization_groups: int,
+    ) -> CourtDenseHeadBranchConfig:
+        mapping = as_config_mapping(value, path=path)
+        _exact(mapping, {"hidden_channels", "depth"}, path=path)
+        result = cls(
+            hidden_channels=_integer(mapping, "hidden_channels", path=path),
+            depth=_integer(mapping, "depth", path=path),
+        )
+        if result.hidden_channels <= 0 or result.depth <= 0:
+            raise SemanticConfigurationError(
+                f"{path}.hidden_channels and depth must be positive."
+            )
+        if result.hidden_channels % normalization_groups:
+            raise SemanticConfigurationError(
+                f"{path}.hidden_channels must be divisible by "
+                "model.dense_head.normalization_groups."
+            )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class CourtDenseHeadConfig:
+    """Strict configuration for all task-specific dense residual heads."""
+
+    name: Literal["linear", "residual"]
+    normalization_groups: int | None
+    branches: Mapping[CourtTargetKind, CourtDenseHeadBranchConfig]
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtDenseHeadConfig:
+        path = "model.dense_head"
+        mapping = as_config_mapping(value, path=path)
+        name = _string(mapping, "name", path=path)
+        if name == "linear":
+            _exact(mapping, {"name"}, path=path)
+            return cls(
+                name="linear",
+                normalization_groups=None,
+                branches=MappingProxyType({}),
+            )
+        if name != "residual":
+            raise SemanticConfigurationError(
+                "model.dense_head.name must be 'linear' or 'residual'."
+            )
+        _exact(
+            mapping,
+            {"name", "normalization_groups", "kp", "seg", "line"},
+            path=path,
+        )
+        normalization_groups = _integer(mapping, "normalization_groups", path=path)
+        if normalization_groups <= 0:
+            raise SemanticConfigurationError(
+                "model.dense_head.normalization_groups must be positive."
+            )
+        kinds: tuple[CourtTargetKind, ...] = ("kp", "seg", "line")
+        branches = {
+            kind: CourtDenseHeadBranchConfig.from_mapping(
+                mapping[kind],
+                path=f"{path}.{kind}",
+                normalization_groups=normalization_groups,
+            )
+            for kind in kinds
+        }
+        return cls(
+            name="residual",
+            normalization_groups=normalization_groups,
+            branches=MappingProxyType(branches),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class CourtModelConfig:
     name: Literal["court_hierarchical"]
     in_channels: int
     encoder: CourtEncoderConfig
     decoder: CourtDecoderConfig
     transformer_encoder: CourtTransformerEncoderConfig
+    dense_head: CourtDenseHeadConfig
 
     @classmethod
     def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtModelConfig:
         mapping = as_config_mapping(value, path="model")
-        _exact(
-            mapping,
-            {
-                "name",
-                "in_channels",
-                "encoder",
-                "transformer_encoder",
-                "decoder",
-            },
-            path="model",
-        )
+        expected = {
+            "name",
+            "in_channels",
+            "encoder",
+            "transformer_encoder",
+            "decoder",
+            "dense_head",
+        }
+        legacy_linear = set(mapping) == expected - {"dense_head"}
+        if legacy_linear:
+            warnings.warn(
+                "Legacy Court model configuration has no model.dense_head; "
+                "loading its checkpoint-compatible linear 1x1 head.",
+                UserWarning,
+                stacklevel=2,
+            )
+        else:
+            _exact(mapping, expected, path="model")
         name = _string(mapping, "name", path="model")
         if name != "court_hierarchical":
             raise SemanticConfigurationError("model.name must be 'court_hierarchical'.")
@@ -1126,6 +1218,17 @@ class CourtModelConfig:
             ),
             decoder=CourtDecoderConfig.from_mapping(
                 require_config_mapping(mapping, "decoder", path="model")
+            ),
+            dense_head=(
+                CourtDenseHeadConfig(
+                    name="linear",
+                    normalization_groups=None,
+                    branches=MappingProxyType({}),
+                )
+                if legacy_linear
+                else CourtDenseHeadConfig.from_mapping(
+                    require_config_mapping(mapping, "dense_head", path="model")
+                )
             ),
         )
         if result.in_channels <= 0:
@@ -1680,6 +1783,8 @@ __all__ = [
     "CourtDataConfig",
     "CourtDecoderConfig",
     "CourtDecoderName",
+    "CourtDenseHeadBranchConfig",
+    "CourtDenseHeadConfig",
     "CourtDPTSize",
     "CourtEncoderConfig",
     "CourtLoRAConfig",
