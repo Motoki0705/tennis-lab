@@ -71,6 +71,24 @@ def test_pose_preset_is_default_for_mixed_training_and_synthetic_only() -> None:
     assert synthetic.keypoint_court_scope == "target_court"
 
 
+def test_pose_lora_training_selects_best_checkpoint_by_direct_pose_loss() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_mixed",
+            overrides=[
+                "training=pose_lora",
+                "run.output_dir=court_detection/mixed-source/pose-lora-test",
+            ],
+        )
+
+    standard, _ = resolve_mixed_training_config(config)
+    CourtTrainingConfig.from_config(standard)
+
+    assert standard.training.checkpoint.monitor == "val/loss_direct_pose"
+    assert standard.training.checkpoint.save_last is True
+    assert standard.model.encoder.lora.enabled is True
+
+
 def test_mixed_kp_config_rejects_noncanonical_synthetic_scope() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
