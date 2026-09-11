@@ -1,4 +1,4 @@
-name: Tennis video survey category inventory
+name: Tennis video survey search inventory
 
 on:
   push:
@@ -11,185 +11,159 @@ permissions:
 jobs:
   inventory:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
-      - name: Inventory strict tennis categories
+      - name: Search Commons for tennis video files
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/inventory
-          cat > /tmp/inventory.py <<'PY'
+          mkdir -p artifacts/search-inventory
+          cat > /tmp/search_inventory.py <<'PY'
           from __future__ import annotations
 
           import collections
           import html
           import json
+          import random
           import re
           import time
+          import urllib.error
           import urllib.parse
           import urllib.request
           from pathlib import Path
 
           API = "https://commons.wikimedia.org/w/api.php"
-          HEADERS = {"User-Agent": "tennis-video-survey/1.0 (research dataset curation; Motoki0705/tennis-lab)"}
-          ROOTS = {
-              "general": ("Videos of tennis", 3),
-              "uruguay": ("Videos of tennis in Uruguay", 2),
-              "scheveningen": ("Videos of Tennis in Scheveningen", 2),
-              "wheelchair": ("Wheelchair tennis", 3),
-              "wheelchair_serve": ("Service (wheelchair tennis)", 2),
-              "ball_machine": ("Tennis ball machines", 2),
-              "animations": ("Tennis animations", 2),
-              "yog_boys_singles_final": ("Tennis at the 2018 Summer Youth Olympics - Boys Gold Medal Match", 1),
-              "yog_boys_doubles_final": ("Tennis at the 2018 Summer Youth Olympics - Boys Doubles Gold Medal Match", 1),
-              "yog_girls_singles_final": ("Tennis at the 2018 Summer Youth Olympics – Girls Singles – Gold Medal Match", 1),
-              "yog_girls_doubles_final": ("Tennis at the 2018 Summer Youth Olympics - Girls Doubles Final", 1),
-              "yog_boys_first_round": ("Tennis at the 2018 Summer Youth Olympics – Boys Singles – First Round", 3),
-              "yog_girls_first_round": ("Tennis at the 2018 Summer Youth Olympics – Girls Singles – First Round", 3),
-              "yog_girls_doubles_first_round": ("Tennis at the 2018 Summer Youth Olympics – Girls Doubles – First Round", 3),
-          }
+          HEADERS = {"User-Agent": "tennis-video-survey/1.1 (research dataset curation; Motoki0705/tennis-lab)"}
+          SEARCHES = [
+              "tennis filetype:video",
+              "intitle:tennis filetype:video",
+              '"tennis match" filetype:video',
+              '"tennis practice" filetype:video',
+              '"tennis serve" filetype:video',
+              '"tennis ball" filetype:video',
+              '"Davis Cup" filetype:video',
+              '"wheelchair tennis" filetype:video',
+              '"Wimbledon" tennis filetype:video',
+              '"French Open" tennis filetype:video',
+              '"US Open" tennis filetype:video',
+              '"tennis championship" filetype:video',
+          ]
+          OUT = Path("artifacts/search-inventory")
 
-          def api(params: dict, timeout: float = 45.0) -> dict:
+          def fetch(params: dict, attempts: int = 7) -> dict:
               params = dict(params)
               params.update({"format": "json", "formatversion": "2", "maxlag": "5"})
               url = API + "?" + urllib.parse.urlencode(params)
-              req = urllib.request.Request(url, headers=HEADERS)
-              with urllib.request.urlopen(req, timeout=timeout) as response:
-                  return json.load(response)
+              last: Exception | None = None
+              for attempt in range(attempts):
+                  req = urllib.request.Request(url, headers=HEADERS)
+                  try:
+                      with urllib.request.urlopen(req, timeout=60) as response:
+                          return json.load(response)
+                  except urllib.error.HTTPError as exc:
+                      last = exc
+                      if exc.code not in {429, 500, 502, 503, 504}:
+                          raise
+                      retry_after = exc.headers.get("Retry-After")
+                      delay = float(retry_after) if retry_after and retry_after.isdigit() else min(60.0, 8.0 * (2 ** attempt))
+                      print(f"retryable HTTP {exc.code}; sleeping {delay:.1f}s", flush=True)
+                      time.sleep(delay + random.random())
+                  except Exception as exc:
+                      last = exc
+                      delay = min(45.0, 5.0 * (2 ** attempt))
+                      print(f"retryable {type(exc).__name__}: {exc}; sleeping {delay:.1f}s", flush=True)
+                      time.sleep(delay + random.random())
+              raise RuntimeError(f"Commons request failed after retries: {last}")
 
-          def category_members(category: str) -> list[dict]:
-              rows: list[dict] = []
-              cont: dict = {}
-              while True:
-                  data = api({
+          def strip_markup(raw: object) -> str:
+              text = html.unescape(str(raw or ""))
+              text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+              text = re.sub(r"<[^>]+>", " ", text)
+              return re.sub(r"\s+", " ", text).strip()
+
+          rows: dict[int, dict] = {}
+          query_log: list[dict] = []
+          for query_index, term in enumerate(SEARCHES, 1):
+              print(f"QUERY {query_index}/{len(SEARCHES)}: {term}", flush=True)
+              try:
+                  data = fetch({
                       "action": "query",
-                      "list": "categorymembers",
-                      "cmtitle": f"Category:{category}",
-                      "cmnamespace": "6|14",
-                      "cmtype": "file|subcat",
-                      "cmlimit": "500",
-                      **cont,
+                      "generator": "search",
+                      "gsrsearch": term,
+                      "gsrnamespace": "6",
+                      "gsrlimit": "500",
+                      "prop": "imageinfo|categories",
+                      "iiprop": "url|size|mime|mediatype|extmetadata|canonicaltitle",
+                      "cllimit": "500",
                   })
-                  rows.extend((data.get("query") or {}).get("categorymembers") or [])
-                  cont = data.get("continue") or {}
-                  if not cont:
-                      break
-                  time.sleep(0.1)
-              return rows
+                  pages = (data.get("query") or {}).get("pages") or []
+                  videos = 0
+                  for page in pages:
+                      ii = (page.get("imageinfo") or [{}])[0]
+                      mime = str(ii.get("mime") or "")
+                      if not mime.startswith("video/"):
+                          continue
+                      videos += 1
+                      pageid = int(page["pageid"])
+                      ext = ii.get("extmetadata") or {}
+                      def meta(name: str) -> str:
+                          return strip_markup((ext.get(name) or {}).get("value"))
+                      row = rows.setdefault(pageid, {
+                          "pageid": pageid,
+                          "title": page.get("title"),
+                          "page_url": ii.get("descriptionurl"),
+                          "media_url": str(ii.get("url") or "").split("?", 1)[0],
+                          "mime": mime,
+                          "media_type": ii.get("mediatype"),
+                          "width": ii.get("width"),
+                          "height": ii.get("height"),
+                          "size_bytes": ii.get("size"),
+                          "license": meta("LicenseShortName") or meta("UsageTerms"),
+                          "license_url": meta("LicenseUrl"),
+                          "artist": meta("Artist"),
+                          "credit": meta("Credit"),
+                          "description": meta("ImageDescription"),
+                          "date_time_original": meta("DateTimeOriginal"),
+                          "all_categories": sorted(str(c.get("title") or "").removeprefix("Category:") for c in (page.get("categories") or [])),
+                          "search_terms": [],
+                      })
+                      if term not in row["search_terms"]:
+                          row["search_terms"].append(term)
+                  query_log.append({"term": term, "returned_pages": len(pages), "video_pages": videos, "status": "success"})
+                  print(f"  pages={len(pages)} videos={videos} unique_total={len(rows)}", flush=True)
+              except Exception as exc:
+                  query_log.append({"term": term, "status": "failed", "error": f"{type(exc).__name__}: {exc}"})
+                  print(f"  FAILED: {type(exc).__name__}: {exc}", flush=True)
+              json.dump(sorted(rows.values(), key=lambda r: r["pageid"]), open(OUT / "video_candidates.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+              json.dump(query_log, open(OUT / "query_log.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+              time.sleep(4.0 + random.random())
 
-          origins: dict[int, dict] = {}
-          visited_by_root: dict[str, set[str]] = collections.defaultdict(set)
-          category_stats: dict[str, dict] = {}
-          for root_key, (root_category, max_depth) in ROOTS.items():
-              queue = collections.deque([(root_category, 0)])
-              while queue:
-                  category, depth = queue.popleft()
-                  if category in visited_by_root[root_key] or depth > max_depth:
-                      continue
-                  visited_by_root[root_key].add(category)
-                  members = category_members(category)
-                  file_count = 0
-                  subcat_count = 0
-                  for member in members:
-                      ns = int(member.get("ns", -1))
-                      if ns == 6:
-                          file_count += 1
-                          pageid = int(member["pageid"])
-                          entry = origins.setdefault(pageid, {"pageid": pageid, "title": member.get("title"), "roots": set(), "categories_seen": set()})
-                          entry["roots"].add(root_key)
-                          entry["categories_seen"].add(category)
-                      elif ns == 14 and depth < max_depth:
-                          subcat_count += 1
-                          title = str(member.get("title") or "")
-                          queue.append((title.removeprefix("Category:"), depth + 1))
-                  category_stats[f"{root_key}:{category}"] = {
-                      "root_key": root_key,
-                      "category": category,
-                      "depth": depth,
-                      "files": file_count,
-                      "subcategories_enqueued": subcat_count,
-                  }
-
-          pageids = sorted(origins)
-          enriched: list[dict] = []
-          for start in range(0, len(pageids), 50):
-              batch = pageids[start:start + 50]
-              data = api({
-                  "action": "query",
-                  "pageids": "|".join(map(str, batch)),
-                  "prop": "imageinfo|categories",
-                  "iiprop": "url|size|mime|mediatype|extmetadata|canonicaltitle",
-                  "cllimit": "500",
-              })
-              for page in (data.get("query") or {}).get("pages") or []:
-                  pageid = int(page["pageid"])
-                  origin = origins[pageid]
-                  ii = (page.get("imageinfo") or [{}])[0]
-                  mime = str(ii.get("mime") or "")
-                  if not mime.startswith("video/"):
-                      continue
-                  ext = ii.get("extmetadata") or {}
-                  def text_value(name: str) -> str:
-                      raw = str((ext.get(name) or {}).get("value") or "")
-                      raw = html.unescape(raw)
-                      raw = re.sub(r"<br\s*/?>", "\n", raw, flags=re.I)
-                      raw = re.sub(r"<[^>]+>", " ", raw)
-                      return re.sub(r"\s+", " ", raw).strip()
-                  enriched.append({
-                      "pageid": pageid,
-                      "title": page.get("title"),
-                      "page_url": ii.get("descriptionurl"),
-                      "media_url": str(ii.get("url") or "").split("?", 1)[0],
-                      "mime": mime,
-                      "media_type": ii.get("mediatype"),
-                      "width": ii.get("width"),
-                      "height": ii.get("height"),
-                      "size_bytes": ii.get("size"),
-                      "roots": sorted(origin["roots"]),
-                      "categories_seen": sorted(origin["categories_seen"]),
-                      "all_categories": sorted(str(c.get("title") or "").removeprefix("Category:") for c in (page.get("categories") or [])),
-                      "license": text_value("LicenseShortName") or text_value("UsageTerms"),
-                      "license_url": text_value("LicenseUrl"),
-                      "artist": text_value("Artist"),
-                      "credit": text_value("Credit"),
-                      "description": text_value("ImageDescription"),
-                      "date_time_original": text_value("DateTimeOriginal"),
-                  })
-              time.sleep(0.1)
-
-          out = Path("artifacts/inventory")
-          json.dump(enriched, open(out / "video_candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          json.dump(category_stats, open(out / "category_stats.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          root_counts = collections.Counter()
-          mime_counts = collections.Counter()
-          license_counts = collections.Counter()
-          for row in enriched:
-              root_counts.update(row["roots"])
-              mime_counts[row["mime"]] += 1
-              license_counts[row["license"] or "UNKNOWN"] += 1
+          candidates = sorted(rows.values(), key=lambda r: (r["title"] or "").casefold())
+          json.dump(candidates, open(OUT / "video_candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          json.dump(query_log, open(OUT / "query_log.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          licenses = collections.Counter((r["license"] or "UNKNOWN") for r in candidates)
+          mimes = collections.Counter(r["mime"] for r in candidates)
           summary = {
-              "unique_file_members_before_mime_filter": len(origins),
-              "unique_video_files": len(enriched),
-              "root_video_counts": dict(root_counts.most_common()),
-              "mime_counts": dict(mime_counts.most_common()),
-              "license_counts": dict(license_counts.most_common()),
-              "categories_visited": {k: len(v) for k, v in visited_by_root.items()},
+              "unique_video_files": len(candidates),
+              "successful_queries": sum(q["status"] == "success" for q in query_log),
+              "failed_queries": sum(q["status"] == "failed" for q in query_log),
+              "license_counts": dict(licenses.most_common()),
+              "mime_counts": dict(mimes.most_common()),
           }
-          json.dump(summary, open(out / "summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          json.dump(summary, open(OUT / "summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
           print(json.dumps(summary, ensure_ascii=False, indent=2))
-          print("\nFirst 50 video files:")
-          for row in sorted(enriched, key=lambda r: (r["roots"], r["title"]))[:50]:
-              print(json.dumps({k: row[k] for k in ("pageid", "title", "mime", "width", "height", "size_bytes", "roots", "license")}, ensure_ascii=False))
-          if len(enriched) < 100:
-              raise SystemExit(f"Only {len(enriched)} strict-category video files were found")
+          for row in candidates[:100]:
+              print(json.dumps({k: row.get(k) for k in ("pageid", "title", "mime", "width", "height", "size_bytes", "license", "search_terms")}, ensure_ascii=False))
+          if len(candidates) < 100:
+              raise SystemExit(f"Only {len(candidates)} unique Commons videos were found")
           PY
-          python /tmp/inventory.py | tee artifacts/inventory/inventory.log
+          python /tmp/search_inventory.py | tee artifacts/search-inventory/inventory.log
 
-      - name: Upload inventory
+      - name: Upload search inventory
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-category-inventory
-          path: artifacts/inventory/
+          name: tennis-video-survey-search-inventory
+          path: artifacts/search-inventory/
           if-no-files-found: error
           retention-days: 7
