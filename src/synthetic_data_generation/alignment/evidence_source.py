@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Protocol, cast
 
 import numpy as np
@@ -91,6 +92,7 @@ from src.tasks.base.model_io import bind_model_io
 from src.tasks.court_detection.configuration import (
     DPT_CHANNELS_BY_SIZE,
     CourtDecoderConfig,
+    CourtDenseHeadConfig,
     CourtDPTSize,
     CourtEncoderConfig,
     CourtLoRAConfig,
@@ -4854,6 +4856,11 @@ def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConf
             attention_type=None,
             n_kv_heads=None,
             ffn_type=None,
+        ),
+        dense_head=CourtDenseHeadConfig(
+            name="linear",
+            normalization_groups=None,
+            branches=MappingProxyType({}),
         ),
     )
 

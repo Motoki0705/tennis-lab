@@ -23,6 +23,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtSampleRecord,
     CourtSourceSplit,
 )
+from src.tasks.court_detection.data.target_generation.line import generate_line_target
 from src.tasks.court_detection.data.target_generation.materializer import (
     CourtTargetMaterializer,
 )
@@ -103,9 +104,7 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
 
         available_splits: tuple[CourtSourceSplit, ...] = ("train",)
 
-        def records(
-            self, split: CourtSourceSplit
-        ) -> tuple[CourtSampleRecord, ...]:
+        def records(self, split: CourtSourceSplit) -> tuple[CourtSampleRecord, ...]:
             assert split == "train"
             return (record,)
 
@@ -127,9 +126,9 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
         metadata = json.loads(store.metadata_path(path).read_text(encoding="utf-8"))
         assert metadata["target_kind"] == kind
         assert metadata["stable_sample_id"] == "sample"
-        assert metadata["source_target_sha256"] == hashlib.sha256(
-            b"fixture"
-        ).hexdigest()
+        assert (
+            metadata["source_target_sha256"] == hashlib.sha256(b"fixture").hexdigest()
+        )
         assert path.is_relative_to(store.root)
         validate_derived_target(
             record,
@@ -149,3 +148,38 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
                 target_kind=kind,
                 target_schema=cast(str, metadata["schema"]),
             )
+
+
+def test_line_target_width_is_explicitly_previewable() -> None:
+    points = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14, :2]
+    image_points = torch.stack(
+        (
+            (points[:, 0] / 12.0 + 0.5) * 255.0,
+            (0.5 - points[:, 1] / 26.0) * 255.0,
+        ),
+        dim=1,
+    )
+    instance = CourtInstance2D(
+        court_instance_id="court",
+        physical_indices=torch.arange(14, dtype=torch.long),
+        points_xy=image_points,
+        point_in_front=torch.ones(14, dtype=torch.bool),
+        point_visible=torch.ones(14, dtype=torch.bool),
+    )
+
+    narrow = generate_line_target(
+        height=256,
+        width=256,
+        instances=(instance,),
+        line_width_metres=0.025,
+        baseline_width_metres=0.05,
+    )
+    wide = generate_line_target(
+        height=256,
+        width=256,
+        instances=(instance,),
+        line_width_metres=0.075,
+        baseline_width_metres=0.15,
+    )
+
+    assert np.count_nonzero(wide) > np.count_nonzero(narrow)

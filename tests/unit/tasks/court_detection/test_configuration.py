@@ -186,6 +186,23 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
     assert runtime.model.transformer_encoder.name == "transformer"
     assert runtime.model.transformer_encoder.enabled
     assert runtime.model.transformer_encoder.depth == 8
+    assert runtime.model.dense_head.name == "residual"
+    assert runtime.model.dense_head.normalization_groups == 32
+    assert {
+        kind: (branch.hidden_channels, branch.depth)
+        for kind, branch in runtime.model.dense_head.branches.items()
+    } == {"kp": (256, 2), "seg": (256, 2), "line": (256, 2)}
+
+
+def test_legacy_model_config_explicitly_warns_and_restores_linear_head() -> None:
+    config = deepcopy(_compose("synthetic_court"))
+    with open_dict(config.model):
+        del config.model.dense_head
+
+    with pytest.warns(UserWarning, match="checkpoint-compatible linear"):
+        runtime = CourtTrainingConfig.from_config(config)
+
+    assert runtime.model.dense_head.name == "linear"
 
 
 def test_transformer_config_group_has_only_none_and_enabled_default_presets() -> None:

@@ -4,11 +4,14 @@ Usage:
     python -m src.tasks.court_detection.scripts.prepare_youtube_dataset
     python -m src.tasks.court_detection.scripts.prepare_youtube_dataset workflow.sources.0.url=https://www.youtube.com/watch?v=...
     python -m src.tasks.court_detection.scripts.prepare_youtube_dataset workflow.download.enabled=false
+    python -m src.tasks.court_detection.scripts.prepare_youtube_dataset workflow.target_preview.enabled=true workflow.target_preview.only=true
 
 Notes:
     - Hydra loads configuration from `src/tasks/court_detection/configs/prepare_youtube_dataset.yaml`.
     - Videos are downloaded as AV1 first, transcoded to H.264, then sampled into frames.
     - Annotation JSON files are initialized under `data/court/youtube/annotations/{train,val}.json`.
+    - target_preview.only reads completed annotations without running or rewriting
+      the acquisition pipeline.
 """
 
 from __future__ import annotations
@@ -24,6 +27,9 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import require_config_mapping
 from src.tasks.court_detection.configuration import validate_paths_boundary
+from src.tasks.court_detection.visualization.youtube_target_preview import (
+    write_youtube_target_previews,
+)
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.io import (
@@ -64,6 +70,7 @@ class YoutubeDatasetPaths:
     annotations_dir: Path
     manifests_dir: Path
     download_archive: Path | None
+    preview_output_dir: Path
 
 
 def _validate_exact(value: Any, expected: set[str], *, path: str) -> None:
@@ -105,6 +112,7 @@ def _runtime(cfg: DictConfig) -> YoutubeDatasetPaths:
             "transcode",
             "frames",
             "annotation",
+            "target_preview",
         },
         path="workflow",
     )
@@ -178,6 +186,24 @@ def _runtime(cfg: DictConfig) -> YoutubeDatasetPaths:
         workflow["annotation"],
         {"schema_name", "keypoint_format", "merge_existing", "overwrite"},
         path="workflow.annotation",
+    )
+    _validate_exact(
+        workflow["target_preview"],
+        {
+            "enabled",
+            "only",
+            "split",
+            "sample_indices",
+            "max_samples",
+            "sigma_ratios",
+            "line_width_metres",
+            "baseline_width_multiplier",
+            "output_dir",
+            "display_width",
+            "heatmap_alpha",
+            "mask_alpha",
+        },
+        path="workflow.target_preview",
     )
     _typed(workflow, "root", str, path="workflow")
     split_config = cast("Mapping[str, object]", workflow["split"])
@@ -347,6 +373,11 @@ def _runtime(cfg: DictConfig) -> YoutubeDatasetPaths:
         raise ValueError("workflow.annotation.schema_name is invalid.")
     if annotation["keypoint_format"] not in {"kp15", "kp20"}:
         raise ValueError("workflow.annotation.keypoint_format must be kp15 or kp20.")
+    preview = cast("Mapping[str, object]", workflow["target_preview"])
+    _validate_target_preview(preview)
+    preview_output_dir = resolver.resolve(
+        PathRole.OUTPUT, cast("str", preview["output_dir"])
+    )
     return YoutubeDatasetPaths(
         resolver=resolver,
         root=resolver.resolve(PathRole.DATA, root_raw),
@@ -356,7 +387,55 @@ def _runtime(cfg: DictConfig) -> YoutubeDatasetPaths:
         annotations_dir=annotations_dir,
         manifests_dir=manifests_dir,
         download_archive=archive,
+        preview_output_dir=preview_output_dir,
     )
+
+
+def _validate_target_preview(preview: Mapping[str, object]) -> None:
+    """Validate the optional read-only completed-annotation audit."""
+    path = "workflow.target_preview"
+    for key in ("enabled", "only"):
+        _typed(preview, key, bool, path=path)
+    for key in ("split", "output_dir"):
+        _typed(preview, key, str, path=path)
+    for key in ("sample_indices", "sigma_ratios", "line_width_metres"):
+        _typed(preview, key, list, path=path)
+    for key in ("max_samples", "display_width"):
+        _typed(preview, key, int, path=path)
+    for key in ("baseline_width_multiplier", "heatmap_alpha", "mask_alpha"):
+        _typed(preview, key, (float, int), path=path)
+    if preview["only"] and not preview["enabled"]:
+        raise ValueError(f"{path}.only=true requires target_preview.enabled=true.")
+    if preview["split"] not in {"train", "val"}:
+        raise ValueError(f"{path}.split must be train or val.")
+    if any(
+        type(index) is not int or index < 0
+        for index in cast("list[object]", preview["sample_indices"])
+    ):
+        raise ValueError(f"{path}.sample_indices must contain non-negative integers.")
+    for key in ("sigma_ratios", "line_width_metres"):
+        values = cast("list[object]", preview[key])
+        if not values or any(
+            type(value) not in {float, int}
+            or not math.isfinite(float(cast("float | int", value)))
+            or float(cast("float | int", value)) <= 0.0
+            for value in values
+        ):
+            raise ValueError(f"{path}.{key} must contain positive finite numbers.")
+    if (
+        cast("int", preview["max_samples"]) <= 0
+        or cast("int", preview["display_width"]) <= 0
+    ):
+        raise ValueError(f"{path} sample/display sizes must be positive.")
+    if float(cast("float | int", preview["baseline_width_multiplier"])) <= 0.0:
+        raise ValueError(f"{path}.baseline_width_multiplier must be positive.")
+    if any(
+        not 0.0 <= float(cast("float | int", preview[key])) <= 1.0
+        for key in ("heatmap_alpha", "mask_alpha")
+    ):
+        raise ValueError(f"{path} alpha values must be in [0,1].")
+    if not cast("str", preview["output_dir"]):
+        raise ValueError(f"{path}.output_dir must not be empty.")
 
 
 def _validate_boundary(cfg: DictConfig) -> None:
@@ -382,6 +461,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     frames_root: Path = runtime_paths.frames_root
     annotations_dir: Path = runtime_paths.annotations_dir
     manifests_dir: Path = runtime_paths.manifests_dir
+    if bool(workflow_cfg.target_preview.only):
+        _write_target_previews(workflow_cfg.target_preview, runtime_paths)
+        return 0
     ensure_dirs([av1_dir, h264_dir, frames_root, annotations_dir, manifests_dir])
 
     sources = _source_dicts(workflow_cfg.sources)
@@ -469,7 +551,22 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             PathRole.DATA, manifests_dir, "split_manifest.json"
         ),
     )
+    if bool(workflow_cfg.target_preview.enabled):
+        _write_target_previews(workflow_cfg.target_preview, runtime_paths)
     return 0
+
+
+def _write_target_previews(cfg: DictConfig, paths: YoutubeDatasetPaths) -> None:
+    raw = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(raw, Mapping):  # pragma: no cover - boundary owns this
+        raise TypeError("workflow.target_preview must resolve to a mapping.")
+    write_youtube_target_previews(
+        cast("Mapping[str, object]", raw),
+        resolver=paths.resolver,
+        dataset_root=paths.root,
+        annotations_dir=paths.annotations_dir,
+        output_dir=paths.preview_output_dir,
+    )
 
 
 def _source_dicts(raw_sources: Iterable[Any]) -> list[JSONDict]:
@@ -578,9 +675,7 @@ def _extract_frames(
 ) -> list[JSONDict]:
     video_path = resolver.validate(PathRole.DATA, video_path)
     output_dir = resolver.validate(PathRole.DATA, output_dir)
-    frame_manifest = resolver.resolve_beneath(
-        PathRole.DATA, output_dir, "frames.jsonl"
-    )
+    frame_manifest = resolver.resolve_beneath(PathRole.DATA, output_dir, "frames.jsonl")
     if not bool(cfg.enabled):
         cached_records: list[JSONDict] = read_jsonl(frame_manifest)
         return cached_records
@@ -691,9 +786,7 @@ def _write_annotations(
 ) -> None:
     annotations_dir = resolver.validate(PathRole.DATA, annotations_dir)
     for split in ("train", "val"):
-        path = resolver.resolve_beneath(
-            PathRole.DATA, annotations_dir, f"{split}.json"
-        )
+        path = resolver.resolve_beneath(PathRole.DATA, annotations_dir, f"{split}.json")
         existing_by_id = (
             _existing_annotation_items(path) if bool(cfg.merge_existing) else {}
         )
