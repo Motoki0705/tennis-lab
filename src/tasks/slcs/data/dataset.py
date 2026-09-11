@@ -371,7 +371,7 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
         }
 
         for ref in index.clips:
-            if assignments[ref.recording_id] != split:
+            if assignments[ref.video_id] != split:
                 continue
             self.build_report["clips_in_split"] += 1
             manifest = ClipManifest.load(index.clip_dir(ref))
@@ -395,7 +395,7 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
         self.metas: list[SLCSWindowMeta] = [
             SLCSWindowMeta(
                 clip_id=e.clip_id,
-                recording_id=self._clips[e.clip_id].manifest.recording_id,
+                video_id=self._clips[e.clip_id].manifest.video_id,
                 camera_id=e.camera_id,
                 window_start=e.plan.start,
                 window_length=e.plan.length,

@@ -9,7 +9,7 @@ import torch
 from src.tasks.base.model_io import bind_model_io
 from src.tasks.slcs.data.dataset import SLCSDataConfig, SLCSWindowDataset, collate_slcs
 from src.tasks.slcs.data.quality import QualityConfig
-from src.tasks.slcs.data.splits import generate_recording_splits, save_split_file
+from src.tasks.slcs.data.splits import generate_video_splits, save_split_file
 from src.tasks.slcs.model_io import SLCSModelIOAdapter, SLCSModelIOSpec
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
 from src.tasks.slcs.training.losses import (
@@ -27,10 +27,10 @@ from tests.support.tasks.slcs.dataset import (
 def test_dataset_model_loss_backward_smoke(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
         tmp_path / "dataset",
-        SLCSFixtureDatasetConfig(recordings=("recording",), num_frames=8),
+        SLCSFixtureDatasetConfig(videos=("video_000",), num_frames=8),
     )
     split_file = index.root / "splits.json"
-    assignments = generate_recording_splits(index, val_ratio=0.0, test_ratio=0.0, seed=0)
+    assignments = generate_video_splits(index, val_ratio=0.0, test_ratio=0.0, seed=0)
     save_split_file(split_file, assignments, seed=0, val_ratio=0.0, test_ratio=0.0)
     dataset = SLCSWindowDataset(
         dataset_root=index.root,

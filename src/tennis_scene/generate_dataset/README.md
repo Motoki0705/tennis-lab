@@ -7,7 +7,7 @@
 ```text
 <dataset_root>/
 ├── dataset.json
-└── clips/<recording_id>/<clip_name>/
+└── videos/<video_id>/clips/<clip_name>/
     ├── clip.json
     ├── media/<camera_id>.mp4
     └── annotations/tennis_scene/
@@ -24,12 +24,12 @@
 ```bash
 # まだ生成されていない全クリップ
 .venv/bin/python -m src.tennis_scene.scripts.generate_dataset \
-  dataset_dir=data/tennis_scene_real
+  dataset_directory=tennis_multivew/processed/meiji_3cam/dataset
 
 # 一部だけ明示選択
 .venv/bin/python -m src.tennis_scene.scripts.generate_dataset \
-  dataset_dir=data/tennis_scene_real \
-  clip_ids='[match1/clip_000]'
+  dataset_directory=tennis_multivew/processed/meiji_3cam/dataset \
+  clip_ids='[video_000/clip_000]'
 ```
 
 モデル・checkpoint設定は既存の `configs/pipeline.yaml` を直接読み、`configs/generate_dataset.yaml` はdataset生成時の差分だけを `pipeline_overrides` として保持します。これによりパイプライン設定を二重管理しません。

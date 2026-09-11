@@ -37,9 +37,9 @@ DINO token precompute も同じ境界方針です。`model_io.factory` が backb
   data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json
 ```
 
-split 単位は `recording_id` で、seed と比率を split manifest に保存します。既存 split の上書きには `splits.overwrite=true` が必要です。
+split 単位は `video_id` で、同じマルチカメラ動画から切り出した clip は同一 split に入ります。seed と比率を split manifest に保存します。既存 split の上書きには `splits.overwrite=true` が必要です。
 
-1つの小規模データセットを意図的に記憶できるか確認するときだけ、全recordingをtrainへ割り当て、同じwindowをvalidation/testにも使う明示的overfit modeを使用できます。これは汎化性能の評価には使用しません。
+1つの小規模データセットを意図的に記憶できるか確認するときだけ、全videoをtrainへ割り当て、同じwindowをvalidation/testにも使う明示的overfit modeを使用できます。これは汎化性能の評価には使用しません。
 
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.make_splits \

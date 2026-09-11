@@ -39,7 +39,8 @@ def runtime(tmp_path):
 )
 def test_latest_recording_is_global_zero(tmp_path, deltas, expected):
     project = ClipStudioProject(
-        recording_id="test",
+        dataset_id="test",
+        video_id="video_000",
         sources=[
             ClipSource(tmp_path / f"{i}.mp4", f"cam{i}") for i in range(len(deltas))
         ],
@@ -65,24 +66,25 @@ def test_initial_values_saved_and_manual_edits_survive_restart(runtime):
     assert [
         s.offset_sec
         for s in ClipStudioProject.load(
-            runtime.export.project_path, runtime.export.resolver
+            runtime.export.projects_path,
+            runtime.export.resolver,
+            dataset_id=runtime.dataset_id,
+            video_id=runtime.video_id,
         ).sources
     ] == [12, 0]
     project.sources[0].offset_sec = 11.75
     project.clips.append(Clip("rally", 1, 2))
-    project.save(runtime.export.project_path, runtime.export.resolver)
-    before = runtime.export.project_path.read_bytes()
+    project.save(runtime.export.projects_path, runtime.export.resolver)
+    before = runtime.export.projects_path.read_bytes()
     with patch(
         "src.tennis_scene.clip_studio.initialization.read_creation_time",
         side_effect=AssertionError("Must not probe existing projects"),
     ):
-        resumed, notice = load_or_create_project(
-            replace(runtime, video_paths=None, camera_ids=None)
-        )
+        resumed, notice = load_or_create_project(runtime)
     assert notice is None
     assert resumed.sources[0].offset_sec == 11.75
     assert resumed.clips == project.clips
-    assert runtime.export.project_path.read_bytes() == before
+    assert runtime.export.projects_path.read_bytes() == before
 
 
 def test_failed_initialization_not_retried_even_with_zero_offsets_and_no_clips(
@@ -104,9 +106,7 @@ def test_failed_initialization_not_retried_even_with_zero_offsets_and_no_clips(
         "src.tennis_scene.clip_studio.initialization.read_creation_time",
         side_effect=AssertionError("Must not retry"),
     ):
-        resumed, notice = load_or_create_project(
-            replace(runtime, video_paths=None, camera_ids=None)
-        )
+        resumed, notice = load_or_create_project(runtime)
     assert notice is None
     assert resumed == project
 
@@ -121,11 +121,15 @@ def test_all_failed_cameras_reported(runtime):
     assert "cam0" in notice.message and "cam1" in notice.message
 
 
-def test_existing_project_still_rejects_new_sources(runtime):
+def test_existing_project_rejects_discovered_source_drift(runtime, tmp_path):
     with patch(
         "src.tennis_scene.clip_studio.initialization.read_creation_time",
         side_effect=CreationTimeError("missing"),
     ):
         load_or_create_project(runtime)
-    with pytest.raises(ValueError, match="Existing projects forbid"):
-        load_or_create_project(runtime)
+    other = tmp_path / "data/other.mp4"
+    other.touch()
+    with pytest.raises(ValueError, match="differ from the discovered"):
+        load_or_create_project(
+            replace(runtime, video_paths=(other, *runtime.video_paths[1:]))
+        )

@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 import cv2
@@ -47,7 +47,7 @@ def create_app(
         editor = Editor(
             project,
             [source.info for source in sources],
-            runtime.export.project_path,
+            runtime.export.projects_path,
             runtime.export.resolver,
         )
     except Exception:
@@ -129,10 +129,10 @@ def create_app(
         return asdict(startup_notice) if startup_notice is not None else None
 
     def get_project() -> dict[str, Any]:
-        return cast(dict[str, Any], editor.snapshot())
+        return editor.snapshot()
 
     def edit(request: Edit) -> dict[str, Any]:
-        return cast(dict[str, Any], editor.edit(request))
+        return editor.edit(request)
 
     def media(camera: int) -> FileResponse:
         if not 0 <= camera < len(sources):
@@ -165,13 +165,13 @@ def create_app(
         )
 
     def start_job(request: JobRequest) -> dict[str, Any]:
-        return cast(dict[str, Any], jobs.start(request))
+        return jobs.start(request)
 
     def get_job() -> dict[str, Any]:
-        return cast(dict[str, Any], jobs.snapshot())
+        return jobs.snapshot()
 
     def cancel_job() -> dict[str, Any]:
-        return cast(dict[str, Any], jobs.cancel())
+        return jobs.cancel()
 
     app.middleware("http")(same_origin)
     app.add_exception_handler(ValueError, value_error)

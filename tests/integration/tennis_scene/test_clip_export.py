@@ -72,7 +72,8 @@ def synced_project(tmp_path: Path) -> ClipStudioProject:
     make_camera_video(cam0, num_frames=120, width=64, height=48)
     make_camera_video(cam1, num_frames=150, width=96, height=64)
     return ClipStudioProject(
-        recording_id="match-001",
+        dataset_id="test-dataset",
+        video_id="video_000",
         sources=[
             ClipSource(path=cam0, camera_id="cam0", offset_sec=0.0),
             ClipSource(path=cam1, camera_id="cam1", offset_sec=0.5),
@@ -122,8 +123,9 @@ class TestClipExportRoundTrip:
         manifest = load_json(result.manifest_path)
 
         assert manifest["camera_ids"] == ["cam0", "cam1"]
-        assert manifest["clip_id"] == "match-001/clip_000"
-        assert manifest["recording_id"] == "match-001"
+        assert manifest["dataset_id"] == "test-dataset"
+        assert manifest["clip_id"] == "video_000/clip_000"
+        assert manifest["video_id"] == "video_000"
         assert manifest["video_paths"] == ["media/cam0.mp4", "media/cam1.mp4"]
         assert manifest["num_frames"] == 60
         assert manifest["fps"] == pytest.approx(FPS)
@@ -138,8 +140,9 @@ class TestClipExportRoundTrip:
 
         dataset_manifest = load_json(tmp_path / "clips" / "dataset.json")
         assert [record["clip_id"] for record in dataset_manifest["clips"]] == [
-            "match-001/clip_000"
+            "video_000/clip_000"
         ]
+        assert dataset_manifest["dataset_id"] == "test-dataset"
 
     def test_mixed_resolution_without_target_raises(
         self, synced_project: ClipStudioProject, tmp_path: Path
@@ -176,6 +179,7 @@ class TestClipExportRoundTrip:
         results = export_clips(synced_project, settings, clip_names=["clip_001"])
         assert len(results) == 1
         assert results[0].clip_dir.name == "clip_001"
-        assert results[0].clip_dir.parent.name == "match-001"
+        assert results[0].clip_dir.parent.name == "clips"
+        assert results[0].clip_dir.parent.parent.name == "video_000"
         with pytest.raises(KeyError, match="not found"):
             export_clips(synced_project, settings, clip_names=["nope"])

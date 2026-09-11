@@ -1,10 +1,9 @@
 defaults:
   - paths: default
   - _self_
-project_path: tennis_scene/clip_studio/project.json
+source_directory: ???
 clip_names: null
 export:
-  output_dir: tennis_scene/dataset
   fps: null
   width: null
   height: null

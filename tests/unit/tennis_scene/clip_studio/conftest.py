@@ -32,7 +32,8 @@ def path_resolver(tmp_path: Path) -> PathResolver:
 def two_camera_project(path_resolver: PathResolver) -> ClipStudioProject:
     """cam0 covers global [0, 10]s, cam1 covers global [1, 9]s (offset -1)."""
     return ClipStudioProject(
-        recording_id="match-001",
+        dataset_id="test-dataset",
+        video_id="video_000",
         sources=[
             ClipSource(
                 path=path_resolver.resolve(PathRole.DATA, "cam0.mp4"),

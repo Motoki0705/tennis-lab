@@ -16,13 +16,18 @@ from src.tennis_scene.configuration import parse_clip_studio_config
 
 @pytest.fixture
 def web_client(tmp_path):
-    data = tmp_path / "data"
-    data.mkdir()
-    video = data / "source.avi"
-    writer = cv2.VideoWriter(str(video), cv2.VideoWriter.fourcc(*"MJPG"), 10, (64, 48))
-    for index in range(30):
-        writer.write(np.full((48, 64, 3), index * 7, dtype=np.uint8))
-    writer.release()
+    source = tmp_path / "data/tennis_multivew/raw/test/video_000"
+    source.mkdir(parents=True)
+    videos = []
+    for camera in range(2):
+        video = source / f"cam{camera}.mp4"
+        writer = cv2.VideoWriter(
+            str(video), cv2.VideoWriter.fourcc(*"mp4v"), 10, (64, 48)
+        )
+        for index in range(30):
+            writer.write(np.full((48, 64, 3), index * 7, dtype=np.uint8))
+        writer.release()
+        videos.append(video)
     cfg = OmegaConf.load(
         Path(__file__).parents[3] / "src/tennis_scene/configs/clip_studio.yaml"
     )
@@ -41,10 +46,15 @@ def web_client(tmp_path):
     cfg.export.fps = 10.0
     cfg.export.width = 64
     cfg.export.height = 48
+    cfg.source_directory = "tennis_multivew/raw/test/video_000"
     runtime = parse_clip_studio_config(cfg)
     project = ClipStudioProject(
-        recording_id="test",
-        sources=[ClipSource(video, "cam0"), ClipSource(video, "cam1", 0.2)],
+        dataset_id="test",
+        video_id="video_000",
+        sources=[
+            ClipSource(videos[0], "cam0"),
+            ClipSource(videos[1], "cam1", 0.2),
+        ],
     )
     with TestClient(create_app(runtime, project)) as client:
         yield client, runtime
@@ -60,7 +70,7 @@ def test_ranged_media_and_exact_source_frame(web_client):
     assert frame.headers["x-frame-index"] == "7"
     image = cv2.imdecode(np.frombuffer(frame.content, dtype=np.uint8), cv2.IMREAD_COLOR)
     assert image is not None
-    assert image.mean() == pytest.approx(49, abs=2)
+    assert image.mean() == pytest.approx(49, abs=3)
     assert client.get("/api/frame/0?time=-1&revision=0").status_code == 204
     assert client.get("/api/frame/0?time=nan&revision=0").status_code == 422
     assert client.get("/api/media/99").status_code == 404
@@ -76,7 +86,7 @@ def test_autosave_revision_and_cross_origin_protection(web_client):
         == 403
     )
     assert client.post("/api/edit", json=body).status_code == 200
-    assert runtime.export.project_path.is_file()
+    assert runtime.export.projects_path.is_file()
     assert client.post("/api/edit", json=body).status_code == 409
     assert client.get("/api/frame/0?time=0.5&revision=0").status_code == 409
     assert (
@@ -103,7 +113,9 @@ def test_real_export_and_whole_batch_preflight(web_client):
     )
     client.post("/api/jobs", json={"revision": 1, "kind": "export"})
     assert wait_job(client)["status"] == "done"
-    assert (runtime.export.output_dir / "clips/test/clip_000/media/cam0.mp4").is_file()
+    assert (
+        runtime.export.output_dir / "videos/video_000/clips/clip_000/media/cam0.mp4"
+    ).is_file()
     # A later invalid clip must fail the batch before any earlier new clip is written.
     client.post(
         "/api/edit",
@@ -118,7 +130,7 @@ def test_real_export_and_whole_batch_preflight(web_client):
         json={"revision": 3, "kind": "export", "clip_names": ["clip_001", "clip_002"]},
     )
     assert wait_job(client)["status"] == "failed"
-    assert not (runtime.export.output_dir / "clips/test/clip_001").exists()
+    assert not (runtime.export.output_dir / "videos/video_000/clips/clip_001").exists()
 
 
 def test_batch_skips_verified_outputs_but_rejects_changed_edits(web_client):
@@ -129,7 +141,7 @@ def test_batch_skips_verified_outputs_but_rejects_changed_edits(web_client):
     )
     client.post("/api/jobs", json={"revision": 1, "kind": "export"})
     assert wait_job(client)["status"] == "done"
-    video = runtime.export.output_dir / "clips/test/clip_000/media/cam0.mp4"
+    video = runtime.export.output_dir / "videos/video_000/clips/clip_000/media/cam0.mp4"
     before = video.stat().st_mtime_ns
     client.post(
         "/api/edit",
@@ -200,7 +212,7 @@ def test_cancel_stops_active_encoder_and_removes_unpublished_output(web_client):
     assert job["status"] == "cancelled", job
     assert monotonic() - started < 5
     assert job["completed"] == 0
-    assert not (runtime.export.output_dir / "clips/test/clip_000").exists()
+    assert not (runtime.export.output_dir / "videos/video_000/clips/clip_000").exists()
     assert not (runtime.export.output_dir / "dataset.json").exists()
     assert not list(runtime.export.output_dir.glob(".clip-studio-export-*"))
     # Cancellation must not poison the worker or prevent retrying the clip.
@@ -261,9 +273,7 @@ def test_recording_time_startup_notice_and_saved_sync(web_client, missing_timest
             == 200
         )
         assert client.get("/api/startup-notice").json() == response
-    project, notice = load_or_create_project(
-        replace(runtime, video_paths=None, camera_ids=None)
-    )
+    project, notice = load_or_create_project(runtime)
     assert [s.offset_sec for s in project.sources] == [0.75, 0]
     with TestClient(create_app(runtime, project, startup_notice=notice)) as client:
         assert client.get("/api/startup-notice").json() is None

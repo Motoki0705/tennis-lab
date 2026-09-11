@@ -86,7 +86,7 @@ class SLCSWindowMeta:
     """Provenance of one dataset item (kept out of the tensor batch)."""
 
     clip_id: str
-    recording_id: str
+    video_id: str
     camera_id: str
     window_start: int
     window_length: int

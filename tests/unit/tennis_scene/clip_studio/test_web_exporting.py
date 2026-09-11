@@ -15,7 +15,7 @@ def test_failed_publication_restores_existing_clip(
     plan = plan_clip_export(
         two_camera_project, two_camera_infos, two_camera_project.clips[0], settings
     )
-    relative = f"clips/{plan.recording_id}/{plan.clip_name}"
+    relative = f"videos/{plan.video_id}/clips/{plan.clip_name}"
     destination = settings.output_dir / relative
     destination.mkdir(parents=True)
     (destination / "annotation.txt").write_text("existing annotation")
@@ -125,7 +125,7 @@ def test_successful_worker_waits_for_delayed_shutdown(
     )
 
     class Receiver:
-        messages = iter((('done',),))
+        messages = iter((("done",),))
 
         def poll(self, timeout=0):
             return True

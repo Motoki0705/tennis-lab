@@ -7,19 +7,44 @@
 リポジトリのルートで実行します。ブラウザで表示された `http://127.0.0.1:8765` を開いてください。別のポートは `gui.port=8766` で指定します。
 
 ```bash
-# 新規プロジェクト：動画のパスは paths.data_root（既定 data/）からの相対パス
+# 新規作成・再開とも、対象videoディレクトリだけを指定する
 .venv/bin/python -m src.tennis_scene.scripts.clip_studio \
-  recording_id=meiji_3cam \
-  project_path=tennis_scene/clip_studio/meiji_3cam/project.json \
-  'video_paths=[tennis_multivew/raw/meiji_3cam/cam0.mp4,tennis_multivew/raw/meiji_3cam/cam1.mp4,tennis_multivew/raw/meiji_3cam/cam2.mp4]' \
-  'camera_ids=[cam0,cam1,cam2]'
-
-# 再開：既存プロジェクトには動画・カメラIDを再指定しない
-.venv/bin/python -m src.tennis_scene.scripts.clip_studio \
-  project_path=tennis_scene/clip_studio/meiji_3cam/project.json
+  source_directory=tennis_multivew/raw/meiji_3cam/video_002
 ```
 
-`project_path` と `export.output_dir` は `paths.artifact_root`（既定 `outputs/`）からの相対パスです。動画パスはプロジェクトJSONの場所ではなく `paths.data_root` 基準です。専用worktreeから元repoの動画を利用する場合は `paths.data_root=/元repoの絶対パス/data` を追加します。`match_id` は現在の設定では利用できません。
+`source_directory`は`paths.data_root`（既定`data/`）からの相対パスで、必ず
+`tennis_multivew/raw/<dataset_id>/<video_id>`形式とします。`video_id`は
+`video_000`のように3桁以上の数字を使い、直下の`cam0.mp4`から欠番なく
+cameraを検出します。別名のMP4、camera番号の欠番、標準外の階層は起動前に
+エラーになります。
+
+projectと出力先はsourceから一意に導出されます。
+
+```text
+data/tennis_multivew/
+├── raw/<dataset_id>/<video_id>/cam<index>.mp4
+└── processed/<dataset_id>/
+    ├── projects.json
+    └── dataset/
+        ├── dataset.json
+        └── videos/<video_id>/clips/<clip_name>/
+            ├── clip.json
+            └── media/<camera_id>.mp4
+```
+
+`projects.json`はdataset内のvideoごとにsource、同期offset、clip編集を保持します。
+同じ`source_directory`を再指定すると該当videoを再開し、保存済みsourceと現在の
+cameraファイルが異なる場合はエラーになります。専用worktreeから元repoのdataを
+利用する場合は`paths.data_root=/元repoの絶対パス/data`を追加します。
+
+旧`raw/<recording_id>`と`dataset/clips/<recording_id>/<clip_name>`構造は読み込みません。
+既存データを一度だけ移行する場合は、先にdry-runし、同じ引数へ`--apply`を追加します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.migrate_video_clip_layout \
+  --data-root /absolute/path/to/tennis-lab/data \
+  --dataset-id meiji_3cam
+```
 
 新規プロジェクト作成時だけ、全動画のコンテナの `creation_time` をUTCへそろえ、最も遅い録画開始を共通時刻0秒として同期オフセットを初期設定します。1つでも時刻が欠落・不正（タイムゾーンなしを含む）、または取得できない場合は、全カメラ0秒の従来動作で開始します。初期推定の結果と失敗理由は起動ログと画面上部に表示します。通知はそのサーバー起動中に表示され、通常の編集操作では消えません。既存JSONは、全オフセットが0秒・クリップ未登録でも再推定せず、そのまま読み込みます。初期値は映像を確認して音声同期・手動調整で修正できます。
 
@@ -57,14 +82,18 @@
 
 ## エクスポート形式
 
-`<dataset_root>/dataset.json` にインデックスを持ち、各クリップは `clips/<recording_id>/<clip_name>/clip.json` と `media/<camera_id>.mp4` を持ちます。別収録で同じクリップ名を使用できます。マニフェストの `video_paths` / `camera_ids` は統合パイプラインの入力として利用できます。
+`<dataset_root>/dataset.json`にインデックスを持ち、各クリップは
+`videos/<video_id>/clips/<clip_name>/clip.json`と`media/<camera_id>.mp4`を
+持ちます。clip IDは`<video_id>/<clip_name>`なので、別videoで同じclip名を
+使用できます。マニフェストの`video_paths` / `camera_ids`は統合パイプラインの
+入力として利用できます。
 
 fps・解像度がカメラ間で異なる場合は、起動時に `export.fps=30 export.width=1280 export.height=720` のように明示指定します。解像度変換はアスペクト比を保つletterboxです。既存出力は既定では上書きしません。ブラウザの一括・個別書き出しでは、現在の区間・同期・ソース・出力仕様とマニフェストが一致し、全動画のfps・フレーム数・解像度も検証できたものだけを「出力済み」としてスキップします。同名でも編集内容が変わっている場合や、不完全な出力は明示的にエラーにします。再出力は `export.overwrite=true` で明示します。書き出し後はfps・フレーム数・解像度を再検証します。疑似アノテーションの追加方法は [`../generate_dataset/README.md`](../generate_dataset/README.md) を参照してください。
 
 ```bash
 # 保存済みプロジェクトからヘッドレス出力
 .venv/bin/python -m src.tennis_scene.scripts.export_clips \
-  project_path=tennis_scene/clip_studio/meiji_3cam/project.json
+  source_directory=tennis_multivew/raw/meiji_3cam/video_002
 ```
 
 ## モジュール
@@ -75,7 +104,8 @@ fps・解像度がカメラ間で異なる場合は、起動時に `export.fps=3
 - `web/exporting.py`：停止可能なエンコード子プロセス、一時出力、公開とロールバック。
 - `web/static/`：ビルド不要のHTML/CSS/JavaScript。`playback.js` が再生と確認フレーム取得、`studio.js` が編集操作と画面更新を担当する。
 - `initialization.py`：新規プロジェクトの録画時刻による初期同期と、既存プロジェクトの復元。
-- `project.py`：プロジェクトJSONの単一定義とI/O。
+- `layout.py`：raw dataset/videoからcamera、`projects.json`、dataset出力先を厳密に導出。
+- `project.py`：dataset単位の`projects.json`とvideo projectの単一定義・I/O。
 - `timeline.py`：`local_time = global_time + offset_sec`、区間 `[start_sec, end_sec)` と最近傍フレームの写像。
 - `state.py`：cv2非依存のタイムライン状態。
 - `sources.py`：smart-seek・縮小・LRU付きのプレビュー取得。
