@@ -1,0 +1,15 @@
+{
+  "kp_mean_dist": 3.4366890909627954,
+  "kp_mean_distance_px": 3.4366890909627954,
+  "kp_median_distance_px": 1.7277264595031738,
+  "seg_miou": 0.8022882893559773,
+  "line_dice": 0.5416507609098674,
+  "pose_translation_l2_m": 0.9049579848011001,
+  "pose_rotation_geodesic_deg": 3.1666929245996878,
+  "pose_focal_relative_error": 0.07587371786524143,
+  "pose_log_focal_abs_error": 0.0771954279987752,
+  "pose_reprojection_mean_distance_px": 15.821513859263426,
+  "kp_pose_consistency_distance_px": 0.0,
+  "invalid_depth_rate": 0.0027235587834770767,
+  "visible_point_count": 2203.0
+}
