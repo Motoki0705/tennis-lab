@@ -1,4 +1,4 @@
-name: Licensed tennis video inventory
+name: Expanded Commons tennis video inventory
 
 on:
   push:
@@ -11,14 +11,14 @@ permissions:
 jobs:
   inventory:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
-      - name: Search Internet Archive for licensed tennis videos
+      - name: Search Commons by tennis players, events, and actions
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/ia-inventory
-          cat > /tmp/ia_inventory.py <<'PY'
+          mkdir -p artifacts/commons-expanded
+          cat > /tmp/commons_expanded.py <<'PY'
           from __future__ import annotations
 
           import collections
@@ -32,158 +32,134 @@ jobs:
           import urllib.request
           from pathlib import Path
 
-          API = "https://archive.org/advancedsearch.php"
-          HEADERS = {"User-Agent": "tennis-video-survey/1.0 (research dataset curation; Motoki0705/tennis-lab)"}
-          OUT = Path("artifacts/ia-inventory")
-          QUERIES = [
-              'mediatype:movies AND subject:"tennis"',
-              'mediatype:movies AND title:tennis',
-              'mediatype:movies AND description:tennis',
-              'mediatype:movies AND (title:"tennis match" OR description:"tennis match")',
-              'mediatype:movies AND (title:"tennis practice" OR description:"tennis practice")',
-              'mediatype:movies AND (title:"tennis serve" OR description:"tennis serve")',
-              'mediatype:movies AND (title:"Davis Cup" OR description:"Davis Cup")',
-              'mediatype:movies AND (title:Wimbledon OR description:Wimbledon)',
-              'mediatype:movies AND (title:"US Open" AND (description:tennis OR subject:tennis))',
-              'mediatype:movies AND (title:"French Open" AND (description:tennis OR subject:tennis))',
-              'mediatype:movies AND (title:"wheelchair tennis" OR description:"wheelchair tennis")',
-              'mediatype:movies AND (title:"college tennis" OR description:"college tennis")',
-          ]
-          FIELDS = [
-              "identifier", "title", "description", "subject", "creator", "date", "year",
-              "licenseurl", "rights", "collection", "downloads", "language", "publicdate",
+          API = "https://commons.wikimedia.org/w/api.php"
+          HEADERS = {"User-Agent": "tennis-video-survey/2.0 (research dataset curation; Motoki0705/tennis-lab)"}
+          OUT = Path("artifacts/commons-expanded")
+          TERMS = [
+              "tennis", "tennis match", "tennis rally", "tennis practice", "tennis training",
+              "tennis serve", "tennis forehand", "tennis backhand", "tennis ball", "wheelchair tennis",
+              "ATP tennis", "WTA tennis", "Davis Cup tennis", "Billie Jean King Cup tennis",
+              "US Open tennis", "Wimbledon tennis", "Roland Garros tennis", "French Open tennis",
+              "Australian Open tennis", "Olympic tennis",
+              "Roger Federer tennis", "Rafael Nadal tennis", "Novak Djokovic tennis", "Andy Murray tennis",
+              "Serena Williams tennis", "Venus Williams tennis", "Naomi Osaka tennis", "Kei Nishikori tennis",
+              "Carlos Alcaraz tennis", "Jannik Sinner tennis", "Iga Swiatek tennis", "Coco Gauff tennis",
+              "Aryna Sabalenka tennis", "Daniil Medvedev tennis", "Alexander Zverev tennis",
+              "Stefanos Tsitsipas tennis", "Dominic Thiem tennis", "Stan Wawrinka tennis",
+              "Maria Sharapova tennis", "Steffi Graf tennis", "Andre Agassi tennis", "Monica Seles tennis",
+              "Martina Navratilova tennis", "Suzanne Lenglen tennis",
           ]
 
-          def fetch_json(url: str, attempts: int = 6) -> dict:
-              last: Exception | None = None
+          def fetch(params: dict, attempts: int = 8) -> dict:
+              params = dict(params)
+              params.update({"format": "json", "formatversion": "2", "maxlag": "5"})
+              url = API + "?" + urllib.parse.urlencode(params)
+              last = None
               for attempt in range(attempts):
                   try:
                       req = urllib.request.Request(url, headers=HEADERS)
-                      with urllib.request.urlopen(req, timeout=90) as response:
+                      with urllib.request.urlopen(req, timeout=75) as response:
                           return json.load(response)
                   except urllib.error.HTTPError as exc:
                       last = exc
                       if exc.code not in {429, 500, 502, 503, 504}:
                           raise
                       retry = exc.headers.get("Retry-After")
-                      delay = float(retry) if retry and retry.isdigit() else min(60.0, 5.0 * 2**attempt)
-                      print(f"retry HTTP {exc.code} in {delay:.1f}s", flush=True)
+                      delay = float(retry) if retry and retry.isdigit() else min(90.0, 7.0 * 2**attempt)
+                      print(f"retry HTTP {exc.code}: {delay:.1f}s", flush=True)
                       time.sleep(delay + random.random())
                   except Exception as exc:
                       last = exc
-                      delay = min(45.0, 4.0 * 2**attempt)
-                      print(f"retry {type(exc).__name__}: {exc} in {delay:.1f}s", flush=True)
+                      delay = min(60.0, 5.0 * 2**attempt)
+                      print(f"retry {type(exc).__name__}: {exc}: {delay:.1f}s", flush=True)
                       time.sleep(delay + random.random())
-              raise RuntimeError(f"request failed: {last}")
+              raise RuntimeError(f"request failed after retries: {last}")
 
-          def as_text(value: object) -> str:
-              if isinstance(value, list):
-                  return " | ".join(as_text(v) for v in value)
+          def clean(value: object) -> str:
               text = html.unescape(str(value or ""))
+              text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
               text = re.sub(r"<[^>]+>", " ", text)
               return re.sub(r"\s+", " ", text).strip()
 
-          merged: dict[str, dict] = {}
-          query_log: list[dict] = []
-          for index, query in enumerate(QUERIES, 1):
-              params: list[tuple[str, str]] = [
-                  ("q", query), ("rows", "500"), ("page", "1"), ("output", "json"),
-                  ("sort[]", "downloads desc"),
-              ]
-              params.extend(("fl[]", field) for field in FIELDS)
-              url = API + "?" + urllib.parse.urlencode(params)
-              print(f"QUERY {index}/{len(QUERIES)} {query}", flush=True)
+          rows: dict[int, dict] = {}
+          log: list[dict] = []
+          for index, term in enumerate(TERMS, 1):
+              query = f'"{term}" filetype:video'
+              print(f"QUERY {index}/{len(TERMS)} {query}", flush=True)
               try:
-                  payload = fetch_json(url)
-                  response = payload.get("response") or {}
-                  docs = response.get("docs") or []
-                  for doc in docs:
-                      identifier = as_text(doc.get("identifier"))
-                      if not identifier:
-                          continue
-                      row = merged.setdefault(identifier, {
-                          "identifier": identifier,
-                          "title": as_text(doc.get("title")),
-                          "description": as_text(doc.get("description")),
-                          "subject": as_text(doc.get("subject")),
-                          "creator": as_text(doc.get("creator")),
-                          "date": as_text(doc.get("date") or doc.get("year")),
-                          "licenseurl": as_text(doc.get("licenseurl")),
-                          "rights": as_text(doc.get("rights")),
-                          "collection": as_text(doc.get("collection")),
-                          "downloads": doc.get("downloads"),
-                          "language": as_text(doc.get("language")),
-                          "publicdate": as_text(doc.get("publicdate")),
-                          "search_queries": [],
-                      })
-                      if query not in row["search_queries"]:
-                          row["search_queries"].append(query)
-                  query_log.append({
-                      "query": query,
-                      "num_found": response.get("numFound"),
-                      "returned": len(docs),
-                      "status": "success",
+                  data = fetch({
+                      "action": "query", "generator": "search", "gsrsearch": query,
+                      "gsrnamespace": "6", "gsrlimit": "500",
+                      "prop": "imageinfo|categories",
+                      "iiprop": "url|size|mime|mediatype|extmetadata|derivatives",
+                      "cllimit": "500",
                   })
-                  print(f"  numFound={response.get('numFound')} returned={len(docs)} unique={len(merged)}", flush=True)
+                  pages = (data.get("query") or {}).get("pages") or []
+                  video_count = 0
+                  for page in pages:
+                      ii = (page.get("imageinfo") or [{}])[0]
+                      mime = str(ii.get("mime") or "")
+                      if not mime.startswith("video/"):
+                          continue
+                      video_count += 1
+                      pageid = int(page["pageid"])
+                      ext = ii.get("extmetadata") or {}
+                      def meta(name: str) -> str:
+                          return clean((ext.get(name) or {}).get("value"))
+                      derivatives = []
+                      for derivative in ii.get("derivatives") or []:
+                          derivatives.append({k: derivative.get(k) for k in (
+                              "src", "type", "width", "height", "bandwidth", "transcodekey",
+                          )})
+                      row = rows.setdefault(pageid, {
+                          "pageid": pageid,
+                          "title": page.get("title"),
+                          "page_url": ii.get("descriptionurl"),
+                          "media_url": str(ii.get("url") or "").split("?", 1)[0],
+                          "mime": mime, "width": ii.get("width"), "height": ii.get("height"),
+                          "size_bytes": ii.get("size"),
+                          "license": meta("LicenseShortName") or meta("UsageTerms"),
+                          "license_url": meta("LicenseUrl"), "artist": meta("Artist"),
+                          "credit": meta("Credit"), "description": meta("ImageDescription"),
+                          "date_time_original": meta("DateTimeOriginal"),
+                          "categories": sorted(str(c.get("title") or "").removeprefix("Category:") for c in (page.get("categories") or [])),
+                          "derivatives": derivatives, "search_terms": [],
+                      })
+                      if term not in row["search_terms"]:
+                          row["search_terms"].append(term)
+                  log.append({"term": term, "returned_pages": len(pages), "videos": video_count, "status": "success"})
+                  print(f"  pages={len(pages)} videos={video_count} unique={len(rows)}", flush=True)
               except Exception as exc:
-                  query_log.append({"query": query, "status": "failed", "error": f"{type(exc).__name__}: {exc}"})
+                  log.append({"term": term, "status": "failed", "error": f"{type(exc).__name__}: {exc}"})
                   print(f"  FAILED {type(exc).__name__}: {exc}", flush=True)
-              json.dump(sorted(merged.values(), key=lambda r: r["identifier"]), open(OUT / "candidates.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-              json.dump(query_log, open(OUT / "query_log.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-              time.sleep(2.0 + random.random())
+              json.dump(sorted(rows.values(), key=lambda r: r["pageid"]), open(OUT / "candidates.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+              json.dump(log, open(OUT / "query_log.partial.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+              time.sleep(3.5 + random.random())
 
-          rows = sorted(merged.values(), key=lambda r: (-(r.get("downloads") or 0), r["identifier"]))
-          json.dump(rows, open(OUT / "candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          json.dump(query_log, open(OUT / "query_log.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-
-          excluded_patterns = re.compile(
-              r"table[ -]?tennis|ping[ -]?pong|tennis for two|video game|virtual tennis|"
-              r"badminton|football tennis|beach tennis|paddle tennis|platform tennis|real tennis|court tennis",
-              re.I,
-          )
-          tennis_patterns = re.compile(
-              r"\btennis\b|wimbledon|davis cup|roland garros|french open|"
-              r"us open tennis|australian open tennis|atp\b|wta\b",
-              re.I,
-          )
-          license_patterns = re.compile(
-              r"creativecommons\.org|publicdomain|public domain|cc0|cc by|cc-by|cc_by",
-              re.I,
-          )
-          strict = []
-          for row in rows:
-              haystack = " ".join([row["title"], row["description"], row["subject"]])
-              license_text = " ".join([row["licenseurl"], row["rights"]])
-              if not tennis_patterns.search(haystack):
-                  continue
-              if excluded_patterns.search(haystack):
-                  continue
-              if not license_patterns.search(license_text):
-                  continue
-              strict.append(row)
-          json.dump(strict, open(OUT / "strict_candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          license_counts = collections.Counter(r["licenseurl"] or r["rights"] or "UNKNOWN" for r in strict)
+          candidates = sorted(rows.values(), key=lambda r: (r["title"] or "").casefold())
+          json.dump(candidates, open(OUT / "candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          json.dump(log, open(OUT / "query_log.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          license_counts = collections.Counter((r["license"] or "UNKNOWN") for r in candidates)
           summary = {
-              "unique_search_results": len(rows),
-              "strict_explicit_license_tennis_candidates": len(strict),
-              "successful_queries": sum(q["status"] == "success" for q in query_log),
-              "failed_queries": sum(q["status"] == "failed" for q in query_log),
-              "license_counts_top20": dict(license_counts.most_common(20)),
+              "unique_video_files": len(candidates),
+              "successful_queries": sum(x["status"] == "success" for x in log),
+              "failed_queries": sum(x["status"] == "failed" for x in log),
+              "license_counts": dict(license_counts.most_common()),
           }
           json.dump(summary, open(OUT / "summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
           print(json.dumps(summary, ensure_ascii=False, indent=2))
-          for row in strict[:150]:
-              print(json.dumps({k: row.get(k) for k in ("identifier", "title", "subject", "licenseurl", "rights", "downloads")}, ensure_ascii=False))
-          if len(strict) < 60:
-              raise SystemExit(f"Only {len(strict)} strict IA candidates were found")
+          for row in candidates:
+              print(json.dumps({k: row.get(k) for k in ("pageid", "title", "width", "height", "size_bytes", "license", "search_terms")}, ensure_ascii=False))
+          if len(candidates) < 130:
+              raise SystemExit(f"Only {len(candidates)} candidates found")
           PY
-          python /tmp/ia_inventory.py | tee artifacts/ia-inventory/inventory.log
+          python /tmp/commons_expanded.py | tee artifacts/commons-expanded/inventory.log
 
-      - name: Upload inventory
+      - name: Upload expanded inventory
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-ia-inventory
-          path: artifacts/ia-inventory/
+          name: tennis-video-survey-commons-expanded
+          path: artifacts/commons-expanded/
           if-no-files-found: error
           retention-days: 7
