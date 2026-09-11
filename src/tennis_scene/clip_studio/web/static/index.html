@@ -6,8 +6,11 @@
 <div id="startup-notice" role="status" aria-live="polite" hidden></div>
 <main>
 <section class="workspace">
-<div class="section-head"><div class="toolbar modes"><button id="focus" class="active" aria-pressed="true">単一カメラ</button><button id="compare" aria-pressed="false">カメラ比較</button></div><label>フォーカス <select id="camera" aria-label="フォーカスするカメラ"></select></label></div>
+<div class="section-head"><div class="toolbar modes"><button id="focus" class="active" aria-pressed="true">単一カメラ</button><button id="compare" aria-pressed="false">カメラ比較</button></div><div class="toolbar"><label>フォーカス <select id="camera" aria-label="フォーカスするカメラ"></select></label><button id="sync-toggle" aria-expanded="false" aria-controls="sync-panel">同期調整を開く</button></div></div>
+<div class="media-check">
 <div id="viewers" class="viewers focus"></div>
+<section id="sync-panel" aria-labelledby="sync-title" hidden><div class="section-head"><h2 id="sync-title">カメラの同期調整</h2><button id="sync-close">閉じる</button></div><p class="hint">時差は「動画の時刻 = 共通時刻 + 時差」。停止中の画像はフレーム番号で照合できます。</p><div id="offsets"></div><div class="toolbar"><label>基準 <select id="reference"></select></label><button id="auto-sync">音声から同期候補を計算</button></div><div id="proposal"></div></section>
+</div>
 <div id="status" role="status" aria-live="polite">プロジェクトを読み込んでいます</div>
 <section class="transport">
 <div class="toolbar"><button id="back" title="左矢印キー">◀ 戻る</button><button id="play" class="primary">▶ 再生</button><button id="forward" title="右矢印キー">進む ▶</button><output id="time">00:00:00.000</output><label>再生速度 <select id="rate"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="4">4×</option></select></label><label>← → 移動量 <select id="step"><option value="frame">1フレーム</option><option value="0.1">0.1秒</option><option value="1" selected>1秒</option><option value="5">5秒</option><option value="10">10秒</option><option value="30">30秒</option></select></label></div>
@@ -18,7 +21,6 @@
 <div class="marks toolbar"><button id="mark-in">I 開始を指定</button><output id="in-time">—</output><button id="mark-out">O 終了を指定</button><output id="out-time">—</output><button id="create" class="primary" disabled>C クリップ追加</button><button id="clear">マーク解除</button></div>
 <p class="hint">Space 再生 / 停止 · ← → 選択した時間移動 · Shift + ← → 10倍移動 · , / . 1フレーム · I / O 境界 · C 追加</p>
 </section>
-<details id="sync-panel"><summary>カメラの同期調整</summary><p class="hint">時差は「動画の時刻 = 共通時刻 + 時差」。停止中の画像はフレーム番号で照合できます。</p><div id="offsets"></div><div class="toolbar"><label>基準 <select id="reference"></select></label><button id="auto-sync">音声から同期候補を計算</button></div><div id="proposal"></div></details>
 </section>
 <aside><div class="section-head"><h2>ラリークリップ</h2><span id="count">0 clips</span></div><div id="clips"></div>
 <form id="clip-editor" hidden><h3>選択クリップの編集</h3><label>名前<input id="clip-name" required pattern="[A-Za-z0-9][A-Za-z0-9._-]*"></label><label>開始（秒）<input id="clip-start" type="number" step="any" required></label><button id="set-start" type="button">現在位置を開始に</button><label>終了（秒・この時刻は含まない）<input id="clip-end" type="number" step="any" required></label><button id="set-end" type="button">現在位置を終了に</button><div class="toolbar"><button type="submit" class="primary">変更を保存</button><button id="delete" type="button" class="danger">削除</button></div><div class="toolbar"><button id="loop" type="button">区間リピート</button><button id="export-one" type="button">このクリップを書き出す</button></div></form>
