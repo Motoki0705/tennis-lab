@@ -1,0 +1,77 @@
+name: Tennis video survey smoke
+
+on:
+  push:
+    branches:
+      - automation/tennis-video-survey-20260912
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install downloader and video tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "yt-dlp[default,curl-cffi]"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          yt-dlp --version
+          ffmpeg -version | head -1
+
+      - name: Download a six-second observation sample
+        id: download
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/smoke
+          URL="https://www.youtube.com/watch?v=HvZDFZ2FmvI"
+          yt-dlp \
+            --verbose \
+            --no-playlist \
+            --write-info-json \
+            --write-thumbnail \
+            --convert-thumbnails jpg \
+            --download-sections "*00:00:00-00:00:06" \
+            --force-keyframes-at-cuts \
+            --js-runtimes node \
+            --remote-components ejs:github \
+            --extractor-args "youtube:player_client=android_vr,web_safari" \
+            --impersonate chrome \
+            -f "bv*[height<=360]+ba/b[height<=360]/worst" \
+            --merge-output-format mp4 \
+            -o "artifacts/smoke/%(id)s.%(ext)s" \
+            "$URL" 2>&1 | tee artifacts/smoke/yt-dlp.log
+
+      - name: Extract representative frames
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          video="$(find artifacts/smoke -maxdepth 1 -type f \( -name '*.mp4' -o -name '*.mkv' -o -name '*.webm' \) | head -1)"
+          if [[ -n "$video" ]]; then
+            ffprobe -v error -show_format -show_streams -of json "$video" > artifacts/smoke/ffprobe.json
+            ffmpeg -hide_banner -loglevel error -y -i "$video" \
+              -vf "fps=1,scale=640:-2" artifacts/smoke/frame_%02d.jpg
+          else
+            printf '%s\n' 'No downloaded video was available for frame extraction.' > artifacts/smoke/no-video.txt
+          fi
+          find artifacts/smoke -maxdepth 1 -type f -printf '%f\t%s bytes\n' | sort > artifacts/smoke/files.txt
+
+      - name: Upload smoke-test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tennis-video-survey-smoke
+          path: artifacts/smoke/
+          if-no-files-found: error
+          retention-days: 7
