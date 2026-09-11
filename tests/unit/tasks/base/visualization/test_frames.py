@@ -47,6 +47,19 @@ def test_resolve_glob_pattern(tmp_path: Path) -> None:
     assert [p.name for p in paths] == ["f0.png", "f1.png"]
 
 
+def test_resolve_recursive_npy_glob(tmp_path: Path) -> None:
+    first = tmp_path / "samples" / "a" / "rgb.npy"
+    second = tmp_path / "samples" / "b" / "rgb.npy"
+    first.parent.mkdir(parents=True)
+    second.parent.mkdir(parents=True)
+    np.save(first, np.zeros((4, 5, 3), dtype=np.float32))
+    np.save(second, np.zeros((4, 5, 3), dtype=np.float32))
+
+    paths = resolve_image_paths(str(tmp_path / "samples" / "**" / "rgb.npy"))
+
+    assert paths == [first, second]
+
+
 def test_resolve_max_frames_caps(tmp_path: Path) -> None:
     for i in range(5):
         _write_img(tmp_path / f"f{i}.png")
@@ -73,6 +86,39 @@ def test_read_rgb_converts_bgr_to_rgb(tmp_path: Path) -> None:
 def test_read_rgb_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="Failed to read"):
         read_rgb(tmp_path / "missing.png")
+
+
+def test_read_rgb_converts_float_npy_to_uint8(tmp_path: Path) -> None:
+    path = tmp_path / "rgb.npy"
+    source = np.array([[[0.0, 0.5, 1.0]]], dtype=np.float32)
+    np.save(path, source)
+
+    rgb = read_rgb(path)
+
+    assert rgb.dtype == np.uint8
+    np.testing.assert_array_equal(rgb, np.array([[[0, 128, 255]]], dtype=np.uint8))
+
+
+@pytest.mark.parametrize(
+    ("source", "error", "message"),
+    [
+        (np.zeros((4, 5), dtype=np.float32), ValueError, "shape"),
+        (np.full((4, 5, 3), np.nan, dtype=np.float32), ValueError, "finite"),
+        (np.full((4, 5, 3), 1.1, dtype=np.float32), ValueError, "\\[0,1\\]"),
+        (np.zeros((4, 5, 3), dtype=np.int16), TypeError, "uint8"),
+    ],
+)
+def test_read_rgb_rejects_invalid_npy(
+    tmp_path: Path,
+    source: np.ndarray,
+    error: type[Exception],
+    message: str,
+) -> None:
+    path = tmp_path / "rgb.npy"
+    np.save(path, source)
+
+    with pytest.raises(error, match=message):
+        read_rgb(path)
 
 
 def test_load_rgb_frames_resizes(tmp_path: Path) -> None:
