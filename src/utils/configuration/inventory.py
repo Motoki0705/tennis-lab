@@ -302,6 +302,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "synthetic.court_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.court_detection.scripts.evaluate_pose_trajectory": (
+        "court_detection.evaluate_pose_trajectory",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -412,6 +416,12 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary(
         "court_detection",
         "src.tasks.court_detection.scripts.evaluate_homography_annotations",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_detection.scripts.evaluate_pose_trajectory",
+        "main",
+        domain="court_detection",
+        executable_module=True,
     ),
     _runtime_boundary(
         "court_detection", "src.tasks.court_detection.scripts.generate_line_masks"
