@@ -10,7 +10,7 @@ from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
 from src.tasks.slcs.data.quality import QualityConfig
-from src.tasks.slcs.data.splits import generate_recording_splits, save_split_file
+from src.tasks.slcs.data.splits import generate_video_splits, save_split_file
 from tests.support.tasks.slcs.dataset import (
     DEFAULT_FIXTURE_DINO_SPEC,
     SLCSFixtureDatasetConfig,
@@ -27,8 +27,8 @@ def synthetic_dataset(tmp_path_factory: pytest.TempPathFactory) -> SLCSDataIndex
 
 @pytest.fixture(scope="session")
 def synthetic_split_file(synthetic_dataset: SLCSDataIndex) -> Path:
-    """Split file covering the synthetic dataset (1 recording per split)."""
-    assignments = generate_recording_splits(
+    """Split file covering the synthetic dataset (1 video per split)."""
+    assignments = generate_video_splits(
         synthetic_dataset, val_ratio=0.34, test_ratio=0.33, seed=0
     )
     path = synthetic_dataset.root / "splits.json"

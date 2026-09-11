@@ -139,8 +139,9 @@ class Jobs:
                             register_exported_clip(
                                 self.export.output_dir,
                                 self.export.output_dir
+                                / "videos"
+                                / project.video_id
                                 / "clips"
-                                / project.recording_id
                                 / name
                                 / "clip.json",
                             )

@@ -5,7 +5,7 @@ split_file: tennis_scene_dataset/splits.json
 batch_size: 8
 num_workers: 4
 pin_memory: true
-# Explicit memorization mode: reuse train-assigned recordings for val/test.
+# Explicit memorization mode: reuse train-assigned videos for val/test.
 overfit: false
 
 # Temporal windows

@@ -35,11 +35,11 @@ from tests.support.tasks.slcs.dataset import (
 
 
 def test_manifest_symbols_are_consumed_from_canonical_module() -> None:
-    assert split_clip_id("rec-a/clip_000") == ("rec-a", "clip_000")
+    assert split_clip_id("video_000/clip_000") == ("video_000", "clip_000")
     with pytest.raises(DatasetManifestError):
         split_clip_id("../x/clip")
     with pytest.raises(DatasetManifestError):
-        validate_id_component("..", field_name="recording_id")
+        validate_id_component("..", field_name="video_id")
 
 
 def test_removed_contract_module_has_no_forwarding_path() -> None:
@@ -55,11 +55,11 @@ def test_test_only_dataset_builder_has_no_production_module() -> None:
 def test_index_and_manifest_roundtrip(synthetic_dataset: SLCSDataIndex) -> None:
     index = SLCSDataIndex.load(synthetic_dataset.root)
     assert [record.clip_id for record in index.clips] == [
-        "rec-a/clip_000",
-        "rec-b/clip_000",
-        "rec-c/clip_000",
+        "video_000/clip_000",
+        "video_001/clip_000",
+        "video_002/clip_000",
     ]
-    assert index.recording_ids() == ("rec-a", "rec-b", "rec-c")
+    assert index.video_ids() == ("video_000", "video_001", "video_002")
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
     assert manifest.camera_ids == ("cam0",)
     assert manifest.media_path("cam0").is_file()
@@ -99,33 +99,25 @@ def test_fixture_composes_canonical_manifest_and_annotation_writers(
 def test_duplicate_registration_is_idempotent(
     synthetic_dataset: SLCSDataIndex,
 ) -> None:
-    manifest = ClipManifest.load(
-        synthetic_dataset.clip_dir(synthetic_dataset.clips[0])
-    )
+    manifest = ClipManifest.load(synthetic_dataset.clip_dir(synthetic_dataset.clips[0]))
     register_exported_clip(synthetic_dataset.root, manifest.manifest_path)
     index = SLCSDataIndex.load(synthetic_dataset.root)
     assert [record.clip_id for record in index.clips].count(manifest.clip_id) == 1
 
 
-def test_appending_new_recording_keeps_existing(tmp_path: Path) -> None:
+def test_appending_new_video_keeps_existing(tmp_path: Path) -> None:
     root = tmp_path / "dataset"
-    build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(recordings=("first",))
-    )
-    build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(recordings=("second",))
-    )
-    assert [record.recording_id for record in SLCSDataIndex.load(root).clips] == [
-        "first",
-        "second",
+    build_slcs_dataset_fixture(root, SLCSFixtureDatasetConfig(videos=("video_000",)))
+    build_slcs_dataset_fixture(root, SLCSFixtureDatasetConfig(videos=("video_001",)))
+    assert [record.video_id for record in SLCSDataIndex.load(root).clips] == [
+        "video_000",
+        "video_001",
     ]
 
 
 def test_unsupported_dataset_version_uses_canonical_error(tmp_path: Path) -> None:
     root = tmp_path / "dataset"
-    build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(recordings=("only",))
-    )
+    build_slcs_dataset_fixture(root, SLCSFixtureDatasetConfig(videos=("video_000",)))
     index_path = root / "dataset.json"
     payload = json.loads(index_path.read_text())
     payload["version"] = 99
@@ -136,7 +128,7 @@ def test_unsupported_dataset_version_uses_canonical_error(tmp_path: Path) -> Non
 
 def test_missing_marker_is_explicitly_incomplete(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
-        tmp_path / "dataset", SLCSFixtureDatasetConfig(recordings=("only",))
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
     (slcs_annotation_dir(clip_dir) / SLCS_ANNOTATION_FILENAME).unlink()
@@ -147,12 +139,12 @@ def test_missing_marker_is_explicitly_incomplete(tmp_path: Path) -> None:
 
 def test_manifest_digest_mismatch_is_rejected(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
-        tmp_path / "dataset", SLCSFixtureDatasetConfig(recordings=("only",))
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
     manifest_path = clip_dir / "clip.json"
     payload = json.loads(manifest_path.read_text())
-    payload["source"] = {"origin": "edited-after-annotation"}
+    payload["exported_at"] = "edited-after-annotation"
     manifest_path.write_text(json.dumps(payload))
     with pytest.raises(DatasetManifestError, match="different clip.json"):
         load_slcs_annotation(ClipManifest.load(clip_dir))
@@ -160,7 +152,7 @@ def test_manifest_digest_mismatch_is_rejected(tmp_path: Path) -> None:
 
 def test_marker_shape_mismatch_is_rejected(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
-        tmp_path / "dataset", SLCSFixtureDatasetConfig(recordings=("only",))
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
     marker_path = slcs_annotation_dir(clip_dir) / SLCS_ANNOTATION_FILENAME
@@ -168,9 +160,7 @@ def test_marker_shape_mismatch_is_rejected(tmp_path: Path) -> None:
     marker["arrays"]["ball_uv"]["shape"] = [9, 9, 9]
     marker_path.write_text(json.dumps(marker))
     with pytest.raises(DatasetManifestError, match="ball_uv"):
-        load_slcs_annotation(
-            ClipManifest.load(clip_dir), verify_manifest_digest=False
-        )
+        load_slcs_annotation(ClipManifest.load(clip_dir), verify_manifest_digest=False)
 
 
 @pytest.mark.parametrize(
@@ -197,7 +187,7 @@ def test_clip_manifest_or_scene_mismatch_is_rejected(
     message: str,
 ) -> None:
     index = build_slcs_dataset_fixture(
-        tmp_path / "dataset", SLCSFixtureDatasetConfig(recordings=("only",))
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
     manifest_path = clip_dir / "clip.json"
@@ -211,7 +201,7 @@ def test_clip_manifest_or_scene_mismatch_is_rejected(
 
 def test_required_scene_array_is_enforced(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
-        tmp_path / "dataset", SLCSFixtureDatasetConfig(recordings=("only",))
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
     scene_path = slcs_annotation_dir(clip_dir) / SLCS_SCENE_ARCHIVE_FILENAME
@@ -219,6 +209,4 @@ def test_required_scene_array_is_enforced(tmp_path: Path) -> None:
     del data["ball_uv"]
     np.savez_compressed(scene_path, **data)
     with pytest.raises(DatasetManifestError, match="ball_uv"):
-        load_slcs_annotation(
-            ClipManifest.load(clip_dir), verify_manifest_digest=False
-        )
+        load_slcs_annotation(ClipManifest.load(clip_dir), verify_manifest_digest=False)

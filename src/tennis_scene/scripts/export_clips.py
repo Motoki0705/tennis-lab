@@ -1,18 +1,19 @@
 """
-Headlessly append the clips of a clip studio project to a structured dataset
+Headlessly append one video's clips to its structured dataset
 as synchronized per-camera videos plus clip and dataset manifests, matching
 the tennis_scene pipeline contract.
 
 Usage:
-    python -m src.tennis_scene.scripts.export_clips project_path=tennis_scene/project.json
+    python -m src.tennis_scene.scripts.export_clips \
+      source_directory=tennis_multivew/raw/example/video_000
 
 Notes:
-    - The project and output directory are explicit role-relative paths.
+    - The aggregate projects file and dataset directory are derived from the
+      canonical raw dataset/video directory.
     - Configuration is loaded from `src/tennis_scene/configs/export_clips.yaml`.
     - Exported videos are re-probed and validated against the plan; a
       contract violation aborts with an error instead of writing a bad clip.
-    - Clips are namespaced as `clips/<recording_id>/<clip_name>` so later
-      recording sessions can be appended without `clip_000` collisions.
+    - Clips are namespaced as `videos/<video_id>/clips/<clip_name>`.
 """
 
 from __future__ import annotations
@@ -42,8 +43,8 @@ def main(cfg: DictConfig) -> int:
     from src.tennis_scene.configuration import parse_export_config
 
     runtime = parse_export_config(cfg)
-    if not runtime.project_path.is_file():
-        raise FileNotFoundError(f"project not found: {runtime.project_path}")
+    if not runtime.projects_path.is_file():
+        raise FileNotFoundError(f"projects file not found: {runtime.projects_path}")
     settings = ExportSettings(
         output_dir=runtime.output_dir,
         fps=runtime.fps,
@@ -54,7 +55,12 @@ def main(cfg: DictConfig) -> int:
     )
 
     try:
-        project = ClipStudioProject.load(runtime.project_path, runtime.resolver)
+        project = ClipStudioProject.load(
+            runtime.projects_path,
+            runtime.resolver,
+            dataset_id=runtime.dataset_id,
+            video_id=runtime.video_id,
+        )
         results = export_clips(project, settings, clip_names=runtime.clip_names)
     except (KeyError, ValueError, RuntimeError) as error:
         LOGGER.error(str(error))
@@ -64,7 +70,7 @@ def main(cfg: DictConfig) -> int:
     LOGGER.info(f"Exported {len(results)} clip(s):")
     for result in results:
         LOGGER.info(f"  {result.clip_dir}")
-    dataset_fragment = runtime.output_dir.relative_to(runtime.roots.artifact_root)
+    dataset_fragment = runtime.output_dir.relative_to(runtime.roots.data_root)
     LOGGER.info(
         "Generate pseudo annotations: python -m "
         "src.tennis_scene.scripts.generate_dataset "

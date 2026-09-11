@@ -16,9 +16,9 @@ from typing import Any
 from src.utils.io import load_json, save_json_atomic, utc_now_iso
 
 DATASET_MANIFEST_FILENAME = "dataset.json"
-DATASET_SCHEMA_VERSION = 1
+DATASET_SCHEMA_VERSION = 2
 CLIP_MANIFEST_FILENAME = "clip.json"
-CLIP_SCHEMA_VERSION = 1
+CLIP_SCHEMA_VERSION = 2
 
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -31,8 +31,15 @@ class UnsupportedDatasetVersionError(DatasetManifestError):
     """A dataset or clip manifest declares an unsupported version."""
 
 
+def _require_exact_keys(data: dict[str, Any], expected: set[str], *, name: str) -> None:
+    if set(data) != expected:
+        raise DatasetManifestError(
+            f"{name} keys must be exactly {sorted(expected)}, got {sorted(data)}."
+        )
+
+
 def validate_id_component(value: str, *, field_name: str) -> str:
-    """Validate one recording, clip, or camera identifier component."""
+    """Validate one dataset, video, clip, or camera identifier component."""
     if not isinstance(value, str) or not value:
         raise DatasetManifestError(
             f"{field_name} must be a non-empty string, got {value!r}."
@@ -45,14 +52,14 @@ def validate_id_component(value: str, *, field_name: str) -> str:
 
 
 def split_clip_id(clip_id: str) -> tuple[str, str]:
-    """Split and validate the canonical ``<recording_id>/<clip_name>`` id."""
+    """Split and validate the canonical ``<video_id>/<clip_name>`` id."""
     parts = clip_id.split("/")
     if len(parts) != 2:
         raise DatasetManifestError(
-            f"clip_id must be '<recording_id>/<clip_name>', got {clip_id!r}."
+            f"clip_id must be '<video_id>/<clip_name>', got {clip_id!r}."
         )
     return (
-        validate_id_component(parts[0], field_name="recording_id"),
+        validate_id_component(parts[0], field_name="video_id"),
         validate_id_component(parts[1], field_name="clip_name"),
     )
 
@@ -71,7 +78,7 @@ class DatasetClipRecord:
     """Stable index entry for one exported synchronized clip."""
 
     clip_id: str
-    recording_id: str
+    video_id: str
     clip_name: str
     path: str
     num_cameras: int
@@ -83,7 +90,7 @@ class DatasetClipRecord:
     def to_dict(self) -> dict[str, Any]:
         return {
             "clip_id": self.clip_id,
-            "recording_id": self.recording_id,
+            "video_id": self.video_id,
             "clip_name": self.clip_name,
             "path": self.path,
             "num_cameras": self.num_cameras,
@@ -95,23 +102,34 @@ class DatasetClipRecord:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DatasetClipRecord:
+        _require_exact_keys(
+            data,
+            {
+                "clip_id",
+                "video_id",
+                "clip_name",
+                "path",
+                "num_cameras",
+                "num_frames",
+                "fps",
+                "width",
+                "height",
+            },
+            name="dataset clip record",
+        )
         clip_id = str(data["clip_id"])
-        recording_id, clip_name = split_clip_id(clip_id)
-        if str(data["recording_id"]) != recording_id:
-            raise DatasetManifestError(
-                f"recording_id disagrees with clip_id={clip_id!r}."
-            )
+        video_id, clip_name = split_clip_id(clip_id)
+        if str(data["video_id"]) != video_id:
+            raise DatasetManifestError(f"video_id disagrees with clip_id={clip_id!r}.")
         if str(data["clip_name"]) != clip_name:
             raise DatasetManifestError(f"clip_name disagrees with clip_id={clip_id!r}.")
         path = str(data["path"])
-        expected_path = f"clips/{recording_id}/{clip_name}"
+        expected_path = f"videos/{video_id}/clips/{clip_name}"
         if path != expected_path:
-            raise DatasetManifestError(
-                f"clip path {path!r} must be {expected_path!r}."
-            )
+            raise DatasetManifestError(f"clip path {path!r} must be {expected_path!r}.")
         return cls(
             clip_id=clip_id,
-            recording_id=recording_id,
+            video_id=video_id,
             clip_name=clip_name,
             path=path,
             num_cameras=int(data["num_cameras"]),
@@ -126,6 +144,7 @@ class DatasetClipRecord:
 class DatasetManifest:
     """Dataset inventory; clips can be registered across many sessions."""
 
+    dataset_id: str
     clips: dict[str, DatasetClipRecord] = field(default_factory=dict)
     created_at: str = field(default_factory=utc_now_iso)
     updated_at: str = field(default_factory=utc_now_iso)
@@ -133,6 +152,7 @@ class DatasetManifest:
     def to_dict(self) -> dict[str, Any]:
         return {
             "version": DATASET_SCHEMA_VERSION,
+            "dataset_id": self.dataset_id,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "clips": [self.clips[key].to_dict() for key in sorted(self.clips)],
@@ -140,6 +160,11 @@ class DatasetManifest:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DatasetManifest:
+        _require_exact_keys(
+            data,
+            {"version", "dataset_id", "created_at", "updated_at", "clips"},
+            name="dataset manifest",
+        )
         version = data.get("version")
         if version != DATASET_SCHEMA_VERSION:
             raise UnsupportedDatasetVersionError(
@@ -149,8 +174,14 @@ class DatasetManifest:
         records = [DatasetClipRecord.from_dict(item) for item in data["clips"]]
         clips = {record.clip_id: record for record in records}
         if len(clips) != len(records):
-            raise DatasetManifestError("dataset manifest contains duplicate clip_id values")
+            raise DatasetManifestError(
+                "dataset manifest contains duplicate clip_id values"
+            )
+        raw_dataset_id = data["dataset_id"]
+        if not isinstance(raw_dataset_id, str):
+            raise DatasetManifestError("dataset_id must be a string.")
         return cls(
+            dataset_id=validate_id_component(raw_dataset_id, field_name="dataset_id"),
             clips=clips,
             created_at=str(data["created_at"]),
             updated_at=str(data["updated_at"]),
@@ -175,8 +206,9 @@ class ClipManifest:
     """Parsed canonical ``clip.json`` with safe media resolution helpers."""
 
     clip_dir: Path
+    dataset_id: str
     clip_id: str
-    recording_id: str
+    video_id: str
     clip_name: str
     fps: float
     num_frames: int
@@ -195,6 +227,28 @@ class ClipManifest:
         payload = load_json(path)
         if not isinstance(payload, dict):
             raise DatasetManifestError(f"{path} must contain a JSON object.")
+        _require_exact_keys(
+            payload,
+            {
+                "version",
+                "dataset_id",
+                "clip_id",
+                "video_id",
+                "clip_name",
+                "fps",
+                "num_frames",
+                "width",
+                "height",
+                "global_start_sec",
+                "global_end_sec",
+                "camera_ids",
+                "video_paths",
+                "cameras",
+                "sync_source",
+                "exported_at",
+            },
+            name="clip manifest",
+        )
         version = payload.get("version")
         if version != CLIP_SCHEMA_VERSION:
             raise UnsupportedDatasetVersionError(
@@ -204,13 +258,14 @@ class ClipManifest:
         clip_id = payload.get("clip_id")
         if not isinstance(clip_id, str):
             raise DatasetManifestError(f"{path}: missing string clip_id.")
-        recording_id, clip_name = split_clip_id(clip_id)
-        if (
-            payload.get("recording_id") != recording_id
-            or payload.get("clip_name") != clip_name
-        ):
+        video_id, clip_name = split_clip_id(clip_id)
+        raw_dataset_id = payload["dataset_id"]
+        if not isinstance(raw_dataset_id, str):
+            raise DatasetManifestError(f"{path}: dataset_id must be a string.")
+        dataset_id = validate_id_component(raw_dataset_id, field_name="dataset_id")
+        if payload.get("video_id") != video_id or payload.get("clip_name") != clip_name:
             raise DatasetManifestError(
-                f"{path}: recording_id/clip_name disagree with clip_id={clip_id!r}."
+                f"{path}: video_id/clip_name disagree with clip_id={clip_id!r}."
             )
 
         fps = payload.get("fps")
@@ -234,9 +289,8 @@ class ClipManifest:
         raw_cameras = payload.get("cameras")
         if not isinstance(raw_camera_ids, list) or not raw_camera_ids:
             raise DatasetManifestError(f"{path}: camera_ids must be a non-empty list.")
-        if (
-            not isinstance(raw_video_paths, list)
-            or len(raw_video_paths) != len(raw_camera_ids)
+        if not isinstance(raw_video_paths, list) or len(raw_video_paths) != len(
+            raw_camera_ids
         ):
             raise DatasetManifestError(
                 f"{path}: video_paths must align one-to-one with camera_ids."
@@ -281,8 +335,9 @@ class ClipManifest:
 
         return cls(
             clip_dir=root,
+            dataset_id=dataset_id,
             clip_id=clip_id,
-            recording_id=recording_id,
+            video_id=video_id,
             clip_name=clip_name,
             fps=float(fps),
             num_frames=num_frames,
@@ -321,7 +376,7 @@ class ClipManifest:
 
 def _record_from_clip_manifest(
     dataset_dir: Path, clip_manifest_path: Path
-) -> DatasetClipRecord:
+) -> tuple[str, DatasetClipRecord]:
     clip_dir = clip_manifest_path.parent.resolve()
     try:
         relative_clip_dir = clip_dir.relative_to(dataset_dir.resolve())
@@ -331,11 +386,11 @@ def _record_from_clip_manifest(
         ) from error
 
     clip_manifest = ClipManifest.load(clip_dir)
-    return DatasetClipRecord(
+    return clip_manifest.dataset_id, DatasetClipRecord(
         clip_id=clip_manifest.clip_id,
-        recording_id=clip_manifest.recording_id,
+        video_id=clip_manifest.video_id,
         clip_name=clip_manifest.clip_name,
-        path=str(relative_clip_dir),
+        path=relative_clip_dir.as_posix(),
         num_cameras=len(clip_manifest.camera_ids),
         num_frames=clip_manifest.num_frames,
         fps=clip_manifest.fps,
@@ -353,12 +408,17 @@ def register_exported_clip(
     """Atomically add or verify one completed clip in ``dataset.json``."""
     root = Path(dataset_dir)
     manifest_path = root / DATASET_MANIFEST_FILENAME
+    dataset_id, record = _record_from_clip_manifest(root, Path(clip_manifest_path))
     dataset = (
         DatasetManifest.from_dict(load_json(manifest_path))
         if manifest_path.exists()
-        else DatasetManifest()
+        else DatasetManifest(dataset_id=dataset_id)
     )
-    record = _record_from_clip_manifest(root, Path(clip_manifest_path))
+    if dataset.dataset_id != dataset_id:
+        raise DatasetManifestError(
+            f"dataset_id collision: index has {dataset.dataset_id!r}, "
+            f"clip has {dataset_id!r}."
+        )
     existing = dataset.clips.get(record.clip_id)
     if existing is not None and existing != record and not allow_replace:
         raise DatasetManifestError(

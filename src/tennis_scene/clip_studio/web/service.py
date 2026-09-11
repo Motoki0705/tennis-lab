@@ -65,8 +65,9 @@ class Editor:
             state = ClipStudioState(self.project, self.infos)
             return {
                 "revision": self.revision,
-                "recording_id": self.project.recording_id,
-                "project_path": str(self.path),
+                "dataset_id": self.project.dataset_id,
+                "video_id": self.project.video_id,
+                "projects_path": str(self.path),
                 "sources": [
                     {
                         "camera_id": source.camera_id,

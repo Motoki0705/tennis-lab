@@ -657,7 +657,6 @@ class ReferenceClipPaths:
 _EXPORT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.export",
     fields={
-        "output_dir": ConfigField.of(str),
         "fps": ConfigField.of(float, int, type(None)),
         "width": ConfigField.of(int, type(None)),
         "height": ConfigField.of(int, type(None)),
@@ -669,11 +668,16 @@ _EXPORT_SCHEMA = StrictConfigSchema(
 
 @dataclass(frozen=True, slots=True)
 class ClipExportRuntimeConfig:
-    """Explicit project-file clip export configuration."""
+    """Resolved export configuration for one dataset video."""
 
     roots: RuntimePathRoots
     resolver: PathResolver
-    project_path: Path
+    source_directory: Path
+    projects_path: Path
+    dataset_id: str
+    video_id: str
+    video_paths: tuple[Path, ...]
+    camera_ids: tuple[str, ...]
     clip_names: tuple[str, ...] | None
     output_dir: Path
     fps: float | None
@@ -685,6 +689,11 @@ class ClipExportRuntimeConfig:
     @classmethod
     def _from_validated(cls, value: Mapping[str, object]) -> ClipExportRuntimeConfig:
         roots, resolver = _roots(value["paths"])
+        from src.tennis_scene.clip_studio.layout import discover_clip_studio_layout
+
+        layout = discover_clip_studio_layout(
+            resolver, cast(str, value["source_directory"])
+        )
         export = _mapping(value["export"], name="export")
         names = _nullable_string_sequence(value["clip_names"], name="clip_names")
         width = cast(int | None, export["width"])
@@ -713,13 +722,14 @@ class ClipExportRuntimeConfig:
         return cls(
             roots=roots,
             resolver=resolver,
-            project_path=resolver.resolve(
-                PathRole.ARTIFACT, cast(str, value["project_path"])
-            ),
+            source_directory=layout.source_directory,
+            projects_path=layout.projects_path,
+            dataset_id=layout.dataset_id,
+            video_id=layout.video_id,
+            video_paths=layout.video_paths,
+            camera_ids=layout.camera_ids,
             clip_names=parsed_names,
-            output_dir=resolver.resolve(
-                PathRole.ARTIFACT, cast(str, export["output_dir"])
-            ),
+            output_dir=layout.dataset_directory,
             fps=None if fps_raw is None else float(fps_raw),
             width=width,
             height=height,
@@ -732,7 +742,7 @@ _EXPORT_BOUNDARY_SCHEMA = StrictConfigSchema(
     name="tennis_scene.export_clips",
     fields={
         "paths": ConfigField.mapping(PATHS_SCHEMA),
-        "project_path": ConfigField.of(str),
+        "source_directory": ConfigField.of(str),
         "clip_names": ConfigField.of(list, tuple, type(None)),
         "export": ConfigField.mapping(_EXPORT_SCHEMA),
     },
@@ -772,9 +782,10 @@ class ClipStudioRuntimeConfig:
     """Validated GUI and project creation boundary."""
 
     export: ClipExportRuntimeConfig
-    recording_id: str
-    video_paths: tuple[Path, ...] | None
-    camera_ids: tuple[str, ...] | None
+    dataset_id: str
+    video_id: str
+    video_paths: tuple[Path, ...]
+    camera_ids: tuple[str, ...]
     gui: ClipStudioGUIRuntimeConfig
     audio_sync: AudioSyncRuntimeConfig
 
@@ -803,10 +814,7 @@ _CLIP_STUDIO_SCHEMA = StrictConfigSchema(
     name="tennis_scene.clip_studio",
     fields={
         "paths": ConfigField.mapping(PATHS_SCHEMA),
-        "project_path": ConfigField.of(str),
-        "recording_id": ConfigField.of(str),
-        "video_paths": ConfigField.of(list, tuple, type(None)),
-        "camera_ids": ConfigField.of(list, tuple, type(None)),
+        "source_directory": ConfigField.of(str),
         "gui": ConfigField.mapping(_GUI_SCHEMA),
         "audio_sync": ConfigField.mapping(_AUDIO_SCHEMA),
         "export": ConfigField.mapping(_EXPORT_SCHEMA),
@@ -815,33 +823,11 @@ _CLIP_STUDIO_SCHEMA = StrictConfigSchema(
 
 
 def parse_clip_studio_config(cfg: DictConfig) -> ClipStudioRuntimeConfig:
-    """Validate one explicit project-file mode; no match-id aliases exist."""
+    """Discover and validate one canonical raw dataset video."""
     value = _CLIP_STUDIO_SCHEMA.validate(_plain(cfg))
     mutable = dict(value)
     mutable["clip_names"] = None
     export = ClipExportRuntimeConfig._from_validated(mutable)
-    _, resolver = _roots(value["paths"])
-    raw_videos = _nullable_string_sequence(value["video_paths"], name="video_paths")
-    raw_cameras = _nullable_string_sequence(value["camera_ids"], name="camera_ids")
-    if (raw_videos is None) != (raw_cameras is None):
-        raise SemanticConfigurationError(
-            "video_paths and camera_ids must be specified together."
-        )
-    if raw_videos is not None and (
-        not raw_videos or len(raw_videos) != len(cast(tuple[str, ...], raw_cameras))
-    ):
-        raise SemanticConfigurationError(
-            "video_paths and camera_ids must be non-empty and equal length."
-        )
-    camera_ids = None
-    if raw_cameras is not None:
-        camera_ids = raw_cameras
-        if any(not camera_id for camera_id in camera_ids):
-            raise SemanticConfigurationError(
-                "camera_ids must not contain empty values."
-            )
-        if len(set(camera_ids)) != len(camera_ids):
-            raise SemanticConfigurationError("camera_ids must be unique.")
     gui = _mapping(value["gui"], name="gui")
     canvas_width = cast(int, gui["canvas_width"])
     tile_width = cast(int, gui["tile_width"])
@@ -873,13 +859,10 @@ def parse_clip_studio_config(cfg: DictConfig) -> ClipStudioRuntimeConfig:
         _positive(max_seconds_raw, name="audio_sync.max_seconds")
     return ClipStudioRuntimeConfig(
         export=export,
-        recording_id=_single_component(
-            cast(str, value["recording_id"]), name="recording_id"
-        ),
-        video_paths=None
-        if raw_videos is None
-        else tuple(resolver.resolve(PathRole.DATA, item) for item in raw_videos),
-        camera_ids=camera_ids,
+        dataset_id=export.dataset_id,
+        video_id=export.video_id,
+        video_paths=export.video_paths,
+        camera_ids=export.camera_ids,
         gui=ClipStudioGUIRuntimeConfig(
             canvas_width=canvas_width,
             tile_width=tile_width,
@@ -1213,7 +1196,7 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
     return GenerateDatasetRuntimeConfig(
         roots=roots,
         dataset_directory=resolver.resolve(
-            PathRole.ARTIFACT, cast(str, value["dataset_directory"])
+            PathRole.DATA, cast(str, value["dataset_directory"])
         ),
         clip_ids=parsed_ids,
         overwrite=cast(bool, value["overwrite"]),

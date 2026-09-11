@@ -1,12 +1,13 @@
 """
-Launch the local browser clip studio with one explicit project-file contract.
+Launch the local browser clip studio for one canonical raw dataset video.
 
 Usage:
-    python -m src.tennis_scene.scripts.clip_studio project_path=tennis_scene/project.json
+    python -m src.tennis_scene.scripts.clip_studio \
+      source_directory=tennis_multivew/raw/example/video_000
 
 Notes:
-    - All configured paths are role-relative and resolved by RuntimePathRoots.
-    - Existing projects must omit video_paths and camera_ids; new projects require both.
+    - The source directory is DATA-role relative and discovers cam<index>.mp4.
+    - projects.json and the dataset directory are derived from the source layout.
 """
 
 from __future__ import annotations

@@ -16,22 +16,27 @@ from src.utils.io import save_json_atomic
 def structured_dataset(tmp_path: Path) -> Path:
     """Create one indexed clip without requiring an actual video codec."""
     root = tmp_path / "dataset"
-    clip_dir = root / "clips" / "match-001" / "clip_000"
+    clip_dir = root / "videos" / "video_000" / "clips" / "clip_000"
     media_dir = clip_dir / "media"
     media_dir.mkdir(parents=True)
     (media_dir / "cam0.mp4").write_bytes(b"video-placeholder")
     manifest = {
-        "version": 1,
-        "clip_id": "match-001/clip_000",
-        "recording_id": "match-001",
+        "version": 2,
+        "dataset_id": "test-dataset",
+        "clip_id": "video_000/clip_000",
+        "video_id": "video_000",
         "clip_name": "clip_000",
         "fps": 30.0,
         "num_frames": 3,
         "width": 64,
         "height": 36,
+        "global_start_sec": 0.0,
+        "global_end_sec": 0.1,
         "camera_ids": ["cam0"],
         "video_paths": ["media/cam0.mp4"],
         "cameras": [],
+        "sync_source": "clip_studio",
+        "exported_at": "2026-09-11T00:00:00+00:00",
     }
     clip_manifest_path = save_json_atomic(manifest, clip_dir / "clip.json")
     register_exported_clip(root, clip_manifest_path)

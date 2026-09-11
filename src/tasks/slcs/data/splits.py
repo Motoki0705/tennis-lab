@@ -1,10 +1,10 @@
-"""Recording-level train/val/test splits for the issue #634 dataset.
+"""Video-level train/val/test splits for the issue #634 dataset.
 
-Leak prevention: the split unit is the ``recording_id`` — every clip cut from
-the same recording (and therefore from the same source videos) lands in the
-same split. Assignment is deterministic given ``(seed, ratios, recordings)``
+Leak prevention: the split unit is the ``video_id`` — every clip cut from
+the same multi-camera video lands in the same split. Assignment is deterministic
+given ``(seed, ratios, videos)``
 via :func:`src.utils.data.splits.make_group_split_map`, weighted by total clip
-frames so long recordings do not distort the ratios.
+frames so long videos do not distort the ratios.
 
 The split file is JSON::
 
@@ -13,10 +13,10 @@ The split file is JSON::
       "seed": 0,
       "val_ratio": 0.15,
       "test_ratio": 0.15,
-      "assignments": {"<recording_id>": "train" | "val" | "test", ...}
+      "assignments": {"<video_id>": "train" | "val" | "test", ...}
     }
 
-Loading is strict: a recording present in the dataset but missing from the
+Loading is strict: a video present in the dataset but missing from the
 split file (or vice versa) is an error, so stale split files fail loudly.
 """
 
@@ -37,20 +37,18 @@ SPLIT_FORMAT_VERSION = 1
 SPLIT_NAMES = ("train", "val", "test")
 
 
-def generate_recording_splits(
+def generate_video_splits(
     index: SLCSDataIndex,
     *,
     val_ratio: float,
     test_ratio: float,
     seed: int,
 ) -> dict[str, str]:
-    """Assign every recording_id in the index to a split deterministically."""
+    """Assign every video_id in the index to a split deterministically."""
     weights: dict[str, int] = {}
     for ref in index.clips:
         manifest = ClipManifest.load(index.clip_dir(ref))
-        weights[ref.recording_id] = (
-            weights.get(ref.recording_id, 0) + manifest.num_frames
-        )
+        weights[ref.video_id] = weights.get(ref.video_id, 0) + manifest.num_frames
     if not weights:
         raise DatasetManifestError(
             f"dataset at {index.root} contains no clips to split."
@@ -63,11 +61,11 @@ def generate_recording_splits(
 
 
 def generate_overfit_splits(index: SLCSDataIndex) -> dict[str, str]:
-    """Assign every recording to train for an explicit memorization experiment."""
-    recording_ids = index.recording_ids()
-    if not recording_ids:
-        raise DatasetManifestError(f"dataset at {index.root} contains no recordings.")
-    return {recording_id: "train" for recording_id in recording_ids}
+    """Assign every video to train for an explicit memorization experiment."""
+    video_ids = index.video_ids()
+    if not video_ids:
+        raise DatasetManifestError(f"dataset at {index.root} contains no videos.")
+    return {video_id: "train" for video_id in video_ids}
 
 
 def save_split_file(
@@ -79,10 +77,10 @@ def save_split_file(
     test_ratio: float,
 ) -> Path:
     """Write a split file (atomic)."""
-    for recording_id, split in assignments.items():
+    for video_id, split in assignments.items():
         if split not in SPLIT_NAMES:
             raise DatasetManifestError(
-                f"assignment {recording_id!r} -> {split!r} is not one of {SPLIT_NAMES}."
+                f"assignment {video_id!r} -> {split!r} is not one of {SPLIT_NAMES}."
             )
     payload: dict[str, Any] = {
         "format_version": SPLIT_FORMAT_VERSION,
@@ -95,7 +93,7 @@ def save_split_file(
 
 
 def load_split_assignments(path: str | Path, index: SLCSDataIndex) -> dict[str, str]:
-    """Load a split file and verify it exactly covers the dataset's recordings."""
+    """Load a split file and verify it exactly covers the dataset's videos."""
     split_path = Path(path)
     if not split_path.is_file():
         raise DatasetManifestError(f"split file not found: {split_path}")
@@ -113,21 +111,21 @@ def load_split_assignments(path: str | Path, index: SLCSDataIndex) -> dict[str, 
             f"{split_path} must contain a non-empty 'assignments' map."
         )
     assignments = {str(k): str(v) for k, v in assignments_raw.items()}
-    for recording_id, split in assignments.items():
+    for video_id, split in assignments.items():
         if split not in SPLIT_NAMES:
             raise DatasetManifestError(
-                f"{split_path}: {recording_id!r} assigned to unknown split {split!r}."
+                f"{split_path}: {video_id!r} assigned to unknown split {split!r}."
             )
 
-    dataset_recordings = set(index.recording_ids())
-    split_recordings = set(assignments)
-    missing = dataset_recordings - split_recordings
-    stale = split_recordings - dataset_recordings
+    dataset_videos = set(index.video_ids())
+    split_videos = set(assignments)
+    missing = dataset_videos - split_videos
+    stale = split_videos - dataset_videos
     if missing or stale:
         raise DatasetManifestError(
             f"{split_path} does not match the dataset: "
-            f"recordings missing from the split file: {sorted(missing)}; "
-            f"stale split entries with no dataset recording: {sorted(stale)}. "
+            f"videos missing from the split file: {sorted(missing)}; "
+            f"stale split entries with no dataset video: {sorted(stale)}. "
             "Regenerate the split file (scripts/make_splits.py)."
         )
     return assignments
@@ -136,7 +134,7 @@ def load_split_assignments(path: str | Path, index: SLCSDataIndex) -> dict[str, 
 __all__ = [
     "SPLIT_FORMAT_VERSION",
     "SPLIT_NAMES",
-    "generate_recording_splits",
+    "generate_video_splits",
     "generate_overfit_splits",
     "load_split_assignments",
     "save_split_file",

@@ -1,7 +1,7 @@
 defaults:
   - paths: default
   - _self_
-dataset_directory: tennis_scene/dataset
+dataset_directory: ???
 clip_ids: null
 overwrite: false
 continue_on_error: true

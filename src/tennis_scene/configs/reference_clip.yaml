@@ -2,7 +2,7 @@ defaults:
   - paths: default
   - _self_
 
-clip_dir: tennis_multivew/processed/meiji_3cam/dataset/clips/meiji_3cam/clip_000
+clip_dir: tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000
 output_dir: meiji_clip000
 device: cuda:0
 stage: observe

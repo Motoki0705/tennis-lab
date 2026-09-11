@@ -51,7 +51,7 @@ class ExportSettings:
 
     Attributes:
         output_dir: Structured dataset root. Clips are written below
-            ``clips/<recording_id>/<clip_name>`` and registered in
+            ``videos/<video_id>/clips/<clip_name>`` and registered in
             ``dataset.json``.
         fps: Target frame rate. ``None`` requires all sources to share one
             fps (which is then used).
@@ -85,7 +85,8 @@ class CameraExportPlan:
 class ClipExportPlan:
     """Validated, self-contained description of one clip export."""
 
-    recording_id: str
+    dataset_id: str
+    video_id: str
     clip_name: str
     global_start_sec: float
     global_end_sec: float
@@ -204,7 +205,8 @@ def plan_clip_export(
             )
         )
     return ClipExportPlan(
-        recording_id=project.recording_id,
+        dataset_id=project.dataset_id,
+        video_id=project.video_id,
         clip_name=clip.name,
         global_start_sec=clip.start_sec,
         global_end_sec=clip.end_sec,
@@ -272,9 +274,10 @@ def _build_manifest(plan: ClipExportPlan) -> dict[str, Any]:
             }
         )
     return {
-        "version": 1,
-        "clip_id": f"{plan.recording_id}/{plan.clip_name}",
-        "recording_id": plan.recording_id,
+        "version": 2,
+        "dataset_id": plan.dataset_id,
+        "clip_id": f"{plan.video_id}/{plan.clip_name}",
+        "video_id": plan.video_id,
         "clip_name": plan.clip_name,
         "fps": plan.fps,
         "num_frames": plan.num_frames,
@@ -312,10 +315,12 @@ def verify_existing_export(plan: ClipExportPlan, settings: ExportSettings) -> bo
     """Return True only for a completed export matching the current frame plan.
 
     Missing/empty destinations need encoding. Conflicting or partial outputs are
-    errors, never silently skipped or overwritten. Extra downstream metadata is
-    permitted, but all exported timing, source and geometry fields must match.
+    errors, never silently skipped or overwritten. The manifest must use the
+    exact canonical schema and all exported fields must match.
     """
-    directory = settings.output_dir / "clips" / plan.recording_id / plan.clip_name
+    directory = (
+        settings.output_dir / "videos" / plan.video_id / "clips" / plan.clip_name
+    )
     if not directory.exists() or (directory.is_dir() and not any(directory.iterdir())):
         return False
     manifest = directory / MANIFEST_FILENAME
@@ -325,6 +330,11 @@ def verify_existing_export(plan: ClipExportPlan, settings: ExportSettings) -> bo
         )
     saved = load_json(manifest)
     expected = _build_manifest(plan)
+    if not isinstance(saved, dict) or set(saved) != set(expected):
+        raise ValueError(
+            f"{plan.clip_name}: existing clip.json does not use the exact "
+            "canonical schema; explicitly enable overwrite to replace"
+        )
     differences = [
         key
         for key, value in expected.items()
@@ -353,7 +363,7 @@ def export_clip(
         RuntimeError: If a written video fails the post-export contract check.
     """
     dataset_dir = Path(settings.output_dir)
-    clip_dir = dataset_dir / "clips" / plan.recording_id / plan.clip_name
+    clip_dir = dataset_dir / "videos" / plan.video_id / "clips" / plan.clip_name
     if clip_dir.exists() and any(clip_dir.iterdir()) and not settings.overwrite:
         raise ValueError(
             f"clip directory {clip_dir} is not empty; set overwrite=true to replace"
