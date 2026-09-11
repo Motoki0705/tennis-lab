@@ -1,4 +1,4 @@
-name: Tennis video survey smoke
+name: Tennis video survey category inventory
 
 on:
   push:
@@ -9,61 +9,187 @@ permissions:
   contents: read
 
 jobs:
-  discover-categories:
+  inventory:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Discover Wikimedia Commons tennis categories
+      - name: Inventory strict tennis categories
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/category-discovery
-          cat > /tmp/discover_categories.py <<'PY'
+          mkdir -p artifacts/inventory
+          cat > /tmp/inventory.py <<'PY'
           from __future__ import annotations
 
+          import collections
+          import html
           import json
+          import re
+          import time
           import urllib.parse
           import urllib.request
           from pathlib import Path
 
           API = "https://commons.wikimedia.org/w/api.php"
-          HEADERS = {"User-Agent": "tennis-video-survey/1.0 (research dataset curation)"}
+          HEADERS = {"User-Agent": "tennis-video-survey/1.0 (research dataset curation; Motoki0705/tennis-lab)"}
+          ROOTS = {
+              "general": ("Videos of tennis", 3),
+              "uruguay": ("Videos of tennis in Uruguay", 2),
+              "scheveningen": ("Videos of Tennis in Scheveningen", 2),
+              "wheelchair": ("Wheelchair tennis", 3),
+              "wheelchair_serve": ("Service (wheelchair tennis)", 2),
+              "ball_machine": ("Tennis ball machines", 2),
+              "animations": ("Tennis animations", 2),
+              "yog_boys_singles_final": ("Tennis at the 2018 Summer Youth Olympics - Boys Gold Medal Match", 1),
+              "yog_boys_doubles_final": ("Tennis at the 2018 Summer Youth Olympics - Boys Doubles Gold Medal Match", 1),
+              "yog_girls_singles_final": ("Tennis at the 2018 Summer Youth Olympics – Girls Singles – Gold Medal Match", 1),
+              "yog_girls_doubles_final": ("Tennis at the 2018 Summer Youth Olympics - Girls Doubles Final", 1),
+              "yog_boys_first_round": ("Tennis at the 2018 Summer Youth Olympics – Boys Singles – First Round", 3),
+              "yog_girls_first_round": ("Tennis at the 2018 Summer Youth Olympics – Girls Singles – First Round", 3),
+              "yog_girls_doubles_first_round": ("Tennis at the 2018 Summer Youth Olympics – Girls Doubles – First Round", 3),
+          }
 
-          def request(params):
+          def api(params: dict, timeout: float = 45.0) -> dict:
+              params = dict(params)
+              params.update({"format": "json", "formatversion": "2", "maxlag": "5"})
               url = API + "?" + urllib.parse.urlencode(params)
               req = urllib.request.Request(url, headers=HEADERS)
-              with urllib.request.urlopen(req, timeout=45) as response:
+              with urllib.request.urlopen(req, timeout=timeout) as response:
                   return json.load(response)
 
-          output = {}
-          output["allcategories"] = request({
-              "action": "query", "list": "allcategories", "acprefix": "Tennis",
-              "aclimit": "500", "acprop": "size", "format": "json", "formatversion": "2",
-          }).get("query", {}).get("allcategories", [])
-          output["category_search"] = request({
-              "action": "query", "list": "search", "srnamespace": "14",
-              "srsearch": "tennis video OR videos", "srlimit": "500",
-              "format": "json", "formatversion": "2",
-          }).get("query", {}).get("search", [])
-          output["file_search"] = request({
-              "action": "query", "list": "search", "srnamespace": "6",
-              "srsearch": "tennis incategory:Videos filetype:video",
-              "srlimit": "100", "format": "json", "formatversion": "2",
-          }).get("query", {}).get("search", [])
-          path = Path("artifacts/category-discovery/categories.json")
-          json.dump(output, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-          for row in output["allcategories"]:
-              print("ALLCATEGORY", json.dumps(row, ensure_ascii=False))
-          for row in output["category_search"]:
-              print("SEARCH", row.get("title"))
-          print("file_search_count", len(output["file_search"]))
-          PY
-          python /tmp/discover_categories.py | tee artifacts/category-discovery/categories.log
+          def category_members(category: str) -> list[dict]:
+              rows: list[dict] = []
+              cont: dict = {}
+              while True:
+                  data = api({
+                      "action": "query",
+                      "list": "categorymembers",
+                      "cmtitle": f"Category:{category}",
+                      "cmnamespace": "6|14",
+                      "cmtype": "file|subcat",
+                      "cmlimit": "500",
+                      **cont,
+                  })
+                  rows.extend((data.get("query") or {}).get("categorymembers") or [])
+                  cont = data.get("continue") or {}
+                  if not cont:
+                      break
+                  time.sleep(0.1)
+              return rows
 
-      - name: Upload discovery evidence
+          origins: dict[int, dict] = {}
+          visited_by_root: dict[str, set[str]] = collections.defaultdict(set)
+          category_stats: dict[str, dict] = {}
+          for root_key, (root_category, max_depth) in ROOTS.items():
+              queue = collections.deque([(root_category, 0)])
+              while queue:
+                  category, depth = queue.popleft()
+                  if category in visited_by_root[root_key] or depth > max_depth:
+                      continue
+                  visited_by_root[root_key].add(category)
+                  members = category_members(category)
+                  file_count = 0
+                  subcat_count = 0
+                  for member in members:
+                      ns = int(member.get("ns", -1))
+                      if ns == 6:
+                          file_count += 1
+                          pageid = int(member["pageid"])
+                          entry = origins.setdefault(pageid, {"pageid": pageid, "title": member.get("title"), "roots": set(), "categories_seen": set()})
+                          entry["roots"].add(root_key)
+                          entry["categories_seen"].add(category)
+                      elif ns == 14 and depth < max_depth:
+                          subcat_count += 1
+                          title = str(member.get("title") or "")
+                          queue.append((title.removeprefix("Category:"), depth + 1))
+                  category_stats[f"{root_key}:{category}"] = {
+                      "root_key": root_key,
+                      "category": category,
+                      "depth": depth,
+                      "files": file_count,
+                      "subcategories_enqueued": subcat_count,
+                  }
+
+          pageids = sorted(origins)
+          enriched: list[dict] = []
+          for start in range(0, len(pageids), 50):
+              batch = pageids[start:start + 50]
+              data = api({
+                  "action": "query",
+                  "pageids": "|".join(map(str, batch)),
+                  "prop": "imageinfo|categories",
+                  "iiprop": "url|size|mime|mediatype|extmetadata|canonicaltitle",
+                  "cllimit": "500",
+              })
+              for page in (data.get("query") or {}).get("pages") or []:
+                  pageid = int(page["pageid"])
+                  origin = origins[pageid]
+                  ii = (page.get("imageinfo") or [{}])[0]
+                  mime = str(ii.get("mime") or "")
+                  if not mime.startswith("video/"):
+                      continue
+                  ext = ii.get("extmetadata") or {}
+                  def text_value(name: str) -> str:
+                      raw = str((ext.get(name) or {}).get("value") or "")
+                      raw = html.unescape(raw)
+                      raw = re.sub(r"<br\s*/?>", "\n", raw, flags=re.I)
+                      raw = re.sub(r"<[^>]+>", " ", raw)
+                      return re.sub(r"\s+", " ", raw).strip()
+                  enriched.append({
+                      "pageid": pageid,
+                      "title": page.get("title"),
+                      "page_url": ii.get("descriptionurl"),
+                      "media_url": str(ii.get("url") or "").split("?", 1)[0],
+                      "mime": mime,
+                      "media_type": ii.get("mediatype"),
+                      "width": ii.get("width"),
+                      "height": ii.get("height"),
+                      "size_bytes": ii.get("size"),
+                      "roots": sorted(origin["roots"]),
+                      "categories_seen": sorted(origin["categories_seen"]),
+                      "all_categories": sorted(str(c.get("title") or "").removeprefix("Category:") for c in (page.get("categories") or [])),
+                      "license": text_value("LicenseShortName") or text_value("UsageTerms"),
+                      "license_url": text_value("LicenseUrl"),
+                      "artist": text_value("Artist"),
+                      "credit": text_value("Credit"),
+                      "description": text_value("ImageDescription"),
+                      "date_time_original": text_value("DateTimeOriginal"),
+                  })
+              time.sleep(0.1)
+
+          out = Path("artifacts/inventory")
+          json.dump(enriched, open(out / "video_candidates.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          json.dump(category_stats, open(out / "category_stats.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          root_counts = collections.Counter()
+          mime_counts = collections.Counter()
+          license_counts = collections.Counter()
+          for row in enriched:
+              root_counts.update(row["roots"])
+              mime_counts[row["mime"]] += 1
+              license_counts[row["license"] or "UNKNOWN"] += 1
+          summary = {
+              "unique_file_members_before_mime_filter": len(origins),
+              "unique_video_files": len(enriched),
+              "root_video_counts": dict(root_counts.most_common()),
+              "mime_counts": dict(mime_counts.most_common()),
+              "license_counts": dict(license_counts.most_common()),
+              "categories_visited": {k: len(v) for k, v in visited_by_root.items()},
+          }
+          json.dump(summary, open(out / "summary.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          print("\nFirst 50 video files:")
+          for row in sorted(enriched, key=lambda r: (r["roots"], r["title"]))[:50]:
+              print(json.dumps({k: row[k] for k in ("pageid", "title", "mime", "width", "height", "size_bytes", "roots", "license")}, ensure_ascii=False))
+          if len(enriched) < 100:
+              raise SystemExit(f"Only {len(enriched)} strict-category video files were found")
+          PY
+          python /tmp/inventory.py | tee artifacts/inventory/inventory.log
+
+      - name: Upload inventory
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: tennis-video-survey-category-discovery
-          path: artifacts/category-discovery/
+          name: tennis-video-survey-category-inventory
+          path: artifacts/inventory/
           if-no-files-found: error
           retention-days: 7
