@@ -61,40 +61,22 @@ jobs:
               "$api/streams/$VIDEO_ID" 2>> artifacts/smoke/piped-attempts.log || true)"
             bytes="$(wc -c < artifacts/smoke/piped-candidate.json 2>/dev/null || echo 0)"
             echo "HTTP $status bytes=$bytes" | tee -a artifacts/smoke/piped-attempts.log
-            if [[ "$status" == "200" ]] && python - artifacts/smoke/piped-candidate.json <<'PY'
-import json, sys
-try:
-    d = json.load(open(sys.argv[1], encoding='utf-8'))
-except Exception:
-    raise SystemExit(1)
-raise SystemExit(0 if d.get('videoStreams') else 1)
-PY
-            then
+            if [[ "$status" == "200" ]] && jq -e '.videoStreams | length > 0' artifacts/smoke/piped-candidate.json >/dev/null 2>&1; then
               cp artifacts/smoke/piped-candidate.json artifacts/smoke/piped.json
               printf '%s\n' "$api" > artifacts/smoke/piped-instance.txt
               break
             fi
           done
           test -s artifacts/smoke/piped.json
-          python - artifacts/smoke/piped.json artifacts/smoke/stream-url.txt <<'PY'
-import json, sys
-src, dst = sys.argv[1:]
-d = json.load(open(src, encoding='utf-8'))
-streams = [s for s in d.get('videoStreams', []) if s.get('url')]
-muxed = [s for s in streams if not s.get('videoOnly')]
-choices = muxed or streams
-under = [s for s in choices if isinstance(s.get('height'), int) and s['height'] <= 360]
-choices = under or choices
-choices.sort(key=lambda s: (s.get('height') or 10**9, s.get('bitrate') or 10**18))
-if not choices:
-    raise SystemExit('No usable stream URL')
-chosen = choices[-1] if under else choices[0]
-open(dst, 'w', encoding='utf-8').write(chosen['url'])
-summary = {k: d.get(k) for k in ('title', 'duration', 'uploadDate', 'uploader', 'thumbnailUrl')}
-summary['chosen_stream'] = {k: chosen.get(k) for k in ('format', 'quality', 'width', 'height', 'fps', 'codec', 'videoOnly')}
-json.dump(summary, open('artifacts/smoke/piped-summary.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
-print(json.dumps(summary, ensure_ascii=False))
-PY
+          jq -r '
+            ([.videoStreams[] | select(.url != null and (.videoOnly == false) and ((.height // 99999) <= 360))] | sort_by(.height, .bitrate) | last)
+            // ([.videoStreams[] | select(.url != null)] | sort_by(.height, .bitrate) | first)
+            | .url
+          ' artifacts/smoke/piped.json > artifacts/smoke/stream-url.txt
+          test -s artifacts/smoke/stream-url.txt
+          jq '{title, duration, uploadDate, uploader, thumbnailUrl, stream_count: (.videoStreams | length)}' \
+            artifacts/smoke/piped.json > artifacts/smoke/piped-summary.json
+          cat artifacts/smoke/piped-summary.json
 
       - name: Download six seconds with yt-dlp Generic extractor
         id: download
