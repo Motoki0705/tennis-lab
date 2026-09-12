@@ -116,8 +116,6 @@ python -m src.tasks.court_detection.scripts.preview_augmentation \
 
 KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとしてのみ読み取り可能で、現行教師とderived target pathを共有しません。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
 
-Synthetic sceneの自動alignmentは画面内の全コートからLINE証拠を集約してコート数を推定するため、single-court LINE checkpointを使用してはいけません。alignment loaderはtarget bundleを検証し、all-court schema `court_line_binary_v1` / `court_line_binary_75mm_150mm_v2`またはtarget bundle導入前のexact historical headだけを受理します。
-
 `prepare_youtube_dataset.py` の `workflow.target_preview` は、完成済みYouTube annotationのground KP14からsigmaと物理線幅の候補を比較します。既存annotationだけを読む場合は `enabled=true only=true` を指定します。このYouTube annotation storeは現在のCourt DataModuleへ接続されていないため、このpreviewはtarget候補のauditであり、データを学習へ暗黙に追加しません。
 
 ```bash
