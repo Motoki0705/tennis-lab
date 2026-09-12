@@ -48,6 +48,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Build vision, video, and test execution image
+        run: |
+          docker build --tag tennis-lab-mcp:runtime-v1 --file src/automation/chatgpt_mcp/Dockerfile .
+          docker image inspect tennis-lab-mcp:runtime-v1 --format '{{.Id}}'
+
       - name: Install external trusted runtime and restart Secure Tunnel
         shell: bash
         run: |
@@ -119,8 +124,8 @@ jobs:
           "$trusted_python" -m src.automation.chatgpt_mcp doctor-secure-tunnel
 
           # The control-plane tests invoke host tools such as git and Docker.
-          # Keep them on the dedicated trusted runner instead of expanding the
-          # intentionally minimal MCP execution sandbox.
+          # Full control-plane tests stay on the trusted runner; the execution
+          # image also runs the isolated Git-fixture server tests below.
           PYTHONPATH="$GITHUB_WORKSPACE" \
           TMPDIR=/tmp \
             "$trusted_python" -m pytest -q -n 0 \
@@ -155,10 +160,13 @@ jobs:
               }
               if params is not None:
                   payload["params"] = params
+              call_headers = {**headers, "Mcp-Method": method}
+              if params and "name" in params:
+                  call_headers["Mcp-Name"] = str(params["name"])
               request = urllib.request.Request(
                   endpoint,
                   data=json.dumps(payload).encode(),
-                  headers=headers,
+                  headers=call_headers,
                   method="POST",
               )
               with urllib.request.urlopen(request, timeout=60) as response:
@@ -269,7 +277,9 @@ jobs:
                       "mkdir -p artifacts/mcp-deploy-smoke; "
                       "printf ok > artifacts/mcp-deploy-smoke/ok; "
                       "test -f /tennis-lab/artifacts/mcp-deploy-smoke/ok; "
-                      "rm -rf artifacts/mcp-deploy-smoke"
+                      "rm -rf artifacts/mcp-deploy-smoke; "
+                      ".venv/bin/python -m src.automation.chatgpt_mcp.scripts.capabilities --source-root /workspace; "
+                      ".venv/bin/python -m pytest -q -n 0 -o addopts='' -p no:cacheprovider tests/unit/automation/chatgpt_mcp/test_server.py"
                   ),
               },
           )
@@ -284,11 +294,8 @@ jobs:
                   "execution_root": "revision",
                   "working_directory": ".",
                   "timeout_seconds": 300,
-                  "command": (
-                      "python -c \"import torch; "
-                      "assert torch.cuda.is_available(); "
-                      "print(torch.cuda.get_device_name(0))\""
-                  ),
+                  "resource": "half",
+                  "command": ".venv/bin/python -m src.automation.chatgpt_mcp.scripts.capabilities --gpu --source-root /workspace",
               },
           )
           for _ in range(600):

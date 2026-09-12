@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 _TABLES = {
+    "operation_errors",
     "clients",
     "pending_authorizations",
     "authorization_codes",

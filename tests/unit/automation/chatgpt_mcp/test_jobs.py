@@ -736,3 +736,25 @@ def test_secret_redaction_covers_common_runtime_tokens() -> None:
     assert "sk-example" not in redacted
     assert "abcdefghijklmnop" not in redacted
     assert redacted.count("[REDACTED]") == 2
+
+
+@pytest.mark.parametrize("evidence", [None, "[]", '{"outcome": []}', "x" * 5000, "fifo", "symlink"])
+def test_unknown_outcome_for_missing_or_untrusted_artifacts(tmp_path: Path, monkeypatch: MonkeyPatch, evidence: str | None) -> None:
+    import os
+
+    settings, workspaces = _settings(tmp_path)
+    sandbox = DockerSandbox(settings, workspaces)
+    job_id = "job-0123456789abcdef"
+    path = settings.sandbox_jobs_dir / job_id / "artifacts/outcome.json"
+    path.parent.mkdir(parents=True)
+    if evidence == "fifo":
+        os.mkfifo(path)
+    elif evidence == "symlink":
+        target = tmp_path / "target.json"
+        target.write_text('{"outcome": "succeeded"}')
+        path.symlink_to(target)
+    elif evidence is not None:
+        path.write_text(evidence)
+    document = [{"Image": "sha256:test", "State": {"Status": "exited", "Running": False, "ExitCode": 124, "StartedAt": "start", "FinishedAt": "end", "Error": ""}}]
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, json.dumps(document), ""))
+    assert sandbox.inspect(job_id)["outcome"] == "unknown"
