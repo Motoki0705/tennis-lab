@@ -1,0 +1,255 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: outputs
+  artifact_root: assets
+  output_root: /content/drive/MyDrive/tennis_lab/colab-live/meiji-l4-bmp-acc4-20260911-r2/outputs/colab
+  cache_root: .cache
+  external_asset_root: third_party
+model:
+  name: conv_next_unet
+  input_mode: mdd
+  in_channels: 2
+  num_classes: 1
+  num_frames: 8
+  input_layout: bcthw
+  dims:
+  - 64
+  - 128
+  - 256
+  - 512
+  depth: 2
+  drop_path_prob: 0.0
+  mdd_a: 0.2
+  mdd_b: 0.15
+data:
+  augmentation:
+    camera_rotation:
+      enabled: false
+      prob: 0.0
+      max_center_angle_deg: 1.2
+      max_angular_velocity_deg_per_frame: 0.2
+      border_mode: reflect101
+    horizontal_flip:
+      enabled: true
+      prob: 0.5
+    affine:
+      enabled: true
+      prob: 0.2
+      rotation_deg_range:
+      - -5.0
+      - 5.0
+      scale_range:
+      - 1.0
+      - 1.0
+      translate_x_ratio_range:
+      - -0.05
+      - 0.05
+      translate_y_ratio_range:
+      - -0.05
+      - 0.05
+      shear_x_deg_range:
+      - -1.0
+      - 1.0
+      shear_y_deg_range:
+      - -0.5
+      - 0.5
+      border_mode: reflect101
+    scale_and_crop:
+      enabled: true
+      prob: 0.2
+      scale_range:
+      - 1.0
+      - 1.5
+      border_mode: reflect101
+    ball_area_zero_mask:
+      enabled: false
+      prob: 0.0
+      mask_width_ratio_range:
+      - 0.04
+      - 0.12
+      mask_height_ratio_range:
+      - 0.04
+      - 0.12
+      num_frames_range:
+      - 1
+      - 3
+    brightness_gain:
+      enabled: true
+      jitter: 0.05
+    contrast:
+      enabled: true
+      jitter: 0.05
+    gamma:
+      enabled: true
+      jitter: 0.04
+    gaussian_noise:
+      enabled: true
+      std: 0.006
+    gaussian_blur:
+      enabled: false
+      prob: 0.0
+      kernel_size: 3
+    normalize_imagenet:
+      enabled: false
+      mean:
+      - 0.485
+      - 0.456
+      - 0.406
+      std:
+      - 0.229
+      - 0.224
+      - 0.225
+  source: multiview
+  data_dir: tennis_multivew/processed/meiji_3cam/dataset
+  frame_cache_dir: ball_detection/meiji_3cam
+  accepted_statuses:
+  - observed
+  - interpolated
+  - occlusion_estimated
+  split:
+    root_role: project
+    train_file: src/tasks/ball_detection/configs/data/splits/meiji_3cam/train.txt
+    val_file: src/tasks/ball_detection/configs/data/splits/meiji_3cam/val.txt
+    test_file: src/tasks/ball_detection/configs/data/splits/meiji_3cam/test.txt
+  batch_size: 8
+  num_workers: 8
+  prepare_workers: 8
+  prefetch_factor: 1
+  pin_memory: true
+  sample_stride: 4
+  image_size:
+  - 288
+  - 512
+  heatmap_size:
+  - 288
+  - 512
+  sigma_ratio: 0.012
+  max_instances: 1
+loss:
+  name: focal_bce
+  gamma: 2.0
+metrics:
+  peak_threshold: 0.5
+  ball_distance_threshold: 4.0
+  nms_kernel: 9
+  max_predictions_per_frame: 8
+  subpixel_refine: true
+training:
+  trainer:
+    max_epochs: 20
+    gradient_clip_val: 1.0
+    deterministic: warn
+    precision: bf16-mixed
+    log_every_n_steps: 50
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 4
+    reload_dataloaders_every_n_epochs: 0
+    enable_progress_bar: true
+    enable_model_summary: true
+    benchmark: false
+  learning_rate: 0.0001
+  weight_decay: 0.1
+  warmup_steps: 200
+  warmup_epochs: null
+  min_lr: 1.0e-06
+  steps_per_epoch: null
+  optimizer:
+    name: adamw
+    betas:
+    - 0.9
+    - 0.999
+  compile:
+    enabled: true
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+  matmul_precision: high
+  allow_tf32: true
+  checkpoint:
+    enabled: true
+    filename: meiji-convnext-{epoch:02d}
+    monitor: val/loss
+    mode: min
+    save_top_k: 2
+    save_last: true
+  early_stopping:
+    enabled: false
+    monitor: val/loss
+    mode: min
+    patience: 5
+    min_delta: 2.0e-06
+    check_on_train_epoch_end: false
+  lr_monitor:
+    enabled: true
+    interval: step
+  qualitative_logging:
+    enabled: true
+    every_n_epochs: 5
+    num_samples: 1
+    selection_mode: random
+    selected_indices: null
+  qualitative_rendering:
+    fps: 5.0
+    draw:
+      gt_radius: 6
+      pred_radius: 6
+      thickness: 2
+      gt_color_rgb:
+      - 0
+      - 255
+      - 0
+      pred_color_rgb:
+      - 255
+      - 80
+      - 80
+      text_color_rgb:
+      - 255
+      - 255
+      - 255
+      muted_text_color_rgb:
+      - 160
+      - 160
+      - 160
+    layout:
+      header_height: 48
+      tile_gap: 4
+      text_scale: 0.55
+      text_thickness: 1
+      background_rgb:
+      - 30
+      - 30
+      - 30
+      panel_label_height: 22
+  gan:
+    enabled: false
+    target_weight: 0.0
+    warmup_epochs: 1
+    generator_gradient_clip_val: null
+    discriminator_gradient_clip_val: null
+    soft_argmax_temperature: 1.0
+    transition:
+      start_epoch: 0
+    discriminator:
+      name: trajectory_transformer
+      hidden_dim: 128
+      num_layers: 4
+      num_heads: 4
+      ffn_dim: 256
+      ffn_type: swiglu
+      dropout: 0.1
+      rope_dim: 32
+      rope_theta: 10000.0
+      max_seq_len: ${model.num_frames}
+      invalid_init_std: 0.02
+      cls_init_std: 0.02
+run:
+  output_dir: ball_meiji_3cam_l4
+  seed: 42
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: false

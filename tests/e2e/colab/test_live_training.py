@@ -80,6 +80,30 @@ print('step 12 loss 0.25', flush=True)
         assert member.read() == b"checkpoint"
 
 
+def test_progress_reader_preserves_last_observation_during_replace_gap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "training-progress.json"
+    path.write_text('{"global_step": 13}', encoding="utf-8")
+    previous = {"global_step": 12}
+
+    def disappear(_path: Path, _label: str) -> dict[str, Any]:
+        path.unlink()
+        raise remote.RemoteWorkflowError("cannot read training progress")
+
+    monkeypatch.setattr(remote, "_read_json_object", disappear)
+
+    assert remote._read_training_progress_observation(path, previous) == previous
+
+
+def test_progress_reader_rejects_persistently_malformed_file(tmp_path: Path) -> None:
+    path = tmp_path / "training-progress.json"
+    path.write_text("{", encoding="utf-8")
+
+    with pytest.raises(remote.RemoteWorkflowError, match="cannot read training progress"):
+        remote._read_training_progress_observation(path, {"global_step": 12})
+
+
 def test_drive_live_directory_rejects_other_request(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

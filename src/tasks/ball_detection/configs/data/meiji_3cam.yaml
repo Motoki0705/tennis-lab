@@ -1,0 +1,27 @@
+defaults:
+  - augmentation: light
+  - _self_
+
+source: multiview
+data_dir: tennis_multivew/processed/meiji_3cam/dataset
+frame_cache_dir: ball_detection/meiji_3cam
+accepted_statuses: [observed, interpolated, occlusion_estimated]
+split:
+  root_role: project
+  train_file: src/tasks/ball_detection/configs/data/splits/meiji_3cam/train.txt
+  val_file: src/tasks/ball_detection/configs/data/splits/meiji_3cam/val.txt
+  test_file: src/tasks/ball_detection/configs/data/splits/meiji_3cam/test.txt
+# Colab launcher replaces this with the measured power-of-two batch size.
+batch_size: 1
+num_workers: 8
+prepare_workers: 8
+prefetch_factor: 1
+pin_memory: true
+sample_stride: 4
+image_size: [288, 512]
+heatmap_size: [288, 512]
+sigma_ratio: 0.012
+max_instances: 1
+augmentation:
+  normalize_imagenet:
+    enabled: false
