@@ -22,6 +22,15 @@ class WorkspaceError(RuntimeError):
     """Raised when a remote revision cannot be prepared or verified safely."""
 
 
+class RevisionMismatch(WorkspaceError):
+    """Safe revision identities for a rejected operation."""
+
+    def __init__(self, expected_sha: str, actual_sha: str) -> None:
+        super().__init__("workspace revision does not match expected_sha (revision mismatch)")
+        self.expected_sha = expected_sha
+        self.actual_sha = actual_sha
+
+
 @dataclass(frozen=True)
 class RevisionWorkspace:
     """One detached exact-SHA source worktree owned by the trusted control plane."""
@@ -264,10 +273,7 @@ class WorkspaceManager:
         checked_sha = _validate_revision(expected_sha)
         workspace = self.get_revision(workspace_id)
         if workspace.revision != checked_sha:
-            raise WorkspaceError(
-                "workspace revision does not match expected_sha: "
-                f"{workspace.revision} != {checked_sha}"
-            )
+            raise RevisionMismatch(checked_sha, workspace.revision)
         status = self._checked_git(
             ["status", "--porcelain=v1", "--untracked-files=all"],
             workspace=workspace.path,

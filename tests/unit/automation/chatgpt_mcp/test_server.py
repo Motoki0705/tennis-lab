@@ -123,3 +123,56 @@ def test_private_gateway_advertises_flexible_execution_plane_tools(
     assert "MIG or VRAM hard cap" in advertised["enqueue_training"]["description"]
     assert "observably non-running" in advertised["cancel_training_job"]["description"]
     assert "terminating remains nonterminal" in advertised["get_training_job"]["description"]
+
+
+def test_revision_mismatch_is_structured_and_audited(tmp_path: Path) -> None:
+    from src.automation.chatgpt_mcp.server import _revision_errors
+    from src.automation.chatgpt_mcp.storage import SqliteStore
+    from src.automation.chatgpt_mcp.workspace import RevisionMismatch
+
+    store = SqliteStore(tmp_path / "state.sqlite")
+
+    def reject() -> dict[str, str]:
+        raise RevisionMismatch("0" * 40, "a" * 40)
+
+    result = _revision_errors(store, reject)()
+    assert result["code"] == "REVISION_MISMATCH"
+    assert result["is_error"] is True
+    assert result["actual_sha"] == "a" * 40
+    assert store.get("operation_errors", result["request_id"]) == result
+
+
+def test_rpc_revision_mismatch_has_safe_details(tmp_path: Path, monkeypatch: object) -> None:
+    from typing import Any
+
+    import pytest
+
+    from src.automation.chatgpt_mcp.jobs import JobManager
+    from src.automation.chatgpt_mcp.workspace import RevisionMismatch
+
+    def reject(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        raise RevisionMismatch("0" * 40, "a" * 40)
+
+    assert isinstance(monkeypatch, pytest.MonkeyPatch)
+    monkeypatch.setattr(JobManager, "start", reject)
+    app = build_gateway(_settings(tmp_path), authenticated=False).streamable_http_app()
+    with TestClient(app, base_url="http://127.0.0.1:8767") as client:
+        response = client.post("/mcp", headers={
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+            "Mcp-Method": "tools/call", "Mcp-Name": "start_command",
+        }, json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+            "name": "start_command", "arguments": {
+                "command": "exit 0", "workspace_id": "rev-" + "a" * 16, "expected_sha": "0" * 40,
+            }, "_meta": {
+                "io.modelcontextprotocol/protocolVersion": LATEST_PROTOCOL_VERSION,
+                "io.modelcontextprotocol/clientInfo": {"name": "pytest", "version": "1"},
+                "io.modelcontextprotocol/clientCapabilities": {},
+            },
+        }})
+    assert response.status_code == 200
+    payload = response.json()["result"]["structuredContent"]
+    assert payload["is_error"] is True
+    assert payload["code"] == "REVISION_MISMATCH"
+    assert payload["request_id"].startswith("op-")
+    assert "Traceback" not in response.text
