@@ -7,12 +7,18 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Protocol, cast
 
 import cv2
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
+
+from src.synthetic_data_generation.alignment.line_inputs import (
+    CourtLineInputSource,
+    input_rgb_sha256,
+)
 
 LINE_HEATMAP_DIRECTORY = "line-heatmaps"
 LINE_HEATMAP_ARCHIVE_FILE = "heatmaps.npz"
@@ -25,12 +31,16 @@ GROUND_PLANE_UV_COORDINATE_CONVENTION = (
     "u=dot(metric_point-origin,basis_u);"
     "v=dot(metric_point-origin,basis_v);normal=cross(basis_u,basis_v)"
 )
-_ARCHIVE_SCHEMA = "alignment_line_heatmaps_v2"
-_MANIFEST_SCHEMA = "alignment_line_heatmap_manifest_v2"
+_ARCHIVE_SCHEMA = "alignment_line_heatmaps_v3"
+_MANIFEST_SCHEMA = "alignment_line_heatmap_manifest_v3"
 _WEIGHT_MODEL = "1/(1+(camera_range/proximity_scale)^power)"
 _RASTER_REDUCER = "per-view cell max then weighted global sum"
 _ARCHIVE_KEYS = {
     "schema",
+    "input_source",
+    "input_provenance_json",
+    "input_shapes",
+    "input_rgb_sha256",
     "coordinate_convention",
     "coordinate_units",
     "camera_ids",
@@ -65,6 +75,7 @@ class AlignmentLineHeatmapView:
     """Raw detector heatmap and its valid weighted ground projection for one view."""
 
     camera_id: str
+    input_rgb: NDArray[np.uint8]
     probability: NDArray[np.float32]
     points_uv: NDArray[np.float64]
     projected_probabilities: NDArray[np.float32]
@@ -76,6 +87,17 @@ class AlignmentLineHeatmapView:
             raise TypeError("camera_id must be a non-empty string.")
         if type(self.included_in_aggregate) is not bool:
             raise TypeError("included_in_aggregate must be a boolean.")
+        input_rgb = _readonly_array(
+            self.input_rgb,
+            dtype=np.dtype(np.uint8),
+            name="input_rgb",
+        )
+        if (
+            input_rgb.ndim != 3
+            or input_rgb.shape[2:] != (3,)
+            or min(input_rgb.shape[:2]) < 2
+        ):
+            raise ValueError("input_rgb must be a non-trivial uint8 HxWx3 image.")
         probability = _readonly_array(
             self.probability,
             dtype=np.dtype(np.float32),
@@ -120,6 +142,7 @@ class AlignmentLineHeatmapView:
             raise ValueError("proximity_weights must lie in (0, 1].")
         if self.included_in_aggregate and len(points_uv) == 0:
             raise ValueError("An aggregate view must contain projected line evidence.")
+        object.__setattr__(self, "input_rgb", input_rgb)
         object.__setattr__(self, "probability", probability)
         object.__setattr__(self, "points_uv", points_uv)
         object.__setattr__(
@@ -138,11 +161,27 @@ class AlignmentLineHeatmaps:
     grid_spacing: float
     proximity_scale: float
     proximity_power: float
+    input_source: str
+    input_provenance: Mapping[str, object]
     views: tuple[AlignmentLineHeatmapView, ...]
     coordinate_convention: str = GROUND_PLANE_UV_COORDINATE_CONVENTION
     coordinate_units: str = "metres"
 
     def __post_init__(self) -> None:
+        try:
+            input_source = CourtLineInputSource(self.input_source)
+        except ValueError as error:
+            raise ValueError(
+                f"Unsupported alignment line input source: {self.input_source!r}."
+            ) from error
+        provenance = _canonical_mapping(
+            self.input_provenance,
+            name="line-heatmap input_provenance",
+        )
+        if provenance.get("source") != input_source.value:
+            raise ValueError(
+                "Line-heatmap input provenance disagrees with input_source."
+            )
         if self.coordinate_convention != GROUND_PLANE_UV_COORDINATE_CONVENTION:
             raise ValueError("Unsupported line-heatmap coordinate convention.")
         if self.coordinate_units != "metres":
@@ -172,6 +211,26 @@ class AlignmentLineHeatmaps:
             raise ValueError("Line-heatmap camera IDs must be unique.")
         if len(views) > np.iinfo(np.uint16).max:
             raise ValueError("Line-heatmap view count exceeds uint16 raster capacity.")
+        provenance_views = provenance.get("views")
+        if not isinstance(provenance_views, list) or len(provenance_views) != len(
+            views
+        ):
+            raise ValueError(
+                "Line-heatmap input provenance must describe every view exactly once."
+            )
+        for index, (view, raw_provenance) in enumerate(
+            zip(views, provenance_views, strict=True)
+        ):
+            if not isinstance(raw_provenance, dict):
+                raise TypeError(
+                    f"Line-heatmap input provenance view {index} must be a mapping."
+                )
+            if raw_provenance.get("camera_id") != view.camera_id or raw_provenance.get(
+                "input_rgb_sha256"
+            ) != input_rgb_sha256(view.input_rgb):
+                raise ValueError(
+                    "Line-heatmap input provenance disagrees with the exact RGB view."
+                )
         for view in views:
             if len(view.points_uv) == 0:
                 continue
@@ -188,6 +247,8 @@ class AlignmentLineHeatmaps:
         object.__setattr__(self, "grid_spacing", float(self.grid_spacing))
         object.__setattr__(self, "proximity_scale", float(self.proximity_scale))
         object.__setattr__(self, "proximity_power", float(self.proximity_power))
+        object.__setattr__(self, "input_source", input_source.value)
+        object.__setattr__(self, "input_provenance", MappingProxyType(provenance))
         object.__setattr__(self, "views", views)
 
     @property
@@ -346,6 +407,10 @@ def write_line_heatmaps(
     for index, view in enumerate(heatmaps.views):
         weighted, _weight = rasterize_weighted_view(heatmaps, view)
         _write_png(
+            views_path / _view_input_name(index),
+            view.input_rgb,
+        )
+        _write_png(
             views_path / _view_heatmap_name(index),
             _render_probability(view.probability, flip_vertical=False),
         )
@@ -378,7 +443,10 @@ def validate_line_heatmaps(output_path: Path) -> AlignmentLineHeatmaps:
     for name in expected - {LINE_HEATMAP_VIEWS_DIRECTORY}:
         _require_ordinary_file(output_path / name)
 
-    heatmaps, stored_rasters = _load_archive(output_path / LINE_HEATMAP_ARCHIVE_FILE)
+    heatmaps, stored_rasters = _load_archive(
+        output_path / LINE_HEATMAP_ARCHIVE_FILE,
+        views_path=views_path,
+    )
     recomputed = aggregate_line_heatmaps(heatmaps)
     _require_rasters_equal(stored_rasters, recomputed)
     manifest = _load_json_object(output_path / LINE_HEATMAP_MANIFEST_FILE)
@@ -388,7 +456,11 @@ def validate_line_heatmaps(output_path: Path) -> AlignmentLineHeatmaps:
     expected_views = {
         name
         for index in range(len(heatmaps.views))
-        for name in (_view_heatmap_name(index), _view_weighted_heatmap_name(index))
+        for name in (
+            _view_input_name(index),
+            _view_heatmap_name(index),
+            _view_weighted_heatmap_name(index),
+        )
     }
     actual_views = {path.name for path in views_path.iterdir()}
     if actual_views != expected_views:
@@ -399,6 +471,10 @@ def validate_line_heatmaps(output_path: Path) -> AlignmentLineHeatmaps:
     )
     for index, view in enumerate(heatmaps.views):
         weighted, _weight = rasterize_weighted_view(heatmaps, view)
+        _validate_png(
+            views_path / _view_input_name(index),
+            view.input_rgb,
+        )
         _validate_png(
             views_path / _view_heatmap_name(index),
             _render_probability(view.probability, flip_vertical=False),
@@ -447,6 +523,23 @@ def _archive_arrays(
     )
     return {
         "schema": np.asarray(_ARCHIVE_SCHEMA),
+        "input_source": np.asarray(heatmaps.input_source),
+        "input_provenance_json": np.asarray(
+            json.dumps(
+                dict(heatmaps.input_provenance),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+                allow_nan=False,
+            )
+        ),
+        "input_shapes": np.asarray(
+            [view.input_rgb.shape for view in heatmaps.views],
+            dtype=np.int64,
+        ),
+        "input_rgb_sha256": np.asarray(
+            [input_rgb_sha256(view.input_rgb) for view in heatmaps.views]
+        ),
         "coordinate_convention": np.asarray(heatmaps.coordinate_convention),
         "coordinate_units": np.asarray(heatmaps.coordinate_units),
         "camera_ids": np.asarray(heatmaps.camera_ids),
@@ -478,6 +571,8 @@ def _archive_arrays(
 
 def _load_archive(
     path: Path,
+    *,
+    views_path: Path,
 ) -> tuple[AlignmentLineHeatmaps, LineHeatmapRasters]:
     _require_ordinary_file(path)
     with np.load(path, allow_pickle=False) as loaded:
@@ -493,6 +588,26 @@ def _load_archive(
         or str(schema.item()) != _ARCHIVE_SCHEMA
     ):
         raise ValueError("Unsupported line-heatmap archive schema.")
+    input_source_value = arrays["input_source"]
+    if input_source_value.ndim != 0 or input_source_value.dtype.kind != "U":
+        raise ValueError("Line-heatmap input_source must be a Unicode scalar.")
+    input_source = str(input_source_value.item())
+    try:
+        CourtLineInputSource(input_source)
+    except ValueError as error:
+        raise ValueError("Unsupported archived line-heatmap input source.") from error
+    provenance_value = arrays["input_provenance_json"]
+    if provenance_value.ndim != 0 or provenance_value.dtype.kind != "U":
+        raise ValueError("Line-heatmap input_provenance_json must be a Unicode scalar.")
+    try:
+        decoded_provenance: Any = json.loads(str(provenance_value.item()))
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "Archived line-heatmap input provenance is invalid."
+        ) from error
+    if not isinstance(decoded_provenance, dict):
+        raise ValueError("Archived line-heatmap input provenance must be a mapping.")
+    input_provenance = cast(dict[str, object], decoded_provenance)
     for name, expected in (
         ("coordinate_convention", GROUND_PLANE_UV_COORDINATE_CONVENTION),
         ("coordinate_units", "metres"),
@@ -505,6 +620,8 @@ def _load_archive(
     shapes = arrays["probability_shapes"]
     probability_offsets = arrays["probability_offsets"]
     probability_values = arrays["probability_values"]
+    input_shapes = arrays["input_shapes"]
+    input_hashes = arrays["input_rgb_sha256"]
     projected_offsets = arrays["projected_offsets"]
     projected_points = arrays["projected_points_uv"]
     projected_probabilities = arrays["projected_probabilities"]
@@ -519,6 +636,19 @@ def _load_archive(
         raise ValueError("Line-heatmap camera_ids must be a unique Unicode vector.")
     if included.dtype != np.bool_ or included.shape != (view_count_value,):
         raise ValueError("included_in_aggregate must be a boolean camera vector.")
+    if (
+        input_shapes.dtype != np.int64
+        or input_shapes.shape != (view_count_value, 3)
+        or np.any(input_shapes < 2)
+        or np.any(input_shapes[:, 2] != 3)
+    ):
+        raise ValueError("input_shapes must be positive int64 HxWx3 values.")
+    if (
+        input_hashes.ndim != 1
+        or input_hashes.shape != (view_count_value,)
+        or input_hashes.dtype.kind != "U"
+    ):
+        raise ValueError("input_rgb_sha256 must be a Unicode camera vector.")
     if (
         shapes.dtype != np.int64
         or shapes.shape != (view_count_value, 2)
@@ -561,6 +691,11 @@ def _load_archive(
 
     views: list[AlignmentLineHeatmapView] = []
     for index, camera_id in enumerate(cast(list[str], camera_ids.tolist())):
+        input_rgb = _load_rgb_png(views_path / _view_input_name(index))
+        if input_rgb.shape != tuple(int(value) for value in input_shapes[index]):
+            raise ValueError("Stored detector input shape disagrees with the archive.")
+        if input_rgb_sha256(input_rgb) != str(input_hashes[index]):
+            raise ValueError("Stored detector input digest disagrees with the archive.")
         probability_start = int(probability_offsets[index])
         probability_stop = int(probability_offsets[index + 1])
         height, width = (int(value) for value in shapes[index])
@@ -569,6 +704,7 @@ def _load_archive(
         views.append(
             AlignmentLineHeatmapView(
                 camera_id=camera_id,
+                input_rgb=input_rgb,
                 probability=probability_values[
                     probability_start:probability_stop
                 ].reshape(height, width),
@@ -590,6 +726,8 @@ def _load_archive(
         grid_spacing=float(arrays["grid_spacing"].item()),
         proximity_scale=float(arrays["proximity_scale"].item()),
         proximity_power=float(arrays["proximity_power"].item()),
+        input_source=input_source,
+        input_provenance=input_provenance,
         views=tuple(views),
         coordinate_convention=str(arrays["coordinate_convention"].item()),
         coordinate_units=str(arrays["coordinate_units"].item()),
@@ -631,6 +769,8 @@ def _manifest_payload(heatmaps: AlignmentLineHeatmaps) -> dict[str, object]:
     height, width = heatmaps.raster_shape
     return {
         "schema": _MANIFEST_SCHEMA,
+        "input_source": heatmaps.input_source,
+        "input_provenance": dict(heatmaps.input_provenance),
         "coordinate_convention": heatmaps.coordinate_convention,
         "coordinate_units": heatmaps.coordinate_units,
         "archive": LINE_HEATMAP_ARCHIVE_FILE,
@@ -644,6 +784,7 @@ def _manifest_payload(heatmaps: AlignmentLineHeatmaps) -> dict[str, object]:
         "proximity_power": heatmaps.proximity_power,
         "raster_reducer": _RASTER_REDUCER,
         "ground_png_orientation": "top row is maximum v (vertical flip)",
+        "input_image_encoding": "lossless uint8 RGB PNG",
         "raw_heatmap_encoding": "turbo-u8-linear-[0,1]",
         "weighted_heatmap_encoding": "turbo-u8-linear-[0,1]",
         "aggregate_heatmap_encoding": "turbo-u8-log1p-q99.5-positive",
@@ -654,6 +795,11 @@ def _manifest_payload(heatmaps: AlignmentLineHeatmaps) -> dict[str, object]:
                 "index": index,
                 "camera_id": view.camera_id,
                 "included_in_aggregate": view.included_in_aggregate,
+                "input_shape": list(view.input_rgb.shape),
+                "input_rgb_sha256": input_rgb_sha256(view.input_rgb),
+                "input_image": (
+                    f"{LINE_HEATMAP_VIEWS_DIRECTORY}/{_view_input_name(index)}"
+                ),
                 "probability_shape": list(view.probability.shape),
                 "projected_point_count": len(view.points_uv),
                 "heatmap": f"{LINE_HEATMAP_VIEWS_DIRECTORY}/{_view_heatmap_name(index)}",
@@ -745,6 +891,21 @@ def _validate_png(path: Path, expected_rgb: NDArray[np.uint8]) -> None:
         )
 
 
+def _load_rgb_png(path: Path) -> NDArray[np.uint8]:
+    _require_ordinary_file(path)
+    with Image.open(path) as image:
+        if image.mode != "RGB":
+            raise ValueError(f"Detector input must be an RGB PNG: {path}")
+        rgb = np.asarray(image, dtype=np.uint8)
+    if rgb.ndim != 3 or rgb.shape[2:] != (3,) or min(rgb.shape[:2]) < 2:
+        raise ValueError(f"Detector input PNG has an invalid shape: {path}")
+    return rgb
+
+
+def _view_input_name(index: int) -> str:
+    return f"view-{index:03d}-input.png"
+
+
 def _view_heatmap_name(index: int) -> str:
     return f"view-{index:03d}-heatmap.png"
 
@@ -772,6 +933,29 @@ def _readonly_array(
 def _require_unit_interval(value: NDArray[Any], *, name: str) -> None:
     if np.any(value < 0.0) or np.any(value > 1.0):
         raise ValueError(f"{name} must lie in [0, 1].")
+
+
+def _canonical_mapping(
+    value: Mapping[str, object],
+    *,
+    name: str,
+) -> dict[str, object]:
+    try:
+        encoded = json.dumps(
+            dict(value),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        )
+        decoded: Any = json.loads(encoded)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"{name} must be a finite JSON mapping.") from error
+    if not isinstance(decoded, dict) or any(
+        not isinstance(key, str) for key in decoded
+    ):
+        raise TypeError(f"{name} must be a string-keyed JSON mapping.")
+    return cast(dict[str, object], decoded)
 
 
 def _validate_offsets(

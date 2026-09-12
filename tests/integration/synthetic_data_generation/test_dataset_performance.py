@@ -8,6 +8,13 @@ from pathlib import Path
 import numpy as np
 from hydra import compose, initialize_config_dir
 
+from src.synthetic_data_generation.alignment.evidence_source import (
+    ProductionAlignmentEvidenceSource,
+)
+from src.synthetic_data_generation.alignment.handler import AlignmentStageHandler
+from src.synthetic_data_generation.alignment.line_inputs import (
+    NHTRenderedAlignmentLineInputSource,
+)
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
 from src.synthetic_data_generation.dataset.blcs.contracts import BLCSSampleRecord
 from src.synthetic_data_generation.dataset.blcs.handler import BLCSDatasetStageHandler
@@ -72,11 +79,21 @@ def test_composition_root_wires_config_owned_cross_domain_budgets(
     runtime = _runtime(tmp_path)
     registry = build_stage_registry(runtime)
     reconstruction = registry.definition(StageName.RECONSTRUCTION).handler
+    alignment = registry.definition(StageName.ALIGNMENT).handler
     court = registry.definition(StageName.COURT_DATASET).handler
     blcs = registry.definition(StageName.BLCS_DATASET).handler
     plcs = registry.definition(StageName.PLCS_DATASET).handler
 
     assert isinstance(reconstruction, NHTReconstructionHandler)
+    assert isinstance(alignment, AlignmentStageHandler)
+    assert isinstance(alignment.evidence_source, ProductionAlignmentEvidenceSource)
+    assert isinstance(
+        alignment.evidence_source.input_source,
+        NHTRenderedAlignmentLineInputSource,
+    )
+    assert alignment.evidence_source.input_source.executable == (
+        runtime.nht.render_executable
+    )
     assert reconstruction.pipeline_config is runtime.nht.pipeline_config
     assert isinstance(court, DeferredStageHandler)
     assert isinstance(blcs, DeferredStageHandler)

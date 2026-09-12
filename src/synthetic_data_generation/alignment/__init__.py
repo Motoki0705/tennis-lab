@@ -54,6 +54,14 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     validate_line_heatmaps,
     weighted_projection_samples,
 )
+from src.synthetic_data_generation.alignment.line_inputs import (
+    AlignmentLineInputBatch,
+    AlignmentLineInputSource,
+    AlignmentLineInputView,
+    CapturedAlignmentLineInputSource,
+    CourtLineInputSource,
+    NHTRenderedAlignmentLineInputSource,
+)
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
@@ -87,6 +95,9 @@ __all__ = [
     "AlignmentEvidenceSource",
     "AlignmentLineHeatmaps",
     "AlignmentLineHeatmapView",
+    "AlignmentLineInputBatch",
+    "AlignmentLineInputSource",
+    "AlignmentLineInputView",
     "AlignmentPartitions",
     "AlignmentResult",
     "AlignmentStageHandler",
@@ -101,6 +112,7 @@ __all__ = [
     "CameraOwnershipRule",
     "CorrespondenceSettings",
     "CorrespondenceSet",
+    "CourtLineInputSource",
     "CourtCandidateFitSettings",
     "CourtIdentifiabilityMetrics",
     "CourtLineArchitectureSettings",
@@ -123,6 +135,8 @@ __all__ = [
     "PartitionThresholds",
     "ProductionAlignmentEvidenceSource",
     "ProductionCourtLineDetector",
+    "CapturedAlignmentLineInputSource",
+    "NHTRenderedAlignmentLineInputSource",
     "ProposalScoreModel",
     "ProposalSearchDiagnostics",
     "ProposalSearchStopReason",

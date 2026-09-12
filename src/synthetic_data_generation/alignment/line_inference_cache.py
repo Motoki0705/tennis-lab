@@ -17,13 +17,17 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
 
+from src.synthetic_data_generation.alignment.line_inputs import (
+    AlignmentLineInputBatch,
+    input_rgb_sha256,
+)
 from src.synthetic_data_generation.alignment.settings import CourtLineModelSettings
 from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
-from src.synthetic_data_generation.scene_contract import SceneCamera
 
-_CACHE_SCHEMA = "court_line_inference_cache_v1"
+_CACHE_SCHEMA = "court_line_inference_cache_v2"
+_IDENTITY_SCHEMA = "court_line_inference_identity_v2"
 _MIRROR_ROOT_ENV = "TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT"
 
 
@@ -45,13 +49,21 @@ def court_line_inference_identity(
 def load_or_predict_line_probabilities(
     *,
     scene: StandardSceneExport,
-    cameras: tuple[SceneCamera, ...],
-    inference_identity: Mapping[str, object],
+    inputs: AlignmentLineInputBatch,
+    detector_identity: Mapping[str, object],
     predict_probability: Callable[[NDArray[np.uint8]], NDArray[np.float32]],
-    load_image: Callable[[SceneCamera], NDArray[np.uint8]],
 ) -> dict[str, NDArray[np.float32]]:
-    """Reuse exact raw model outputs or persist each newly inferred view."""
-    identity = _json_mapping(inference_identity, name="inference_identity")
+    """Reuse exact rendered-input model outputs or persist complete provenance."""
+    if not isinstance(inputs, AlignmentLineInputBatch):
+        raise TypeError(
+            "Court-line inference inputs must be an AlignmentLineInputBatch."
+        )
+    detector = _json_mapping(detector_identity, name="detector_identity")
+    identity = {
+        "schema": _IDENTITY_SCHEMA,
+        "detector": detector,
+        "input": inputs.cache_identity(),
+    }
     fingerprint = hashlib.sha256(_canonical_json(identity)).hexdigest()
     cache_root = _cache_base(scene) / fingerprint
     views_root = _ordinary_directory(cache_root / "views")
@@ -61,21 +73,30 @@ def load_or_predict_line_probabilities(
 
     probabilities: dict[str, NDArray[np.float32]] = {}
     entries: list[dict[str, object]] = []
-    for index, camera in enumerate(cameras):
-        image_sha256 = _sha256_file(Path(camera.image_path))
+    for index, view in enumerate(inputs.views):
+        camera = view.camera
+        image_rgb = view.image_rgb
+        image_sha256 = input_rgb_sha256(image_rgb)
         stem = f"view-{index:03d}-{image_sha256[:16]}"
+        input_path = views_root / f"{stem}-input.png"
         array_path = views_root / f"{stem}.npy"
         preview_path = views_root / f"{stem}.png"
+        if input_path.exists() or input_path.is_symlink():
+            _validate_rgb_png(input_path, image_rgb, label="Court-line cached input")
+        else:
+            _atomic_save_png(input_path, image_rgb)
         if array_path.exists() or array_path.is_symlink():
             probability = _load_probability(array_path)
         else:
-            probability = _validated_probability(
-                predict_probability(load_image(camera))
-            )
+            probability = _validated_probability(predict_probability(image_rgb))
             _atomic_save_array(array_path, probability)
         expected_preview = _render_probability(probability)
         if preview_path.exists() or preview_path.is_symlink():
-            _validate_preview(preview_path, expected_preview)
+            _validate_rgb_png(
+                preview_path,
+                expected_preview,
+                label="Court-line probability preview",
+            )
         else:
             _atomic_save_png(preview_path, expected_preview)
         probabilities[camera.camera_id] = probability
@@ -84,10 +105,19 @@ def load_or_predict_line_probabilities(
                 "index": index,
                 "camera_id": camera.camera_id,
                 "source_frame_index": camera.source_frame_index,
-                "image_sha256": image_sha256,
+                "width": camera.width,
+                "height": camera.height,
+                "intrinsics": list(camera.intrinsics),
+                "camera_to_scene": camera.camera_to_scene.matrix().tolist(),
+                "input_source": inputs.source.value,
+                "input_rgb_sha256": image_sha256,
+                "input_file": f"views/{input_path.name}",
+                "input_png_sha256": _sha256_file(input_path),
                 "probability_shape": list(probability.shape),
                 "probability_file": f"views/{array_path.name}",
+                "probability_sha256": _sha256_file(array_path),
                 "preview_file": f"views/{preview_path.name}",
+                "preview_sha256": _sha256_file(preview_path),
             }
         )
         manifest = {
@@ -95,13 +125,14 @@ def load_or_predict_line_probabilities(
             "scene_id": scene.scene_id,
             "fingerprint": fingerprint,
             "inference_identity": identity,
-            "expected_view_count": len(cameras),
+            "expected_view_count": len(inputs.views),
             "completed_view_count": len(entries),
             "views": entries,
         }
         manifest_path = cache_root / "manifest.json"
         _atomic_write_json(manifest_path, manifest)
         if mirror_root is not None:
+            _mirror_file(input_path, mirror_root / "views" / input_path.name)
             _mirror_file(array_path, mirror_root / "views" / array_path.name)
             _mirror_file(preview_path, mirror_root / "views" / preview_path.name)
             _mirror_file(manifest_path, mirror_root / "manifest.json")
@@ -177,7 +208,7 @@ def _render_probability(probability: NDArray[np.float32]) -> NDArray[np.uint8]:
     colored_bgr = cv2.applyColorMap(intensity, cv2.COLORMAP_TURBO)
     colored = np.asarray(cv2.cvtColor(colored_bgr, cv2.COLOR_BGR2RGB), dtype=np.uint8)
     colored[probability <= 0.0] = 0
-    return cast(NDArray[np.uint8], colored)
+    return colored
 
 
 def _atomic_save_png(path: Path, image_rgb: NDArray[np.uint8]) -> None:
@@ -195,13 +226,18 @@ def _atomic_save_png(path: Path, image_rgb: NDArray[np.uint8]) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _validate_preview(path: Path, expected: NDArray[np.uint8]) -> None:
+def _validate_rgb_png(
+    path: Path,
+    expected: NDArray[np.uint8],
+    *,
+    label: str,
+) -> None:
     if path.is_symlink() or not path.is_file():
-        raise ValueError(f"Court-line preview must be an ordinary file: {path}")
+        raise ValueError(f"{label} must be an ordinary file: {path}")
     with Image.open(path) as image:
         actual = np.asarray(image.convert("RGB"), dtype=np.uint8)
     if not np.array_equal(actual, expected):
-        raise ValueError(f"Court-line preview disagrees with cached values: {path}")
+        raise ValueError(f"{label} disagrees with cached values: {path}")
 
 
 def _atomic_write_json(path: Path, payload: Mapping[str, object]) -> None:
