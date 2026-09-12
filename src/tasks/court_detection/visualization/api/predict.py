@@ -13,6 +13,7 @@ from src.tasks.court_detection.inference import (
     CourtKeypointPredictor,
     CourtLinePredictor,
     CourtSegPredictor,
+    CourtSemanticLinePredictor,
 )
 from src.tasks.court_detection.model_io.contracts import CourtModelIOError
 from src.tasks.court_detection.visualization.adapters.predict_inputs import (
@@ -30,7 +31,7 @@ from src.tasks.court_detection.visualization.rendering import (
 )
 from src.utils.configuration import PathResolver
 
-CourtTargetHead: TypeAlias = Literal["kp", "seg", "line"]
+CourtTargetHead: TypeAlias = Literal["kp", "seg", "line", "semantic_line"]
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,14 @@ def build_court_visualization_pipeline(
     if task == "line":
         return _LineVisualizationPipeline(
             CourtLinePredictor.load_from_checkpoint(
+                checkpoint_path,
+                device=device,
+                resolver=resolver,
+            )
+        )
+    if task == "semantic_line":
+        return _SegmentationVisualizationPipeline(
+            CourtSemanticLinePredictor.load_from_checkpoint(
                 checkpoint_path,
                 device=device,
                 resolver=resolver,

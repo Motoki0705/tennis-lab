@@ -9,6 +9,27 @@ from types import MappingProxyType
 SEGMENTATION_TARGET_SCHEMA_V1 = "court_cell_segmentation_v1"
 SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_single_court_v2"
 
+SEMANTIC_LINE_TARGET_SCHEMA = (
+    "court_line_semantic_camera_view_75mm_150mm_single_court_v1"
+)
+SEMANTIC_LINE_CHANNEL_NAMES = (
+    "background",
+    "far_baseline",
+    "near_baseline",
+    "left_doubles_sideline",
+    "right_doubles_sideline",
+    "left_singles_sideline",
+    "right_singles_sideline",
+    "far_service_line",
+    "near_service_line",
+    "center_service_line",
+    "far_center_mark",
+    "near_center_mark",
+)
+SEMANTIC_LINE_CLASS_BY_NAME: Mapping[str, int] = MappingProxyType(
+    {name: index for index, name in enumerate(SEMANTIC_LINE_CHANNEL_NAMES)}
+)
+
 
 @dataclass(frozen=True, slots=True)
 class CourtLineTargetDefinition:
@@ -23,6 +44,12 @@ LINE_TARGET_SCHEMA_V1 = "court_line_binary_v1"
 LINE_TARGET_SCHEMA_V2 = "court_line_binary_75mm_150mm_v2"
 LINE_TARGET_SCHEMA_V3 = "court_line_binary_75mm_150mm_single_court_v3"
 LINE_TARGET_SCHEMA = LINE_TARGET_SCHEMA_V3
+
+SEMANTIC_LINE_TARGET_DEFINITION = CourtLineTargetDefinition(
+    schema=SEMANTIC_LINE_TARGET_SCHEMA,
+    line_width_metres=0.075,
+    baseline_width_metres=0.15,
+)
 
 LINE_TARGET_DEFINITIONS: Mapping[str, CourtLineTargetDefinition] = MappingProxyType(
     {
@@ -59,6 +86,10 @@ __all__ = [
     "LINE_TARGET_SCHEMA_V1",
     "LINE_TARGET_SCHEMA_V2",
     "LINE_TARGET_SCHEMA_V3",
+    "SEMANTIC_LINE_CHANNEL_NAMES",
+    "SEMANTIC_LINE_CLASS_BY_NAME",
+    "SEMANTIC_LINE_TARGET_DEFINITION",
+    "SEMANTIC_LINE_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA_V1",
     "CourtLineTargetDefinition",

@@ -90,7 +90,7 @@ class _BundleHeadQualitativeRenderer:
                 clip_label=clip_label,
             )
             return rendered_kp
-        if self.kind == "seg":
+        if self.kind in {"seg", "semantic_line"}:
             if not isinstance(prediction, CourtSegmentationPrediction):
                 raise CourtModelIOError(
                     "Court segmentation qualitative decode type changed."

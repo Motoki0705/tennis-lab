@@ -18,6 +18,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtInputCapability,
     CourtInputSpec,
     CourtInstance2D,
+    CourtKeypointChannels,
     CourtRawSample,
     CourtSampleMetadata,
     CourtSampleRecord,
@@ -27,6 +28,9 @@ from src.tasks.court_detection.data.target_generation.line import generate_line_
 from src.tasks.court_detection.data.target_generation.materializer import (
     CourtTargetMaterializer,
 )
+from src.tasks.court_detection.data.target_generation.semantic_line import (
+    generate_semantic_line_target,
+)
 from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,
     validate_derived_target,
@@ -35,12 +39,14 @@ from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
     LINE_TARGET_SCHEMA_V1,
     LINE_TARGET_SCHEMA_V2,
+    SEMANTIC_LINE_CLASS_BY_NAME,
+    SEMANTIC_LINE_TARGET_SCHEMA,
     line_target_definition,
 )
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
-def test_materializer_writes_both_dense_targets_below_derived_store(
+def test_materializer_writes_all_dense_targets_below_derived_store(
     tmp_path: Path,
 ) -> None:
     store = CourtDerivedTargetStore(tmp_path / "derived")
@@ -55,6 +61,7 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
     target_specs: tuple[tuple[CourtDenseTargetKind, str], ...] = (
         ("seg", "court_cell_segmentation_single_court_v2"),
         ("line", LINE_TARGET_SCHEMA),
+        ("semantic_line", SEMANTIC_LINE_TARGET_SCHEMA),
     )
     refs: dict[CourtDenseTargetKind, Path] = {
         kind: store.path_for(
@@ -89,7 +96,13 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
     raw = CourtRawSample(
         sample_id="sample",
         image=Image.fromarray(np.zeros((48, 64, 3), dtype=np.uint8)),
-        keypoint_channels=None,
+        keypoint_channels=CourtKeypointChannels(
+            channel_names=tuple(f"kp_{index}" for index in range(14)),
+            points_xy=image_points[:, None],
+            point_visible=torch.ones((14, 1), dtype=torch.bool),
+            physical_indices=torch.arange(14, dtype=torch.long)[:, None],
+            horizontal_flip_permutation=tuple(range(14)),
+        ),
         court_instances=(instance,),
         dense_target_refs=refs,
         metadata=CourtSampleMetadata(
@@ -105,7 +118,15 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
         spec = CourtInputSpec(
             source_kind="tennis_court_detector",
             source_schema="fixture",
-            capabilities=frozenset({CourtInputCapability.COURT_INSTANCES}),
+            capabilities=frozenset(
+                {
+                    CourtInputCapability.COURT_INSTANCES,
+                    CourtInputCapability.KEYPOINT_CHANNELS,
+                }
+            ),
+            keypoint_schema="fixture_kp14",
+            keypoint_channel_names=tuple(f"kp_{index}" for index in range(14)),
+            keypoint_flip_permutation=tuple(range(14)),
         )
 
         available_splits: tuple[CourtSourceSplit, ...] = ("train",)
@@ -121,11 +142,15 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
     results = CourtTargetMaterializer(
         input_layer=_Input(),
         target_store=store,
-    ).materialize(splits=("train",), target_kinds=("seg", "line"))
+    ).materialize(
+        splits=("train",),
+        target_kinds=("seg", "line", "semantic_line"),
+    )
 
     assert [(result.target_kind, result.written) for result in results] == [
         ("seg", 1),
         ("line", 1),
+        ("semantic_line", 1),
     ]
     for kind, path in refs.items():
         assert path.is_file()
@@ -189,6 +214,57 @@ def test_line_target_width_is_explicitly_previewable() -> None:
     )
 
     assert np.count_nonzero(wide) > np.count_nonzero(narrow)
+
+
+def test_semantic_line_target_matches_binary_coverage_and_camera_view_labels() -> None:
+    points = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14, :2]
+    image_points = torch.stack(
+        (
+            (points[:, 0] / 12.0 + 0.5) * 255.0,
+            (0.5 - points[:, 1] / 26.0) * 255.0,
+        ),
+        dim=1,
+    )
+    instance = CourtInstance2D(
+        court_instance_id="court",
+        physical_indices=torch.arange(14, dtype=torch.long),
+        points_xy=image_points,
+        point_in_front=torch.ones(14, dtype=torch.bool),
+        point_visible=torch.ones(14, dtype=torch.bool),
+    )
+    binary = generate_line_target(height=256, width=256, instances=(instance,))
+    identity = generate_semantic_line_target(
+        height=256,
+        width=256,
+        instances=(instance,),
+        semantic_to_physical=torch.arange(14, dtype=torch.long),
+    )
+    half_turn = generate_semantic_line_target(
+        height=256,
+        width=256,
+        instances=(instance,),
+        semantic_to_physical=torch.tensor(
+            (3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 13, 12),
+            dtype=torch.long,
+        ),
+    )
+
+    np.testing.assert_array_equal(identity > 0, binary > 0)
+    np.testing.assert_array_equal(half_turn > 0, binary > 0)
+    far_baseline_midpoint = (64, 11)
+    left_doubles_midpoint = (11, 128)
+    assert identity[far_baseline_midpoint[1], far_baseline_midpoint[0]] == (
+        SEMANTIC_LINE_CLASS_BY_NAME["far_baseline"]
+    )
+    assert half_turn[far_baseline_midpoint[1], far_baseline_midpoint[0]] == (
+        SEMANTIC_LINE_CLASS_BY_NAME["near_baseline"]
+    )
+    assert identity[left_doubles_midpoint[1], left_doubles_midpoint[0]] == (
+        SEMANTIC_LINE_CLASS_BY_NAME["left_doubles_sideline"]
+    )
+    assert half_turn[left_doubles_midpoint[1], left_doubles_midpoint[0]] == (
+        SEMANTIC_LINE_CLASS_BY_NAME["right_doubles_sideline"]
+    )
 
 
 def test_current_dense_schemas_reject_multiple_selected_courts(

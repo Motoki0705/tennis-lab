@@ -32,6 +32,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.model_io.adapters import (
+    CourtModelIOAdapter,
     CourtPoseModelIOAdapter,
 )
 from src.tasks.court_detection.model_io.contracts import (
@@ -42,6 +43,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtTrainingResult,
 )
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 from src.tasks.court_detection.training.metrics import (
     CourtDetectionMetrics,
     CourtPoseGeometryMetrics,
@@ -91,7 +93,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
             target_bundle=resolved_bundle,
         )
         self.model = model_pair.model
-        self.model_io = model_pair.adapter
+        self.model_io = cast(CourtModelIOAdapter, model_pair.adapter)
         self.consistency_instrumented = (
             isinstance(self.model_io, CourtPoseModelIOAdapter)
             and self.model_io.consistency_instrumented
@@ -116,7 +118,6 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 kind: CourtDetectionMetrics(
                     kind,
                     spec.output_channels,
-                    singleton_kp=self.pose_variant and kind == "kp",
                 )
                 for kind, spec in resolved_bundle.targets.items()
             }
@@ -400,7 +401,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
         active: set[str] = {
             kind
             for kind in self.target_bundle.kinds
-            if float(dense_config.dense_weights.get(kind, 1.0)) > 0.0
+            if float(dense_config.dense_weights[kind]) > 0.0
         }
         if (
             isinstance(self.model_io, CourtPoseModelIOAdapter)
@@ -587,7 +588,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
             self.consistency_instrumented or self._matrix_evidence_enabled()
         ):
             return
-        model = self.model
+        model = cast(CourtHierarchicalModel, self.model)
         branch_parameters = {
             str(kind): tuple(head.parameters())
             for kind, head in model.heads.items()
@@ -857,7 +858,9 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 batch,
                 raw_output,
             )
-            raw_predictions = decoded["predictions"]
+            if not isinstance(decoded, Mapping):
+                raise ValueError("Court dense test payload must be a mapping.")
+            raw_predictions = decoded.get("predictions")
             if not isinstance(raw_predictions, Mapping):
                 raise ValueError("Court test payload predictions must be a mapping.")
             predictions = raw_predictions

@@ -22,6 +22,7 @@ from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_DEFINITIONS,
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    SEMANTIC_LINE_TARGET_SCHEMA,
 )
 from src.utils.configuration import (
     ConfigurationTypeError,
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
 ConfigMapping: TypeAlias = Mapping[str, object]
 CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
-CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
+CourtTargetKind: TypeAlias = Literal["kp", "seg", "line", "semantic_line"]
 SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
 CourtScope: TypeAlias = Literal["all_courts", "target_court"]
 CourtDecoderName: TypeAlias = Literal["fpn", "unet", "dpt"]
@@ -631,14 +632,14 @@ class CourtTargetConfig:
                     f"{path}.sigma_ratio must be positive."
                 )
             return cls(kind="kp", sigma_ratio=sigma, target_schema=None)
-        if kind in {"seg", "line"}:
+        if kind in {"seg", "line", "semantic_line"}:
             _exact(mapping, {"kind", "target_schema"}, path=path)
             schema = _string(mapping, "target_schema", path=path)
-            expected = (
-                {SEGMENTATION_TARGET_SCHEMA}
-                if kind == "seg"
-                else set(LINE_TARGET_DEFINITIONS)
-            )
+            expected = {
+                "seg": {SEGMENTATION_TARGET_SCHEMA},
+                "line": set(LINE_TARGET_DEFINITIONS),
+                "semantic_line": {SEMANTIC_LINE_TARGET_SCHEMA},
+            }[kind]
             if schema not in expected:
                 raise SemanticConfigurationError(
                     f"{path}.target_schema must be one of {sorted(expected)!r}."
@@ -648,7 +649,9 @@ class CourtTargetConfig:
                 sigma_ratio=None,
                 target_schema=schema,
             )
-        raise SemanticConfigurationError(f"{path}.kind must be kp, seg, or line.")
+        raise SemanticConfigurationError(
+            f"{path}.kind must be kp, seg, line, or semantic_line."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -736,6 +739,7 @@ class CourtDataConfig:
             and source.court_scope == "all_courts"
             and any(
                 target.kind == "seg"
+                or target.kind == "semantic_line"
                 or (
                     target.kind == "line"
                     and target.target_schema == LINE_TARGET_SCHEMA
@@ -1168,17 +1172,20 @@ class CourtDenseHeadConfig:
             raise SemanticConfigurationError(
                 "model.dense_head.name must be 'linear' or 'residual'."
             )
-        _exact(
-            mapping,
-            {"name", "normalization_groups", "kp", "seg", "line"},
-            path=path,
-        )
+        required = {"name", "normalization_groups", "kp", "seg", "line"}
+        expected = required | ({"semantic_line"} if "semantic_line" in mapping else set())
+        _exact(mapping, expected, path=path)
         normalization_groups = _integer(mapping, "normalization_groups", path=path)
         if normalization_groups <= 0:
             raise SemanticConfigurationError(
                 "model.dense_head.normalization_groups must be positive."
             )
-        kinds: tuple[CourtTargetKind, ...] = ("kp", "seg", "line")
+        kinds: tuple[CourtTargetKind, ...] = (
+            "kp",
+            "seg",
+            "line",
+            *(("semantic_line",) if "semantic_line" in mapping else ()),
+        )
         branches = {
             kind: CourtDenseHeadBranchConfig.from_mapping(
                 mapping[kind],
@@ -1404,6 +1411,8 @@ class CourtLossConfig:
     line_bce_weight: float
     line_dice_weight: float
     line_pos_weight: float
+    semantic_line_ce_weight: float | None
+    semantic_line_dice_weight: float | None
     dense_weights: Mapping[CourtTargetKind, float]
     pose: CourtPoseLossConfig
     consistency: CourtConsistencyLossConfig
@@ -1411,10 +1420,17 @@ class CourtLossConfig:
     @classmethod
     def from_mapping(cls, value: object) -> CourtLossConfig:
         mapping = as_config_mapping(value, path="loss")
-        _exact(mapping, {"seg", "kp", "line", "pose", "consistency"}, path="loss")
+        required = {"seg", "kp", "line", "pose", "consistency"}
+        expected = required | ({"semantic_line"} if "semantic_line" in mapping else set())
+        _exact(mapping, expected, path="loss")
         seg = require_config_mapping(mapping, "seg", path="loss")
         kp = require_config_mapping(mapping, "kp", path="loss")
         line = require_config_mapping(mapping, "line", path="loss")
+        semantic_line = (
+            require_config_mapping(mapping, "semantic_line", path="loss")
+            if "semantic_line" in mapping
+            else None
+        )
         _exact(seg, {"ce_weight", "dice_weight", "weight"}, path="loss.seg")
         _exact(kp, {"focal_gamma", "weight"}, path="loss.kp")
         _exact(
@@ -1422,6 +1438,12 @@ class CourtLossConfig:
             {"bce_weight", "dice_weight", "pos_weight", "weight"},
             path="loss.line",
         )
+        if semantic_line is not None:
+            _exact(
+                semantic_line,
+                {"ce_weight", "dice_weight", "weight"},
+                path="loss.semantic_line",
+            )
         result = cls(
             seg_ce_weight=_number(seg, "ce_weight", path="loss.seg"),
             seg_dice_weight=_number(seg, "dice_weight", path="loss.seg"),
@@ -1429,11 +1451,32 @@ class CourtLossConfig:
             line_bce_weight=_number(line, "bce_weight", path="loss.line"),
             line_dice_weight=_number(line, "dice_weight", path="loss.line"),
             line_pos_weight=_number(line, "pos_weight", path="loss.line"),
+            semantic_line_ce_weight=(
+                _number(semantic_line, "ce_weight", path="loss.semantic_line")
+                if semantic_line is not None
+                else None
+            ),
+            semantic_line_dice_weight=(
+                _number(semantic_line, "dice_weight", path="loss.semantic_line")
+                if semantic_line is not None
+                else None
+            ),
             dense_weights=MappingProxyType(
                 {
                     "kp": _number(kp, "weight", path="loss.kp"),
                     "seg": _number(seg, "weight", path="loss.seg"),
                     "line": _number(line, "weight", path="loss.line"),
+                    **(
+                        {
+                            "semantic_line": _number(
+                                semantic_line,
+                                "weight",
+                                path="loss.semantic_line",
+                            )
+                        }
+                        if semantic_line is not None
+                        else {}
+                    ),
                 }
             ),
             pose=CourtPoseLossConfig.from_mapping(mapping["pose"]),
@@ -1445,6 +1488,15 @@ class CourtLossConfig:
             result.kp_focal_gamma,
             result.line_bce_weight,
             result.line_dice_weight,
+            *(
+                (
+                    result.semantic_line_ce_weight,
+                    result.semantic_line_dice_weight,
+                )
+                if result.semantic_line_ce_weight is not None
+                and result.semantic_line_dice_weight is not None
+                else ()
+            ),
         )
         if any(term < 0.0 for term in dense_terms):
             raise SemanticConfigurationError(
@@ -1460,9 +1512,18 @@ class CourtLossConfig:
             raise SemanticConfigurationError(
                 "loss.line must enable bce_weight or dice_weight."
             )
+        if (
+            result.semantic_line_ce_weight is not None
+            and result.semantic_line_dice_weight is not None
+            and result.semantic_line_ce_weight == 0.0
+            and result.semantic_line_dice_weight == 0.0
+        ):
+            raise SemanticConfigurationError(
+                "loss.semantic_line must enable ce_weight or dice_weight."
+            )
         if any(weight < 0.0 for weight in result.dense_weights.values()):
             raise SemanticConfigurationError(
-                "Dense KP, SEG, and LINE loss weights must be non-negative."
+                "Dense Court loss weights must be non-negative."
             )
         objective_weights = (
             *result.dense_weights.values(),
@@ -1711,6 +1772,21 @@ class CourtTrainingConfig:
                 "Enabled pose supervision requires an enabled model.transformer_encoder."
             )
         configured_targets = tuple(target.kind for target in data.processing.targets)
+        missing_loss_targets = set(configured_targets) - set(loss.dense_weights)
+        if missing_loss_targets:
+            raise SemanticConfigurationError(
+                "Configured Court targets require explicit loss sections: "
+                f"{sorted(missing_loss_targets)}."
+            )
+        if model.dense_head.name == "residual":
+            missing_head_targets = set(configured_targets) - set(
+                model.dense_head.branches
+            )
+            if missing_head_targets:
+                raise SemanticConfigurationError(
+                    "Configured Court targets require explicit residual heads: "
+                    f"{sorted(missing_head_targets)}."
+                )
         active_objective_weights = (
             *(loss.dense_weights[kind] for kind in configured_targets),
             *(

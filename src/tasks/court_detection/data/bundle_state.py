@@ -77,7 +77,7 @@ def deserialize_target_bundle(value: object) -> CourtTargetBundleSpec:
         if not isinstance(raw, Mapping) or set(raw) != _RECORD_KEYS:
             raise ValueError("Court target bundle record fields changed.")
         kind = raw["kind"]
-        if kind not in {"kp", "seg", "line"} or kind in targets:
+        if kind not in {"kp", "seg", "line", "semantic_line"} or kind in targets:
             raise ValueError("Court target bundle kinds must be valid and unique.")
         schema = raw["schema"]
         output_channels = raw["output_channels"]

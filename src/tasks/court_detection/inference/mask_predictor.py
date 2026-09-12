@@ -16,6 +16,7 @@ from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
+    CourtDecodedOutput,
     CourtLinePrediction,
     CourtLogits,
     CourtModelIOError,
@@ -31,16 +32,18 @@ from src.utils.configuration import PathResolver
 CourtImage: TypeAlias = np.ndarray | Image.Image | Tensor
 CourtBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
-    CourtLogits,
-    CourtLogits,
+    CourtLogits | CourtModelOutput,
+    CourtLogits | CourtDecodedOutput,
 ]
 
 
-class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
-    """Predict the segmentation head from a Court bundle checkpoint."""
+class _CourtCategoricalPredictor(BasePredictor[CourtSegmentationPrediction]):
+    """Shared predictor for categorical Court masks."""
+
+    target_kind: CourtTargetKind
 
     def __init__(self, model_io: CourtBoundModelIO, device: torch.device) -> None:
-        adapter = _require_adapter(model_io, kind="seg")
+        adapter = _require_adapter(model_io, kind=self.target_kind)
         self.model_io = model_io
         self.model = model_io.model
         self.adapter = adapter
@@ -92,12 +95,24 @@ class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
         return cast(
             CourtSegmentationPrediction,
             self.adapter.decode_prediction(
-                "seg",
-                logits["seg"],
+                self.target_kind,
+                logits[self.target_kind],
                 original_size_hw=original_size_hw,
                 subpixel_refine=False,
             ),
         )
+
+
+class CourtSegPredictor(_CourtCategoricalPredictor):
+    """Predict the court-cell segmentation head."""
+
+    target_kind: CourtTargetKind = "seg"
+
+
+class CourtSemanticLinePredictor(CourtSegPredictor):
+    """Predict the camera-view semantic Court-line segmentation head."""
+
+    target_kind: CourtTargetKind = "semantic_line"
 
 
 class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
@@ -206,4 +221,8 @@ def _prepare_images(
     return images, (original_height, original_width)
 
 
-__all__ = ["CourtLinePredictor", "CourtSegPredictor"]
+__all__ = [
+    "CourtLinePredictor",
+    "CourtSegPredictor",
+    "CourtSemanticLinePredictor",
+]

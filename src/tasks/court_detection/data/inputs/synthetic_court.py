@@ -50,6 +50,7 @@ from src.tasks.court_detection.data.target_generation.store import (
 )
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
+    SEMANTIC_LINE_TARGET_SCHEMA,
 )
 from src.utils.schema.court import (
     CAMERA_VIEW_HALF_TURN_INDEX,
@@ -195,6 +196,7 @@ class SyntheticCourtInput:
                     CourtInputCapability.COURT_INSTANCES,
                     CourtInputCapability.SEGMENTATION_REFERENCE,
                     CourtInputCapability.LINE_REFERENCE,
+                    CourtInputCapability.SEMANTIC_LINE_REFERENCE,
                     *(
                         {CourtInputCapability.V3_TARGET_COURT_POSE}
                         if config.schema == "v3"
@@ -545,6 +547,11 @@ class SyntheticCourtInput:
                     source_kind="synthetic_court",
                     derived_key=derived_key,
                     target_schema=self.line_target_schema,
+                ),
+                "semantic_line": self.target_store.path_for(
+                    source_kind="synthetic_court",
+                    derived_key=derived_key,
+                    target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
                 ),
             },
             payload={
