@@ -74,6 +74,10 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmaps,
     AlignmentLineHeatmapView,
 )
+from src.synthetic_data_generation.alignment.line_inputs import (
+    CapturedAlignmentLineInputSource,
+    input_rgb_sha256,
+)
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
@@ -199,6 +203,7 @@ def test_production_source_accepts_audited_holdout_prefix_expansion(
         _settings(tmp_path),
         cast(Any, object()),
         cast(Any, object()),
+        input_source=CapturedAlignmentLineInputSource(),
     )
 
     assert source._settings.camera_prefix_count == 3
@@ -215,6 +220,7 @@ def test_production_source_rejects_unbounded_holdout_prefix_expansion(
             _settings(tmp_path),
             cast(Any, object()),
             cast(Any, object()),
+            input_source=CapturedAlignmentLineInputSource(),
         )
 
 
@@ -354,12 +360,28 @@ def test_measured_source_preflight_checks_real_images_and_detector(
     scene = _scene(tmp_path, camera_count=4)
     detector = _Detector()
     source = MeasuredAlignmentEvidenceSource(
-        _settings(tmp_path), detector, alignment_policy
+        _settings(tmp_path),
+        detector,
+        alignment_policy,
+        input_source=CapturedAlignmentLineInputSource(),
     )
 
     source.preflight(scene)
 
     assert detector.preflight_calls == 1
+
+
+def test_measured_source_requires_an_explicit_input_source(
+    tmp_path: Path,
+    alignment_policy: AlignmentAcceptancePolicy,
+) -> None:
+    with pytest.raises(TypeError, match="explicit line-input source"):
+        MeasuredAlignmentEvidenceSource(
+            _settings(tmp_path),
+            _Detector(),
+            alignment_policy,
+            input_source=cast(Any, None),
+        )
 
 
 def test_measured_source_preflight_fails_before_detector_when_partitions_unavailable(
@@ -369,7 +391,10 @@ def test_measured_source_preflight_fails_before_detector_when_partitions_unavail
     scene = _scene(tmp_path, camera_count=2)
     detector = _Detector()
     source = MeasuredAlignmentEvidenceSource(
-        _settings(tmp_path), detector, alignment_policy
+        _settings(tmp_path),
+        detector,
+        alignment_policy,
+        input_source=CapturedAlignmentLineInputSource(),
     )
 
     with pytest.raises(ValueError, match="fixed alignment selection"):
@@ -384,7 +409,10 @@ def test_measured_source_has_no_detector_fallback(
     scene = _scene(tmp_path, camera_count=4)
     detector = _Detector(error=RuntimeError("trained detector unavailable"))
     source = MeasuredAlignmentEvidenceSource(
-        _settings(tmp_path), detector, alignment_policy
+        _settings(tmp_path),
+        detector,
+        alignment_policy,
+        input_source=CapturedAlignmentLineInputSource(),
     )
 
     with pytest.raises(RuntimeError, match="trained detector unavailable"):
@@ -476,7 +504,12 @@ def test_fixed_collection_measures_once_and_evaluates_holdout_once(
         ),
     )
     detector = _Detector()
-    source = MeasuredAlignmentEvidenceSource(settings, detector, alignment_policy)
+    source = MeasuredAlignmentEvidenceSource(
+        settings,
+        detector,
+        alignment_policy,
+        input_source=CapturedAlignmentLineInputSource(),
+    )
     selections: list[object] = []
     validation_calls = 0
     expected_result = fit_alignment(alignment_evidence, policy=alignment_policy)
@@ -536,7 +569,12 @@ def test_fixed_collection_failure_does_not_reselect_or_refit(
         ),
     )
     detector = _Detector()
-    source = MeasuredAlignmentEvidenceSource(settings, detector, alignment_policy)
+    source = MeasuredAlignmentEvidenceSource(
+        settings,
+        detector,
+        alignment_policy,
+        input_source=CapturedAlignmentLineInputSource(),
+    )
     validation_calls = 0
 
     def reject(*_args: object, **_kwargs: object) -> object:
@@ -2651,41 +2689,56 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
         for item in evidence.measured_camera_lines
     }
     fit_ids = set(evidence.diagnostics.evaluation.fit_camera_ids)
+    views = tuple(
+        AlignmentLineHeatmapView(
+            camera_id=camera_id,
+            input_rgb=np.full((8, 12, 3), index, dtype=np.uint8),
+            probability=np.asarray(
+                ((0.0, 0.25), (0.5, 1.0)),
+                dtype=np.float32,
+            ),
+            points_uv=measured.get(
+                camera_id,
+                np.column_stack(
+                    (
+                        np.linspace(-0.9, 0.9, projected_counts[camera_id]),
+                        np.linspace(0.9, -0.9, projected_counts[camera_id]),
+                    )
+                ).astype(np.float64),
+            ),
+            projected_probabilities=np.full(
+                projected_counts[camera_id],
+                0.75,
+                dtype=np.float32,
+            ),
+            proximity_weights=np.full(
+                projected_counts[camera_id],
+                0.8,
+                dtype=np.float64,
+            ),
+            included_in_aggregate=camera_id in fit_ids,
+        )
+        for index, camera_id in enumerate(selection.camera_prefix_ids)
+    )
     return AlignmentLineHeatmaps(
         bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.25,
         proximity_scale=0.35,
         proximity_power=2.0,
-        views=tuple(
-            AlignmentLineHeatmapView(
-                camera_id=camera_id,
-                probability=np.asarray(
-                    ((0.0, 0.25), (0.5, 1.0)),
-                    dtype=np.float32,
-                ),
-                points_uv=measured.get(
-                    camera_id,
-                    np.column_stack(
-                        (
-                            np.linspace(-0.9, 0.9, projected_counts[camera_id]),
-                            np.linspace(0.9, -0.9, projected_counts[camera_id]),
-                        )
-                    ).astype(np.float64),
-                ),
-                projected_probabilities=np.full(
-                    projected_counts[camera_id],
-                    0.75,
-                    dtype=np.float32,
-                ),
-                proximity_weights=np.full(
-                    projected_counts[camera_id],
-                    0.8,
-                    dtype=np.float64,
-                ),
-                included_in_aggregate=camera_id in fit_ids,
-            )
-            for camera_id in selection.camera_prefix_ids
-        ),
+        input_source="captured_rgb",
+        input_provenance={
+            "schema": "alignment_line_input_batch_v1",
+            "source": "captured_rgb",
+            "provenance": {"schema": "test_captured_rgb_v1"},
+            "views": [
+                {
+                    "camera_id": view.camera_id,
+                    "input_rgb_sha256": input_rgb_sha256(view.input_rgb),
+                }
+                for view in views
+            ],
+        },
+        views=views,
     )
 
 

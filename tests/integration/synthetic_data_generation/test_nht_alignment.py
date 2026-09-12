@@ -44,6 +44,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmaps,
     AlignmentLineHeatmapView,
 )
+from src.synthetic_data_generation.alignment.line_inputs import input_rgb_sha256
 from src.synthetic_data_generation.alignment.settings import WholeCourtEvidenceSettings
 from src.synthetic_data_generation.alignment.validation import (
     validate_alignment_outputs,
@@ -324,24 +325,37 @@ def _line_heatmaps(evidence: AlignmentEvidence) -> AlignmentLineHeatmaps:
         for item in evidence.measured_camera_lines
     }
     fit_ids = set(evidence.diagnostics.evaluation.fit_camera_ids)
+    views = tuple(
+        AlignmentLineHeatmapView(
+            camera_id=camera_id,
+            input_rgb=np.full((8, 12, 3), index, dtype=np.uint8),
+            probability=np.asarray([[0.0, 0.5], [0.75, 1.0]], dtype=np.float32),
+            points_uv=measured[camera_id],
+            projected_probabilities=np.full(counts[camera_id], 0.75, dtype=np.float32),
+            proximity_weights=np.full(counts[camera_id], 0.8, dtype=np.float64),
+            included_in_aggregate=camera_id in fit_ids,
+        )
+        for index, camera_id in enumerate(selection.camera_prefix_ids)
+    )
     return AlignmentLineHeatmaps(
         bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.25,
         proximity_scale=0.35,
         proximity_power=2.0,
-        views=tuple(
-            AlignmentLineHeatmapView(
-                camera_id=camera_id,
-                probability=np.asarray([[0.0, 0.5], [0.75, 1.0]], dtype=np.float32),
-                points_uv=measured[camera_id],
-                projected_probabilities=np.full(
-                    counts[camera_id], 0.75, dtype=np.float32
-                ),
-                proximity_weights=np.full(counts[camera_id], 0.8, dtype=np.float64),
-                included_in_aggregate=camera_id in fit_ids,
-            )
-            for camera_id in selection.camera_prefix_ids
-        ),
+        input_source="captured_rgb",
+        input_provenance={
+            "schema": "alignment_line_input_batch_v1",
+            "source": "captured_rgb",
+            "provenance": {"schema": "test_captured_rgb_v1"},
+            "views": [
+                {
+                    "camera_id": view.camera_id,
+                    "input_rgb_sha256": input_rgb_sha256(view.input_rgb),
+                }
+                for view in views
+            ],
+        },
+        views=views,
     )
 
 
