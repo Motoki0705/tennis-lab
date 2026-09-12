@@ -129,6 +129,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         lightning_module = load_court_inference_lightning_module(
             checkpoints[0],
             config_override=config_override,
+            runtime_path_roots=resolver.roots.as_mapping(),
             strict=strict,
         )
         adapter = lightning_module.model_io
