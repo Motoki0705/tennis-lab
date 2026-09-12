@@ -1,0 +1,20 @@
+defaults:
+  - train
+  - override model: conv_next_unet
+  - override data: meiji_3cam
+  - _self_
+
+training:
+  trainer:
+    max_epochs: 20
+    precision: bf16-mixed
+    accumulate_grad_batches: 4
+  checkpoint:
+    filename: meiji-convnext-{epoch:02d}
+  qualitative_logging:
+    num_samples: 1
+
+run:
+  output_dir: ball_detection/meiji_3cam
+  # Keep held-out test untouched during training/recipe development.
+  test_after_fit: false

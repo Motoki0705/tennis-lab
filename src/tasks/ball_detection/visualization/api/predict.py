@@ -40,18 +40,56 @@ def predict_clip(
     peak_threshold: float,
 ) -> PredictionSequence:
     """Run overlapping-window inference and aggregate per-frame predictions."""
+    return predict_frame_tensor(
+        predictor=predictor,
+        model_images=clip.model_images,
+        sequence_length=sequence_length,
+        window_stride=window_stride,
+        inference_batch_size=inference_batch_size,
+        image_size_hw=image_size_hw,
+        peak_threshold=peak_threshold,
+    )
+
+
+def predict_frame_tensor(
+    *,
+    predictor: BallDetectionPredictor,
+    model_images: torch.Tensor,
+    sequence_length: int,
+    window_stride: int,
+    inference_batch_size: int,
+    image_size_hw: tuple[int, int],
+    peak_threshold: float,
+) -> PredictionSequence:
+    """Predict one already-preprocessed RGB frame tensor.
+
+    ``model_images`` has shape ``(T, 3, H, W)`` and remains on CPU between
+    batches. This entry point lets video-backed callers share the exact same
+    window aggregation used by directory-backed visualizations.
+    """
+    if model_images.ndim != 4 or model_images.shape[1] != 3:
+        raise ValueError(
+            "model_images must have shape (T, 3, H, W), "
+            f"got {tuple(model_images.shape)}."
+        )
+    if tuple(model_images.shape[-2:]) != image_size_hw:
+        raise ValueError(
+            f"model_images spatial size must be {image_size_hw}, "
+            f"got {tuple(model_images.shape[-2:])}."
+        )
+    frame_count = int(model_images.shape[0])
     window_starts = build_window_starts(
-        frame_count=len(clip.frame_names),
+        frame_count=frame_count,
         sequence_length=sequence_length,
         stride=window_stride,
     )
     logger.info("Running predictor over %d overlapping window(s).", len(window_starts))
 
     heatmap_sum: torch.Tensor | None = None
-    heatmap_count = torch.zeros(len(clip.frame_names), dtype=torch.float32)
+    heatmap_count = torch.zeros(frame_count, dtype=torch.float32)
 
     for start_chunk, batch in iter_window_batches(
-        model_images=clip.model_images,
+        model_images=model_images,
         window_starts=window_starts,
         sequence_length=sequence_length,
         batch_size=inference_batch_size,
@@ -61,7 +99,7 @@ def predict_clip(
 
         if heatmap_sum is None:
             heatmap_sum = torch.zeros(
-                (len(clip.frame_names), *batch_heatmaps.shape[-2:]),
+                (frame_count, *batch_heatmaps.shape[-2:]),
                 dtype=torch.float32,
             )
 

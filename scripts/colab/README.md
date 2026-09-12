@@ -1,5 +1,7 @@
 # Colab workflow interface
 
+Meiji 3カメラのボール検出には [ConvNeXtUNet / L4 学習レシピ](train/ball_meiji_3cam_l4.md) を使用する。
+
 このディレクトリは、`tennis-lab` の非対話処理をローカル端末からGoogle
 Colabへ送る統一入口です。session作成、Drive接続、入力のVM local diskへのstage、
 repository環境の構築、処理実行、成果物の検証・Driveへのatomic publish、必要なら
@@ -95,7 +97,7 @@ bash scripts/colab/run.sh run court_detection_materialize_targets \
 bash scripts/colab/run.sh status <run-id>
 bash scripts/colab/run.sh progress <run-id> --watch
 bash scripts/colab/run.sh logs <run-id> --tail 40
-bash scripts/colab/run.sh resume <run-id> --download-to ./colab-artifacts
+bash scripts/colab/run.sh resume <run-id> --keep-on-failure --download-to ./colab-artifacts
 bash scripts/colab/run.sh download <run-id> --to ./colab-artifacts
 bash scripts/colab/run.sh stop <run-id>
 ```
@@ -112,6 +114,8 @@ runtimeが得られるかはColabのplan・quota・在庫に依存します。
 `run` は成功時、または `--keep-on-failure` のない既知の失敗時にsessionを停止します。
 失敗VMを調査・再実行する場合は初回 `run` に `--keep-on-failure` を付けます。`resume`
 は同じrun id・request・保持中sessionだけを再利用し、完了runを変更しません。
+再試行中の失敗時もVMを残すには、`resume` にも `--keep-on-failure` を付けます。
+入力requestやsource snapshotの転送途中で失敗した場合も、保持済みの元ファイルを再転送します。
 
 `--dry-run` はjob schema、source、argv、Drive/session操作を解決しますが、state directory
 を作らずColabやDriveにも接続しません。
@@ -176,6 +180,10 @@ exact commit SHA/treeへ解決します。tracked working treeがdirtyなら拒�
 fileもremoteには入りません。未commitのroot-repository変更が必要な場合は
 `--source snapshot` を使います。snapshotはtracked/untracked/deleted pathとcontent
 digestを記録し、secret候補を除外します。
+
+8 MiBを超えるuploadは8 MiBごとに分割して送信します。VMで結合後にSHA-256を照合し、
+一致したファイルだけを最終パスへ移動します。大きなsnapshotをColab Contents APIへ
+一括送信した際の接続リセットと、base64変換時のメモリ増加を抑えるためです。
 
 submodule worktreeの内容はsnapshot archiveへ入りません。`setup` に `submodules` を
 含むjobはparent repositoryのgitlinkにあるexact commitをcredential-freeなGitHub

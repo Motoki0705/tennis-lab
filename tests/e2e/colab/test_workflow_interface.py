@@ -24,7 +24,7 @@ from typing import Any
 import pytest
 
 from scripts.colab.workflow import remote_runner
-from scripts.colab.workflow.common import WorkflowError
+from scripts.colab.workflow.common import WorkflowError, sha256_file
 from scripts.colab.workflow.jobs import load_job
 from scripts.colab.workflow.snapshot import create_snapshot
 
@@ -1959,8 +1959,9 @@ def test_run_cleanup_does_not_overwrite_a_concurrent_stop(
     assert stale_run_metadata == stopped
 
 
+@pytest.mark.parametrize(("source", "lose_bootstrap"), [("git", False), ("snapshot", True)])
 def test_resume_reuses_request_digest_increments_attempt_and_stops_on_success(
-    tmp_path: Path, fake_colab: dict[str, Any]
+    tmp_path: Path, fake_colab: dict[str, Any], source: str, lose_bootstrap: bool
 ) -> None:
     config = _rclone_config(tmp_path)
     failed_environment = {**fake_colab["env"], "FAKE_STATUS_MODE": "failed"}
@@ -1970,6 +1971,8 @@ def test_resume_reuses_request_digest_increments_attempt_and_stops_on_success(
         "court_detection",
         "--run-id",
         RUN_ID,
+        "--source",
+        source,
         "--rclone-config",
         str(config),
         "--keep-on-failure",
@@ -1979,6 +1982,10 @@ def test_resume_reuses_request_digest_increments_attempt_and_stops_on_success(
     request = json.loads(
         (tmp_path / "state" / RUN_ID / "request.json").read_text(encoding="utf-8")
     )
+    remote_workspace = fake_colab["remote"] / "content/tennis-lab-runs" / RUN_ID
+    if lose_bootstrap:
+        (remote_workspace / "request.json").unlink()
+        (remote_workspace / "source-snapshot.tar.gz").unlink()
 
     resumed_environment = {**fake_colab["env"], "FAKE_STATUS_MODE": "completed"}
     resumed = _run_cli(
@@ -1994,6 +2001,9 @@ def test_resume_reuses_request_digest_increments_attempt_and_stops_on_success(
     status = json.loads(resumed.stdout)
     assert status["request_digest"] == request["request_digest"]
     assert status["attempt"] == 2
+    assert json.loads((remote_workspace / "request.json").read_text()) == request
+    if source == "snapshot":
+        assert sha256_file(remote_workspace / "source-snapshot.tar.gz") == request["source"]["archive_sha256"]
     calls = _invocations(fake_colab)
     assert sum(_action(call) == "run" for call in calls) == 2
     assert _operation(calls[-1]) == "stop"
