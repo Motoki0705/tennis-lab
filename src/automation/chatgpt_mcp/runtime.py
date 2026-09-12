@@ -185,7 +185,7 @@ class RuntimeInstaller:
         )
 
     def _install_venv(self) -> Path:
-        target = self.settings.runtime_venv_root
+        target: Path = self.settings.runtime_venv_root
         link = self.settings.project_venv_link
         if not target.is_dir():
             raise RuntimeInstallError(
@@ -212,7 +212,7 @@ class RuntimeInstaller:
         os.symlink(target, link, target_is_directory=True)
 
     def _install_release(self, source: Path, revision: str) -> Path:
-        release = self.settings.runtime_releases_dir / revision
+        release: Path = self.settings.runtime_releases_dir / revision
         if release.is_dir():
             return release
         if release.exists():
@@ -238,6 +238,9 @@ class RuntimeInstaller:
                 candidate / "src/automation/chatgpt_mcp",
                 dirs_exist_ok=False,
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+            )
+            (candidate / "src/automation/chatgpt_mcp/runtime-revision").write_text(
+                revision + "\n", encoding="utf-8"
             )
             configuration = candidate / "src/utils/configuration"
             configuration.mkdir(mode=0o700, parents=True)
@@ -265,7 +268,7 @@ class RuntimeInstaller:
         return release
 
     def _install_queue_runner(self, source: Path) -> Path:
-        destination = self.settings.trusted_queue_script
+        destination: Path = self.settings.trusted_queue_script
         destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         source_script = (
             source / ".agents/skills/training-queue/scripts/training_queue.sh"

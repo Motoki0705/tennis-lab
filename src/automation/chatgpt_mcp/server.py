@@ -285,12 +285,8 @@ def build_gateway(
     """Build the public OAuth server or private Secure Tunnel server."""
 
     settings.ensure_state()
-    loaded_root = Path(__file__).resolve().parents[3]
-    loaded_revision = (
-        loaded_root.name
-        if loaded_root.parent == settings.runtime_releases_dir.resolve()
-        else "uninstalled"
-    )
+    loaded_marker = Path(__file__).with_name("runtime-revision")
+    loaded_revision = loaded_marker.read_text().strip() if loaded_marker.is_file() else "uninstalled"
     store = SqliteStore(settings.database_path)
     workspaces = WorkspaceManager(
         settings.trusted_git_dir,
