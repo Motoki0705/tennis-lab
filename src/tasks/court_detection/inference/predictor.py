@@ -14,6 +14,9 @@ from torch import Tensor
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.tasks.court_detection.inference.checkpoint_compat import (
+    load_court_inference_config_override,
+)
 from src.tasks.court_detection.inference.keypoint_decoder import (
     CourtKeypointDecoderConfig,
     decode_court_keypoint_logits,
@@ -97,8 +100,19 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         **kwargs: Any,
     ) -> Self:
         """Load one checkpoint and preserve its serialized target bundle."""
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        if "config" not in kwargs:
+            config_override = load_court_inference_config_override(checkpoints[0])
+            if config_override is not None:
+                kwargs["config"] = config_override
+
         lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
+            checkpoints[0],
             CourtDetectionLightningModule,
             resolver=resolver,
             device=device,
