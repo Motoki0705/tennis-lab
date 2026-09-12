@@ -1,0 +1,4 @@
+derived_target_root: court_detection/derived_targets
+targets:
+  - kind: semantic_line
+    target_schema: court_line_semantic_camera_view_75mm_150mm_single_court_v1

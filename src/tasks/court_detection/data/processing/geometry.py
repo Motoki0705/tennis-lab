@@ -26,6 +26,7 @@ from src.tasks.court_detection.data.contracts import (
 )
 from src.tasks.court_detection.geometry.pose import (
     build_pose_target,
+    semantic_in_front_mask,
     validate_projection_round_trip,
 )
 from src.utils.geometry.affine import build_centered_affine_matrix
@@ -192,9 +193,17 @@ class CourtProcessingGeometry:
                 raise ValueError(
                     "Court V3 KP14 physical order disagrees with pose authority."
                 )
+            if len(instances) != 1:
+                raise ValueError(
+                    "Court pose geometry requires exactly one target-court instance."
+                )
             validate_projection_round_trip(
                 pose_target,
                 channels.points_xy[:, 0],
+                semantic_in_front=semantic_in_front_mask(
+                    pose_target,
+                    instances[0],
+                ),
             )
         return CourtTransformedSample(
             sample_id=raw.sample_id,

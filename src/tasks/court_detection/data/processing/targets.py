@@ -23,6 +23,10 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.data.target_generation.store import (
     validate_derived_target,
 )
+from src.tasks.court_detection.target_schemas import (
+    SEMANTIC_LINE_CHANNEL_NAMES,
+    SEMANTIC_LINE_CLASS_BY_NAME,
+)
 from src.utils.data.heatmaps import generate_gaussian_heatmaps
 
 
@@ -221,6 +225,43 @@ class LineTargetBuilder(_PrecomputedDenseTargetBuilder):
         return target
 
 
+class SemanticLineTargetBuilder(_PrecomputedDenseTargetBuilder):
+    kind: CourtDenseTargetKind = "semantic_line"
+    capability = CourtInputCapability.SEMANTIC_LINE_REFERENCE
+
+    def __init__(self, *, target_schema: str, input_spec: CourtInputSpec) -> None:
+        super().__init__(
+            CourtTargetSpec(
+                kind="semantic_line",
+                schema=target_schema,
+                output_channels=len(SEMANTIC_LINE_CHANNEL_NAMES),
+                channel_names=SEMANTIC_LINE_CHANNEL_NAMES,
+                target_dtype=torch.long,
+                precomputed=True,
+            ),
+            input_spec=input_spec,
+        )
+
+    def _decode(self, array: np.ndarray) -> Tensor:
+        if int(array.max(initial=0)) >= len(SEMANTIC_LINE_CHANNEL_NAMES):
+            raise ValueError("Court semantic-line labels are out of range.")
+        return torch.from_numpy(np.ascontiguousarray(array).copy()).long()
+
+    def build(self, sample: CourtTransformedSample) -> object:
+        mask = sample.dense_targets["semantic_line"].long()
+        if sample.horizontal_flipped:
+            source = mask.clone()
+            for left_name, right_name in (
+                ("left_doubles_sideline", "right_doubles_sideline"),
+                ("left_singles_sideline", "right_singles_sideline"),
+            ):
+                left = SEMANTIC_LINE_CLASS_BY_NAME[left_name]
+                right = SEMANTIC_LINE_CLASS_BY_NAME[right_name]
+                mask[source == left] = right
+                mask[source == right] = left
+        return mask
+
+
 def build_target_builder(
     config: CourtTargetConfig,
     *,
@@ -246,6 +287,13 @@ def build_target_builder(
             target_schema=config.target_schema,
             input_spec=input_spec,
         )
+    elif config.kind == "semantic_line":
+        if config.target_schema is None:
+            raise ValueError("Semantic-line target config requires target_schema.")
+        builder = SemanticLineTargetBuilder(
+            target_schema=config.target_schema,
+            input_spec=input_spec,
+        )
     else:  # pragma: no cover - typed configuration rejects this
         raise ValueError(f"Unsupported Court target kind: {config.kind!r}.")
     missing = builder.required_capabilities - input_spec.capabilities
@@ -261,6 +309,7 @@ __all__ = [
     "CourtTargetBuilder",
     "KeypointTargetBuilder",
     "LineTargetBuilder",
+    "SemanticLineTargetBuilder",
     "SegmentationTargetBuilder",
     "build_target_builder",
 ]

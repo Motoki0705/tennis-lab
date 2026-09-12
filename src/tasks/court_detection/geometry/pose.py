@@ -12,7 +12,7 @@ from src.synthetic_data_generation.dataset.court.components.camera_view import (
     camera_view_canonicalization,
 )
 from src.synthetic_data_generation.scene_contract import CourtInstance
-from src.tasks.court_detection.data.contracts import CourtPoseAuthority
+from src.tasks.court_detection.data.contracts import CourtInstance2D, CourtPoseAuthority
 from src.utils.geometry.rotation_conversions import rotation_6d_to_matrix
 from src.utils.schema.court import (
     CAMERA_VIEW_HALF_TURN_INDEX,
@@ -435,28 +435,62 @@ def project_canonical_points(target: CourtPoseTarget, points: Tensor) -> Tensor:
     return pixels
 
 
-def _valid_projection_reference_mask(
+def semantic_in_front_mask(
+    target: CourtPoseTarget,
+    instance: CourtInstance2D,
+) -> Tensor:
+    """Order one target court's authoritative near-plane mask by V3 semantics."""
+    if instance.physical_indices.shape != (14,) or set(
+        instance.physical_indices.tolist()
+    ) != set(range(14)):
+        raise ValueError(
+            "Court pose projection references require physical points 0..13."
+        )
+    physical_in_front = torch.empty(
+        14,
+        dtype=torch.bool,
+        device=instance.point_in_front.device,
+    )
+    physical_in_front[instance.physical_indices] = instance.point_in_front
+    semantic_order = target.semantic_to_physical.to(
+        device=instance.point_in_front.device
+    )
+    return physical_in_front.index_select(0, semantic_order)
+
+
+def _validate_projection_reference_mask(
     target: CourtPoseTarget,
     points: Tensor,
+    semantic_in_front: Tensor,
 ) -> Tensor:
-    """Select the deterministic positive-depth subset used as pose/K evidence."""
+    """Validate the serialized renderer near-plane mask used as pose/K evidence."""
+    if semantic_in_front.shape != (14,) or semantic_in_front.dtype != torch.bool:
+        raise ValueError(
+            "Synthetic Court V3 semantic_in_front must be a boolean [14] vector."
+        )
     points64 = points.to(dtype=torch.float64)
     center = target.translation_m.to(dtype=torch.float64)
     points_camera = (points64 - center) @ target.rotation.to(dtype=torch.float64)
     _require_finite(points_camera, name="Canonical Court camera-space points")
-    return points_camera[:, 2] > PROJECTIVE_DEPTH_EPS_M
+    positive_depth = points_camera[:, 2] > PROJECTIVE_DEPTH_EPS_M
+    reference_mask = semantic_in_front.to(device=positive_depth.device)
+    if bool(torch.any(reference_mask & ~positive_depth)):
+        raise ValueError(
+            "Synthetic Court V3 in-front references disagree with pose camera depth."
+        )
+    return reference_mask
 
 
 def _validate_projection_reference_evidence(
     points: Tensor,
     reference_mask: Tensor,
 ) -> None:
-    """Require four positive-depth references spanning non-collinear court XY."""
+    """Require four declared in-front references spanning non-collinear court XY."""
     reference_count = int(reference_mask.sum())
     if reference_count < MIN_PROJECTION_REFERENCE_POINTS:
         raise ValueError(
             "Synthetic Court V3 projection round-trip requires at least "
-            f"{MIN_PROJECTION_REFERENCE_POINTS} positive-depth references; "
+            f"{MIN_PROJECTION_REFERENCE_POINTS} in-front references; "
             f"got {reference_count}."
         )
     reference_xy = points.to(dtype=torch.float64)[reference_mask, :2]
@@ -467,7 +501,7 @@ def _validate_projection_reference_evidence(
     )
     if float(torch.max(twice_triangle_area)) <= PROJECTION_REFERENCE_AREA_EPS_M2:
         raise ValueError(
-            "Synthetic Court V3 projection round-trip positive-depth references "
+            "Synthetic Court V3 projection round-trip in-front references "
             "must contain non-collinear canonical-court evidence."
         )
 
@@ -490,9 +524,10 @@ def validate_projection_round_trip(
     target: CourtPoseTarget,
     expected_semantic_uv: Tensor,
     *,
+    semantic_in_front: Tensor,
     atol_px: float = PROJECTION_ATOL_PX,
 ) -> None:
-    """Require pose/K to reproduce V3 semantic KP14 within 1e-4 px."""
+    """Require pose/K to reproduce in-front V3 semantic KP14 within 1e-4 px."""
     if not math.isfinite(atol_px) or atol_px < 0.0:
         raise ValueError(
             "Projection round-trip atol_px must be finite and non-negative."
@@ -502,7 +537,11 @@ def validate_projection_round_trip(
     _require_finite(expected_semantic_uv, name="V3 semantic UV")
     canonical_points = canonical_semantic_court_points(target)
     projected = project_canonical_points(target, canonical_points)
-    reference_mask = _valid_projection_reference_mask(target, canonical_points)
+    reference_mask = _validate_projection_reference_mask(
+        target,
+        canonical_points,
+        semantic_in_front,
+    )
     _validate_projection_reference_evidence(canonical_points, reference_mask)
     projected_references = projected[reference_mask]
     expected_references_native = expected_semantic_uv[reference_mask]
@@ -539,6 +578,7 @@ __all__ = [
     "decode_pose10d_strict",
     "project_canonical_points",
     "project_predicted_canonical_points",
+    "semantic_in_front_mask",
     "validate_projection_round_trip",
     "validate_proper_rotation",
     "validate_square_intrinsics",

@@ -1,4 +1,4 @@
-"""Orchestrate court-detection prediction visualizations (kp / seg / line)."""
+"""Orchestrate Court head prediction visualizations."""
 
 from __future__ import annotations
 
@@ -28,11 +28,11 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 
-CourtTargetHead: TypeAlias = Literal["kp", "seg", "line"]
+CourtTargetHead: TypeAlias = Literal["kp", "seg", "line", "semantic_line"]
 
 logger = logging.getLogger(__name__)
 
-_VALID_TASKS = {"kp", "seg", "line"}
+_VALID_TASKS = {"kp", "seg", "line", "semantic_line"}
 
 
 def _number(value: object) -> float:

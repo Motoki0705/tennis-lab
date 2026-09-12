@@ -58,6 +58,7 @@ def _pose_only_overrides() -> tuple[str, ...]:
         "loss.kp.weight=0.0",
         "loss.seg.weight=0.0",
         "loss.line.weight=0.0",
+        "loss.semantic_line.weight=0.0",
         *_pose_overrides(),
         "loss.consistency.enabled=false",
     )
@@ -211,7 +212,12 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
     assert {
         kind: (branch.hidden_channels, branch.depth)
         for kind, branch in runtime.model.dense_head.branches.items()
-    } == {"kp": (256, 2), "seg": (256, 2), "line": (256, 2)}
+    } == {
+        "kp": (256, 2),
+        "seg": (256, 2),
+        "line": (256, 2),
+        "semantic_line": (256, 2),
+    }
 
 
 def test_current_line_schema_uses_wide_physical_target() -> None:
@@ -378,7 +384,12 @@ def test_default_loss_is_dense_only_with_disabled_pose_and_consistency() -> None
     runtime = CourtTrainingConfig.from_config(_compose("synthetic_court"))
 
     assert isinstance(runtime.loss, CourtLossConfig)
-    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    assert runtime.loss.dense_weights == {
+        "kp": 1.0,
+        "seg": 1.0,
+        "line": 1.0,
+        "semantic_line": 1.0,
+    }
     assert not runtime.loss.pose.enabled
     assert not runtime.loss.consistency.enabled
 
@@ -426,7 +437,12 @@ def test_pose_loss_preset_keeps_dense_heads_and_enables_pose() -> None:
         )
     )
 
-    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    assert runtime.loss.dense_weights == {
+        "kp": 1.0,
+        "seg": 1.0,
+        "line": 1.0,
+        "semantic_line": 1.0,
+    }
     assert runtime.loss.pose.enabled
     assert (
         runtime.loss.pose.translation_weight,
@@ -436,13 +452,34 @@ def test_pose_loss_preset_keeps_dense_heads_and_enables_pose() -> None:
     assert not runtime.loss.consistency.enabled
 
 
+def test_pose_frozen_training_keeps_pr867_schedule_without_lora() -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose(
+            "synthetic_court",
+            "data/processing=all",
+            "training=pose_frozen",
+        )
+    )
+
+    assert runtime.model.encoder.train_mode == "frozen"
+    assert runtime.model.encoder.lora is not None
+    assert not runtime.model.encoder.lora.enabled
+    assert runtime.shared.training.trainer.max_epochs == 20
+    assert runtime.shared.training.checkpoint.monitor == "val/loss_direct_pose"
+
+
 def test_pose_only_overrides_keep_kp_contract_with_zero_dense_weights() -> None:
     runtime = CourtTrainingConfig.from_config(
         _compose("synthetic_court", *_pose_only_overrides())
     )
 
     assert tuple(target.kind for target in runtime.data.processing.targets) == ("kp",)
-    assert runtime.loss.dense_weights == {"kp": 0.0, "seg": 0.0, "line": 0.0}
+    assert runtime.loss.dense_weights == {
+        "kp": 0.0,
+        "seg": 0.0,
+        "line": 0.0,
+        "semantic_line": 0.0,
+    }
     assert runtime.loss.pose.enabled
     assert (
         runtime.loss.pose.translation_weight,
@@ -466,7 +503,7 @@ def test_pose_only_objective_rejects_a_bundle_without_kp() -> None:
         CourtTrainingConfig.from_config(config)
 
 
-@pytest.mark.parametrize("kind", ["kp", "seg", "line"])
+@pytest.mark.parametrize("kind", ["kp", "seg", "line", "semantic_line"])
 def test_dense_only_loss_rejects_zero_head_weight(kind: str) -> None:
     config = _compose("synthetic_court")
     config.loss[kind].weight = 0.0
@@ -480,7 +517,7 @@ def test_dense_only_loss_rejects_zero_head_weight(kind: str) -> None:
 
 def test_loss_requires_at_least_one_positive_objective_weight() -> None:
     config = _compose("synthetic_court")
-    for kind in ("kp", "seg", "line"):
+    for kind in ("kp", "seg", "line", "semantic_line"):
         config.loss[kind].weight = 0.0
 
     with pytest.raises(

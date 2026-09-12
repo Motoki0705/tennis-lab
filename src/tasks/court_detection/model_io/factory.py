@@ -17,6 +17,7 @@ from src.tasks.court_detection.model_io.adapters import (
     CourtPoseModelIOAdapter,
 )
 from src.tasks.court_detection.model_io.contracts import (
+    CourtDecodedOutput,
     CourtEncoderKind,
     CourtLogits,
     CourtModelOutput,
@@ -28,7 +29,7 @@ CourtDetectionRawOutput: TypeAlias = CourtLogits | CourtModelOutput
 CourtDetectionBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
     CourtDetectionRawOutput,
-    CourtDetectionRawOutput,
+    CourtLogits | CourtDecodedOutput,
 ]
 
 

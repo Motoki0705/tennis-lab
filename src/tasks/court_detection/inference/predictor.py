@@ -16,6 +16,7 @@ from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
+    CourtDecodedOutput,
     CourtKeypointPrediction,
     CourtLogits,
     CourtModelIOError,
@@ -29,8 +30,8 @@ from src.utils.configuration import PathResolver
 
 CourtBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
-    CourtLogits,
-    CourtLogits,
+    CourtLogits | CourtModelOutput,
+    CourtLogits | CourtDecodedOutput,
 ]
 
 
