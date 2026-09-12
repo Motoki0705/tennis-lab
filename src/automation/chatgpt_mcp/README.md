@@ -193,3 +193,5 @@ server already advertises `resource=half/all` with default `all`; do not create
 duplicate tools to hide a registration/translation discrepancy. Refresh the
 connection's tool definitions in ChatGPT and verify a `half` job from that chat.
 The local server alone cannot verify the definition actually shown to a model.
+
+2026-09-12の実測・配備結果と残るChatGPT側確認は[監査記録](audits/2026-09-12/README.md)を参照。

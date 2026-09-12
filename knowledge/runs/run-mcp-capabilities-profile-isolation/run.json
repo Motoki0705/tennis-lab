@@ -1,0 +1,16 @@
+{
+  "run_id": "1789182959401420880_1135363_mcp-capabilities-final-half",
+  "name": "mcp-capabilities-final-half",
+  "command": "env TENNIS_MCP_REPO_ROOT=/home/kamimura/projects/tennis-lab TENNIS_MCP_STATE_DIR=/home/kamimura/.local/state/tennis-lab-chatgpt-mcp TENNIS_MCP_CONTROL_DIR=/home/kamimura/.local/share/tennis-lab-chatgpt-mcp TENNIS_MCP_ORIGIN_URL=https://github.com/Motoki0705/tennis-lab.git TENNIS_MCP_DOCKER_IMAGE=tennis-lab-mcp:runtime-v1 TENNIS_MCP_UV_PYTHON_ROOT=/home/kamimura/.local/share/uv/python /home/kamimura/.local/share/tennis-lab-chatgpt-mcp/venv/bin/python -I -c 'import sys; from pathlib import Path; sys.path.insert(0, '\"'\"'/home/kamimura/.local/share/tennis-lab-chatgpt-mcp/current'\"'\"'); from src.automation.chatgpt_mcp.sandbox_exec import run_from_spec; raise SystemExit(run_from_spec(Path(sys.argv[1])))' /home/kamimura/.local/state/tennis-lab-chatgpt-mcp/training-specs/train-ea29bfcc0a9e41cb.json",
+  "provider": "chatgpt-wsl-mcp",
+  "session": "train-ea29bfcc0a9e41cb",
+  "issue": "",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "9d2082e0110c668510126284e98dd2bc4f7f4109",
+  "branch": "HEAD",
+  "remote": "https://github.com/Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/.local/state/tennis-lab-chatgpt-mcp/revisions/rev-9b8a522327e90714",
+  "repo_root": "/home/kamimura/.local/state/tennis-lab-chatgpt-mcp/revisions/rev-9b8a522327e90714",
+  "captured_at": "2026-09-12T12:15:59+09:00"
+}

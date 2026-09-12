@@ -124,8 +124,8 @@ jobs:
           "$trusted_python" -m src.automation.chatgpt_mcp doctor-secure-tunnel
 
           # The control-plane tests invoke host tools such as git and Docker.
-          # Keep them on the dedicated trusted runner instead of expanding the
-          # intentionally minimal MCP execution sandbox.
+          # Full control-plane tests stay on the trusted runner; the execution
+          # image also runs the isolated Git-fixture server tests below.
           PYTHONPATH="$GITHUB_WORKSPACE" \
           TMPDIR=/tmp \
             "$trusted_python" -m pytest -q -n 0 \
