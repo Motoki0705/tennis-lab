@@ -90,7 +90,7 @@ def _predictor(
     logits: torch.Tensor,
     *,
     subpixel_refine: bool,
-    peak_threshold: float = 0.5,
+    peak_threshold: float = 0.05,
     max_peaks: int = 1,
 ) -> CourtKeypointPredictor:
     return CourtKeypointPredictor(
@@ -169,7 +169,7 @@ def test_predict_returns_peak_axis_and_scores() -> None:
     torch.testing.assert_close(result.scores[:, 0], torch.tensor([0.9]))
 
 
-def test_default_contract_is_single_peak_with_half_probability_threshold() -> None:
+def test_default_contract_is_single_peak_with_low_extraction_threshold() -> None:
     probabilities = torch.full((1, 7, 7), 0.001)
     probabilities[0, 2, 2] = 0.98
     probabilities[0, 5, 5] = 0.08
@@ -183,20 +183,35 @@ def test_default_contract_is_single_peak_with_half_probability_threshold() -> No
     result = predictor.predict(torch.zeros(1, 3, 7, 7))
 
     assert predictor.max_peaks == 1
-    assert predictor.peak_threshold == 0.5
+    assert predictor.peak_threshold == 0.05
     assert result.keypoints.shape == (1, 1, 2)
     assert result.valid.tolist() == [[True]]
     torch.testing.assert_close(result.scores, torch.tensor([[0.98]]))
 
 
-def test_default_threshold_marks_weak_channel_as_invalid() -> None:
+def test_default_threshold_marks_subthreshold_channel_invalid() -> None:
     probabilities = torch.full((1, 5, 5), 0.001)
-    probabilities[0, 2, 2] = 0.49
+    probabilities[0, 2, 2] = 0.049
     logits = torch.logit(probabilities).unsqueeze(0)
 
     result = _predictor(logits, subpixel_refine=False).predict(
         torch.zeros(1, 3, 5, 5)
     )
+
+    assert result.valid.tolist() == [[False]]
+    torch.testing.assert_close(result.scores, torch.zeros(1, 1))
+
+
+def test_consumer_can_select_a_higher_confidence_threshold() -> None:
+    probabilities = torch.full((1, 5, 5), 0.001)
+    probabilities[0, 2, 2] = 0.49
+    logits = torch.logit(probabilities).unsqueeze(0)
+
+    result = _predictor(
+        logits,
+        subpixel_refine=False,
+        peak_threshold=0.5,
+    ).predict(torch.zeros(1, 3, 5, 5))
 
     assert result.valid.tolist() == [[False]]
     torch.testing.assert_close(result.scores, torch.zeros(1, 1))
