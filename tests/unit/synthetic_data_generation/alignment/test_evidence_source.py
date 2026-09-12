@@ -280,71 +280,39 @@ def test_line_checkpoint_accepts_complete_canonical_head_without_remapping() -> 
     assert state["heads.line.bias"] is bias
 
 
-def _line_bundle(schema: str) -> CourtTargetBundleSpec:
-    return CourtTargetBundleSpec(
+@pytest.mark.parametrize("line_schema", (LINE_TARGET_SCHEMA, LINE_TARGET_SCHEMA_V2))
+def test_alignment_accepts_any_court_scope_line_target_schema(
+    line_schema: str,
+) -> None:
+    expected = CourtTargetSpec(
+        kind="line",
+        schema=line_schema,
+        output_channels=1,
+        channel_names=("court_line",),
+        target_dtype=torch.float32,
+        precomputed=True,
+    )
+    checkpoint_bundle = CourtTargetBundleSpec(
         {
-            "line": CourtTargetSpec(
-                kind="line",
-                schema=schema,
-                output_channels=1,
-                channel_names=("court_line",),
+            "kp": CourtTargetSpec(
+                kind="kp",
+                schema="test_kp14",
+                output_channels=14,
+                channel_names=tuple(f"kp_{index}" for index in range(14)),
                 target_dtype=torch.float32,
-                precomputed=True,
-            )
+                precomputed=False,
+            ),
+            "line": expected,
         }
     )
 
-
-def test_alignment_accepts_explicit_all_courts_line_schema() -> None:
-    expected = _line_bundle(LINE_TARGET_SCHEMA_V2)
-
     observed = _alignment_line_target_bundle(
-        hyper_parameters={"target_bundle_state": serialize_target_bundle(expected)},
-        raw_state={
-            "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-            "model.heads.line.bias": torch.ones(1),
-        },
+        hyper_parameters={
+            "target_bundle_state": serialize_target_bundle(checkpoint_bundle)
+        }
     )
 
-    assert observed == expected
-
-
-def test_alignment_accepts_exact_unversioned_historical_line_checkpoint() -> None:
-    observed = _alignment_line_target_bundle(
-        hyper_parameters={},
-        raw_state={
-            "model.final_conv.weight": torch.ones((1, 4, 1, 1)),
-            "model.final_conv.bias": torch.ones(1),
-        },
-    )
-
-    assert observed.targets["line"].schema == "court_line_binary_v1"
-
-
-def test_alignment_rejects_single_court_line_schema() -> None:
-    target_only = _line_bundle(LINE_TARGET_SCHEMA)
-
-    with pytest.raises(ValueError, match="all-courts line target schema"):
-        _alignment_line_target_bundle(
-            hyper_parameters={
-                "target_bundle_state": serialize_target_bundle(target_only)
-            },
-            raw_state={
-                "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-                "model.heads.line.bias": torch.ones(1),
-            },
-        )
-
-
-def test_alignment_rejects_unversioned_canonical_line_checkpoint() -> None:
-    with pytest.raises(ValueError, match="exact historical final_conv"):
-        _alignment_line_target_bundle(
-            hyper_parameters={},
-            raw_state={
-                "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-                "model.heads.line.bias": torch.ones(1),
-            },
-        )
+    assert observed.targets == {"line": expected}
 
 
 @pytest.mark.parametrize(

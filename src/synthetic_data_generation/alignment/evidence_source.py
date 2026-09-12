@@ -113,10 +113,7 @@ from src.tasks.court_detection.model_io.adapters import (
 )
 from src.tasks.court_detection.model_io.contracts import CourtModelSpec
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA_V1,
-    LINE_TARGET_SCHEMA_V2,
-)
+from src.tasks.court_detection.target_schemas import LINE_TARGET_SCHEMA_V1
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
@@ -254,16 +251,15 @@ class ProductionCourtLineDetector:
                 f"{Path(embedded_checkpoint).name!r}."
             )
         _validate_embedded_architecture(settings, model_mapping)
-        raw_state = raw.get("state_dict")
-        if not isinstance(raw_state, Mapping):
-            raise ValueError("Court-line checkpoint has no state_dict mapping.")
         architecture = settings.architecture
         model_config = _court_line_model_config(settings)
         target_bundle = _alignment_line_target_bundle(
             hyper_parameters=hyper_parameters,
-            raw_state=raw_state,
         )
         model = CourtHierarchicalModel.from_config(model_config, target_bundle)
+        raw_state = raw.get("state_dict")
+        if not isinstance(raw_state, Mapping):
+            raise ValueError("Court-line checkpoint has no state_dict mapping.")
         model_state = _court_line_model_state(raw_state)
         model.load_state_dict(model_state, strict=True)
         model.eval()
@@ -4806,23 +4802,11 @@ def _court_line_model_state(
 
 
 def _alignment_line_target_bundle(
-    *,
-    hyper_parameters: Mapping[object, object],
-    raw_state: Mapping[object, object],
+    *, hyper_parameters: Mapping[object, object]
 ) -> CourtTargetBundleSpec:
-    """Accept only line supervision whose semantics cover every visible court."""
+    """Recover line semantics without constraining how many courts they represent."""
     snapshot = hyper_parameters.get("target_bundle_state")
     if snapshot is None:
-        legacy_head_keys = {
-            key
-            for key in raw_state
-            if isinstance(key, str) and key.startswith("model.final_conv.")
-        }
-        if legacy_head_keys != {"model.final_conv.weight", "model.final_conv.bias"}:
-            raise ValueError(
-                "Court-line checkpoints without target_bundle_state are supported "
-                "only for the exact historical final_conv head."
-            )
         return CourtTargetBundleSpec(
             {
                 "line": CourtTargetSpec(
@@ -4836,17 +4820,10 @@ def _alignment_line_target_bundle(
             }
         )
     bundle = deserialize_target_bundle(snapshot)
-    if tuple(bundle.targets) != ("line",):
-        raise ValueError(
-            "Alignment requires a line-only checkpoint target bundle."
-        )
-    line = bundle.targets["line"]
-    if line.schema not in {LINE_TARGET_SCHEMA_V1, LINE_TARGET_SCHEMA_V2}:
-        raise ValueError(
-            "Alignment requires an all-courts line target schema; "
-            f"observed {line.schema!r}."
-        )
-    return bundle
+    line = bundle.targets.get("line")
+    if line is None:
+        raise ValueError("Alignment checkpoint target bundle has no line target.")
+    return CourtTargetBundleSpec({"line": line})
 
 
 def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConfig:
