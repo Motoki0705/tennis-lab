@@ -1,0 +1,28 @@
+{
+  "health": {
+    "status": "ok",
+    "runtime_revision": "a22dc473a4b77df2f1f2c597ce09bef23a968d96"
+  },
+  "tunnel_ready": "ready",
+  "verified_at_utc": "2026-09-12T03:20:32Z",
+  "final_runtime_job": {
+    "job_id": "job-ca32494da0b99756",
+    "workspace_id": "rev-9b8a522327e90714",
+    "revision": "9d2082e0110c668510126284e98dd2bc4f7f4109",
+    "execution_root": "revision",
+    "working_directory": ".",
+    "container_id": "9499cf8ba1bd87c45643dc0e91c2e6dbf3d13f4bd07e17ffa5fabb487a3f552e",
+    "command_sha256": "c22995adc29757a99bc9242926a5d5b5a8007ecc78f30943161cf072af42d9d2",
+    "created_at": 1789183232.1203203,
+    "image_id": "sha256:ba01df4149f11199dde3ac2d57995fdd84b4761b76a98169cacd5df2e5dad802",
+    "outcome": "succeeded",
+    "status": "exited",
+    "running": false,
+    "exit_code": 0,
+    "started_at": "2026-09-12T03:20:31.979336335Z",
+    "finished_at": "2026-09-12T03:20:32.612886131Z",
+    "error": null
+  },
+  "image": "sha256:ba01df4149f11199dde3ac2d57995fdd84b4761b76a98169cacd5df2e5dad802",
+  "historical_outcomes_survived_restart": true
+}
