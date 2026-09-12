@@ -81,6 +81,7 @@ def test_installer_externalizes_clean_exact_runtime_venv_queue_and_git_mirror(
     first = RuntimeInstaller(settings).install(source, expected_sha=revision)
     second = RuntimeInstaller(settings).install(source, expected_sha=revision)
 
+    assert first.release_dir.joinpath("src/automation/chatgpt_mcp/runtime-revision").read_text().strip() == revision
     assert first.revision == revision
     assert second.revision == first.revision
     assert settings.project_venv_link.is_symlink()
