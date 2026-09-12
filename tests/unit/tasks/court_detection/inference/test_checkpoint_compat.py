@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 
 from src.tasks.court_detection.configuration import LINE_TARGET_SCHEMA
 from src.tasks.court_detection.inference.checkpoint_compat import (
+    extract_court_checkpoint_dense_head_config,
     load_court_inference_config_override,
     migrate_court_inference_config,
 )
@@ -30,12 +31,30 @@ def _legacy_targets() -> list[dict[str, str | float]]:
     ]
 
 
-def test_mapping_migration_adds_inference_defaults_without_mutation() -> None:
-    legacy = {
+def _residual_dense_head() -> dict[str, object]:
+    return {
+        "name": "residual",
+        "normalization_groups": 32,
+        "kp": {"hidden_channels": 256, "depth": 2},
+        "seg": {"hidden_channels": 256, "depth": 2},
+        "line": {"hidden_channels": 256, "depth": 2},
+    }
+
+
+def _legacy_config() -> dict[str, object]:
+    return {
         "run": {"output_dir": "outputs/test"},
         "data": {"processing": {"targets": _legacy_targets()}},
-        "model": {"name": "test"},
+        "model": {
+            "name": "court_hierarchical",
+            "dense_head": _residual_dense_head(),
+        },
+        "mixed": {"batch_size": 8},
     }
+
+
+def test_mapping_migration_adds_inference_defaults_without_mutation() -> None:
+    legacy = _legacy_config()
 
     migrated = migrate_court_inference_config(legacy)
 
@@ -44,11 +63,15 @@ def test_mapping_migration_adds_inference_defaults_without_mutation() -> None:
     assert migrated["data"]["processing"]["targets"][2]["target_schema"] == (
         LINE_TARGET_SCHEMA
     )
+    assert "dense_head" not in migrated["model"]
+    assert "mixed" not in migrated
+
     assert "artifact_store" not in legacy["run"]
     assert legacy["data"]["processing"]["targets"][2]["target_schema"] == (
         "court_line_binary_75mm_150mm_v2"
     )
-    assert migrated["model"] == legacy["model"]
+    assert legacy["model"]["dense_head"] == _residual_dense_head()
+    assert legacy["mixed"] == {"batch_size": 8}
 
 
 def test_dictconfig_migration_preserves_interpolation() -> None:
@@ -57,6 +80,11 @@ def test_dictconfig_migration_preserves_interpolation() -> None:
             "paths": {"output_root": "outputs"},
             "run": {"output_dir": "${paths.output_root}/test"},
             "data": {"processing": {"targets": _legacy_targets()}},
+            "model": {
+                "name": "court_hierarchical",
+                "dense_head": _residual_dense_head(),
+            },
+            "mixed": {"batch_size": 8},
         }
     )
 
@@ -72,7 +100,19 @@ def test_dictconfig_migration_preserves_interpolation() -> None:
         )
         == LINE_TARGET_SCHEMA
     )
+    assert OmegaConf.select(migrated, "model.dense_head") is None
+    assert OmegaConf.select(migrated, "mixed") is None
     assert OmegaConf.select(legacy, "run.artifact_store") is None
+    assert OmegaConf.select(legacy, "model.dense_head.name") == "residual"
+
+
+def test_dense_head_metadata_is_extracted_without_mutation() -> None:
+    legacy = OmegaConf.create(_legacy_config())
+
+    extracted = extract_court_checkpoint_dense_head_config(legacy)
+
+    assert extracted == _residual_dense_head()
+    assert OmegaConf.select(legacy, "model.dense_head.name") == "residual"
 
 
 def test_current_config_requires_no_override() -> None:
@@ -88,21 +128,18 @@ def test_current_config_requires_no_override() -> None:
                 ]
             }
         },
+        "model": {"name": "court_hierarchical"},
     }
 
     assert migrate_court_inference_config(current) is None
+    assert extract_court_checkpoint_dense_head_config(current) is None
 
 
 def test_checkpoint_metadata_loader_returns_migrated_config(tmp_path) -> None:
     checkpoint_path = tmp_path / "legacy.ckpt"
     torch.save(
         {
-            "hyper_parameters": {
-                "config": {
-                    "run": {"output_dir": "outputs/test"},
-                    "data": {"processing": {"targets": _legacy_targets()}},
-                }
-            },
+            "hyper_parameters": {"config": _legacy_config()},
             "state_dict": {"weight": torch.ones(1)},
         },
         checkpoint_path,
@@ -115,3 +152,5 @@ def test_checkpoint_metadata_loader_returns_migrated_config(tmp_path) -> None:
     assert migrated["data"]["processing"]["targets"][2]["target_schema"] == (
         LINE_TARGET_SCHEMA
     )
+    assert "dense_head" not in migrated["model"]
+    assert "mixed" not in migrated
