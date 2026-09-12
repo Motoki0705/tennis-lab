@@ -31,7 +31,7 @@ def test_train_mixed_config_reuses_two_sources_with_canonical_kp_scope() -> None
     standard, mixed = resolve_mixed_training_config(config)
 
     assert standard.data.source.kind == "synthetic_court"
-    assert standard.data.source.keypoint_court_scope == "target_court"
+    assert standard.data.source.court_scope == "target_court"
     assert set(mixed.sources) == {
         "synthetic_court",
         "tennis_court_detector",
@@ -68,7 +68,7 @@ def test_pose_preset_is_default_for_mixed_training_and_synthetic_only() -> None:
     assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
     assert not runtime.loss.consistency.enabled
     assert synthetic.kind == "synthetic_court"
-    assert synthetic.keypoint_court_scope == "target_court"
+    assert synthetic.court_scope == "target_court"
 
 
 def test_pose_lora_training_selects_best_checkpoint_by_direct_pose_loss() -> None:
@@ -94,12 +94,15 @@ def test_mixed_kp_config_rejects_noncanonical_synthetic_scope() -> None:
         config = compose(
             config_name="train_mixed",
             overrides=[
-                "data.source.keypoint_court_scope=all_courts",
+                "data.source.court_scope=all_courts",
                 "run.output_dir=court_detection/mixed-source/invalid-scope-test",
             ],
         )
 
-    with pytest.raises(SemanticConfigurationError, match="Mixed KP training"):
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="single-court SEG/LINE targets require",
+    ):
         resolve_mixed_training_config(config)
 
 

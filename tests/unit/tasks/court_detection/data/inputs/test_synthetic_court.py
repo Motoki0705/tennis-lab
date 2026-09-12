@@ -271,13 +271,13 @@ def _input(
     root: Path,
     *,
     schema: Literal["v1", "v2", "v3"] = "v2",
-    keypoint_court_scope: Literal["all_courts", "target_court"] = "all_courts",
+    court_scope: Literal["all_courts", "target_court"] = "all_courts",
 ) -> SyntheticCourtInput:
     return SyntheticCourtInput(
         SyntheticCourtSourceConfig(
             kind="synthetic_court",
             schema=schema,
-            keypoint_court_scope=keypoint_court_scope,
+            court_scope=court_scope,
             workspace_root=root,
             scene_ids=("B00",),
         ),
@@ -398,7 +398,7 @@ def test_v3_parser_preserves_court_sample_001588_serialized_precision(
     input_layer = _input(
         tmp_path,
         schema="v3",
-        keypoint_court_scope="target_court",
+        court_scope="target_court",
     )
     raw = input_layer.load(input_layer.records("train")[0])
 
@@ -410,7 +410,7 @@ def test_v3_parser_preserves_court_sample_001588_serialized_precision(
         rtol=0.0,
         atol=0.0,
     )
-    assert raw.court_instances[1].points_xy.dtype == torch.float32
+    assert raw.court_instances[0].points_xy.dtype == torch.float32
 
 
 def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping(
@@ -421,7 +421,7 @@ def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping
     target_input = _input(
         tmp_path,
         schema="v3",
-        keypoint_court_scope="target_court",
+        court_scope="target_court",
     )
 
     all_raw = all_input.load(all_input.records("train")[0])
@@ -437,10 +437,9 @@ def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping
         _CAMERA_VIEW_PHYSICAL
     )
     assert [instance.court_instance_id for instance in target_raw.court_instances] == [
-        "court-a",
         "court-b",
     ]
-    assert target_input.records("train")[0].dense_target_refs == all_input.records(
+    assert target_input.records("train")[0].dense_target_refs != all_input.records(
         "train"
     )[0].dense_target_refs
 
@@ -566,7 +565,7 @@ def test_v2_target_scope_selects_exact_bound_court_and_keeps_dense_inventory(
 ) -> None:
     _write_v2_dataset(tmp_path)
     all_input = _input(tmp_path)
-    target_input = _input(tmp_path, keypoint_court_scope="target_court")
+    target_input = _input(tmp_path, court_scope="target_court")
 
     all_record = all_input.records("train")[0]
     target_record = target_input.records("train")[0]
@@ -594,24 +593,22 @@ def test_v2_target_scope_selects_exact_bound_court_and_keeps_dense_inventory(
     torch.testing.assert_close(
         target_channels.physical_indices[:, 0], all_channels.physical_indices[:, 1]
     )
-    assert target_record.dense_target_refs == all_record.dense_target_refs
+    assert target_record.dense_target_refs != all_record.dense_target_refs
     assert (
         target_record.payload["source_target_sha256"]
-        == all_record.payload["source_target_sha256"]
+        != all_record.payload["source_target_sha256"]
     )
     assert [instance.court_instance_id for instance in target_raw.court_instances] == [
-        "court-a",
         "court-b",
     ]
-    for target_instance, all_instance in zip(
-        target_raw.court_instances,
-        all_raw.court_instances,
-        strict=True,
-    ):
-        torch.testing.assert_close(target_instance.points_xy, all_instance.points_xy)
-        torch.testing.assert_close(
-            target_instance.point_visible, all_instance.point_visible
-        )
+    torch.testing.assert_close(
+        target_raw.court_instances[0].points_xy,
+        all_raw.court_instances[1].points_xy,
+    )
+    torch.testing.assert_close(
+        target_raw.court_instances[0].point_visible,
+        all_raw.court_instances[1].point_visible,
+    )
 
 
 def test_v2_target_scope_is_independent_of_projection_order(tmp_path: Path) -> None:
@@ -622,14 +619,14 @@ def test_v2_target_scope_is_independent_of_projection_order(tmp_path: Path) -> N
     ):
         root = tmp_path / name
         _write_v2_dataset(root, court_order=order)
-        input_layer = _input(root, keypoint_court_scope="target_court")
+        input_layer = _input(root, court_scope="target_court")
 
         raw = input_layer.load(input_layer.records("train")[0])
 
         assert raw.keypoint_channels is not None
-        assert [instance.court_instance_id for instance in raw.court_instances] == list(
-            order
-        )
+        assert [instance.court_instance_id for instance in raw.court_instances] == [
+            "court-b"
+        ]
         selected_points.append(raw.keypoint_channels.points_xy)
 
     torch.testing.assert_close(selected_points[0], selected_points[1])
@@ -640,7 +637,7 @@ def test_v2_target_scope_keeps_all_invisible_target_without_fallback(
 ) -> None:
     _write_v2_dataset(tmp_path, invisible_court_id="court-b")
     all_input = _input(tmp_path)
-    target_input = _input(tmp_path, keypoint_court_scope="target_court")
+    target_input = _input(tmp_path, court_scope="target_court")
 
     all_raw = all_input.load(all_input.records("train")[0])
     target_raw = target_input.load(target_input.records("train")[0])
@@ -661,7 +658,7 @@ def test_v2_target_scope_flip_preserves_semantic_and_physical_identity(
     tmp_path: Path,
 ) -> None:
     _write_v2_dataset(tmp_path)
-    input_layer = _input(tmp_path, keypoint_court_scope="target_court")
+    input_layer = _input(tmp_path, court_scope="target_court")
     raw = input_layer.load(input_layer.records("train")[0])
     assert raw.keypoint_channels is not None
 
@@ -686,7 +683,6 @@ def test_v2_target_scope_flip_preserves_semantic_and_physical_identity(
     )
     assert sorted(flipped.physical_indices[:, 0].tolist()) == list(range(14))
     assert [instance.court_instance_id for instance in raw.court_instances] == [
-        "court-a",
         "court-b",
     ]
 
@@ -865,7 +861,7 @@ def test_v2_rejects_invalid_target_and_physical_inventory(
     labels["projection"] = deepcopy(record["projection"])
     labels_path.write_text(json.dumps(labels), encoding="utf-8")
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    input_layer = _input(tmp_path, keypoint_court_scope="target_court")
+    input_layer = _input(tmp_path, court_scope="target_court")
 
     with pytest.raises(ValueError, match="target_court|instance|class|physical"):
         input_layer.load(input_layer.records("train")[0])
@@ -895,7 +891,7 @@ def test_v2_target_scope_rejects_missing_or_invalid_binding(
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     with pytest.raises((TypeError, ValueError), match="target_court|binding|court"):
-        _input(tmp_path, keypoint_court_scope="target_court")
+        _input(tmp_path, court_scope="target_court")
 
 
 def test_v2_target_scope_rejects_labels_manifest_binding_mismatch(
@@ -911,7 +907,7 @@ def test_v2_target_scope_rejects_labels_manifest_binding_mismatch(
         binding["court_instance_id"] = "court-a"
 
     _rewrite(labels_path, _change_binding)
-    input_layer = _input(tmp_path, keypoint_court_scope="target_court")
+    input_layer = _input(tmp_path, court_scope="target_court")
 
     with pytest.raises(ValueError, match="target_court disagrees with manifest"):
         input_layer.load(input_layer.records("train")[0])

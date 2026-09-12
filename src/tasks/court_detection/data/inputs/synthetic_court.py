@@ -170,7 +170,7 @@ class SyntheticCourtInput:
             source_schema = COURT_DATASET_SCHEMA_V2
             keypoint_schema = (
                 _V2_TARGET_COURT_KP_SCHEMA
-                if config.keypoint_court_scope == "target_court"
+                if config.court_scope == "target_court"
                 else _V2_KP_SCHEMA
             )
             channel_names = _V2_CHANNEL_NAMES
@@ -179,7 +179,7 @@ class SyntheticCourtInput:
             source_schema = COURT_DATASET_SCHEMA_V3
             keypoint_schema = (
                 _V3_TARGET_COURT_KP_SCHEMA
-                if config.keypoint_court_scope == "target_court"
+                if config.court_scope == "target_court"
                 else _V3_KP_SCHEMA
             )
             channel_names = _V2_CHANNEL_NAMES
@@ -230,6 +230,17 @@ class SyntheticCourtInput:
         labels = self._load_labels(record)
         projection = labels["projection"]
         instances, channels = self._parse_projection(projection, record=record)
+        if self.config.court_scope == "target_court":
+            target_court_id = record.payload.get("target_court_id")
+            instances = tuple(
+                instance
+                for instance in instances
+                if instance.court_instance_id == target_court_id
+            )
+            if len(instances) != 1:
+                raise ValueError(
+                    "Synthetic Court target scope must resolve exactly one court instance."
+                )
         image = self._load_rgb(record)
         width, height = image.size
         if (width, height) != (
@@ -493,6 +504,7 @@ class SyntheticCourtInput:
         digest_payload = {
             "source_schema": self.spec.source_schema,
             "source_sample_id": source_sample_id,
+            "court_scope": self.config.court_scope,
             "width": width,
             "height": height,
             "projection": value["projection"],
@@ -516,7 +528,7 @@ class SyntheticCourtInput:
         source_target_digest = hashlib.sha256(digest_bytes).hexdigest()
 
         stable_id = f"{scene_id}:{source_sample_id}"
-        derived_key = f"{scene_id}/{source_sample_id}"
+        derived_key = f"{self.config.court_scope}/{scene_id}/{source_sample_id}"
         return CourtSampleRecord(
             sample_id=stable_id,
             split=split,
@@ -537,6 +549,7 @@ class SyntheticCourtInput:
             },
             payload={
                 "source_schema": self.spec.source_schema,
+                "court_scope": self.config.court_scope,
                 "source_sample_id": source_sample_id,
                 "scene_id": scene_id,
                 "dataset_root": root.resolve(strict=True),
@@ -966,7 +979,7 @@ class SyntheticCourtInput:
             )
         selected_courts = (
             validated_court_channels
-            if self.config.keypoint_court_scope == "all_courts"
+            if self.config.court_scope == "all_courts"
             else [
                 court
                 for court in validated_court_channels
