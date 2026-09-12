@@ -15,7 +15,7 @@ from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.inference.checkpoint_compat import (
-    load_court_inference_config_override,
+    load_court_inference_lightning_module,
 )
 from src.tasks.court_detection.inference.keypoint_decoder import (
     CourtKeypointDecoderConfig,
@@ -29,10 +29,8 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelOutput,
 )
 from src.tasks.court_detection.model_io.images import prepare_court_image
-from src.tasks.court_detection.training.lightning_module import (
-    CourtDetectionLightningModule,
-)
 from src.utils.configuration import PathResolver
+from src.utils.device import resolve_device
 
 CourtBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
@@ -99,25 +97,39 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         max_peaks: int = 1,
         **kwargs: Any,
     ) -> Self:
-        """Load one checkpoint and preserve its serialized target bundle."""
+        """Load one checkpoint and preserve its serialized target bundle.
+
+        The loader supports current checkpoints and the deployed residual-head
+        pose checkpoint while keeping the training configuration parser strict.
+        Only ``config``, ``strict``, and ``weights_only=False`` are accepted as
+        checkpoint-loading options.
+        """
         checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
         if len(checkpoints) != 1:
             raise ValueError(
                 f"{cls.__name__} expects a single checkpoint, "
                 f"got {len(checkpoints)} checkpoints."
             )
-        if "config" not in kwargs:
-            config_override = load_court_inference_config_override(checkpoints[0])
-            if config_override is not None:
-                kwargs["config"] = config_override
 
-        lightning_module, resolved_device = cls._load_single_lightning_module(
+        config_override = kwargs.pop("config", None)
+        strict = kwargs.pop("strict", True)
+        weights_only = kwargs.pop("weights_only", False)
+        if kwargs:
+            unknown = ", ".join(sorted(kwargs))
+            raise TypeError(f"Unsupported Court checkpoint options: {unknown}.")
+        if not isinstance(strict, bool):
+            raise TypeError("Court checkpoint strict option must be boolean.")
+        if weights_only is not False:
+            raise ValueError(
+                "Court inference requires weights_only=False so serialized "
+                "configuration and target contracts can be restored."
+            )
+
+        resolved_device = resolve_device(device)
+        lightning_module = load_court_inference_lightning_module(
             checkpoints[0],
-            CourtDetectionLightningModule,
-            resolver=resolver,
-            device=device,
-            weights_only=False,
-            **kwargs,
+            config_override=config_override,
+            strict=strict,
         )
         adapter = lightning_module.model_io
         adapter.validate_model_pair(lightning_module.model)
