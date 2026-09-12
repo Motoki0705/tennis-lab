@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, cast
@@ -10,40 +10,69 @@ from typing import Any, cast
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.court_detection.configuration import LINE_TARGET_SCHEMA
+
 _LOCAL_ARTIFACT_STORE: dict[str, object] = {
     "mode": "local",
     "remote": None,
     "remote_root": None,
     "sync_interval_seconds": None,
 }
+_LEGACY_LINE_TARGET_SCHEMAS = frozenset(
+    {
+        "court_line_binary_75mm_150mm_v2",
+    }
+)
+
+
+def _migrate_plain_config(config: MutableMapping[str, Any]) -> bool:
+    changed = False
+
+    run = config.get("run")
+    if isinstance(run, MutableMapping) and "artifact_store" not in run:
+        run["artifact_store"] = deepcopy(_LOCAL_ARTIFACT_STORE)
+        changed = True
+
+    data = config.get("data")
+    processing = data.get("processing") if isinstance(data, Mapping) else None
+    targets = processing.get("targets") if isinstance(processing, Mapping) else None
+    if isinstance(targets, list):
+        for target in targets:
+            if not isinstance(target, MutableMapping) or target.get("kind") != "line":
+                continue
+            if target.get("target_schema") in _LEGACY_LINE_TARGET_SCHEMAS:
+                target["target_schema"] = LINE_TARGET_SCHEMA
+                changed = True
+
+    return changed
 
 
 def migrate_court_inference_config(config: object) -> object | None:
-    """Add inference-safe defaults missing from historical training configs.
+    """Normalize historical training metadata for model-only inference.
 
-    Training entry points remain strict and require every current field. This
-    migration is deliberately scoped to checkpoint inference, where artifact
-    publication settings do not affect model construction or predictions.
+    Training entry points remain strict and require current configuration.
+    This migration is scoped to checkpoint inference and only changes fields
+    irrelevant to model weights or forward semantics:
+
+    - missing artifact publication settings become a local-only store;
+    - retired line-target generator schema names become the current one.
 
     Returns ``None`` when no known migration is required.
     """
     if isinstance(config, DictConfig):
-        run = config.get("run")
-        if not isinstance(run, DictConfig) or "artifact_store" in run:
+        raw = OmegaConf.to_container(config, resolve=False)
+        if not isinstance(raw, dict):
             return None
-        migrated = OmegaConf.create(OmegaConf.to_container(config, resolve=False))
-        migrated.run.artifact_store = deepcopy(_LOCAL_ARTIFACT_STORE)
-        return migrated
+        migrated = cast("dict[str, Any]", raw)
+        if not _migrate_plain_config(migrated):
+            return None
+        return OmegaConf.create(migrated)
 
     if not isinstance(config, Mapping):
         return None
-    run = config.get("run")
-    if not isinstance(run, Mapping) or "artifact_store" in run:
-        return None
     migrated_mapping = deepcopy(dict(cast("Mapping[str, Any]", config)))
-    migrated_run = deepcopy(dict(cast("Mapping[str, Any]", run)))
-    migrated_run["artifact_store"] = deepcopy(_LOCAL_ARTIFACT_STORE)
-    migrated_mapping["run"] = migrated_run
+    if not _migrate_plain_config(migrated_mapping):
+        return None
     return migrated_mapping
 
 
