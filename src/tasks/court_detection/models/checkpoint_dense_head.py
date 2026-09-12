@@ -1,7 +1,7 @@
 """Reconstruct serialized Court dense heads for checkpoint inference.
 
 The residual head was used by the deployed pose checkpoint before its training
-configuration was merged into the main configuration surface.  Keeping this
+configuration was merged into the main configuration surface. Keeping this
 small parser next to the model code lets inference restore the exact module
 hierarchy and state-dict keys without weakening current training validation.
 """
@@ -12,7 +12,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
-import torch
 from torch import Tensor, nn
 
 from src.tasks.court_detection.data.contracts import CourtTargetKind
