@@ -546,7 +546,7 @@ class DockerSandbox:
                 with os.fdopen(descriptor, "r") as stream:
                     if stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                         observed = json.loads(stream.read(4096))
-                        if isinstance(observed, dict) and observed.get("outcome") in {"succeeded", "failed", "timed_out"}:
+                        if isinstance(observed, dict) and isinstance(observed.get("outcome"), str) and observed["outcome"] in {"succeeded", "failed", "timed_out"}:
                             outcome = observed["outcome"]
         return {
             "image_id": document.get("Image"),
