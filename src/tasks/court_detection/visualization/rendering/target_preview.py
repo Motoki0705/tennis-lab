@@ -59,11 +59,19 @@ def render_segmentation_target(
     mask: torch.Tensor | NDArray[np.integer[Any]],
     *,
     alpha: float,
+    max_label: int = 6,
 ) -> UInt8Array:
-    """Overlay the exact 0..6 categorical target while preserving background."""
+    """Overlay a categorical target while preserving background."""
     array = _mask_array(mask)
-    if array.shape != rgb.shape[:2] or int(array.max(initial=0)) > 6:
-        raise ValueError("SEG preview requires a matching label map in [0,6].")
+    if (
+        max_label < 0
+        or array.shape != rgb.shape[:2]
+        or int(array.min(initial=0)) < 0
+        or int(array.max(initial=0)) > max_label
+    ):
+        raise ValueError(
+            f"Categorical preview requires a matching label map in [0,{max_label}]."
+        )
     colored = colorize_seg_mask(array)
     return _blend_where(rgb, colored, array > 0, alpha=alpha)
 
@@ -114,6 +122,17 @@ def summarize_targets(
         array = _mask_array(cast("torch.Tensor", seg))
         values, counts = np.unique(array, return_counts=True)
         result["seg"] = {
+            "shape": list(array.shape),
+            "class_pixel_counts": {
+                str(int(value)): int(count)
+                for value, count in zip(values, counts, strict=True)
+            },
+        }
+    semantic_line = targets.get("semantic_line")
+    if semantic_line is not None:
+        array = _mask_array(cast("torch.Tensor", semantic_line))
+        values, counts = np.unique(array, return_counts=True)
+        result["semantic_line"] = {
             "shape": list(array.shape),
             "class_pixel_counts": {
                 str(int(value)): int(count)

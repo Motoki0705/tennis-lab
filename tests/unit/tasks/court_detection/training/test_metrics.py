@@ -114,7 +114,7 @@ def test_kp_metric_all_invisible_is_zero() -> None:
 
 
 def test_target_court_metric_uses_single_point_capacity() -> None:
-    metrics = CourtDetectionMetrics("kp", 1, singleton_kp=True)
+    metrics = CourtDetectionMetrics("kp", 1)
     expected = torch.tensor([[[[4.0, 4.0]]]])
     target = _target(expected, visible=torch.tensor([[[True]]]))
     logits = torch.full((1, 1, 16, 16), -10.0)
@@ -135,7 +135,7 @@ def test_target_court_metric_uses_single_point_capacity() -> None:
 
 
 def test_singleton_metric_uses_one_global_peak_not_nearest_fallback() -> None:
-    metrics = CourtDetectionMetrics("kp", 1, singleton_kp=True)
+    metrics = CourtDetectionMetrics("kp", 1)
     expected = torch.tensor([[[[4.0, 4.0]]]])
     target = _target(expected, visible=torch.tensor([[[True]]]))
     logits = torch.full((1, 1, 16, 16), -10.0)
@@ -152,7 +152,7 @@ def test_singleton_metric_uses_one_global_peak_not_nearest_fallback() -> None:
 
 
 def test_singleton_metric_excludes_padding_and_reports_median_pixels() -> None:
-    metrics = CourtDetectionMetrics("kp", 2, singleton_kp=True)
+    metrics = CourtDetectionMetrics("kp", 2)
     expected = torch.tensor([[[[2.0, 1.0]], [[6.0, 3.0]]]])
     target = _target(
         expected,
@@ -176,6 +176,20 @@ def test_singleton_metric_excludes_padding_and_reports_median_pixels() -> None:
         "mean_distance_px": 0.0,
         "median_distance_px": 0.0,
     }
+
+
+def test_semantic_line_metric_uses_categorical_miou() -> None:
+    metrics = CourtDetectionMetrics("semantic_line", 3)
+    target = torch.tensor([[[0, 1, 2], [2, 1, 0]]], dtype=torch.long)
+    logits = torch.nn.functional.one_hot(target, num_classes=3).permute(0, 3, 1, 2)
+
+    metrics.update(
+        logits.float(),
+        target,
+        image_size=torch.tensor([[2, 3]], dtype=torch.long),
+    )
+
+    assert metrics.compute()["miou"] == pytest.approx(1.0)
 
 
 def test_pose_metrics_report_metric_translation_rotation_and_focal() -> None:

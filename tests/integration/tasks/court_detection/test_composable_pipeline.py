@@ -482,7 +482,11 @@ def _materialize(config: DictConfig) -> None:
         target_store=store,
     ).materialize(
         splits=input_layer.available_splits,
-        target_kinds=("seg", "line"),
+        target_kinds=(
+            ("seg", "line")
+            if config.data.source.get("schema") == "v1"
+            else ("seg", "line", "semantic_line")
+        ),
     )
 
 
@@ -528,7 +532,7 @@ def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
     assert [item["source_kind"] for item in metadata].count(
         "tennis_court_detector"
     ) == 1
-    assert tuple(targets) == ("kp", "seg", "line")
+    assert tuple(targets) == ("kp", "seg", "line", "semantic_line")
     assert datamodule.target_bundle_spec.targets["kp"].channel_names == tuple(
         COURT_KP_NAMES[:14]
     )
@@ -599,7 +603,7 @@ def test_real_three_target_dataset_dataloader_contract(
     targets = cast(Mapping[str, object], batch["targets"])
     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
 
-    assert tuple(targets) == ("kp", "seg", "line")
+    assert tuple(targets) == ("kp", "seg", "line", "semantic_line")
     assert kp["heatmap"].shape == (1, kp_channels, 32, 48)
     assert kp["point_visible"].dtype == torch.bool
     assert cast(torch.Tensor, targets["seg"]).shape == (1, 32, 48)
@@ -853,7 +857,7 @@ def test_materialization_preserves_both_source_trees(
         else "synthetic_court"
     )
     derived = court_roots / "data/court_detection/derived_targets" / derived_kind
-    expected_file_count = 4 if source == "tennis_court_detector" else 6
+    expected_file_count = 6 if source == "tennis_court_detector" else 9
     assert len(tuple(derived.rglob("*.png"))) == expected_file_count
     assert len(tuple(derived.rglob("*.json"))) == expected_file_count
 
@@ -920,6 +924,7 @@ def test_datamodule_bound_three_head_forward_loss_backward(
         "kp": kp_channels,
         "seg": 7,
         "line": 1,
+        "semantic_line": 12,
     }
     assert torch.isfinite(result.loss)
     assert any(parameter.grad is not None for parameter in pair.model.parameters())

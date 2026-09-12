@@ -1,4 +1,4 @@
-"""Explicitly precompute selected segmentation/line Court targets.
+"""Explicitly precompute selected categorical/binary Court targets.
 
 Usage:
     python -m src.tasks.court_detection.scripts.materialize_targets data/processing=all
@@ -63,11 +63,11 @@ def main(config: DictConfig) -> int:  # pragma: no cover - CLI entry point
     dense = tuple(
         target.kind
         for target in runtime.data.processing.targets
-        if target.kind in {"seg", "line"}
+        if target.kind in {"seg", "line", "semantic_line"}
     )
     if not dense:
         raise ValueError(
-            "Select seg and/or line in data.processing.targets before materialization."
+            "Select seg, line, and/or semantic_line before materialization."
         )
     results = CourtTargetMaterializer(
         input_layer=input_layer,

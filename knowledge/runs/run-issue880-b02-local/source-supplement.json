@@ -1,0 +1,7 @@
+{
+  "reason": "Queue capture omitted untracked source modules. These modules were promoted from cfc211b8; formatting was normalized in that commit. Original queue capture files are preserved.",
+  "source_commit": "cfc211b87ad3a1027082f5a9f9092956f09eee11",
+  "paths": [
+    "comparison_configuration.py"
+  ]
+}

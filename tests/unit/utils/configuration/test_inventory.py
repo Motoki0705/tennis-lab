@@ -21,6 +21,10 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
         if boundary.domain == "synthetic_data_generation"
     }
     expected = {
+        "src.synthetic_data_generation.scripts.compare_semantic_alignment": (
+            "synthetic.semantic_comparison",
+            "src.synthetic_data_generation.scripts.compare_semantic_alignment.validate_comparison_boundary",
+        ),
         "src.synthetic_data_generation.scripts.generate_publication_visualizations": (
             "synthetic.publication_visualization",
             "src.synthetic_data_generation.visualization.publication.configuration."

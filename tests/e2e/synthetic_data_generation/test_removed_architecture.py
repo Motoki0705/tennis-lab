@@ -59,6 +59,8 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
 # The digests validate/reuse the exact measured source; they do not restore the
 # removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
+    # Comparison provenance only; never a production identity gate.
+    Path("src/synthetic_data_generation/alignment/semantic_comparison.py"): frozenset({"sha256"}),
     Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
         {"sha256"}
     ),
@@ -105,6 +107,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     assert scripts == {
         "__init__.py",
         "edit_alignment.py",
+        "compare_semantic_alignment.py",
         "generate_publication_visualizations.py",
         "review_court_dataset.py",
         "run_scene_pipeline.py",

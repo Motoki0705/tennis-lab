@@ -1,0 +1,319 @@
+diff --git a/src/synthetic_data_generation/alignment/semantic_comparison.py b/src/synthetic_data_generation/alignment/semantic_comparison.py
+index b6702941..8edf975b 100644
+--- a/src/synthetic_data_generation/alignment/semantic_comparison.py
++++ b/src/synthetic_data_generation/alignment/semantic_comparison.py
+@@ -14,6 +14,12 @@ from matplotlib.figure import Figure
+ from numpy.typing import NDArray
+ from PIL import Image
+ 
++from src.synthetic_data_generation.alignment.comparison_configuration import (
++    ComparisonRuntime,
++)
++from src.synthetic_data_generation.alignment.comparison_source import (
++    load_comparison_baseline,
++)
+ from src.synthetic_data_generation.alignment.evidence_source import (
+     _GroundPlane,
+     _project_probability_to_ground,
+@@ -29,13 +35,9 @@ from src.synthetic_data_generation.alignment.semantic import (
+     refine_placement,
+     transform_segments,
+ )
+-from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
+ from src.synthetic_data_generation.reconstruction.scene_export import (
+     validate_standard_scene_export,
+ )
+-from src.synthetic_data_generation.visualization.publication.alignment import (
+-    load_alignment_publication_data,
+-)
+ from src.tasks.court_detection.inference.mask_predictor import (
+     CourtLinePredictor,
+     CourtSemanticLinePredictor,
+@@ -49,7 +51,7 @@ from src.utils.seeding import seed_everything
+ 
+ 
+ def compare_alignment(
+-    runtime: ScenePipelineConfiguration,
++    runtime: ComparisonRuntime,
+     *,
+     checkpoint: Path,
+     output: Path,
+@@ -63,7 +65,7 @@ def compare_alignment(
+     if output.exists():
+         raise FileExistsError(f"Comparison output already exists: {output}")
+     scene_root = runtime.workspace.root
+-    baseline = load_alignment_publication_data(scene_root / "alignment")
++    baseline = load_comparison_baseline(scene_root / "alignment")
+     scene = validate_standard_scene_export(
+         scene_root / "reconstruction/export/scene.json"
+     )
+@@ -76,7 +78,7 @@ def compare_alignment(
+     )
+     binary = CourtLinePredictor(semantic.model_io, semantic.device)
+     spec = semantic.adapter.spec.target_bundle.targets["semantic_line"]
+-    frame = baseline.evidence.ground_plane_frame
++    frame = baseline.plane
+     scale = baseline.result.metric_adapter.nht_scene_units_per_metre
+     normal = np.asarray(frame.normal_metric_scene)
+     origin = np.asarray(frame.origin_metric_scene)
+diff --git a/src/synthetic_data_generation/configs/compare_semantic_alignment.yaml b/src/synthetic_data_generation/configs/compare_semantic_alignment.yaml
+index 9608dbe9..2b64e78c 100644
+--- a/src/synthetic_data_generation/configs/compare_semantic_alignment.yaml
++++ b/src/synthetic_data_generation/configs/compare_semantic_alignment.yaml
+@@ -2,6 +2,9 @@ defaults:
+   - run_scene_pipeline
+   - _self_
+ 
++roots:
++  checkpoint_root: outputs
++
+ comparison:
+   checkpoint: ???
+   output: ???
+diff --git a/src/synthetic_data_generation/scripts/compare_semantic_alignment.py b/src/synthetic_data_generation/scripts/compare_semantic_alignment.py
+index 76df0407..7f2286ab 100644
+--- a/src/synthetic_data_generation/scripts/compare_semantic_alignment.py
++++ b/src/synthetic_data_generation/scripts/compare_semantic_alignment.py
+@@ -4,21 +4,18 @@ from __future__ import annotations
+ 
+ from omegaconf import DictConfig, OmegaConf
+ 
++from src.synthetic_data_generation.alignment.comparison_configuration import (
++    ComparisonRuntime,
++)
+ from src.synthetic_data_generation.alignment.semantic_comparison import (
+     compare_alignment,
+ )
+-from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
+ from src.utils.configuration import PathRole
+-from src.utils.hydra import hydra_main
++from src.utils.hydra import hydra_main, register_boundary_validator
+ 
+ 
+-@hydra_main(
+-    config_path="../configs",
+-    config_name="compare_semantic_alignment",
+-    version_base="1.3",
+-)
+-def main(config: DictConfig) -> None:
+-    """Load explicit source/output authority and execute one paired comparison."""
++def validate_comparison_boundary(config: DictConfig) -> None:
++    """Validate comparison and scene authority before loading a model."""
+     options = config.comparison
+     expected = {
+         "checkpoint",
+@@ -31,13 +28,30 @@ def main(config: DictConfig) -> None:
+     }
+     if set(options) != expected:
+         raise ValueError("Unexpected comparison configuration keys.")
+-    runtime = ScenePipelineConfiguration.from_config(
++    ComparisonRuntime.from_config(
++        OmegaConf.masked_copy(config, [key for key in config if key != "comparison"])
++    )
++
++
++register_boundary_validator("synthetic.semantic_comparison", validate_comparison_boundary)
++
++
++@hydra_main(
++    config_path="../configs",
++    config_name="compare_semantic_alignment",
++    version_base="1.3",
++    validation_boundary="synthetic.semantic_comparison",
++)
++def main(config: DictConfig) -> None:
++    """Load explicit source/output authority and execute one paired comparison."""
++    options = config.comparison
++    runtime = ComparisonRuntime.from_config(
+         OmegaConf.masked_copy(config, [key for key in config if key != "comparison"])
+     )
+     output = runtime.resolver.resolve(PathRole.OUTPUT, str(options.output))
+     compare_alignment(
+         runtime,
+-        checkpoint=runtime.resolver.resolve(PathRole.OUTPUT, str(options.checkpoint)),
++        checkpoint=runtime.resolver.resolve(PathRole.CHECKPOINT, str(options.checkpoint)),
+         output=output,
+         grid_spacing_metres=float(options.grid_spacing_metres),
+         translation_radius_metres=float(options.translation_radius_metres),
+diff --git a/src/utils/configuration/inventory.py b/src/utils/configuration/inventory.py
+index 17e17976..a127c12f 100644
+--- a/src/utils/configuration/inventory.py
++++ b/src/utils/configuration/inventory.py
+@@ -137,6 +137,7 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
+ 
+ 
+ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
++    "src.synthetic_data_generation.scripts.compare_semantic_alignment": "synthetic.semantic_comparison",
+     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
+     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
+     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
+@@ -195,6 +196,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+ }
+ 
+ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
++    "src.synthetic_data_generation.scripts.compare_semantic_alignment": "src.synthetic_data_generation.scripts.compare_semantic_alignment.validate_comparison_boundary",
+     "src.synthetic_data_generation.scripts.generate_publication_visualizations": (
+         "src.synthetic_data_generation.visualization.publication.configuration."
+         "validate_publication_boundary"
+@@ -380,6 +382,10 @@ _RUNTIME_BOUNDARIES = (
+         "synthetic_data_generation",
+         "src.synthetic_data_generation.scripts.visualize_dataset",
+     ),
++    _runtime_boundary(
++        "synthetic_data_generation",
++        "src.synthetic_data_generation.scripts.compare_semantic_alignment",
++    ),
+     _runtime_boundary(
+         "ball_detection", "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio"
+     ),
+diff --git a/tests/e2e/synthetic_data_generation/test_removed_architecture.py b/tests/e2e/synthetic_data_generation/test_removed_architecture.py
+index 18c578d0..7951a08a 100644
+--- a/tests/e2e/synthetic_data_generation/test_removed_architecture.py
++++ b/tests/e2e/synthetic_data_generation/test_removed_architecture.py
+@@ -59,6 +59,8 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
+ # The digests validate/reuse the exact measured source; they do not restore the
+ # removed artifact-reference, scene-identity, or content-addressed publication model.
+ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
++    # Comparison provenance only; never a production identity gate.
++    Path("src/synthetic_data_generation/alignment/semantic_comparison.py"): frozenset({"sha256"}),
+     Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
+         {"sha256"}
+     ),
+@@ -105,6 +107,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
+     assert scripts == {
+         "__init__.py",
+         "edit_alignment.py",
++        "compare_semantic_alignment.py",
+         "generate_publication_visualizations.py",
+         "review_court_dataset.py",
+         "run_scene_pipeline.py",
+diff --git a/tests/integration/tasks/court_detection/test_composable_pipeline.py b/tests/integration/tasks/court_detection/test_composable_pipeline.py
+index 3e8b91b6..973fd63b 100644
+--- a/tests/integration/tasks/court_detection/test_composable_pipeline.py
++++ b/tests/integration/tasks/court_detection/test_composable_pipeline.py
+@@ -482,7 +482,8 @@ def _materialize(config: DictConfig) -> None:
+         target_store=store,
+     ).materialize(
+         splits=input_layer.available_splits,
+-        target_kinds=("seg", "line"),
++        target_kinds=(("seg", "line") if config.data.source.get("schema") == "v1"
++                      else ("seg", "line", "semantic_line")),
+     )
+ 
+ 
+@@ -528,7 +529,7 @@ def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
+     assert [item["source_kind"] for item in metadata].count(
+         "tennis_court_detector"
+     ) == 1
+-    assert tuple(targets) == ("kp", "seg", "line")
++    assert tuple(targets) == ("kp", "seg", "line", "semantic_line")
+     assert datamodule.target_bundle_spec.targets["kp"].channel_names == tuple(
+         COURT_KP_NAMES[:14]
+     )
+@@ -599,7 +600,7 @@ def test_real_three_target_dataset_dataloader_contract(
+     targets = cast(Mapping[str, object], batch["targets"])
+     kp = cast(Mapping[str, torch.Tensor], targets["kp"])
+ 
+-    assert tuple(targets) == ("kp", "seg", "line")
++    assert tuple(targets) == ("kp", "seg", "line", "semantic_line")
+     assert kp["heatmap"].shape == (1, kp_channels, 32, 48)
+     assert kp["point_visible"].dtype == torch.bool
+     assert cast(torch.Tensor, targets["seg"]).shape == (1, 32, 48)
+@@ -853,7 +854,7 @@ def test_materialization_preserves_both_source_trees(
+         else "synthetic_court"
+     )
+     derived = court_roots / "data/court_detection/derived_targets" / derived_kind
+-    expected_file_count = 4 if source == "tennis_court_detector" else 6
++    expected_file_count = 6 if source == "tennis_court_detector" else 9
+     assert len(tuple(derived.rglob("*.png"))) == expected_file_count
+     assert len(tuple(derived.rglob("*.json"))) == expected_file_count
+ 
+@@ -920,6 +921,7 @@ def test_datamodule_bound_three_head_forward_loss_backward(
+         "kp": kp_channels,
+         "seg": 7,
+         "line": 1,
++        "semantic_line": 12,
+     }
+     assert torch.isfinite(result.loss)
+     assert any(parameter.grad is not None for parameter in pair.model.parameters())
+diff --git a/tests/integration/tasks/court_detection/test_mixed_training_config.py b/tests/integration/tasks/court_detection/test_mixed_training_config.py
+index 3476c7a0..cdb01d71 100644
+--- a/tests/integration/tasks/court_detection/test_mixed_training_config.py
++++ b/tests/integration/tasks/court_detection/test_mixed_training_config.py
+@@ -65,7 +65,7 @@ def test_pose_preset_is_default_for_mixed_training_and_synthetic_only() -> None:
+         runtime.loss.pose.rotation_weight,
+         runtime.loss.pose.focal_weight,
+     ) == (1.0, 1.0, 1.0)
+-    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
++    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0, "semantic_line": 1.0}
+     assert not runtime.loss.consistency.enabled
+     assert synthetic.kind == "synthetic_court"
+     assert synthetic.court_scope == "target_court"
+diff --git a/tests/unit/synthetic_data_generation/alignment/test_semantic_comparison.py b/tests/unit/synthetic_data_generation/alignment/test_semantic_comparison.py
+index 74f0e556..b54f4ae6 100644
+--- a/tests/unit/synthetic_data_generation/alignment/test_semantic_comparison.py
++++ b/tests/unit/synthetic_data_generation/alignment/test_semantic_comparison.py
+@@ -28,6 +28,45 @@ from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCa
+ from src.tasks.court_detection.target_schemas import SEMANTIC_LINE_CHANNEL_NAMES
+ 
+ 
++def test_manual_source_rescales_plane_and_evidence_together(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    from src.synthetic_data_generation.alignment import comparison_source
++
++    (tmp_path / "manual-confirmation.json").write_text("{}")
++    frame = GroundPlaneFrame((2., 4., 0.), (1., 0., 0.), (0., 1., 0.), (0., 0., 1.), (-4., 4., -4., 4.))
++    heatmaps = AlignmentLineHeatmaps(frame.bounds_uv_metres, 1., 2., 2., (
++        AlignmentLineHeatmapView("fit", np.ones((2, 2), dtype=np.float32),
++                                np.asarray([[2., 2.]]), np.ones(1, dtype=np.float32), np.ones(1), True),
++    ))
++    original = MetricSceneAdapter.from_nht_scene_from_metric_scene(np.eye(4))
++    changed = MetricSceneAdapter.from_nht_scene_from_metric_scene(np.diag([2., 2., 2., 1.]))
++    monkeypatch.setattr(comparison_source, "validate_alignment_outputs", lambda path: SimpleNamespace(metric_adapter=changed))
++    monkeypatch.setattr(comparison_source, "validate_line_heatmaps", lambda path: heatmaps)
++    monkeypatch.setattr(comparison_source, "load_manual_source", lambda path: SimpleNamespace(plane=frame, initial=SimpleNamespace(metric_adapter=original)))
++    result = comparison_source.load_comparison_baseline(tmp_path)
++    assert result.heatmaps.raster_shape == heatmaps.raster_shape
++    np.testing.assert_allclose(result.plane.origin_metric_scene, (1, 2, 0))
++    np.testing.assert_allclose(result.heatmaps.views[0].points_uv, [[1, 1]])
++    np.testing.assert_allclose(
++        changed.nht_from_metric_points(result.plane.from_uv(result.heatmaps.views[0].points_uv)),
++        original.nht_from_metric_points(frame.from_uv(heatmaps.views[0].points_uv)),
++    )
++
++
++@pytest.mark.parametrize("profile", ["b00", "b01", "b02", "b03"])
++def test_comparison_configuration_ignores_unrequested_dataset_generation(profile: str) -> None:
++    from hydra import compose, initialize_config_dir
++
++    from src.synthetic_data_generation.alignment.comparison_configuration import ComparisonRuntime
++    from src.utils.paths import PROJECT_ROOT
++
++    with initialize_config_dir(config_dir=str(PROJECT_ROOT / "src/synthetic_data_generation/configs"), version_base="1.3"):
++        config = compose(config_name="compare_semantic_alignment", overrides=[f"profile={profile}"])
++    runtime = ComparisonRuntime.from_config(config)
++    assert runtime.workspace.scene_id == profile.upper()
++
++
+ def test_comparison_writes_both_methods_and_never_fits_holdout(
+     tmp_path: Path,
+     monkeypatch: pytest.MonkeyPatch,
+@@ -73,7 +112,7 @@ def test_comparison_writes_both_methods_and_never_fits_holdout(
+         ),
+     )
+     baseline = SimpleNamespace(
+-        evidence=SimpleNamespace(ground_plane_frame=frame),
++        plane=frame,
+         heatmaps=baseline_heatmaps,
+         result=SimpleNamespace(
+             metric_adapter=MetricSceneAdapter.from_nht_scene_from_metric_scene(
+@@ -93,7 +132,7 @@ def test_comparison_writes_both_methods_and_never_fits_holdout(
+         ),
+     )
+     monkeypatch.setattr(
+-        comparison, "load_alignment_publication_data", lambda path: baseline
++        comparison, "load_comparison_baseline", lambda path: baseline
+     )
+     monkeypatch.setattr(
+         comparison,
