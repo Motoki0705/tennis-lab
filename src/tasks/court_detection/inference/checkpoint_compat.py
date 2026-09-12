@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -18,6 +18,8 @@ from src.tasks.court_detection.models.checkpoint_dense_head import (
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+
+CourtInferenceConfig: TypeAlias = dict[str, Any] | DictConfig
 
 _LOCAL_ARTIFACT_STORE: dict[str, object] = {
     "mode": "local",
@@ -140,7 +142,7 @@ def migrate_court_inference_config(
     config: object,
     *,
     runtime_path_roots: Mapping[str, str] | None = None,
-) -> object | None:
+) -> CourtInferenceConfig | None:
     """Normalize historical training metadata for model-only inference.
 
     Training entry points remain strict and require current configuration.
@@ -168,7 +170,7 @@ def load_court_inference_config_override(
     checkpoint_path: Path,
     *,
     runtime_path_roots: Mapping[str, str] | None = None,
-) -> object | None:
+) -> CourtInferenceConfig | None:
     """Read only checkpoint metadata needed for known inference migrations."""
     checkpoint = torch.load(
         checkpoint_path,
@@ -254,6 +256,7 @@ def load_court_inference_lightning_module(
 
 
 __all__ = [
+    "CourtInferenceConfig",
     "extract_court_checkpoint_dense_head_config",
     "load_court_inference_config_override",
     "load_court_inference_lightning_module",
