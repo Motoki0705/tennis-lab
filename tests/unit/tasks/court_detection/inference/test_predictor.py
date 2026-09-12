@@ -203,9 +203,9 @@ def test_default_threshold_marks_weak_channel_as_invalid() -> None:
 
 
 def test_multi_peak_decode_requires_explicit_opt_in() -> None:
-    probabilities = torch.full((1, 7, 7), 0.001)
+    probabilities = torch.full((1, 11, 11), 0.001)
     probabilities[0, 2, 2] = 0.98
-    probabilities[0, 5, 5] = 0.08
+    probabilities[0, 8, 8] = 0.08
     logits = torch.logit(probabilities).unsqueeze(0)
 
     result = _predictor(
@@ -213,7 +213,7 @@ def test_multi_peak_decode_requires_explicit_opt_in() -> None:
         subpixel_refine=False,
         peak_threshold=0.05,
         max_peaks=2,
-    ).predict(torch.zeros(1, 3, 7, 7))
+    ).predict(torch.zeros(1, 3, 11, 11))
 
     assert result.valid.tolist() == [[True, True]]
     torch.testing.assert_close(result.scores, torch.tensor([[0.98, 0.08]]))
