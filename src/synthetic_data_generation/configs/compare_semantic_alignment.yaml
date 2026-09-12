@@ -2,6 +2,9 @@ defaults:
   - run_scene_pipeline
   - _self_
 
+roots:
+  checkpoint_root: outputs
+
 comparison:
   checkpoint: ???
   output: ???
