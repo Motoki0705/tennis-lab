@@ -9,6 +9,7 @@ from src.tasks.court_detection.data.processing.geometry import CourtProcessingGe
 from src.tasks.court_detection.data.processing.pipeline import CourtProcessingPipeline
 from src.tasks.court_detection.data.processing.targets import build_target_builder
 from src.tasks.court_detection.data.target_generation.store import (
+    LINE_TARGET_SCHEMA,
     CourtDerivedTargetStore,
 )
 
@@ -20,7 +21,21 @@ def build_court_processing_pipeline(
     require_pose: bool = False,
 ) -> CourtProcessingPipeline:
     store = CourtDerivedTargetStore(config.processing.derived_target_root)
-    input_layer = build_court_input(config.source, target_store=store)
+    line_schema = next(
+        (
+            target.target_schema
+            for target in config.processing.targets
+            if target.kind == "line"
+        ),
+        LINE_TARGET_SCHEMA,
+    )
+    if line_schema is None:  # pragma: no cover - typed line config owns its schema
+        raise ValueError("Court line target config has no schema.")
+    input_layer = build_court_input(
+        config.source,
+        target_store=store,
+        line_target_schema=line_schema,
+    )
     if (
         require_pose
         and CourtInputCapability.V3_TARGET_COURT_POSE

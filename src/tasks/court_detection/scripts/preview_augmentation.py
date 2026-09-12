@@ -4,6 +4,7 @@ Usage:
     python -m src.tasks.court_detection.scripts.preview_augmentation
     python -m src.tasks.court_detection.scripts.preview_augmentation data/processing=all
     python -m src.tasks.court_detection.scripts.preview_augmentation data/source=synthetic_court preview.split=val
+    python -m src.tasks.court_detection.scripts.preview_augmentation data/source=synthetic_court data/augmentation=pose_safe preview.require_pose=true
     python -m src.tasks.court_detection.scripts.preview_augmentation preview.sample_indices=[0,8,16]
 
 Notes:
@@ -12,9 +13,11 @@ Notes:
       panels are produced by building the dataset with `is_train=True` (full
       training pipeline) while the "original" panel uses `is_train=False`
       (deterministic validation resize only).
-    - Each sample renders one original panel plus `preview.num_augmented`
-      independently seeded augmentation draws, with task-specific annotations
-      (kp: keypoint circles, seg/line: mask overlay).
+    - preview.require_pose must match the intended loss route. When true, the
+      pipeline uses the same aspect-preserving camera-pose geometry as training.
+    - Each row is one exact dataset draw. Columns separately expose RGB, the
+      actual KP heatmap, categorical SEG mask, and binary LINE mask passed to
+      the losses; no target is hidden beneath another target's overlay.
     - Outputs are resolved beneath `paths.output_root`.
 """
 
@@ -46,15 +49,18 @@ from src.tasks.court_detection.data.processing.factory import (
     build_court_processing_pipeline,
 )
 from src.tasks.court_detection.visualization.rendering.common import (
-    colorize_seg_mask,
     denormalize_tensor_to_rgb,
+)
+from src.tasks.court_detection.visualization.rendering.target_preview import (
+    render_heatmap_target,
+    render_line_target,
+    render_segmentation_target,
+    summarize_targets,
 )
 from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.io import save_json
 
-_LINE_OVERLAY_RGB = (255, 96, 96)
-_KP_COLOR_RGB = (255, 80, 80)
 _BOUNDARY = "court_detection.preview_augmentation"
 
 
@@ -66,6 +72,7 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
     preview = require_config_mapping(root, "preview", path="configuration")
     expected = {
         "split",
+        "require_pose",
         "sample_indices",
         "max_samples",
         "num_augmented",
@@ -78,6 +85,7 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
         raise ValueError(f"preview requires exactly {sorted(expected)}.")
     for key in ("max_samples", "num_augmented", "seed"):
         require_config_value(preview, key, int, path="preview")
+    require_config_value(preview, "require_pose", bool, path="preview")
     if cast("int", preview["max_samples"]) <= 0:
         raise ValueError("preview.max_samples must be positive.")
     if cast("int", preview["num_augmented"]) < 1:
@@ -93,7 +101,7 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
         raise ValueError("preview.sample_indices must contain non-negative integers.")
     draw = require_config_mapping(preview, "draw", path="preview")
     layout = require_config_mapping(preview, "layout", path="preview")
-    if set(draw) != {"kp_radius", "kp_thickness", "mask_alpha"}:
+    if set(draw) != {"mask_alpha", "heatmap_alpha"}:
         raise ValueError("preview.draw has an invalid field set.")
     if set(layout) != {
         "tile_gap",
@@ -103,9 +111,8 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
         "background_rgb",
     }:
         raise ValueError("preview.layout has an invalid field set.")
-    for key in ("kp_radius", "kp_thickness"):
-        require_config_value(draw, key, int, path="preview.draw")
     require_config_value(draw, "mask_alpha", (float, int), path="preview.draw")
+    require_config_value(draw, "heatmap_alpha", (float, int), path="preview.draw")
     for key in ("tile_gap", "header_height", "text_thickness"):
         require_config_value(layout, key, int, path="preview.layout")
     require_config_value(layout, "text_scale", (float, int), path="preview.layout")
@@ -115,11 +122,10 @@ def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
         type(channel) is not int or not 0 <= channel <= 255 for channel in background
     ):
         raise ValueError("preview.layout.background_rgb must be three RGB integers.")
-    if any(cast("int", draw[key]) <= 0 for key in ("kp_radius", "kp_thickness")):
-        raise ValueError("preview keypoint draw sizes must be positive.")
     mask_alpha = float(cast("float | int", draw["mask_alpha"]))
-    if not 0.0 <= mask_alpha <= 1.0:
-        raise ValueError("preview.draw.mask_alpha must be in [0, 1].")
+    heatmap_alpha = float(cast("float | int", draw["heatmap_alpha"]))
+    if not 0.0 <= mask_alpha <= 1.0 or not 0.0 <= heatmap_alpha <= 1.0:
+        raise ValueError("preview draw alpha values must be in [0, 1].")
     if cast("int", layout["tile_gap"]) < 0 or any(
         cast("int", layout[key]) <= 0 for key in ("header_height", "text_thickness")
     ):
@@ -156,8 +162,13 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
-    base_dataset = _dataset(data, split=split_name, is_train=False)
-    augmented_dataset = _dataset(data, split=split_name, is_train=True)
+    require_pose = bool(cfg.preview.require_pose)
+    base_dataset = _dataset(
+        data, split=split_name, is_train=False, require_pose=require_pose
+    )
+    augmented_dataset = _dataset(
+        data, split=split_name, is_train=True, require_pose=require_pose
+    )
 
     target_kinds = tuple(target.kind for target in data.processing.targets)
     seed = int(cfg.preview.seed)
@@ -172,22 +183,43 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     for sample_index in sample_indices:
         _seed_all(seed + sample_index)
         base_sample = base_dataset[sample_index]
-        panels = [_annotate_sample(base_sample, target_kinds=target_kinds, cfg=cfg)]
-        titles = ["original"]
+        samples = [("orig", base_sample)]
         for variant in range(num_augmented):
             _seed_all(seed + sample_index * 1009 + variant + 1)
             augmented_sample = augmented_dataset[sample_index]
-            panels.append(
-                _annotate_sample(
-                    augmented_sample,
-                    target_kinds=target_kinds,
-                    cfg=cfg,
-                )
-            )
-            titles.append(f"augmented #{variant}")
+            samples.append((f"aug{variant}", augmented_sample))
 
-        panels = _pad_panels_to_common_size(panels, cfg)
-        sheet = compose_titled_row(panels, titles, cfg)
+        rendered_rows: list[tuple[list[np.ndarray], list[str]]] = []
+        variant_metadata: list[dict[str, object]] = []
+        sigma_ratio = _configured_sigma_ratio(data)
+        for title, sample in samples:
+            panels, panel_titles = _target_panels(
+                sample,
+                target_kinds=target_kinds,
+                title=title,
+                cfg=cfg,
+            )
+            rendered_rows.append((panels, panel_titles))
+            variant_metadata.append(
+                {
+                    "variant": title,
+                    "targets": summarize_targets(
+                        cast("Mapping[str, object]", sample["targets"]),
+                        sigma_ratio=sigma_ratio,
+                    ),
+                }
+            )
+        flattened_panels = [
+            panel for panels, _titles in rendered_rows for panel in panels
+        ]
+        padded = _pad_panels_to_common_size(flattened_panels, cfg)
+        rows: list[np.ndarray] = []
+        cursor = 0
+        for panels, panel_titles in rendered_rows:
+            row_panels = padded[cursor : cursor + len(panels)]
+            cursor += len(panels)
+            rows.append(compose_titled_row(row_panels, panel_titles, cfg))
+        sheet = _stack_rows(rows, cfg)
 
         sample_id = str(base_sample["sample_id"])
         file_stem = f"{sample_index:06d}_{sample_id.replace(':', '_')}"
@@ -200,7 +232,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             "targets": list(target_kinds),
             "split": split_name,
             "num_augmented": num_augmented,
+            "require_pose": require_pose,
             "output_image": str(image_path),
+            "variants": variant_metadata,
         }
         save_json(metadata, output_dir / f"{file_stem}.json")
         manifest.append(metadata)
@@ -222,82 +256,83 @@ def _dataset(
     *,
     split: str,
     is_train: bool,
+    require_pose: bool,
 ) -> CourtDetectionDataset:
     if split not in {"train", "val"}:
         raise ValueError("Preview split must be train or val.")
-    pipeline = build_court_processing_pipeline(data, is_train=is_train)
+    pipeline = build_court_processing_pipeline(
+        data,
+        is_train=is_train,
+        require_pose=require_pose,
+    )
     records = pipeline.input_layer.records(cast("CourtSourceSplit", split))
     return CourtDetectionDataset(records, pipeline=pipeline)
 
 
-def _annotate_sample(
+def _target_panels(
     sample: dict[str, Any],
     *,
     target_kinds: tuple[str, ...],
+    title: str,
     cfg: DictConfig,
-) -> np.ndarray:
-    """Render every selected target over one shared RGB geometry."""
-    image = cast("torch.Tensor", sample["image"])
-    rgb: np.ndarray = denormalize_tensor_to_rgb(image)
+) -> tuple[list[np.ndarray], list[str]]:
+    """Render RGB plus one non-overlapping panel per configured loss target."""
+    rgb = denormalize_tensor_to_rgb(cast("torch.Tensor", sample["image"]))
     targets = cast("Mapping[str, object]", sample["targets"])
+    panels = [rgb]
+    titles = [f"{title}: RGB"]
     for kind in target_kinds:
+        value = targets[kind]
         if kind == "kp":
-            rgb = _overlay_keypoints(rgb, targets[kind], cfg)
+            heatmap = cast("Mapping[str, torch.Tensor]", value)["heatmap"]
+            panel = render_heatmap_target(
+                rgb,
+                heatmap,
+                alpha=float(cfg.preview.draw.heatmap_alpha),
+            )
+            label = "KP heatmap (max)"
         elif kind == "seg":
-            rgb = _overlay_seg_mask(rgb, targets[kind], cfg)
+            panel = render_segmentation_target(
+                rgb,
+                cast("torch.Tensor", value),
+                alpha=float(cfg.preview.draw.mask_alpha),
+            )
+            label = "SEG classes 1..6"
         elif kind == "line":
-            rgb = _overlay_line_mask(rgb, targets[kind], cfg)
-        else:  # pragma: no cover - strict configuration rejects this
+            panel = render_line_target(
+                rgb,
+                cast("torch.Tensor", value),
+                alpha=float(cfg.preview.draw.mask_alpha),
+            )
+            label = "LINE binary"
+        else:  # pragma: no cover - strict configuration owns target kinds
             raise ValueError(f"Unknown Court target: {kind!r}")
-    return rgb
+        panels.append(panel)
+        titles.append(f"{title}: {label}")
+    return panels, titles
 
 
-def _overlay_keypoints(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
-    """Draw pixel-space court keypoints onto the panel."""
-    overlay = rgb.copy()
-    payload = cast("Mapping[str, torch.Tensor]", value)
-    keypoints = payload["points_xy"].cpu().numpy()
-    visible = payload["point_visible"].cpu().numpy()
-    height, width = overlay.shape[:2]
-    for x_pos, y_pos in keypoints[visible]:
-        if not (0.0 <= float(x_pos) < width and 0.0 <= float(y_pos) < height):
-            continue
-        cv2.circle(
-            overlay,
-            (int(round(float(x_pos))), int(round(float(y_pos)))),
-            int(cfg.preview.draw.kp_radius),
-            _KP_COLOR_RGB,
-            thickness=int(cfg.preview.draw.kp_thickness),
-            lineType=cv2.LINE_AA,
-        )
-    return overlay
+def _configured_sigma_ratio(data: CourtDataConfig) -> float | None:
+    for target in data.processing.targets:
+        if target.kind == "kp":
+            if target.sigma_ratio is None:  # pragma: no cover - typed config owns it
+                raise ValueError("Configured KP target has no sigma_ratio.")
+            return float(target.sigma_ratio)
+    return None
 
 
-def _overlay_seg_mask(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
-    """Blend the colorized segmentation mask over foreground pixels."""
-    mask = cast("torch.Tensor", value).cpu().numpy()
-    colored = colorize_seg_mask(mask)
-    return _blend_where(rgb, colored, mask > 0, float(cfg.preview.draw.mask_alpha))
-
-
-def _overlay_line_mask(rgb: np.ndarray, value: object, cfg: DictConfig) -> np.ndarray:
-    """Tint white-line pixels with a solid overlay color."""
-    mask = cast("torch.Tensor", value).cpu().numpy()[0]
-    colored = np.zeros_like(rgb)
-    colored[:, :] = _LINE_OVERLAY_RGB
-    return _blend_where(rgb, colored, mask > 0.5, float(cfg.preview.draw.mask_alpha))
-
-
-def _blend_where(
-    rgb: np.ndarray, colored: np.ndarray, region: np.ndarray, alpha: float
-) -> np.ndarray:
-    """Alpha-blend ``colored`` into ``rgb`` only where ``region`` is true."""
-    overlay = rgb.copy()
-    blended = (
-        rgb.astype(np.float32) * (1.0 - alpha) + colored.astype(np.float32) * alpha
-    )
-    overlay[region] = np.clip(blended[region], 0.0, 255.0).astype(np.uint8)
-    return overlay
+def _stack_rows(rows: list[np.ndarray], cfg: DictConfig) -> np.ndarray:
+    """Pad and stack variant rows without rescaling any target geometry."""
+    gap = int(cfg.preview.layout.tile_gap)
+    background = tuple(int(value) for value in cfg.preview.layout.background_rgb)
+    width = max(row.shape[1] for row in rows)
+    height = sum(row.shape[0] for row in rows) + gap * (len(rows) - 1)
+    canvas = np.full((height, width, 3), background, dtype=np.uint8)
+    cursor = 0
+    for row in rows:
+        canvas[cursor : cursor + row.shape[0], : row.shape[1]] = row
+        cursor += row.shape[0] + gap
+    return cast("np.ndarray", canvas)
 
 
 def _pad_panels_to_common_size(

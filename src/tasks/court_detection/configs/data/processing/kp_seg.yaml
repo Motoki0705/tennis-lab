@@ -3,4 +3,4 @@ targets:
   - kind: kp
     sigma_ratio: 0.01
   - kind: seg
-    target_schema: court_cell_segmentation_v1
+    target_schema: court_cell_segmentation_single_court_v2

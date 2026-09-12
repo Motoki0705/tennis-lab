@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,11 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
     require_config_value,
+)
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_DEFINITIONS,
+    LINE_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA,
 )
 from src.utils.configuration import (
     ConfigurationTypeError,
@@ -40,7 +46,7 @@ CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
-KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
+CourtScope: TypeAlias = Literal["all_courts", "target_court"]
 CourtDecoderName: TypeAlias = Literal["fpn", "unet", "dpt"]
 CourtDPTSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 CourtConsistencyGradientFlow: TypeAlias = Literal[
@@ -49,8 +55,6 @@ CourtConsistencyGradientFlow: TypeAlias = Literal[
     "stopgrad_dense",
 ]
 
-SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
-LINE_TARGET_SCHEMA = "court_line_binary_v1"
 DPT_CHANNELS_BY_SIZE: Mapping[CourtDPTSize, int] = MappingProxyType(
     {"tiny": 64, "small": 128, "base": 256, "large": 512}
 )
@@ -515,7 +519,7 @@ class TennisCourtDetectorSourceConfig:
 class SyntheticCourtSourceConfig:
     kind: Literal["synthetic_court"]
     schema: SyntheticCourtSchemaVersion
-    keypoint_court_scope: KeypointCourtScope
+    court_scope: CourtScope
     workspace_root: Path
     scene_ids: tuple[str, ...]
 
@@ -529,7 +533,7 @@ class SyntheticCourtSourceConfig:
             {
                 "kind",
                 "schema",
-                "keypoint_court_scope",
+                "court_scope",
                 "workspace_root",
                 "scene_ids",
             },
@@ -544,17 +548,15 @@ class SyntheticCourtSourceConfig:
             raise SemanticConfigurationError(
                 "data.source.schema must be explicitly 'v1', 'v2', or 'v3'."
             )
-        keypoint_court_scope = _string(
-            mapping, "keypoint_court_scope", path="data.source"
-        )
-        if keypoint_court_scope not in {"all_courts", "target_court"}:
+        court_scope = _string(mapping, "court_scope", path="data.source")
+        if court_scope not in {"all_courts", "target_court"}:
             raise SemanticConfigurationError(
-                "data.source.keypoint_court_scope must be 'all_courts' or "
+                "data.source.court_scope must be 'all_courts' or "
                 "'target_court'."
             )
-        if schema == "v1" and keypoint_court_scope == "target_court":
+        if schema == "v1" and court_scope == "target_court":
             raise SemanticConfigurationError(
-                "data.source.keypoint_court_scope='target_court' requires "
+                "data.source.court_scope='target_court' requires "
                 "data.source.schema='v2' or 'v3'."
             )
         raw_ids = _sequence(mapping, "scene_ids", path="data.source")
@@ -584,7 +586,7 @@ class SyntheticCourtSourceConfig:
         return cls(
             kind="synthetic_court",
             schema=cast(SyntheticCourtSchemaVersion, schema),
-            keypoint_court_scope=cast(KeypointCourtScope, keypoint_court_scope),
+            court_scope=cast(CourtScope, court_scope),
             workspace_root=resolver.resolve(
                 PathRole.DATA,
                 _string(mapping, "workspace_root", path="data.source"),
@@ -633,11 +635,13 @@ class CourtTargetConfig:
             _exact(mapping, {"kind", "target_schema"}, path=path)
             schema = _string(mapping, "target_schema", path=path)
             expected = (
-                SEGMENTATION_TARGET_SCHEMA if kind == "seg" else LINE_TARGET_SCHEMA
+                {SEGMENTATION_TARGET_SCHEMA}
+                if kind == "seg"
+                else set(LINE_TARGET_DEFINITIONS)
             )
-            if schema != expected:
+            if schema not in expected:
                 raise SemanticConfigurationError(
-                    f"{path}.target_schema must be {expected!r}."
+                    f"{path}.target_schema must be one of {sorted(expected)!r}."
                 )
             return cls(
                 kind=cast(CourtTargetKind, kind),
@@ -719,15 +723,33 @@ class CourtDataConfig:
             raise SemanticConfigurationError(
                 "data.batch_size must be positive and data.num_workers non-negative."
             )
+        source = _source_config(
+            require_config_mapping(mapping, "source", path="data"),
+            resolver=resolver,
+        )
+        processing = CourtProcessingConfig.from_mapping(
+            require_config_mapping(mapping, "processing", path="data"),
+            resolver=resolver,
+        )
+        if (
+            isinstance(source, SyntheticCourtSourceConfig)
+            and source.court_scope == "all_courts"
+            and any(
+                target.kind == "seg"
+                or (
+                    target.kind == "line"
+                    and target.target_schema == LINE_TARGET_SCHEMA
+                )
+                for target in processing.targets
+            )
+        ):
+            raise SemanticConfigurationError(
+                "Current single-court SEG/LINE targets require "
+                "data.source.court_scope='target_court'."
+            )
         return cls(
-            source=_source_config(
-                require_config_mapping(mapping, "source", path="data"),
-                resolver=resolver,
-            ),
-            processing=CourtProcessingConfig.from_mapping(
-                require_config_mapping(mapping, "processing", path="data"),
-                resolver=resolver,
-            ),
+            source=source,
+            processing=processing,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=_bool(mapping, "pin_memory", path="data"),
@@ -1090,27 +1112,118 @@ class CourtTransformerEncoderConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class CourtDenseHeadBranchConfig:
+    """Capacity of one task-specific dense residual branch."""
+
+    hidden_channels: int
+    depth: int
+
+    @classmethod
+    def from_mapping(
+        cls,
+        value: object,
+        *,
+        path: str,
+        normalization_groups: int,
+    ) -> CourtDenseHeadBranchConfig:
+        mapping = as_config_mapping(value, path=path)
+        _exact(mapping, {"hidden_channels", "depth"}, path=path)
+        result = cls(
+            hidden_channels=_integer(mapping, "hidden_channels", path=path),
+            depth=_integer(mapping, "depth", path=path),
+        )
+        if result.hidden_channels <= 0 or result.depth <= 0:
+            raise SemanticConfigurationError(
+                f"{path}.hidden_channels and depth must be positive."
+            )
+        if result.hidden_channels % normalization_groups:
+            raise SemanticConfigurationError(
+                f"{path}.hidden_channels must be divisible by "
+                "model.dense_head.normalization_groups."
+            )
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class CourtDenseHeadConfig:
+    """Strict configuration for all task-specific dense residual heads."""
+
+    name: Literal["linear", "residual"]
+    normalization_groups: int | None
+    branches: Mapping[CourtTargetKind, CourtDenseHeadBranchConfig]
+
+    @classmethod
+    def from_mapping(cls, value: object) -> CourtDenseHeadConfig:
+        path = "model.dense_head"
+        mapping = as_config_mapping(value, path=path)
+        name = _string(mapping, "name", path=path)
+        if name == "linear":
+            _exact(mapping, {"name"}, path=path)
+            return cls(
+                name="linear",
+                normalization_groups=None,
+                branches=MappingProxyType({}),
+            )
+        if name != "residual":
+            raise SemanticConfigurationError(
+                "model.dense_head.name must be 'linear' or 'residual'."
+            )
+        _exact(
+            mapping,
+            {"name", "normalization_groups", "kp", "seg", "line"},
+            path=path,
+        )
+        normalization_groups = _integer(mapping, "normalization_groups", path=path)
+        if normalization_groups <= 0:
+            raise SemanticConfigurationError(
+                "model.dense_head.normalization_groups must be positive."
+            )
+        kinds: tuple[CourtTargetKind, ...] = ("kp", "seg", "line")
+        branches = {
+            kind: CourtDenseHeadBranchConfig.from_mapping(
+                mapping[kind],
+                path=f"{path}.{kind}",
+                normalization_groups=normalization_groups,
+            )
+            for kind in kinds
+        }
+        return cls(
+            name="residual",
+            normalization_groups=normalization_groups,
+            branches=MappingProxyType(branches),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class CourtModelConfig:
     name: Literal["court_hierarchical"]
     in_channels: int
     encoder: CourtEncoderConfig
     decoder: CourtDecoderConfig
     transformer_encoder: CourtTransformerEncoderConfig
+    dense_head: CourtDenseHeadConfig
 
     @classmethod
     def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtModelConfig:
         mapping = as_config_mapping(value, path="model")
-        _exact(
-            mapping,
-            {
-                "name",
-                "in_channels",
-                "encoder",
-                "transformer_encoder",
-                "decoder",
-            },
-            path="model",
-        )
+        expected = {
+            "name",
+            "in_channels",
+            "encoder",
+            "transformer_encoder",
+            "decoder",
+            "dense_head",
+        }
+        legacy_linear = set(mapping) == expected - {"dense_head"}
+        if legacy_linear:
+            warnings.warn(
+                "Legacy Court model configuration has no model.dense_head; "
+                "loading its checkpoint-compatible linear 1x1 head.",
+                UserWarning,
+                stacklevel=2,
+            )
+        else:
+            _exact(mapping, expected, path="model")
         name = _string(mapping, "name", path="model")
         if name != "court_hierarchical":
             raise SemanticConfigurationError("model.name must be 'court_hierarchical'.")
@@ -1126,6 +1239,17 @@ class CourtModelConfig:
             ),
             decoder=CourtDecoderConfig.from_mapping(
                 require_config_mapping(mapping, "decoder", path="model")
+            ),
+            dense_head=(
+                CourtDenseHeadConfig(
+                    name="linear",
+                    normalization_groups=None,
+                    branches=MappingProxyType({}),
+                )
+                if legacy_linear
+                else CourtDenseHeadConfig.from_mapping(
+                    require_config_mapping(mapping, "dense_head", path="model")
+                )
             ),
         )
         if result.in_channels <= 0:
@@ -1681,6 +1805,8 @@ __all__ = [
     "CourtDataConfig",
     "CourtDecoderConfig",
     "CourtDecoderName",
+    "CourtDenseHeadBranchConfig",
+    "CourtDenseHeadConfig",
     "CourtDPTSize",
     "CourtEncoderConfig",
     "CourtLoRAConfig",
@@ -1695,7 +1821,7 @@ __all__ = [
     "CourtTransformerEncoderConfig",
     "CourtTrainingConfig",
     "DPT_CHANNELS_BY_SIZE",
-    "KeypointCourtScope",
+    "CourtScope",
     "LINE_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA",
     "SyntheticCourtSourceConfig",

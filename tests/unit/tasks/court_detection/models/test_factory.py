@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 import torch
@@ -11,6 +12,8 @@ from torch import nn
 
 from src.tasks.court_detection.configuration import (
     CourtDecoderConfig,
+    CourtDenseHeadBranchConfig,
+    CourtDenseHeadConfig,
     CourtEncoderConfig,
     CourtModelConfig,
     CourtTransformerEncoderConfig,
@@ -198,6 +201,16 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
             n_kv_heads=None,
             ffn_type=None,
         ),
+        dense_head=CourtDenseHeadConfig(
+            name="residual",
+            normalization_groups=1,
+            branches=MappingProxyType(
+                {
+                    kind: CourtDenseHeadBranchConfig(hidden_channels=4, depth=2)
+                    for kind in ("kp", "seg", "line")
+                }
+            ),
+        ),
     )
     all_targets = _bundle().targets
     bundle = CourtTargetBundleSpec({kind: all_targets[kind] for kind in kinds})
@@ -213,10 +226,14 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
     expected_state_keys = {
         "encoder.projection.weight",
         "encoder.projection.bias",
-        *(f"heads.{kind}.weight" for kind in kinds),
-        *(f"heads.{kind}.bias" for kind in kinds),
     }
-    assert set(model.state_dict()) == expected_state_keys
+    state_keys = set(model.state_dict())
+    assert expected_state_keys.issubset(state_keys)
+    assert all(
+        key.startswith("encoder.")
+        or any(key.startswith(f"heads.{kind}.") for kind in kinds)
+        for key in state_keys
+    )
     outputs = model(images)
     with pytest.raises(ValueError, match="enabled intermediate Transformer"):
         model(

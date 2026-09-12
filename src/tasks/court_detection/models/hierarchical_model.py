@@ -17,6 +17,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.models.decoder import build_court_decoder
+from src.tasks.court_detection.models.dense_head import build_court_dense_head
 from src.tasks.court_detection.models.encoders import build_court_encoder
 from src.tasks.court_detection.models.pose_head import (
     CourtModelOutput,
@@ -107,10 +108,11 @@ class CourtHierarchicalModel(nn.Module):
             )
         self.heads = nn.ModuleDict(
             {
-                kind: nn.Conv2d(
-                    self.decoder.output_channels,
-                    spec.output_channels,
-                    kernel_size=1,
+                kind: build_court_dense_head(
+                    kind=kind,
+                    input_channels=self.decoder.output_channels,
+                    output_channels=spec.output_channels,
+                    config=config.dense_head,
                 )
                 for kind, spec in target_bundle.targets.items()
             }
@@ -264,7 +266,9 @@ class CourtHierarchicalModel(nn.Module):
             patch_valid_mask=patch_valid_mask,
         )
         if transformed.pose_query is None:
-            raise RuntimeError("Enabled Transformer unexpectedly returned no pose query.")
+            raise RuntimeError(
+                "Enabled Transformer unexpectedly returned no pose query."
+            )
         transformed_features: CourtFeatures = (
             features[0],
             features[1],
@@ -279,14 +283,13 @@ class CourtHierarchicalModel(nn.Module):
         features: CourtFeatures,
     ) -> dict[CourtTargetKind, Tensor]:
         decoded = self.decoder(features)
-        decoded = F.interpolate(
-            decoded,
-            size=x.shape[-2:],
-            mode="bilinear",
-            align_corners=False,
-        )
         return {
-            kind: self.heads[kind](decoded)
+            kind: F.interpolate(
+                self.heads[kind](decoded),
+                size=x.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            )
             for kind in self.target_bundle_spec.kinds
         }
 

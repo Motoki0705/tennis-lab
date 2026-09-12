@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Protocol, cast
 
 import numpy as np
@@ -91,6 +92,7 @@ from src.tasks.base.model_io import bind_model_io
 from src.tasks.court_detection.configuration import (
     DPT_CHANNELS_BY_SIZE,
     CourtDecoderConfig,
+    CourtDenseHeadConfig,
     CourtDPTSize,
     CourtEncoderConfig,
     CourtLoRAConfig,
@@ -98,6 +100,7 @@ from src.tasks.court_detection.configuration import (
     CourtModelConfig,
     CourtTransformerEncoderConfig,
 )
+from src.tasks.court_detection.data.bundle_state import deserialize_target_bundle
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetSpec,
@@ -110,6 +113,7 @@ from src.tasks.court_detection.model_io.adapters import (
 )
 from src.tasks.court_detection.model_io.contracts import CourtModelSpec
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.target_schemas import LINE_TARGET_SCHEMA_V1
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
@@ -249,17 +253,8 @@ class ProductionCourtLineDetector:
         _validate_embedded_architecture(settings, model_mapping)
         architecture = settings.architecture
         model_config = _court_line_model_config(settings)
-        target_bundle = CourtTargetBundleSpec(
-            {
-                "line": CourtTargetSpec(
-                    kind="line",
-                    schema="court_line_binary_v1",
-                    output_channels=1,
-                    channel_names=("court_line",),
-                    target_dtype=torch.float32,
-                    precomputed=True,
-                )
-            }
+        target_bundle = _alignment_line_target_bundle(
+            hyper_parameters=hyper_parameters,
         )
         model = CourtHierarchicalModel.from_config(model_config, target_bundle)
         raw_state = raw.get("state_dict")
@@ -1842,16 +1837,23 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
         cameras: tuple[SceneCamera, ...],
     ) -> dict[str, NDArray[np.float32]]:
         """Persist raw detector outputs outside the alignment transaction."""
-        return cast(
-            dict[str, NDArray[np.float32]],
-            load_or_predict_line_probabilities(
-                scene=scene,
-                cameras=cameras,
-                inference_identity=self._detector.inference_cache_identity(),
-                predict_probability=self._detector.predict_probability,
-                load_image=_load_rgb_image,
-            ),
+        raw = load_or_predict_line_probabilities(
+            scene=scene,
+            cameras=cameras,
+            inference_identity=self._detector.inference_cache_identity(),
+            predict_probability=self._detector.predict_probability,
+            load_image=_load_rgb_image,
         )
+        if not isinstance(raw, dict):
+            raise TypeError("Court-line probability cache must return a dictionary.")
+        result: dict[str, NDArray[np.float32]] = {}
+        for camera_id, probability in raw.items():
+            if not isinstance(camera_id, str) or not isinstance(probability, np.ndarray):
+                raise TypeError(
+                    "Court-line probability cache entries must be string/array pairs."
+                )
+            result[camera_id] = probability
+        return result
 
 
 def create_production_alignment_handler(
@@ -4799,6 +4801,31 @@ def _court_line_model_state(
     return model_state
 
 
+def _alignment_line_target_bundle(
+    *, hyper_parameters: Mapping[object, object]
+) -> CourtTargetBundleSpec:
+    """Recover line semantics without constraining how many courts they represent."""
+    snapshot = hyper_parameters.get("target_bundle_state")
+    if snapshot is None:
+        return CourtTargetBundleSpec(
+            {
+                "line": CourtTargetSpec(
+                    kind="line",
+                    schema=LINE_TARGET_SCHEMA_V1,
+                    output_channels=1,
+                    channel_names=("court_line",),
+                    target_dtype=torch.float32,
+                    precomputed=True,
+                )
+            }
+        )
+    bundle = deserialize_target_bundle(snapshot)
+    line = bundle.targets.get("line")
+    if line is None:
+        raise ValueError("Alignment checkpoint target bundle has no line target.")
+    return CourtTargetBundleSpec({"line": line})
+
+
 def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConfig:
     """Rebuild the checkpoint architecture with the current strict model fields."""
     architecture = settings.architecture
@@ -4854,6 +4881,11 @@ def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConf
             attention_type=None,
             n_kv_heads=None,
             ffn_type=None,
+        ),
+        dense_head=CourtDenseHeadConfig(
+            name="linear",
+            normalization_groups=None,
+            branches=MappingProxyType({}),
         ),
     )
 

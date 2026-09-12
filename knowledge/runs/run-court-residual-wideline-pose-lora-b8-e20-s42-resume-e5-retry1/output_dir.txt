@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1/logs/version_0/checkpoints

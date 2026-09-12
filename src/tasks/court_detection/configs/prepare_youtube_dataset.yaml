@@ -118,3 +118,19 @@ workflow:
     keypoint_format: kp20
     merge_existing: true
     overwrite: false
+
+  # Optional audit of completed ground-KP14 annotations. Set only=true to skip
+  # download/transcode/frame/annotation writes and render existing annotations.
+  target_preview:
+    enabled: false
+    only: false
+    split: val
+    sample_indices: []
+    max_samples: 4
+    sigma_ratios: [0.005, 0.01, 0.02]
+    line_width_metres: [0.025, 0.05, 0.075]
+    baseline_width_multiplier: 2.0
+    output_dir: court_detection/youtube_target_preview
+    display_width: 480
+    heatmap_alpha: 0.55
+    mask_alpha: 0.45

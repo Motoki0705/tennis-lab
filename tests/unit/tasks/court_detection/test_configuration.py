@@ -17,6 +17,10 @@ from src.tasks.court_detection.configuration import (
     CourtTransformerEncoderConfig,
     SyntheticCourtSourceConfig,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    LINE_TARGET_SCHEMA_V1,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -36,7 +40,7 @@ def _compose(source: str, *overrides: str) -> DictConfig:
 
 def _pose_overrides() -> tuple[str, ...]:
     return (
-        "data.source.keypoint_court_scope=target_court",
+        "data.source.court_scope=target_court",
         "data/augmentation=pose_safe",
         "model/encoder=dinov3",
         "model/transformer_encoder=default",
@@ -76,7 +80,8 @@ def test_hydra_explicitly_composes_each_synthetic_schema(
     assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
     assert runtime.data.source.schema == schema
     assert runtime.data.source.kind == "synthetic_court"
-    assert runtime.data.source.keypoint_court_scope == "all_courts"
+    expected_scope = "all_courts" if schema == "v1" else "target_court"
+    assert runtime.data.source.court_scope == expected_scope
 
 
 @pytest.mark.parametrize(
@@ -88,12 +93,12 @@ def test_hydra_composes_target_court_scope_for_singleton_schemas(
     schema: str,
 ) -> None:
     runtime = CourtTrainingConfig.from_config(
-        _compose(source, "data.source.keypoint_court_scope=target_court")
+        _compose(source, "data.source.court_scope=target_court")
     )
 
     assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
     assert runtime.data.source.schema == schema
-    assert runtime.data.source.keypoint_court_scope == "target_court"
+    assert runtime.data.source.court_scope == "target_court"
 
 
 def test_synthetic_schema_cannot_be_omitted_or_guessed() -> None:
@@ -112,39 +117,54 @@ def test_synthetic_schema_cannot_be_omitted_or_guessed() -> None:
         CourtTrainingConfig.from_config(unknown)
 
 
-def test_synthetic_keypoint_court_scope_is_required_and_strict() -> None:
+def test_synthetic_court_scope_is_required_and_strict() -> None:
     missing = deepcopy(_compose("synthetic_court"))
     with open_dict(missing.data.source):
-        del missing.data.source.keypoint_court_scope
+        del missing.data.source.court_scope
     with pytest.raises(
         MissingConfigurationKeyError,
-        match="data.source.keypoint_court_scope",
+        match="data.source.court_scope",
     ):
         CourtTrainingConfig.from_config(missing)
 
     unknown = deepcopy(_compose("synthetic_court"))
-    unknown.data.source.keypoint_court_scope = "primary_court"
+    unknown.data.source.court_scope = "primary_court"
     with pytest.raises(
         SemanticConfigurationError,
-        match="keypoint_court_scope must be 'all_courts' or 'target_court'",
+        match="court_scope must be 'all_courts' or 'target_court'",
     ):
         CourtTrainingConfig.from_config(unknown)
 
     wrong_type = deepcopy(_compose("synthetic_court"))
-    wrong_type.data.source.keypoint_court_scope = 1
-    with pytest.raises(ConfigurationTypeError, match="keypoint_court_scope"):
+    wrong_type.data.source.court_scope = 1
+    with pytest.raises(ConfigurationTypeError, match="court_scope"):
         CourtTrainingConfig.from_config(wrong_type)
 
 
 def test_v1_rejects_target_court_scope_at_typed_configuration_boundary() -> None:
     config = _compose(
         "synthetic_court_v1",
-        "data.source.keypoint_court_scope=target_court",
+        "data.source.court_scope=target_court",
     )
 
     with pytest.raises(
         SemanticConfigurationError,
         match="target_court.*requires.*schema='v2'.*'v3'",
+    ):
+        CourtTrainingConfig.from_config(config)
+
+
+@pytest.mark.parametrize("source", ["synthetic_court_v1", "synthetic_court_v2", "synthetic_court"])
+def test_current_dense_schemas_reject_all_court_source_scope(source: str) -> None:
+    config = _compose(
+        source,
+        "data/processing=seg_line",
+        "data.source.court_scope=all_courts",
+    )
+
+    with pytest.raises(
+        SemanticConfigurationError,
+        match="single-court SEG/LINE targets require",
     ):
         CourtTrainingConfig.from_config(config)
 
@@ -186,6 +206,46 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
     assert runtime.model.transformer_encoder.name == "transformer"
     assert runtime.model.transformer_encoder.enabled
     assert runtime.model.transformer_encoder.depth == 8
+    assert runtime.model.dense_head.name == "residual"
+    assert runtime.model.dense_head.normalization_groups == 32
+    assert {
+        kind: (branch.hidden_channels, branch.depth)
+        for kind, branch in runtime.model.dense_head.branches.items()
+    } == {"kp": (256, 2), "seg": (256, 2), "line": (256, 2)}
+
+
+def test_current_line_schema_uses_wide_physical_target() -> None:
+    runtime = CourtTrainingConfig.from_config(
+        _compose("synthetic_court", "data/processing=all")
+    )
+
+    line = next(
+        target for target in runtime.data.processing.targets if target.kind == "line"
+    )
+    assert line.target_schema == LINE_TARGET_SCHEMA
+
+
+def test_legacy_line_schema_remains_loadable_for_checkpoint_inference() -> None:
+    config = _compose("synthetic_court", "data/processing=all")
+    config.data.processing.targets[2].target_schema = LINE_TARGET_SCHEMA_V1
+
+    runtime = CourtTrainingConfig.from_config(config)
+
+    line = next(
+        target for target in runtime.data.processing.targets if target.kind == "line"
+    )
+    assert line.target_schema == LINE_TARGET_SCHEMA_V1
+
+
+def test_legacy_model_config_explicitly_warns_and_restores_linear_head() -> None:
+    config = deepcopy(_compose("synthetic_court"))
+    with open_dict(config.model):
+        del config.model.dense_head
+
+    with pytest.warns(UserWarning, match="checkpoint-compatible linear"):
+        runtime = CourtTrainingConfig.from_config(config)
+
+    assert runtime.model.dense_head.name == "linear"
 
 
 def test_transformer_config_group_has_only_none_and_enabled_default_presets() -> None:
@@ -335,7 +395,7 @@ def test_pose_supervision_requires_explicit_transformer_and_weights() -> None:
 
     no_transformer = _compose(
         "synthetic_court",
-        "data.source.keypoint_court_scope=target_court",
+        "data.source.court_scope=target_court",
         "data/augmentation=pose_safe",
         "model/transformer_encoder=none",
         "loss.pose.enabled=true",
@@ -361,7 +421,7 @@ def test_pose_loss_preset_keeps_dense_heads_and_enables_pose() -> None:
         _compose(
             "synthetic_court",
             "loss=pose",
-            "data.source.keypoint_court_scope=target_court",
+            "data.source.court_scope=target_court",
             "data/augmentation=pose_safe",
         )
     )

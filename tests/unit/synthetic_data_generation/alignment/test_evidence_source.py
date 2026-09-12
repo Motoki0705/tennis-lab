@@ -31,6 +31,7 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     MeasuredAlignmentEvidenceSource,
     ProductionAlignmentEvidenceSource,
     ProductionCourtLineDetector,
+    _alignment_line_target_bundle,
     _assign_candidate_evidence,
     _center_space_tiles,
     _CenterTile,
@@ -94,6 +95,15 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
+from src.tasks.court_detection.data.bundle_state import serialize_target_bundle
+from src.tasks.court_detection.data.contracts import (
+    CourtTargetBundleSpec,
+    CourtTargetSpec,
+)
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    LINE_TARGET_SCHEMA_V2,
+)
 from src.utils.schema.court import HALF_DOUBLES_WIDTH
 
 
@@ -268,6 +278,41 @@ def test_line_checkpoint_accepts_complete_canonical_head_without_remapping() -> 
     assert set(state) == {"heads.line.weight", "heads.line.bias"}
     assert state["heads.line.weight"] is weight
     assert state["heads.line.bias"] is bias
+
+
+@pytest.mark.parametrize("line_schema", (LINE_TARGET_SCHEMA, LINE_TARGET_SCHEMA_V2))
+def test_alignment_accepts_any_court_scope_line_target_schema(
+    line_schema: str,
+) -> None:
+    expected = CourtTargetSpec(
+        kind="line",
+        schema=line_schema,
+        output_channels=1,
+        channel_names=("court_line",),
+        target_dtype=torch.float32,
+        precomputed=True,
+    )
+    checkpoint_bundle = CourtTargetBundleSpec(
+        {
+            "kp": CourtTargetSpec(
+                kind="kp",
+                schema="test_kp14",
+                output_channels=14,
+                channel_names=tuple(f"kp_{index}" for index in range(14)),
+                target_dtype=torch.float32,
+                precomputed=False,
+            ),
+            "line": expected,
+        }
+    )
+
+    observed = _alignment_line_target_bundle(
+        hyper_parameters={
+            "target_bundle_state": serialize_target_bundle(checkpoint_bundle)
+        }
+    )
+
+    assert observed.targets == {"line": expected}
 
 
 @pytest.mark.parametrize(

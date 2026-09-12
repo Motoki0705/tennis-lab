@@ -161,11 +161,11 @@ class CourtMixedDataConfig:
             target.kind == "kp" for target in runtime.data.processing.targets
         )
         if mixes_keypoints and (
-            synthetic.schema != "v3" or synthetic.keypoint_court_scope != "target_court"
+            synthetic.schema != "v3" or synthetic.court_scope != "target_court"
         ):
             raise SemanticConfigurationError(
                 "Mixed KP training requires Synthetic Court V3 with "
-                "keypoint_court_scope='target_court'."
+                "court_scope='target_court'."
             )
         return cls(
             sources=MappingProxyType(sources),
@@ -296,10 +296,12 @@ def mixed_court_detection_collate(
         {key: value for key, value in sample.items() if key != "pose_target"}
         for sample in batch
     ]
-    output = cast(
-        dict[str, object],
-        court_detection_collate(dense_only_batch, bundle=bundle),
-    )
+    raw_output = court_detection_collate(dense_only_batch, bundle=bundle)
+    if not isinstance(raw_output, dict) or any(
+        not isinstance(key, str) for key in raw_output
+    ):
+        raise TypeError("Court collate must return a string-keyed dictionary.")
+    output: dict[str, object] = dict(raw_output)
     output["pose_supervision_mask"] = mask
 
     selected = [payload for payload in pose_payloads if payload is not None]

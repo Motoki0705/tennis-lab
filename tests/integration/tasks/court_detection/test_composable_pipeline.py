@@ -395,7 +395,7 @@ def _compose(
     *,
     source: str,
     processing: str,
-    keypoint_court_scope: Literal["all_courts", "target_court"] | None = None,
+    court_scope: Literal["all_courts", "target_court"] | None = None,
 ) -> DictConfig:
     overrides = [
         f"data/source={source}",
@@ -404,8 +404,8 @@ def _compose(
         "model/transformer_encoder=none",
         "model/decoder=fpn",
     ]
-    if keypoint_court_scope is not None:
-        overrides.append(f"data.source.keypoint_court_scope={keypoint_court_scope}")
+    if court_scope is not None:
+        overrides.append(f"data.source.court_scope={court_scope}")
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
@@ -504,7 +504,7 @@ def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
         court_roots,
         source="synthetic_court",
         processing="all",
-        keypoint_court_scope="target_court",
+        court_scope="target_court",
     )
     tennis = _compose(
         court_roots,
@@ -551,8 +551,6 @@ def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
         ("tennis_court_detector", "seg", 7),
         ("tennis_court_detector", "line", 1),
         ("synthetic_court_v1", "kp", 7),
-        ("synthetic_court_v1", "seg", 7),
-        ("synthetic_court_v1", "line", 1),
         ("synthetic_court_v2", "kp", 14),
         ("synthetic_court_v2", "seg", 7),
         ("synthetic_court_v2", "line", 1),
@@ -583,7 +581,6 @@ def test_real_single_target_dataset_dataloader_paths(
     ("source", "kp_channels"),
     [
         ("tennis_court_detector", 14),
-        ("synthetic_court_v1", 7),
         ("synthetic_court_v2", 14),
         ("synthetic_court", 14),
     ],
@@ -610,21 +607,21 @@ def test_real_three_target_dataset_dataloader_contract(
     assert cast(torch.Tensor, targets["line"]).shape == (1, 1, 32, 48)
 
 
-def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_targets(
+def test_v3_target_court_scope_aligns_kp_seg_and_line_to_one_court(
     court_roots: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     all_config = _compose(
         court_roots,
         source="synthetic_court",
-        processing="all",
-        keypoint_court_scope="all_courts",
+        processing="kp",
+        court_scope="all_courts",
     )
     target_config = _compose(
         court_roots,
         source="synthetic_court",
         processing="all",
-        keypoint_court_scope="target_court",
+        court_scope="target_court",
     )
     all_runtime = CourtTrainingConfig.from_config(all_config)
     target_runtime = CourtTrainingConfig.from_config(target_config)
@@ -650,21 +647,18 @@ def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
         target_input.spec.keypoint_schema
         == "synthetic_camera_view_kp14_v3_target_court"
     )
-    assert target_record.dense_target_refs == all_record.dense_target_refs
+    assert target_record.dense_target_refs != all_record.dense_target_refs
     assert (
         target_record.payload["source_target_sha256"]
-        == all_record.payload["source_target_sha256"]
+        != all_record.payload["source_target_sha256"]
     )
     assert [instance.court_instance_id for instance in target_raw.court_instances] == [
-        "court-0",
         "court-1",
     ]
-    for target_instance, all_instance in zip(
-        target_raw.court_instances,
-        all_raw.court_instances,
-        strict=True,
-    ):
-        torch.testing.assert_close(target_instance.points_xy, all_instance.points_xy)
+    torch.testing.assert_close(
+        target_raw.court_instances[0].points_xy,
+        all_raw.court_instances[1].points_xy,
+    )
     assert all_raw.keypoint_channels.physical_indices is not None
     assert tuple(
         int(value)
@@ -678,11 +672,9 @@ def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
         == CAMERA_VIEW_HALF_TURN_INDEX
     )
 
-    _materialize(all_config)
     derived_root = court_roots / "data/court_detection/derived_targets"
-    all_dense_files = _source_files(derived_root)
     _materialize(target_config)
-    assert _source_files(derived_root) == all_dense_files
+    assert _source_files(derived_root)
 
     all_datamodule = CourtDetectionDataModule(all_config)
     target_datamodule = CourtDetectionDataModule(target_config)
@@ -714,22 +706,14 @@ def test_v3_target_court_scope_composes_through_pipeline_and_preserves_dense_tar
     assert all_datamodule.target_bundle_spec.targets["kp"].schema == (
         "synthetic_camera_view_kp14_v3:gaussian_max_v1"
     )
-    assert (
-        target_datamodule.target_bundle_spec.targets["seg"]
-        == (all_datamodule.target_bundle_spec.targets["seg"])
+    assert target_datamodule.target_bundle_spec.targets["seg"].schema == (
+        "court_cell_segmentation_single_court_v2"
     )
-    assert (
-        target_datamodule.target_bundle_spec.targets["line"]
-        == (all_datamodule.target_bundle_spec.targets["line"])
+    assert target_datamodule.target_bundle_spec.targets["line"].schema == (
+        "court_line_binary_75mm_150mm_single_court_v3"
     )
-    torch.testing.assert_close(
-        cast(torch.Tensor, target_targets["seg"]),
-        cast(torch.Tensor, all_targets["seg"]),
-    )
-    torch.testing.assert_close(
-        cast(torch.Tensor, target_targets["line"]),
-        cast(torch.Tensor, all_targets["line"]),
-    )
+    assert int(torch.count_nonzero(cast(torch.Tensor, target_targets["seg"]))) > 0
+    assert int(torch.count_nonzero(cast(torch.Tensor, target_targets["line"]))) > 0
 
     channel_index = 12
     height, width = (
@@ -844,7 +828,6 @@ def test_missing_dense_targets_fail_during_setup_before_worker_start(
     "source",
     [
         "tennis_court_detector",
-        "synthetic_court_v1",
         "synthetic_court_v2",
         "synthetic_court",
     ],
@@ -908,7 +891,6 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
     ("source", "kp_channels"),
     [
         ("tennis_court_detector", 14),
-        ("synthetic_court_v1", 7),
         ("synthetic_court_v2", 14),
         ("synthetic_court", 14),
     ],

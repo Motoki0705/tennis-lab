@@ -383,9 +383,27 @@ class BaseTrainingRunner:
                     monitor=checkpoint_cfg.monitor,
                     mode=checkpoint_cfg.mode,
                     save_top_k=checkpoint_cfg.save_top_k,
-                    save_last=checkpoint_cfg.save_last,
+                    save_last=False,
                 )
             )
+            if checkpoint_cfg.save_last:
+                # Keep the latest training state independently from monitored
+                # top-k selection. Lightning 2.6 only refreshes ``save_last``
+                # when the monitored checkpoint is actually admitted to top-k,
+                # so combining both policies in one callback can leave
+                # ``last.ckpt`` several epochs behind the running model.
+                callbacks.append(
+                    ModelCheckpoint(
+                        dirpath=checkpoint_dir,
+                        filename="last",
+                        monitor=None,
+                        save_top_k=1,
+                        save_last=False,
+                        every_n_epochs=1,
+                        save_on_train_epoch_end=True,
+                        enable_version_counter=False,
+                    )
+                )
 
         # Early stopping callback (optional)
         early_cfg = runtime.training.early_stopping

@@ -16,9 +16,11 @@ from src.tasks.court_detection.data.contracts import (
     CourtSampleRecord,
     CourtSourceKind,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA,
+)
 
-SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
-LINE_TARGET_SCHEMA = "court_line_binary_v1"
 _DIGEST_LENGTH = 64
 _DERIVED_METADATA_KEYS = {
     "schema",
@@ -57,7 +59,7 @@ class CourtDerivedTargetStore:
         ):
             raise ValueError("Derived target key must be a safe relative POSIX path.")
         relative = Path(*key.parts)
-        target = self.root / source_kind / target_schema / relative
+        target: Path = self.root / str(source_kind) / target_schema / relative
         return target.with_suffix(".png")
 
     @staticmethod
