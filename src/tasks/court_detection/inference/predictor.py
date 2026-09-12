@@ -14,6 +14,10 @@ from torch import Tensor
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.tasks.court_detection.inference.keypoint_decoder import (
+    CourtKeypointDecoderConfig,
+    decode_court_keypoint_logits,
+)
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtKeypointPrediction,
@@ -35,7 +39,13 @@ CourtBoundModelIO: TypeAlias = BoundModelIO[
 
 
 class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
-    """Predict one KP head from a single- or multi-target checkpoint."""
+    """Predict the KP head from a dense-only or pose-enabled checkpoint.
+
+    Ordered single-court inference is the default: one candidate per semantic
+    channel at probability 0.5 or higher. Multi-court users must explicitly
+    opt in to a larger ``max_peaks`` value and, when appropriate, a different
+    threshold.
+    """
 
     def __init__(
         self,
@@ -43,7 +53,9 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         device: torch.device,
         *,
         subpixel_refine: bool,
-        max_peaks: int = 4,
+        peak_threshold: float = 0.5,
+        nms_kernel: int = 7,
+        max_peaks: int = 1,
     ) -> None:
         if not isinstance(model_io.adapter, CourtModelIOAdapter):
             raise CourtModelIOError(
@@ -53,14 +65,19 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             raise CourtModelIOError(
                 "CourtKeypointPredictor requires a checkpoint with a KP head."
             )
-        if max_peaks <= 0:
-            raise ValueError("Court keypoint max_peaks must be positive.")
         self.model_io = model_io
         self.model = model_io.model
         self.adapter = model_io.adapter
         self.device = device
         self.subpixel_refine = subpixel_refine
-        self.max_peaks = max_peaks
+        self.decoder_config = CourtKeypointDecoderConfig(
+            threshold=peak_threshold,
+            nms_kernel=nms_kernel,
+            max_peaks=max_peaks,
+        )
+        self.peak_threshold = self.decoder_config.threshold
+        self.nms_kernel = self.decoder_config.nms_kernel
+        self.max_peaks = self.decoder_config.max_peaks
 
         self.adapter.validate_model_pair(self.model)
         self.model.to(self.device)
@@ -74,7 +91,9 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         resolver: PathResolver,
         device: str | torch.device,
         subpixel_refine: bool,
-        max_peaks: int = 4,
+        peak_threshold: float = 0.5,
+        nms_kernel: int = 7,
+        max_peaks: int = 1,
         **kwargs: Any,
     ) -> Self:
         """Load one checkpoint and preserve its serialized target bundle."""
@@ -95,6 +114,8 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             ),
             resolved_device,
             subpixel_refine=subpixel_refine,
+            peak_threshold=peak_threshold,
+            nms_kernel=nms_kernel,
             max_peaks=max_peaks,
         )
 
@@ -102,7 +123,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         self,
         image: np.ndarray | Image.Image | Tensor,
     ) -> CourtKeypointPrediction:
-        """Return multi-peak KP channels, scores, validity, and heatmaps."""
+        """Return configured KP candidates, scores, validity, and heatmaps."""
         if isinstance(image, Tensor):
             if image.ndim not in {3, 4}:
                 raise CourtModelIOError(
@@ -131,15 +152,11 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             logits = (
                 output.dense_logits if isinstance(output, CourtModelOutput) else output
             )
-        return cast(
-            CourtKeypointPrediction,
-            self.adapter.decode_prediction(
-                "kp",
-                logits["kp"],
-                original_size_hw=original_size_hw,
-                subpixel_refine=self.subpixel_refine,
-                max_peaks=self.max_peaks,
-            ),
+        return decode_court_keypoint_logits(
+            logits["kp"],
+            original_size_hw=original_size_hw,
+            subpixel_refine=self.subpixel_refine,
+            config=self.decoder_config,
         )
 
     @property
