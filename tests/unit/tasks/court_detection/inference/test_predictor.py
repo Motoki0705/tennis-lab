@@ -1,4 +1,4 @@
-"""Tests for multi-peak Court keypoint predictor decoding."""
+"""Tests for explicit Court keypoint predictor decoding contracts."""
 
 from __future__ import annotations
 
@@ -71,12 +71,7 @@ class _StaticLogitModel(CourtHierarchicalModel):
         return {"kp": logits.expand(image.shape[0], -1, -1, -1)}
 
 
-def _predictor(
-    logits: torch.Tensor,
-    *,
-    subpixel_refine: bool,
-    max_peaks: int = 1,
-) -> CourtKeypointPredictor:
+def _bound_model(logits: torch.Tensor):
     bundle = _bundle()
     model = _StaticLogitModel(logits, bundle)
     adapter = CourtModelIOAdapter(
@@ -88,10 +83,21 @@ def _predictor(
         loss_config=_loss_config(),
     )
     adapter.validate_model_pair(model)
+    return bind_model_io(model, adapter)
+
+
+def _predictor(
+    logits: torch.Tensor,
+    *,
+    subpixel_refine: bool,
+    peak_threshold: float = 0.5,
+    max_peaks: int = 1,
+) -> CourtKeypointPredictor:
     return CourtKeypointPredictor(
-        bind_model_io(model, adapter),
+        _bound_model(logits),
         torch.device("cpu"),
         subpixel_refine=subpixel_refine,
+        peak_threshold=peak_threshold,
         max_peaks=max_peaks,
     )
 
@@ -161,6 +167,56 @@ def test_predict_returns_peak_axis_and_scores() -> None:
         torch.tensor([[3.0, 2.0]]),
     )
     torch.testing.assert_close(result.scores[:, 0], torch.tensor([0.9]))
+
+
+def test_default_contract_is_single_peak_with_half_probability_threshold() -> None:
+    probabilities = torch.full((1, 7, 7), 0.001)
+    probabilities[0, 2, 2] = 0.98
+    probabilities[0, 5, 5] = 0.08
+    logits = torch.logit(probabilities).unsqueeze(0)
+
+    predictor = CourtKeypointPredictor(
+        _bound_model(logits),
+        torch.device("cpu"),
+        subpixel_refine=False,
+    )
+    result = predictor.predict(torch.zeros(1, 3, 7, 7))
+
+    assert predictor.max_peaks == 1
+    assert predictor.peak_threshold == 0.5
+    assert result.keypoints.shape == (1, 1, 2)
+    assert result.valid.tolist() == [[True]]
+    torch.testing.assert_close(result.scores, torch.tensor([[0.98]]))
+
+
+def test_default_threshold_marks_weak_channel_as_invalid() -> None:
+    probabilities = torch.full((1, 5, 5), 0.001)
+    probabilities[0, 2, 2] = 0.49
+    logits = torch.logit(probabilities).unsqueeze(0)
+
+    result = _predictor(logits, subpixel_refine=False).predict(
+        torch.zeros(1, 3, 5, 5)
+    )
+
+    assert result.valid.tolist() == [[False]]
+    torch.testing.assert_close(result.scores, torch.zeros(1, 1))
+
+
+def test_multi_peak_decode_requires_explicit_opt_in() -> None:
+    probabilities = torch.full((1, 7, 7), 0.001)
+    probabilities[0, 2, 2] = 0.98
+    probabilities[0, 5, 5] = 0.08
+    logits = torch.logit(probabilities).unsqueeze(0)
+
+    result = _predictor(
+        logits,
+        subpixel_refine=False,
+        peak_threshold=0.05,
+        max_peaks=2,
+    ).predict(torch.zeros(1, 3, 7, 7))
+
+    assert result.valid.tolist() == [[True, True]]
+    torch.testing.assert_close(result.scores, torch.tensor([[0.98, 0.08]]))
 
 
 def test_predict_uses_selected_subpixel_refinement() -> None:
