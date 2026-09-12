@@ -14,6 +14,12 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from PIL import Image
 
+from src.synthetic_data_generation.alignment.comparison_configuration import (
+    ComparisonRuntime,
+)
+from src.synthetic_data_generation.alignment.comparison_source import (
+    load_comparison_baseline,
+)
 from src.synthetic_data_generation.alignment.evidence_source import (
     _GroundPlane,
     _project_probability_to_ground,
@@ -29,12 +35,8 @@ from src.synthetic_data_generation.alignment.semantic import (
     refine_placement,
     transform_segments,
 )
-from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
 from src.synthetic_data_generation.reconstruction.scene_export import (
     validate_standard_scene_export,
-)
-from src.synthetic_data_generation.visualization.publication.alignment import (
-    load_alignment_publication_data,
 )
 from src.tasks.court_detection.inference.mask_predictor import (
     CourtLinePredictor,
@@ -49,7 +51,7 @@ from src.utils.seeding import seed_everything
 
 
 def compare_alignment(
-    runtime: ScenePipelineConfiguration,
+    runtime: ComparisonRuntime,
     *,
     checkpoint: Path,
     output: Path,
@@ -63,7 +65,7 @@ def compare_alignment(
     if output.exists():
         raise FileExistsError(f"Comparison output already exists: {output}")
     scene_root = runtime.workspace.root
-    baseline = load_alignment_publication_data(scene_root / "alignment")
+    baseline = load_comparison_baseline(scene_root / "alignment")
     scene = validate_standard_scene_export(
         scene_root / "reconstruction/export/scene.json"
     )
@@ -76,7 +78,7 @@ def compare_alignment(
     )
     binary = CourtLinePredictor(semantic.model_io, semantic.device)
     spec = semantic.adapter.spec.target_bundle.targets["semantic_line"]
-    frame = baseline.evidence.ground_plane_frame
+    frame = baseline.plane
     scale = baseline.result.metric_adapter.nht_scene_units_per_metre
     normal = np.asarray(frame.normal_metric_scene)
     origin = np.asarray(frame.origin_metric_scene)

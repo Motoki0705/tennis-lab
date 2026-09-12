@@ -1,0 +1,34 @@
+"""Only the source authorities consumed by the alignment comparison."""
+
+from dataclasses import dataclass
+
+from omegaconf import DictConfig, OmegaConf
+
+from src.synthetic_data_generation.configuration import AlignmentConfiguration
+from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
+from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.paths import PROJECT_ROOT
+
+
+@dataclass(frozen=True)
+class ComparisonRuntime:
+    resolver: PathResolver
+    workspace: SceneWorkspace
+    alignment: AlignmentConfiguration
+
+    @classmethod
+    def from_config(cls, config: DictConfig) -> "ComparisonRuntime":
+        """Do not construct unrelated dataset generators for a read-only comparison."""
+        roots = RuntimePathRoots.from_mapping(
+            OmegaConf.to_container(config.roots, resolve=True),
+            repository_root=PROJECT_ROOT,
+        )
+        resolver = PathResolver(roots)
+        scene_id = config.request.scene_id
+        if not isinstance(scene_id, str) or not scene_id or not scene_id.isalnum():
+            raise ValueError("Comparison scene_id must be a nonempty alphanumeric ID.")
+        return cls(
+            resolver,
+            SceneWorkspace.resolve(resolver, scene_id),
+            AlignmentConfiguration.from_mapping(config.alignment, resolver=resolver),
+        )

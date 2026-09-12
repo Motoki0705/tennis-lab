@@ -28,6 +28,89 @@ from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCa
 from src.tasks.court_detection.target_schemas import SEMANTIC_LINE_CHANNEL_NAMES
 
 
+def test_manual_source_rescales_plane_and_evidence_together(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.synthetic_data_generation.alignment import comparison_source
+
+    (tmp_path / "manual-confirmation.json").write_text("{}")
+    frame = GroundPlaneFrame(
+        (2.0, 4.0, 0.0),
+        (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+        (-4.0, 4.0, -4.0, 4.0),
+    )
+    heatmaps = AlignmentLineHeatmaps(
+        frame.bounds_uv_metres,
+        1.0,
+        2.0,
+        2.0,
+        (
+            AlignmentLineHeatmapView(
+                "fit",
+                np.ones((2, 2), dtype=np.float32),
+                np.asarray([[2.0, 2.0]]),
+                np.ones(1, dtype=np.float32),
+                np.ones(1),
+                True,
+            ),
+        ),
+    )
+    original = MetricSceneAdapter.from_nht_scene_from_metric_scene(np.eye(4))
+    changed = MetricSceneAdapter.from_nht_scene_from_metric_scene(
+        np.diag([2.0, 2.0, 2.0, 1.0])
+    )
+    monkeypatch.setattr(
+        comparison_source,
+        "validate_alignment_outputs",
+        lambda path: SimpleNamespace(metric_adapter=changed),
+    )
+    monkeypatch.setattr(
+        comparison_source, "validate_line_heatmaps", lambda path: heatmaps
+    )
+    monkeypatch.setattr(
+        comparison_source,
+        "load_manual_source",
+        lambda path: SimpleNamespace(
+            plane=frame, initial=SimpleNamespace(metric_adapter=original)
+        ),
+    )
+    result = comparison_source.load_comparison_baseline(tmp_path)
+    assert result.heatmaps.raster_shape == heatmaps.raster_shape
+    np.testing.assert_allclose(result.plane.origin_metric_scene, (1, 2, 0))
+    np.testing.assert_allclose(result.heatmaps.views[0].points_uv, [[1, 1]])
+    np.testing.assert_allclose(
+        changed.nht_from_metric_points(
+            result.plane.from_uv(result.heatmaps.views[0].points_uv)
+        ),
+        original.nht_from_metric_points(frame.from_uv(heatmaps.views[0].points_uv)),
+    )
+
+
+@pytest.mark.parametrize("profile", ["b00", "b01", "b02", "b03"])
+def test_comparison_configuration_ignores_unrequested_dataset_generation(
+    profile: str,
+) -> None:
+    from hydra import compose, initialize_config_dir
+
+    from src.synthetic_data_generation.alignment.comparison_configuration import (
+        ComparisonRuntime,
+    )
+    from src.utils.paths import PROJECT_ROOT
+
+    with initialize_config_dir(
+        config_dir=str(PROJECT_ROOT / "src/synthetic_data_generation/configs"),
+        version_base="1.3",
+    ):
+        config = compose(
+            config_name="compare_semantic_alignment", overrides=[f"profile={profile}"]
+        )
+    runtime = ComparisonRuntime.from_config(config)
+    assert runtime.workspace.scene_id == profile.upper()
+
+
 def test_comparison_writes_both_methods_and_never_fits_holdout(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -73,7 +156,7 @@ def test_comparison_writes_both_methods_and_never_fits_holdout(
         ),
     )
     baseline = SimpleNamespace(
-        evidence=SimpleNamespace(ground_plane_frame=frame),
+        plane=frame,
         heatmaps=baseline_heatmaps,
         result=SimpleNamespace(
             metric_adapter=MetricSceneAdapter.from_nht_scene_from_metric_scene(
@@ -92,9 +175,7 @@ def test_comparison_writes_both_methods_and_never_fits_holdout(
             ),
         ),
     )
-    monkeypatch.setattr(
-        comparison, "load_alignment_publication_data", lambda path: baseline
-    )
+    monkeypatch.setattr(comparison, "load_comparison_baseline", lambda path: baseline)
     monkeypatch.setattr(
         comparison,
         "validate_standard_scene_export",
