@@ -11,6 +11,22 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="automation.chatgpt_mcp.capabilities",
+    fields=(BoundaryPathField("lock", PathRole.PROJECT, PathDirection.INPUT,
+                              PathKind.FILE, must_exist=True),),
+)
+
 
 def check_vision() -> dict[str, Any]:
     import cv2
@@ -90,6 +106,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gpu", action="store_true")
     args = parser.parse_args()
+    root = Path.cwd().resolve()
+    roots = RuntimePathRoots(project_root=root, data_root=root, checkpoint_root=root,
+                             artifact_root=root, output_root=root, cache_root=root,
+                             external_asset_root=root)
+    PATH_BOUNDARY.validate({"lock": root / "uv.lock"}, resolver=PathResolver(roots))
     report: dict[str, Any] = {"profiles": {}, "lock_sha256": hashlib.sha256(Path("uv.lock").read_bytes()).hexdigest()}
     for name, check in (("core_torch", lambda: check_torch(args.gpu)), ("vision", check_vision), ("video", check_video), ("test", check_test)):
         try:
