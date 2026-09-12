@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 from omegaconf import OmegaConf
 
@@ -41,8 +42,29 @@ def _residual_dense_head() -> dict[str, object]:
     }
 
 
+def _runtime_roots() -> dict[str, str]:
+    return {
+        "project_root": "/workspace",
+        "data_root": "/tennis-lab/data",
+        "checkpoint_root": "/tennis-lab/ckpt",
+        "artifact_root": "/workspace/assets",
+        "output_root": "/tennis-lab/outputs",
+        "cache_root": "/tennis-lab/.cache",
+        "external_asset_root": "/tennis-lab/third_party",
+    }
+
+
 def _legacy_config() -> dict[str, object]:
     return {
+        "paths": {
+            "project_root": ".",
+            "data_root": "/old-host/tennis-lab/data",
+            "checkpoint_root": "/old-host/tennis-lab/outputs",
+            "artifact_root": "assets",
+            "output_root": "/old-host/tennis-lab/outputs",
+            "cache_root": "/old-host/tennis-lab/.cache",
+            "external_asset_root": "/old-host/tennis-lab/third_party",
+        },
         "run": {"output_dir": "outputs/test"},
         "data": {"processing": {"targets": _legacy_targets()}},
         "model": {
@@ -72,6 +94,32 @@ def test_mapping_migration_adds_inference_defaults_without_mutation() -> None:
     )
     assert legacy["model"]["dense_head"] == _residual_dense_head()
     assert legacy["mixed"] == {"batch_size": 8}
+
+
+def test_runtime_roots_replace_serialized_machine_paths_without_mutation() -> None:
+    legacy = _legacy_config()
+
+    migrated = migrate_court_inference_config(
+        legacy,
+        runtime_path_roots=_runtime_roots(),
+    )
+
+    assert migrated is not None
+    assert migrated["paths"] == _runtime_roots()
+    assert legacy["paths"]["external_asset_root"] == (
+        "/old-host/tennis-lab/third_party"
+    )
+
+
+def test_runtime_roots_require_the_complete_contract() -> None:
+    roots = _runtime_roots()
+    roots.pop("external_asset_root")
+
+    with pytest.raises(ValueError, match="missing=.*external_asset_root"):
+        migrate_court_inference_config(
+            _legacy_config(),
+            runtime_path_roots=roots,
+        )
 
 
 def test_dictconfig_migration_preserves_interpolation() -> None:
@@ -145,9 +193,13 @@ def test_checkpoint_metadata_loader_returns_migrated_config(tmp_path) -> None:
         checkpoint_path,
     )
 
-    migrated = load_court_inference_config_override(checkpoint_path)
+    migrated = load_court_inference_config_override(
+        checkpoint_path,
+        runtime_path_roots=_runtime_roots(),
+    )
 
     assert migrated is not None
+    assert migrated["paths"] == _runtime_roots()
     assert migrated["run"]["artifact_store"] == _EXPECTED_LOCAL_STORE
     assert migrated["data"]["processing"]["targets"][2]["target_schema"] == (
         LINE_TARGET_SCHEMA
