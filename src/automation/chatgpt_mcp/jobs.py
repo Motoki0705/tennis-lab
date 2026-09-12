@@ -314,8 +314,8 @@ class DockerSandbox:
             f"cd {shlex.quote(selected_root)}; "
             f"cd -- {working_directory}; "
             f'command="$(cat {_COMMAND_MOUNT_PATH})"; '
-            "exec /usr/bin/timeout --signal=TERM --kill-after=30s "
-            f'{spec.timeout_seconds} /bin/bash -lc "$command"'
+            f"exec {venv}/bin/python -I /run/tennis-mcp-supervisor "
+            f'"$command" {spec.timeout_seconds} /artifacts/outcome.json'
         )
 
     def command(self, spec: SandboxSpec, *, detached: bool) -> list[str]:
@@ -424,6 +424,9 @@ class DockerSandbox:
             _safe_mount(artifacts, "/artifacts", read_only=False),
             "--mount",
             _safe_mount(command_path, _COMMAND_MOUNT_PATH, read_only=True),
+            "--mount",
+            _safe_mount(Path(__file__).with_name("command_supervisor.py"),
+                        "/run/tennis-mcp-supervisor", read_only=True),
             "--mount",
             _safe_mount(
                 self.settings.runtime_venv_root,
@@ -535,7 +538,16 @@ class DockerSandbox:
             raise JobError("sandbox container was not found")
         document = json.loads(result.stdout)[0]
         state = document["State"]
+        outcome = "unknown"
+        outcome_path = self.settings.sandbox_jobs_dir / job_id / "artifacts/outcome.json"
+        if not state["Running"] and outcome_path.is_file() and not outcome_path.is_symlink():
+            with contextlib.suppress(ValueError, OSError):
+                observed = json.loads(outcome_path.read_text())
+                if observed.get("outcome") in {"succeeded", "failed", "timed_out"}:
+                    outcome = observed["outcome"]
         return {
+            "image_id": document.get("Image"),
+            "outcome": outcome,
             "status": state["Status"],
             "running": bool(state["Running"]),
             "exit_code": state["ExitCode"] if not state["Running"] else None,
@@ -701,7 +713,10 @@ class JobManager:
         payload = self.store.get("jobs", job_id)
         if payload is None:
             raise JobError("job id was not found")
-        return {**payload, **self.sandbox.inspect(job_id)}
+        state = self.sandbox.inspect(job_id)
+        if payload.get("cancelled_at") and not state["running"]:
+            state["outcome"] = "cancelled"
+        return {**payload, **state}
 
     def list(self, *, limit: int = 50) -> list[dict[str, Any]]:
         jobs = self.store.list("jobs", limit=limit)
@@ -712,13 +727,22 @@ class JobManager:
                 state = self.sandbox.inspect(job_id)
             except JobError:
                 state = {"status": "missing", "running": False, "exit_code": None}
+            if payload.get("cancelled_at") and not state["running"]:
+                state["outcome"] = "cancelled"
             summaries.append({**payload, **state})
         return summaries
 
     def cancel(self, job_id: str) -> dict[str, str]:
-        if self.store.get("jobs", job_id) is None:
+        payload = self.store.get("jobs", job_id)
+        if payload is None:
             raise JobError("job id was not found")
+        if not self.sandbox.inspect(job_id)["running"]:
+            return {"job_id": job_id, "status": "stopped"}
+        payload["cancellation_requested_at"] = time.time()
+        self.store.put("jobs", job_id, payload, expires_at=time.time() + _JOB_METADATA_TTL_SECONDS)
         self.sandbox.stop(job_id)
+        payload["cancelled_at"] = time.time()
+        self.store.put("jobs", job_id, payload, expires_at=time.time() + _JOB_METADATA_TTL_SECONDS)
         return {"job_id": job_id, "status": "stopped"}
 
 
@@ -948,6 +972,8 @@ class TrainingQueueManager:
                 result.update(
                     {
                         "container_status": container["status"],
+                        "image_id": container.get("image_id"),
+                        "outcome": container.get("outcome", "unknown"),
                         "running": container["running"],
                         "exit_code": container["exit_code"],
                         "started_at": container["started_at"],
@@ -955,6 +981,10 @@ class TrainingQueueManager:
                         "error": container["error"],
                     }
                 )
+        if result["status"] == "cancelled":
+            result["outcome"] = "cancelled"
+        else:
+            result.setdefault("outcome", "unknown")
         return result
 
     def list(self, *, limit: int = 50) -> list[dict[str, Any]]:

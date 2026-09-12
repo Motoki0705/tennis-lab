@@ -98,8 +98,7 @@ held. Stop, wait, or acknowledgement failure is reported and fails closed.
 
 Network access is intentionally unavailable. Downloads must use a separately
 reviewed workflow rather than an arbitrary MCP command. The checked-in
-configuration audit inventory is regenerated after MCP source changes and
-verified by CI before merge.
+configuration audit is verified by CI before merge.
 
 ## Typical flow
 
@@ -164,3 +163,33 @@ Stable services are `tennis-lab-chatgpt-mcp-private.service` and
 `http://127.0.0.1:8767/mcp`; tunnel readiness is
 `http://127.0.0.1:8768/readyz`. Keep the legacy Quick Tunnel until an actual
 ChatGPT Secure Tunnel call succeeds, then disable it.
+
+
+## Execution capabilities and diagnostics
+
+The execution image is built from `Dockerfile` in this directory and includes
+OpenCV's OS libraries, FFmpeg/ffprobe and Git. Both CPU and queued GPU jobs use
+it; the external Python environment remains read-only. Deployment runs
+`python -m src.automation.chatgpt_mcp.capabilities` in a CPU sandbox and the same
+command with `--gpu` through the queue. Its `core_torch`, `vision`, `video`, and
+`test` profiles report independently; all are required for this deployment.
+Failure of `vision` does not imply that `core_torch` failed. CUDA is intentionally
+invisible in CPU jobs. The GPU probe performs 25 optimizer steps on each device;
+it is a capability check, not evidence of long-running model training.
+
+Job responses retain Docker status/exit code and add `image_id` and `outcome`.
+The command supervisor records `succeeded`, `failed`, or `timed_out`; API CPU
+cancellation is recorded after verified stopping, and GPU cancellation follows
+the queue's terminal state. Missing historical evidence yields `unknown`.
+Explicit exit codes 124 and 143 alone are never timeout/cancellation evidence.
+Supervisor records live in per-job artifacts, are diagnostic information within
+the destructible sandbox, and never authorize queue release or teardown.
+Revision mismatch responses expose `is_error`, `code=REVISION_MISMATCH`, safe
+revision identities and a persisted `request_id` without a stack trace.
+
+If ChatGPT advertises a different schema, capture the private server's raw
+`tools/list` and ChatGPT's tool definition at the same runtime revision. The
+server already advertises `resource=half/all` with default `all`; do not create
+duplicate tools to hide a registration/translation discrepancy. Refresh the
+connection's tool definitions in ChatGPT and verify a `half` job from that chat.
+The local server alone cannot verify the definition actually shown to a model.

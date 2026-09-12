@@ -184,7 +184,7 @@ def test_deploy_verifies_tool_surface_and_host_boundary() -> None:
     assert 'layout["queued_memory_limit_gb"] != 48' in text
 
 
-def test_deploy_runs_cpu_regression_and_serial_cuda_smoke() -> None:
+def test_deploy_runs_cpu_regression_and_queued_capabilities() -> None:
     text = _workflow_text()
 
     assert 'PYTHONPATH="$GITHUB_WORKSPACE"' in text
@@ -195,7 +195,8 @@ def test_deploy_runs_cpu_regression_and_serial_cuda_smoke() -> None:
     assert 'tests/integration/chatgpt_mcp' in text
     assert '"python -m pytest -q "' not in text
     assert '"enqueue_training"' in text
-    assert 'assert torch.cuda.is_available()' in text
+    assert 'chatgpt_mcp.capabilities --gpu' in text
+    assert '"resource": "half"' in text
     assert 'mcp-deploy-cuda-smoke' in text
 
 
