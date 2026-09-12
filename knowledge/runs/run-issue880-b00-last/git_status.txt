@@ -1,0 +1,5 @@
+ M src/synthetic_data_generation/configs/compare_semantic_alignment.yaml
+ M src/synthetic_data_generation/scripts/compare_semantic_alignment.py
+ M tests/e2e/synthetic_data_generation/test_removed_architecture.py
+ M tests/integration/tasks/court_detection/test_composable_pipeline.py
+ M tests/integration/tasks/court_detection/test_mixed_training_config.py
