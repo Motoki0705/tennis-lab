@@ -25,12 +25,12 @@ from src.tasks.court_detection.data.target_generation.segmentation import (
     generate_segmentation_target,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    SEGMENTATION_TARGET_SCHEMA,
     CourtDerivedTargetStore,
     build_derived_target_metadata,
 )
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA,
     line_target_definition,
 )
 
@@ -96,6 +96,13 @@ class CourtTargetMaterializer:
         height, width = raw.image.height, raw.image.width
         if raw.metadata.source_schema != self.input_layer.spec.source_schema:
             raise ValueError("Court materializer input schema changed while loading.")
+        if (
+            kind == "seg" or self.line_target_definition.schema == LINE_TARGET_SCHEMA
+        ) and len(raw.court_instances) != 1:
+            raise ValueError(
+                "Current single-court dense target schemas require exactly one "
+                "selected court instance."
+            )
         if kind == "seg":
             array = generate_segmentation_target(
                 height=height,

@@ -11,7 +11,7 @@ Usage:
         loss.pose.focal_weight=1.0 \
         loss.consistency.enabled=false \
         data/augmentation=pose_safe \
-        data.source.keypoint_court_scope=target_court
+        data.source.court_scope=target_court
 
 Notes:
     - Dense targets are learned from both configured sources in every batch.

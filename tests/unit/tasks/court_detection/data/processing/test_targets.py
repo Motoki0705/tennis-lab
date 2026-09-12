@@ -20,7 +20,7 @@ pytestmark = pytest.mark.unit
 
 def test_segmentation_decode_copies_read_only_image_buffer() -> None:
     builder = SegmentationTargetBuilder(
-        target_schema="court_cell_segmentation_v1",
+        target_schema="court_cell_segmentation_single_court_v2",
         input_spec=CourtInputSpec(
             source_kind="tennis_court_detector",
             source_schema="fixture",

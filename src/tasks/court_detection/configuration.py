@@ -46,7 +46,7 @@ CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
 SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
-KeypointCourtScope: TypeAlias = Literal["all_courts", "target_court"]
+CourtScope: TypeAlias = Literal["all_courts", "target_court"]
 CourtDecoderName: TypeAlias = Literal["fpn", "unet", "dpt"]
 CourtDPTSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 CourtConsistencyGradientFlow: TypeAlias = Literal[
@@ -519,7 +519,7 @@ class TennisCourtDetectorSourceConfig:
 class SyntheticCourtSourceConfig:
     kind: Literal["synthetic_court"]
     schema: SyntheticCourtSchemaVersion
-    keypoint_court_scope: KeypointCourtScope
+    court_scope: CourtScope
     workspace_root: Path
     scene_ids: tuple[str, ...]
 
@@ -533,7 +533,7 @@ class SyntheticCourtSourceConfig:
             {
                 "kind",
                 "schema",
-                "keypoint_court_scope",
+                "court_scope",
                 "workspace_root",
                 "scene_ids",
             },
@@ -548,17 +548,15 @@ class SyntheticCourtSourceConfig:
             raise SemanticConfigurationError(
                 "data.source.schema must be explicitly 'v1', 'v2', or 'v3'."
             )
-        keypoint_court_scope = _string(
-            mapping, "keypoint_court_scope", path="data.source"
-        )
-        if keypoint_court_scope not in {"all_courts", "target_court"}:
+        court_scope = _string(mapping, "court_scope", path="data.source")
+        if court_scope not in {"all_courts", "target_court"}:
             raise SemanticConfigurationError(
-                "data.source.keypoint_court_scope must be 'all_courts' or "
+                "data.source.court_scope must be 'all_courts' or "
                 "'target_court'."
             )
-        if schema == "v1" and keypoint_court_scope == "target_court":
+        if schema == "v1" and court_scope == "target_court":
             raise SemanticConfigurationError(
-                "data.source.keypoint_court_scope='target_court' requires "
+                "data.source.court_scope='target_court' requires "
                 "data.source.schema='v2' or 'v3'."
             )
         raw_ids = _sequence(mapping, "scene_ids", path="data.source")
@@ -588,7 +586,7 @@ class SyntheticCourtSourceConfig:
         return cls(
             kind="synthetic_court",
             schema=cast(SyntheticCourtSchemaVersion, schema),
-            keypoint_court_scope=cast(KeypointCourtScope, keypoint_court_scope),
+            court_scope=cast(CourtScope, court_scope),
             workspace_root=resolver.resolve(
                 PathRole.DATA,
                 _string(mapping, "workspace_root", path="data.source"),
@@ -725,15 +723,33 @@ class CourtDataConfig:
             raise SemanticConfigurationError(
                 "data.batch_size must be positive and data.num_workers non-negative."
             )
+        source = _source_config(
+            require_config_mapping(mapping, "source", path="data"),
+            resolver=resolver,
+        )
+        processing = CourtProcessingConfig.from_mapping(
+            require_config_mapping(mapping, "processing", path="data"),
+            resolver=resolver,
+        )
+        if (
+            isinstance(source, SyntheticCourtSourceConfig)
+            and source.court_scope == "all_courts"
+            and any(
+                target.kind == "seg"
+                or (
+                    target.kind == "line"
+                    and target.target_schema == LINE_TARGET_SCHEMA
+                )
+                for target in processing.targets
+            )
+        ):
+            raise SemanticConfigurationError(
+                "Current single-court SEG/LINE targets require "
+                "data.source.court_scope='target_court'."
+            )
         return cls(
-            source=_source_config(
-                require_config_mapping(mapping, "source", path="data"),
-                resolver=resolver,
-            ),
-            processing=CourtProcessingConfig.from_mapping(
-                require_config_mapping(mapping, "processing", path="data"),
-                resolver=resolver,
-            ),
+            source=source,
+            processing=processing,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=_bool(mapping, "pin_memory", path="data"),
@@ -1804,7 +1820,7 @@ __all__ = [
     "CourtTransformerEncoderConfig",
     "CourtTrainingConfig",
     "DPT_CHANNELS_BY_SIZE",
-    "KeypointCourtScope",
+    "CourtScope",
     "LINE_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA",
     "SyntheticCourtSourceConfig",

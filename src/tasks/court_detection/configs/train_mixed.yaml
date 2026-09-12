@@ -21,7 +21,7 @@ mixed:
 
 data:
   source:
-    keypoint_court_scope: target_court
+    court_scope: target_court
 
 hydra:
   run:

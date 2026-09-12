@@ -34,6 +34,7 @@ from src.tasks.court_detection.data.target_generation.store import (
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
     LINE_TARGET_SCHEMA_V1,
+    LINE_TARGET_SCHEMA_V2,
     line_target_definition,
 )
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
@@ -52,7 +53,7 @@ def test_materializer_writes_both_dense_targets_below_derived_store(
         dim=1,
     )
     target_specs: tuple[tuple[CourtDenseTargetKind, str], ...] = (
-        ("seg", "court_cell_segmentation_v1"),
+        ("seg", "court_cell_segmentation_single_court_v2"),
         ("line", LINE_TARGET_SCHEMA),
     )
     refs: dict[CourtDenseTargetKind, Path] = {
@@ -190,9 +191,92 @@ def test_line_target_width_is_explicitly_previewable() -> None:
     assert np.count_nonzero(wide) > np.count_nonzero(narrow)
 
 
+def test_current_dense_schemas_reject_multiple_selected_courts(
+    tmp_path: Path,
+) -> None:
+    store = CourtDerivedTargetStore(tmp_path / "derived")
+    points = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14, :2]
+    image_points = torch.stack(
+        (
+            (points[:, 0] / 12.0 + 0.5) * 63.0,
+            (0.5 - points[:, 1] / 26.0) * 47.0,
+        ),
+        dim=1,
+    )
+    first = CourtInstance2D(
+        court_instance_id="court-a",
+        physical_indices=torch.arange(14, dtype=torch.long),
+        points_xy=image_points,
+        point_in_front=torch.ones(14, dtype=torch.bool),
+        point_visible=torch.ones(14, dtype=torch.bool),
+    )
+    second = replace(first, court_instance_id="court-b")
+    path = store.path_for(
+        source_kind="synthetic_court",
+        derived_key="target_court/B00/sample",
+        target_schema=LINE_TARGET_SCHEMA,
+    )
+    record = CourtSampleRecord(
+        sample_id="B00:sample",
+        split="train",
+        image_path=tmp_path / "source.png",
+        annotation_path=tmp_path / "source.json",
+        derived_key="target_court/B00/sample",
+        dense_target_refs={"line": path},
+        payload={
+            "source_schema": "fixture",
+            "source_sample_id": "sample",
+            "source_target_sha256": hashlib.sha256(b"fixture").hexdigest(),
+            "width": 64,
+            "height": 48,
+        },
+    )
+    raw = CourtRawSample(
+        sample_id=record.sample_id,
+        image=Image.fromarray(np.zeros((48, 64, 3), dtype=np.uint8)),
+        keypoint_channels=None,
+        court_instances=(first, second),
+        dense_target_refs=record.dense_target_refs,
+        metadata=CourtSampleMetadata(
+            source_kind="synthetic_court",
+            source_schema="fixture",
+            source_sample_id="sample",
+            scene_id="B00",
+            provenance={},
+        ),
+    )
+
+    class _Input:
+        spec = CourtInputSpec(
+            source_kind="synthetic_court",
+            source_schema="fixture",
+            capabilities=frozenset({CourtInputCapability.COURT_INSTANCES}),
+        )
+        available_splits: tuple[CourtSourceSplit, ...] = ("train",)
+
+        def records(self, split: CourtSourceSplit) -> tuple[CourtSampleRecord, ...]:
+            assert split == "train"
+            return (record,)
+
+        def load(self, selected: CourtSampleRecord) -> CourtRawSample:
+            assert selected is record
+            return raw
+
+    with pytest.raises(ValueError, match="exactly one selected court"):
+        CourtTargetMaterializer(
+            input_layer=_Input(),
+            target_store=store,
+        ).materialize(splits=("train",), target_kinds=("line",))
+
+
 def test_line_target_schemas_keep_physical_widths_immutable() -> None:
     legacy = line_target_definition(LINE_TARGET_SCHEMA_V1)
+    all_court_wide = line_target_definition(LINE_TARGET_SCHEMA_V2)
     current = line_target_definition(LINE_TARGET_SCHEMA)
 
     assert (legacy.line_width_metres, legacy.baseline_width_metres) == (0.05, 0.10)
+    assert (
+        all_court_wide.line_width_metres,
+        all_court_wide.baseline_width_metres,
+    ) == (0.075, 0.15)
     assert (current.line_width_metres, current.baseline_width_metres) == (0.075, 0.15)

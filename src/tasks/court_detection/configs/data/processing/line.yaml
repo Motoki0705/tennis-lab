@@ -1,4 +1,4 @@
 derived_target_root: court_detection/derived_targets
 targets:
   - kind: line
-    target_schema: court_line_binary_75mm_150mm_v2
+    target_schema: court_line_binary_75mm_150mm_single_court_v3

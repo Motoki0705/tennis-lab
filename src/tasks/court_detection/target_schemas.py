@@ -6,7 +6,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_v1"
+SEGMENTATION_TARGET_SCHEMA_V1 = "court_cell_segmentation_v1"
+SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_single_court_v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,7 +21,8 @@ class CourtLineTargetDefinition:
 
 LINE_TARGET_SCHEMA_V1 = "court_line_binary_v1"
 LINE_TARGET_SCHEMA_V2 = "court_line_binary_75mm_150mm_v2"
-LINE_TARGET_SCHEMA = LINE_TARGET_SCHEMA_V2
+LINE_TARGET_SCHEMA_V3 = "court_line_binary_75mm_150mm_single_court_v3"
+LINE_TARGET_SCHEMA = LINE_TARGET_SCHEMA_V3
 
 LINE_TARGET_DEFINITIONS: Mapping[str, CourtLineTargetDefinition] = MappingProxyType(
     {
@@ -31,6 +33,11 @@ LINE_TARGET_DEFINITIONS: Mapping[str, CourtLineTargetDefinition] = MappingProxyT
         ),
         LINE_TARGET_SCHEMA_V2: CourtLineTargetDefinition(
             schema=LINE_TARGET_SCHEMA_V2,
+            line_width_metres=0.075,
+            baseline_width_metres=0.15,
+        ),
+        LINE_TARGET_SCHEMA_V3: CourtLineTargetDefinition(
+            schema=LINE_TARGET_SCHEMA_V3,
             line_width_metres=0.075,
             baseline_width_metres=0.15,
         ),
@@ -51,7 +58,9 @@ __all__ = [
     "LINE_TARGET_SCHEMA",
     "LINE_TARGET_SCHEMA_V1",
     "LINE_TARGET_SCHEMA_V2",
+    "LINE_TARGET_SCHEMA_V3",
     "SEGMENTATION_TARGET_SCHEMA",
+    "SEGMENTATION_TARGET_SCHEMA_V1",
     "CourtLineTargetDefinition",
     "line_target_definition",
 ]
