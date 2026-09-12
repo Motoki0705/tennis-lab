@@ -25,15 +25,10 @@ from tests.unit.tennis_scene.pipeline.config_factories import make_court_kp_conf
 
 
 class _StaticPoseEnabledCourtModel(CourtHierarchicalModel):
-    def __init__(
-        self,
-        bundle: CourtTargetBundleSpec,
-        kp_logits: torch.Tensor,
-    ) -> None:
+    def __init__(self, bundle: CourtTargetBundleSpec) -> None:
         nn.Module.__init__(self)
         self.in_channels = 3
         self.target_bundle_spec = bundle
-        self.register_buffer("_kp_logits", kp_logits)
 
     def forward(
         self,
@@ -54,11 +49,13 @@ class _StaticPoseEnabledCourtModel(CourtHierarchicalModel):
                 patch_valid_mask,
             )
         )
+        batch_size, _, height, width = image.shape
+        probabilities = image.new_full((batch_size, 14, height, width), 0.001)
+        probabilities[:, :, min(3, height - 1), min(4, width - 1)] = 0.99
+        probabilities[:, :, max(height - 2, 0), max(width - 2, 0)] = 0.08
         return CourtModelOutput(
-            dense_logits={
-                "kp": self._kp_logits.expand(image.shape[0], -1, -1, -1)
-            },
-            pose=CourtRawPoseOutput(image.new_zeros((image.shape[0], 10))),
+            dense_logits={"kp": torch.logit(probabilities)},
+            pose=CourtRawPoseOutput(image.new_zeros((batch_size, 10))),
         )
 
 
@@ -75,10 +72,7 @@ def _pose_enabled_predictor() -> CourtKeypointPredictor:
             )
         }
     )
-    probabilities = torch.full((1, 14, 8, 12), 0.001)
-    probabilities[:, :, 3, 4] = 0.99
-    probabilities[:, :, 6, 10] = 0.08
-    model = _StaticPoseEnabledCourtModel(bundle, torch.logit(probabilities))
+    model = _StaticPoseEnabledCourtModel(bundle)
     adapter = CourtModelIOAdapter(
         CourtModelSpec(target_bundle=bundle, in_channels=3, short_side=8),
         loss_config=CourtLossConfig.from_mapping(
@@ -133,7 +127,12 @@ def test_tennis_scene_consumes_only_kp14_from_pose_enabled_model(tmp_path) -> No
     assert valid.shape == (14,)
     np.testing.assert_allclose(
         keypoints,
-        np.broadcast_to(np.array([4.0, 3.0], dtype=np.float32), (14, 2)),
+        np.broadcast_to(
+            np.array([44.0 / 7.0, 3.0], dtype=np.float32),
+            (14, 2),
+        ),
+        rtol=0.0,
+        atol=1.0e-6,
     )
     np.testing.assert_allclose(scores, np.full(14, 0.99, dtype=np.float32))
     np.testing.assert_array_equal(valid, np.ones(14, dtype=bool))
