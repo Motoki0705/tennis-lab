@@ -17,7 +17,6 @@ from typing import Any, Protocol, cast
 import numpy as np
 import torch
 from numpy.typing import NDArray
-from PIL import Image, UnidentifiedImageError
 from scipy.optimize import differential_evolution
 from scipy.spatial import cKDTree
 
@@ -67,6 +66,10 @@ from src.synthetic_data_generation.alignment.heatmaps import (
 from src.synthetic_data_generation.alignment.line_inference_cache import (
     court_line_inference_identity,
     load_or_predict_line_probabilities,
+)
+from src.synthetic_data_generation.alignment.line_inputs import (
+    AlignmentLineInputBatch,
+    AlignmentLineInputSource,
 )
 from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
@@ -569,8 +572,40 @@ class _ObservableCameraSelection:
     exclusions: tuple[ExcludedCameraDiagnostics, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class _LineInferenceBatch:
+    """Exact detector inputs and their camera-keyed probabilities."""
+
+    inputs: AlignmentLineInputBatch
+    probabilities: Mapping[str, NDArray[np.float32]]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.inputs, AlignmentLineInputBatch):
+            raise TypeError("Line inference requires typed alignment inputs.")
+        probabilities = dict(self.probabilities)
+        if tuple(probabilities) != self.inputs.camera_ids:
+            raise ValueError(
+                "Line probabilities must preserve the exact detector-input camera order."
+            )
+        for camera_id, probability in probabilities.items():
+            if (
+                not isinstance(camera_id, str)
+                or not isinstance(probability, np.ndarray)
+                or probability.dtype != np.float32
+                or probability.ndim != 2
+                or min(probability.shape) < 2
+                or not np.isfinite(probability).all()
+                or np.any(probability < 0.0)
+                or np.any(probability > 1.0)
+            ):
+                raise ValueError(
+                    f"Invalid court-line probability for camera {camera_id!r}."
+                )
+        object.__setattr__(self, "probabilities", MappingProxyType(probabilities))
+
+
 class MeasuredAlignmentEvidenceSource:
-    """Deterministic fit/holdout evidence over public images, cameras, and points."""
+    """Deterministic fit/holdout evidence over explicit images and public geometry."""
 
     def __init__(
         self,
@@ -578,11 +613,19 @@ class MeasuredAlignmentEvidenceSource:
         detector: LineProbabilityDetector,
         policy: AlignmentAcceptancePolicy,
         *,
+        input_source: AlignmentLineInputSource,
         holdout_camera_prefix_count: int | None = None,
     ) -> None:
+        if not callable(getattr(input_source, "preflight", None)) or not callable(
+            getattr(input_source, "load", None)
+        ):
+            raise TypeError(
+                "Measured alignment requires an explicit line-input source."
+            )
         self._settings = settings
         self._detector = detector
         self._policy = policy
+        self._input_source = input_source
         selected_count = (
             settings.camera_prefix_count
             if holdout_camera_prefix_count is None
@@ -598,6 +641,11 @@ class MeasuredAlignmentEvidenceSource:
                 f"{settings.camera_prefix_count} and 96."
             )
         self._holdout_camera_prefix_count = selected_count
+
+    @property
+    def input_source(self) -> AlignmentLineInputSource:
+        """Return the explicit image authority bound at composition time."""
+        return self._input_source
 
     def preflight(self, scene: StandardSceneExport) -> None:
         """Validate all real evidence and model requirements before mutation."""
@@ -616,28 +664,7 @@ class MeasuredAlignmentEvidenceSource:
                 "NHT scene has too few public sparse points for ground fitting: "
                 f"{scene.point_count} < {minimum_points}."
             )
-        for camera in selected:
-            image_path = Path(camera.image_path)
-            if (
-                not image_path.is_absolute()
-                or not image_path.is_file()
-                or image_path.is_symlink()
-            ):
-                raise FileNotFoundError(
-                    f"Exported camera {camera.camera_id!r} has no ordinary public image: "
-                    f"{image_path}."
-                )
-            try:
-                with Image.open(image_path) as image:
-                    if image.size != (camera.width, camera.height):
-                        raise ValueError(
-                            f"Exported image dimensions disagree for {camera.camera_id!r}."
-                        )
-                    image.verify()
-            except UnidentifiedImageError as error:
-                raise ValueError(
-                    f"Exported image cannot be decoded: {image_path}."
-                ) from error
+        self._input_source.preflight(scene, selected)
         self._detector.preflight()
 
     def collect(self, scene: StandardSceneExport) -> AlignmentEvidence:
@@ -660,7 +687,13 @@ class MeasuredAlignmentEvidenceSource:
             camera_prefix_count=self._holdout_camera_prefix_count,
         )
         selected = fixed.ordered_cameras
-        probabilities = self._predict_probabilities(scene, selected)
+        inputs = self._input_source.load(scene, selected)
+        if inputs.camera_ids != tuple(camera.camera_id for camera in selected):
+            raise ValueError(
+                "Alignment line input source changed the fixed selected-camera order."
+            )
+        inference = self._predict_probabilities(scene, inputs)
+        probabilities = inference.probabilities
         fit_assigned, holdout_assigned = _partition_cameras_with_holdout_tail(
             selected,
             settings=self._settings,
@@ -719,6 +752,7 @@ class MeasuredAlignmentEvidenceSource:
                 fit_cameras=observable.fit,
                 holdout_cameras=observable.holdout,
                 probabilities=probabilities,
+                line_inputs=inputs,
                 projected_by_camera=projected_by_camera,
                 settings=self._settings,
                 policy=self._policy,
@@ -734,6 +768,7 @@ class MeasuredAlignmentEvidenceSource:
         heatmaps = _alignment_line_heatmaps(
             camera_prefix=selected,
             probabilities=probabilities,
+            line_inputs=inputs,
             projected_by_camera=projected_by_camera,
             metric_adapter=evidence.metric_adapter,
             ground_plane_frame=evidence.ground_plane_frame,
@@ -749,21 +784,25 @@ class MeasuredAlignmentEvidenceSource:
     def _predict_probabilities(
         self,
         scene: StandardSceneExport,
-        cameras: tuple[SceneCamera, ...],
-    ) -> dict[str, NDArray[np.float32]]:
+        inputs: AlignmentLineInputBatch,
+    ) -> _LineInferenceBatch:
         del scene
-        return {
-            camera.camera_id: self._detector.predict_probability(
-                _load_rgb_image(camera)
-            )
-            for camera in cameras
-        }
+        return _LineInferenceBatch(
+            inputs=inputs,
+            probabilities={
+                view.camera.camera_id: self._detector.predict_probability(
+                    view.image_rgb
+                )
+                for view in inputs.views
+            },
+        )
 
 
 def _alignment_line_heatmaps(
     *,
     camera_prefix: tuple[SceneCamera, ...],
     probabilities: Mapping[str, NDArray[np.float32]],
+    line_inputs: AlignmentLineInputBatch,
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
     metric_adapter: MetricSceneAdapter,
     ground_plane_frame: GroundPlaneFrame,
@@ -778,9 +817,12 @@ def _alignment_line_heatmaps(
         grid_spacing=settings.grid_spacing / scale,
         proximity_scale=settings.proximity_scale / scale,
         proximity_power=settings.proximity_power,
+        input_source=line_inputs.source.value,
+        input_provenance=line_inputs.cache_identity(),
         views=tuple(
             AlignmentLineHeatmapView(
                 camera_id=camera.camera_id,
+                input_rgb=line_inputs.image(camera.camera_id),
                 probability=probabilities[camera.camera_id],
                 points_uv=(projected_by_camera[camera.camera_id].points_uv / scale),
                 projected_probabilities=(
@@ -800,6 +842,7 @@ def _fit_alignment_line_heatmaps(
     *,
     camera_prefix: tuple[SceneCamera, ...],
     probabilities: Mapping[str, NDArray[np.float32]],
+    line_inputs: AlignmentLineInputBatch,
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
     plane: _GroundPlane,
     settings: LineProjectionSettings,
@@ -812,9 +855,12 @@ def _fit_alignment_line_heatmaps(
         grid_spacing=settings.grid_spacing,
         proximity_scale=settings.proximity_scale,
         proximity_power=settings.proximity_power,
+        input_source=line_inputs.source.value,
+        input_provenance=line_inputs.cache_identity(),
         views=tuple(
             AlignmentLineHeatmapView(
                 camera_id=camera.camera_id,
+                input_rgb=line_inputs.image(camera.camera_id),
                 probability=probabilities[camera.camera_id],
                 points_uv=projected_by_camera[camera.camera_id].points_uv,
                 projected_probabilities=(
@@ -837,6 +883,7 @@ def _alignment_evidence_for_fixed_selection(
     fit_cameras: tuple[SceneCamera, ...],
     holdout_cameras: tuple[SceneCamera, ...],
     probabilities: Mapping[str, NDArray[np.float32]],
+    line_inputs: AlignmentLineInputBatch,
     projected_by_camera: Mapping[str, _ProjectedLineEvidence],
     settings: AlignmentEvidenceSettings,
     policy: AlignmentAcceptancePolicy,
@@ -853,6 +900,7 @@ def _alignment_evidence_for_fixed_selection(
     fit_heatmaps = _fit_alignment_line_heatmaps(
         camera_prefix=camera_order,
         probabilities=probabilities,
+        line_inputs=line_inputs,
         projected_by_camera=observable_projected_by_camera,
         plane=plane,
         settings=settings.projection,
@@ -1777,6 +1825,8 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
         settings: AlignmentEvidenceSettings,
         resolver: PathResolver,
         policy: AlignmentAcceptancePolicy,
+        *,
+        input_source: AlignmentLineInputSource,
     ) -> None:
         camera_prefix_count_text = os.environ.get(
             _HOLDOUT_CAMERA_PREFIX_COUNT_OVERRIDE_ENV
@@ -1801,6 +1851,7 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
             ),
             policy,
             holdout_camera_prefix_count=holdout_camera_prefix_count,
+            input_source=input_source,
         )
         self._cached_scene_key: tuple[str, Path] | None = None
         self._cached_evaluation: EvaluatedAlignment | None = None
@@ -1834,26 +1885,27 @@ class ProductionAlignmentEvidenceSource(MeasuredAlignmentEvidenceSource):
     def _predict_probabilities(
         self,
         scene: StandardSceneExport,
-        cameras: tuple[SceneCamera, ...],
-    ) -> dict[str, NDArray[np.float32]]:
+        inputs: AlignmentLineInputBatch,
+    ) -> _LineInferenceBatch:
         """Persist raw detector outputs outside the alignment transaction."""
         raw = load_or_predict_line_probabilities(
             scene=scene,
-            cameras=cameras,
-            inference_identity=self._detector.inference_cache_identity(),
+            inputs=inputs,
+            detector_identity=self._detector.inference_cache_identity(),
             predict_probability=self._detector.predict_probability,
-            load_image=_load_rgb_image,
         )
         if not isinstance(raw, dict):
             raise TypeError("Court-line probability cache must return a dictionary.")
         result: dict[str, NDArray[np.float32]] = {}
         for camera_id, probability in raw.items():
-            if not isinstance(camera_id, str) or not isinstance(probability, np.ndarray):
+            if not isinstance(camera_id, str) or not isinstance(
+                probability, np.ndarray
+            ):
                 raise TypeError(
                     "Court-line probability cache entries must be string/array pairs."
                 )
             result[camera_id] = probability
-        return result
+        return _LineInferenceBatch(inputs=inputs, probabilities=result)
 
 
 def create_production_alignment_handler(
@@ -1861,10 +1913,16 @@ def create_production_alignment_handler(
     settings: AlignmentEvidenceSettings,
     policy: AlignmentAcceptancePolicy,
     resolver: PathResolver,
+    input_source: AlignmentLineInputSource,
 ) -> AlignmentStageHandler:
     """Bind the executable measured evidence source into the canonical stage."""
     return AlignmentStageHandler(
-        evidence_source=ProductionAlignmentEvidenceSource(settings, resolver, policy),
+        evidence_source=ProductionAlignmentEvidenceSource(
+            settings,
+            resolver,
+            policy,
+            input_source=input_source,
+        ),
         policy=policy,
     )
 
@@ -2094,20 +2152,6 @@ def _even_indices(total: int, count: int) -> tuple[int, ...]:
     if count < 1 or count > total:
         raise ValueError("Even-index selection requires 1 <= count <= total.")
     return tuple((2 * index + 1) * total // (2 * count) for index in range(count))
-
-
-def _load_rgb_image(camera: SceneCamera) -> NDArray[np.uint8]:
-    path = Path(camera.image_path)
-    try:
-        with Image.open(path) as image:
-            rgb = np.asarray(image.convert("RGB"), dtype=np.uint8)
-    except (OSError, UnidentifiedImageError) as error:
-        raise ValueError(
-            f"Unable to decode exported image for {camera.camera_id!r}."
-        ) from error
-    if rgb.shape != (camera.height, camera.width, 3):
-        raise ValueError(f"Exported image shape disagrees for {camera.camera_id!r}.")
-    return rgb
 
 
 def _estimate_ground_plane(

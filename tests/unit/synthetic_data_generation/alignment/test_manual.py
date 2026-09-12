@@ -23,6 +23,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmaps,
     AlignmentLineHeatmapView,
 )
+from src.synthetic_data_generation.alignment.line_inputs import input_rgb_sha256
 from src.synthetic_data_generation.alignment.manual.artifacts import (
     read_json,
     validate_manual_outputs,
@@ -64,28 +65,30 @@ def editor(
     owner = root / "alignment"
     owner.mkdir(parents=True)
     evidence = alignment_evidence
+    views = tuple(
+        AlignmentLineHeatmapView(
+            camera_id=camera_id,
+            input_rgb=np.zeros((8, 12, 3), dtype=np.uint8),
+            probability=np.ones((2, 2), np.float32),
+            points_uv=evidence.ground_plane_frame.to_uv(
+                evidence.metric_adapter.metric_from_nht_points(line.points_nht_scene)
+            ),
+            projected_probabilities=np.ones(len(line.points_nht_scene), np.float32),
+            proximity_weights=np.ones(len(line.points_nht_scene)),
+            included_in_aggregate=camera_id in evidence.partitions.fit_camera_ids,
+        )
+        for camera_id in evidence.diagnostics.selection.camera_prefix_ids
+        for line in evidence.measured_camera_lines
+        if camera_id == line.camera_id
+    )
     heatmaps = AlignmentLineHeatmaps(
         bounds_uv=evidence.ground_plane_frame.bounds_uv_metres,
         grid_spacing=0.5,
         proximity_scale=1.0,
         proximity_power=2.0,
-        views=tuple(
-            AlignmentLineHeatmapView(
-                camera_id=camera_id,
-                probability=np.ones((2, 2), np.float32),
-                points_uv=evidence.ground_plane_frame.to_uv(
-                    evidence.metric_adapter.metric_from_nht_points(
-                        line.points_nht_scene
-                    )
-                ),
-                projected_probabilities=np.ones(len(line.points_nht_scene), np.float32),
-                proximity_weights=np.ones(len(line.points_nht_scene)),
-                included_in_aggregate=camera_id in evidence.partitions.fit_camera_ids,
-            )
-            for camera_id in evidence.diagnostics.selection.camera_prefix_ids
-            for line in evidence.measured_camera_lines
-            if camera_id == line.camera_id
-        ),
+        input_source="captured_rgb",
+        input_provenance=_input_provenance(views),
+        views=views,
     )
     write_alignment_outputs(
         owner,
@@ -477,15 +480,38 @@ def test_excluded_diagnostic_views_do_not_change_manual_fit_partitions(
 ) -> None:
     excluded = AlignmentLineHeatmapView(
         camera_id="excluded-view",
+        input_rgb=np.zeros((8, 12, 3), dtype=np.uint8),
         probability=np.zeros((2, 2), dtype=np.float32),
         points_uv=np.zeros((0, 2), dtype=np.float64),
         projected_probabilities=np.zeros(0, dtype=np.float32),
         proximity_weights=np.zeros(0, dtype=np.float64),
         included_in_aggregate=False,
     )
-    heatmaps = replace(editor.heatmaps, views=editor.heatmaps.views + (excluded,))
+    views = editor.heatmaps.views + (excluded,)
+    heatmaps = replace(
+        editor.heatmaps,
+        input_provenance=_input_provenance(views),
+        views=views,
+    )
     result = build_manual_result(editor.source, heatmaps, edit_layout())
     assert (
         result.to_dict()
         == build_manual_result(editor.source, editor.heatmaps, edit_layout()).to_dict()
     )
+
+
+def _input_provenance(
+    views: tuple[AlignmentLineHeatmapView, ...],
+) -> dict[str, object]:
+    return {
+        "schema": "alignment_line_input_batch_v1",
+        "source": "captured_rgb",
+        "provenance": {"schema": "test_captured_rgb_v1"},
+        "views": [
+            {
+                "camera_id": view.camera_id,
+                "input_rgb_sha256": input_rgb_sha256(view.input_rgb),
+            }
+            for view in views
+        ],
+    }

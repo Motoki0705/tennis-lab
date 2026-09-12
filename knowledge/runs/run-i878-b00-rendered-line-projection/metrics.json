@@ -1,0 +1,10 @@
+{
+  "selected_camera_count": 48,
+  "fit_camera_count": 32,
+  "holdout_camera_count": 16,
+  "rendered_inputs_different_from_captured_count": 48,
+  "projected_line_point_count_total": 94266,
+  "projection_nonzero_cell_count": 37173,
+  "projection_evidence_sum": 12538.38671875,
+  "rendered_vs_captured_median_absolute_rgb_difference": 4.2710983341104
+}

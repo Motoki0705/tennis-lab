@@ -29,6 +29,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     AlignmentLineHeatmaps,
     AlignmentLineHeatmapView,
 )
+from src.synthetic_data_generation.alignment.line_inputs import input_rgb_sha256
 from src.synthetic_data_generation.dataset.blcs.contracts import BLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.runtime import (
@@ -301,14 +302,28 @@ def _alignment_data() -> AlignmentPublicationData:
     )
     projected = np.asarray([(-5.0, -10.0), (0.0, 0.0), (5.0, 10.0)], dtype=np.float64)
     probabilities = np.asarray((0.8, 0.9, 0.7), dtype=np.float32)
+    input_rgb: NDArray[np.uint8] = np.full((8, 8, 3), 96, dtype=np.uint8)
     heatmaps = AlignmentLineHeatmaps(
         bounds_uv=plane.bounds_uv_metres,
         grid_spacing=1.0,
         proximity_scale=5.0,
         proximity_power=2.0,
+        input_source="nht_rendered_rgb",
+        input_provenance={
+            "schema": "alignment_line_input_batch_v1",
+            "source": "nht_rendered_rgb",
+            "provenance": {"schema": "test_nht_render_v1"},
+            "views": [
+                {
+                    "camera_id": "camera-0",
+                    "input_rgb_sha256": input_rgb_sha256(input_rgb),
+                }
+            ],
+        },
         views=(
             AlignmentLineHeatmapView(
                 camera_id="camera-0",
+                input_rgb=input_rgb,
                 probability=np.full((8, 8), 0.75, dtype=np.float32),
                 points_uv=projected,
                 projected_probabilities=probabilities,
@@ -606,9 +621,7 @@ def test_authoritative_validator_rejects_source_owner_rebinding(
     replacement: object,
 ) -> None:
     source_bundle, request = authoritative_bundle_fixture
-    bundle, payload = _tamper_bundle(
-        source_bundle, tmp_path / f"{owner_name}-{field}"
-    )
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / f"{owner_name}-{field}")
     source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
     source_owners[owner_name][field] = replacement
     _write_manifest_with_recomputed_media_digests(bundle, payload)
@@ -651,7 +664,9 @@ def test_authoritative_validator_rejects_dataset_source_record_rebinding(
 ) -> None:
     source_bundle, request = authoritative_bundle_fixture
     bundle, payload = _tamper_bundle(source_bundle, tmp_path / domain)
-    mapping = cast(list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"])
+    mapping = cast(
+        list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"]
+    )
     mapping[-1][mapping_field] = replacement
     _write_manifest_with_recomputed_media_digests(bundle, payload)
 
@@ -680,7 +695,9 @@ def test_authoritative_validator_rejects_self_consistent_selection_rebinding(
     owner = source_owners[domain]
     owner["source_count"] = 2
     owner["selected_indices"] = [0, 1]
-    mapping = cast(list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"])
+    mapping = cast(
+        list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"]
+    )
     mapping[-1]["source_index"] = 1
     _write_manifest_with_recomputed_media_digests(bundle, payload)
 
@@ -706,7 +723,9 @@ def test_authoritative_validator_rejects_gif_camera_rebinding(
     bundle, payload = _tamper_bundle(source_bundle, tmp_path / domain)
     source_owners = cast(dict[str, dict[str, object]], payload["source_owners"])
     source_owners[domain]["gif_camera_id"] = "camera-1"
-    mapping = cast(list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"])
+    mapping = cast(
+        list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"]
+    )
     for record in mapping:
         record["camera_id"] = "camera-1"
     _write_manifest_with_recomputed_media_digests(bundle, payload)
@@ -762,9 +781,9 @@ def test_authoritative_validator_rejects_logical_scene_rebinding(
 
     comparison = cast(
         list[dict[str, object]],
-        _artifact_payload(
-            payload, PublicationArtifactName.CAMERA_LAYOUT_COMPARISON
-        )["mapping"],
+        _artifact_payload(payload, PublicationArtifactName.CAMERA_LAYOUT_COMPARISON)[
+            "mapping"
+        ],
     )
     comparison_start = 1 if domain == "blcs" else 1 + len(_CAMERA_IDS)
     comparison[comparison_start : comparison_start + len(_CAMERA_IDS)] = [
@@ -803,9 +822,7 @@ def test_authoritative_validator_rejects_camera_source_record_rebinding(
     field: str,
 ) -> None:
     source_bundle, request = authoritative_bundle_fixture
-    bundle, payload = _tamper_bundle(
-        source_bundle, tmp_path / f"{owner_name}-{field}"
-    )
+    bundle, payload = _tamper_bundle(source_bundle, tmp_path / f"{owner_name}-{field}")
     artifact_mapping = cast(
         list[dict[str, object]], _artifact_payload(payload, artifact)["mapping"]
     )
@@ -880,9 +897,9 @@ def test_authoritative_validator_rejects_alignment_progression_rebinding(
     bundle, payload = _tamper_bundle(source_bundle, tmp_path / "alignment-trace")
     mapping = cast(
         list[dict[str, object]],
-        _artifact_payload(
-            payload, PublicationArtifactName.ALIGNMENT_PROGRESSION
-        )["mapping"],
+        _artifact_payload(payload, PublicationArtifactName.ALIGNMENT_PROGRESSION)[
+            "mapping"
+        ],
     )
     mapping[1]["score_sum"] = 123.0
     mapping[1]["candidate_scores"] = [123.0]
@@ -913,9 +930,9 @@ def test_authoritative_validator_rejects_alignment_progression_identity_rebindin
     )
     mapping = cast(
         list[dict[str, object]],
-        _artifact_payload(
-            payload, PublicationArtifactName.ALIGNMENT_PROGRESSION
-        )["mapping"],
+        _artifact_payload(payload, PublicationArtifactName.ALIGNMENT_PROGRESSION)[
+            "mapping"
+        ],
     )
     mapping[1][field] = rebound_value
     _write_manifest_with_recomputed_media_digests(bundle, payload)
@@ -958,7 +975,9 @@ def test_authoritative_validator_rejects_media_dimensions_rebound_from_config(
         (PublicationArtifactName.CAMERA_LAYOUT_COMPARISON, "figure_size"),
         (PublicationArtifactName.PUBLICATION_OVERVIEW, "overview_size"),
     ),
-    ids=lambda value: value.value if isinstance(value, PublicationArtifactName) else value,
+    ids=lambda value: (
+        value.value if isinstance(value, PublicationArtifactName) else value
+    ),
 )
 def test_authoritative_validator_binds_all_artifact_dimension_categories(
     authoritative_bundle_fixture: tuple[Path, PublicationRequest],

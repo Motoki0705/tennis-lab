@@ -7,6 +7,9 @@ from typing import cast
 from src.synthetic_data_generation.alignment import (
     create_production_alignment_handler,
 )
+from src.synthetic_data_generation.alignment.line_inputs import (
+    NHTRenderedAlignmentLineInputSource,
+)
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
 from src.synthetic_data_generation.pipeline.contracts import (
     DatasetTarget,
@@ -25,6 +28,7 @@ from src.synthetic_data_generation.pipeline.registry import (
 )
 from src.synthetic_data_generation.pipeline.runner import ScenePipelineRunner
 from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
+from src.synthetic_data_generation.rendering.nht import NHTRenderClient
 
 
 def build_stage_registry(
@@ -36,6 +40,12 @@ def build_stage_registry(
         settings=runtime.alignment.evidence,
         policy=runtime.alignment.acceptance,
         resolver=runtime.resolver,
+        input_source=NHTRenderedAlignmentLineInputSource(
+            client=NHTRenderClient(),
+            executable=nht.render_executable,
+            environment=nht.environment,
+            timeout_seconds=nht.render_timeout_seconds,
+        ),
     )
     handlers = CanonicalStageHandlers(
         ingest=IngestStageHandler(),
