@@ -73,7 +73,7 @@ class GatewaySettings:
     gpu_lock_file: Path = _DEFAULT_GPU_LOCK_FILE
     host: str = "127.0.0.1"
     port: int = 8765
-    docker_image: str = "nvidia/cuda:13.0.0-base-ubuntu24.04"
+    docker_image: str = "tennis-lab-mcp:runtime-v1"
     cloudflared_path: Path = Path("/home/kamimura/.local/bin/cloudflared")
     tunnel_client_path: Path = Path("/home/kamimura/.local/bin/tunnel-client")
     uv_python_root: Path = Path("/home/kamimura/.local/share/uv/python")
@@ -178,7 +178,7 @@ class GatewaySettings:
             port=port,
             docker_image=os.environ.get(
                 "TENNIS_MCP_DOCKER_IMAGE",
-                "nvidia/cuda:13.0.0-base-ubuntu24.04",
+                "tennis-lab-mcp:runtime-v1",
             ),
             cloudflared_path=cloudflared.resolve(),
             tunnel_client_path=tunnel_client.resolve(),

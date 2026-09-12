@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import html
+import secrets
 import shutil
 import subprocess
 import time
 from collections import defaultdict, deque
-from typing import Any, Literal, cast
+from collections.abc import Callable
+from functools import wraps
+from typing import Any, Literal, ParamSpec
 from urllib.parse import urlsplit
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
@@ -23,7 +26,7 @@ from src.automation.chatgpt_mcp.auth import OwnerOAuthProvider, oauth_scopes
 from src.automation.chatgpt_mcp.jobs import JobManager, TrainingQueueManager
 from src.automation.chatgpt_mcp.settings import GatewaySettings
 from src.automation.chatgpt_mcp.storage import SqliteStore
-from src.automation.chatgpt_mcp.workspace import WorkspaceManager
+from src.automation.chatgpt_mcp.workspace import RevisionMismatch, WorkspaceManager
 
 _SECURITY_META = {
     "securitySchemes": [
@@ -253,6 +256,28 @@ def _register_oauth_approval_routes(
         return RedirectResponse(redirect_url, status_code=303)
 
 
+_P = ParamSpec("_P")
+
+
+def _revision_errors(store: SqliteStore, function: Callable[_P, dict[str, Any]]) -> Callable[_P, dict[str, Any]]:
+    @wraps(function)
+    def checked(*args: _P.args, **kwargs: _P.kwargs) -> dict[str, Any]:
+        try:
+            return function(*args, **kwargs)
+        except RevisionMismatch as error:
+            payload: dict[str, Any] = {
+                "is_error": True,
+                "code": "REVISION_MISMATCH",
+                "message": "expected_sha does not match the registered workspace revision",
+                "expected_sha": error.expected_sha,
+                "actual_sha": error.actual_sha,
+                "request_id": "op-" + secrets.token_hex(16),
+            }
+            store.put("operation_errors", payload["request_id"], payload, expires_at=time.time() + 30 * 86400)
+            return payload
+    return checked
+
+
 def build_gateway(
     settings: GatewaySettings, *, authenticated: bool = True
 ) -> MCPServer[Any]:
@@ -463,10 +488,7 @@ def build_gateway(
         meta=security_meta,
     )
     def prepare_revision_workspace(branch: str, expected_sha: str) -> dict[str, str]:
-        return cast(
-            dict[str, str],
-            workspaces.prepare_revision(branch=branch, expected_sha=expected_sha),
-        )
+        return workspaces.prepare_revision(branch=branch, expected_sha=expected_sha)
 
     @server.tool(
         title="Get exact revision status",
@@ -480,7 +502,7 @@ def build_gateway(
         meta=security_meta,
     )
     def get_revision_status(workspace_id: str) -> dict[str, Any]:
-        return cast(dict[str, Any], workspaces.describe_revision(workspace_id))
+        return workspaces.describe_revision(workspace_id)
 
     @server.tool(
         title="Start a flexible isolated CPU command",
@@ -503,7 +525,7 @@ def build_gateway(
         working_directory: str = ".",
         timeout_seconds: int = 900,
     ) -> dict[str, Any]:
-        return jobs.start(
+        return _revision_errors(store, jobs.start)(
             command=command,
             workspace_id=workspace_id,
             expected_sha=expected_sha,
@@ -580,7 +602,7 @@ def build_gateway(
         resource: Literal["half", "all"] = "all",
         timeout_seconds: int = 86_400,
     ) -> dict[str, Any]:
-        return training.enqueue(
+        return _revision_errors(store, training.enqueue)(
             name=name,
             command=command,
             workspace_id=workspace_id,
