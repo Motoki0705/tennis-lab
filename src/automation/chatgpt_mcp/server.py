@@ -10,6 +10,7 @@ import time
 from collections import defaultdict, deque
 from collections.abc import Callable
 from functools import wraps
+from pathlib import Path
 from typing import Any, Literal, ParamSpec
 from urllib.parse import urlsplit
 
@@ -284,6 +285,12 @@ def build_gateway(
     """Build the public OAuth server or private Secure Tunnel server."""
 
     settings.ensure_state()
+    loaded_root = Path(__file__).resolve().parents[3]
+    loaded_revision = (
+        loaded_root.name
+        if loaded_root.parent == settings.runtime_releases_dir.resolve()
+        else "uninstalled"
+    )
     store = SqliteStore(settings.database_path)
     workspaces = WorkspaceManager(
         settings.trusted_git_dir,
@@ -387,11 +394,7 @@ def build_gateway(
     @server.custom_route("/healthz", methods=["GET"])
     async def health(request: Request) -> Response:
         del request
-        version = (
-            settings.runtime_version_path.read_text(encoding="utf-8").strip()
-            if settings.runtime_version_path.is_file()
-            else "uninstalled"
-        )
+        version = loaded_revision
         return JSONResponse(
             {"status": "ok", "runtime_revision": version},
             headers={"Cache-Control": "no-store"},
@@ -442,11 +445,7 @@ def build_gateway(
             }
         return {
             "project_root": str(settings.repo_root),
-            "runtime_revision": (
-                settings.runtime_version_path.read_text(encoding="utf-8").strip()
-                if settings.runtime_version_path.is_file()
-                else None
-            ),
+            "runtime_revision": loaded_revision,
             "trusted_runtime": settings.runtime_current_dir.is_dir(),
             "trusted_git_mirror": settings.trusted_git_dir.is_dir(),
             "gpu": _run_probe(
@@ -473,7 +472,7 @@ def build_gateway(
         meta=security_meta,
     )
     def get_execution_layout() -> dict[str, Any]:
-        return jobs.sandbox.execution_layout()
+        return dict(jobs.sandbox.execution_layout())
 
     @server.tool(
         title="Prepare an exact remote revision",
@@ -488,7 +487,7 @@ def build_gateway(
         meta=security_meta,
     )
     def prepare_revision_workspace(branch: str, expected_sha: str) -> dict[str, str]:
-        return workspaces.prepare_revision(branch=branch, expected_sha=expected_sha)
+        return dict(workspaces.prepare_revision(branch=branch, expected_sha=expected_sha))
 
     @server.tool(
         title="Get exact revision status",
@@ -502,7 +501,7 @@ def build_gateway(
         meta=security_meta,
     )
     def get_revision_status(workspace_id: str) -> dict[str, Any]:
-        return workspaces.describe_revision(workspace_id)
+        return dict(workspaces.describe_revision(workspace_id))
 
     @server.tool(
         title="Start a flexible isolated CPU command",
@@ -543,7 +542,7 @@ def build_gateway(
         meta=security_meta,
     )
     def get_command_job(job_id: str) -> dict[str, Any]:
-        return jobs.get(job_id)
+        return dict(jobs.get(job_id))
 
     @server.tool(
         title="List command jobs",
@@ -554,7 +553,7 @@ def build_gateway(
         meta=security_meta,
     )
     def list_command_jobs(limit: int = 50) -> list[dict[str, Any]]:
-        return jobs.list(limit=limit)
+        return list(jobs.list(limit=limit))
 
     @server.tool(
         title="Read command output",
@@ -576,7 +575,7 @@ def build_gateway(
         meta=security_meta,
     )
     def cancel_command_job(job_id: str) -> dict[str, str]:
-        return jobs.cancel(job_id)
+        return dict(jobs.cancel(job_id))
 
     @server.tool(
         title="Enqueue flexible GPU or long-running work",
@@ -626,7 +625,7 @@ def build_gateway(
         meta=security_meta,
     )
     def get_training_job(job_id: str) -> dict[str, Any]:
-        return training.status(job_id)
+        return dict(training.status(job_id))
 
     @server.tool(
         title="List training jobs",
@@ -637,7 +636,7 @@ def build_gateway(
         meta=security_meta,
     )
     def list_training_jobs(limit: int = 50) -> list[dict[str, Any]]:
-        return training.list(limit=limit)
+        return list(training.list(limit=limit))
 
     @server.tool(
         title="Read training output",
@@ -663,7 +662,7 @@ def build_gateway(
         meta=security_meta,
     )
     def cancel_training_job(job_id: str) -> dict[str, str]:
-        return training.cancel(job_id)
+        return dict(training.cancel(job_id))
 
     return server
 
