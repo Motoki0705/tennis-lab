@@ -30,6 +30,8 @@
 
 コード変更が必要なタスクは、必ず専用のgit worktreeを作成し、そのworktree内で実施すること。メインworktreeでコードを変更してはならない。
 
+worktreeは、必ずメインworktree配下の `.claude/worktrees/<task-name>` に作成すること。それ以外の場所には作成しない。
+
 ### PR本文の言語
 
 Pull Requestの本文は日本語で記述すること。
