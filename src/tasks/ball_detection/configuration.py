@@ -824,6 +824,11 @@ def validate_data(
     }
     if source in {"tracknet", "youtube"}:
         required = common | {"split", "sample_stride"}
+    elif source == "multiview":
+        required = common | {
+            "split", "sample_stride", "frame_cache_dir", "accepted_statuses",
+            "prepare_workers", "prefetch_factor",
+        }
     elif source == "web":
         required = common | {"sources", "sampling"}
     elif source == "mixed_tracknet":
@@ -888,11 +893,30 @@ def validate_data(
             required={"root_role", "train_file", "val_file", "test_file"},
         )
         _validate_split_mapping(split, path="data.split", paths=paths)
-    if source in {"tracknet", "youtube"}:
+    if source in {"tracknet", "youtube", "multiview"}:
         _positive(
             cast(int, typed(data, "sample_stride", int, path="data")),
             path="data.sample_stride",
         )
+    if source == "multiview":
+        for key in ("prepare_workers", "prefetch_factor"):
+            _positive(cast(int, typed(data, key, int, path="data")), path=f"data.{key}")
+        cache_dir = _validate_relative_child(
+            data["frame_cache_dir"], path="data.frame_cache_dir"
+        )
+        statuses = _required_sequence(
+            data, "accepted_statuses", path="data", item_type=str
+        )
+        if (
+            not statuses
+            or len(set(statuses)) != len(statuses)
+            or not set(statuses) <= {"observed", "interpolated", "occlusion_estimated"}
+        ):
+            raise SemanticConfigurationError(
+                "data.accepted_statuses must contain unique coordinate-bearing annotation statuses."
+            )
+        if paths is not None:
+            paths.cache(cache_dir)
     if source == "web":
         sources = typed(data, "sources", (str, list, tuple), path="data")
         if isinstance(sources, (list, tuple)):

@@ -1,0 +1,18 @@
+schema_version = 1
+output_storage = "drive"
+name = "ball_meiji_3cam_l4"
+description = "Prepare Meiji three-camera annotations and train ConvNeXtUNet with an L4-calibrated power-of-two batch."
+accelerator = "gpu"
+timeout_seconds = 86400
+setup = ["base"]
+protected_override_keys = ["paths.data_root", "paths.output_root", "paths.cache_root", "data.data_dir", "data.batch_size", "model", "data", "run.output_dir", "run.artifact_store", "run.gpus"]
+outputs = ["outputs/colab/ball_meiji_3cam_l4"]
+
+[command]
+argv = ["env", "MEIJI_ARCHIVE=data/meiji_3cam.tar", "bash", "scripts/colab/train/ball_meiji_3cam_l4.sh"]
+args = ["paths.output_root=outputs/colab", "run.output_dir=ball_meiji_3cam_l4", "run.gpus=1"]
+
+[[inputs]]
+source = "data/meiji_3cam.tar"
+destination = "data/meiji_3cam.tar"
+writable = false
