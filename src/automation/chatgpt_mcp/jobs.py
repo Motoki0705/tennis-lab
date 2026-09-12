@@ -540,11 +540,14 @@ class DockerSandbox:
         state = document["State"]
         outcome = "unknown"
         outcome_path = self.settings.sandbox_jobs_dir / job_id / "artifacts/outcome.json"
-        if not state["Running"] and outcome_path.is_file() and not outcome_path.is_symlink():
+        if not state["Running"]:
             with contextlib.suppress(ValueError, OSError):
-                observed = json.loads(outcome_path.read_text())
-                if observed.get("outcome") in {"succeeded", "failed", "timed_out"}:
-                    outcome = observed["outcome"]
+                descriptor = os.open(outcome_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                with os.fdopen(descriptor, "r") as stream:
+                    if stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                        observed = json.loads(stream.read(4096))
+                        if isinstance(observed, dict) and observed.get("outcome") in {"succeeded", "failed", "timed_out"}:
+                            outcome = observed["outcome"]
         return {
             "image_id": document.get("Image"),
             "outcome": outcome,
