@@ -40,13 +40,13 @@ def test_deploy_auto_runs_owner_main_changes_without_environment_approval() -> N
 def test_deploy_uses_external_exact_revision_control_plane() -> None:
     text = _workflow_text()
 
-    assert 'runs-on: [self-hosted, linux, x64, trusted-mcp-deploy]' in text
-    assert 'persist-credentials: false' in text
+    assert "runs-on: [self-hosted, linux, x64, trusted-mcp-deploy]" in text
+    assert "persist-credentials: false" in text
     assert 'venv_key="$(cat pyproject.toml uv.lock | sha256sum' in text
     assert 'UV_PROJECT_ENVIRONMENT="$venv_target"' in text
     assert '--source-root "$GITHUB_WORKSPACE"' in text
     assert '--expected-sha "$GITHUB_SHA"' in text
-    assert '--reuse-existing-key' in text
+    assert "--reuse-existing-key" in text
     assert 'TENNIS_MCP_GPU_LOCK_FILE="$GPU_LOCK_FILE"' in text
     assert 'test -w "$GPU_LOCK_FILE"' in text
     assert ': >> "$GPU_LOCK_FILE"' in text
@@ -120,8 +120,7 @@ def _trusted_hook_environment(tmp_path: Path) -> dict[str, str]:
         "GITHUB_REF": "refs/heads/main",
         "GITHUB_WORKFLOW": "Deploy WSL MCP",
         "GITHUB_WORKFLOW_REF": (
-            "Motoki0705/tennis-lab/.github/workflows/"
-            "deploy-wsl-mcp.yml@refs/heads/main"
+            "Motoki0705/tennis-lab/.github/workflows/deploy-wsl-mcp.yml@refs/heads/main"
         ),
         "GITHUB_WORKFLOW_SHA": revision,
         "GITHUB_SHA": revision,
@@ -172,13 +171,13 @@ def test_deploy_verifies_tool_surface_and_host_boundary() -> None:
     ):
         assert f'"{tool}"' in text
 
-    assert 'test -w /tennis-lab' in text
-    assert 'test ! -e /var/run/docker.sock' in text
-    assert 'test ! -e /mnt/c' in text
-    assert 'test ! -e /tennis-lab/.git/HEAD' in text
-    assert 'test ! -e /workspace/.git' in text
-    assert '/home/kamimura/.local/share/tennis-lab-chatgpt-mcp' in text
-    assert '/home/kamimura/.local/state/tennis-lab-chatgpt-mcp' in text
+    assert "test -w /tennis-lab" in text
+    assert "test ! -e /var/run/docker.sock" in text
+    assert "test ! -e /mnt/c" in text
+    assert "test ! -e /tennis-lab/.git/HEAD" in text
+    assert "test ! -e /workspace/.git" in text
+    assert "/home/kamimura/.local/share/tennis-lab-chatgpt-mcp" in text
+    assert "/home/kamimura/.local/state/tennis-lab-chatgpt-mcp" in text
     assert 'layout["direct_concurrency"] != 2' in text
     assert 'layout["direct_memory_limit_gb"] != 24' in text
     assert 'layout["queued_memory_limit_gb"] != 48' in text
@@ -188,16 +187,24 @@ def test_deploy_runs_cpu_regression_and_queued_capabilities() -> None:
     text = _workflow_text()
 
     assert 'PYTHONPATH="$GITHUB_WORKSPACE"' in text
-    assert 'TMPDIR=/tmp' in text
-    assert 'PYTEST_DEBUG_TEMPROOT' not in text
+    assert "TMPDIR=/tmp" in text
+    assert "PYTEST_DEBUG_TEMPROOT" not in text
     assert '"$trusted_python" -m pytest -q -n 0' in text
-    assert 'tests/unit/automation/chatgpt_mcp' in text
-    assert 'tests/integration/chatgpt_mcp' in text
+    assert "tests/unit/automation/chatgpt_mcp" in text
+    assert "tests/integration/chatgpt_mcp" in text
     assert '"python -m pytest -q "' not in text
     assert '"enqueue_training"' in text
-    assert 'chatgpt_mcp.capabilities --gpu' in text
+    assert "chatgpt_mcp.scripts.capabilities --gpu" in text
     assert '"resource": "half"' in text
-    assert 'mcp-deploy-cuda-smoke' in text
+    assert "mcp-deploy-cuda-smoke" in text
+
+
+def test_execution_image_installs_native_build_toolchain() -> None:
+    dockerfile = (_ROOT / "src/automation/chatgpt_mcp/Dockerfile").read_text(
+        encoding="utf-8"
+    )
+
+    assert "build-essential" in dockerfile
 
 
 def test_deploy_status_is_published_by_separate_github_hosted_workflow() -> None:
