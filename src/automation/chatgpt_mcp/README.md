@@ -170,7 +170,7 @@ ChatGPT Secure Tunnel call succeeds, then disable it.
 The execution image is built from `Dockerfile` in this directory and includes
 OpenCV's OS libraries, FFmpeg/ffprobe and Git. Both CPU and queued GPU jobs use
 it; the external Python environment remains read-only. Deployment runs
-`python -m src.automation.chatgpt_mcp.capabilities` in a CPU sandbox and the same
+`python -m src.automation.chatgpt_mcp.capabilities --source-root /workspace` in a CPU sandbox and the same
 command with `--gpu` through the queue. Its `core_torch`, `vision`, `video`, and
 `test` profiles report independently; all are required for this deployment.
 Failure of `vision` does not imply that `core_torch` failed. CUDA is intentionally

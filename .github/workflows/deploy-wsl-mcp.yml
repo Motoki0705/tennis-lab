@@ -278,7 +278,7 @@ jobs:
                       "printf ok > artifacts/mcp-deploy-smoke/ok; "
                       "test -f /tennis-lab/artifacts/mcp-deploy-smoke/ok; "
                       "rm -rf artifacts/mcp-deploy-smoke; "
-                      ".venv/bin/python -m src.automation.chatgpt_mcp.capabilities; "
+                      ".venv/bin/python -m src.automation.chatgpt_mcp.capabilities --source-root /workspace; "
                       ".venv/bin/python -m pytest -q -n 0 -o addopts='' -p no:cacheprovider tests/unit/automation/chatgpt_mcp/test_server.py"
                   ),
               },
@@ -295,7 +295,7 @@ jobs:
                   "working_directory": ".",
                   "timeout_seconds": 300,
                   "resource": "half",
-                  "command": ".venv/bin/python -m src.automation.chatgpt_mcp.capabilities --gpu",
+                  "command": ".venv/bin/python -m src.automation.chatgpt_mcp.capabilities --gpu --source-root /workspace",
               },
           )
           for _ in range(600):

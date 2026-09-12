@@ -105,13 +105,14 @@ def check_test() -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gpu", action="store_true")
+    parser.add_argument("--source-root", type=Path, required=True)
     args = parser.parse_args()
-    root = Path.cwd().resolve()
+    root = args.source_root
     roots = RuntimePathRoots(project_root=root, data_root=root, checkpoint_root=root,
                              artifact_root=root, output_root=root, cache_root=root,
                              external_asset_root=root)
     PATH_BOUNDARY.validate({"lock": root / "uv.lock"}, resolver=PathResolver(roots))
-    report: dict[str, Any] = {"profiles": {}, "lock_sha256": hashlib.sha256(Path("uv.lock").read_bytes()).hexdigest()}
+    report: dict[str, Any] = {"profiles": {}, "lock_sha256": hashlib.sha256((root / "uv.lock").read_bytes()).hexdigest()}
     for name, check in (("core_torch", lambda: check_torch(args.gpu)), ("vision", check_vision), ("video", check_video), ("test", check_test)):
         try:
             report["profiles"][name] = {"ok": True, "details": check()}
