@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import torch
 from omegaconf import OmegaConf
@@ -32,7 +34,7 @@ def _legacy_targets() -> list[dict[str, str | float]]:
     ]
 
 
-def _residual_dense_head() -> dict[str, object]:
+def _residual_dense_head() -> dict[str, Any]:
     return {
         "name": "residual",
         "normalization_groups": 32,
@@ -54,7 +56,7 @@ def _runtime_roots() -> dict[str, str]:
     }
 
 
-def _legacy_config() -> dict[str, object]:
+def _legacy_config() -> dict[str, Any]:
     return {
         "paths": {
             "project_root": ".",
