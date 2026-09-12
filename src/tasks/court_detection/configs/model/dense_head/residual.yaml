@@ -1,0 +1,11 @@
+name: residual
+normalization_groups: 32
+kp:
+  hidden_channels: 256
+  depth: 2
+seg:
+  hidden_channels: 256
+  depth: 2
+line:
+  hidden_channels: 256
+  depth: 2

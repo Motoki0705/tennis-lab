@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
+
 import pytest
 import torch
 from torch import nn
 
 from src.tasks.court_detection.configuration import (
     CourtDecoderConfig,
+    CourtDenseHeadBranchConfig,
+    CourtDenseHeadConfig,
     CourtEncoderConfig,
     CourtLossConfig,
     CourtModelConfig,
@@ -144,8 +148,7 @@ class _CountingCourtDINOModel(CourtHierarchicalModel):
         self.calls += 1
         assert patch_valid_mask is None
         assert all(
-            value is not None
-            for value in (feature_1, feature_2, feature_3, feature_4)
+            value is not None for value in (feature_1, feature_2, feature_3, feature_4)
         )
         return {"kp": x.new_zeros(x.shape[0], 7, x.shape[-2], x.shape[-1])}
 
@@ -345,6 +348,16 @@ def _enabled_model_config() -> CourtModelConfig:
             n_kv_heads=None,
             ffn_type="swiglu",
         ),
+        dense_head=_dense_head_config(),
+    )
+
+
+def _dense_head_config() -> CourtDenseHeadConfig:
+    branch = CourtDenseHeadBranchConfig(hidden_channels=8, depth=2)
+    return CourtDenseHeadConfig(
+        name="residual",
+        normalization_groups=2,
+        branches=MappingProxyType({"kp": branch, "seg": branch, "line": branch}),
     )
 
 
@@ -381,7 +394,9 @@ def test_prepared_dinov3_features_flow_through_transformer_dpt_and_pose(
     assert fake.requested_layers == (2, 5, 8, 11)
     assert fake.grad_enabled is False
 
-    loss = output.dense_logits["kp"].square().mean() + output.pose.values.square().mean()
+    loss = (
+        output.dense_logits["kp"].square().mean() + output.pose.values.square().mean()
+    )
     loss.backward()
 
     selected_gradients = (
@@ -391,8 +406,7 @@ def test_prepared_dinov3_features_flow_through_transformer_dpt_and_pose(
     )
     assert all(gradient is not None for gradient in selected_gradients)
     assert all(
-        bool(torch.isfinite(gradient).all())
-        and bool(torch.count_nonzero(gradient))
+        bool(torch.isfinite(gradient).all()) and bool(torch.count_nonzero(gradient))
         for gradient in selected_gradients
         if gradient is not None
     )
@@ -420,9 +434,7 @@ def test_pose_training_propagates_content_size_as_dino_patch_mask(
             "kp": {
                 "heatmap": torch.zeros(batch_size, 7, height, width),
                 "points_xy": torch.zeros(batch_size, 7, 1, 2),
-                "point_visible": torch.ones(
-                    batch_size, 7, 1, dtype=torch.bool
-                ),
+                "point_visible": torch.ones(batch_size, 7, 1, dtype=torch.bool),
                 "physical_indices": torch.arange(7, dtype=torch.long)
                 .view(1, 7, 1)
                 .expand(batch_size, -1, -1),
@@ -443,9 +455,7 @@ def test_pose_training_propagates_content_size_as_dino_patch_mask(
             "raw_pose10d": raw_pose,
         },
         "image_size": torch.tensor([[20, 20], [20, 20]], dtype=torch.long),
-        "content_size_hw": torch.tensor(
-            [[20, 20], [9, 12]], dtype=torch.long
-        ),
+        "content_size_hw": torch.tensor([[20, 20], [9, 12]], dtype=torch.long),
     }
 
     call = adapter.prepare_training_batch(batch)

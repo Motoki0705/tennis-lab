@@ -25,10 +25,13 @@ from src.tasks.court_detection.data.target_generation.segmentation import (
     generate_segmentation_target,
 )
 from src.tasks.court_detection.data.target_generation.store import (
-    LINE_TARGET_SCHEMA,
-    SEGMENTATION_TARGET_SCHEMA,
     CourtDerivedTargetStore,
     build_derived_target_metadata,
+)
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA,
+    line_target_definition,
 )
 
 
@@ -47,9 +50,11 @@ class CourtTargetMaterializer:
         *,
         input_layer: CourtInput,
         target_store: CourtDerivedTargetStore,
+        line_target_schema: str = LINE_TARGET_SCHEMA,
     ) -> None:
         self.input_layer = input_layer
         self.target_store = target_store
+        self.line_target_definition = line_target_definition(line_target_schema)
 
     def materialize(
         self,
@@ -91,6 +96,13 @@ class CourtTargetMaterializer:
         height, width = raw.image.height, raw.image.width
         if raw.metadata.source_schema != self.input_layer.spec.source_schema:
             raise ValueError("Court materializer input schema changed while loading.")
+        if (
+            kind == "seg" or self.line_target_definition.schema == LINE_TARGET_SCHEMA
+        ) and len(raw.court_instances) != 1:
+            raise ValueError(
+                "Current single-court dense target schemas require exactly one "
+                "selected court instance."
+            )
         if kind == "seg":
             array = generate_segmentation_target(
                 height=height,
@@ -103,8 +115,12 @@ class CourtTargetMaterializer:
                 height=height,
                 width=width,
                 instances=raw.court_instances,
+                line_width_metres=self.line_target_definition.line_width_metres,
+                baseline_width_metres=(
+                    self.line_target_definition.baseline_width_metres
+                ),
             )
-            schema = LINE_TARGET_SCHEMA
+            schema = self.line_target_definition.schema
         else:  # pragma: no cover - type and selection validation
             raise ValueError(f"Unsupported dense Court target: {kind!r}.")
         path = record.dense_target_refs[kind]

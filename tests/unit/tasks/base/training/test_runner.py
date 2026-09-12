@@ -225,6 +225,66 @@ def test_checkpoint_dir_resolves_beneath_validated_logger_parent(
     assert checkpoint.dirpath == str(log_dir / "checkpoints")
 
 
+def test_checkpoint_callbacks_separate_best_from_true_last(
+    make_training_config: Any,
+) -> None:
+    config = OmegaConf.create(make_training_config())
+    config.training.checkpoint.enabled = True
+    config.training.checkpoint.save_top_k = 2
+    config.training.checkpoint.save_last = True
+    runner = BaseTrainingRunner()
+    output_dir = runner.validate_runtime_config(config).run.output_dir
+    logger = cast(Any, SimpleNamespace(log_dir=str(output_dir / "logs/version_0")))
+
+    checkpoints = [
+        callback
+        for callback in runner.build_callbacks(
+            config,
+            datamodule=cast(Any, object()),
+            logger=logger,
+        )
+        if isinstance(callback, ModelCheckpoint)
+    ]
+
+    assert len(checkpoints) == 2
+    best, latest = checkpoints
+    assert best.monitor == "val/loss"
+    assert best.save_top_k == 2
+    assert best.save_last is False
+    assert latest.monitor is None
+    assert latest.filename == "last"
+    assert latest.save_top_k == 1
+    assert latest.save_last is False
+    assert latest._every_n_epochs == 1
+    assert latest._save_on_train_epoch_end is True
+    assert latest._enable_version_counter is False
+
+
+def test_checkpoint_callbacks_omit_true_last_when_disabled(
+    make_training_config: Any,
+) -> None:
+    config = OmegaConf.create(make_training_config())
+    config.training.checkpoint.enabled = True
+    config.training.checkpoint.save_last = False
+    runner = BaseTrainingRunner()
+    output_dir = runner.validate_runtime_config(config).run.output_dir
+    logger = cast(Any, SimpleNamespace(log_dir=str(output_dir / "logs/version_0")))
+
+    checkpoints = [
+        callback
+        for callback in runner.build_callbacks(
+            config,
+            datamodule=cast(Any, object()),
+            logger=logger,
+        )
+        if isinstance(callback, ModelCheckpoint)
+    ]
+
+    assert len(checkpoints) == 1
+    assert checkpoints[0].monitor == "val/loss"
+    assert checkpoints[0].save_last is False
+
+
 def test_checkpoint_pointer_preserves_legacy_artifact_location_without_queue(
     make_training_config: Any,
     monkeypatch: pytest.MonkeyPatch,

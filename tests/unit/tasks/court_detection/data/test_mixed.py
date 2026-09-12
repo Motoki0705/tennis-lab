@@ -16,6 +16,9 @@ from src.tasks.court_detection.data.mixed import (
     _compatible_bundle,
     mixed_court_detection_collate,
 )
+from src.tasks.court_detection.target_schemas import (
+    LINE_TARGET_SCHEMA,
+)
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
 pytestmark = pytest.mark.unit
@@ -41,7 +44,7 @@ def _line_bundle() -> CourtTargetBundleSpec:
         {
             "line": CourtTargetSpec(
                 kind="line",
-                schema="court_line_binary_v1",
+                schema=LINE_TARGET_SCHEMA,
                 output_channels=1,
                 channel_names=("court_line",),
                 target_dtype=torch.float32,

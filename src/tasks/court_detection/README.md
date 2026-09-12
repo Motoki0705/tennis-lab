@@ -10,7 +10,7 @@
 - `data/source=synthetic_court_v1`: `schema: v1`を明示したcanonical v1回帰source。physical pointを7 semantic multi-peak channelへまとめます。
 - `data/processing=kp|seg|line|kp_seg|kp_line|seg_line|all`: 選択したtargetを同じ幾何変換で生成します。
 
-Synthetic schema v2/v3では`data.source.keypoint_court_scope=all_courts|target_court`でKP教師に含めるコートを選択できます。既定の`all_courts`は全accepted courtを14 semantic channelのpoint軸へ保持します。`target_court`はsampleの`target_court.binding.court_instance_id`とexact matchする1面だけをpoint軸へ保持します。このoptionはKP教師だけに作用し、全コートの`court_instances`と事前生成するseg / lineの参照・内容には作用しません。v1で`target_court`を指定した場合はtyped configuration validationで拒否されます。
+Synthetic schema v2/v3では`data.source.court_scope=target_court`を既定とし、sampleの`target_court.binding.court_instance_id`とexact matchする1面だけをKP / SEG / LINEの共通教師にします。`all_courts`を明示するとKP channelとcourt instance inventoryの両方が全accepted courtを保持しますが、現行のsingle-court SEG / LINE schemaではmaterializationを拒否します。scopeはderived target pathとsource geometry digestにも含まれるため、旧all-court maskをsingle-court教師として再利用しません。target bindingを持たないv1で`target_court`を指定した場合はtyped configuration validationで拒否されます。
 
 source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGB、KP、seg、lineに適用する幾何変換をsampleごとに一度だけ決定します。seg/lineはDataset内で生成せず、`data/target_generation/` で事前生成します。
 
@@ -26,9 +26,9 @@ python -m src.tasks.court_detection.scripts.train \
   data/source=synthetic_court data/processing=all \
   run.test_after_fit=true
 
-# synthetic v3でcameraの対象コート1面だけをKP教師にする
+# synthetic v3でcameraの対象コート1面だけを全モダリティの教師にする
 python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court data.source.keypoint_court_scope=target_court \
+  data/source=synthetic_court data.source.court_scope=target_court \
   data/processing=kp
 
 # legacy synthetic v2のdense targetを学習前にsource外へ事前生成
@@ -55,7 +55,9 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。syntheticの`schema=v1|v2|v3`はtyped configで必須で、directory内容から自動推測しません。v2/v3の`train / validation / test`は学習側`train / val / test`へ一意に変換し、空splitやtrajectory group leakageを拒否します。TennisCourtDetectorにtest splitがない既定設定は`data.source.split_mapping.test: null`であり、validationをtestとして代用しません。
 
-Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoderを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
+Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoder、dense headを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
+
+既定のdense headは、DPTのnative-resolution feature上でタスクごとに独立して動くresidual adapterです。各branchは `1x1 projection -> depthwise/pointwise residual block -> 1x1 output` であり、既定はKP / SEG / LINEともhidden channels 256、residual depth 2です。小チャネルのlogitsだけを最後に入力解像度へbilinear補間します。`model/dense_head=linear` は既存の1x1 Conv checkpointを明示的に再構築する場合だけに使用します。
 
 Loss presetは `configs/loss/` で管理し、KP/SEG/LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。`default`はdense-only、`pose`はdense lossを維持しながら3種のpose lossを各weight 1.0で有効化します。
 
@@ -75,7 +77,7 @@ python -m src.tasks.court_detection.scripts.train \
 # KP14 contractを保持するpose-only objective
 python -m src.tasks.court_detection.scripts.train \
   data/source=synthetic_court \
-  data.source.keypoint_court_scope=target_court \
+  data.source.court_scope=target_court \
   data/processing=kp data/augmentation=pose_safe \
   model/encoder=dinov3 model/transformer_encoder=default model/decoder=dpt \
   loss=pose \
@@ -94,11 +96,41 @@ Synthetic V3の座標・camera authority・KP semanticの定義は、このconsu
 - `scripts/train.py`: Hydra学習entry point。
 - `scripts/visualize.py`: checkpointに保存されたtarget bundleを使うprediction visualization。
 
+## Target inspection before training
+
+`preview_augmentation.py` はRGB、実際のKP heatmap、7-class SEG、binary LINEを別panelへ描画します。各sampleのJSONにはlossへ渡るtensor shape、可視KP数、Gaussianのpixel sigma / FWHM、SEG class pixel数、LINE foreground比率を保存します。
+
+```bash
+# mixed学習のSynthetic側を、augmentation drawも含めて確認
+python -m src.tasks.court_detection.scripts.preview_augmentation \
+  data/source=synthetic_court \
+  data.source.court_scope=target_court \
+  data/processing=all data/augmentation=pose_safe \
+  preview.require_pose=true preview.split=val preview.max_samples=4
+
+# TennisCourtDetector側を確認
+python -m src.tasks.court_detection.scripts.preview_augmentation \
+  data/source=tennis_court_detector data/processing=all \
+  preview.split=train preview.max_samples=4
+```
+
+KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとしてのみ読み取り可能で、現行教師とderived target pathを共有しません。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
+
+`prepare_youtube_dataset.py` の `workflow.target_preview` は、完成済みYouTube annotationのground KP14からsigmaと物理線幅の候補を比較します。既存annotationだけを読む場合は `enabled=true only=true` を指定します。このYouTube annotation storeは現在のCourt DataModuleへ接続されていないため、このpreviewはtarget候補のauditであり、データを学習へ暗黙に追加しません。
+
+```bash
+python -m src.tasks.court_detection.scripts.prepare_youtube_dataset \
+  workflow.target_preview.enabled=true \
+  workflow.target_preview.only=true \
+  workflow.target_preview.sigma_ratios=[0.005,0.01,0.02] \
+  workflow.target_preview.line_width_metres=[0.025,0.05,0.075]
+```
+
 YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習契約はordered KP14です。20点annotationからKP14への変換は別の明示的なデータ準備工程を必要とします。
 
 ## Mixed-source training
 
-`train_mixed`はSynthetic Court V3とTennisCourtDetectorを各train batchへ固定比率で入れます。既定は`synthetic_court=4`、`tennis_court_detector=4`です。KP14は両sourceとも`COURT_KP_NAMES[:14]`へ明示的に正規化され、Synthetic側は1面だけを教師にする`keypoint_court_scope=target_court`を必須とします。source固有schemaの組合せ、semantic channel名、flip permutationのいずれかが変わった場合はmodel構築前に停止します。
+`train_mixed`はSynthetic Court V3とTennisCourtDetectorを各train batchへ固定比率で入れます。既定は`synthetic_court=4`、`tennis_court_detector=4`です。KP14は両sourceとも`COURT_KP_NAMES[:14]`へ明示的に正規化され、Synthetic側は全モダリティで1面だけを教師にする`court_scope=target_court`を必須とします。source固有schemaの組合せ、semantic channel名、flip permutationのいずれかが変わった場合はmodel構築前に停止します。
 
 ```bash
 # 両sourceのKP / SEG / LINEだけを学習

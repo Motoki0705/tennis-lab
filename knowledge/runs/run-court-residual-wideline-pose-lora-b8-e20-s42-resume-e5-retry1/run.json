@@ -1,0 +1,16 @@
+{
+  "run_id": "1789131317875449519_3473120_court_residual_wideline_pose_lora_b8_e20_s42_resume_e5_retry1",
+  "name": "court_residual_wideline_pose_lora_b8_e20_s42_resume_e5_retry1",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONPATH=/home/kamimura/projects/tennis-lab-worktrees/court-residual-head-target-preview /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_detection.scripts.train_mixed paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party paths.cache_root=/home/kamimura/projects/tennis-lab/.cache training=pose_lora data.batch_size=8 data.num_workers=2 mixed.train_batch_counts.synthetic_court=4 mixed.train_batch_counts.tennis_court_detector=4 run.test_after_fit=true run.resume=court_detection/mixed-source/residual-head-wide-line-lora-b8-e20-s42-retry1/logs/version_0/checkpoints/last.ckpt run.output_dir=court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1",
+  "provider": "codex",
+  "session": "01a08a57-b460-7cd0-8dc1-88c6a3a5a3fb",
+  "issue": "867",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "0fcdd13237dbb4b14aefc5c6102c4fd6d870ee00",
+  "branch": "codex/court-residual-head-target-preview",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab-worktrees/court-residual-head-target-preview",
+  "repo_root": "/home/kamimura/projects/tennis-lab-worktrees/court-residual-head-target-preview",
+  "captured_at": "2026-09-11T21:55:18+09:00"
+}

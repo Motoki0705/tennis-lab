@@ -124,7 +124,7 @@ def test_scope_specific_checkpoint_bundle_mismatch_is_rejected() -> None:
             config_name="train",
             overrides=[
                 "data/source=synthetic_court",
-                "data.source.keypoint_court_scope=target_court",
+                "data.source.court_scope=target_court",
                 "data/processing=kp",
             ],
         )

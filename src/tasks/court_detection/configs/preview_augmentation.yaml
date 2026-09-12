@@ -12,15 +12,15 @@ hydra:
 
 preview:
   split: train
+  require_pose: false
   sample_indices: []
   max_samples: 4
   num_augmented: 3
   seed: 42
   output_dir: court_detection/augmentation_preview
   draw:
-    kp_radius: 4
-    kp_thickness: 2
     mask_alpha: 0.45
+    heatmap_alpha: 0.55
   layout:
     tile_gap: 12
     header_height: 30

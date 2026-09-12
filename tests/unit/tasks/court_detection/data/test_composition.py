@@ -302,7 +302,7 @@ def test_synthetic_input_consumes_manifest_paths_and_renderer_visibility(
         SyntheticCourtSourceConfig(
             kind="synthetic_court",
             schema="v1",
-            keypoint_court_scope="all_courts",
+            court_scope="all_courts",
             workspace_root=tmp_path,
             scene_ids=("B00",),
         ),

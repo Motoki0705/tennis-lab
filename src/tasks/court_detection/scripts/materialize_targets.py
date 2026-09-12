@@ -20,6 +20,7 @@ from src.tasks.court_detection.data.target_generation.materializer import (
     CourtTargetMaterializer,
 )
 from src.tasks.court_detection.data.target_generation.store import (
+    LINE_TARGET_SCHEMA,
     CourtDerivedTargetStore,
 )
 from src.utils.hydra import hydra_main, register_boundary_validator
@@ -44,7 +45,21 @@ def main(config: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Materialize dense heads selected by data.processing.targets."""
     runtime = CourtTrainingConfig.from_config(config)
     store = CourtDerivedTargetStore(runtime.data.processing.derived_target_root)
-    input_layer = build_court_input(runtime.data.source, target_store=store)
+    line_schema = next(
+        (
+            target.target_schema
+            for target in runtime.data.processing.targets
+            if target.kind == "line"
+        ),
+        LINE_TARGET_SCHEMA,
+    )
+    if line_schema is None:  # pragma: no cover - typed line config owns its schema
+        raise ValueError("Court line target config has no schema.")
+    input_layer = build_court_input(
+        runtime.data.source,
+        target_store=store,
+        line_target_schema=line_schema,
+    )
     dense = tuple(
         target.kind
         for target in runtime.data.processing.targets
@@ -57,6 +72,7 @@ def main(config: DictConfig) -> int:  # pragma: no cover - CLI entry point
     results = CourtTargetMaterializer(
         input_layer=input_layer,
         target_store=store,
+        line_target_schema=line_schema,
     ).materialize(
         splits=input_layer.available_splits,
         target_kinds=dense,

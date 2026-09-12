@@ -182,7 +182,7 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
             config_name="train",
             overrides=[
                 "data/source=synthetic_court",
-                "data.source.keypoint_court_scope=target_court",
+                "data.source.court_scope=target_court",
                 "data/processing=kp",
                 "data/augmentation=pose_safe",
                 "model/encoder=dinov3",
