@@ -1,0 +1,269 @@
+{
+  "schema": "court_line_type_probabilities_v1",
+  "scene_id": "B00",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/court_detection/mixed-source/semantic-line-frozen-b00-b03-b8-e20-s42/logs/version_0/checkpoints/last.ckpt",
+  "checkpoint_sha256": "36917904746313e3531eb60eb43b8f69ed3eed255f4f04cbafb3d3fdc945b76f",
+  "channel_names": [
+    "background",
+    "baseline",
+    "doubles_sideline",
+    "singles_sideline",
+    "service_line",
+    "center_service_line",
+    "center_mark"
+  ],
+  "baseline_owner": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/alignment",
+  "camera_ids": [
+    "frame_000000",
+    "frame_000490",
+    "frame_000245",
+    "frame_000122",
+    "frame_000367",
+    "frame_000183",
+    "frame_000428",
+    "frame_000061",
+    "frame_000306",
+    "frame_000214",
+    "frame_000459",
+    "frame_000030",
+    "frame_000091",
+    "frame_000152",
+    "frame_000275",
+    "frame_000336",
+    "frame_000397",
+    "frame_000045",
+    "frame_000106",
+    "frame_000167",
+    "frame_000198",
+    "frame_000229",
+    "frame_000290",
+    "frame_000351",
+    "frame_000412",
+    "frame_000443",
+    "frame_000474",
+    "frame_000015",
+    "frame_000076",
+    "frame_000137",
+    "frame_000260",
+    "frame_000321",
+    "frame_000382",
+    "frame_000053",
+    "frame_000114",
+    "frame_000175",
+    "frame_000206",
+    "frame_000237",
+    "frame_000298",
+    "frame_000359",
+    "frame_000420",
+    "frame_000451",
+    "frame_000482",
+    "frame_000007",
+    "frame_000022",
+    "frame_000037",
+    "frame_000068",
+    "frame_000083"
+  ],
+  "fit_camera_ids": [
+    "frame_000000",
+    "frame_000015",
+    "frame_000022",
+    "frame_000030",
+    "frame_000037",
+    "frame_000045",
+    "frame_000053",
+    "frame_000083",
+    "frame_000091",
+    "frame_000106",
+    "frame_000122",
+    "frame_000137",
+    "frame_000175",
+    "frame_000183",
+    "frame_000198",
+    "frame_000206",
+    "frame_000214",
+    "frame_000229",
+    "frame_000245",
+    "frame_000260",
+    "frame_000275",
+    "frame_000298",
+    "frame_000306",
+    "frame_000336",
+    "frame_000351",
+    "frame_000359",
+    "frame_000382",
+    "frame_000412",
+    "frame_000428",
+    "frame_000451",
+    "frame_000474",
+    "frame_000482"
+  ],
+  "holdout_camera_ids": [
+    "frame_000007",
+    "frame_000061",
+    "frame_000068",
+    "frame_000076",
+    "frame_000114",
+    "frame_000152",
+    "frame_000167",
+    "frame_000237",
+    "frame_000290",
+    "frame_000321",
+    "frame_000367",
+    "frame_000397",
+    "frame_000420",
+    "frame_000443",
+    "frame_000459",
+    "frame_000490"
+  ],
+  "ground_plane": {
+    "schema": "metric_ground_plane_frame_v1",
+    "coordinate_convention": "right_handed_metric_scene_ground_plane_uv;units=metres;u=dot(metric_point-origin,basis_u);v=dot(metric_point-origin,basis_v);normal=cross(basis_u,basis_v)",
+    "origin_metric_scene": [
+      0.17803897244479427,
+      -0.07745221044538525,
+      -2.704904341330231
+    ],
+    "basis_u_metric_scene": [
+      0.9978425874236557,
+      0.001879105548650984,
+      0.06562499284572215
+    ],
+    "basis_v_metric_scene": [
+      0.0,
+      0.999590299158414,
+      -0.028622261063586764
+    ],
+    "normal_metric_scene": [
+      -0.06565189048050372,
+      0.02856051103760477,
+      0.9974337704758179
+    ],
+    "bounds_uv_metres": [
+      -12.96850649929605,
+      19.483096992069786,
+      -20.456252675462295,
+      15.261910034114774
+    ]
+  },
+  "metric_adapter": {
+    "nht_scene_from_metric_scene": [
+      0.06983810646574976,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.06983810646574976,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.06983810646574976,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "metric_scene_from_nht_scene": [
+      14.318830372218402,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      14.318830372218402,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      14.318830372218402,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "nht_scene_units_per_metre": 0.06983810646574976
+  },
+  "seed": 42,
+  "grid_spacing_metres": 0.05,
+  "translation_radius_metres": 2.0,
+  "yaw_radius_radians": 0.15,
+  "smoothing_metres": 0.1,
+  "maximum_iterations": 400,
+  "acceptance": "experimental_not_production_validated",
+  "records": [
+    {
+      "court_id": "court-000",
+      "method": "binary",
+      "initial_uv_yaw": [
+        2.544278005452552,
+        -10.167851587342959,
+        -1.4490485558148325
+      ],
+      "refined_uv_yaw": [
+        2.5532016341471673,
+        -10.19474117719856,
+        -1.4477222335567885
+      ],
+      "fit_support_before": 0.45130577435096103,
+      "fit_support_after": 0.4724114239215851,
+      "holdout_support_before": 0.16733245427409807,
+      "holdout_support_after": 0.17876784627636275
+    },
+    {
+      "court_id": "court-000",
+      "method": "semantic",
+      "initial_uv_yaw": [
+        2.544278005452552,
+        -10.167851587342959,
+        -1.4490485558148325
+      ],
+      "refined_uv_yaw": [
+        2.549308600141649,
+        -10.179499110898224,
+        -1.4478235748354944
+      ],
+      "fit_support_before": 0.20549380282560983,
+      "fit_support_after": 0.2080955927570661,
+      "holdout_support_before": 0.058851848977307476,
+      "holdout_support_after": 0.0639685223189493
+    },
+    {
+      "court_id": "court-001",
+      "method": "binary",
+      "initial_uv_yaw": [
+        0.749871837499014,
+        4.583549139353691,
+        -1.4437420264925025
+      ],
+      "refined_uv_yaw": [
+        0.7476005814392463,
+        4.606428114151006,
+        -1.4411277634658024
+      ],
+      "fit_support_before": 0.34778627504905063,
+      "fit_support_after": 0.32754141464829445,
+      "holdout_support_before": 0.22875761116544405,
+      "holdout_support_after": 0.21525441482663155
+    },
+    {
+      "court_id": "court-001",
+      "method": "semantic",
+      "initial_uv_yaw": [
+        0.749871837499014,
+        4.583549139353691,
+        -1.4437420264925025
+      ],
+      "refined_uv_yaw": [
+        0.738605237892191,
+        4.616123956175576,
+        -1.4398669548998335
+      ],
+      "fit_support_before": 0.09276903669039409,
+      "fit_support_after": 0.08280514429012935,
+      "holdout_support_before": 0.11893196202193697,
+      "holdout_support_after": 0.10743005946278572
+    }
+  ],
+  "comparison_note": "Fixed baseline court count and scale. Support values across binary/semantic objectives are not directly comparable. Visual review required."
+}
