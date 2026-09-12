@@ -261,7 +261,11 @@ def heatmaps_to_peaks(
     nms_kernel: int,
     max_peaks: int,
 ) -> tuple[Tensor, Tensor, Tensor]:
-    """Extract thresholded local peaks from dense heatmaps.
+    """Extract thresholded, contrastive local peaks from dense heatmaps.
+
+    Equal-valued plateaus are reduced deterministically to one candidate per
+    NMS neighbourhood. A spatially uniform heatmap has no local contrast and
+    therefore emits no peak, even when its value equals the threshold.
 
     Args:
         heatmaps: Tensor with shape ``(..., H, W)``.
@@ -277,8 +281,8 @@ def heatmaps_to_peaks(
     """
     if heatmaps.ndim < 2:
         raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
-    if threshold < 0:
-        raise ValueError("threshold must be non-negative.")
+    if not math.isfinite(float(threshold)) or threshold < 0:
+        raise ValueError("threshold must be finite and non-negative.")
     if nms_kernel <= 0 or nms_kernel % 2 == 0:
         raise ValueError("nms_kernel must be a positive odd integer.")
     if max_peaks <= 0:
@@ -287,13 +291,45 @@ def heatmaps_to_peaks(
     *leading_shape, height, width = heatmaps.shape
     flattened_leading = math.prod(leading_shape) if leading_shape else 1
     maps = heatmaps.reshape(flattened_leading, 1, height, width)
-    pooled = F.max_pool2d(
-        maps,
-        kernel_size=nms_kernel,
-        stride=1,
-        padding=nms_kernel // 2,
-    )
-    local_maxima = (maps >= pooled) & (maps >= float(threshold))
+    threshold_mask = maps >= float(threshold)
+
+    if nms_kernel == 1 or height * width == 1:
+        local_maxima = threshold_mask
+    else:
+        pooled_max = F.max_pool2d(
+            maps,
+            kernel_size=nms_kernel,
+            stride=1,
+            padding=nms_kernel // 2,
+        )
+        pooled_min = -F.max_pool2d(
+            -maps,
+            kernel_size=nms_kernel,
+            stride=1,
+            padding=nms_kernel // 2,
+        )
+        local_maxima = (maps == pooled_max) & (maps > pooled_min) & threshold_mask
+
+        # Max-pooling marks every pixel on an equal-valued plateau. Retain the
+        # greatest row-major index inside each NMS neighbourhood so the result
+        # is deterministic and does not explode into one candidate per pixel.
+        ranks = torch.arange(
+            height * width,
+            dtype=torch.float32,
+            device=maps.device,
+        ).reshape(1, 1, height, width)
+        candidate_ranks = ranks.expand(flattened_leading, -1, -1, -1).masked_fill(
+            ~local_maxima,
+            -1.0,
+        )
+        winning_ranks = F.max_pool2d(
+            candidate_ranks,
+            kernel_size=nms_kernel,
+            stride=1,
+            padding=nms_kernel // 2,
+        )
+        local_maxima &= candidate_ranks == winning_ranks
+
     candidate_values = maps.masked_fill(~local_maxima, float("-inf")).flatten(1)
     k = min(max_peaks, height * width)
     values, indices = candidate_values.topk(k, dim=1)
