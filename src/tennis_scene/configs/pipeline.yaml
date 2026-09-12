@@ -10,7 +10,7 @@ device: cuda
 court_kp:
   enabled: true
   source: execute
-  checkpoint: court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt
+  checkpoint: court_detection/pose/residual-head-wide-line-pose-lora-b8-e20-s42-epoch17.ckpt
   frame_index: 0
   mode: model
   num_keypoints: 14
@@ -40,7 +40,7 @@ gvhmr:
     smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt
     smpl_coco17_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt
     smplx_verts437: src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt
-    smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
+    smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smplx_neutral_J_regressor.pt
   runtime:
     device: ${device}
     tracking:
