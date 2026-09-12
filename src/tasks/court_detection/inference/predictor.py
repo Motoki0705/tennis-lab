@@ -43,9 +43,8 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
     """Predict the KP head from a dense-only or pose-enabled checkpoint.
 
     Ordered single-court inference is the default: one candidate per semantic
-    channel at probability 0.5 or higher. Multi-court users must explicitly
-    opt in to a larger ``max_peaks`` value and, when appropriate, a different
-    threshold.
+    channel above the configured extraction threshold. Multi-court users must
+    explicitly opt in to a larger ``max_peaks`` value.
     """
 
     def __init__(
@@ -54,7 +53,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         device: torch.device,
         *,
         subpixel_refine: bool,
-        peak_threshold: float = 0.5,
+        peak_threshold: float = 0.05,
         nms_kernel: int = 7,
         max_peaks: int = 1,
     ) -> None:
@@ -92,7 +91,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         resolver: PathResolver,
         device: str | torch.device,
         subpixel_refine: bool,
-        peak_threshold: float = 0.5,
+        peak_threshold: float = 0.05,
         nms_kernel: int = 7,
         max_peaks: int = 1,
         **kwargs: Any,
