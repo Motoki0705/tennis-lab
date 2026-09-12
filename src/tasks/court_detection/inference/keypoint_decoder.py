@@ -20,11 +20,13 @@ class CourtKeypointDecoderConfig:
     """Configuration for converting Court KP logits into sparse candidates.
 
     The default contract is the ordered single-court KP14 task: each semantic
-    channel emits at most one confident point. Multi-court callers must opt in
-    to additional candidates by setting ``max_peaks`` explicitly.
+    channel emits at most one local maximum. The low extraction threshold keeps
+    score calibration separate from downstream geometric filtering; callers
+    can raise it explicitly. Multi-court callers must opt in to additional
+    candidates by setting ``max_peaks`` explicitly.
     """
 
-    threshold: float = 0.5
+    threshold: float = 0.05
     nms_kernel: int = 7
     max_peaks: int = 1
 
