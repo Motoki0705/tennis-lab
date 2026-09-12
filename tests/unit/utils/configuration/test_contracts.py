@@ -196,6 +196,7 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
         if contract.boundary_id.startswith("src.synthetic_data_generation")
     }
     assert synthetic_boundaries == {
+        "src.synthetic_data_generation.scripts.compare_semantic_alignment:main",
         "src.synthetic_data_generation.scripts.edit_alignment:main",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
         "src.synthetic_data_generation.scripts.review_court_dataset:main",

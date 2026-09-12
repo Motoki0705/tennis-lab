@@ -1,0 +1,16 @@
+{
+  "run_id": "1789230960336571716_1889182_issue880_b03_last_v3",
+  "name": "issue880_b03_last_v3",
+  "command": "PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-880-semantic-alignment /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.synthetic_data_generation.scripts.compare_semantic_alignment profile=b03 roots.project_root=/home/kamimura/projects/tennis-lab comparison.checkpoint=court_detection/mixed-source/semantic-line-frozen-b00-b03-b8-e20-s42/logs/version_0/checkpoints/last.ckpt comparison.output=issue880/b03-last-v1 comparison.maximum_iterations=2000",
+  "provider": "codex",
+  "session": "01a09588-636e-7560-b584-5451ff831df9",
+  "issue": "880",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "6679ae4307b1d7ddd1c81d753a0effe7e02ffacd",
+  "branch": "feat/issue-880-semantic-alignment",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-880-semantic-alignment",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-880-semantic-alignment",
+  "captured_at": "2026-09-13T01:36:40+09:00"
+}
