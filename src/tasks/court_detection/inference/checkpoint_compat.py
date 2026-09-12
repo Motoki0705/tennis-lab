@@ -30,10 +30,56 @@ _LEGACY_LINE_TARGET_SCHEMAS = frozenset(
         "court_line_binary_75mm_150mm_v2",
     }
 )
+_REQUIRED_PATH_ROOTS = frozenset(
+    {
+        "project_root",
+        "data_root",
+        "checkpoint_root",
+        "artifact_root",
+        "output_root",
+        "cache_root",
+        "external_asset_root",
+    }
+)
 
 
-def _migrate_plain_config(config: MutableMapping[str, Any]) -> bool:
+def _normalized_runtime_path_roots(
+    value: Mapping[str, str] | None,
+) -> dict[str, str] | None:
+    if value is None:
+        return None
+    missing = _REQUIRED_PATH_ROOTS.difference(value)
+    extra = set(value).difference(_REQUIRED_PATH_ROOTS)
+    if missing or extra:
+        raise ValueError(
+            "Court inference runtime roots must contain exactly "
+            f"{sorted(_REQUIRED_PATH_ROOTS)}; missing={sorted(missing)}, "
+            f"extra={sorted(extra)}."
+        )
+    normalized: dict[str, str] = {}
+    for name in sorted(_REQUIRED_PATH_ROOTS):
+        raw = value[name]
+        if not isinstance(raw, str) or not raw.strip() or raw != raw.strip():
+            raise ValueError(
+                f"Court inference runtime root {name!r} must be a trimmed string."
+            )
+        normalized[name] = raw
+    return normalized
+
+
+def _migrate_plain_config(
+    config: MutableMapping[str, Any],
+    *,
+    runtime_path_roots: Mapping[str, str] | None,
+) -> bool:
     changed = False
+
+    # Checkpoints can move between worktrees, containers, and machines. Runtime
+    # path authority comes from the caller rather than serialized absolute roots.
+    normalized_roots = _normalized_runtime_path_roots(runtime_path_roots)
+    if normalized_roots is not None and config.get("paths") != normalized_roots:
+        config["paths"] = normalized_roots
+        changed = True
 
     # Mixed-source loader composition is irrelevant when reconstructing only
     # the serialized model and is outside the standard Court config contract.
@@ -90,13 +136,18 @@ def extract_court_checkpoint_dense_head_config(
     return deepcopy(dict(cast("Mapping[str, object]", dense_head)))
 
 
-def migrate_court_inference_config(config: object) -> object | None:
+def migrate_court_inference_config(
+    config: object,
+    *,
+    runtime_path_roots: Mapping[str, str] | None = None,
+) -> object | None:
     """Normalize historical training metadata for model-only inference.
 
     Training entry points remain strict and require current configuration.
     This migration is scoped to checkpoint inference and only changes fields
     irrelevant to the restored forward semantics:
 
+    - serialized roots are replaced by caller-authorized runtime roots;
     - mixed-source data-loader composition is removed;
     - missing artifact publication settings become a local-only store;
     - serialized dense-head metadata is consumed by the checkpoint loader;
@@ -105,12 +156,19 @@ def migrate_court_inference_config(config: object) -> object | None:
     Returns ``None`` when no known migration is required.
     """
     plain = _to_plain_mapping(config)
-    if plain is None or not _migrate_plain_config(plain):
+    if plain is None or not _migrate_plain_config(
+        plain,
+        runtime_path_roots=runtime_path_roots,
+    ):
         return None
     return OmegaConf.create(plain) if isinstance(config, DictConfig) else plain
 
 
-def load_court_inference_config_override(checkpoint_path: Path) -> object | None:
+def load_court_inference_config_override(
+    checkpoint_path: Path,
+    *,
+    runtime_path_roots: Mapping[str, str] | None = None,
+) -> object | None:
     """Read only checkpoint metadata needed for known inference migrations."""
     checkpoint = torch.load(
         checkpoint_path,
@@ -124,7 +182,10 @@ def load_court_inference_config_override(checkpoint_path: Path) -> object | None
         hyper_parameters = checkpoint.get("hyper_parameters")
         if not isinstance(hyper_parameters, Mapping):
             return None
-        return migrate_court_inference_config(hyper_parameters.get("config"))
+        return migrate_court_inference_config(
+            hyper_parameters.get("config"),
+            runtime_path_roots=runtime_path_roots,
+        )
     finally:
         del checkpoint
 
@@ -133,6 +194,7 @@ def load_court_inference_lightning_module(
     checkpoint_path: Path,
     *,
     config_override: object | None = None,
+    runtime_path_roots: Mapping[str, str] | None = None,
     strict: bool = True,
 ) -> CourtDetectionLightningModule:
     """Restore a Court module, including checkpoint-defined residual heads.
@@ -156,7 +218,10 @@ def load_court_inference_lightning_module(
         raise KeyError("Court checkpoint is missing hyper_parameters.")
     source_config = hyper_parameters.get("config")
     selected_config = source_config if config_override is None else config_override
-    migrated_config = migrate_court_inference_config(selected_config)
+    migrated_config = migrate_court_inference_config(
+        selected_config,
+        runtime_path_roots=runtime_path_roots,
+    )
     runtime_config = selected_config if migrated_config is None else migrated_config
     if runtime_config is None:
         raise KeyError("Court checkpoint is missing its serialized config.")
