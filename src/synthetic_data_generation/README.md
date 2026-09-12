@@ -177,6 +177,51 @@ The canonical package contains no alternate generic path pipeline, legacy
 artifact reader/writer, compatibility conversion, dual-write, fixed-pose
 production path, selected captured-camera path, or identity/hash gate.
 
+## Compare invariant Semantic Line placement (Issue #880)
+
+`compare_semantic_alignment` compares the legacy published placement with paired
+binary and semantic placement refinements from the **same completed checkpoint**.
+It sums the categorical Far/Near and left/right probabilities before ground
+projection: background plus baseline, doubles sideline, singles sideline, service
+line, center service line, and center mark. The trained 12-channel head remains
+unchanged; the alignment consumes seven camera-invariant channels. SEG court-cell
+classes are not used as line classes.
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.compare_semantic_alignment \
+  profile=b00 roots.project_root=/home/kamimura/projects/tennis-lab \
+  comparison.checkpoint=<completed-checkpoint-relative-to-outputs> \
+  comparison.output=issue880/B00
+```
+
+Use the shared training queue for GPU execution. Run B00 through B03 after the
+Issue #876 training job completes. Checkpoint and output paths are explicitly
+resolved beneath `roots.output_root`; output directories must be fresh.
+
+The current comparison holds the baseline court count, metric scale, ground plane,
+initial placements, camera order, and fit/holdout partitions fixed. Both heads use
+the same threshold, ray projection, proximity weighting, raster spacing, search
+bounds, smoothing and seed. Semantic placement scores each regulation segment
+only against its line-type channel; binary placement uses one foreground channel.
+Missing types contribute zero. Holdout views never enter the optimizer. This is
+bounded placement refinement, not independent court-count or scene-scale recovery.
+
+The output includes `legacy-projection.png`, `binary-projection.png`, and
+`semantic-projection.png` (heatmap and fitted-court overlay), per-camera
+`overlay-<camera-id>.jpg` (legacy / binary / semantic on identical RGB), and raw
+per-type projection archives under `projections/`. `comparison.json` records the
+checkpoint SHA256, coordinate frame, camera partitions, placements, and support
+before/after refinement. Support values from different objectives are not accuracy
+scores and must not be compared directly.
+
+Review the original-image overlays, especially held-out cameras, for baseline,
+service-line and sideline displacement, far/near views, outer courts and short
+center marks. Include both successful and worse cases and the projection panels
+in the PR. Only after visual superiority is established should the semantic
+method be integrated into production acceptance and made the default, with the
+binary method explicitly retained as legacy. Until then, comparison results are
+marked experimental and never overwrite the accepted alignment owner.
+
 ## Visualize a generated dataset
 
 The production visualizer reads only the published current-schema owner under

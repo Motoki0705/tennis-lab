@@ -1,0 +1,12 @@
+defaults:
+  - run_scene_pipeline
+  - _self_
+
+comparison:
+  checkpoint: ???
+  output: ???
+  grid_spacing_metres: 0.05
+  translation_radius_metres: 2.0
+  yaw_radius_radians: 0.15
+  smoothing_metres: 0.10
+  maximum_iterations: 400
