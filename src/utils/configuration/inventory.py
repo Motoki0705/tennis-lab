@@ -154,7 +154,6 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images": "ball.youtube",
     "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset": "ball.youtube",
     "src.tasks.court_detection.scripts.annotate_youtube_keypoints": "court_detection.annotate_youtube_keypoints",
-    "src.tasks.court_detection.scripts.evaluate_homography_annotations": "court_detection.evaluate_homography_annotations",
     "src.tasks.court_detection.scripts.generate_line_masks": "court_detection.generate_line_masks",
     "src.tasks.court_detection.scripts.generate_masks": "court_detection.generate_masks",
     "src.tasks.court_detection.scripts.materialize_targets": "court_detection.materialize_targets",
@@ -221,7 +220,6 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images": "src.tasks.ball_detection.configuration.validate_youtube_boundary",
     "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset": "src.tasks.ball_detection.configuration.validate_youtube_boundary",
     "src.tasks.court_detection.scripts.annotate_youtube_keypoints": "src.tasks.court_detection.scripts.annotate_youtube_keypoints._validate_boundary",
-    "src.tasks.court_detection.scripts.evaluate_homography_annotations": "src.tasks.court_detection.scripts.evaluate_homography_annotations._validate_boundary",
     "src.tasks.court_detection.scripts.generate_line_masks": "src.tasks.court_detection.scripts.generate_line_masks._validate_boundary",
     "src.tasks.court_detection.scripts.generate_masks": "src.tasks.court_detection.scripts.generate_masks._validate_boundary",
     "src.tasks.court_detection.scripts.materialize_targets": "src.tasks.court_detection.scripts.materialize_targets._validate_boundary",
@@ -418,10 +416,6 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary(
         "court_detection",
         "src.tasks.court_detection.scripts.annotate_youtube_keypoints",
-    ),
-    _runtime_boundary(
-        "court_detection",
-        "src.tasks.court_detection.scripts.evaluate_homography_annotations",
     ),
     _runtime_boundary(
         "court_detection", "src.tasks.court_detection.scripts.generate_line_masks"
