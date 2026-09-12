@@ -99,14 +99,14 @@ class SandboxSpec(BaseModel):
     use_gpu: bool = False
     timeout_seconds: int = Field(default=900, ge=1, le=7 * 24 * 3600)
 
-    @field_validator("command")  # type: ignore[untyped-decorator]
+    @field_validator("command")  # type: ignore[untyped-decorator, unused-ignore]
     @classmethod
     def reject_nul_command(cls, value: str) -> str:
         if "\x00" in value:
             raise ValueError("command may not contain NUL")
         return value
 
-    @field_validator("working_directory")  # type: ignore[untyped-decorator]
+    @field_validator("working_directory")  # type: ignore[untyped-decorator, unused-ignore]
     @classmethod
     def validate_working_directory(cls, value: str) -> str:
         return _normalize_working_directory(value)
@@ -195,12 +195,12 @@ def _validate_external_teardown_ack_path(
     return ack_path
 
 
-def _publish_external_teardown_ack(
-    settings: GatewaySettings, ack_path: Path
-) -> None:
+def _publish_external_teardown_ack(settings: GatewaySettings, ack_path: Path) -> None:
     validated = _validate_external_teardown_ack_path(settings, ack_path)
     queue_file = f"{validated.name.removesuffix('.ack')}.job"
-    temporary = validated.parent / f".tmp.{validated.name}.{os.getpid()}.{secrets.token_hex(4)}"
+    temporary = (
+        validated.parent / f".tmp.{validated.name}.{os.getpid()}.{secrets.token_hex(4)}"
+    )
     descriptor = os.open(
         temporary,
         os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
@@ -425,8 +425,11 @@ class DockerSandbox:
             "--mount",
             _safe_mount(command_path, _COMMAND_MOUNT_PATH, read_only=True),
             "--mount",
-            _safe_mount(Path(__file__).with_name("command_supervisor.py"),
-                        "/run/tennis-mcp-supervisor", read_only=True),
+            _safe_mount(
+                Path(__file__).with_name("scripts") / "command_supervisor.py",
+                "/run/tennis-mcp-supervisor",
+                read_only=True,
+            ),
             "--mount",
             _safe_mount(
                 self.settings.runtime_venv_root,
@@ -518,7 +521,9 @@ class DockerSandbox:
                     self.stop(spec.job_id)
                     with contextlib.suppress(subprocess.TimeoutExpired):
                         return process.wait(timeout=30)
-                    raise JobError("docker run client did not exit after container teardown")
+                    raise JobError(
+                        "docker run client did not exit after container teardown"
+                    )
                 try:
                     return process.wait(timeout=0.1)
                 except subprocess.TimeoutExpired:
@@ -539,14 +544,23 @@ class DockerSandbox:
         document = json.loads(result.stdout)[0]
         state = document["State"]
         outcome = "unknown"
-        outcome_path = self.settings.sandbox_jobs_dir / job_id / "artifacts/outcome.json"
+        outcome_path = (
+            self.settings.sandbox_jobs_dir / job_id / "artifacts/outcome.json"
+        )
         if not state["Running"]:
             with contextlib.suppress(ValueError, OSError):
-                descriptor = os.open(outcome_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                descriptor = os.open(
+                    outcome_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+                )
                 with os.fdopen(descriptor, "r") as stream:
                     if stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                         observed = json.loads(stream.read(4096))
-                        if isinstance(observed, dict) and isinstance(observed.get("outcome"), str) and observed["outcome"] in {"succeeded", "failed", "timed_out"}:
+                        if (
+                            isinstance(observed, dict)
+                            and isinstance(observed.get("outcome"), str)
+                            and observed["outcome"]
+                            in {"succeeded", "failed", "timed_out"}
+                        ):
                             outcome = observed["outcome"]
         return {
             "image_id": document.get("Image"),
@@ -742,10 +756,14 @@ class JobManager:
         if not self.sandbox.inspect(job_id)["running"]:
             return {"job_id": job_id, "status": "stopped"}
         payload["cancellation_requested_at"] = time.time()
-        self.store.put("jobs", job_id, payload, expires_at=time.time() + _JOB_METADATA_TTL_SECONDS)
+        self.store.put(
+            "jobs", job_id, payload, expires_at=time.time() + _JOB_METADATA_TTL_SECONDS
+        )
         self.sandbox.stop(job_id)
         payload["cancelled_at"] = time.time()
-        self.store.put("jobs", job_id, payload, expires_at=time.time() + _JOB_METADATA_TTL_SECONDS)
+        self.store.put(
+            "jobs", job_id, payload, expires_at=time.time() + _JOB_METADATA_TTL_SECONDS
+        )
         return {"job_id": job_id, "status": "stopped"}
 
 
@@ -951,12 +969,21 @@ class TrainingQueueManager:
             "resource": payload.get("resource", "all"),
             "status": queue_status,
         }
-        state_path = self.queue_dir / "state" / f"{queue_file.removesuffix('.job')}.state"
+        state_path = (
+            self.queue_dir / "state" / f"{queue_file.removesuffix('.job')}.state"
+        )
         if state_path.is_file() and not state_path.is_symlink():
             queue_state: dict[str, str] = {}
             for line in state_path.read_text(encoding="utf-8").splitlines():
                 key, separator, value = line.partition("=")
-                if separator and key in {"state", "resource", "slot", "pid", "pgid", "wait"}:
+                if separator and key in {
+                    "state",
+                    "resource",
+                    "slot",
+                    "pid",
+                    "pgid",
+                    "wait",
+                }:
                     queue_state[key] = value
             result.update(
                 {

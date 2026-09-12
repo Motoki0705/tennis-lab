@@ -290,7 +290,7 @@ def _runtime_boundary(
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.automation.chatgpt_mcp.capabilities": (
+    "src.automation.chatgpt_mcp.scripts.capabilities": (
         "automation.chatgpt_mcp.capabilities",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
@@ -342,8 +342,10 @@ def _non_hydra_boundary(
 
 _RUNTIME_BOUNDARIES = (
     _non_hydra_boundary(
-        "src.automation.chatgpt_mcp.capabilities",
-        "main", domain="automation", executable_module=True,
+        "src.automation.chatgpt_mcp.scripts.capabilities",
+        "main",
+        domain="automation",
+        executable_module=True,
     ),
     _non_hydra_boundary(
         "src.automation.chatgpt_mcp.cli",

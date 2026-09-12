@@ -168,11 +168,15 @@ ChatGPT Secure Tunnel call succeeds, then disable it.
 ## Execution capabilities and diagnostics
 
 The execution image is built from `Dockerfile` in this directory and includes
-OpenCV's OS libraries, FFmpeg/ffprobe and Git. Both CPU and queued GPU jobs use
-it; the external Python environment remains read-only. Deployment runs
-`python -m src.automation.chatgpt_mcp.capabilities --source-root /workspace` in a CPU sandbox and the same
-command with `--gpu` through the queue. Its `core_torch`, `vision`, `video`, and
-`test` profiles report independently; all are required for this deployment.
+OpenCV's OS libraries, FFmpeg/ffprobe, Git, and the C/C++ build toolchain needed
+by TorchInductor and Triton. Both CPU and queued GPU jobs use it; the external
+Python environment remains read-only. Deployment runs
+`python -m src.automation.chatgpt_mcp.scripts.capabilities --source-root /workspace`
+in a CPU sandbox and the same
+command with `--gpu` through the queue. Its `core_torch`, `vision`, `video`,
+`compiler`, and `test` profiles report independently; all are required for this
+deployment. The compiler profile builds and runs a small C program instead of
+only checking for an executable name.
 Failure of `vision` does not imply that `core_torch` failed. CUDA is intentionally
 invisible in CPU jobs. The GPU probe performs 25 optimizer steps on each device;
 it is a capability check, not evidence of long-running model training.
@@ -193,5 +197,3 @@ server already advertises `resource=half/all` with default `all`; do not create
 duplicate tools to hide a registration/translation discrepancy. Refresh the
 connection's tool definitions in ChatGPT and verify a `half` job from that chat.
 The local server alone cannot verify the definition actually shown to a model.
-
-2026-09-12の実測・配備結果と残るChatGPT側確認は[監査記録](audits/2026-09-12/README.md)を参照。

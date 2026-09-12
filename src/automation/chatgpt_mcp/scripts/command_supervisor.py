@@ -1,4 +1,5 @@
 """Container command supervisor; diagnostic outcomes never authorize teardown."""
+
 from __future__ import annotations
 
 import json
