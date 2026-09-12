@@ -1,0 +1,16 @@
+{
+  "run_id": "1789208074684550152_2125711_issue878_b00_rendered_line_projection",
+  "name": "issue878_b00_rendered_line_projection",
+  "command": "TENNIS_RUN_B00_RENDERED_ALIGNMENT_GPU_TEST=1 TENNIS_B00_FIXTURE_REPOSITORY=/home/kamimura/projects/tennis-lab PYTHONPATH=. .venv/bin/pytest -q -n 0 -s tests/integration/synthetic_data_generation/test_alignment_rendered_input_gpu.py",
+  "provider": "codex",
+  "session": "01a094f3-f431-7871-b55d-5c34ca6f48dc",
+  "issue": "878",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "c4bb0e63b43ae4492f190bfac485a4dae087af5d",
+  "branch": "feat/issue-878-rendered-line-input",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-878-rendered-line-input",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-878-rendered-line-input",
+  "captured_at": "2026-09-12T19:14:34+09:00"
+}

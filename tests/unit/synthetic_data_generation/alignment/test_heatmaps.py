@@ -18,6 +18,7 @@ from src.synthetic_data_generation.alignment.heatmaps import (
     weighted_projection_samples,
     write_line_heatmaps,
 )
+from src.synthetic_data_generation.alignment.line_inputs import input_rgb_sha256
 
 
 def test_weighted_projection_uses_view_cell_max_then_global_sum() -> None:
@@ -61,12 +62,14 @@ def test_line_heatmaps_round_trip_numeric_and_png_inventory(tmp_path: Path) -> N
         "weighted-projection.png",
         "views",
     }
-    assert len(tuple((output / "views").iterdir())) == 6
+    assert len(tuple((output / "views").iterdir())) == 9
     manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["weight_model"] == ("1/(1+(camera_range/proximity_scale)^power)")
     assert manifest["raster_reducer"] == ("per-view cell max then weighted global sum")
     assert manifest["view_count"] == 3
     assert manifest["aggregate_view_count"] == 2
+    assert manifest["input_source"] == "nht_rendered_rgb"
+    assert manifest["views"][0]["input_image"] == "views/view-000-input.png"
     assert manifest["coordinate_units"] == "metres"
     assert manifest["coordinate_convention"].startswith(
         "right_handed_metric_scene_ground_plane_uv"
@@ -83,6 +86,18 @@ def test_line_heatmap_validation_rejects_render_tampering(tmp_path: Path) -> Non
     Image.fromarray(np.zeros((3, 3, 3), dtype=np.uint8), mode="RGB").save(tampered)
 
     with pytest.raises(ValueError, match="disagrees with numeric evidence"):
+        validate_line_heatmaps(output)
+
+
+def test_line_heatmap_validation_rejects_detector_input_tampering(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "line-heatmaps"
+    write_line_heatmaps(output, heatmaps=_heatmaps())
+    tampered = output / "views/view-000-input.png"
+    Image.fromarray(np.zeros((4, 6, 3), dtype=np.uint8), mode="RGB").save(tampered)
+
+    with pytest.raises(ValueError, match="digest disagrees"):
         validate_line_heatmaps(output)
 
 
@@ -105,6 +120,7 @@ def test_line_heatmap_view_rejects_non_positive_proximity_weight() -> None:
     with pytest.raises(ValueError, match="proximity_weights"):
         AlignmentLineHeatmapView(
             camera_id="camera-a",
+            input_rgb=np.zeros((4, 6, 3), dtype=np.uint8),
             probability=np.ones((2, 2), dtype=np.float32),
             points_uv=np.asarray(((0.0, 0.0),), dtype=np.float64),
             projected_probabilities=np.asarray((0.8,), dtype=np.float32),
@@ -114,39 +130,56 @@ def test_line_heatmap_view_rejects_non_positive_proximity_weight() -> None:
 
 
 def _heatmaps() -> AlignmentLineHeatmaps:
+    views = (
+        AlignmentLineHeatmapView(
+            camera_id="camera-a",
+            input_rgb=np.full((4, 6, 3), 32, dtype=np.uint8),
+            probability=np.asarray(((0.0, 0.5), (0.75, 1.0)), dtype=np.float32),
+            points_uv=np.asarray(
+                ((0.1, 0.1), (0.2, 0.2), (1.1, 1.1)), dtype=np.float64
+            ),
+            projected_probabilities=np.asarray((0.5, 0.9, 0.8), dtype=np.float32),
+            proximity_weights=np.asarray((0.5, 0.25, 0.5), dtype=np.float64),
+            included_in_aggregate=True,
+        ),
+        AlignmentLineHeatmapView(
+            camera_id="camera-b",
+            input_rgb=np.full((4, 6, 3), 96, dtype=np.uint8),
+            probability=np.asarray(
+                ((0.1, 0.2, 0.3), (0.4, 0.5, 0.6)), dtype=np.float32
+            ),
+            points_uv=np.asarray(((0.4, 0.4),), dtype=np.float64),
+            projected_probabilities=np.asarray((1.0,), dtype=np.float32),
+            proximity_weights=np.asarray((0.25,), dtype=np.float64),
+            included_in_aggregate=True,
+        ),
+        AlignmentLineHeatmapView(
+            camera_id="camera-excluded",
+            input_rgb=np.full((4, 6, 3), 160, dtype=np.uint8),
+            probability=np.asarray(((0.0, 0.0), (0.0, 1.0)), dtype=np.float32),
+            points_uv=np.asarray(((2.0, 2.0),), dtype=np.float64),
+            projected_probabilities=np.asarray((1.0,), dtype=np.float32),
+            proximity_weights=np.asarray((1.0,), dtype=np.float64),
+            included_in_aggregate=False,
+        ),
+    )
     return AlignmentLineHeatmaps(
         bounds_uv=(0.0, 2.0, 0.0, 2.0),
         grid_spacing=1.0,
         proximity_scale=0.35,
         proximity_power=2.0,
-        views=(
-            AlignmentLineHeatmapView(
-                camera_id="camera-a",
-                probability=np.asarray(((0.0, 0.5), (0.75, 1.0)), dtype=np.float32),
-                points_uv=np.asarray(
-                    ((0.1, 0.1), (0.2, 0.2), (1.1, 1.1)), dtype=np.float64
-                ),
-                projected_probabilities=np.asarray((0.5, 0.9, 0.8), dtype=np.float32),
-                proximity_weights=np.asarray((0.5, 0.25, 0.5), dtype=np.float64),
-                included_in_aggregate=True,
-            ),
-            AlignmentLineHeatmapView(
-                camera_id="camera-b",
-                probability=np.asarray(
-                    ((0.1, 0.2, 0.3), (0.4, 0.5, 0.6)), dtype=np.float32
-                ),
-                points_uv=np.asarray(((0.4, 0.4),), dtype=np.float64),
-                projected_probabilities=np.asarray((1.0,), dtype=np.float32),
-                proximity_weights=np.asarray((0.25,), dtype=np.float64),
-                included_in_aggregate=True,
-            ),
-            AlignmentLineHeatmapView(
-                camera_id="camera-excluded",
-                probability=np.asarray(((0.0, 0.0), (0.0, 1.0)), dtype=np.float32),
-                points_uv=np.asarray(((2.0, 2.0),), dtype=np.float64),
-                projected_probabilities=np.asarray((1.0,), dtype=np.float32),
-                proximity_weights=np.asarray((1.0,), dtype=np.float64),
-                included_in_aggregate=False,
-            ),
-        ),
+        input_source="nht_rendered_rgb",
+        input_provenance={
+            "schema": "alignment_line_input_batch_v1",
+            "source": "nht_rendered_rgb",
+            "provenance": {"schema": "test_nht_render_v1"},
+            "views": [
+                {
+                    "camera_id": view.camera_id,
+                    "input_rgb_sha256": input_rgb_sha256(view.input_rgb),
+                }
+                for view in views
+            ],
+        },
+        views=views,
     )

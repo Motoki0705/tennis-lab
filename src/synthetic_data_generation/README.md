@@ -104,10 +104,20 @@ tennis-lab still imports no NHT Python internals and fails closed when a public
 command or the dedicated trainer runtime is unavailable.
 
 Alignment uses measured court-line evidence with disjoint fit and holdout
-partitions. The fixed camera prefix and its immutable partition units are chosen
-without assuming a court count. Fit views alone form a common weighted ground
-grid; bounded residual search adds regulation-court candidates only while each
-one explains the configured minimum fraction of weighted evidence. Every
+partitions. Before detection, the complete fixed camera prefix is rendered from
+the learned 3DGS by the public `NHTRenderClient` boundary using the observed
+`StandardSceneExport` camera IDs. The detector and ground-plane projection are
+therefore bound to the same pose, intrinsics, resolution, pixel convention, and
+pre-alignment NHT scene coordinates. Rendering failure aborts alignment;
+captured camera images are never substituted. The durable inference cache
+separates captured and NHT-rendered sources and fingerprints the
+scene/checkpoint, render policy, complete camera geometry, exact detector-input
+RGB, and detector model.
+
+The fixed camera prefix and its immutable partition units are chosen without
+assuming a court count. Fit views alone form a common weighted ground grid;
+bounded residual search adds regulation-court candidates only while each one
+explains the configured minimum fraction of weighted evidence. Every
 proposal and common-scale refinement uses the same probability-and-proximity
 weighted coverage-floor objective, which cannot trade away whole-template
 coverage for a small high-confidence fragment. Bounded beam frontiers are
@@ -121,10 +131,11 @@ are evaluated once after the positive court count is frozen and never drive
 count reselection. Only accepted results publish a `MultiCourtLayout`
 containing every accepted court,
 reciprocal metric transforms, complex bounds, and fit/holdout metrics. The
-alignment owner also publishes `line-heatmaps/`: raw detector heatmaps for every
-selected view, proximity-weighted ground-plane heatmaps for every view, and
-their weighted aggregate on one common ground grid. The numeric archive is the
-validation authority for the PNG diagnostics.
+alignment owner also publishes `line-heatmaps/`: the exact RGB passed to the
+detector, its raw detector heatmap, and its proximity-weighted ground-plane
+heatmap for every selected view, plus their weighted aggregate on one common
+ground grid. The numeric archive binds every input by a pixel-value SHA-256 and
+is the validation authority for the PNG diagnostics.
 
 ## Correct court alignment manually
 
