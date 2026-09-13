@@ -31,3 +31,16 @@ PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/render.py \
 実映像の指標は、コート点だけで近似したカメラによるroot再投影とCOCO左右hipの中点の距離。3D位置の正解誤差ではなく、カメラ近似・2D検出・root定義の差を含む整合性指標である。カメラのfit誤差を一緒に保存する。baselineのcanonical headには教師損失がなかったため、canonical poseの再投影は比較指標に採用しない。
 
 重みは各scene最大64等間隔フレーム・4カメラのclean観測から推定した水平誤差で作る。元分布50%とシーン平均水平誤差の上位20%から50%を混ぜ、各epochに復元抽出する。`sampling_summary.json` の抽出後割合はseed固定の事前シミュレーションであり、学習中の各epochの実測値ではない。訓練では従来どおり3–4 viewの選択・128 frame crop・augmentationを行うため、事前推定と実際の各batchの難易度分布は同一ではない。val/testのsplit・観測分布は変えない。
+
+
+`render_smpl.py` は同じGVHMRメッシュを既存epoch29と新epoch4のPLCS位置・yawで配置し、各元動画へ赤/水色で重ねるCPU描画。各選手2体、計4体をalpha=0.62で描く。近似カメラは上の比較評価と同一で、元動画の解像度・全1010フレーム・fpsを維持する。出力は `comparison/smpl_overlay/{cam0,cam1,cam2}_comparison.mp4` と描画条件JSON。頂点の配置は通常の3D表示と共通の `smpl_placement.py` を使い、床への吸着や画面上の位置合わせは行わない。
+
+```bash
+PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/render_smpl.py \
+  --comparison outputs/plcs/foot_residual/comparison \
+  --clip data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 \
+  --faces data/smplh/neutral/model.npz \
+  --regressor /absolute/main-repo/third_party/GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt \
+  --camera cam0
+# cam1 / cam2にも実行。--preview-frame 500で単フレームだけ確認可能。
+```
