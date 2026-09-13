@@ -159,6 +159,12 @@ def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None
 
 
 def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
+    compaction_boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id
+        == "src.synthetic_data_generation.scripts.compact_court_storage:main"
+    )
     manual_boundary = next(
         contract
         for contract in BOUNDARY_CONTRACTS
@@ -196,6 +202,7 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
         if contract.boundary_id.startswith("src.synthetic_data_generation")
     }
     assert synthetic_boundaries == {
+        "src.synthetic_data_generation.scripts.compact_court_storage:main",
         "src.synthetic_data_generation.scripts.edit_alignment:main",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
         "src.synthetic_data_generation.scripts.review_court_dataset:main",
@@ -226,6 +233,17 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
         "src.utils.configuration.paths.NonHydraPathBoundary.validate"
     )
     assert any("path-role:data" in value for value in review_boundary.path_role_authorities)
+    assert compaction_boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+    assert any(
+        "path-role:data" in value
+        for value in compaction_boundary.path_role_authorities
+    )
+    assert any(
+        "path-role:output" in value
+        for value in compaction_boundary.path_role_authorities
+    )
 
 
 def test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles() -> None:

@@ -23,6 +23,7 @@
 - **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
 ### `data/`
+- **`float32_store.py`**: 明示されたNPY/byte-plane NPZの読み込みとfloat32の可逆圧縮。header検査と完全復元を分離し、未知codec・破損・shape不一致を拒否する。
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
 - **`augmentation.py`**: keypoint 系 augmentation、visibility dropout、false positive 注入、ImageNet 正規化/逆正規化、`tensor_images_to_uint8_rgb()`、設定値レンジの parse を実装。
 - **`scene_io.py`**: scene ディレクトリの `*.npy`、`scalars.json`、`meta.json` をまとめて読む `load_scene_payload()`。

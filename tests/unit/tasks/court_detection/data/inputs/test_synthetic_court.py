@@ -219,9 +219,7 @@ def _write_v2_dataset(
             "target_court": target,
             "metadata": metadata,
         }
-        (sample_root / "labels.json").write_text(
-            json.dumps(labels), encoding="utf-8"
-        )
+        (sample_root / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
         records.append(
             {
                 "sample_index": sample_index,
@@ -352,8 +350,7 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
     assert channels.physical_indices[:, 0].tolist() == list(range(14))
     assert channels.physical_indices[:, 1].tolist() == list(_CAMERA_VIEW_PHYSICAL)
     assert all(
-        instance.points_xy.dtype == torch.float32
-        for instance in raw.court_instances
+        instance.points_xy.dtype == torch.float32 for instance in raw.court_instances
     )
 
     flipped = CourtProcessingGeometry._transform_channels(
@@ -439,9 +436,10 @@ def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping
     assert [instance.court_instance_id for instance in target_raw.court_instances] == [
         "court-b",
     ]
-    assert target_input.records("train")[0].dense_target_refs != all_input.records(
-        "train"
-    )[0].dense_target_refs
+    assert (
+        target_input.records("train")[0].dense_target_refs
+        != all_input.records("train")[0].dense_target_refs
+    )
 
 
 @pytest.mark.parametrize(
@@ -501,8 +499,9 @@ def test_v3_accepts_finite_lateral_projected_u_reversal(tmp_path: Path) -> None:
     loaded = input_layer.load(input_layer.records("train")[0])
 
     assert loaded.keypoint_channels is not None
-    assert loaded.keypoint_channels.points_xy[2, 1, 0] > (
-        loaded.keypoint_channels.points_xy[3, 1, 0]
+    assert (
+        loaded.keypoint_channels.points_xy[2, 1, 0]
+        > (loaded.keypoint_channels.points_xy[3, 1, 0])
     )
 
 
@@ -969,3 +968,37 @@ def test_v2_rejects_split_leakage_and_empty_split(tmp_path: Path) -> None:
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ValueError, match="non-empty"):
         _input(tmp_path)
+
+
+@pytest.mark.parametrize("schema", ["v2", "v3"])
+def test_compressed_storage_preserves_training_pixels_and_labels(
+    tmp_path: Path, schema: Literal["v2", "v3"]
+) -> None:
+    from src.utils.data.float32_store import write_float32
+
+    manifest_path, manifest = _write_v2_dataset(tmp_path, schema=schema)
+    root = manifest_path.parent
+    original = _input(tmp_path, schema=schema)
+    before = original.load(original.records("train")[0])
+    for sample in cast(list[dict[str, object]], manifest["samples"]):
+        path = root / cast(str, sample["rgb"])
+        compressed = path.with_suffix(".f32.npz")
+        write_float32(compressed, np.load(path, allow_pickle=False))
+        path.unlink()
+        sample["rgb"] = compressed.relative_to(root).as_posix()
+    (root / "dataset.json").write_text(json.dumps(manifest))
+    source = _input(tmp_path, schema=schema)
+    after = source.load(source.records("train")[0])
+    assert before.image.tobytes() == after.image.tobytes()
+    assert before.pose_authority == after.pose_authority
+    assert before.keypoint_channels is not None and after.keypoint_channels is not None
+    torch.testing.assert_close(
+        before.keypoint_channels.points_xy,
+        after.keypoint_channels.points_xy,
+        rtol=0,
+        atol=0,
+    )
+    assert (
+        source.records("train")[0].payload["source_target_sha256"]
+        == original.records("train")[0].payload["source_target_sha256"]
+    )

@@ -8,6 +8,56 @@ authority for the camera-view KP14 semantics and their migration policy.
 
 See [Court Review](review/README.md) for the local 3D trajectory and image-label browser.
 
+## Lossless storage publication and compaction
+
+The geometric/label schemas remain v1/v2/v3. A manifest array path explicitly
+selects either the original `.npy` storage or `.f32.npz`
+(`float32_byte_planes_v1`). The latter preserves every float32 bit using byte
+shuffling plus DEFLATE; it is not float16 or uint8 quantization. Codec, shape,
+byte-plane layout and decoded SHA-256 are checked. Header-only validation reads
+archive metadata and the payload header; full validation decodes and checks all
+pixels. There is no filename guessing or substitute-image fallback.
+
+`dataset/court/storage.py` creates a disjoint compact owner, keeps source data
+intact, checks every restored array, updates the publication byte evidence, and
+runs the complete canonical validator before atomically publishing. RGB/alpha
+PNGs and the existing label/diagnostic contracts are retained. An interrupted
+attempt stays under a marked sibling staging path; `--resume` requires the exact
+source-manifest fingerprint and rechecks all reused arrays. The ordinary scene
+writer lock protects the source during migration.
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.compact_court_storage \
+  --data-root "$PWD/data" \
+  --output-root "$PWD/outputs" \
+  --source "$PWD/data/synthetic_data_generation/scenes/B00/datasets/court" \
+  --destination "$PWD/outputs/court-storage/compact-scenes/B00/datasets/court" \
+  --report "$PWD/outputs/court-storage/compact-b00.json"
+```
+
+The production Court assembler now writes `.f32.npz` for every accepted RGB,
+alpha and metric-depth array. It evaluates NHT's original arrays first, converts
+depth to metres, compresses accepted samples and removes the attempt-local NPYs
+before publication. Rejected images are discarded. Labels and split geometry
+remain unchanged. NHT's public temporary render output retains its NPY contract.
+
+Court training, dense-target materialization, Review, publication visualization,
+and dataset validation read the manifest-selected codec through
+`src/utils/data/float32_store.py`. The training reader restores the original
+float32 RGB, then applies its existing `np.round(rgb * 255).astype(np.uint8)`;
+preview PNG rounding is not substituted. Ordinary DataLoader workers perform
+CPU decompression (the existing default is four workers), with no training-time
+renderer or CUDA context. Missing files, unknown codecs and corrupt payloads
+fail explicitly. Header-only checks avoid decoding complete images; full checks
+also validate SHA-256 and pixels.
+
+The compaction command above migrates already published NPY owners. Integrate
+these readers before replacing an existing production owner, and restart
+existing readers so they do not retain a stale manifest. Geometry digests and split assignments do
+not change. A separately rooted copy needs its own configured derived-target
+store; an eventual replacement under the original data root retains the existing
+geometry-based target keys.
+
 ## Purpose
 
 Court dataset v2 introduced three related changes without changing the shared
