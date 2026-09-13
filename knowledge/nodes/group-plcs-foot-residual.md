@@ -37,6 +37,7 @@ tags:
 
 成果物は専用worktreeの `outputs/plcs/foot_residual/comparison/` に保存:
 
+- `smpl_overlay/{cam0,cam1,cam2}_comparison.mp4`: 各元動画に、各選手あたり既存/新PLCSの2体のGVHMR SMPLを重畳。赤=既存、水色=新。描画手順は `scripts/plcs_foot_residual/README.md` を参照。
 - `comparison.mp4`: 既存epoch29（赤）と新モデル（水色）の軌跡・3view再投影、H264 1600×900、505フレーム・16.850秒。白い十字は観測hip。
 - `residual_best.ckpt`: validation最良epoch4、推論用optimizer除去済み。SHA256 `990cf9247af7a06328d664379873dc4fcc740ffd573d2fd8069c0ba5c450603d`。
 - `residual_scene.npz` + `residual_scene.metadata.json`: 既存GVHMR/SMPLと新PLCS位置・回転の標準SceneResult。入力元SHA・checkpoint・座標系をsidecarに保存。
