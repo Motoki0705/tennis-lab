@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
+import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -179,6 +180,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             (False, True): self._decode_split_outputs_with_auxiliary_position,
             (True, True): self._decode_split_outputs_with_all_heads,
         }[output_profile]
+        self._configure_observation_embedding()
 
     @classmethod
     def from_config(
@@ -262,17 +264,8 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
         court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
 
-        token_valid = ~padding_mask
-
-        court_flat = court_kp.reshape(
-            batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
-        )
-        human_flat = human_kp.reshape(batch_size * n_cams * seq_len_in, NUM_HUMAN_KP, 2)
-        group_vis = token_valid.reshape(batch_size * n_cams * seq_len_in)
-        x = (
-            self.group_embed(court_flat, human_flat, group_vis)
-            .reshape(batch_size, n_cams, seq_len_in, self.hidden_dim)
-            .permute(0, 2, 1, 3)
+        x, anchor = self._embed_observations(
+            human_kp, court_kp, human_vis, court_vis, padding_mask
         )
 
         camera_freqs = self._camera_freqs(
@@ -325,7 +318,35 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
         frame_valid = ~padding_mask.all(dim=1)
 
-        return self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
+        output = self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
+        output["position"] = output["position"] + anchor
+        if "aux_position" in output:
+            output["aux_position"] = output["aux_position"] + anchor
+        return output
+
+    def _configure_observation_embedding(self) -> None:
+        """Construction hook for observation-specific embeddings."""
+
+    def _embed_observations(
+        self,
+        human_kp: Tensor,
+        court_kp: Tensor,
+        human_vis: Tensor,
+        court_vis: Tensor,
+        padding_mask: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        del human_vis, court_vis
+        batch_size, n_cams, seq_len = human_kp.shape[:3]
+        x = (
+            self.group_embed(
+                court_kp.reshape(-1, self.num_court_tokens, 2),
+                human_kp.reshape(-1, NUM_HUMAN_KP, 2),
+                (~padding_mask).reshape(-1),
+            )
+            .reshape(batch_size, n_cams, seq_len, self.hidden_dim)
+            .permute(0, 2, 1, 3)
+        )
+        return x, torch.zeros_like(human_kp[:, 0, :, 0, :1]).expand(-1, -1, 3)
 
     def _decode_split_outputs_basic(
         self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor

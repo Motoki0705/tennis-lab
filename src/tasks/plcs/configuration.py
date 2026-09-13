@@ -301,6 +301,10 @@ _MODEL_FIELDS["plcs_multiview_axial_reference"] = _MODEL_FIELDS[
     }
 )
 
+_MODEL_FIELDS["plcs_multiview_axial_foot_residual"] = _MODEL_FIELDS[
+    "plcs_multiview_axial_split"
+]
+
 _TRACK_QUERY_MODEL_NAMES = frozenset(
     {
         "plcs_track_query",
@@ -378,6 +382,7 @@ class PLCSModelConfig:
             "plcs_multiview_axial": "multiview",
             "plcs_multiview_axial_reference": "multiview",
             "plcs_multiview_axial_split": "multiview",
+            "plcs_multiview_axial_foot_residual": "multiview",
             "plcs_multiview_axial_camtoken": "multiview",
             "plcs_track_query": None,
             "plcs_track_query_reference": None,
@@ -798,7 +803,7 @@ class PLCSDataConfig:
         if tracking:
             allowed.update({"association", "lifecycle"})
         else:
-            allowed.update({"mode", "num_court_kp"})
+            allowed.update({"mode", "num_court_kp", "sampling_weights"})
             if model.input_profile == "multiview":
                 allowed.add("min_cameras")
             configured_mode = _string(initial, "mode", path="data")
@@ -819,6 +824,7 @@ class PLCSDataConfig:
                 allowed
                 - {
                     "seq_stride",
+                    "sampling_weights",
                     "camera_candidates",
                     "min_cameras",
                     "evaluation_reference_camera_id",
@@ -890,8 +896,12 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     f"data.{key} must be a positive ordered range."
                 )
-        if model.name == "plcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
-            raise SemanticConfigurationError("Axial reference data requires 3 or 4 cameras.")
+        if model.name == "plcs_multiview_axial_reference" and not (
+            3 <= num_views_range[0] <= num_views_range[1] <= 4
+        ):
+            raise SemanticConfigurationError(
+                "Axial reference data requires 3 or 4 cameras."
+            )
         if "max_views" in model.values and num_views_range[1] > model.integer(
             "max_views"
         ):
@@ -958,6 +968,15 @@ class PLCSDataConfig:
                     "PLCS data.association.min_common_keypoints must be within "
                     f"[4, {NUM_HUMAN_KP}]."
                 )
+        if "sampling_weights" in mapping:
+            if backend != "default":
+                raise SemanticConfigurationError(
+                    "data.sampling_weights requires backend=default."
+                )
+            _simple_name(
+                _string(mapping, "sampling_weights", path="data"),
+                path="data.sampling_weights",
+            )
         scene_dir = _string(mapping, "scene_dir", path="data")
         batch_size = _integer(mapping, "batch_size", path="data")
         workers = _integer(mapping, "num_workers", path="data")
