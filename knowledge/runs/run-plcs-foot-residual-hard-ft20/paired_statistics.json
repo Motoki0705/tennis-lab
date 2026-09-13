@@ -1,0 +1,54 @@
+{
+  "matched_scene_target_rotation_anchor": true,
+  "frames": 127744,
+  "strata": {
+    "all": {
+      "frames": 127744,
+      "prior_xy_m": 0.4587404287884676,
+      "baseline": {
+        "xy_m": 0.48332761394390755,
+        "xyz_m": 0.4985384492455994,
+        "correction_xy_m": 0.7653931685572524,
+        "zero_correction_lt_5cm_fraction": 0.006152930861723447
+      },
+      "residual": {
+        "xy_m": 0.18665872014813445,
+        "xyz_m": 0.200130830547628,
+        "correction_xy_m": 0.4423205080398629,
+        "zero_correction_lt_5cm_fraction": 0.025848572144288578
+      }
+    },
+    "prior_xy_ge_1m": {
+      "frames": 6796,
+      "prior_xy_m": 3.4717781539729526,
+      "baseline": {
+        "xy_m": 0.7394514839628673,
+        "xyz_m": 0.8746133729302039,
+        "correction_xy_m": 3.4741867532776216,
+        "zero_correction_lt_5cm_fraction": 0.0
+      },
+      "residual": {
+        "xy_m": 0.8736667876709351,
+        "xyz_m": 0.9319170034195248,
+        "correction_xy_m": 2.785005422544265,
+        "zero_correction_lt_5cm_fraction": 0.00014714537963507945
+      }
+    },
+    "prior_xy_ge_2m": {
+      "frames": 3463,
+      "prior_xy_m": 5.530572173443567,
+      "baseline": {
+        "xy_m": 0.6377824455892145,
+        "xyz_m": 0.8529131418950668,
+        "correction_xy_m": 5.537752722874537,
+        "zero_correction_lt_5cm_fraction": 0.0
+      },
+      "residual": {
+        "xy_m": 1.254946228855298,
+        "xyz_m": 1.3427615206238692,
+        "correction_xy_m": 4.577466138394147,
+        "zero_correction_lt_5cm_fraction": 0.0
+      }
+    }
+  }
+}

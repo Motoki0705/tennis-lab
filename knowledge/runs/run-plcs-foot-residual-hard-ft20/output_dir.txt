@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual/outputs/plcs/foot_residual/training/logs/version_0/checkpoints
