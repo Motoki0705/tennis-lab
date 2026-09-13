@@ -1,0 +1,8 @@
+A  scripts/experiments/benchmark_court_ondemand.py
+A  scripts/experiments/compact_court_storage.py
+M  src/synthetic_data_generation/dataset/court/assembler.py
+M  src/synthetic_data_generation/dataset/court/review/service.py
+M  src/synthetic_data_generation/visualization/sources.py
+M  src/tasks/court_detection/data/inputs/synthetic_court.py
+A  src/utils/data/float32_store.py
+A  tests/unit/utils/data/test_float32_store.py

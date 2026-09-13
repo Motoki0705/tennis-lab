@@ -1,0 +1,12 @@
+A  scripts/experiments/audit_scene_storage.py
+A  scripts/experiments/benchmark_court_ondemand.py
+A  scripts/experiments/compact_court_storage.py
+A  scripts/experiments/probe_court_views.py
+M  src/synthetic_data_generation/dataset/court/assembler.py
+M  src/synthetic_data_generation/dataset/court/review/service.py
+M  src/synthetic_data_generation/visualization/sources.py
+M  src/tasks/court_detection/data/inputs/synthetic_court.py
+A  src/utils/data/float32_store.py
+ M tests/integration/synthetic_data_generation/test_court_dataset.py
+M  tests/unit/tasks/court_detection/data/inputs/test_synthetic_court.py
+AM tests/unit/utils/data/test_float32_store.py

@@ -51,6 +51,7 @@ from src.tasks.court_detection.data.target_generation.store import (
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
 )
+from src.utils.data.float32_store import read_float32
 from src.utils.schema.court import (
     CAMERA_VIEW_HALF_TURN_INDEX,
     COURT_KP_NAMES,
@@ -634,7 +635,7 @@ class SyntheticCourtInput:
         return labels
 
     def _load_rgb(self, record: CourtSampleRecord) -> Image.Image:
-        rgb = np.load(record.image_path, allow_pickle=False)
+        rgb = read_float32(record.image_path)
         if self.config.schema in {"v2", "v3"}:
             expected = (
                 cast(int, record.payload["height"]),

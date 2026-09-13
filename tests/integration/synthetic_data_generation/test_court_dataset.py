@@ -73,6 +73,7 @@ from src.synthetic_data_generation.scene_contract import (
     RigidTransform,
     SceneCamera,
 )
+from src.utils.data.float32_store import read_float32
 from src.utils.io import load_json
 from src.utils.paths import PROJECT_ROOT
 
@@ -164,12 +165,8 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
 
     first_record = _first_accepted_record(first_dataset)
     second_record = _first_accepted_record(second_dataset)
-    first_rgb = np.load(
-        _record_path(first_root, first_record, "rgb"), allow_pickle=False
-    )
-    second_rgb = np.load(
-        _record_path(second_root, second_record, "rgb"), allow_pickle=False
-    )
+    first_rgb = read_float32(_record_path(first_root, first_record, "rgb"))
+    second_rgb = read_float32(_record_path(second_root, second_record, "rgb"))
     assert not np.array_equal(first_rgb, second_rgb)
     _assert_repeat_semantic_mutations_fail(first_manifest)
 
@@ -311,10 +308,13 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
                 )
                 for value in classes
             )
-            assert canonical_physical_indices == camera_view_canonicalization(
-                camera,
-                layout_by_id[court_id],
-            ).semantic_to_physical
+            assert (
+                canonical_physical_indices
+                == camera_view_canonicalization(
+                    camera,
+                    layout_by_id[court_id],
+                ).semantic_to_physical
+            )
 
     diagnostics = {
         "trajectory-plan.json": f"canonical_court_orbit_plan_{diagnostic_suffix}",
@@ -370,9 +370,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
     original_label_text = label_path.read_text(encoding="utf-8")
     mixed_label = json.loads(original_label_text)
     mixed_label["schema"] = (
-        "canonical_court_sample_v3"
-        if selector == "v2"
-        else "canonical_court_sample_v2"
+        "canonical_court_sample_v3" if selector == "v2" else "canonical_court_sample_v2"
     )
     label_path.write_text(json.dumps(mixed_label), encoding="utf-8")
     try:
@@ -929,3 +927,33 @@ def _assert_no_operational_manifest_fields(value: object) -> None:
     elif isinstance(value, list):
         for item in value:
             _assert_no_operational_manifest_fields(item)
+
+
+def test_generated_compressed_publication_semantics_and_visualization(
+    tmp_path: Path,
+) -> None:
+    from src.synthetic_data_generation.visualization.sources import (
+        CourtVisualizationSource,
+    )
+
+    executable = _write_fake_nht_render(tmp_path / "bin/nht-render")
+    _, semantic, root = _execute_court_render(
+        tmp_path / "generated",
+        executable=executable,
+        rgb_value=0.3,
+        court_selector="v3",
+    )
+    manifest = load_json(root / "dataset.json")
+    assert not list((root / "samples").rglob("*.npy"))
+    assert load_json(root / COURT_SEMANTIC_MANIFEST_PATH) == semantic
+    for record in manifest["samples"]:
+        for field in ("rgb", "alpha", "depth"):
+            assert record[field].endswith(".f32.npz")
+            array = read_float32(root / record[field])
+            assert array.dtype == np.float32
+            assert np.isfinite(array).all()
+    validate_court_dataset(root, array_validation=CourtArrayValidationMode.HEADERS_ONLY)
+    visualizer = CourtVisualizationSource(
+        root, trajectory_id=manifest["samples"][0]["trajectory_id"]
+    )
+    assert next(visualizer.frames()).rgb.shape[-1] == 3

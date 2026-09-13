@@ -85,6 +85,12 @@ from src.synthetic_data_generation.scene_contract import (
     RigidTransform,
     SceneCamera,
 )
+from src.utils.data.float32_store import (
+    SUFFIX,
+    inspect_float32,
+    read_float32,
+    write_float32,
+)
 from src.utils.io import load_json, save_json_atomic
 
 _COMMON_COURT_METRIC_KEYS = frozenset(
@@ -281,11 +287,11 @@ def assemble_court_dataset(
             "camera": sample.camera.to_dict(),
             "projection": evaluated_item.projection.to_dict(),
             "directory": relative_directory,
-            "rgb": f"{relative_directory}/rgb.npy",
+            "rgb": f"{relative_directory}/rgb{SUFFIX}",
             "rgb_preview": f"{relative_directory}/rgb.png",
-            "alpha": f"{relative_directory}/alpha.npy",
+            "alpha": f"{relative_directory}/alpha{SUFFIX}",
             "alpha_preview": f"{relative_directory}/alpha.png",
-            "depth": f"{relative_directory}/depth.npy",
+            "depth": f"{relative_directory}/depth{SUFFIX}",
             "depth_coordinate_space": "metric_scene_metres",
             "labels": f"{relative_directory}/labels.json",
             "metadata": metadata,
@@ -482,7 +488,15 @@ def _evaluate_staged_sample(
         depth_metric = arrays.metric_depth(
             nht_scene_units_per_metre=metric_adapter.nht_scene_units_per_metre,
         )
-        np.save(rendered.depth_path, depth_metric, allow_pickle=False)
+        # Only accepted samples are compressed. Depth is already in metric units.
+        # Raw NHT files are attempt-local and removed before publication.
+        for path, value in (
+            (rendered.rgb_path, arrays.rgb),
+            (rendered.alpha_path, arrays.alpha),
+            (rendered.depth_path, depth_metric),
+        ):
+            write_float32(path.with_suffix(SUFFIX), value)
+            path.unlink()
     return _EvaluatedSample(
         rendered=rendered,
         projection=visible,
@@ -1358,18 +1372,11 @@ def _validate_published_sample(
         if not isinstance(value, str):
             raise TypeError(f"Court sample {field} path must be a string.")
         path = _contained_file(root, value)
-        array = np.load(
-            path,
-            allow_pickle=False,
-            mmap_mode=(
-                "r"
-                if array_validation is CourtArrayValidationMode.HEADERS_ONLY
-                else None
-            ),
-        )
-        if array.dtype != np.float32 or array.shape != shape:
+        dtype, actual_shape = inspect_float32(path)
+        if dtype != np.float32 or actual_shape != shape:
             raise ValueError(f"Court sample {field} array is semantically invalid.")
         if array_validation is CourtArrayValidationMode.FULL:
+            array = read_float32(path)
             loaded_arrays[field] = np.asarray(array, dtype=np.float32)
             if not np.isfinite(array).all():
                 raise ValueError(f"Court sample {field} array is semantically invalid.")

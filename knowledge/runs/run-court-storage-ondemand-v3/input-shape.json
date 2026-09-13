@@ -1,0 +1,9 @@
+{
+  "image_shape": [
+    8,
+    3,
+    256,
+    456
+  ],
+  "geometry": "evaluation short_side=256; require_pose=false; align8"
+}
