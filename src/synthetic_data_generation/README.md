@@ -103,6 +103,12 @@ temporary copy of the public NHT pipeline config for each reconstruction.
 tennis-lab still imports no NHT Python internals and fails closed when a public
 command or the dedicated trainer runtime is unavailable.
 
+Each `nht-render` invocation loads the checkpoint and shader once and processes
+its camera request in bounded GPU batches (default four cameras). Resolution
+changes split a batch without changing request order. Court generation already
+submits a camera shard per invocation, so every shard reuses one loaded scene.
+The batch CLI and shader constraints belong to [NHT's README](../../third_party/nht/README.md).
+
 Alignment uses measured court-line evidence with disjoint fit and holdout
 partitions. Before detection, the complete fixed camera prefix is rendered from
 the learned 3DGS by the public `NHTRenderClient` boundary using the observed

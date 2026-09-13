@@ -5,7 +5,7 @@
 ## Data composition
 
 - `data/source=tennis_court_detector`: yastrebksv/TennisCourtDetector由来の実画像とordered KP14。
-- `data/source=synthetic_court`: `schema: v3`を明示したcurrent synthetic source。manifestが公開した`rgb.npy`とlabelsだけをstrictに読みます。
+- `data/source=synthetic_court`: `schema: v3`を明示したcurrent synthetic source。manifestが明示したRGB配列とlabelsをstrictに読みます。保存codecは下記のSynthetic Court契約に従います。
 - `data/source=synthetic_court_v2`: `schema: v2`を明示したlegacy synthetic source。
 - `data/source=synthetic_court_v1`: `schema: v1`を明示したcanonical v1回帰source。physical pointを7 semantic multi-peak channelへまとめます。
 - `data/processing=kp|seg|line|kp_seg|kp_line|seg_line|all`: 選択したtargetを同じ幾何変換で生成します。
