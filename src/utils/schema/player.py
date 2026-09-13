@@ -184,6 +184,52 @@ SMPLH_SKELETON: list[tuple[int, int]] = [
     (19, 21),  # right_elbow -> right_wrist
 ]
 
+# SMPL-H hand joints follow the MANO finger order (index, middle, pinky, ring,
+# thumb) with three joints per finger. The official SMPL-H kinematic tree puts
+# the left hand joints at indices 22..36 and the right hand at 37..51, matching
+# the AMASS pose layout ``[global_orient, body_pose, left_hand, right_hand]``.
+SMPLH_FINGER_NAMES: tuple[str, ...] = ("index", "middle", "pinky", "ring", "thumb")
+NUM_SMPLH_FINGER_JOINTS: int = 3
+SMPLH_HAND_JOINT_NAMES: tuple[str, ...] = tuple(
+    f"{side}_{finger}{joint + 1}"
+    for side in ("left", "right")
+    for finger in SMPLH_FINGER_NAMES
+    for joint in range(NUM_SMPLH_FINGER_JOINTS)
+)
+
+# All 52 SMPL-H joints: the 22 body joints followed by both hands.
+SMPLH_JOINT_NAMES: tuple[str, ...] = SMPLH_BODY_JOINT_NAMES + SMPLH_HAND_JOINT_NAMES
+
+
+def _smplh_hand_bones() -> list[tuple[int, int]]:
+    """Return the 30 SMPL-H finger bones rooted at each wrist."""
+    bones: list[tuple[int, int]] = []
+    wrists = (SMPLH_JOINT_IDX["left_wrist"], SMPLH_JOINT_IDX["right_wrist"])
+    for hand, wrist in enumerate(wrists):
+        for finger in range(len(SMPLH_FINGER_NAMES)):
+            first = (
+                NUM_SMPLH_BODY_JOINTS
+                + hand * NUM_SMPLH_HAND_JOINTS
+                + finger * NUM_SMPLH_FINGER_JOINTS
+            )
+            bones.extend(
+                (
+                    (wrist, first),
+                    (first, first + 1),
+                    (first + 1, first + 2),
+                )
+            )
+    return bones
+
+
+SMPLH_HAND_SKELETON: list[tuple[int, int]] = _smplh_hand_bones()
+
+# Complete 52-joint SMPL-H skeleton: 21 body bones plus 30 finger bones.
+SMPLH_FULL_SKELETON: list[tuple[int, int]] = [
+    *SMPLH_SKELETON,
+    *SMPLH_HAND_SKELETON,
+]
+
 # SMPL 24-joint skeleton (standard SMPL body model)
 SMPL_SKELETON: list[tuple[int, int]] = [
     # Spine
