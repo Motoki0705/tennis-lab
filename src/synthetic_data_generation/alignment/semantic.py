@@ -1,8 +1,8 @@
-"""Type-preserving court refinement on a fixed metric ground-plane raster.
+"""Semantic court alignment on a fixed metric ground-plane raster.
 
 Court count and scene scale are fixed by the supplied reconstruction alignment.
-This experimental method refines placement only; it does not declare production
-acceptance or reuse the baseline's acceptance status for its changed transforms.
+This method refines placement against camera-invariant line-type evidence; it does
+not declare production acceptance or reuse an input alignment's acceptance status.
 """
 
 from __future__ import annotations
