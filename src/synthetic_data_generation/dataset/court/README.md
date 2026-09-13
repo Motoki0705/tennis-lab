@@ -28,9 +28,11 @@ writer lock protects the source during migration.
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.compact_court_storage \
-  --source data/synthetic_data_generation/scenes/B00/datasets/court \
-  --destination outputs/storage-ondemand/compact-scenes/B00/datasets/court \
-  --report outputs/storage-ondemand/compact-b00.json
+  --data-root "$PWD/data" \
+  --output-root "$PWD/outputs" \
+  --source "$PWD/data/synthetic_data_generation/scenes/B00/datasets/court" \
+  --destination "$PWD/outputs/court-storage/compact-scenes/B00/datasets/court" \
+  --report "$PWD/outputs/court-storage/compact-b00.json"
 ```
 
 The production Court assembler now writes `.f32.npz` for every accepted RGB,

@@ -12,9 +12,13 @@ def test_main_compacts_with_explicit_options_and_writes_report(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    source = tmp_path / "source"
-    destination = tmp_path / "destination"
-    report_path = tmp_path / "reports" / "compaction.json"
+    data_root = tmp_path / "data"
+    source = data_root / "source"
+    source.mkdir(parents=True)
+    output_root = tmp_path / "outputs"
+    output_root.mkdir()
+    destination = output_root / "destination"
+    report_path = output_root / "reports" / "compaction.json"
     expected: dict[str, object] = {"bitwise_verified": True, "samples": 12}
 
     def fake_compact(
@@ -36,6 +40,10 @@ def test_main_compacts_with_explicit_options_and_writes_report(
         "argv",
         [
             "compact_court_storage",
+            "--data-root",
+            str(data_root),
+            "--output-root",
+            str(output_root),
             "--source",
             str(source),
             "--destination",
