@@ -46,6 +46,7 @@ from src.synthetic_data_generation.dataset.runtime import (
 )
 from src.synthetic_data_generation.rendering.nht import NHTRenderArrays
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
+from src.utils.data.float32_store import SUFFIX, read_float32
 
 
 def test_performance_evidence_round_trips_measured_court_budget() -> None:
@@ -297,17 +298,19 @@ def test_staged_evaluation_preserves_rgb_alpha_and_converts_depth_once(
     assert calls == 1
     assert result.complete_array_scan_count == 1
     np.testing.assert_array_equal(
-        np.load(rendered.rgb_path, allow_pickle=False),
+        read_float32(rendered.rgb_path.with_suffix(SUFFIX)),
         rgb_before,
     )
     np.testing.assert_array_equal(
-        np.load(rendered.alpha_path, allow_pickle=False),
+        read_float32(rendered.alpha_path.with_suffix(SUFFIX)),
         alpha_before,
     )
     np.testing.assert_allclose(
-        np.load(rendered.depth_path, allow_pickle=False),
+        read_float32(rendered.depth_path.with_suffix(SUFFIX)),
         2.0,
     )
+
+    assert not any(path.exists() for path in (rendered.rgb_path, rendered.alpha_path, rendered.depth_path))
 
 
 def test_performance_writer_persists_exact_published_bytes(tmp_path: Path) -> None:

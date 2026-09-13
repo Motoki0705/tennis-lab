@@ -59,6 +59,11 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
 # The digests validate/reuse the exact measured source; they do not restore the
 # removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
+    # Migration resume binds only this attempt to its unchanged source manifest;
+    # this does not introduce scene identity or content-addressed publication.
+    Path("src/synthetic_data_generation/dataset/court/storage.py"): frozenset(
+        {"fingerprint", "sha256"}
+    ),
     Path("src/synthetic_data_generation/alignment/heatmaps.py"): frozenset(
         {"sha256"}
     ),
