@@ -14,7 +14,7 @@ PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/prepare.py \
   --config-path /absolute/worktree/outputs/plcs/foot_residual --config-name train
 
 PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/evaluate.py \
-  --checkpoint /absolute/checkpoint.ckpt --label baseline \
+  --checkpoint /absolute/checkpoint.ckpt --label baseline_best \
   --baseline-config /absolute/baseline/config.yaml \
   --dataset data/plcs/single_object_camera_view_v2 \
   --clip data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 \
@@ -22,11 +22,11 @@ PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/evaluate.py \
 # validation最小の新checkpointでも --label residual として同じ評価を実行。
 
 PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/render.py \
-  --comparison outputs/plcs/foot_residual/comparison \
+  --comparison outputs/plcs/foot_residual/comparison --baseline-label baseline_best \
   --clip data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000
 ```
 
-合成評価は全testシーンの中心128フレーム、seed 1234、camera_0 referenceを固定する。実クリップは保存済み `human_kp_2d` / `human_kp_vis` と手動courtを使い、本番のstride=2・128/64 windowで全1010フレームを再構成する。人物対応と入力観測は両モデルで共通であり、モデル推論による既存の `player_position` はGTに使わない。
+最終比較の合成推論は両モデルともfloat32を使う。合成評価は全testシーンの中心128フレーム、seed 1234、camera_0 referenceを固定する。実クリップは保存済み `human_kp_2d` / `human_kp_vis` と手動courtを使い、本番のstride=2・128/64 windowで全1010フレームを再構成する。人物対応と入力観測は両モデルで共通であり、モデル推論による既存の `player_position` はGTに使わない。
 
 実映像の指標は、コート点だけで近似したカメラによるroot再投影とCOCO左右hipの中点の距離。3D位置の正解誤差ではなく、カメラ近似・2D検出・root定義の差を含む整合性指標である。カメラのfit誤差を一緒に保存する。baselineのcanonical headには教師損失がなかったため、canonical poseの再投影は比較指標に採用しない。
 
