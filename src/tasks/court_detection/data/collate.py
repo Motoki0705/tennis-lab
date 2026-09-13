@@ -107,7 +107,7 @@ def court_detection_collate(
                 height=height,
                 width=width,
             )
-        elif kind == "seg":
+        elif kind in {"seg", "semantic_line"}:
             targets[kind] = torch.stack(
                 [
                     _pad_spatial_2d(cast(Tensor, value), height=height, width=width)

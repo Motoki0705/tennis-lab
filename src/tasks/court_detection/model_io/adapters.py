@@ -260,6 +260,21 @@ class CourtModelIOAdapter(nn.Module):
             raise CourtModelIOError("Court preprocessing short_side must be positive.")
         self.spec = spec
         self.loss_config = loss_config
+        missing_loss_weights = set(spec.target_bundle.kinds) - set(
+            loss_config.dense_weights
+        )
+        if missing_loss_weights:
+            raise CourtModelIOError(
+                "Court loss config has no explicit weight for selected head(s): "
+                f"{sorted(missing_loss_weights)}."
+            )
+        if "semantic_line" in spec.target_bundle.targets and (
+            loss_config.semantic_line_ce_weight is None
+            or loss_config.semantic_line_dice_weight is None
+        ):
+            raise CourtModelIOError(
+                "Semantic-line supervision requires explicit CE and Dice weights."
+            )
         self.execution_boundary = execution_boundary
         self._prepare_execution = (
             self._prepare_direct_execution
@@ -271,6 +286,13 @@ class CourtModelIOAdapter(nn.Module):
             num_classes=(
                 spec.target_bundle.targets["seg"].output_channels
                 if "seg" in spec.target_bundle.targets
+                else 1
+            )
+        )
+        self.semantic_line_dice = DiceLoss(
+            num_classes=(
+                spec.target_bundle.targets["semantic_line"].output_channels
+                if "semantic_line" in spec.target_bundle.targets
                 else 1
             )
         )
@@ -356,6 +378,8 @@ class CourtModelIOAdapter(nn.Module):
                 targets[kind] = self._validate_seg_target(value, call=call)
             elif kind == "line":
                 targets[kind] = self._validate_line_target(value, call=call)
+            elif kind == "semantic_line":
+                targets[kind] = self._validate_semantic_line_target(value, call=call)
         return CourtTrainingCall(
             model_call=call,
             targets=MappingProxyType(targets),
@@ -413,9 +437,7 @@ class CourtModelIOAdapter(nn.Module):
         for kind in self.spec.target_bundle.kinds:
             value = dense_logits[kind]
             target = call.targets[kind]
-            dense_weight = float(
-                getattr(self.loss_config, "dense_weights", {}).get(kind, 1.0)
-            )
+            dense_weight = float(self.loss_config.dense_weights[kind])
             if kind == "kp":
                 heatmap = cast(Mapping[str, Tensor], target)["heatmap"]
                 raw_loss = self.kp_loss(value, heatmap)
@@ -437,6 +459,18 @@ class CourtModelIOAdapter(nn.Module):
                     )
                     + self.loss_config.line_dice_weight
                     * self.line_dice(value, binary)
+                )
+            elif kind == "semantic_line":
+                labels = cast(Tensor, target)
+                ce_weight = self.loss_config.semantic_line_ce_weight
+                dice_weight = self.loss_config.semantic_line_dice_weight
+                if ce_weight is None or dice_weight is None:  # pragma: no cover
+                    raise CourtModelIOError(
+                        "Semantic-line loss weights changed after construction."
+                    )
+                raw_loss = (
+                    ce_weight * F.cross_entropy(value, labels)
+                    + dice_weight * self.semantic_line_dice(value, labels)
                 )
             weight = raw_loss.new_tensor(dense_weight)
             raw_losses[kind] = raw_loss
@@ -482,7 +516,7 @@ class CourtModelIOAdapter(nn.Module):
                     "valid": valid,
                     "heatmaps": value,
                 }
-            elif kind == "seg":
+            elif kind in {"seg", "semantic_line"}:
                 predictions[kind] = {"mask": value.argmax(dim=1), "logits": value}
             else:
                 predictions[kind] = {
@@ -528,7 +562,7 @@ class CourtModelIOAdapter(nn.Module):
                 valid=valid[0].cpu(),
                 heatmaps=logits[0].cpu(),
             )
-        if kind == "seg":
+        if kind in {"seg", "semantic_line"}:
             return CourtSegmentationPrediction(
                 mask=logits.argmax(dim=1)[0].cpu(),
                 logits=logits[0].cpu(),
@@ -587,18 +621,39 @@ class CourtModelIOAdapter(nn.Module):
         *,
         call: CourtModelCall,
     ) -> Tensor:
+        return self._validate_categorical_target(value, call=call, kind="seg")
+
+    def _validate_semantic_line_target(
+        self,
+        value: object,
+        *,
+        call: CourtModelCall,
+    ) -> Tensor:
+        return self._validate_categorical_target(
+            value,
+            call=call,
+            kind="semantic_line",
+        )
+
+    def _validate_categorical_target(
+        self,
+        value: object,
+        *,
+        call: CourtModelCall,
+        kind: CourtTargetKind,
+    ) -> Tensor:
         if not isinstance(value, Tensor):
-            raise CourtModelIOError("Court segmentation target must be a Tensor.")
-        channels = self.spec.target_bundle.targets["seg"].output_channels
+            raise CourtModelIOError(f"Court {kind} target must be a Tensor.")
+        channels = self.spec.target_bundle.targets[kind].output_channels
         if (
             value.shape != (call.batch_size, call.height, call.width)
             or value.dtype != torch.long
         ):
             raise CourtModelIOError(
-                "Court segmentation target must be int64 (B,H,W)."
+                f"Court {kind} target must be int64 (B,H,W)."
             )
         if bool(torch.any((value < 0) | (value >= channels))):
-            raise CourtModelIOError("Court segmentation labels are out of range.")
+            raise CourtModelIOError(f"Court {kind} labels are out of range.")
         return value
 
     def _validate_line_target(
@@ -996,7 +1051,7 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
                     "valid": torch.ones((*index.shape, 1), dtype=torch.bool, device=value.device),
                     "heatmaps": value,
                 }
-            elif kind == "seg":
+            elif kind in {"seg", "semantic_line"}:
                 dense[kind] = {"mask": value.argmax(dim=1), "logits": value}
             else:
                 dense[kind] = {"probability": torch.sigmoid(value), "logits": value}

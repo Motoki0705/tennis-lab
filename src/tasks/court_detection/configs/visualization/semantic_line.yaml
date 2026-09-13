@@ -1,0 +1,10 @@
+task: semantic_line
+image_source: court/images
+checkpoint: court_detection/semantic_line/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+save: court_detection/semantic_line.gif
+fps: 6
+max_frames: 24
+info: false
+
+gif:
+  loop: 0

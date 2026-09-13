@@ -18,6 +18,7 @@ from src.tasks.court_detection.data.processing.geometry import CourtProcessingGe
 from src.tasks.court_detection.data.processing.targets import CourtTargetBuilder
 from src.tasks.court_detection.geometry.pose import (
     build_pose_target,
+    semantic_in_front_mask,
     validate_projection_round_trip,
 )
 
@@ -72,10 +73,25 @@ class CourtProcessingPipeline:
                     raise ValueError(
                         "Court query KP14 order disagrees with V3 pose authority."
                     )
-                validate_projection_round_trip(
-                    pose_target,
-                    channels.points_xy[:, 0],
-                )
+                try:
+                    if len(raw.court_instances) != 1:
+                        raise ValueError(
+                            "Court pose preflight requires exactly one target-court "
+                            "instance."
+                        )
+                    validate_projection_round_trip(
+                        pose_target,
+                        channels.points_xy[:, 0],
+                        semantic_in_front=semantic_in_front_mask(
+                            pose_target,
+                            raw.court_instances[0],
+                        ),
+                    )
+                except ValueError as error:
+                    raise ValueError(
+                        f"Court sample {record.sample_id!r} failed pose/K "
+                        "projection preflight."
+                    ) from error
 
     def process(self, record: CourtSampleRecord) -> dict[str, object]:
         raw = self.input_layer.load(record)

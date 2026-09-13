@@ -30,6 +30,7 @@ from src.tasks.court_detection.data.target_generation.store import (
 )
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
+    SEMANTIC_LINE_TARGET_SCHEMA,
 )
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
@@ -64,6 +65,7 @@ class TennisCourtDetectorInput:
                     CourtInputCapability.COURT_INSTANCES,
                     CourtInputCapability.SEGMENTATION_REFERENCE,
                     CourtInputCapability.LINE_REFERENCE,
+                    CourtInputCapability.SEMANTIC_LINE_REFERENCE,
                 }
             ),
             keypoint_schema=_TCD_KP_SCHEMA,
@@ -266,6 +268,11 @@ class TennisCourtDetectorInput:
                             source_kind="tennis_court_detector",
                             derived_key=derived_key,
                             target_schema=self.line_target_schema,
+                        ),
+                        "semantic_line": self.target_store.path_for(
+                            source_kind="tennis_court_detector",
+                            derived_key=derived_key,
+                            target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
                         ),
                     },
                     payload={

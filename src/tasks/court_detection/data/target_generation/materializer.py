@@ -24,6 +24,9 @@ from src.tasks.court_detection.data.target_generation.line import (
 from src.tasks.court_detection.data.target_generation.segmentation import (
     generate_segmentation_target,
 )
+from src.tasks.court_detection.data.target_generation.semantic_line import (
+    generate_semantic_line_target,
+)
 from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,
     build_derived_target_metadata,
@@ -31,6 +34,8 @@ from src.tasks.court_detection.data.target_generation.store import (
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    SEMANTIC_LINE_TARGET_DEFINITION,
+    SEMANTIC_LINE_TARGET_SCHEMA,
     line_target_definition,
 )
 
@@ -97,7 +102,8 @@ class CourtTargetMaterializer:
         if raw.metadata.source_schema != self.input_layer.spec.source_schema:
             raise ValueError("Court materializer input schema changed while loading.")
         if (
-            kind == "seg" or self.line_target_definition.schema == LINE_TARGET_SCHEMA
+            kind in {"seg", "semantic_line"}
+            or self.line_target_definition.schema == LINE_TARGET_SCHEMA
         ) and len(raw.court_instances) != 1:
             raise ValueError(
                 "Current single-court dense target schemas require exactly one "
@@ -121,6 +127,25 @@ class CourtTargetMaterializer:
                 ),
             )
             schema = self.line_target_definition.schema
+        elif kind == "semantic_line":
+            channels = raw.keypoint_channels
+            if channels is None or channels.physical_indices.shape != (14, 1):
+                raise ValueError(
+                    "Semantic Court-line targets require singleton KP14 semantic order."
+                )
+            array = generate_semantic_line_target(
+                height=height,
+                width=width,
+                instances=raw.court_instances,
+                semantic_to_physical=channels.physical_indices[:, 0],
+                line_width_metres=(
+                    SEMANTIC_LINE_TARGET_DEFINITION.line_width_metres
+                ),
+                baseline_width_metres=(
+                    SEMANTIC_LINE_TARGET_DEFINITION.baseline_width_metres
+                ),
+            )
+            schema = SEMANTIC_LINE_TARGET_SCHEMA
         else:  # pragma: no cover - type and selection validation
             raise ValueError(f"Unsupported dense Court target: {kind!r}.")
         path = record.dense_target_refs[kind]
