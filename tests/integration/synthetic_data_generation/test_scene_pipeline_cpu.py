@@ -143,6 +143,7 @@ from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     PLCSMotionClip,
 )
 from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.data.float32_store import read_float32
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 
@@ -816,8 +817,12 @@ def _assert_published_domains(
 
 
 def _first_rgb_value(root: Path) -> float:
-    path = next(iter(sorted(root.rglob("rgb.npy"))))
-    return float(np.load(path, allow_pickle=False).reshape(-1)[0])
+    if root.name == "court":
+        samples = cast(list[dict[str, object]], _json(root / "dataset.json")["samples"])
+        path = root / cast(str, samples[0]["rgb"])
+    else:
+        path = next(iter(sorted(root.rglob("rgb.npy"))))
+    return float(read_float32(path).reshape(-1)[0])
 
 
 def _reconstruction_generation(workspace: SceneWorkspace) -> int:
