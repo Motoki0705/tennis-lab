@@ -31,9 +31,10 @@ def main() -> None:
     parser.add_argument("--comparison", type=Path, required=True)
     parser.add_argument("--clip", type=Path, required=True)
     parser.add_argument("--new-label", default="residual")
+    parser.add_argument("--skip-plots", action="store_true")
     args = parser.parse_args()
-    base = np.load(args.comparison / "baseline_clip.npz")
-    new = np.load(args.comparison / f"{args.new_label}_clip.npz")
+    base = dict(np.load(args.comparison / "baseline_clip.npz"))
+    new = dict(np.load(args.comparison / f"{args.new_label}_clip.npz"))
     clip = json.loads((args.clip / "clip.json").read_text())
     frames = clip["num_frames"]
     fps = clip["fps"]
@@ -153,6 +154,8 @@ def main() -> None:
         writer.close()
         for cap in cameras:
             cap.release()
+    if args.skip_plots:
+        return
     base_test = np.load(args.comparison / "baseline_test.npz")
     new_test = np.load(args.comparison / f"{args.new_label}_test.npz")
     np.testing.assert_array_equal(base_test["target"], new_test["target"])

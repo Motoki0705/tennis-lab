@@ -234,6 +234,15 @@ def clip_inference(module: PLCSLightningModule, args: argparse.Namespace) -> Non
         )
         reprojections.append(uv)
         errors.append(np.linalg.norm(uv - hip[:, v] * pixels, axis=-1))
+    _, prior_valid, prior = footpoint_prior(
+        torch.from_numpy(human),
+        torch.from_numpy(aligned).unsqueeze(0).expand(human.shape[0], -1, -1, -1, -1),
+        torch.from_numpy(vis),
+        torch.from_numpy(court_vis).unsqueeze(0).expand(human.shape[0], -1, -1, -1),
+        torch.zeros(human.shape[:3], dtype=torch.bool),
+    )
+    prior_m = prior.numpy() * np.array(COURT_COORD_SCALE_XYZ)
+    correction = np.linalg.norm(position[..., :2] - prior_m[..., :2], axis=-1)
     projected = np.stack(reprojections, 1)
     error = np.stack(errors, 1)
     metrics = {
@@ -244,6 +253,9 @@ def clip_inference(module: PLCSLightningModule, args: argparse.Namespace) -> Non
         "players": human.shape[0],
         "evaluation": "root projection versus observed COCO hip midpoint; approximate court-only camera fits; no 3D ground truth",
         "root_reprojection_px": summary(error[hip_valid]),
+        "predicted_correction_xy_m": summary(correction),
+        "zero_correction_fraction_lt_5cm": float((correction < 0.05).mean()),
+        "anchor_valid_fraction": float(prior_valid.any(1).float().mean()),
         "per_camera": {
             c: summary(error[:, v][hip_valid[:, v]])
             for v, c in enumerate(clip["camera_ids"])
@@ -270,6 +282,8 @@ def clip_inference(module: PLCSLightningModule, args: argparse.Namespace) -> Non
         human=human,
         human_vis=vis,
         reprojection_error_px=error,
+        prior_position=prior_m,
+        prior_valid=prior_valid.any(1).numpy(),
     )
     (args.output / f"{args.label}_clip_metrics.json").write_text(
         json.dumps(metrics, indent=2)
