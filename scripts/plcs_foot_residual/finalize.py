@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -54,25 +55,39 @@ def main() -> None:
     inference_path = args.output / "residual_best.ckpt"
     torch.save(checkpoint, inference_path)
     del checkpoint
-    subprocess.run(
-        [
-            sys.executable,
-            "scripts/plcs_foot_residual/evaluate.py",
-            "--checkpoint",
-            str(inference_path),
-            "--label",
-            "residual",
-            "--baseline-config",
-            str(args.baseline_config),
-            "--dataset",
-            str(args.dataset),
-            "--clip",
-            str(args.clip),
-            "--output",
-            str(args.output),
-        ],
-        check=True,
+    baseline_receipt = json.loads(
+        (args.output / "baseline_best_clip_metrics.json").read_text()
     )
+    baseline_path = Path(baseline_receipt["checkpoint"])
+    if (
+        hashlib.sha256(baseline_path.read_bytes()).hexdigest()
+        != baseline_receipt["checkpoint_sha256"]
+    ):
+        raise ValueError("Baseline checkpoint changed since its initial evaluation.")
+    # Both final test predictions use the same GPU, float32 policy and loader.
+    for model_path, label in [
+        (baseline_path, "baseline_best"),
+        (inference_path, "residual"),
+    ]:
+        subprocess.run(
+            [
+                sys.executable,
+                "scripts/plcs_foot_residual/evaluate.py",
+                "--checkpoint",
+                str(model_path),
+                "--label",
+                label,
+                "--baseline-config",
+                str(args.baseline_config),
+                "--dataset",
+                str(args.dataset),
+                "--clip",
+                str(args.clip),
+                "--output",
+                str(args.output),
+            ],
+            check=True,
+        )
     subprocess.run(
         [
             sys.executable,
