@@ -1,0 +1,19 @@
+{
+  "dense_target_png_bitwise_equal_count": 4352,
+  "training_batch_image_shape": [
+    8,
+    3,
+    256,
+    256
+  ],
+  "targets": [
+    "kp",
+    "seg",
+    "line"
+  ],
+  "source_splits": {
+    "train": 1718,
+    "val": 220,
+    "test": 238
+  }
+}

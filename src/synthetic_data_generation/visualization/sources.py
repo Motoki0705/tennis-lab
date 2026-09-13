@@ -47,6 +47,7 @@ from src.synthetic_data_generation.dataset.runtime import (
     materialize_logical_sample,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
+from src.utils.data.float32_store import read_float32
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
 )
@@ -1191,7 +1192,7 @@ def _contained(root: Path, relative: str, *, directory: bool) -> Path:
 
 
 def _float32_rgb(path: Path, *, width: int, height: int) -> NDArray[np.float32]:
-    value = np.load(path, allow_pickle=False)
+    value = read_float32(path)
     if value.dtype != np.float32 or value.shape != (height, width, 3):
         raise ValueError(f"NHT RGB frame has an invalid contract: {path}")
     if not np.isfinite(value).all() or np.any(value < 0.0) or np.any(value > 1.0):

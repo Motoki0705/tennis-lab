@@ -19,6 +19,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
 )
 from src.synthetic_data_generation.visualization.overlays import render_court_overlay
 from src.synthetic_data_generation.visualization.sources import CourtSourceFrame
+from src.utils.data.float32_store import read_float32
 from src.utils.schema.court import (
     COURT_SKELETON,
     STANDARD_COURT_CONFIG,
@@ -172,7 +173,7 @@ class ReviewService:
         data = self.load(scene, revision)
         entry = data["samples"][sample]
         root = self.scene_root(scene) / "datasets/court"
-        rgb = np.load(contained_file(root, entry["rgb"]), allow_pickle=False)
+        rgb = read_float32(contained_file(root, entry["rgb"]))
         if (
             rgb.dtype != np.float32
             or rgb.shape != (entry["height"], entry["width"], 3)

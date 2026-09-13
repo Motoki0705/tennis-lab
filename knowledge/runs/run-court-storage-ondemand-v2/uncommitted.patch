@@ -1,0 +1,635 @@
+diff --git a/scripts/experiments/benchmark_court_ondemand.py b/scripts/experiments/benchmark_court_ondemand.py
+new file mode 100644
+index 00000000..e9f525d5
+--- /dev/null
++++ b/scripts/experiments/benchmark_court_ondemand.py
+@@ -0,0 +1,299 @@
++"""Bounded research comparison using real court data, model/loss and NHT CLI."""
++
++from __future__ import annotations
++
++import argparse
++import dataclasses
++import json
++import shutil
++import subprocess
++import sys
++import tempfile
++import time
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++import numpy as np
++import torch
++from hydra import compose, initialize_config_dir
++
++from src.synthetic_data_generation.alignment.validation import load_alignment_result
++from src.synthetic_data_generation.rendering.nht.contracts import NHTRenderCamera
++from src.synthetic_data_generation.scene_contract import SceneCamera
++from src.tasks.court_detection.data.collate import court_detection_collate
++from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
++from src.tasks.court_detection.training.lightning_module import (
++    CourtDetectionLightningModule,
++)
++from src.utils.data.float32_store import read_float32, write_float32
++
++
++def transfer(value):
++    if isinstance(value, torch.Tensor):
++        return value.cuda()
++    if isinstance(value, dict):
++        return {key: transfer(item) for key, item in value.items()}
++    if isinstance(value, (tuple, list)):
++        return type(value)(transfer(item) for item in value)
++    return value
++
++
++def response(process):
++    while True:
++        line = process.stdout.readline()
++        if not line:
++            raise RuntimeError(f"Renderer exited: {process.poll()}")
++        try:
++            result = json.loads(line)
++        except json.JSONDecodeError:
++            print("NHT:", line.rstrip(), flush=True)
++            continue
++        return result
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--repo", type=Path, required=True)
++    parser.add_argument("--nht-worker", type=Path, required=True)
++    parser.add_argument("--nht-python", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--steps", type=int, default=16)
++    parser.add_argument("--targets", choices=["kp", "all"], default="all")
++    args = parser.parse_args()
++    args.output.mkdir(parents=True, exist_ok=False)
++    torch.set_num_threads(4)
++    torch.manual_seed(42)
++    torch.backends.cuda.matmul.allow_tf32 = True
++    root = Path(__file__).resolve().parents[2]
++    overrides = [
++        "data/source=synthetic_court",
++        f"data/processing={args.targets}",
++        "data/augmentation=pose_safe",
++        "training=lora",
++        "data.num_workers=0",
++        "training.compile.enabled=false",
++        f"paths.data_root={args.repo / 'data'}",
++        f"paths.checkpoint_root={args.repo / 'outputs'}",
++        f"paths.external_asset_root={args.repo / 'third_party'}",
++        f"paths.cache_root={args.repo / '.cache'}",
++    ]
++    with initialize_config_dir(
++        config_dir=str(root / "src/tasks/court_detection/configs"), version_base="1.3"
++    ):
++        cfg = compose(config_name="train", overrides=overrides)
++    from omegaconf import OmegaConf
++
++    OmegaConf.save(cfg, args.output / "config.yaml")
++    dm = CourtDetectionDataModule(cfg)
++    pipeline = dm._eval_pipeline  # Fixed geometry for paired timing/pixel comparisons.
++    records = pipeline.input_layer.records("train")[:64]
++    scene_root = args.repo / "data/synthetic_data_generation/scenes/B00"
++    dataset = json.loads((scene_root / "datasets/court/dataset.json").read_text())
++    by_id = {s["sample_id"]: s for s in dataset["samples"]}
++    alignment = load_alignment_result(scene_root / "alignment/alignment.json")
++    cameras = []
++    for record in records:
++        sample = by_id[record.payload["source_sample_id"]]
++        camera = SceneCamera.from_dict(sample["camera"])
++        cameras.append(
++            NHTRenderCamera(
++                camera_id=camera.camera_id,
++                width=camera.width,
++                height=camera.height,
++                intrinsics=camera.intrinsics,
++                camera_to_scene=alignment.metric_adapter.nht_from_metric_camera(
++                    camera.camera_to_scene
++                ),
++            ).to_dict()
++        )
++    request = args.output / "cameras.json"
++    request.write_text(
++        json.dumps({"schema": "nht_render_request_v1", "cameras": cameras})
++    )
++    report = {
++        "torch": torch.__version__,
++        "gpu": torch.cuda.get_device_name(),
++        "batch_size": 8,
++        "steps": args.steps,
++        "targets": args.targets,
++        "compile": False,
++        "training": "lora",
++        "scenes": {},
++    }
++
++    def save():
++        (args.output / "metrics.json").write_text(json.dumps(report, indent=2) + "\n")
++
++    with tempfile.TemporaryDirectory(
++        prefix="court-ondemand-", dir="/dev/shm"
++    ) as temporary:
++        buffer = Path(temporary) / "batch.npy"
++        # Public unmodified CLI: include Python startup, export validation, file writes.
++        for count in [1, 8]:
++            subrequest = args.output / f"cold-{count}.json"
++            subrequest.write_text(
++                json.dumps(
++                    {"schema": "nht_render_request_v1", "cameras": cameras[:count]}
++                )
++            )
++            out = Path(temporary) / f"cold-{count}"
++            start = time.perf_counter()
++            subprocess.run(
++                [
++                    "nht-render",
++                    "--scene",
++                    str(scene_root / "reconstruction/export/scene.json"),
++                    "--cameras",
++                    str(subrequest),
++                    "--output",
++                    str(out),
++                ],
++                check=True,
++            )
++            report[f"public_cli_{count}_seconds"] = time.perf_counter() - start
++            shutil.rmtree(out)
++            save()
++        process = subprocess.Popen(
++            [
++                str(args.nht_python),
++                str(args.nht_worker),
++                "--scene",
++                str(scene_root / "reconstruction/export/scene.json"),
++                "--cameras",
++                str(request),
++                "--buffer",
++                str(buffer),
++            ],
++            stdin=subprocess.PIPE,
++            stdout=subprocess.PIPE,
++            text=True,
++        )
++
++        def send(indices):
++            process.stdin.write(json.dumps({"op": "render", "indices": indices}) + "\n")
++            process.stdin.flush()
++
++        try:
++            report["resident_startup"] = response(process)
++            send(list(range(8)))
++            report["resident_first"] = response(process)
++            rgb = np.load(buffer)
++            reference = np.stack([read_float32(r.image_path) for r in records[:8]])
++            report["rerender_float_mae"] = float(np.abs(rgb - reference).mean())
++            report["rerender_u8_different_fraction"] = float(
++                np.mean(np.round(rgb * 255) != np.round(reference * 255))
++            )
++            timing = []
++            for step in range(8):
++                send(list(range(step * 8, step * 8 + 8)))
++                timing.append(response(process))
++            report["resident_batches"] = timing
++            save()
++            compressed = []
++            for index, record in enumerate(records):
++                path = Path(temporary) / f"{index}.f32.npz"
++                write_float32(path, read_float32(record.image_path))
++                compressed.append(dataclasses.replace(record, image_path=path))
++            model = CourtDetectionLightningModule(
++                cfg, target_bundle=dm.target_bundle_spec
++            ).cuda()
++            model.train()
++            optimizer = torch.optim.AdamW(
++                [p for p in model.parameters() if p.requires_grad],
++                lr=1e-4,
++                weight_decay=1.0,
++            )
++
++            def make_batch(chosen):
++                return transfer(
++                    court_detection_collate([pipeline.process(r) for r in chosen])
++                )
++
++            def train(batch):
++                optimizer.zero_grad(set_to_none=True)
++                with torch.autocast("cuda", dtype=torch.bfloat16):
++                    call = model.model_io.prepare_training_batch(batch)
++                    output = model.model(*call.model_call.model_args)
++                    result = model.model_io.training_result(output, call)
++                result.loss.backward()
++                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
++                optimizer.step()
++                torch.cuda.synchronize()
++                return float(result.loss.detach())
++
++            cached = make_batch(records[:8])
++            for _ in range(4):
++                train(cached)
++            measurements = {}
++            # Same cameras, labels, loss and batch size. No convergence claim.
++            for mode in [
++                "cached_gpu",
++                "npy_pipeline",
++                "compressed_pipeline",
++                "ondemand_serial",
++                "ondemand_prefetch",
++            ]:
++                torch.cuda.reset_peak_memory_stats()
++                durations = []
++                waits = []
++                losses = []
++                if mode == "ondemand_prefetch":
++                    send(list(range(8)))
++                for step in range(args.steps):
++                    indices = list(range((step % 8) * 8, (step % 8) * 8 + 8))
++                    start = time.perf_counter()
++                    waited = 0.0
++                    if mode.startswith("ondemand"):
++                        if mode == "ondemand_serial":
++                            send(indices)
++                        wait_start = time.perf_counter()
++                        response(process)
++                        waited = time.perf_counter() - wait_start
++                        frames = np.load(buffer)
++                        chosen = []
++                        for j, index in enumerate(indices):
++                            path = Path(temporary) / f"live-{j}.npy"
++                            np.save(path, frames[j], allow_pickle=False)
++                            chosen.append(
++                                dataclasses.replace(records[index], image_path=path)
++                            )
++                        batch = make_batch(chosen)
++                        if mode == "ondemand_prefetch" and step + 1 < args.steps:
++                            offset = ((step + 1) % 8) * 8
++                            send(list(range(offset, offset + 8)))
++                    elif mode == "cached_gpu":
++                        batch = cached
++                    else:
++                        collection = (
++                            compressed if mode == "compressed_pipeline" else records
++                        )
++                        batch = make_batch([collection[i] for i in indices])
++                    losses.append(train(batch))
++                    durations.append(time.perf_counter() - start)
++                    waits.append(waited)
++                measurements[mode] = {
++                    "step_seconds": durations,
++                    "median_seconds": float(np.median(durations)),
++                    "images_per_second": 8 * len(durations) / sum(durations),
++                    "render_wait_seconds": waits,
++                    "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
++                    "loss_first": losses[0],
++                    "loss_last": losses[-1],
++                }
++                report["training"] = measurements
++                save()
++                print(mode, measurements[mode]["images_per_second"], flush=True)
++        finally:
++            if process.poll() is None:
++                process.stdin.write('{"op":"stop"}\n')
++                process.stdin.flush()
++                try:
++                    process.wait(timeout=30)
++                except subprocess.TimeoutExpired:
++                    process.kill()
++                    process.wait()
++    save()
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/experiments/compact_court_storage.py b/scripts/experiments/compact_court_storage.py
+new file mode 100644
+index 00000000..1af63dfb
+--- /dev/null
++++ b/scripts/experiments/compact_court_storage.py
+@@ -0,0 +1,109 @@
++"""Create an independently readable, lossless compressed Court dataset copy."""
++
++from __future__ import annotations
++
++import argparse
++import json
++import shutil
++import sys
++import time
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++
++
++from src.synthetic_data_generation.dataset.court.assembler import validate_court_dataset
++from src.synthetic_data_generation.pipeline.locking import scene_write_lock
++from src.utils.data.float32_store import SUFFIX, read_float32, write_float32
++from src.utils.io import save_json_atomic
++
++
++def compact(source: Path, destination: Path) -> dict[str, object]:
++    source = source.resolve(strict=True)
++    destination = destination.resolve(strict=False)
++    if (
++        source == destination
++        or destination.is_relative_to(source)
++        or source.is_relative_to(destination)
++    ):
++        raise ValueError("Source and destination trees must be disjoint.")
++    if destination.exists():
++        raise FileExistsError(destination)
++    started = time.perf_counter()
++    with scene_write_lock(source.parents[1]):
++        manifest_bytes = (source / "dataset.json").read_bytes()
++        manifest = json.loads(manifest_bytes)
++        # Preflight all paths before creating any output.
++        arrays: set[str] = set()
++        for sample in manifest["samples"]:
++            for field in ("rgb", "alpha", "depth"):
++                relative = sample[field]
++                path = source / relative
++                if (
++                    path.is_symlink()
++                    or not path.resolve(strict=True).is_relative_to(source)
++                    or path.suffix != ".npy"
++                ):
++                    raise ValueError(f"Expected contained ordinary NPY: {path}")
++                arrays.add(relative)
++        destination.mkdir(parents=True)
++        before = after = 0
++        try:
++            # Only one authority is written at each destination; no NPY dual-write.
++            for path in source.rglob("*"):
++                if path.is_symlink():
++                    raise ValueError(f"Symlink in source: {path}")
++                if not path.is_file() or path.name == "dataset.json":
++                    continue
++                relative = path.relative_to(source)
++                target = destination / relative
++                target.parent.mkdir(parents=True, exist_ok=True)
++                before += path.stat().st_size
++                if relative.as_posix() in arrays:
++                    value = read_float32(path)
++                    target = target.with_suffix(SUFFIX)
++                    write_float32(target, value)
++                    if read_float32(target).tobytes() != value.tobytes():
++                        raise ValueError(f"Bitwise verification failed: {path}")
++                else:
++                    shutil.copy2(path, target)
++                after += target.stat().st_size
++            for sample in manifest["samples"]:
++                for field in ("rgb", "alpha", "depth"):
++                    sample[field] = str(Path(sample[field]).with_suffix(SUFFIX))
++            save_json_atomic(manifest, destination / "dataset.json")
++            if (source / "dataset.json").read_bytes() != manifest_bytes:
++                raise RuntimeError("Source manifest changed during compression.")
++            validate_court_dataset(destination)
++        except BaseException:
++            # The caller-selected new directory is owned solely by this attempt.
++            shutil.rmtree(destination)
++            raise
++    before += len(manifest_bytes)
++    after += (destination / "dataset.json").stat().st_size
++    return {
++        "source": str(source),
++        "destination": str(destination),
++        "samples": len(manifest["samples"]),
++        "original_bytes": before,
++        "compressed_bytes": after,
++        "ratio": after / before,
++        "wall_seconds": time.perf_counter() - started,
++        "bitwise_verified": True,
++    }
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--source", type=Path, required=True)
++    parser.add_argument("--destination", type=Path, required=True)
++    parser.add_argument("--report", type=Path, required=True)
++    args = parser.parse_args()
++    result = compact(args.source, args.destination)
++    args.report.parent.mkdir(parents=True, exist_ok=True)
++    args.report.write_text(json.dumps(result, indent=2) + "\n")
++    print(json.dumps(result), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/synthetic_data_generation/dataset/court/assembler.py b/src/synthetic_data_generation/dataset/court/assembler.py
+index 063edba7..f62d1a9a 100644
+--- a/src/synthetic_data_generation/dataset/court/assembler.py
++++ b/src/synthetic_data_generation/dataset/court/assembler.py
+@@ -85,6 +85,7 @@ from src.synthetic_data_generation.scene_contract import (
+     RigidTransform,
+     SceneCamera,
+ )
++from src.utils.data.float32_store import read_float32
+ from src.utils.io import load_json, save_json_atomic
+ 
+ _COMMON_COURT_METRIC_KEYS = frozenset(
+@@ -1358,9 +1359,8 @@ def _validate_published_sample(
+         if not isinstance(value, str):
+             raise TypeError(f"Court sample {field} path must be a string.")
+         path = _contained_file(root, value)
+-        array = np.load(
++        array = read_float32(
+             path,
+-            allow_pickle=False,
+             mmap_mode=(
+                 "r"
+                 if array_validation is CourtArrayValidationMode.HEADERS_ONLY
+diff --git a/src/synthetic_data_generation/dataset/court/review/service.py b/src/synthetic_data_generation/dataset/court/review/service.py
+index f8b7a673..f98274f6 100644
+--- a/src/synthetic_data_generation/dataset/court/review/service.py
++++ b/src/synthetic_data_generation/dataset/court/review/service.py
+@@ -19,6 +19,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
+ )
+ from src.synthetic_data_generation.visualization.overlays import render_court_overlay
+ from src.synthetic_data_generation.visualization.sources import CourtSourceFrame
++from src.utils.data.float32_store import read_float32
+ from src.utils.schema.court import (
+     COURT_SKELETON,
+     STANDARD_COURT_CONFIG,
+@@ -172,7 +173,7 @@ class ReviewService:
+         data = self.load(scene, revision)
+         entry = data["samples"][sample]
+         root = self.scene_root(scene) / "datasets/court"
+-        rgb = np.load(contained_file(root, entry["rgb"]), allow_pickle=False)
++        rgb = read_float32(contained_file(root, entry["rgb"]))
+         if (
+             rgb.dtype != np.float32
+             or rgb.shape != (entry["height"], entry["width"], 3)
+diff --git a/src/synthetic_data_generation/visualization/sources.py b/src/synthetic_data_generation/visualization/sources.py
+index 2a684252..d4bf6262 100644
+--- a/src/synthetic_data_generation/visualization/sources.py
++++ b/src/synthetic_data_generation/visualization/sources.py
+@@ -47,6 +47,7 @@ from src.synthetic_data_generation.dataset.runtime import (
+     materialize_logical_sample,
+ )
+ from src.synthetic_data_generation.scene_contract import SceneCamera
++from src.utils.data.float32_store import read_float32
+ from src.utils.schema.court_normalization import (
+     validate_court_coordinate_normalization,
+ )
+@@ -1191,7 +1192,7 @@ def _contained(root: Path, relative: str, *, directory: bool) -> Path:
+ 
+ 
+ def _float32_rgb(path: Path, *, width: int, height: int) -> NDArray[np.float32]:
+-    value = np.load(path, allow_pickle=False)
++    value = read_float32(path)
+     if value.dtype != np.float32 or value.shape != (height, width, 3):
+         raise ValueError(f"NHT RGB frame has an invalid contract: {path}")
+     if not np.isfinite(value).all() or np.any(value < 0.0) or np.any(value > 1.0):
+diff --git a/src/tasks/court_detection/data/inputs/synthetic_court.py b/src/tasks/court_detection/data/inputs/synthetic_court.py
+index f44e9892..33e57415 100644
+--- a/src/tasks/court_detection/data/inputs/synthetic_court.py
++++ b/src/tasks/court_detection/data/inputs/synthetic_court.py
+@@ -51,6 +51,7 @@ from src.tasks.court_detection.data.target_generation.store import (
+ from src.tasks.court_detection.target_schemas import (
+     LINE_TARGET_SCHEMA,
+ )
++from src.utils.data.float32_store import read_float32
+ from src.utils.schema.court import (
+     CAMERA_VIEW_HALF_TURN_INDEX,
+     COURT_KP_NAMES,
+@@ -634,7 +635,7 @@ class SyntheticCourtInput:
+         return labels
+ 
+     def _load_rgb(self, record: CourtSampleRecord) -> Image.Image:
+-        rgb = np.load(record.image_path, allow_pickle=False)
++        rgb = read_float32(record.image_path)
+         if self.config.schema in {"v2", "v3"}:
+             expected = (
+                 cast(int, record.payload["height"]),
+diff --git a/src/utils/data/float32_store.py b/src/utils/data/float32_store.py
+new file mode 100644
+index 00000000..3e64cabc
+--- /dev/null
++++ b/src/utils/data/float32_store.py
+@@ -0,0 +1,73 @@
++"""Lossless float32 storage: explicit NPY or versioned byte-shuffled NPZ.
++
++The archive stores four byte planes before DEFLATE. No quantization occurs;
++IEEE bits (including signed zero) survive. A SHA-256 authenticates decoded bytes.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import math
++from pathlib import Path
++from typing import cast
++
++import numpy as np
++from numpy.typing import NDArray
++
++SUFFIX = ".f32.npz"
++_SCHEMA = "float32_byte_planes_v1"
++_MAX_BYTES = 512 * 1024 * 1024
++
++
++def write_float32(path: Path, array: NDArray[np.float32]) -> None:
++    """Create a new archive; callers own atomic publication of its reference."""
++    if not path.name.endswith(SUFFIX) or array.dtype != np.dtype("<f4"):
++        raise ValueError("Expected .f32.npz destination and little-endian float32.")
++    if not array.shape or array.nbytes > _MAX_BYTES or any(n <= 0 for n in array.shape):
++        raise ValueError("Invalid or oversized float32 array.")
++    value = np.ascontiguousarray(array)
++    raw = value.tobytes()
++    planes = value.view(np.uint8).reshape(-1, 4).T.copy()
++    with path.open("xb") as stream:
++        np.savez_compressed(
++            stream,
++            schema=np.array(_SCHEMA),
++            shape=np.array(array.shape, dtype=np.int64),
++            sha256=np.array(hashlib.sha256(raw).hexdigest()),
++            byte_planes=planes,
++        )
++
++
++def read_float32(path: Path, *, mmap_mode: str | None = None) -> NDArray[np.float32]:
++    """Decode the explicitly named codec; never search for substitute files."""
++    if path.suffix == ".npy":
++        return cast(
++            NDArray[np.float32], np.load(path, allow_pickle=False, mmap_mode=mmap_mode)
++        )
++    if not path.name.endswith(SUFFIX):
++        raise ValueError(f"Unknown float32 storage codec: {path}")
++    with np.load(path, allow_pickle=False) as archive:
++        if set(archive.files) != {"schema", "shape", "sha256", "byte_planes"}:
++            raise ValueError("Invalid float32 archive fields.")
++        if archive["schema"].shape != () or str(archive["schema"].item()) != _SCHEMA:
++            raise ValueError("Unknown float32 archive version.")
++        shape_array = archive["shape"]
++        if (
++            shape_array.dtype != np.int64
++            or shape_array.ndim != 1
++            or not 1 <= len(shape_array) <= 8
++        ):
++            raise ValueError("Invalid float32 archive shape.")
++        shape = tuple(int(n) for n in shape_array)
++        count = math.prod(shape)
++        if any(n <= 0 for n in shape) or count * 4 > _MAX_BYTES:
++            raise ValueError("Oversized float32 archive.")
++        planes = archive["byte_planes"]
++        if planes.dtype != np.uint8 or planes.shape != (4, count):
++            raise ValueError("Invalid float32 byte planes.")
++        raw = planes.T.copy().tobytes()
++        if archive["sha256"].shape != () or hashlib.sha256(raw).hexdigest() != str(
++            archive["sha256"].item()
++        ):
++            raise ValueError("Float32 archive checksum mismatch.")
++        return np.frombuffer(raw, dtype="<f4").reshape(shape).copy()
+diff --git a/tests/unit/utils/data/test_float32_store.py b/tests/unit/utils/data/test_float32_store.py
+new file mode 100644
+index 00000000..39cc8ed2
+--- /dev/null
++++ b/tests/unit/utils/data/test_float32_store.py
+@@ -0,0 +1,44 @@
++from pathlib import Path
++from zipfile import BadZipFile
++
++import numpy as np
++import pytest
++
++from src.utils.data.float32_store import read_float32, write_float32
++
++
++def test_bitwise_roundtrip_and_noncontiguous(tmp_path: Path) -> None:
++    bits = np.array(
++        [0, 0x80000000, 0x7FC00001, 0x7F800000, 0x00000001, 0x3F800000], dtype=np.uint32
++    )
++    value = bits.view(np.float32).reshape(2, 3).T
++    path = tmp_path / "value.f32.npz"
++    write_float32(path, value)
++    assert read_float32(path).tobytes() == value.tobytes()
++    with pytest.raises(FileExistsError):
++        write_float32(path, value)
++
++
++def test_checksum_and_unknown_codec_fail(tmp_path: Path) -> None:
++    path = tmp_path / "value.f32.npz"
++    write_float32(path, np.ones((2, 3), dtype=np.float32))
++    with np.load(path) as archive:
++        payload = {key: archive[key] for key in archive.files}
++    payload["byte_planes"][0, 0] ^= 1
++    np.savez_compressed(path, **payload)
++    with pytest.raises(ValueError, match="checksum"):
++        read_float32(path)
++    with pytest.raises(ValueError, match="codec"):
++        read_float32(tmp_path / "value.zip")
++
++
++def test_npy_and_truncated_archive(tmp_path: Path) -> None:
++    value = np.arange(24, dtype=np.float32).reshape(2, 4, 3)
++    path = tmp_path / "value.npy"
++    np.save(path, value)
++    np.testing.assert_array_equal(read_float32(path, mmap_mode="r"), value)
++    compressed = tmp_path / "value.f32.npz"
++    write_float32(compressed, value)
++    compressed.write_bytes(compressed.read_bytes()[:30])
++    with pytest.raises(BadZipFile):
++        read_float32(compressed)

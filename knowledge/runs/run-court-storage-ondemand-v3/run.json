@@ -1,0 +1,16 @@
+{
+  "run_id": "1789263327478014530_2416893_court_storage_ondemand_v3",
+  "name": "court_storage_ondemand_v3",
+  "command": "CUDA_VISIBLE_DEVICES=0 .venv/bin/python scripts/experiments/benchmark_court_ondemand.py --repo /home/kamimura/projects/tennis-lab --nht-worker /home/kamimura/projects/tennis-lab/.claude/worktrees/nht-court-storage-ondemand/scripts/resident_render_worker.py --nht-python /home/kamimura/.local/share/uv/tools/nht/bin/python --output outputs/storage-ondemand/benchmark-v3",
+  "provider": "codex",
+  "session": "01a0985c-eb87-7310-9657-5411e2818d4e",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "21199b3e29746c9d6360f287462f1ca400865690",
+  "branch": "codex/court-storage-ondemand",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-storage-ondemand",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-storage-ondemand",
+  "captured_at": "2026-09-13T10:35:27+09:00"
+}

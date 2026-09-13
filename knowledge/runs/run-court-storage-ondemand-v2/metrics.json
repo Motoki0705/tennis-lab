@@ -1,0 +1,74 @@
+{
+  "torch": "2.13.0+cu130",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "batch_size": 8,
+  "steps": 16,
+  "targets": "all",
+  "compile": false,
+  "training": "lora",
+  "scenes": {},
+  "public_cli_1_seconds": 6.037386958021671,
+  "public_cli_8_seconds": 5.104058130003978,
+  "resident_startup": {
+    "ready_seconds": 1.051576000987552,
+    "allocated_bytes": 239239168
+  },
+  "resident_first": {
+    "render_seconds": 0.3543625409947708,
+    "total_seconds": 0.43894388899207115,
+    "peak_bytes": 485004800,
+    "reserved_bytes": 654311424
+  },
+  "rerender_float_mae": 0.0,
+  "rerender_u8_different_fraction": 0.0,
+  "resident_batches": [
+    {
+      "render_seconds": 0.17612036800710484,
+      "total_seconds": 0.20010221499251202,
+      "peak_bytes": 485004800,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.1820154070155695,
+      "total_seconds": 0.20368565496755764,
+      "peak_bytes": 485004800,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.19320588401751593,
+      "total_seconds": 0.24731381598394364,
+      "peak_bytes": 482158592,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.18186195101588964,
+      "total_seconds": 0.2035547280102037,
+      "peak_bytes": 485238272,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.17227908998029307,
+      "total_seconds": 0.20588055398548022,
+      "peak_bytes": 485419008,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.17774156702216715,
+      "total_seconds": 0.19952813303098083,
+      "peak_bytes": 483784192,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.1696073460043408,
+      "total_seconds": 0.19114692899165675,
+      "peak_bytes": 485519360,
+      "reserved_bytes": 654311424
+    },
+    {
+      "render_seconds": 0.18180967902299017,
+      "total_seconds": 0.21352772501995787,
+      "peak_bytes": 485868032,
+      "reserved_bytes": 654311424
+    }
+  ]
+}

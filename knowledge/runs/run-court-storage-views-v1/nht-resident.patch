@@ -1,0 +1,266 @@
+diff --git a/nht_pipeline/render.py b/nht_pipeline/render.py
+index 7147f5c..dbda676 100644
+--- a/nht_pipeline/render.py
++++ b/nht_pipeline/render.py
+@@ -63,83 +63,104 @@ def _load_requests(
+     return requests
+ 
+ 
+-def _render_one(
+-    checkpoint: Path,
+-    config: dict[str, Any],
+-    request: dict[str, Any],
+-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+-    try:
++class ResidentSceneRenderer:
++    """Experiment API: one immutable checkpoint and shader resident on CUDA."""
++
++    def __init__(self, checkpoint: Path, config: dict[str, Any]) -> None:
++        try:
++            import torch
++            from gsplat.nht.deferred_shader import DeferredShaderModule
++        except ImportError as error:  # pragma: no cover - GPU runtime dependency
++            raise RuntimeError(
++                "nht-render must run in an environment containing torch and the NHT "
++                "gsplat runtime"
++            ) from error
++
++        if not torch.cuda.is_available():
++            raise RuntimeError("nht-render requires a CUDA device")
++        device = torch.device("cuda:0")
++        payload = torch.load(checkpoint, map_location=device, weights_only=True)
++        splats = {name: value.to(device) for name, value in payload["splats"].items()}
++        shader = DeferredShaderModule(
++            feature_dim=int(config["deferred_opt_feature_dim"]),
++            enable_view_encoding=bool(config["deferred_opt_enable_view_encoding"]),
++            view_encoding_type=str(config["deferred_opt_view_encoding_type"]),
++            mlp_hidden_dim=int(config["deferred_mlp_hidden_dim"]),
++            mlp_num_layers=int(config["deferred_mlp_num_layers"]),
++            sh_degree=int(config["deferred_opt_sh_degree"]),
++            sh_scale=float(config["deferred_opt_sh_scale"]),
++            fourier_num_freqs=int(config["deferred_opt_fourier_num_freqs"]),
++            primitive_type=str(config["primitive_type"]),
++            center_ray_encoding=bool(config["deferred_opt_center_ray_encoding"]),
++            decode_activation=str(config["deferred_decode_activation"]),
++        ).to(device)
++        shader.load_state_dict(payload.get("deferred_ema", payload["deferred_module"]))
++        shader.eval()
++        self.splats = splats
++        self.shader = shader
++        self.config = config
++        self.device = device
++
++    def render(
++        self, request: dict[str, Any]
++    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+         import torch
+-        from gsplat.nht.deferred_shader import DeferredShaderModule
+         from gsplat.rendering import rasterization
+-    except ImportError as error:  # pragma: no cover - GPU runtime dependency
+-        raise RuntimeError(
+-            "nht-render must run in an environment containing torch and the NHT "
+-            "gsplat runtime"
+-        ) from error
+ 
+-    if not torch.cuda.is_available():
+-        raise RuntimeError("nht-render requires a CUDA device")
+-    device = torch.device("cuda:0")
+-    payload = torch.load(checkpoint, map_location=device, weights_only=True)
+-    splats = {name: value.to(device) for name, value in payload["splats"].items()}
+-    shader = DeferredShaderModule(
+-        feature_dim=int(config["deferred_opt_feature_dim"]),
+-        enable_view_encoding=bool(config["deferred_opt_enable_view_encoding"]),
+-        view_encoding_type=str(config["deferred_opt_view_encoding_type"]),
+-        mlp_hidden_dim=int(config["deferred_mlp_hidden_dim"]),
+-        mlp_num_layers=int(config["deferred_mlp_num_layers"]),
+-        sh_degree=int(config["deferred_opt_sh_degree"]),
+-        sh_scale=float(config["deferred_opt_sh_scale"]),
+-        fourier_num_freqs=int(config["deferred_opt_fourier_num_freqs"]),
+-        primitive_type=str(config["primitive_type"]),
+-        center_ray_encoding=bool(config["deferred_opt_center_ray_encoding"]),
+-        decode_activation=str(config["deferred_decode_activation"]),
+-    ).to(device)
+-    shader.load_state_dict(payload.get("deferred_ema", payload["deferred_module"]))
+-    shader.eval()
+-    camera_to_scene = torch.as_tensor(
+-        request["camera_to_scene"], dtype=torch.float32, device=device
+-    ).unsqueeze(0)
+-    intrinsics = torch.as_tensor(
+-        request["intrinsics"]["matrix"], dtype=torch.float32, device=device
+-    ).unsqueeze(0)
+-    width = int(request["width"])
+-    height = int(request["height"])
+-    with torch.inference_mode():
+-        rendered, alpha, _ = rasterization(
+-            means=splats["means"],
+-            quats=splats["quats"],
+-            scales=torch.exp(splats["scales"]),
+-            opacities=torch.sigmoid(splats["opacities"]),
+-            colors=splats["features"],
+-            sh_degree=None,
+-            viewmats=torch.linalg.inv(camera_to_scene),
+-            Ks=intrinsics,
+-            width=width,
+-            height=height,
+-            tile_size=int(config["tile_size"]),
+-            packed=bool(config["packed"]),
+-            rasterize_mode=("antialiased" if config["antialiased"] else "classic"),
+-            render_mode="RGB+ED",
+-            distributed=False,
+-            camera_model=str(config["camera_model"]),
+-            with_ut=bool(config["with_ut"]),
+-            with_eval3d=bool(config["with_eval3d"]),
+-            near_plane=float(config["near_plane"]),
+-            far_plane=float(config["far_plane"]),
+-            nht=True,
+-            center_ray_mode=bool(config["deferred_opt_center_ray_encoding"]),
+-            ray_dir_scale=shader.ray_dir_scale,
++        splats, shader, config, device = (
++            self.splats,
++            self.shader,
++            self.config,
++            self.device,
+         )
+-        rgb, extras = shader(rendered)
+-    if extras is None or extras.shape[-1] < 1:
+-        raise RuntimeError("NHT runtime did not return expected depth")
+-    return (
+-        rgb[0].clamp(0, 1).float().cpu().numpy(),
+-        alpha[0].clamp(0, 1).float().cpu().numpy(),
+-        extras[0, ..., :1].float().cpu().numpy(),
+-    )
++        camera_to_scene = torch.as_tensor(
++            request["camera_to_scene"], dtype=torch.float32, device=device
++        ).unsqueeze(0)
++        intrinsics = torch.as_tensor(
++            request["intrinsics"]["matrix"], dtype=torch.float32, device=device
++        ).unsqueeze(0)
++        width = int(request["width"])
++        height = int(request["height"])
++        with torch.inference_mode():
++            rendered, alpha, _ = rasterization(
++                means=splats["means"],
++                quats=splats["quats"],
++                scales=torch.exp(splats["scales"]),
++                opacities=torch.sigmoid(splats["opacities"]),
++                colors=splats["features"],
++                sh_degree=None,
++                viewmats=torch.linalg.inv(camera_to_scene),
++                Ks=intrinsics,
++                width=width,
++                height=height,
++                tile_size=int(config["tile_size"]),
++                packed=bool(config["packed"]),
++                rasterize_mode=("antialiased" if config["antialiased"] else "classic"),
++                render_mode="RGB+ED",
++                distributed=False,
++                camera_model=str(config["camera_model"]),
++                with_ut=bool(config["with_ut"]),
++                with_eval3d=bool(config["with_eval3d"]),
++                near_plane=float(config["near_plane"]),
++                far_plane=float(config["far_plane"]),
++                nht=True,
++                center_ray_mode=bool(config["deferred_opt_center_ray_encoding"]),
++                ray_dir_scale=shader.ray_dir_scale,
++            )
++            rgb, extras = shader(rendered)
++        if extras is None or extras.shape[-1] < 1:
++            raise RuntimeError("NHT runtime did not return expected depth")
++        return (
++            rgb[0].clamp(0, 1).float().cpu().numpy(),
++            alpha[0].clamp(0, 1).float().cpu().numpy(),
++            extras[0, ..., :1].float().cpu().numpy(),
++        )
++
++
++def _render_one(
++    checkpoint: Path, config: dict[str, Any], request: dict[str, Any]
++) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
++    return ResidentSceneRenderer(checkpoint, config).render(request)
+ 
+ 
+ def _validate_replaceable_output(output: Path, scene_id: str) -> None:
+diff --git a/scripts/resident_render_worker.py b/scripts/resident_render_worker.py
+new file mode 100644
+index 0000000..6c91521
+--- /dev/null
++++ b/scripts/resident_render_worker.py
+@@ -0,0 +1,78 @@
++"""Research JSONL worker; files remain the public process boundary."""
++
++import argparse
++import json
++import sys
++import time
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++import numpy as np
++import torch
++
++from nht_pipeline.export import load_validated_scene_export
++from nht_pipeline.render import ResidentSceneRenderer, _load_requests
++
++parser = argparse.ArgumentParser()
++parser.add_argument("--scene", type=Path, required=True)
++parser.add_argument("--cameras", type=Path, required=True)
++parser.add_argument("--buffer", type=Path, required=True)
++parser.add_argument("--auxiliary", action="store_true")
++args = parser.parse_args()
++start = time.perf_counter()
++validated = load_validated_scene_export(args.scene)
++requests = _load_requests(validated.cameras, None, args.cameras)
++renderer = ResidentSceneRenderer(validated.checkpoint_path, validated.runtime_config)
++torch.cuda.synchronize()
++print(
++    json.dumps(
++        {
++            "ready_seconds": time.perf_counter() - start,
++            "allocated_bytes": torch.cuda.memory_allocated(),
++        }
++    ),
++    flush=True,
++)
++for line in sys.stdin:
++    message = json.loads(line)
++    if message["op"] == "stop":
++        break
++    if (
++        message["op"] != "render"
++        or not message["indices"]
++        or any(
++            type(i) is not int or not 0 <= i < len(requests) for i in message["indices"]
++        )
++    ):
++        raise ValueError("Invalid render operation or camera indices")
++    start = time.perf_counter()
++    torch.cuda.reset_peak_memory_stats()
++    output = []
++    alphas, depths = [], []
++    for index in message["indices"]:
++        rgb, alpha, depth = renderer.render(requests[index])
++        output.append(rgb)
++        if args.auxiliary:
++            alphas.append(alpha)
++            depths.append(depth)
++    torch.cuda.synchronize()
++    render_seconds = time.perf_counter() - start
++    np.save(args.buffer, np.stack(output), allow_pickle=False)
++    if args.auxiliary:
++        np.save(
++            args.buffer.with_suffix(".alpha.npy"), np.stack(alphas), allow_pickle=False
++        )
++        np.save(
++            args.buffer.with_suffix(".depth.npy"), np.stack(depths), allow_pickle=False
++        )
++    print(
++        json.dumps(
++            {
++                "render_seconds": render_seconds,
++                "total_seconds": time.perf_counter() - start,
++                "peak_bytes": torch.cuda.max_memory_allocated(),
++                "reserved_bytes": torch.cuda.memory_reserved(),
++            }
++        ),
++        flush=True,
++    )

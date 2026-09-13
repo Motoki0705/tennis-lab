@@ -1,0 +1,89 @@
+diff --git a/src/synthetic_data_generation/dataset/court/assembler.py b/src/synthetic_data_generation/dataset/court/assembler.py
+index 063edba7..9948dfc9 100644
+--- a/src/synthetic_data_generation/dataset/court/assembler.py
++++ b/src/synthetic_data_generation/dataset/court/assembler.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++from src.utils.data.float32_store import read_float32
++
+ import math
+ import shutil
+ from collections import Counter, defaultdict
+@@ -1358,9 +1360,8 @@ def _validate_published_sample(
+         if not isinstance(value, str):
+             raise TypeError(f"Court sample {field} path must be a string.")
+         path = _contained_file(root, value)
+-        array = np.load(
++        array = read_float32(
+             path,
+-            allow_pickle=False,
+             mmap_mode=(
+                 "r"
+                 if array_validation is CourtArrayValidationMode.HEADERS_ONLY
+diff --git a/src/synthetic_data_generation/dataset/court/review/service.py b/src/synthetic_data_generation/dataset/court/review/service.py
+index f8b7a673..541bbecd 100644
+--- a/src/synthetic_data_generation/dataset/court/review/service.py
++++ b/src/synthetic_data_generation/dataset/court/review/service.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++from src.utils.data.float32_store import read_float32
++
+ import hashlib
+ import json
+ from collections import Counter
+@@ -172,7 +174,7 @@ class ReviewService:
+         data = self.load(scene, revision)
+         entry = data["samples"][sample]
+         root = self.scene_root(scene) / "datasets/court"
+-        rgb = np.load(contained_file(root, entry["rgb"]), allow_pickle=False)
++        rgb = read_float32(contained_file(root, entry["rgb"]))
+         if (
+             rgb.dtype != np.float32
+             or rgb.shape != (entry["height"], entry["width"], 3)
+diff --git a/src/synthetic_data_generation/visualization/sources.py b/src/synthetic_data_generation/visualization/sources.py
+index 2a684252..c801e916 100644
+--- a/src/synthetic_data_generation/visualization/sources.py
++++ b/src/synthetic_data_generation/visualization/sources.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++from src.utils.data.float32_store import read_float32
++
+ import json
+ import math
+ from collections.abc import Iterator, Mapping, Sequence
+@@ -1191,7 +1193,7 @@ def _contained(root: Path, relative: str, *, directory: bool) -> Path:
+ 
+ 
+ def _float32_rgb(path: Path, *, width: int, height: int) -> NDArray[np.float32]:
+-    value = np.load(path, allow_pickle=False)
++    value = read_float32(path)
+     if value.dtype != np.float32 or value.shape != (height, width, 3):
+         raise ValueError(f"NHT RGB frame has an invalid contract: {path}")
+     if not np.isfinite(value).all() or np.any(value < 0.0) or np.any(value > 1.0):
+diff --git a/src/tasks/court_detection/data/inputs/synthetic_court.py b/src/tasks/court_detection/data/inputs/synthetic_court.py
+index f44e9892..33e57415 100644
+--- a/src/tasks/court_detection/data/inputs/synthetic_court.py
++++ b/src/tasks/court_detection/data/inputs/synthetic_court.py
+@@ -51,6 +51,7 @@ from src.tasks.court_detection.data.target_generation.store import (
+ from src.tasks.court_detection.target_schemas import (
+     LINE_TARGET_SCHEMA,
+ )
++from src.utils.data.float32_store import read_float32
+ from src.utils.schema.court import (
+     CAMERA_VIEW_HALF_TURN_INDEX,
+     COURT_KP_NAMES,
+@@ -634,7 +635,7 @@ class SyntheticCourtInput:
+         return labels
+ 
+     def _load_rgb(self, record: CourtSampleRecord) -> Image.Image:
+-        rgb = np.load(record.image_path, allow_pickle=False)
++        rgb = read_float32(record.image_path)
+         if self.config.schema in {"v2", "v3"}:
+             expected = (
+                 cast(int, record.payload["height"]),
