@@ -54,7 +54,7 @@ class CourtModelOutput:
         if not logits:
             raise ValueError("Court model output requires a non-empty dense mapping.")
         for kind, value in logits.items():
-            if kind not in {"kp", "seg", "line"}:
+            if kind not in {"kp", "seg", "line", "semantic_line"}:
                 raise ValueError(f"Unknown Court dense output kind: {kind!r}.")
             if not isinstance(value, Tensor) or value.ndim != 4:
                 raise ValueError(f"Court {kind} logits must be rank-4 Tensor.")

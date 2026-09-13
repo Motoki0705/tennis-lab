@@ -50,15 +50,23 @@ def _bundle(*kinds: CourtTargetKind) -> CourtTargetBundleSpec:
             target_dtype=torch.float32,
             precomputed=True,
         ),
+        "semantic_line": CourtTargetSpec(
+            kind="semantic_line",
+            schema="test_semantic_line",
+            output_channels=4,
+            channel_names=("background", "baseline", "sideline", "service"),
+            target_dtype=torch.long,
+            precomputed=True,
+        ),
     }
     return CourtTargetBundleSpec({kind: specs[kind] for kind in kinds})
 
 
 def _loss_config(
     *,
-    dense_weights: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    dense_weights: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 1.0),
 ) -> CourtLossConfig:
-    kp_weight, seg_weight, line_weight = dense_weights
+    kp_weight, seg_weight, line_weight, semantic_line_weight = dense_weights
     return CourtLossConfig.from_mapping(
         {
             "seg": {
@@ -72,6 +80,11 @@ def _loss_config(
                 "dice_weight": 1.0,
                 "pos_weight": 1.0,
                 "weight": line_weight,
+            },
+            "semantic_line": {
+                "ce_weight": 1.0,
+                "dice_weight": 1.0,
+                "weight": semantic_line_weight,
             },
             "pose": {
                 "enabled": False,
@@ -157,6 +170,8 @@ def _batch(bundle: CourtTargetBundleSpec) -> dict[str, object]:
         targets["seg"] = torch.zeros(1, 8, 8, dtype=torch.long)
     if "line" in bundle.targets:
         targets["line"] = torch.zeros(1, 1, 8, 8)
+    if "semantic_line" in bundle.targets:
+        targets["semantic_line"] = torch.zeros(1, 8, 8, dtype=torch.long)
     return {
         "image": torch.zeros(1, 3, 8, 8),
         "targets": targets,
@@ -181,7 +196,7 @@ def test_missing_head_target_fails_before_model_forward() -> None:
 
 
 def test_multi_head_training_runs_shared_model_once_and_backpropagates() -> None:
-    bundle = _bundle("kp", "seg", "line")
+    bundle = _bundle("kp", "seg", "line", "semantic_line")
     adapter = _adapter(bundle)
     model = _CountingCourtModel(bundle)
     adapter.validate_model_pair(model)
@@ -193,16 +208,16 @@ def test_multi_head_training_runs_shared_model_once_and_backpropagates() -> None
     result.loss.backward()
 
     assert model.calls == 1
-    assert set(result.logits) == {"kp", "seg", "line"}
-    assert set(result.losses) == {"kp", "seg", "line"}
+    assert set(result.logits) == {"kp", "seg", "line", "semantic_line"}
+    assert set(result.losses) == {"kp", "seg", "line", "semantic_line"}
     assert model.bias.grad is not None
 
 
 def test_dense_loss_result_exposes_raw_configured_effective_and_weighted_terms() -> None:
-    bundle = _bundle("kp", "seg", "line")
+    bundle = _bundle("kp", "seg", "line", "semantic_line")
     adapter = CourtModelIOAdapter(
         CourtModelSpec(target_bundle=bundle, in_channels=3, short_side=32),
-        loss_config=_loss_config(dense_weights=(2.0, 3.0, 4.0)),
+        loss_config=_loss_config(dense_weights=(2.0, 3.0, 4.0, 5.0)),
     )
     call = adapter.prepare_training_batch(_batch(bundle))
     logits = {
@@ -223,6 +238,7 @@ def test_dense_loss_result_exposes_raw_configured_effective_and_weighted_terms()
         "kp": 2.0,
         "seg": 3.0,
         "line": 4.0,
+        "semantic_line": 5.0,
     }
     assert result.losses is result.weighted_losses
     for kind, expected_weight in expected_weights.items():
@@ -263,7 +279,7 @@ def test_output_mapping_must_exactly_match_bundle() -> None:
 
 
 def test_decode_returns_typed_predictions_for_every_head() -> None:
-    bundle = _bundle("kp", "seg", "line")
+    bundle = _bundle("kp", "seg", "line", "semantic_line")
     adapter = _adapter(bundle)
     kp_logits = torch.full((1, 2, 4, 5), -10.0)
     kp_logits[0, 0, 2, 3] = 10.0
@@ -288,6 +304,12 @@ def test_decode_returns_typed_predictions_for_every_head() -> None:
         original_size_hw=(4, 5),
         subpixel_refine=False,
     )
+    semantic_line = adapter.decode_prediction(
+        "semantic_line",
+        torch.zeros(1, 4, 4, 5),
+        original_size_hw=(4, 5),
+        subpixel_refine=False,
+    )
 
     assert isinstance(keypoints, CourtKeypointPrediction)
     assert keypoints.keypoints.shape == (2, 1, 2)
@@ -302,3 +324,5 @@ def test_decode_returns_typed_predictions_for_every_head() -> None:
         line.probability,
         torch.full((4, 5), 0.5),
     )
+    assert isinstance(semantic_line, CourtSegmentationPrediction)
+    assert semantic_line.mask.shape == (4, 5)

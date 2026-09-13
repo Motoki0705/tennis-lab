@@ -9,3 +9,6 @@ seg:
 line:
   hidden_channels: 256
   depth: 2
+semantic_line:
+  hidden_channels: 256
+  depth: 2

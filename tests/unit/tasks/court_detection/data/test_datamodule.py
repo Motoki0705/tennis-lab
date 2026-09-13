@@ -45,10 +45,11 @@ def _compose(tmp_path: Path, *, processing: str = "kp"):
         ("kp", ("kp",)),
         ("seg", ("seg",)),
         ("line", ("line",)),
+        ("semantic_line", ("semantic_line",)),
         ("kp_seg", ("kp", "seg")),
         ("kp_line", ("kp", "line")),
         ("seg_line", ("seg", "line")),
-        ("all", ("kp", "seg", "line")),
+        ("all", ("kp", "seg", "line", "semantic_line")),
     ],
 )
 def test_all_non_empty_target_subsets_are_strictly_configurable(

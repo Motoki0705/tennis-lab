@@ -1,0 +1,8 @@
+defaults:
+  - default
+  - _self_
+
+# Keep PR #867's pose-monitored schedule while using the encoder preset's
+# explicit frozen DINOv3 mode (no LoRA injection).
+checkpoint:
+  monitor: val/loss_direct_pose

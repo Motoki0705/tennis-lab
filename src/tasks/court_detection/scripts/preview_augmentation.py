@@ -16,7 +16,7 @@ Notes:
     - preview.require_pose must match the intended loss route. When true, the
       pipeline uses the same aspect-preserving camera-pose geometry as training.
     - Each row is one exact dataset draw. Columns separately expose RGB, the
-      actual KP heatmap, categorical SEG mask, and binary LINE mask passed to
+      actual KP heatmap, categorical SEG masks, and binary LINE mask passed to
       the losses; no target is hidden beneath another target's overlay.
     - Outputs are resolved beneath `paths.output_root`.
 """
@@ -298,6 +298,14 @@ def _target_panels(
                 alpha=float(cfg.preview.draw.mask_alpha),
             )
             label = "SEG classes 1..6"
+        elif kind == "semantic_line":
+            panel = render_segmentation_target(
+                rgb,
+                cast("torch.Tensor", value),
+                alpha=float(cfg.preview.draw.mask_alpha),
+                max_label=11,
+            )
+            label = "SEMANTIC LINE classes 1..11"
         elif kind == "line":
             panel = render_line_target(
                 rgb,

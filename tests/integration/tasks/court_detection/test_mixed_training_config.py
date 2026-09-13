@@ -65,7 +65,7 @@ def test_pose_preset_is_default_for_mixed_training_and_synthetic_only() -> None:
         runtime.loss.pose.rotation_weight,
         runtime.loss.pose.focal_weight,
     ) == (1.0, 1.0, 1.0)
-    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0}
+    assert runtime.loss.dense_weights == {"kp": 1.0, "seg": 1.0, "line": 1.0, "semantic_line": 1.0}
     assert not runtime.loss.consistency.enabled
     assert synthetic.kind == "synthetic_court"
     assert synthetic.court_scope == "target_court"

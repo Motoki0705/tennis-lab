@@ -10,7 +10,7 @@ import torch
 
 from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.court_detection.data.contracts import CourtPoseAuthority
+from src.tasks.court_detection.data.contracts import CourtInstance2D, CourtPoseAuthority
 from src.tasks.court_detection.geometry.pose import (
     MIN_PROJECTION_REFERENCE_POINTS,
     POSE10D_RAW_ORDER,
@@ -22,6 +22,7 @@ from src.tasks.court_detection.geometry.pose import (
     decode_pose10d_strict,
     project_canonical_points,
     project_predicted_canonical_points,
+    semantic_in_front_mask,
     validate_projection_round_trip,
     validate_proper_rotation,
     validate_square_intrinsics,
@@ -89,6 +90,12 @@ def _negative_y_camera_target(camera_y: float) -> CourtPoseTarget:
     )
 
 
+def _positive_depth_mask(target: CourtPoseTarget, *, minimum_m: float = 0.0) -> torch.Tensor:
+    points = canonical_semantic_court_points(target)
+    points_camera = (points - target.translation_m) @ target.rotation
+    return points_camera[:, 2] > minimum_m
+
+
 @pytest.mark.parametrize("camera_y", [-30.0, 30.0])
 def test_v3_authority_derives_exact_pose_order_and_projection(camera_y: float) -> None:
     target = build_pose_target(_authority(camera_y))
@@ -118,7 +125,11 @@ def test_v3_authority_derives_exact_pose_order_and_projection(camera_y: float) -
         target,
         canonical_semantic_court_points(target),
     )
-    validate_projection_round_trip(target, expected.float())
+    validate_projection_round_trip(
+        target,
+        expected.float(),
+        semantic_in_front=_positive_depth_mask(target),
+    )
 
 
 def test_isotropic_letterbox_updates_focal_and_principal_point() -> None:
@@ -138,7 +149,11 @@ def test_isotropic_letterbox_updates_focal_and_principal_point() -> None:
     )
     ones = torch.ones((14, 1), dtype=torch.float64)
     homogeneous = torch.cat((expected, ones), dim=1) @ homography.T
-    validate_projection_round_trip(target, homogeneous[:, :2].float())
+    validate_projection_round_trip(
+        target,
+        homogeneous[:, :2].float(),
+        semantic_in_front=_positive_depth_mask(target),
+    )
 
 
 def test_round_trip_uses_valid_references_from_mixed_camera_depths() -> None:
@@ -153,7 +168,28 @@ def test_round_trip_uses_valid_references_from_mixed_camera_depths() -> None:
         torch.nonzero(camera_points[:, 2] < -PROJECTIVE_DEPTH_EPS_M)[0, 0]
     )
     expected[behind_index] += 100.0
-    validate_projection_round_trip(target, expected.float())
+    validate_projection_round_trip(
+        target,
+        expected.float(),
+        semantic_in_front=camera_points[:, 2] > PROJECTIVE_DEPTH_EPS_M,
+    )
+
+
+def test_round_trip_uses_serialized_near_plane_mask() -> None:
+    target = build_pose_target(_authority(center_xyz=(0.0, -11.8852, 0.0)))
+    points = canonical_semantic_court_points(target)
+    camera_points = (points - target.translation_m) @ target.rotation
+    semantic_in_front = camera_points[:, 2] > 0.01
+    clipped = (camera_points[:, 2] > PROJECTIVE_DEPTH_EPS_M) & ~semantic_in_front
+    expected = project_canonical_points(target, points)
+
+    assert bool(clipped.any())
+    expected[clipped] += 100.0
+    validate_projection_round_trip(
+        target,
+        expected,
+        semantic_in_front=semantic_in_front,
+    )
 
 
 def test_projection_rejects_near_zero_depth_before_reference_filtering() -> None:
@@ -163,6 +199,7 @@ def test_projection_rejects_near_zero_depth_before_reference_filtering() -> None
         validate_projection_round_trip(
             target,
             torch.zeros((14, 2), dtype=torch.float64),
+            semantic_in_front=torch.zeros(14, dtype=torch.bool),
         )
 
 
@@ -173,7 +210,7 @@ def test_projection_rejects_near_zero_depth_before_reference_filtering() -> None
         (-10.0, "non-collinear"),
     ],
 )
-def test_round_trip_rejects_insufficient_positive_depth_evidence(
+def test_round_trip_rejects_insufficient_in_front_evidence(
     camera_y: float,
     error: str,
 ) -> None:
@@ -184,7 +221,11 @@ def test_round_trip_rejects_insufficient_positive_depth_evidence(
     )
 
     with pytest.raises(ValueError, match=error):
-        validate_projection_round_trip(target, expected)
+        validate_projection_round_trip(
+            target,
+            expected,
+            semantic_in_front=_positive_depth_mask(target),
+        )
 
 
 def test_projection_rejects_nonfinite_points_and_expected_uv() -> None:
@@ -204,7 +245,11 @@ def test_projection_rejects_nonfinite_points_and_expected_uv() -> None:
     behind_index = int(torch.nonzero(camera_points[:, 2] < 0.0)[0, 0])
     expected[behind_index, 0] = float("inf")
     with pytest.raises(ValueError, match="finite"):
-        validate_projection_round_trip(target, expected)
+        validate_projection_round_trip(
+            target,
+            expected,
+            semantic_in_front=_positive_depth_mask(target),
+        )
 
 
 def test_round_trip_rejects_mismatch_among_positive_depth_references() -> None:
@@ -216,7 +261,34 @@ def test_round_trip_rejects_mismatch_among_positive_depth_references() -> None:
     expected[valid_index, 0] += 1.0e-2
 
     with pytest.raises(ValueError, match="round-trip exceeds"):
-        validate_projection_round_trip(target, expected)
+        validate_projection_round_trip(
+            target,
+            expected,
+            semantic_in_front=camera_points[:, 2] > PROJECTIVE_DEPTH_EPS_M,
+        )
+
+
+def test_semantic_in_front_mask_uses_physical_identity() -> None:
+    target = build_pose_target(_authority(camera_y=30.0))
+    physical_in_front = torch.tensor(
+        [True, False, True, False, True, False, True] * 2,
+        dtype=torch.bool,
+    )
+    physical_indices = torch.arange(13, -1, -1, dtype=torch.long)
+    instance = CourtInstance2D(
+        court_instance_id="court",
+        physical_indices=physical_indices,
+        points_xy=torch.zeros((14, 2)),
+        point_in_front=physical_in_front.index_select(0, physical_indices),
+        point_visible=torch.zeros(14, dtype=torch.bool),
+    )
+
+    actual = semantic_in_front_mask(target, instance)
+
+    torch.testing.assert_close(
+        actual,
+        physical_in_front.index_select(0, target.semantic_to_physical),
+    )
 
 
 @pytest.mark.parametrize(

@@ -10,6 +10,10 @@ line:
   dice_weight: 1.0
   pos_weight: 8.0
   weight: 1.0
+semantic_line:
+  ce_weight: 1.0
+  dice_weight: 1.0
+  weight: 1.0
 pose:
   enabled: true
   translation_weight: 1.0

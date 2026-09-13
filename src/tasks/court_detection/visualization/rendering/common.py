@@ -22,7 +22,7 @@ from src.utils.data.augmentation import (
     tensor_images_to_uint8_rgb,
 )
 
-# RGB palette for the 7 court segmentation classes (class 0 = background).
+# RGB palette shared by categorical Court heads (class 0 = background).
 COURT_SEG_PALETTE_RGB: tuple[tuple[int, int, int], ...] = (
     (0, 0, 0),
     (230, 75, 60),
@@ -31,6 +31,11 @@ COURT_SEG_PALETTE_RGB: tuple[tuple[int, int, int], ...] = (
     (240, 200, 50),
     (200, 70, 220),
     (70, 210, 220),
+    (255, 140, 40),
+    (140, 90, 255),
+    (245, 110, 165),
+    (150, 220, 70),
+    (235, 235, 235),
 )
 
 
@@ -66,7 +71,8 @@ def denormalize_tensor_to_rgb(
         ``(H, W, 3)`` uint8 NumPy array in RGB order.
     """
     img = denormalize_tensor_images_imagenet(tensor.cpu().float(), mean=mean, std=std)
-    return cast("np.ndarray", tensor_images_to_uint8_rgb(img))
+    rgb: np.ndarray = tensor_images_to_uint8_rgb(img)
+    return rgb
 
 
 def resize_for_display(rgb: np.ndarray, max_width: int) -> np.ndarray:

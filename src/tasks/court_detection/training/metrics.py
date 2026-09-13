@@ -29,6 +29,7 @@ COURT_RESULT_METRIC_NAMES = (
     "pose_focal_relative_error",
     "line_dice",
     "seg_miou",
+    "semantic_line_miou",
     "kp_pose_consistency_distance_px",
     "invalid_depth_rate",
     "visible_point_count",
@@ -37,6 +38,7 @@ COURT_TRAIN_DIAGNOSTIC_NAMES = (
     "kp_gradient_finite",
     "seg_gradient_finite",
     "line_gradient_finite",
+    "semantic_line_gradient_finite",
     "pose_gradient_finite",
     "train_step_time_ms",
     "cuda_peak_memory_bytes",
@@ -50,14 +52,11 @@ class CourtDetectionMetrics:
         self,
         kind: CourtTargetKind,
         output_channels: int,
-        *,
-        singleton_kp: bool = False,
     ) -> None:
         if output_channels <= 0:
             raise ValueError("Court metric output_channels must be positive.")
         self.kind = kind
         self.output_channels = output_channels
-        self.singleton_kp = singleton_kp
         self.reset()
 
     def update(
@@ -71,7 +70,7 @@ class CourtDetectionMetrics:
             raise ValueError("Court metric logits disagree with the target head.")
         if image_size.shape != (logits.shape[0], 2) or image_size.dtype != torch.long:
             raise ValueError("Court metric image_size must be int64 [B,2].")
-        if self.kind == "seg":
+        if self.kind in {"seg", "semantic_line"}:
             self._update_seg(logits, cast(Tensor, target), image_size=image_size)
         elif self.kind == "kp":
             self._update_kp(
@@ -117,7 +116,7 @@ class CourtDetectionMetrics:
         visible = target["point_visible"]
         if points.ndim != 4 or visible.shape != points.shape[:-1]:
             raise ValueError("Court KP metric target geometry is invalid.")
-        if self.singleton_kp:
+        if points.shape[2] == 1:
             self._update_singleton_kp(
                 logits,
                 points=points,
@@ -231,7 +230,7 @@ class CourtDetectionMetrics:
             self._line_dice_count += 1
 
     def compute(self) -> dict[str, float]:
-        if self.kind == "seg":
+        if self.kind in {"seg", "semantic_line"}:
             values = [
                 intersection / (union + 1.0e-8)
                 for intersection, union in zip(

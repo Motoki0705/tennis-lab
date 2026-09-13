@@ -60,6 +60,14 @@ def _bundle() -> CourtTargetBundleSpec:
                 target_dtype=torch.float32,
                 precomputed=True,
             ),
+            "semantic_line": CourtTargetSpec(
+                kind="semantic_line",
+                schema="test_semantic_line",
+                output_channels=12,
+                channel_names=tuple(f"line_class_{index}" for index in range(12)),
+                target_dtype=torch.long,
+                precomputed=True,
+            ),
         }
     )
 
@@ -143,10 +151,11 @@ class _TinyDecoder(nn.Module):
         ("kp",),
         ("seg",),
         ("line",),
+        ("semantic_line",),
         ("kp", "seg"),
         ("kp", "line"),
         ("seg", "line"),
-        ("kp", "seg", "line"),
+        ("kp", "seg", "line", "semantic_line"),
     ],
 )
 def test_shared_decoder_arbitrary_bundle_forward_backward(
@@ -207,7 +216,7 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
             branches=MappingProxyType(
                 {
                     kind: CourtDenseHeadBranchConfig(hidden_channels=4, depth=2)
-                    for kind in ("kp", "seg", "line")
+                    for kind in ("kp", "seg", "line", "semantic_line")
                 }
             ),
         ),
@@ -247,6 +256,7 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
         "kp": (2, 7, 8, 8),
         "seg": (2, 7, 8, 8),
         "line": (2, 1, 8, 8),
+        "semantic_line": (2, 12, 8, 8),
     }
     assert {kind: value.shape for kind, value in outputs.items()} == {
         kind: expected_shapes[kind] for kind in kinds

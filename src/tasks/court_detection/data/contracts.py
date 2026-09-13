@@ -19,8 +19,8 @@ from src.synthetic_data_generation.scene_contract import SceneCamera
 if TYPE_CHECKING:
     from src.tasks.court_detection.geometry.pose import CourtPoseTarget
 
-CourtTargetKind: TypeAlias = Literal["kp", "seg", "line"]
-CourtDenseTargetKind: TypeAlias = Literal["seg", "line"]
+CourtTargetKind: TypeAlias = Literal["kp", "seg", "line", "semantic_line"]
+CourtDenseTargetKind: TypeAlias = Literal["seg", "line", "semantic_line"]
 CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 
@@ -32,6 +32,7 @@ class CourtInputCapability(StrEnum):
     COURT_INSTANCES = "court_instances"
     SEGMENTATION_REFERENCE = "segmentation_reference"
     LINE_REFERENCE = "line_reference"
+    SEMANTIC_LINE_REFERENCE = "semantic_line_reference"
     V3_TARGET_COURT_POSE = "v3_target_court_pose"
 
 
@@ -47,7 +48,7 @@ class CourtTargetSpec:
     precomputed: bool
 
     def __post_init__(self) -> None:
-        if self.kind not in {"kp", "seg", "line"}:
+        if self.kind not in {"kp", "seg", "line", "semantic_line"}:
             raise ValueError(f"Unsupported Court target kind: {self.kind!r}.")
         if not self.schema or self.schema != self.schema.strip():
             raise ValueError("Court target schema must be a non-empty trimmed string.")

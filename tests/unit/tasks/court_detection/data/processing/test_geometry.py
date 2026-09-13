@@ -16,6 +16,7 @@ from src.synthetic_data_generation.dataset.contracts import TargetCourtBinding
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
 from src.tasks.court_detection.configuration import CourtAugmentationConfig
 from src.tasks.court_detection.data.contracts import (
+    CourtInstance2D,
     CourtKeypointChannels,
     CourtPoseAuthority,
     CourtRawSample,
@@ -26,6 +27,7 @@ from src.tasks.court_detection.geometry.pose import (
     build_pose_target,
     canonical_semantic_court_points,
     project_canonical_points,
+    semantic_in_front_mask,
     validate_projection_round_trip,
 )
 
@@ -99,7 +101,15 @@ def _raw_pose_sample(*, image: Image.Image | None = None) -> CourtRawSample:
             physical_indices=torch.arange(14).view(14, 1),
             horizontal_flip_permutation=tuple(range(14)),
         ),
-        court_instances=(),
+        court_instances=(
+            CourtInstance2D(
+                court_instance_id="court",
+                physical_indices=torch.arange(14),
+                points_xy=points,
+                point_in_front=torch.ones(14, dtype=torch.bool),
+                point_visible=torch.ones(14, dtype=torch.bool),
+            ),
+        ),
         dense_target_refs={},
         metadata=CourtSampleMetadata(
             source_kind="synthetic_court",
@@ -227,6 +237,10 @@ def test_pose_safe_geometry_resizes_without_redundant_square_letterbox() -> None
     validate_projection_round_trip(
         target,
         transformed.keypoint_channels.points_xy[:, 0],
+        semantic_in_front=semantic_in_front_mask(
+            target,
+            transformed.court_instances[0],
+        ),
     )
 
 

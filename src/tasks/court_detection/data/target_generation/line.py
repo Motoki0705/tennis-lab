@@ -35,7 +35,7 @@ DEFAULT_BASELINE_WIDTH_METRES = _DEFAULT_DEFINITION.baseline_width_metres
 
 
 @dataclass(frozen=True, slots=True)
-class _MetricLine:
+class CourtMetricLine:
     start: tuple[float, float]
     end: tuple[float, float]
     width_m: float
@@ -45,15 +45,15 @@ def _metric_lines(
     *,
     line_width_metres: float,
     baseline_width_metres: float,
-) -> tuple[_MetricLine, ...]:
+) -> tuple[CourtMetricLine, ...]:
     points: Float32Array = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy()[:, :2]
     baseline_pairs = {(0, 1), (2, 3)}
-    result: list[_MetricLine] = []
+    result: list[CourtMetricLine] = []
     for first, second in COURT_SKELETON:
         if first >= 14 or second >= 14:
             continue
         result.append(
-            _MetricLine(
+            CourtMetricLine(
                 (float(points[first, 0]), float(points[first, 1])),
                 (float(points[second, 0]), float(points[second, 1])),
                 (
@@ -65,12 +65,12 @@ def _metric_lines(
         )
     result.extend(
         (
-            _MetricLine(
+            CourtMetricLine(
                 (0.0, HALF_LENGTH),
                 (0.0, HALF_LENGTH - CENTER_MARK_LENGTH),
                 line_width_metres,
             ),
-            _MetricLine(
+            CourtMetricLine(
                 (0.0, -HALF_LENGTH),
                 (0.0, -HALF_LENGTH + CENTER_MARK_LENGTH),
                 line_width_metres,
@@ -80,7 +80,7 @@ def _metric_lines(
     return tuple(result)
 
 
-def _segment_quad(line: _MetricLine) -> Float32Array:
+def metric_line_quad(line: CourtMetricLine) -> Float32Array:
     start: Float32Array = np.asarray(line.start, dtype=np.float32)
     end: Float32Array = np.asarray(line.end, dtype=np.float32)
     direction = end - start
@@ -131,7 +131,7 @@ def generate_line_target(
         if rasterizer is None:
             continue
         for line in metric_lines:
-            polygon = rasterizer.project_polygon(_segment_quad(line))
+            polygon = rasterizer.project_polygon(metric_line_quad(line))
             if polygon is not None:
                 cv2.fillPoly(output, [polygon], 255)
         for point, in_front in zip(
@@ -157,5 +157,7 @@ def generate_line_target(
 __all__ = [
     "DEFAULT_BASELINE_WIDTH_METRES",
     "DEFAULT_LINE_WIDTH_METRES",
+    "CourtMetricLine",
     "generate_line_target",
+    "metric_line_quad",
 ]
