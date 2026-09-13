@@ -77,6 +77,8 @@ def main() -> None:
         [
             sys.executable,
             "scripts/plcs_foot_residual/render.py",
+            "--baseline-label",
+            "baseline_best",
             "--comparison",
             str(args.output),
             "--clip",

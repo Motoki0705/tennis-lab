@@ -71,7 +71,7 @@ def synthetic(module: PLCSLightningModule, args: argparse.Namespace) -> None:
             with torch.autocast(
                 device_type="cuda",
                 dtype=torch.bfloat16,
-                enabled=args.device.startswith("cuda"),
+                enabled=False,
             ):
                 decoded, _ = module._forward_from_batch(moved)
             _, valid, anchor = footpoint_prior(
@@ -116,6 +116,7 @@ def synthetic(module: PLCSLightningModule, args: argparse.Namespace) -> None:
         "checkpoint": str(args.checkpoint.resolve()),
         "test_scene_count": len(dataset),
         "test_seed": 1234,
+        "inference_precision": "float32",
         "position_3d_m": summary(error),
         "position_xy_m": summary(xy),
         "angular_error_deg": summary(yaw),

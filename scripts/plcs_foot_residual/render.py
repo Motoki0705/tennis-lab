@@ -31,9 +31,10 @@ def main() -> None:
     parser.add_argument("--comparison", type=Path, required=True)
     parser.add_argument("--clip", type=Path, required=True)
     parser.add_argument("--new-label", default="residual")
+    parser.add_argument("--baseline-label", default="baseline")
     parser.add_argument("--skip-plots", action="store_true")
     args = parser.parse_args()
-    base = dict(np.load(args.comparison / "baseline_clip.npz"))
+    base = dict(np.load(args.comparison / f"{args.baseline_label}_clip.npz"))
     new = dict(np.load(args.comparison / f"{args.new_label}_clip.npz"))
     clip = json.loads((args.clip / "clip.json").read_text())
     frames = clip["num_frames"]
@@ -156,7 +157,7 @@ def main() -> None:
             cap.release()
     if args.skip_plots:
         return
-    base_test = np.load(args.comparison / "baseline_test.npz")
+    base_test = np.load(args.comparison / f"{args.baseline_label}_test.npz")
     new_test = np.load(args.comparison / f"{args.new_label}_test.npz")
     np.testing.assert_array_equal(base_test["target"], new_test["target"])
     fig, axes = plt.subplots(1, 3, figsize=(14, 4))
