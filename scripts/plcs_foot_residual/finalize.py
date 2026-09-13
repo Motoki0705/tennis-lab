@@ -9,7 +9,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import torch
+
+from src.tennis_scene.archive import load_scene_result, save_scene_result
+from src.tennis_scene.schema import SceneResult
 
 
 def main() -> None:
@@ -88,6 +92,36 @@ def main() -> None:
             ],
             check=True,
         )
+    # Native scene artifact: reuse the frozen upstream observations/SMPL and
+    # replace only PLCS position/yaw with the newly inferred physical outputs.
+    source_scene = args.clip / "annotations/tennis_scene/scene.npz"
+    with np.load(source_scene) as source:
+        payload = {key: source[key] for key in source.files}
+    for scalar_key, scalar_type in [
+        ("num_frames", int),
+        ("fps", float),
+        ("width", int),
+        ("height", int),
+    ]:
+        payload[scalar_key] = scalar_type(payload[scalar_key])
+    with np.load(args.output / "residual_clip.npz") as predicted:
+        payload["player_position"] = predicted["position"].astype(np.float32)
+        payload["player_yaw"] = predicted["yaw"].astype(np.float32)
+    metadata = json.loads((args.output / "reference_context.json").read_text())
+    metadata.update(
+        plcs=json.loads((args.output / "residual_clip_metrics.json").read_text()),
+        upstream_source_scene=str(source_scene.resolve()),
+        upstream_source_sha256=hashlib.sha256(source_scene.read_bytes()).hexdigest(),
+        upstream_stages="frozen manual court, associated 2D pose and GVHMR/SMPL cache",
+        video_paths=[
+            str((args.clip / "media" / f"cam{i}.mp4").resolve()) for i in range(3)
+        ],
+    )
+    native_path = args.output / "residual_scene.npz"
+    save_scene_result(SceneResult(**payload, metadata=metadata), native_path)
+    restored = load_scene_result(native_path)
+    np.testing.assert_array_equal(restored.player_position, payload["player_position"])
+    np.testing.assert_array_equal(restored.player_yaw, payload["player_yaw"])
     subprocess.run(
         [
             sys.executable,

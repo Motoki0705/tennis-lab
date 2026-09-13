@@ -1,6 +1,6 @@
 # PLCS foot residual experiment
 
-`prepare.py` は比較元checkpointから明示的に残差モデルを初期化し、学習splitだけの足首疑似位置の統計・重みを作る。`evaluate.py` は両モデルを同じseed・testシーン・本番観測・推論窓で比較する。`render.py` は保存した予測から比較動画と図を生成する。実験の数値・考察は `knowledge/` に記録する。
+`prepare.py` は比較元checkpointから明示的に残差モデルを初期化し、学習splitだけの足首疑似位置の統計・重みを作る。`evaluate.py` は両モデルを同じseed・testシーン・本番観測・推論窓で比較する。`render.py` は保存した予測から比較動画と図を生成する。`finalize.py` はvalidation最良checkpointを選び、両モデルを同じGPUで評価し、標準 `SceneResult` archive（`residual_scene.npz` とmetadata sidecar）へ既存のGVHMR/SMPLと新しいPLCS位置・回転を統合する。実験の数値・考察は `knowledge/` に記録する。
 
 ```bash
 # 専用worktree内、Pythonは共有 .venv を使用。
