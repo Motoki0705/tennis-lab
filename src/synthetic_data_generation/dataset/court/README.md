@@ -27,7 +27,7 @@ source-manifest fingerprint and rechecks all reused arrays. The ordinary scene
 writer lock protects the source during migration.
 
 ```bash
-.venv/bin/python scripts/experiments/compact_court_storage.py \
+.venv/bin/python -m src.synthetic_data_generation.scripts.compact_court_storage \
   --source data/synthetic_data_generation/scenes/B00/datasets/court \
   --destination outputs/storage-ondemand/compact-scenes/B00/datasets/court \
   --report outputs/storage-ondemand/compact-b00.json
@@ -55,9 +55,6 @@ existing readers so they do not retain a stale manifest. Geometry digests and sp
 not change. A separately rooted copy needs its own configured derived-target
 store; an eventual replacement under the original data root retains the existing
 geometry-based target keys.
-
-Measured storage/throughput results and the historical on-demand comparison live
-in the [experiment group](../../../../knowledge/nodes/group-court-storage-ondemand.md).
 
 ## Purpose
 

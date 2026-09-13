@@ -115,6 +115,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     }
     assert scripts == {
         "__init__.py",
+        "compact_court_storage.py",
         "edit_alignment.py",
         "generate_publication_visualizations.py",
         "review_court_dataset.py",
