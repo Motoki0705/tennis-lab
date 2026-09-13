@@ -97,7 +97,46 @@ def load_dinov3_backbone(
     backbone_name: str,
     strict: bool,
 ) -> DINOv3BackboneAdapter:
-    """Load a DINOv3 backbone from explicit, already-resolved runtime paths."""
+    """Load a DINOv3 backbone from explicit, already-resolved runtime paths.
+
+    The loaded model is available as ``backbone.module``;
+    ``backbone.module.forward_features(images)`` returns a mapping.  The
+    following shapes were measured with the four local official
+    ``*_pretrain_lvd1689m`` checkpoints, after a strict load, for a float32
+    input of shape ``(1, 3, 224, 224)``:
+
+    ====================  ========================  =====  ==================
+    size                  backbone_name              width  transformer blocks
+    ====================  ========================  =====  ==================
+    S                     ``dinov3_vits16``            384                  12
+    S+                    ``dinov3_vits16plus``        384                  12
+    B                     ``dinov3_vitb16``            768                  12
+    L                     ``dinov3_vitl16``           1024                  24
+    ====================  ========================  =====  ==================
+
+    The measured checkpoint files were, in table order,
+    ``dinov3_vits16_pretrain_lvd1689m-08c60483.pth``,
+    ``dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth``,
+    ``dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth``, and
+    ``dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth``.
+
+    Every measured model has a 16-pixel square patch and returns these
+    intermediate representations (``C`` is the table's width and
+    ``N = (H / 16) * (W / 16)`` for patch-aligned ``H`` and ``W``):
+
+    - ``x_norm_clstoken``: normalized CLS embedding, ``(B, C)``.
+    - ``x_storage_tokens``: four storage-token embeddings, ``(B, 4, C)``.
+    - ``x_norm_patchtokens``: normalized patch embeddings, ``(B, N, C)``;
+      at 224x224 this is ``(1, 196, C)``.  This is the representation exposed
+      by :func:`require_dinov3_patch_tokens`.
+    - ``x_prenorm``: token sequence before the final normalization,
+      ``(B, 1 + 4 + N, C)``; at 224x224 this is ``(1, 201, C)``.
+    - ``masks``: ``None`` when no input mask is supplied.
+
+    The dimensions above describe the tested checkpoints, not a promise for
+    arbitrary DINOv3 hub entries.  Callers must validate the dynamic mapping at
+    their model-I/O boundary with :func:`require_dinov3_patch_tokens`.
+    """
     if not isinstance(repository_path, Path) or not repository_path.is_absolute():
         raise ValueError("repository_path must be an absolute pathlib.Path.")
     if not isinstance(checkpoint_path, Path) or not checkpoint_path.is_absolute():
