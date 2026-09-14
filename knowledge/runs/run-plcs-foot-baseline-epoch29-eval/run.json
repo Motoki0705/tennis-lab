@@ -1,0 +1,16 @@
+{
+  "run_id": "1789312303759749525_3813856_plcs_foot_residual_best_evaluation",
+  "name": "plcs_foot_residual_best_evaluation",
+  "command": "OMP_NUM_THREADS=4 PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/finalize.py --run-dir outputs/plcs/foot_residual/training --baseline-config /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_split/config.yaml --dataset data/plcs/single_object_camera_view_v2 --clip data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --output outputs/plcs/foot_residual/comparison",
+  "provider": "codex",
+  "session": "01a09b38-6993-7e23-9122-9482895fe0b4",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "43291cdb40fbec423eb773984b907fc07d105467",
+  "branch": "experiments/plcs-foot-residual",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual",
+  "captured_at": "2026-09-14T01:17:43+09:00"
+}
