@@ -208,7 +208,12 @@ class PlayerAssociationResult:
 
 @dataclass
 class PlayerAssociationApplied:
-    """GVHMR arrays aligned by a player association result."""
+    """GVHMR arrays aligned by a player association result.
+
+    The optional world-motion arrays mirror :class:`GVHMRResult` and come from
+    the reference camera, so the aligned SMPL parameters and the gravity-aligned
+    world track always describe the same predicted body.
+    """
 
     human_kp_2d: NDArray[np.float32]  # (P, N, T, 17, 2), normalized
     human_kp_vis: NDArray[np.float32]  # (P, N, T, 17)
@@ -218,6 +223,9 @@ class PlayerAssociationApplied:
     smpl_vertices_local: NDArray[np.float32] | None  # (P, T, V, 3)
     track_ids: NDArray[np.int32]  # (P,)
     track_ids_by_camera: list[NDArray[np.int32]]  # length N
+    smpl_transl_incam: NDArray[np.float32] | None = None  # (P, T, 3)
+    smpl_transl_world: NDArray[np.float32] | None = None  # (P, T, 3)
+    smpl_global_orient_world: NDArray[np.float32] | None = None  # (P, T, 3)
 
 
 class PlayerAssociationModule(BasePipelineModule):
@@ -637,6 +645,21 @@ def apply_player_association(
             (num_players, num_frames, *vertex_shape),
             dtype=np.float32,
         )
+    world_motion_shape = (num_players, num_frames, 3)
+    smpl_transl_incam = _canonical_player_array(
+        reference_result.smpl_transl_incam, shape=world_motion_shape
+    )
+    smpl_transl_world = _canonical_player_array(
+        reference_result.smpl_transl_world, shape=world_motion_shape
+    )
+    smpl_global_orient_world = _canonical_player_array(
+        reference_result.smpl_global_orient_world, shape=world_motion_shape
+    )
+    world_arrays = (
+        (reference_result.smpl_transl_incam, smpl_transl_incam),
+        (reference_result.smpl_transl_world, smpl_transl_world),
+        (reference_result.smpl_global_orient_world, smpl_global_orient_world),
+    )
 
     for segment in association.segments:
         frame_slice = slice(segment.start_frame, segment.end_frame)
@@ -683,6 +706,13 @@ def apply_player_association(
                         frame_slice,
                     ]
                 )
+            for world_source, world_target in world_arrays:
+                if world_source is None or world_target is None:
+                    continue
+                world_target[player_index, frame_slice] = world_source[
+                    reference_local_player,
+                    frame_slice,
+                ]
 
     first_segment = association.segments[0]
     track_ids = association.canonical_player_ids.astype(np.int32)
@@ -705,4 +735,18 @@ def apply_player_association(
         smpl_vertices_local=smpl_vertices_local,
         track_ids=track_ids,
         track_ids_by_camera=track_ids_by_camera,
+        smpl_transl_incam=smpl_transl_incam,
+        smpl_transl_world=smpl_transl_world,
+        smpl_global_orient_world=smpl_global_orient_world,
     )
+
+
+def _canonical_player_array(
+    reference: NDArray[np.float32] | None,
+    *,
+    shape: tuple[int, ...],
+) -> NDArray[np.float32] | None:
+    """Allocate a canonical-player array only when the reference track has it."""
+    if reference is None:
+        return None
+    return np.zeros(shape, dtype=np.float32)

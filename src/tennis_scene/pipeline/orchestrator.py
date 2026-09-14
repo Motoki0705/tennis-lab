@@ -20,6 +20,9 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPModule,
 )
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig, GVHMRModule
+from src.tennis_scene.pipeline.components.motion_alignment import (
+    MotionAlignmentModule,
+)
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationModule,
 )
@@ -63,6 +66,7 @@ class TennisSceneOrchestrator:
         gvhmr_config: GVHMRConfig | None,
         gvhmr_chain: GVHMRChain | None,
         player_association_module: PlayerAssociationModule,
+        motion_alignment_module: MotionAlignmentModule,
         ball_detection_module: BallDetectionModule | None,
         plcs_module: PLCSModule,
         blcs_module: BLCSModule | None,
@@ -75,6 +79,7 @@ class TennisSceneOrchestrator:
         self.gvhmr_config = gvhmr_config
         self.gvhmr_chain = gvhmr_chain
         self.player_association_module = player_association_module
+        self.motion_alignment_module = motion_alignment_module
         self.ball_detection_module = ball_detection_module
         self.plcs_module = plcs_module
         self.blcs_module = blcs_module
@@ -113,6 +118,7 @@ class TennisSceneOrchestrator:
             gvhmr_config=gvhmr_config,
             gvhmr_chain=gvhmr_chain,
             player_association_module=PlayerAssociationModule(cfg.player_association),
+            motion_alignment_module=MotionAlignmentModule(cfg.player_motion),
             ball_detection_module=(
                 BallDetectionModule(cfg.ball_detection)
                 if Stage.BALL_DETECTION in resolution.enabled_set
@@ -187,7 +193,8 @@ class TennisSceneOrchestrator:
             ),
             self.gvhmr_chain,
         )
-        return module.process(video_path, max_frames=max_frames)
+        result: GVHMRResult = module.process(video_path, max_frames=max_frames)
+        return result
 
     def load_all(self) -> None:
         LOGGER.info("Pre-loading all modules...")
@@ -246,10 +253,6 @@ class TennisSceneOrchestrator:
             )
             human_kp_2d_norm = aligned_players.human_kp_2d
             human_kp_vis = aligned_players.human_kp_vis
-            smpl_body_pose = aligned_players.smpl_body_pose
-            smpl_global_orient = aligned_players.smpl_global_orient
-            smpl_betas = aligned_players.smpl_betas
-            smpl_vertices_local = aligned_players.smpl_vertices_local
             track_ids = aligned_players.track_ids
             track_ids_by_camera = aligned_players.track_ids_by_camera
         else:
@@ -261,6 +264,13 @@ class TennisSceneOrchestrator:
             human_kp_vis=human_kp_vis,
             court_vis=court_vis,
             track_ids=track_ids,
+        )
+        player_motion = self.motion_alignment_module.process(
+            associated=aligned_players,
+            plcs_position=plcs_result.position,
+            plcs_yaw=plcs_result.yaw,
+            court_visibility=court_vis,
+            reference_camera_index=association_result.reference_camera_index(),
         )
 
         ball_uv = None
@@ -296,12 +306,12 @@ class TennisSceneOrchestrator:
             height=height,
             court_kp=court_kp,
             court_vis=court_vis,
-            player_position=plcs_result.position,
-            player_yaw=plcs_result.yaw,
-            smpl_body_pose=smpl_body_pose,
-            smpl_global_orient=smpl_global_orient,
-            smpl_betas=smpl_betas,
-            smpl_vertices_local=smpl_vertices_local,
+            player_position=player_motion.player_position,
+            player_yaw=player_motion.player_yaw,
+            smpl_body_pose=player_motion.smpl_body_pose,
+            smpl_global_orient=player_motion.smpl_global_orient,
+            smpl_betas=player_motion.smpl_betas,
+            smpl_vertices_local=player_motion.smpl_vertices_local,
             ball_uv=ball_uv,
             ball_vis=ball_vis,
             ball_3d=ball_3d,
@@ -322,6 +332,7 @@ class TennisSceneOrchestrator:
                 ],
                 "player_association": association_result.to_dict(),
                 "enabled_stages": [stage.value for stage in self.execution_order],
+                **player_motion.metadata,
             },
         )
         if (

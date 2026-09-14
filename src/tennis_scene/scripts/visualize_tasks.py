@@ -9,6 +9,8 @@ in isolation, writing the results back into the same run directory:
 - ``court_kp``       -> 2D court keypoints overlaid on the source video.
 - ``gvhmr``          -> per-player COCO-17 2D pose skeleton on the source video.
 - ``plcs``           -> court top-view of player positions + heading (yaw).
+- ``gvhmr_alignment`` -> court top-view of the GVHMR-aligned player positions and
+  headings with the PLCS reference dashed underneath.
 - ``blcs``           -> court top/side view of the 3D ball trajectory.
 
 Usage:
@@ -28,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -360,6 +363,218 @@ def _render_plcs(
     LOGGER.info("wrote %s", out_path)
 
 
+def _metadata_number(entry: Mapping[str, object], key: str) -> float:
+    value = entry.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(
+            f"player_motion metadata field {key!r} must be numeric, got {value!r}"
+        )
+    return float(value)
+
+
+def _metadata_median(entry: Mapping[str, object], key: str) -> float:
+    summary = entry.get(key)
+    if not isinstance(summary, Mapping):
+        raise ValueError(
+            f"player_motion metadata field {key!r} must be a summary object"
+        )
+    return _metadata_number(summary, "median")
+
+
+def _metadata_array(entry: Mapping[str, object], key: str) -> NDArray[np.float64]:
+    value = entry.get(key)
+    if value is None:
+        raise ValueError(f"player_motion metadata field {key!r} is missing")
+    try:
+        return np.asarray(value, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            f"player_motion metadata field {key!r} must be numeric: {error}"
+        ) from error
+
+
+def _alignment_players(scene: SceneResult) -> list[Mapping[str, object]]:
+    """Return the per-player alignment diagnostics or fail with a clear reason."""
+    player_motion = scene.metadata.get("player_motion")
+    if not isinstance(player_motion, Mapping):
+        raise ValueError(
+            "SceneResult metadata has no 'player_motion' block; the "
+            "gvhmr_alignment task needs a run with "
+            "player_motion.source='gvhmr_alignment'."
+        )
+    if player_motion.get("source") != "gvhmr_alignment":
+        raise ValueError(
+            "SceneResult metadata player_motion.source is "
+            f"{player_motion.get('source')!r}, not 'gvhmr_alignment'; the "
+            "gvhmr_alignment task needs an aligned run."
+        )
+    raw_players = player_motion.get("players")
+    if not isinstance(raw_players, list) or not raw_players:
+        raise ValueError(
+            "SceneResult metadata player_motion.players must be a non-empty list"
+        )
+    players: list[Mapping[str, object]] = []
+    for index, entry in enumerate(raw_players):
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"player_motion.players[{index}] must be a mapping, got "
+                f"{type(entry).__name__}"
+            )
+        players.append(entry)
+    return players
+
+
+def _render_gvhmr_alignment(
+    scene: SceneResult,
+    out_path: Path,
+    *,
+    fps: float,
+    frame_range: range,
+    dpi: int,
+    trail_length: int,
+) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FFMpegWriter, FuncAnimation
+
+    from src.utils.rendering.court_renderer import CourtRenderer
+
+    players_metadata = _alignment_players(scene)
+    pos = scene.player_position  # (P, T, 3), aligned
+    yaw = scene.player_yaw  # (P, T), aligned
+    num_players = pos.shape[0]
+    if len(players_metadata) != num_players:
+        raise ValueError(
+            "player_motion.players length "
+            f"{len(players_metadata)} does not match the SceneResult player "
+            f"count {num_players}"
+        )
+    track_ids = [
+        int(_metadata_number(entry, "track_id")) for entry in players_metadata
+    ]
+    reference_position = np.stack(
+        [_metadata_array(entry, "reference_position") for entry in players_metadata]
+    )
+    reference_yaw = np.stack(
+        [_metadata_array(entry, "reference_yaw") for entry in players_metadata]
+    )
+    if reference_position.shape != pos.shape:
+        raise ValueError(
+            "player_motion reference_position shape "
+            f"{reference_position.shape} does not match player_position "
+            f"{pos.shape}"
+        )
+    if reference_yaw.shape != yaw.shape:
+        raise ValueError(
+            "player_motion reference_yaw shape "
+            f"{reference_yaw.shape} does not match player_yaw {yaw.shape}"
+        )
+
+    court = CourtRenderer()
+    xmin, xmax, ymin, ymax = _court_limits()
+    x_lo = min(xmin, float(pos[..., 0].min()), float(reference_position[..., 0].min()))
+    x_lo -= 2.0
+    x_hi = max(xmax, float(pos[..., 0].max()), float(reference_position[..., 0].max()))
+    x_hi += 2.0
+    y_lo = min(ymin, float(pos[..., 1].min()), float(reference_position[..., 1].min()))
+    y_lo -= 2.0
+    y_hi = max(ymax, float(pos[..., 1].max()), float(reference_position[..., 1].max()))
+    y_hi += 2.0
+
+    fig, ax = plt.subplots(figsize=(7, 9))
+
+    def update(t: int) -> list:
+        ax.clear()
+        court.render_2d(ax, set_limits=False)
+        ax.set_xlim(x_lo, x_hi)
+        ax.set_ylim(y_lo, y_hi)
+        ax.set_aspect("equal")
+        for p in range(num_players):
+            rgb = _to_rgb01(_player_bgr(p))
+            s = max(frame_range.start, t - trail_length)
+            ax.plot(
+                reference_position[p, s : t + 1, 0],
+                reference_position[p, s : t + 1, 1],
+                color=rgb,
+                alpha=0.4,
+                linewidth=1.2,
+                linestyle="--",
+            )
+            ax.plot(
+                pos[p, s : t + 1, 0],
+                pos[p, s : t + 1, 1],
+                color=rgb,
+                alpha=0.6,
+                linewidth=1.5,
+            )
+            rx, ry, rhead = (
+                reference_position[p, t, 0],
+                reference_position[p, t, 1],
+                reference_yaw[p, t],
+            )
+            ax.scatter(
+                [rx],
+                [ry],
+                facecolors="none",
+                edgecolors=rgb,
+                s=50,
+                zorder=4,
+            )
+            ax.plot(
+                [rx, rx + np.sin(rhead) * 1.5],
+                [ry, ry + np.cos(rhead) * 1.5],
+                color=rgb,
+                alpha=0.4,
+                linewidth=1.2,
+                linestyle="--",
+                zorder=3,
+            )
+            x, y, hd = pos[p, t, 0], pos[p, t, 1], yaw[p, t]
+            ax.scatter([x], [y], color=rgb, s=60, zorder=5)
+            ax.arrow(
+                x,
+                y,
+                np.sin(hd) * 1.5,
+                np.cos(hd) * 1.5,
+                color=rgb,
+                width=0.06,
+                head_width=0.35,
+                zorder=6,
+            )
+            ax.text(x + 0.3, y + 0.3, f"P{track_ids[p]}", color=rgb, fontsize=9)
+            entry = players_metadata[p]
+            ax.text(
+                0.01,
+                0.99 - 0.05 * p,
+                (
+                    f"P{track_ids[p]} scale={_metadata_number(entry, 'scale'):.3f} "
+                    f"yaw={_metadata_number(entry, 'yaw_deg'):.1f}deg "
+                    f"pos_med="
+                    f"{_metadata_median(entry, 'position_residual_m'):.3f}m "
+                    f"head_med="
+                    f"{_metadata_median(entry, 'heading_residual_deg'):.2f}deg"
+                ),
+                transform=ax.transAxes,
+                color=rgb,
+                fontsize=8,
+                verticalalignment="top",
+                bbox={
+                    "facecolor": "white",
+                    "edgecolor": "none",
+                    "alpha": 0.8,
+                    "pad": 1.5,
+                },
+            )
+        ax.set_title(f"gvhmr_alignment (aligned solid, PLCS dashed)  frame {t}")
+        ax.set_xlabel("court x [m]")
+        ax.set_ylabel("court y [m]")
+        return []
+
+    anim = FuncAnimation(fig, update, frames=frame_range, interval=1000.0 / fps)
+    anim.save(str(out_path), writer=FFMpegWriter(fps=int(round(fps))), dpi=dpi)
+    plt.close(fig)
+    LOGGER.info("wrote %s", out_path)
+
+
 def _render_blcs(
     scene: SceneResult,
     out_path: Path,
@@ -446,7 +661,7 @@ def _render_blcs(
 
 
 _VIDEO_TASKS = {"ball_detection", "court_kp", "gvhmr"}
-_PLOT_TASKS = {"plcs", "blcs"}
+_PLOT_TASKS = {"plcs", "blcs", "gvhmr_alignment"}
 
 
 @hydra_main(
@@ -515,6 +730,15 @@ def main(cfg: DictConfig) -> int:
         _render_plcs(
             scene,
             output_dir / "plcs_viz.mp4",
+            fps=fps,
+            frame_range=frame_range,
+            dpi=runtime.dpi,
+            trail_length=trail_length,
+        )
+    if "gvhmr_alignment" in tasks:
+        _render_gvhmr_alignment(
+            scene,
+            output_dir / "gvhmr_alignment_viz.mp4",
             fps=fps,
             frame_range=frame_range,
             dpi=runtime.dpi,
