@@ -21,7 +21,10 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
-from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig
+from src.tennis_scene.pipeline.components.gvhmr import (
+    CourtFootpointFilterConfig,
+    GVHMRConfig,
+)
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
 )
@@ -123,6 +126,7 @@ def make_blcs_config(root: Path) -> BLCSConfig:
         load_path=None,
         window_size=32,
         window_overlap=8,
+        sample_stride=1,
         resolver=resolver,
     )
 
@@ -160,6 +164,7 @@ def make_plcs_config(root: Path) -> PLCSConfig:
         load_path=None,
         window_size=32,
         window_overlap=8,
+        sample_stride=1,
         human_vis_threshold=0.5,
         resolver=resolver,
     )
@@ -200,6 +205,11 @@ def make_gvhmr_config(
         runtime=make_submodule_runtime(dino_confidence=dino_confidence),
         track_selection=track_selection,
         num_tracks=num_tracks,
+        court_footpoint_filter=CourtFootpointFilterConfig(
+            enabled=False,
+            sideline_margin_m=1.0,
+            baseline_margin_m=5.0,
+        ),
         save_result=save_result,
         output_path=(
             resolver.resolve(PathRole.ARTIFACT, "gvhmr.json")

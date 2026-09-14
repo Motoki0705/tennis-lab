@@ -101,3 +101,50 @@ def blend_windows(
         uncovered = int(np.count_nonzero(weight_sum <= 0))
         raise ValueError(f"chunks leave {uncovered} frame(s) uncovered")
     return accum / weight_sum
+
+
+def sampled_frame_indices(total_len: int, stride: int) -> NDArray[np.int64]:
+    """Return the explicit source-frame indices used for temporal subsampling."""
+    if total_len <= 0:
+        raise ValueError(f"total_len must be positive, got {total_len}")
+    if stride <= 0:
+        raise ValueError(f"stride must be positive, got {stride}")
+    return np.arange(0, total_len, stride, dtype=np.int64)
+
+
+def restore_sampled_frames(
+    values: NDArray[np.floating],
+    frame_indices: NDArray[np.integer],
+    total_len: int,
+) -> NDArray[np.float64]:
+    """Linearly restore a sampled time-leading array to the source timeline.
+
+    Values after the last sampled source frame are held explicitly by
+    ``numpy.interp``. Angular quantities must be converted to unit vectors by
+    the caller before using this function.
+    """
+    indices = np.asarray(frame_indices)
+    if values.ndim == 0 or values.shape[0] != len(indices):
+        raise ValueError("values axis 0 must match frame_indices length")
+    if total_len <= 0:
+        raise ValueError(f"total_len must be positive, got {total_len}")
+    if (
+        indices.ndim != 1
+        or len(indices) == 0
+        or indices[0] != 0
+        or indices[-1] >= total_len
+        or np.any(np.diff(indices) <= 0)
+    ):
+        raise ValueError(
+            "frame_indices must be non-empty, strictly increasing, start at 0, "
+            "and remain inside total_len"
+        )
+    flat = values.reshape(len(indices), -1)
+    restored = np.stack(
+        [
+            np.interp(np.arange(total_len), indices, column)
+            for column in flat.transpose()
+        ],
+        axis=-1,
+    )
+    return restored.reshape((total_len,) + values.shape[1:])

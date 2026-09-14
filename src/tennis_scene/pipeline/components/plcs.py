@@ -26,13 +26,19 @@ from src.tennis_scene.schema import (
     validate_court_keypoint_provenance,
 )
 from src.utils.configuration import PathResolver
-from src.utils.inference.windowed import blend_windows, window_slices
+from src.utils.inference.windowed import (
+    blend_windows,
+    restore_sampled_frames,
+    sampled_frame_indices,
+    window_slices,
+)
 from src.utils.io import load_json, save_json
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from src.tasks.plcs.inference.predictor import PLCSPredictor
+    from src.tasks.plcs.model_io.contracts import PLCSReferenceMetadata
 
 LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +58,7 @@ class PLCSConfig:
             ``seq_len_range`` instead of extrapolating RoPE far beyond it.
         window_overlap: Frames shared by consecutive windows (blended with
             center-peaked weights).
+        sample_stride: Source-frame stride used before windowed inference.
         human_vis_threshold: Detector confidences below this become invisible
             (0). Real pose detectors emit continuous confidences and keep
             hallucinated coordinates for occluded joints, while training
@@ -66,6 +73,7 @@ class PLCSConfig:
     load_path: Path | None
     window_size: int
     window_overlap: int
+    sample_stride: int
     human_vis_threshold: float
     resolver: PathResolver
     court_keypoint_contract: CourtKeypointContract = field(
@@ -233,6 +241,7 @@ class PLCSModule(BasePipelineModule):
         *,
         court_keypoint_document: Mapping[str, object] | None = None,
         court_reference_provenance: CourtReferenceFrameProvenance | None = None,
+        reference_metadata: PLCSReferenceMetadata | None = None,
     ) -> PLCSResult:
         """Run PLCS inference.
 
@@ -297,6 +306,19 @@ class PLCSModule(BasePipelineModule):
             raise ValueError(
                 f"track_ids must have shape ({num_players},), got {track_ids.shape}"
             )
+        if self.config.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+            if reference_metadata is not None:
+                raise ValueError("physical_v1 PLCS input forbids reference metadata.")
+        elif reference_metadata is None:
+            raise MissingCourtKeypointMetadataError(
+                "tennis_scene PLCS camera_view_v2 input requires typed reference metadata."
+            )
+        elif tuple(
+            selection.provenance for selection in reference_metadata.selections
+        ) != (input_provenance,) * num_players:
+            raise CourtKeypointContractMismatchError(
+                "PLCS typed reference metadata does not match its validated input."
+            )
 
         LOGGER.info(
             "Running PLCS player localization for "
@@ -313,35 +335,42 @@ class PLCSModule(BasePipelineModule):
             (num_players, num_cameras, num_frames), dtype=np.bool_
         )
 
+        frame_indices = sampled_frame_indices(num_frames, self.config.sample_stride)
+        sampled_frames = len(frame_indices)
         slices = window_slices(
-            num_frames, self.config.window_size, self.config.window_overlap
+            sampled_frames, self.config.window_size, self.config.window_overlap
         )
         LOGGER.info(
             f"Running PLCS in {len(slices)} window(s) of <= "
-            f"{self.config.window_size} frames (overlap {self.config.window_overlap})"
+            f"{self.config.window_size} frames (overlap {self.config.window_overlap}, "
+            f"source stride {self.config.sample_stride})"
         )
         position_chunks: list[tuple[int, NDArray[np.float64]]] = []
         yaw_vec_chunks: list[tuple[int, NDArray[np.float64]]] = []
         for start, end in slices:
+            selected = frame_indices[start:end]
             if self.config.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
                 prediction = predictor.predict_multiview_observations(
-                    human_kp=human_kp_2d[:, :, start:end],
-                    court_kp=court_kp[:, start:end],
-                    human_vis=binary_vis[:, :, start:end],
-                    padding_mask=padding_mask[:, :, start:end],
-                    court_vis=court_vis[:, start:end],
+                    human_kp=human_kp_2d[:, :, selected],
+                    court_kp=court_kp[:, selected],
+                    human_vis=binary_vis[:, :, selected],
+                    padding_mask=padding_mask[:, :, selected],
+                    court_vis=court_vis[:, selected],
                 )
             else:
                 prediction = predictor.predict_multiview_observations(
-                    human_kp=human_kp_2d[:, :, start:end],
-                    court_kp=court_kp[:, start:end],
-                    human_vis=binary_vis[:, :, start:end],
-                    padding_mask=padding_mask[:, :, start:end],
-                    court_vis=court_vis[:, start:end],
+                    human_kp=human_kp_2d[:, :, selected],
+                    court_kp=court_kp[:, selected],
+                    human_vis=binary_vis[:, :, selected],
+                    padding_mask=padding_mask[:, :, selected],
+                    court_vis=court_vis[:, selected],
                     court_keypoint_metadata=direct_document,
-                    court_reference_provenance=input_provenance,
+                    court_reference_provenance=(input_provenance,) * num_players,
+                    reference_metadata=reference_metadata,
                 )
-                if prediction.court_reference_provenance != (input_provenance,):
+                if prediction.court_reference_provenance != (
+                    input_provenance,
+                ) * num_players:
                     raise CourtKeypointContractMismatchError(
                         "PLCS prediction provenance does not match its validated input."
                     )
@@ -351,12 +380,18 @@ class PLCSModule(BasePipelineModule):
             yaw_vec = np.stack([np.sin(win_yaw), np.cos(win_yaw)], axis=-1)
             yaw_vec_chunks.append((start, yaw_vec.transpose(1, 0, 2)))
 
-        positions = (
-            blend_windows(position_chunks, num_frames)
-            .transpose(1, 0, 2)
-            .astype(np.float32)
-        )
-        yaw_vec_blend = blend_windows(yaw_vec_chunks, num_frames).transpose(1, 0, 2)
+        sampled_positions = blend_windows(position_chunks, sampled_frames)
+        positions = restore_sampled_frames(
+            sampled_positions,
+            frame_indices,
+            num_frames,
+        ).transpose(1, 0, 2).astype(np.float32)
+        sampled_yaw_vectors = blend_windows(yaw_vec_chunks, sampled_frames)
+        yaw_vec_blend = restore_sampled_frames(
+            sampled_yaw_vectors,
+            frame_indices,
+            num_frames,
+        ).transpose(1, 0, 2)
         yaws = np.arctan2(yaw_vec_blend[..., 0], yaw_vec_blend[..., 1]).astype(
             np.float32
         )
