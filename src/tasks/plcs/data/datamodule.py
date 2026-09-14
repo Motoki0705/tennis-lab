@@ -38,7 +38,9 @@ class PLCSDataModule(SceneDirectoryDataModule):
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.plcs_runtime.raw,
-            seed=(self._dataset_seed(scene_dir, split_file) if seed is None else seed),
+            seed=(
+                self._dataset_seed(scene_dir, split_file) if seed is None else seed
+            ),
             augment=augment,
             reference_camera_id=(
                 self.plcs_runtime.data.evaluation_reference_camera_id

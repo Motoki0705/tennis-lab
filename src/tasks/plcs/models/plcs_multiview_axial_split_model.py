@@ -30,7 +30,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -319,9 +318,10 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         frame_valid = ~padding_mask.all(dim=1)
 
         output = self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
-        output["position"] = output["position"] + anchor
-        if "aux_position" in output:
-            output["aux_position"] = output["aux_position"] + anchor
+        if anchor is not None:
+            output["position"] = output["position"] + anchor
+            if "aux_position" in output:
+                output["aux_position"] = output["aux_position"] + anchor
         return output
 
     def _configure_observation_embedding(self) -> None:
@@ -334,7 +334,14 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         human_vis: Tensor,
         court_vis: Tensor,
         padding_mask: Tensor,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor | None]:
+        """Return tokens plus an optional anchor added to position readouts.
+
+        Subclasses that observe geometry expressed in the output reference frame
+        may return an anchor that :meth:`forward` adds to the position heads. The
+        default profile has no such observation and returns ``None`` so the head
+        readouts keep their own dtype and values.
+        """
         del human_vis, court_vis
         batch_size, n_cams, seq_len = human_kp.shape[:3]
         x = (
@@ -346,7 +353,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             .reshape(batch_size, n_cams, seq_len, self.hidden_dim)
             .permute(0, 2, 1, 3)
         )
-        return x, torch.zeros_like(human_kp[:, 0, :, 0, :1]).expand(-1, -1, 3)
+        return x, None
 
     def _decode_split_outputs_basic(
         self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor

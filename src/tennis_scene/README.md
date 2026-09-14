@@ -34,7 +34,6 @@ SMPLを実行せず、canonical poseと3D関節を保存できます。
 - **`components/blcs.py`**: `BLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionから3D軌道を集約する。
 
 ### rendering/
-- **`smpl_placement.py`**: GVHMR頂点のpelvis中心化・global orientation除去・軸変換とPLCS位置/yawによる配置。3D表示と元動画へのメッシュ比較で共用する。
 - **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。カメラ・テーマ・レイヤ規約・HUD・ミニマップなどの描画プリミティブは `src.utils.rendering`(`camera_view`/`theme`/`layers`/`hud`/`minimap`/`effects`)を直接利用し、ここには `SceneResult` 固有の変換(SMPL→コート座標、HUD行の選択、ミニマップ配列抽出)だけを持つ。
 
 ### scripts/
