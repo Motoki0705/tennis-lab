@@ -10,6 +10,9 @@ DINO → ViTPose → PLCSと外部ボール観測 → BLCSを接続する経路�
 [`reference_pipeline/README.md`](reference_pipeline/README.md)を参照してください。
 SMPLを実行せず、canonical poseと3D関節を保存できます。
 
+保存済みGVHMRワールドモーションをPLCSへトラック共通の重力固定相似変換で合わせる
+CPU後処理と比較実験は[`motion_alignment/README.md`](motion_alignment/README.md)を参照してください。
+
 ## Modules
 
 ### clip_studio/

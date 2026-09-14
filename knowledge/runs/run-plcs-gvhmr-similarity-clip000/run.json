@@ -1,0 +1,14 @@
+{
+  "kind": "cpu_comparative_experiment",
+  "base_commit": "b8ccc6ba",
+  "branch": "feat/plcs-gvhmr-similarity",
+  "source_clip": "meiji_3cam/video_000/clip_000",
+  "variants": [
+    "fixed_scale_1",
+    "free_scale"
+  ],
+  "command_script": "repro.sh",
+  "output_dir": "outputs/plcs_gvhmr_similarity/clip_000",
+  "gpu_used": false,
+  "training_performed": false
+}
