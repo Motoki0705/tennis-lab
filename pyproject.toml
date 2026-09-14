@@ -281,6 +281,7 @@ module = [
     "src.synthetic_data_generation.alignment.manual.models",
     "src.synthetic_data_generation.alignment.manual.web",
     "src.synthetic_data_generation.dataset.court.review.web",
+    "src.tasks.plcs.visualization.review.web",
 ]
 disallow_untyped_decorators = false
 
