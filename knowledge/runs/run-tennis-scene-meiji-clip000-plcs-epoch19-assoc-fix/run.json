@@ -1,0 +1,16 @@
+{
+  "run_id": "1789301846123677436_3529367_tennis_scene_meiji_clip000_plcs_epoch19_assoc_fix",
+  "name": "tennis_scene_meiji_clip000_plcs_epoch19_assoc_fix",
+  "command": "PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-camera-view-annotations /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tennis_scene.scripts.generate_dataset paths.data_root=/home/kamimura/projects/tennis-lab/data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.artifact_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.cache_root=/home/kamimura/projects/tennis-lab/.cache paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party dataset_directory=tennis_multivew/processed/meiji_3cam/dataset clip_ids=[video_000/clip_000] overwrite=true continue_on_error=false pipeline_overrides='[\"court_keypoints.selector=camera_view_v2\",\"court_reference.reference_camera=cam0\",\"court_reference.view_half_turns=[false,false,true]\",\"court_kp.source=load\",\"court_kp.load_path=tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/manual_court_kp_result.json\",\"court_kp.save_result=false\",\"gvhmr.source=load\",\"gvhmr.load_path=tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/gvhmr_result.json\",\"gvhmr.save_result=false\",\"player_association.source=load\",\"player_association.load_path=tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association_result.json\",\"player_association.save_result=false\",\"ball_detection.enabled=false\",\"ball_detection.save_result=false\",\"plcs.checkpoint=plcs/plcs-multiview-axial-split-camera-view-v2-epoch19.ckpt\",\"plcs.window_size=128\",\"plcs.window_overlap=64\",\"plcs.sample_stride=2\",\"plcs.save_result=false\",\"blcs.enabled=false\",\"blcs.save_result=false\"]'",
+  "provider": "codex",
+  "session": "01a09a19-95aa-7ca0-828d-8f57a560125f",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "7ce569b00a74d6ce4466d5da2c1ed660909f05cf",
+  "branch": "codex/tennis-scene-camera-view-annotations",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-camera-view-annotations",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-camera-view-annotations",
+  "captured_at": "2026-09-13T21:17:26+09:00"
+}

@@ -6,7 +6,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from src.tasks.base.generate_dataset import (
     CourtKeypointContract,
@@ -24,6 +24,12 @@ from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationModule,
 )
 from src.tennis_scene.pipeline.components.plcs import PLCSModule
+from src.tennis_scene.pipeline.court_reference import (
+    CourtReferenceRuntimeConfig,
+    court_footpoint_polygon_px,
+    prepare_court_reference,
+    reference_metadata,
+)
 from src.tennis_scene.pipeline.dependency_graph import (
     ResolutionResult,
     Stage,
@@ -44,6 +50,8 @@ from src.utils.video import probe_video_info
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
+    from src.tasks.blcs.model_io.contracts import BLCSReferenceMetadata
+    from src.tasks.plcs.model_io.contracts import PLCSReferenceMetadata
     from src.tennis_scene.configuration import PipelineRuntimeConfig
     from src.tennis_scene.pipeline.components.player_association import (
         PlayerAssociationApplied,
@@ -69,6 +77,7 @@ class TennisSceneOrchestrator:
         resolution: ResolutionResult,
         device: str,
         resolver: PathResolver,
+        court_reference_config: CourtReferenceRuntimeConfig,
         court_keypoint_contract: CourtKeypointContract | None = None,
     ) -> None:
         self.court_kp_module = court_kp_module
@@ -83,6 +92,7 @@ class TennisSceneOrchestrator:
         self.execution_order = resolution.enabled_order
         self.device = device
         self.resolver = resolver
+        self.court_reference_config = court_reference_config
         self.court_keypoint_contract = (
             resolve_court_keypoint_contract("physical_v1")
             if court_keypoint_contract is None
@@ -125,6 +135,7 @@ class TennisSceneOrchestrator:
             resolution=resolution,
             device=cfg.device,
             resolver=cfg.resolver,
+            court_reference_config=cfg.court_reference,
             court_keypoint_contract=cfg.plcs.court_keypoint_contract,
         )
 
@@ -158,6 +169,7 @@ class TennisSceneOrchestrator:
         camera_index: int,
         num_cameras: int,
         max_frames: int | None = None,
+        footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None,
     ) -> GVHMRResult:
         if self.gvhmr_config is None:
             raise RuntimeError("GVHMR config not set")
@@ -187,7 +199,11 @@ class TennisSceneOrchestrator:
             ),
             self.gvhmr_chain,
         )
-        return module.process(video_path, max_frames=max_frames)
+        return module.process(
+            video_path,
+            max_frames=max_frames,
+            footpoint_polygon_px=footpoint_polygon_px,
+        )
 
     def load_all(self) -> None:
         LOGGER.info("Pre-loading all modules...")
@@ -234,15 +250,42 @@ class TennisSceneOrchestrator:
             max_frames=max_frames,
             annotation_frame_index=frame_index,
         )
-        court_kp = court_result.keypoints
-        court_vis = court_result.visibility
+        court_context = prepare_court_reference(
+            camera_ids=tuple(camera_ids),
+            keypoints=court_result.keypoints,
+            visibility=court_result.visibility,
+            contract=self.court_keypoint_contract,
+            config=self.court_reference_config,
+            size=(width, height),
+            frame_index=frame_index,
+        )
+        court_kp = court_context.keypoints
+        court_vis = court_context.visibility
 
         if Stage.GVHMR in self.enabled_stages and self.gvhmr_config is not None:
+            footpoint_polygons: list[
+                tuple[tuple[float, float], ...] | None
+            ] = [None] * num_cameras
+            filter_config = self.gvhmr_config.court_footpoint_filter
+            if filter_config.enabled:
+                for camera_index in range(num_cameras):
+                    if not (court_vis[camera_index, frame_index, :14] == 1).all():
+                        raise ValueError(
+                            "GVHMR court footpoint filtering requires all 14 court "
+                            f"points visible for camera {camera_ids[camera_index]!r}."
+                        )
+                    footpoint_polygons[camera_index] = court_footpoint_polygon_px(
+                        court_kp[camera_index, frame_index, :14],
+                        size=(width, height),
+                        sideline_margin_m=filter_config.sideline_margin_m,
+                        baseline_margin_m=filter_config.baseline_margin_m,
+                    )
             association_result, aligned_players = self._run_gvhmr_multicamera(
                 video_paths=resolved_video_paths,
                 video_infos=video_infos,
                 camera_ids=camera_ids,
                 max_frames=max_frames,
+                footpoint_polygons=footpoint_polygons,
             )
             human_kp_2d_norm = aligned_players.human_kp_2d
             human_kp_vis = aligned_players.human_kp_vis
@@ -255,12 +298,27 @@ class TennisSceneOrchestrator:
         else:
             raise RuntimeError("GVHMR stage is required because PLCS depends on GVHMR.")
 
+        plcs_reference_metadata = (
+            None
+            if court_context.selection is None
+            else cast(
+                "PLCSReferenceMetadata",
+                reference_metadata(
+                    court_context.selection,
+                    human_kp_2d_norm.shape[0],
+                    "plcs",
+                ),
+            )
+        )
         plcs_result = self.plcs_module.process(
             human_kp_2d=human_kp_2d_norm,
             court_kp=court_kp,
             human_kp_vis=human_kp_vis,
             court_vis=court_vis,
             track_ids=track_ids,
+            court_keypoint_document=court_context.document,
+            court_reference_provenance=court_context.provenance,
+            reference_metadata=plcs_reference_metadata,
         )
 
         ball_uv = None
@@ -280,11 +338,22 @@ class TennisSceneOrchestrator:
             ball_uv = ball_detection_result.ball_uv
             ball_vis = ball_detection_result.visibility
             if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
+                blcs_reference_metadata = (
+                    None
+                    if court_context.selection is None
+                    else cast(
+                        "BLCSReferenceMetadata",
+                        reference_metadata(court_context.selection, 1, "blcs"),
+                    )
+                )
                 blcs_result = self.blcs_module.process(
                     ball_uv=ball_uv,
                     court_kp=court_kp,
                     ball_vis=ball_vis,
                     court_vis=court_vis,
+                    court_keypoint_document=court_context.document,
+                    court_reference_provenance=court_context.provenance,
+                    reference_metadata=blcs_reference_metadata,
                 )
                 ball_3d = blcs_result.ball_3d
 
@@ -321,6 +390,7 @@ class TennisSceneOrchestrator:
                     for camera_track_ids in track_ids_by_camera
                 ],
                 "player_association": association_result.to_dict(),
+                "court_reference": court_context.document,
                 "enabled_stages": [stage.value for stage in self.execution_order],
             },
         )
@@ -381,6 +451,9 @@ class TennisSceneOrchestrator:
         video_infos: Sequence[VideoInfo],
         camera_ids: Sequence[str],
         max_frames: int | None,
+        footpoint_polygons: Sequence[
+            tuple[tuple[float, float], ...] | None
+        ],
     ) -> tuple[PlayerAssociationResult, PlayerAssociationApplied]:
         """Run per-camera GVHMR and align players as (P, N, T, ...)."""
         gvhmr_results = [
@@ -389,6 +462,7 @@ class TennisSceneOrchestrator:
                 camera_index=camera_index,
                 num_cameras=len(video_paths),
                 max_frames=max_frames,
+                footpoint_polygon_px=footpoint_polygons[camera_index],
             )
             for camera_index, video_path in enumerate(video_paths)
         ]
