@@ -896,12 +896,8 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     f"data.{key} must be a positive ordered range."
                 )
-        if model.name == "plcs_multiview_axial_reference" and not (
-            3 <= num_views_range[0] <= num_views_range[1] <= 4
-        ):
-            raise SemanticConfigurationError(
-                "Axial reference data requires 3 or 4 cameras."
-            )
+        if model.name == "plcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+            raise SemanticConfigurationError("Axial reference data requires 3 or 4 cameras.")
         if "max_views" in model.values and num_views_range[1] > model.integer(
             "max_views"
         ):

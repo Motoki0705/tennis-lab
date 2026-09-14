@@ -89,6 +89,6 @@ frontmatterの無接頭辞metricsと `pred_test.npz` / `metrics.json` はtrainin
 2. scene平均だけでなくframe/windowのprior誤差binで抽出し、1–2mと2m以上を別々に管理する。今回のtestを学習側へ移さず、新たなtrain/val側の統計から作る。
 3. 同じ初期値・学習量で「埋め込みのみ」「残差のみ」「抽出なし」を分離評価する。実データの独立validation（可能なら3D GT、少なくとも複数クリップ）を用意し、合成側だけの過適合を検出する。
 
-再現情報: queue取得時点のcommitとpatchは元のまま保存した。完成コードは `43291cdb`。生成された `train.yaml`・sampling重みと統計もrun bundleに保存し、初期化とoverlay再生成の手順は `scripts/plcs_foot_residual/README.md` を参照する。GPUでの再実行も共有training queueを使う。
+再現情報: queue取得時点のcommitとpatchは元のまま保存した。完成コードは `43291cdb`。生成された `train.yaml`・sampling重みと統計もrun bundleに保存した。当時のコマンドとbundleの位置づけは `group-plcs-foot-residual` を参照。GPUでの再実行も共有training queueを使う。
 
 実装検証: 163件の関連CPUテストが成功。射影復元・退化/遮蔽・view融合・ゼロ残差時の厳密prior一致・残差head勾配・checkpoint互換性・重み付き抽出とsplit整合性を含む。ruff/mypyも成功。
