@@ -80,6 +80,20 @@ player_association:
   output_path: tennis_scene/player_association_result.json
   load_path: null
 
+player_motion:
+  source: plcs
+  scale_mode: fixed
+  alignment:
+    sigma_position_m: 0.5
+    sigma_heading_deg: 30.0
+    heading_weight: 1.0
+    scale_prior: 1.0
+    min_scale: 0.5
+    max_scale: 2.0
+    huber_delta: 1.0
+    heading_resultant_threshold: 0.5
+    max_nfev: 500
+
 ball_detection:
   enabled: true
   source: execute

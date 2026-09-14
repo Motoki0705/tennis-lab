@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,7 @@ from src.submodules.configuration import (
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
+from src.tennis_scene.motion_alignment.similarity import SimilarityConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -25,6 +27,7 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPPostprocessConfig,
 )
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig
+from src.tennis_scene.pipeline.components.motion_alignment import PlayerMotionConfig
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
 )
@@ -111,6 +114,13 @@ def _positive(value: int | float, *, name: str) -> None:
 def _unit_interval(value: float, *, name: str) -> None:
     if value < 0.0 or value > 1.0:
         raise SemanticConfigurationError(f"{name} must be in [0, 1], got {value}.")
+
+
+def _non_negative(value: float, *, name: str) -> None:
+    if value < 0.0:
+        raise SemanticConfigurationError(
+            f"{name} must be non-negative, got {value}."
+        )
 
 
 def _window_contract(size: int, overlap: int, *, name: str) -> None:
@@ -254,6 +264,28 @@ _PLCS_SCHEMA = StrictConfigSchema(
         "human_vis_threshold": ConfigField.of(float),
     },
 )
+_PLAYER_MOTION_ALIGNMENT_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.player_motion.alignment",
+    fields={
+        "sigma_position_m": ConfigField.of(float, int),
+        "sigma_heading_deg": ConfigField.of(float, int),
+        "heading_weight": ConfigField.of(float, int),
+        "scale_prior": ConfigField.of(float, int),
+        "min_scale": ConfigField.of(float, int),
+        "max_scale": ConfigField.of(float, int),
+        "huber_delta": ConfigField.of(float, int),
+        "heading_resultant_threshold": ConfigField.of(float, int),
+        "max_nfev": ConfigField.of(int),
+    },
+)
+_PLAYER_MOTION_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.player_motion",
+    fields={
+        "source": ConfigField.of(str),
+        "scale_mode": ConfigField.of(str),
+        "alignment": ConfigField.mapping(_PLAYER_MOTION_ALIGNMENT_SCHEMA),
+    },
+)
 _BLCS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.blcs",
     fields={
@@ -275,6 +307,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(
         "court_kp": ConfigField.mapping(_COURT_SCHEMA),
         "gvhmr": ConfigField.mapping(_GVHMR_SCHEMA),
         "player_association": ConfigField.mapping(_ASSOCIATION_SCHEMA),
+        "player_motion": ConfigField.mapping(_PLAYER_MOTION_SCHEMA),
         "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
         "plcs": ConfigField.mapping(_PLCS_SCHEMA),
         "blcs": ConfigField.mapping(_BLCS_SCHEMA),
@@ -298,6 +331,7 @@ class PipelineRuntimeConfig:
     court_kp: CourtKPConfig
     gvhmr: GVHMRConfig
     player_association: PlayerAssociationConfig
+    player_motion: PlayerMotionConfig
     ball_detection: BallDetectionConfig
     plcs: PLCSConfig
     blcs: BLCSConfig
@@ -463,6 +497,70 @@ class PipelineRuntimeConfig:
             load_path=association_load,
         )
 
+        player_motion = _mapping(value["player_motion"], name="player_motion")
+        alignment = _mapping(
+            player_motion["alignment"], name="player_motion.alignment"
+        )
+        motion_source = cast(str, player_motion["source"])
+        if motion_source not in {"plcs", "gvhmr_alignment"}:
+            raise SemanticConfigurationError(
+                "player_motion.source must be 'plcs' or 'gvhmr_alignment', got "
+                f"{motion_source!r}."
+            )
+        scale_mode = cast(str, player_motion["scale_mode"])
+        if scale_mode not in {"fixed", "free"}:
+            raise SemanticConfigurationError(
+                "player_motion.scale_mode must be 'fixed' or 'free', got "
+                f"{scale_mode!r}."
+            )
+        sigma_position = float(cast(float | int, alignment["sigma_position_m"]))
+        _positive(sigma_position, name="player_motion.alignment.sigma_position_m")
+        sigma_heading_deg = float(cast(float | int, alignment["sigma_heading_deg"]))
+        _positive(
+            sigma_heading_deg,
+            name="player_motion.alignment.sigma_heading_deg",
+        )
+        heading_weight = float(cast(float | int, alignment["heading_weight"]))
+        _non_negative(heading_weight, name="player_motion.alignment.heading_weight")
+        scale_prior = float(cast(float | int, alignment["scale_prior"]))
+        _non_negative(scale_prior, name="player_motion.alignment.scale_prior")
+        min_scale = float(cast(float | int, alignment["min_scale"]))
+        max_scale = float(cast(float | int, alignment["max_scale"]))
+        _positive(min_scale, name="player_motion.alignment.min_scale")
+        _positive(max_scale, name="player_motion.alignment.max_scale")
+        if min_scale > max_scale:
+            raise SemanticConfigurationError(
+                "player_motion.alignment.min_scale must not exceed max_scale, "
+                f"got {min_scale} > {max_scale}."
+            )
+        huber_delta = float(cast(float | int, alignment["huber_delta"]))
+        _positive(huber_delta, name="player_motion.alignment.huber_delta")
+        heading_resultant = float(
+            cast(float | int, alignment["heading_resultant_threshold"])
+        )
+        _unit_interval(
+            heading_resultant,
+            name="player_motion.alignment.heading_resultant_threshold",
+        )
+        max_nfev = cast(int, alignment["max_nfev"])
+        _positive(max_nfev, name="player_motion.alignment.max_nfev")
+        player_motion_config = PlayerMotionConfig(
+            source=cast(Literal["plcs", "gvhmr_alignment"], motion_source),
+            scale_mode=cast(Literal["fixed", "free"], scale_mode),
+            smpl_joint_regressor=bundled_assets.smpl_neutral_joint_regressor,
+            similarity=SimilarityConfig(
+                sigma_position=sigma_position,
+                sigma_heading=math.radians(sigma_heading_deg),
+                heading_weight=heading_weight,
+                scale_prior=scale_prior,
+                min_scale=min_scale,
+                max_scale=max_scale,
+                huber_delta=huber_delta,
+                heading_resultant_threshold=heading_resultant,
+                max_nfev=max_nfev,
+            ),
+        )
+
         ball = _mapping(value["ball_detection"], name="ball_detection")
         gate = _mapping(ball["trajectory_gate"], name="ball_detection.trajectory_gate")
         ball_load, ball_output = _stage_path(ball, resolver, name="ball_detection")
@@ -602,6 +700,7 @@ class PipelineRuntimeConfig:
             court_kp=court_config,
             gvhmr=gvhmr_config,
             player_association=association_config,
+            player_motion=player_motion_config,
             ball_detection=ball_config,
             plcs=plcs_config,
             blcs=blcs_config,
@@ -1072,7 +1171,7 @@ _VISUALIZE_TASKS_SCHEMA = StrictConfigSchema(
     },
 )
 _VISUALIZATION_TASK_NAMES = frozenset(
-    {"ball_detection", "court_kp", "gvhmr", "plcs", "blcs"}
+    {"ball_detection", "court_kp", "gvhmr", "plcs", "blcs", "gvhmr_alignment"}
 )
 
 

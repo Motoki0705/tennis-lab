@@ -28,6 +28,61 @@ from src.tennis_scene.motion_alignment.visualization import (
     plot_diagnostics,
     render_comparison,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+
+# Declared before any side effect: every CLI path argument and the role that
+# grants write authority for it. ``clip_dir``/``motion_dir`` are repository data,
+# ``body_models_dir`` is a licensed external asset, and the output directory is
+# caller-owned and may not exist yet.
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.gvhmr_alignment",
+    fields=(
+        BoundaryPathField(
+            "clip_dir",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "motion_dir",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "asset_repository_root",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "body_models_dir",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+            allow_role_root=True,
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -53,10 +108,38 @@ def main() -> None:
     args = parser.parse_args()
     if args.cpu_threads < 1:
         parser.error("--cpu-threads must be positive")
+    # Resolve every explicit CLI path before validation. Relative arguments keep
+    # resolving against the process CWD, exactly as the previous CLI did; the
+    # boundary then enforces the absolute role contract and existence checks.
+    asset_root = args.asset_repository_root.expanduser().resolve(strict=False)
+    output_dir = args.output_dir.expanduser().resolve(strict=False)
+    resolver = PathResolver(
+        RuntimePathRoots(
+            project_root=asset_root,
+            data_root=(asset_root / "data").resolve(strict=False),
+            checkpoint_root=(asset_root / "ckpt").resolve(strict=False),
+            artifact_root=(asset_root / "outputs").resolve(strict=False),
+            output_root=output_dir,
+            cache_root=(asset_root / ".cache").resolve(strict=False),
+            external_asset_root=(asset_root / "third_party").resolve(strict=False),
+        )
+    )
+    paths = PATH_BOUNDARY.validate(
+        {
+            "clip_dir": args.clip_dir.expanduser().resolve(strict=False),
+            "motion_dir": args.motion_dir.expanduser().resolve(strict=False),
+            "asset_repository_root": asset_root,
+            "body_models_dir": args.body_models_dir.expanduser().resolve(strict=False),
+            "output_dir": output_dir,
+        },
+        resolver=resolver,
+    )
+    clip = paths.declared("clip_dir").path
+    motion_dir = paths.declared("motion_dir").path
+    output = paths.declared("output_dir").path
+    asset_root = paths.declared("asset_repository_root").path
+    body_models_dir = paths.declared("body_models_dir").path
     torch.set_num_threads(args.cpu_threads)
-    clip = args.clip_dir.resolve(strict=True)
-    motion_dir = args.motion_dir.resolve(strict=True)
-    output = args.output_dir.resolve()
     if output.exists():
         raise FileExistsError(
             f"Use a new output directory to preserve previous results: {output}"
@@ -105,7 +188,6 @@ def main() -> None:
         raise FileNotFoundError(
             f"No global SMPL archives found under {motion_dir}; local GVHMR JSON does not contain world transl"
         )
-    asset_root = args.asset_repository_root.resolve(strict=True)
     vendor = asset_root / "src/submodules/vendor/gvhmr"
     assets = BundledModelAssetPaths(
         hmr2_mean_params=vendor / "hmr2/smpl_mean_params.npz",
@@ -171,7 +253,7 @@ def main() -> None:
         )
         world = load_world_motion(
             frozen_source,
-            body_models_dir=args.body_models_dir.resolve(strict=True),
+            body_models_dir=body_models_dir,
             bundled_assets=assets,
         )
         player_metrics, player_arrays, transforms = compare_track(

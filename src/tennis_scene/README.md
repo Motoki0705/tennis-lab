@@ -10,8 +10,12 @@ DINO → ViTPose → PLCSと外部ボール観測 → BLCSを接続する経路�
 [`reference_pipeline/README.md`](reference_pipeline/README.md)を参照してください。
 SMPLを実行せず、canonical poseと3D関節を保存できます。
 
-保存済みGVHMRワールドモーションをPLCSへトラック共通の重力固定相似変換で合わせる
-CPU後処理と比較実験は[`motion_alignment/README.md`](motion_alignment/README.md)を参照してください。
+選手モーションの供給元は`player_motion.source`で選びます。既定の`plcs`は現行どおり
+PLCSのコート軌道をGVHMRのincam SMPLで配置し、`gvhmr_alignment`はパイプライン内で
+GVHMRワールドモーションをPLCSへトラック共通の重力固定相似変換で合わせてから
+配置します。整列後のSMPLフィールド契約、設定値、残差診断、保存済みGVHMRワールド
+モーションを使うCPU比較実験は[`motion_alignment/README.md`](motion_alignment/README.md)を
+参照してください。
 
 ## Modules
 
@@ -41,13 +45,14 @@ CPU後処理と比較実験は[`motion_alignment/README.md`](motion_alignment/RE
 
 ### scripts/
 - **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。
-- **`visualization.py`**: 保存済み `SceneResult` の可視化エントリポイント。
+- **`visualization.py`**: 保存済み `SceneResult` の3D可視化エントリポイント。
+- **`visualize_tasks.py`**: stage別タスク動画(`plcs`/`gvhmr_alignment`/`blcs`等)を保存済み `SceneResult` から書き出すエントリポイント。`gvhmr_alignment`は整列後の位置・yawと`player_motion`メタデータのPLCS参照を重ねる。
 - **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
 - **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
 - **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
 
 ### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
+- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`player_motion`/`ball_detection`/`plcs`/`blcs`)の実行設定。`player_motion.source`(既定`plcs`)・`scale_mode`・`alignment`が整列推定を制御する。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
 - **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
 
@@ -56,3 +61,4 @@ CPU後処理と比較実験は[`motion_alignment/README.md`](motion_alignment/RE
 - `player_position` / `ball_3d`: コート座標系。XY平面が地面、+Zが上。
 - `smpl_vertices_local` / `smpl_global_orient` / `smpl_body_pose`: GVHMR/SMPL由来の人体座標系。人体のup軸はY。
 - 可視化時は、SMPL頂点をroot中心化した後に `src.utils.geometry.matrices.smpl_y_up_to_court_z_up` でY-upからコートZ-upへ明示変換し、その後 `player_yaw` をコート+Z軸まわりに適用する。
+- `player_motion.source=gvhmr_alignment` でも同じ配置規則を使う。整列済みの4フィールドがworld頂点の直接相似変換を再現することの契約は[`motion_alignment/README.md`](motion_alignment/README.md)を参照。
