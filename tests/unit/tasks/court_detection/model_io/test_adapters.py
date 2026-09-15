@@ -290,7 +290,6 @@ def test_decode_returns_typed_predictions_for_every_head() -> None:
         kp_logits,
         original_size_hw=(7, 9),
         subpixel_refine=False,
-        max_peaks=1,
     )
     segmentation = adapter.decode_prediction(
         "seg",
@@ -326,3 +325,205 @@ def test_decode_returns_typed_predictions_for_every_head() -> None:
     )
     assert isinstance(semantic_line, CourtSegmentationPrediction)
     assert semantic_line.mask.shape == (4, 5)
+
+
+def test_decode_prediction_keeps_extra_peaks_only_when_requested() -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    logits = torch.full((1, 2, 9, 9), -20.0)
+    logits[0, 0, 1, 1] = torch.logit(torch.tensor(0.9))
+    logits[0, 0, 7, 7] = torch.logit(torch.tensor(0.7))
+    logits[0, 1, 4, 4] = torch.logit(torch.tensor(0.8))
+    default = adapter.decode_prediction(
+        "kp",
+        logits,
+        original_size_hw=(9, 9),
+        subpixel_refine=False,
+    )
+    multi = adapter.decode_prediction(
+        "kp",
+        logits,
+        original_size_hw=(9, 9),
+        subpixel_refine=False,
+        max_peaks=2,
+    )
+
+    assert isinstance(default, CourtKeypointPrediction)
+    assert default.keypoints.shape == (2, 1, 2)
+    assert default.valid.tolist() == [[True], [True]]
+    torch.testing.assert_close(
+        default.keypoints[:, 0],
+        torch.tensor([[1.0, 1.0], [4.0, 4.0]]),
+    )
+    assert multi.keypoints.shape == (2, 2, 2)
+    assert multi.valid.tolist() == [[True, True], [True, False]]
+    torch.testing.assert_close(
+        multi.keypoints[0],
+        torch.tensor([[1.0, 1.0], [7.0, 7.0]]),
+    )
+
+
+def _kp_head_payload(payload: dict[str, object]) -> dict[str, object]:
+    predictions = payload["predictions"]
+    assert isinstance(predictions, dict)
+    kp_payload = predictions["kp"]
+    assert isinstance(kp_payload, dict)
+    return kp_payload
+
+
+def test_test_payload_matches_the_supervised_point_capacity() -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    kp_logits = torch.full((1, 2, 8, 8), -20.0)
+    kp_logits[0, 0, 2, 3] = torch.logit(torch.tensor(0.9))
+    logits = {"kp": kp_logits}
+
+    singleton = adapter.test_payload(batch, logits)
+    singleton_kp = _kp_head_payload(singleton)
+    singleton_keypoints = singleton_kp["keypoints_normalized"]
+    singleton_scores = singleton_kp["scores"]
+    singleton_valid = singleton_kp["valid"]
+    assert isinstance(singleton_keypoints, torch.Tensor)
+    assert isinstance(singleton_scores, torch.Tensor)
+    assert isinstance(singleton_valid, torch.Tensor)
+    assert singleton_keypoints.shape == (1, 2, 1, 2)
+    assert singleton_scores.shape == (1, 2, 1)
+    assert singleton_valid.tolist() == [[[True], [False]]]
+
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    kp_target["points_xy"] = torch.zeros(1, 2, 2, 2)
+    kp_target["point_visible"] = torch.ones(1, 2, 2, dtype=torch.bool)
+    kp_target["physical_indices"] = torch.zeros(1, 2, 2, dtype=torch.long)
+
+    multi = adapter.test_payload(batch, logits)
+    multi_kp = _kp_head_payload(multi)
+    multi_keypoints = multi_kp["keypoints_normalized"]
+    multi_scores = multi_kp["scores"]
+    assert isinstance(multi_keypoints, torch.Tensor)
+    assert isinstance(multi_scores, torch.Tensor)
+    assert multi_keypoints.shape == (1, 2, 2, 2)
+    assert multi_scores.shape == (1, 2, 2)
+
+
+def test_test_payload_requires_the_supervised_kp_target() -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    del batch["targets"]
+
+    with pytest.raises(CourtModelIOError, match="targets mapping"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
+
+
+@pytest.mark.parametrize(
+    "points_xy",
+    [
+        torch.zeros(1, 2, 1),
+        torch.zeros(1, 2, 1, 3),
+        torch.zeros(2, 2, 1, 2),
+    ],
+)
+def test_test_payload_rejects_malformed_point_targets(points_xy: torch.Tensor) -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    kp_target["points_xy"] = points_xy
+
+    with pytest.raises(CourtModelIOError, match="points_xy"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
+
+
+def test_test_payload_rejects_empty_point_capacity() -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    kp_target["points_xy"] = torch.zeros(1, 2, 0, 2)
+
+    with pytest.raises(CourtModelIOError, match="positive supervised point count"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
+
+
+def test_test_payload_rejects_missing_point_visibility() -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    del kp_target["point_visible"]
+
+    with pytest.raises(CourtModelIOError, match="point_visible"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
+
+
+@pytest.mark.parametrize(
+    "point_visible",
+    [
+        torch.ones(1, 2, 2, dtype=torch.bool),
+        torch.ones(1, 2, 1),
+    ],
+)
+def test_test_payload_rejects_malformed_point_visibility(
+    point_visible: torch.Tensor,
+) -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    kp_target["point_visible"] = point_visible
+
+    with pytest.raises(CourtModelIOError, match="point_visible"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
+
+
+@pytest.mark.parametrize(
+    "physical_indices",
+    [
+        torch.zeros(1, 2, 1).int(),
+        torch.zeros(1, 2, 2, dtype=torch.long),
+    ],
+)
+def test_test_payload_rejects_malformed_physical_indices(
+    physical_indices: torch.Tensor,
+) -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    kp_target["physical_indices"] = physical_indices
+
+    with pytest.raises(CourtModelIOError, match="physical_indices"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
+
+
+def test_test_payload_rejects_non_finite_points() -> None:
+    bundle = _bundle("kp")
+    adapter = _adapter(bundle)
+    batch = _batch(bundle)
+    targets = batch["targets"]
+    assert isinstance(targets, dict)
+    kp_target = targets["kp"]
+    assert isinstance(kp_target, dict)
+    kp_target["points_xy"] = torch.full((1, 2, 1, 2), float("nan"))
+
+    with pytest.raises(CourtModelIOError, match="finite"):
+        adapter.test_payload(batch, {"kp": torch.zeros(1, 2, 8, 8)})
