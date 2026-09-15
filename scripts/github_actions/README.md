@@ -44,10 +44,8 @@ sudoパスワードの後、別の非表示プロンプトでGitHub登録トー�
 - queue学習とCUDAテストを `/var/lib/tennis-lab-actions/gpu.lock`
   から導出される2-slot protocolで調停する。CUDA CIは従来どおり
   main lockをexclusiveに取得し、`all`として動作する。
-- main、`.gate`、`.slot-0`、`.slot-1`の4つのGPU lockだけを
-  `tennis-actions`と`kamimura`の双方から書き込み可能にする。
-  親state directoryは`0710`で`kamimura`には通過権限だけを与え、assets、runs、
-  training queueの内容は引き続き`tennis-actions`専用とする。
+- main、`.gate`、`.slot-0`、`.slot-1`の4つのGPU lockを
+  `tennis-actions`専用として作成する。
 
 WSLのsystemd serviceだけではWSL instance自体を維持できないため、Windowsログオン時に
 WSLへのhandleを保持するTask Scheduler taskも登録する。
@@ -81,9 +79,8 @@ systemd queue内で継続し、状態・ログ・run checkoutは次へ保存さ�
 queue serviceの停止時、systemdはservice cgroupへSIGTERMを送るが、強制timeoutや
 SIGKILLではwrapperを打ち切らない。各wrapperはqueueが作成・検証したprivate PGIDを
 所有し、15秒のTERM grace後にKILLへescalateして、group不在とleader reapを証明するまで
-`state=terminating`のままGPU lockを保持する。MCP container jobはさらにdeterministic
-containerの停止ackを必要とする。in-groupのuninterruptible processで不在を証明できない
-場合にserviceとcapacityが安全側で停止中のまま残ることは意図した挙動である。
+`state=terminating`のままGPU lockを保持する。in-groupのuninterruptible processで
+不在を証明できない場合にserviceとcapacityが安全側で停止中のまま残ることは意図した挙動である。
 自己daemon化や`setsid`でqueue PGIDからescapeするhost processはsupport対象外である。
 
 ```text
@@ -99,55 +96,12 @@ TRAINING_QUEUE_DIR=/var/lib/tennis-lab-actions/training-queue \
   /opt/tennis-lab-actions/bin/training_queue.sh status
 ```
 
-## WSL MCP専用trusted runner
-
-MCPのデプロイは通常の`tennis-actions` GPU runnerでは実行しない。MCPのstate、control
-directory、canonical checkout、`kamimura`のuser systemdを更新する必要があるため、
-`kamimura`として動く専用runnerを使用する。
-
-`gh`がrepository adminとして認証済みのcanonical checkoutで、次を1回実行する。
-登録tokenはpipeだけを通り、ファイルやshell履歴には保存されない。
-
-```bash
-gh api --method POST \
-  repos/Motoki0705/tennis-lab/actions/runners/registration-token \
-  --jq .token \
-  | scripts/github_actions/install_trusted_mcp_deploy_runner.sh \
-      --registration-token-stdin
-```
-
-installerは`trusted-mcp-deploy`ラベルを持つrepository runnerと、次のuser serviceを
-作成して起動する。
-
-```text
-tennis-lab-trusted-mcp-deploy-runner.service
-```
-
-runnerのpre-job hookは、`Motoki0705/tennis-lab`の
-`.github/workflows/deploy-wsl-mcp.yml`、`main`、repository owner、`deploy` job、
-`push`または`workflow_dispatch`がすべて一致する場合だけjobを許可する。不一致のjobは
-checkout前に失敗する。通常のCUDAテストと学習は引き続き隔離された
-`tennis-actions` runnerで実行する。
-
-既存環境で共有GPU lockの権限だけを再設定する場合は、次を実行する。
-
-```bash
-sudo bash scripts/github_actions/install_self_hosted_runner.sh \
-  --configure-gpu-lock-only
-scripts/github_actions/install_trusted_mcp_deploy_runner.sh
-```
-
 ## セキュリティ境界
 
 GitHubは、公開リポジトリのself-hosted runnerではforkのPRからホストを侵害されうると
 警告している。このためGPU workflowsには`push`、`pull_request`、
 `pull_request_target` triggerを置かず、ownerチェック、repository variable、
 Environment承認をすべて必須にしている。学習commandへsecretを含めてはならない。
-
-MCP deploy runnerはownerのhomeへ限定的な書き込み権限を持つため、固有labelだけを
-security boundaryとして扱わない。workflow側のowner/main/path条件に加えて、host側の
-pre-job hookでworkflow pathとGitHub contextを再検証する。hookを無効化した状態で
-trusted runnerを起動してはならない。
 
 - [GitHub: Adding self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
 - [GitHub: Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
