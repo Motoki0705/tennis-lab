@@ -23,6 +23,7 @@ from src.tasks.plcs.model_io.court_keypoint_checkpoint import (
 )
 from src.tasks.plcs.model_io.factory import (
     PLCSBoundModelIO,
+    PLCSModelIOConfig,
     PLCSStandardBoundModelIO,
     PLCSTrackingBoundModelIO,
     bind_plcs_model_io,
@@ -40,6 +41,7 @@ __all__ = [
     "PLCSDecodedPrediction",
     "PLCSInputProfile",
     "PLCSModelIOAdapter",
+    "PLCSModelIOConfig",
     "PLCSPhysicalPrediction",
     "PLCSPreparedBatch",
     "PLCSReprojectionTarget",

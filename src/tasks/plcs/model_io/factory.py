@@ -7,13 +7,14 @@ from typing import Protocol, TypeAlias, TypeVar, cast
 
 from torch import nn
 
+from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.base.model_io import (
     BoundModelIO,
     ModelAdapterMismatchError,
     ModelCall,
     bind_model_io,
 )
-from src.tasks.plcs.configuration import PLCSTrainingConfig
+from src.tasks.plcs.configuration import PLCSDataConfig, PLCSModelConfig
 from src.tasks.plcs.model_io.adapters import (
     PLCSAdapter,
     PLCSModelIOAdapter,
@@ -51,6 +52,25 @@ PLCSTrackingBoundModelIO: TypeAlias = BoundModelIO[
 ]
 PLCSBoundModelIO: TypeAlias = PLCSStandardBoundModelIO | PLCSTrackingBoundModelIO
 DecodedPredictionT_co = TypeVar("DecodedPredictionT_co", covariant=True)
+
+
+class PLCSModelIOConfig(Protocol):
+    """Read-only configuration slice the PLCS model/adapter factory consumes.
+
+    Only the model variant, the resolved data contract, and the CourtKP20
+    contract shape model construction. ``PLCSTrainingConfig`` satisfies this
+    structurally; inference-only boundaries may pass a lighter object without a
+    training/run section instead of fabricating training configuration.
+    """
+
+    @property
+    def model(self) -> PLCSModelConfig: ...
+
+    @property
+    def data(self) -> PLCSDataConfig: ...
+
+    @property
+    def court_keypoint_contract(self) -> CourtKeypointContract: ...
 
 
 class _PLCSBindingAdapter(Protocol[DecodedPredictionT_co]):
@@ -100,7 +120,7 @@ def bind_plcs_model_io(
 
 
 def _standard_adapter(
-    runtime: PLCSTrainingConfig,
+    runtime: PLCSModelIOConfig,
     *,
     model_type: type[nn.Module],
     profile: PLCSInputProfile,
@@ -139,7 +159,7 @@ def _standard_adapter(
     )
 
 
-def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSBoundModelIO:
     """Construct and bind the configured PLCS model and adapter exactly once."""
     model_cfg = runtime.model
     model_name = model_cfg.name
@@ -232,6 +252,7 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
 
 __all__ = [
     "PLCSBoundModelIO",
+    "PLCSModelIOConfig",
     "PLCSRawOutput",
     "PLCSStandardBoundModelIO",
     "PLCSTrackingBoundModelIO",

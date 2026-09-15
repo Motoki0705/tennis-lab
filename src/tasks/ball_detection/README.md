@@ -61,6 +61,12 @@
 - **`api/predict.py`**: `predict_clip()`。重複ウィンドウ推論の集約と `PredictionSequence` 構築。
 - **`io/clip.py`**: クリップディレクトリから推論/描画用テンソルを構築。
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
+- **`review/datasets.py`**: `BallDatasetCatalog`。TrackNet/YouTube/unified webを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
+- **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
+- **`inference/loader.py`**: `load_ball_model()`。model+adapterを構築し `model.` 重みだけを `strict=True` で復元する推論専用loader。
+- **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをoriginal image pixelへ写す。
+- **`inference/rasters.py`**: 予測probability heatmapのRGBA overlay。
+- **`inference/service.py`**: `DetectionService`。catalog/scenes/preview/image/validate/inferを提供する共有Webバックエンド。
 
 ### generate_dataset/
 - **`candidate_workflow.py`**: 候補区間の手動選択(`run_candidate_selection`)と疑似ラベル推論(`predict_candidates`)。
@@ -78,3 +84,88 @@
 
 ### configs/
 - モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
+
+## データセットレビュー / 推論UI
+
+起動・操作・HTTP API・GPUキューの正本は
+[共有Detection UI](../../base/visualization/detection/README.md)。ここには
+ball_detection固有のsourceと互換契約だけを記す。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.review_dataset   # port 8776
+.venv/bin/python -m src.tasks.ball_detection.scripts.inference_ui    # port 8777
+```
+
+### source
+
+| id | 実体 | mode | 備考 |
+|---|---|---|---|
+| `tracknet` | `data/tennis/tracknet/<game>/<Clip*>/Label.csv` + 連番jpg | temporal | 既定source |
+| `youtube` | `data/tennis/youtube/frames/<video>/<clip_*>/Label.csv` + 連番jpg | temporal | YouTubeアノテーション |
+| `web_static` | `data/tennis/web/unified` の `temporal=0` sample | static | 1 frame = 1 scene |
+| `web_temporal` | 同ストアの `temporal=1` sample(sequence単位) | temporal | frame順は保存 `frame_index` |
+
+`web_static`/`web_temporal` は unified store(`index.npz`)が未生成なら
+catalogに `available=false` と理由を出すだけで、空の一覧を捏造しない。
+scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結果として
+解決する。任意pathを受け取るAPIは提供しない。
+
+### 表示・推論の契約
+
+- GTは保存済み `FrameLabel`(multi-instance、`visibility`付き)を
+  original image pixelの `x,y` で返す。補間・3D化・推定ラベルは行わない。
+  rastersは予測probability heatmapのみで、GT ball Gaussianは捏造しない。
+- アノテーション行が無いframeは「missing」であり、明示的なnegativeとは区別する。
+  previewは `annotated=false` と warningを返し、推論metricsはそのframeを除外する
+  (`metrics.scored_frames` / `excluded_frames`)。窓全体が未アノテーションなら
+  `metrics.available=false` と理由を返し、0埋めのmetricを捏造しない。
+  非finiteな座標・visibilityは読み込み時に拒否し、JSONへNaNを出さない。
+- 推論窓の長さは checkpointの `model.num_frames` を上限とし、下限は
+  アーキテクチャ最小(`stunet`=8、その他=1)にMDD multi-frame時の2 frame要件を
+  加えた値。範囲外はpadせず422で拒否する。
+- static sourceは unified storeの正規static sampling(1 frameを
+  `model.num_frames` 回反復)だけを使い、`metrics.window.mode="static_repeat"`
+  とwarningで明示する。反復した窓の予測は平均heatmapへ明示的に集約して
+  **単一の元frame**としてdecode・採点し、itemsのindexを一意にする
+  (同一GTを反復回数だけ数えない)。集約前の反復回数は `metrics.window.repeat`
+  に残す。temporal sourceは選択frame以降の連続窓のみで、シーン長を超える要求は
+  拒否する。
+- モデル入力は original frameを checkpointの `data.image_size` へ
+  `INTER_LINEAR` でresizeした float32 `[0,1]` RGB(augmentationなし)。
+  MDD変換は `model_io/adapters.py` の境界で行い、UI側では再実装しない。
+- metricsは `BallDetectionMetrics` をそのまま使い、Hungarian matchingと
+  checkpoint保存の `ball_distance_threshold`(original pixel)で採点する。
+  一致検出が0件の平均距離は `null` (UIではN/A) とし、誤差0とは表示しない。
+
+### 更新と境界
+
+- `catalog()` は呼び出しごとにデータ・checkpoint rootを再走査する。追加された
+  clipや `*.ckpt` は再起動なしで一覧に出て、利用できないsourceの理由は
+  2回目以降の呼び出しでも失われない。checkpointの窓・しきい値などの契約も
+  常に同じ応答内の情報から決まる。
+- `validate` / `infer` は実行直前にcheckpointの `(size, mtime_ns)` を確認し、
+  本体が差し替わっていれば保存configを読み直してから使う。旧metadataで別の
+  checkpointを推論しない。catalogが一度拒否したcheckpointは再読込で復活させず、
+  復旧は `catalog()` の再走査で行う。
+- 読み取りはconfigured root内に限定する。root外へ解決される `*.ckpt`
+  symlinkは `error` 付きで拒否し、root外を指すclipディレクトリやframe
+  symlinkは対象sceneを除外してwarningに残す。unified storeの `paths` が
+  configured data root外を指す場合もstoreを unavailable として理由を返す。
+  正規writerの `../source/image.jpg` のような原画像参照はdata root内なら許可する。
+
+### checkpoint互換
+
+checkpoint本体の保存configだけを根拠にする(ファイル名から推論しない)。
+
+- `model.name` が `stunet`/`conv_next_unet`/`dinov3_rope` 以外、または
+  `num_frames < アーキテクチャ最小` のcheckpointは `error` 付きで一覧に出し、
+  実行時に明示的に失敗させる。
+- `model.input_mode` か入力 `image_size` が欠落したcheckpointも同じく
+  `error` 付きで早期に unusable とする。
+- metricsは**キー欠落**なら `configs/metrics/default.yaml` の既定値を使って
+  warningに残し、**値が不正**(範囲外・`nan`/`inf`・型違い)なら
+  checkpointを unusable にする(黙って別のしきい値へ置き換えない)。
+- dataset互換性は学習時の `data.source` ではなくアーキテクチャ制約で決める。
+  static sourceは正規反復モードがあるため常に実行可能、temporal sourceは
+  最小窓以上の場合だけ互換とする。`scenes(checkpoint=)` はdataset単位の互換性に
+  加えて**sceneごとのframe数**で絞り、短すぎるclipを実行候補に出さない。

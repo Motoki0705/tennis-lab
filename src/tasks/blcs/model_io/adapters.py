@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import torch
@@ -433,6 +433,12 @@ class TrajectoryModelIOAdapter(ABC):
             if not isinstance(camera, Mapping):
                 raise ModelInputContractError("Each scene camera must be a mapping.")
             selected.append(camera)
+        court_kp_arrays = [
+            self._contract_court_array(camera, "court_kp_uv") for camera in selected
+        ]
+        court_vis_arrays = [
+            self._contract_court_array(camera, "court_kp_vis") for camera in selected
+        ]
         if self.input_profile == "single":
             if len(selected) != 1:
                 raise ModelInputContractError(
@@ -441,31 +447,43 @@ class TrajectoryModelIOAdapter(ABC):
             camera = selected[0]
             batch = self.build_inference_batch_from_arrays(
                 ball_uv=np.asarray(camera["ball_uv"], dtype=np.float32),
-                court_kp=np.asarray(camera["court_kp_uv"], dtype=np.float32),
+                court_kp=court_kp_arrays[0],
                 ball_vis=np.asarray(camera["ball_vis"], dtype=np.bool_),
-                court_vis=np.asarray(camera["court_kp_vis"], dtype=np.bool_),
+                court_vis=court_vis_arrays[0],
             )
             return batch
         return self.build_inference_batch_from_arrays(
             ball_uv=np.stack(
                 [np.asarray(camera["ball_uv"], dtype=np.float32) for camera in selected]
             ),
-            court_kp=np.stack(
-                [
-                    np.asarray(camera["court_kp_uv"], dtype=np.float32)
-                    for camera in selected
-                ]
-            ),
+            court_kp=np.stack(court_kp_arrays),
             ball_vis=np.stack(
                 [np.asarray(camera["ball_vis"], dtype=np.bool_) for camera in selected]
             ),
-            court_vis=np.stack(
-                [
-                    np.asarray(camera["court_kp_vis"], dtype=np.bool_)
-                    for camera in selected
-                ]
-            ),
+            court_vis=np.stack(court_vis_arrays),
         )
+
+    def _contract_court_array(
+        self,
+        camera: Mapping[str, object],
+        key: str,
+    ) -> NDArray[Any]:
+        """Slice one scene camera's court array to the model's token contract.
+
+        The dataset loader aligns a full CourtKP20 array to the reference camera
+        and then truncates it to the first ``num_court_tokens`` ground
+        keypoints. Scene inference must reproduce that truncation after the same
+        alignment, so a 20-keypoint scene camera still yields the model's
+        ``num_court_tokens`` court tokens.
+        """
+        array = np.asarray(camera[key])
+        if array.ndim == 0 or array.shape[0] < self.num_court_tokens:
+            raise ModelInputContractError(
+                f"Scene camera {key!r} has shape {array.shape}, but the model "
+                f"contract requires at least {self.num_court_tokens} court "
+                "keypoints."
+            )
+        return np.asarray(array[: self.num_court_tokens])
 
     @staticmethod
     def trajectory_arrays(

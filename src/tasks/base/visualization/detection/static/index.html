@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Detection Review</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="identity">
+        <span class="brand-symbol" data-icon="scan"></span
+        ><strong id="title">Detection</strong
+        ><span id="mode" class="mode"></span>
+      </div>
+      <div class="top-actions">
+        <span id="device-status"></span
+        ><button
+          id="refresh"
+          class="icon"
+          title="カタログを更新"
+          aria-label="カタログを更新"
+          data-icon="refresh"
+        ></button>
+      </div>
+    </header>
+    <main class="workspace">
+      <aside class="browser" aria-label="データセットとcheckpoint">
+        <section id="checkpoint-section">
+          <h2>Checkpoint</h2>
+          <input
+            id="checkpoint-search"
+            type="search"
+            placeholder="checkpointを検索"
+            aria-label="checkpointを検索"
+          /><select id="checkpoint" aria-label="Checkpoint">
+            <option value="">未選択</option>
+          </select>
+          <p id="checkpoint-meta" class="muted"></p>
+          <details id="checkpoint-errors" hidden>
+            <summary>非対応checkpoint</summary>
+            <div></div>
+          </details>
+        </section>
+        <section class="dataset-section">
+          <h2>Datasets</h2>
+          <nav id="datasets" aria-label="データセット一覧"></nav>
+        </section>
+        <section class="scene-section">
+          <div class="section-heading">
+            <h2>Scenes</h2>
+            <span id="scene-count" class="muted"></span>
+          </div>
+          <input
+            id="scene-search"
+            type="search"
+            placeholder="シーンを検索"
+            aria-label="シーンを検索"
+          />
+          <nav id="scenes" aria-label="シーン一覧"></nav>
+          <div class="pagination">
+            <button
+              id="page-prev"
+              class="icon"
+              title="前のページ"
+              aria-label="前のページ"
+              data-icon="left"
+            ></button
+            ><span id="page-label"></span
+            ><button
+              id="page-next"
+              class="icon"
+              title="次のページ"
+              aria-label="次のページ"
+              data-icon="right"
+            ></button>
+          </div>
+        </section>
+      </aside>
+      <section class="center" aria-label="画像ビュー">
+        <header class="view-header">
+          <div>
+            <p id="dataset-label" class="eyebrow">DATASET</p>
+            <h1 id="scene-title">未選択</h1>
+          </div>
+          <span id="resolution" class="muted"></span>
+        </header>
+        <div class="view-toolbar">
+          <div class="legend">
+            <span><i class="gt"></i>GT</span
+            ><span id="pred-legend"><i class="pred"></i>Prediction</span>
+          </div>
+          <div class="view-actions">
+            <button
+              id="zoom-out"
+              class="icon"
+              title="縮小"
+              aria-label="縮小"
+              data-icon="minus"
+            ></button
+            ><output id="zoom">100%</output
+            ><button
+              id="zoom-in"
+              class="icon"
+              title="拡大"
+              aria-label="拡大"
+              data-icon="plus"
+            ></button
+            ><button
+              id="fit"
+              class="icon"
+              title="全体表示"
+              aria-label="全体表示"
+              data-icon="maximize"
+            ></button
+            ><button
+              id="download"
+              class="icon"
+              title="表示画像を保存"
+              aria-label="表示画像を保存"
+              data-icon="download"
+            ></button>
+          </div>
+        </div>
+        <div class="stage">
+          <canvas
+            id="view"
+            tabindex="0"
+            aria-label="GTと推論結果の画像"
+          ></canvas>
+          <div id="empty" class="empty">シーン未選択</div>
+          <span id="frame-name" class="frame-name"></span>
+        </div>
+        <div class="transport">
+          <button
+            id="first"
+            class="icon"
+            title="先頭フレーム"
+            aria-label="先頭フレーム"
+            data-icon="first"
+          ></button
+          ><button
+            id="previous"
+            class="icon"
+            title="前のフレーム"
+            aria-label="前のフレーム"
+            data-icon="left"
+          ></button
+          ><button
+            id="play"
+            class="icon primary-icon"
+            title="再生・停止"
+            aria-label="再生・停止"
+            data-icon="play"
+          ></button
+          ><button
+            id="next"
+            class="icon"
+            title="次のフレーム"
+            aria-label="次のフレーム"
+            data-icon="right"
+          ></button
+          ><input
+            id="seek"
+            type="range"
+            min="0"
+            max="0"
+            value="0"
+            aria-label="フレーム"
+          /><output id="frame-position">0 / 0</output
+          ><select id="fps" aria-label="再生速度">
+            <option value="5">5 fps</option>
+            <option value="10" selected>10 fps</option>
+            <option value="25">25 fps</option>
+          </select>
+        </div>
+        <div id="status" class="status" role="status">読み込み中...</div>
+      </section>
+      <aside class="inspector" aria-label="表示・推論設定">
+        <section>
+          <h2>Layers</h2>
+          <label class="check"
+            ><span><i class="gt"></i>Ground Truth</span
+            ><input id="show-gt" type="checkbox" checked /></label
+          ><label class="check" id="pred-toggle"
+            ><span><i class="pred"></i>Prediction</span
+            ><input id="show-pred" type="checkbox" checked /></label
+          ><label class="check"
+            >ラベル<input id="show-labels" type="checkbox" /></label
+          ><label class="field"
+            >ラスターレイヤー<select id="raster">
+              <option value="">なし</option>
+            </select></label
+          ><label class="field"
+            >不透明度<input
+              id="opacity"
+              type="range"
+              min="0"
+              max="1"
+              value="0.55"
+              step="0.05"
+          /></label>
+          <div id="raster-legend"></div>
+        </section>
+        <section id="inference-settings">
+          <h2>Inference</h2>
+          <label class="field"
+            >Device<select id="device">
+              <option value="cuda">GPU / CUDA</option>
+              <option value="cpu">CPU</option>
+            </select></label
+          >
+          <div class="settings-row">
+            <label class="field"
+              >開始フレーム<input
+                id="start"
+                type="number"
+                min="0"
+                value="0"
+                step="1" /></label
+            ><label class="field"
+              >フレーム数<input
+                id="count"
+                type="number"
+                min="1"
+                max="64"
+                value="1"
+                step="1"
+            /></label>
+          </div>
+          <label class="field"
+            >検出しきい値 <output id="threshold-value">0.50</output
+            ><input
+              id="threshold"
+              type="range"
+              min="0"
+              max="1"
+              value="0.5"
+              step="0.01" /></label
+          ><button id="infer" class="primary" disabled>
+            <span data-icon="play"></span
+            ><span id="infer-label">推論を実行</span>
+          </button>
+          <p id="run-status" class="muted" role="status"></p>
+        </section>
+        <section>
+          <h2>Results</h2>
+          <dl id="metrics"></dl>
+          <div id="warnings" role="status"></div>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>

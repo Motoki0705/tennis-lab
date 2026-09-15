@@ -154,3 +154,67 @@ python -m src.tasks.court_detection.scripts.train_mixed \
 pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
 
 `run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。
+
+## Dataset review / inference UI
+
+画像座標系のWeb UIで、このタスクのdataset GTとcheckpoint predictionを重ねて確認します。
+起動・CLI引数・画面操作・HTTP API・GPUキュー・テスト方法の正本は
+[共有detection基盤](../base/visualization/detection/README.md)です。この節はCourt固有の
+source契約とcheckpoint互換契約だけを管理します。
+
+### source契約
+
+左のdataset一覧は、ディレクトリ名から推測せず、次のcanonical input契約で解決します。
+
+- `tennis_court_detector`: `configs/data/source/tennis_court_detector.yaml`を正本とし、
+  `excluded_sample_ids`（既定は`QszoUKyCOHo_600`）を適用した`train`/`val`を列挙します。
+- `synthetic_court`: `data/synthetic_data_generation/scenes/<scene>/datasets/court/dataset.json`が
+  明示した`schema`からtyped config（v1=`all_courts`、v2/v3=`target_court`）を選び、scene×splitを
+  列挙します。schema欠落・未知schema・`status!=completed`のsceneはそのsceneだけを理由付きで
+  無効化します。Synthetic側の座標・semantic契約の正本は
+  [`src/synthetic_data_generation/dataset/court/README.md`](../../synthetic_data_generation/dataset/court/README.md)です。
+
+各行は`build_court_input`の`CourtSampleRecord`をそのまま使い、scene IDはサーバ側で
+`<dataset>::<sample_id>`に解決します。1 sample = 1 still imageなので、UIは`count=1`・
+`start=0`だけを受理します（frame再生はBall側の機能です）。
+
+### GT表示とlayerの扱い
+
+GTは`kp`/`seg`/`line`/`semantic_line`をoriginal image pixelの座標・解像度で返します。
+dense layerは`data/court_detection/derived_targets/`の事前生成物をcanonical builder経由で
+読み、provenance metadataとdigestを検証します。欠落・stale・別sourceのmaskはそのlayerだけを
+理由付きでwarningにし、KP/RGBのreviewは継続します。検証に失敗したmaskを代替表示することは
+ありません。2Dラベルから未観測の3Dコートやcamera poseを構成しません。
+
+### checkpoint互換契約
+
+候補は`outputs/court_detection/**/*.ckpt`と`ckpt/court_detection/**/*.ckpt`を再帰scanし、
+checkpoint本体（`hyper_parameters.config`と`target_bundle_state`）だけを正本として判定します。
+`hparams.yaml`は本体との一致確認にのみ使い、本文が読めないcheckpointは常にunusableです。
+
+- `target_bundle_state`を持たないlegacy single-head checkpoint（`ckpt/court_detection/kp`・`line`）は、
+  現行bundleへ移行せずunsupportedと理由を表示します。
+- 現行contractを満たさない保存config（例: `run.artifact_store`以前のrun）もunsupportedです。
+- 互換datasetは、bundleが宣言したKP channel semanticsとdense target schemaが一致するものだけです。
+  schemaが違うlayerは同じ教師として比較せず、dataset側を明示的に除外します。
+- synthetic v1（`all_courts`、7-channel semantic KP）は14-channel bundleとsemanticが違うため、
+  checkpoint比較の対象外です。互換と判定した場合も、直前のrequestでcanonical inputのchannel順を
+  bundleと再照合し、食い違えば停止します。
+- checkpoint選択後は、そのrunが学習したheadに対応するlayerだけを評価対象にします。
+
+### 推論
+
+1回のforwardで選択checkpointの全headをdecodeし、viewerはそれを
+original pixel・original解像度で重ねます。metricsは教師schemaが一致したlayerだけを対象とし、
+予測gridがGT gridと異なる場合はnearest/bilinearでGT側へ再標本化したことをwarningに残します。
+
+### テスト
+
+```bash
+.venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/visualization
+```
+
+fixtureでcanonical source契約（syntheticのschema解決、除外sample、derived provenanceの
+missing/stale、traversal拒否）、checkpoint互換（bundle無し・不正bundle・古いconfig・stale
+sidecar・root外symlink拒否）、original pixel/mask size、mock inferenceの応答契約を検証します。
+`local_data`マークの2件は実データ（TennisCourtDetectorとSynthetic B00）のGT smokeです。
