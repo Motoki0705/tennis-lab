@@ -178,6 +178,92 @@ def test_decoded_result_rejects_missing_required_field() -> None:
         )
 
 
+def _minimal_result_dict() -> dict[str, object]:
+    """A pre-world-motion artifact payload without the optional fields."""
+    return {
+        "smpl_body_pose": np.zeros((1, 2, 63), dtype=np.float32).tolist(),
+        "smpl_global_orient": np.zeros((1, 2, 3), dtype=np.float32).tolist(),
+        "smpl_betas": np.zeros((1, 10), dtype=np.float32).tolist(),
+        "human_kp_2d": np.zeros((1, 2, 17, 2), dtype=np.float32).tolist(),
+        "human_kp_vis": np.ones((1, 2, 17), dtype=np.float32).tolist(),
+        "bbx_xys": np.ones((1, 2, 3), dtype=np.float32).tolist(),
+        "track_ids": [7],
+    }
+
+
+def test_artifact_without_world_motion_fields_decodes_as_none() -> None:
+    result = GVHMRResult.from_dict(_minimal_result_dict())
+
+    assert result.smpl_transl_incam is None
+    assert result.smpl_transl_world is None
+    assert result.smpl_global_orient_world is None
+    # An all-None artifact must round-trip without inventing the fields.
+    assert "smpl_transl_world" not in result.to_dict()
+
+
+def test_decoded_result_roundtrip_preserves_world_motion_fields(
+    tmp_path: Path,
+) -> None:
+    result = GVHMRResult(
+        smpl_body_pose=np.zeros((1, 2, 63), dtype=np.float32),
+        smpl_global_orient=np.zeros((1, 2, 3), dtype=np.float32),
+        smpl_betas=np.zeros((1, 10), dtype=np.float32),
+        smpl_vertices_local=None,
+        human_kp_2d=np.zeros((1, 2, 17, 2), dtype=np.float32),
+        human_kp_vis=np.ones((1, 2, 17), dtype=np.float32),
+        bbx_xys=np.ones((1, 2, 3), dtype=np.float32),
+        track_ids=np.array([7], dtype=np.int32),
+        smpl_transl_incam=np.full((1, 2, 3), 1.5, dtype=np.float32),
+        smpl_transl_world=np.full((1, 2, 3), -2.5, dtype=np.float32),
+        smpl_global_orient_world=np.array(
+            [[[0.0, 0.0, 0.5], [0.0, 0.0, 0.5]]], dtype=np.float32
+        ),
+    )
+    path = tmp_path / "gvhmr_world.json"
+
+    result.save(path)
+    loaded = GVHMRResult.load(path)
+
+    np.testing.assert_allclose(loaded.smpl_transl_incam, 1.5)
+    np.testing.assert_allclose(loaded.smpl_transl_world, -2.5)
+    np.testing.assert_allclose(
+        loaded.smpl_global_orient_world,
+        np.array([[[0.0, 0.0, 0.5], [0.0, 0.0, 0.5]]], dtype=np.float32),
+    )
+
+
+def test_predict_decodes_world_motion_from_the_global_parameters(
+    video_path: Path,
+) -> None:
+    num_frames = 4
+    incam = _smpl_parameters(num_frames)
+    incam["transl"] = torch.full((num_frames, 3), 1.0, dtype=torch.float32)
+    global_params = _smpl_parameters(num_frames)
+    global_params["transl"] = torch.full((num_frames, 3), 4.0, dtype=torch.float32)
+    global_params["global_orient"] = torch.tensor(
+        [[0.0, 0.0, 0.5]] * num_frames, dtype=torch.float32
+    )
+    mesh_result = submodule_models.GvhmrResult(
+        smpl_params_incam=incam,
+        smpl_params_global=global_params,
+        K_fullimg=torch.eye(3, dtype=torch.float32).expand(num_frames, -1, -1),
+    )
+    adapter, *_ = _make_adapter(num_frames=num_frames, mesh_result=mesh_result)
+
+    result = adapter.predict(_request(video_path, max_frames=num_frames))
+
+    np.testing.assert_allclose(result.smpl_transl_incam, 1.0)
+    np.testing.assert_allclose(result.smpl_transl_world, 4.0)
+    np.testing.assert_allclose(
+        result.smpl_global_orient_world,
+        np.tile(
+            np.array([0.0, 0.0, 0.5], dtype=np.float32), (1, num_frames, 1)
+        ),
+    )
+    # The camera-frame fields stay camera-frame.
+    np.testing.assert_allclose(result.smpl_global_orient, 0.0)
+
+
 def test_valid_chain_executes_typed_requests_and_decodes_result(
     video_path: Path,
 ) -> None:

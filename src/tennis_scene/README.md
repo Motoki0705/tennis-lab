@@ -10,6 +10,12 @@ DINO → ViTPose → PLCSと外部ボール観測 → BLCSを接続する経路�
 [`reference_pipeline/README.md`](reference_pipeline/README.md)を参照してください。
 SMPLを実行せず、canonical poseと3D関節を保存できます。
 
+PLCSのコート軌道とGVHMRのincam SMPLを従来フィールドへ保存し、それらを使った
+GVHMRワールドモーションの整合もパイプライン内で常に実行します。整合結果は
+`gvhmr_aligned_*`フィールドへ追加し、PLCS配置を上書きしません。下流は両方から用途に
+合う表現を選べます。フィールド契約、設定値、残差診断は
+[`motion_alignment/README.md`](motion_alignment/README.md)を参照してください。
+
 ## Modules
 
 ### clip_studio/
@@ -38,18 +44,20 @@ SMPLを実行せず、canonical poseと3D関節を保存できます。
 
 ### scripts/
 - **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。
-- **`visualization.py`**: 保存済み `SceneResult` の可視化エントリポイント。
+- **`visualization.py`**: 保存済み `SceneResult` の3D可視化エントリポイント。
+- **`visualize_tasks.py`**: stage別タスク動画(`plcs`/`gvhmr_alignment`/`blcs`等)を保存済み `SceneResult` から書き出すエントリポイント。`gvhmr_alignment`は`gvhmr_aligned_*`とPLCS配置を重ねる。
 - **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
 - **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
 - **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
 
 ### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。`court_keypoints.selector`と`court_reference`はPLCS/BLCSが共有するreference-frame設定であり、camera-view checkpointではcamera IDと各viewの半回転を明示する。
+- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`player_motion`/`ball_detection`/`plcs`/`blcs`)の実行設定。整列は常時実行し、`player_motion.scale_mode`・`alignment`が推定方法を制御する。`court_keypoints.selector`と`court_reference`はPLCS/BLCSが共有するreference-frame設定であり、camera-view checkpointではcamera IDと各viewの半回転を明示する。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
 - **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
 
 ## 座標系メモ
 
-- `player_position` / `ball_3d`: コート座標系。XY平面が地面、+Zが上。
+- `player_position` / `gvhmr_aligned_player_position` / `ball_3d`: コート座標系。XY平面が地面、+Zが上。
 - `smpl_vertices_local` / `smpl_global_orient` / `smpl_body_pose`: GVHMR/SMPL由来の人体座標系。人体のup軸はY。
 - 可視化時は、SMPL頂点をroot中心化した後に `src.utils.geometry.matrices.smpl_y_up_to_court_z_up` でY-upからコートZ-upへ明示変換し、その後 `player_yaw` をコート+Z軸まわりに適用する。
+- `gvhmr_aligned_*`も既存レンダラーと同じ配置規則を使う。整列済みの4フィールドがworld頂点の直接相似変換を再現することの契約は[`motion_alignment/README.md`](motion_alignment/README.md)を参照。

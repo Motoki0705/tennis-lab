@@ -3,7 +3,7 @@ defaults:
   - _self_
 scene_path: tennis_scene/tennis_clip.npz
 video_paths: [samples/tennis_clip.mp4]
-tasks: [ball_detection, court_kp, gvhmr, plcs, blcs]
+tasks: [ball_detection, court_kp, gvhmr, plcs, gvhmr_alignment, blcs]
 start_frame: 0
 end_frame: null
 fps: null
