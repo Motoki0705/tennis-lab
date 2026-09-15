@@ -63,6 +63,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`tracking_predictor.py`**: `BLCSTrackingPredictor`。track-query bindingによりposition、presence logits/probability/判定を一度だけdecodeする。
 
 ### visualization/
+- **[Web UI利用ガイド](visualization/README.md)**: 閲覧・GPU推論のコピー可能な起動コマンドと操作手順。
 - **`review/` / `inference/`**: [データセット閲覧](visualization/review/README.md)と[GT・推論比較Web UI](visualization/inference/README.md)。
 - **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
 - **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。

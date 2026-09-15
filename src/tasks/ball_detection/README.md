@@ -87,14 +87,9 @@
 
 ## データセットレビュー / 推論UI
 
-起動・操作・HTTP API・GPUキューの正本は
-[共有Detection UI](../../base/visualization/detection/README.md)。ここには
+起動コマンドと操作手順は[Web UI利用ガイド](visualization/README.md)、HTTP APIは
+[共有Detection UI](../base/visualization/detection/README.md)を参照してください。ここには
 ball_detection固有のsourceと互換契約だけを記す。
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.review_dataset   # port 8776
-.venv/bin/python -m src.tasks.ball_detection.scripts.inference_ui    # port 8777
-```
 
 ### source
 

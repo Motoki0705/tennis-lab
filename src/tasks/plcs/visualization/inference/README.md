@@ -4,13 +4,7 @@ PLCS のチェックポイントとシーンを選んで GPU 推論を実行し�
 GT と推論結果を同時に描画するローカル Web UI。読み取り専用で、データセットと
 チェックポイントは変更しない。フロントエンドのビルド・外部 CDN は不要。
 
-```bash
-.venv/bin/python -m src.tasks.plcs.scripts.serve_inference_ui \
-  --data-root /home/kamimura/projects/tennis-lab/data/plcs \
-  --checkpoint-root /home/kamimura/projects/tennis-lab/outputs/plcs \
-  --extra-checkpoint-root /home/kamimura/projects/tennis-lab/ckpt/plcs \
-  --device cuda --port 8771
-```
+起動コマンドと操作手順は[PLCS利用ガイド](../README.md)を参照してください。
 
 ブラウザで `http://127.0.0.1:8771` を開く。`--data-root` は既定で
 `<repo>/data/plcs`、`--checkpoint-root` は既定で `<repo>/outputs/plcs`。
