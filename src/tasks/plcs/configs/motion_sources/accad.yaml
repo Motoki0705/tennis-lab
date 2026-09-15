@@ -1,3 +1,4 @@
+# ACCAD-only motion source profile.
 running:
   format: amass_smplh_v1
   paths:

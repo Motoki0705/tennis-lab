@@ -1,0 +1,3 @@
+name: meiji_3cam
+root: tennis_multivew/processed/meiji_3cam/dataset
+selection_config: src/tasks/plcs/configs/gvhmr_motion/meiji_3cam.yaml

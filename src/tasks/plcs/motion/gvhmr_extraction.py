@@ -9,7 +9,7 @@ import os
 import shutil
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -32,17 +32,19 @@ from src.submodules.models import (
 )
 from src.tasks.plcs.motion.artifact import load_motion_clip, save_motion_clip
 from src.tasks.plcs.motion.contracts import Coco17MotionClip
+from src.tasks.plcs.motion.reproducibility import content_digest, seed_motion
 from src.tasks.plcs.motion.sources import GvhmrCoco17Adapter
 from src.tennis_scene.generate_dataset import load_dataset_manifest
 from src.tennis_scene.generate_dataset.manifest import ClipManifest, file_sha256
+from src.utils.configuration import RuntimePathRoots
 from src.utils.io import load_json, save_json_atomic, utc_now_iso
 from src.utils.schema.player import COCO17_BONE_LENGTH_EDGES, COCO17_SKELETON
 from src.utils.video.reader import probe_video_info
 
 SELECTION_SCHEMA_VERSION = "plcs_gvhmr_selection_v1"
 EXTRACTION_PIPELINE_VERSION = "plcs_gvhmr_dino_roi_stitch_v1"
-COLLECTION_SCHEMA_VERSION = "plcs_gvhmr_collection_v2"
-RECORD_SCHEMA_VERSION = "plcs_gvhmr_record_v2"
+COLLECTION_SCHEMA_VERSION = "plcs_gvhmr_collection_v3"
+RECORD_SCHEMA_VERSION = "plcs_gvhmr_record_v3"
 RAW_SCHEMA_VERSION = "plcs_gvhmr_global_smpl_v2"
 
 
@@ -253,6 +255,8 @@ def load_model_runtime(
     repository_root: str | Path,
     checkpoint_root: str | Path | None = None,
     dino_checkpoint: str | Path | None = None,
+    runtime_overrides: Mapping[str, object] | None = None,
+    asset_roots: RuntimePathRoots | None = None,
 ) -> GvhmrDemoConfig:
     """Reuse the canonical model settings with DINO's separate checkpoint root."""
     config_path = Path(path)
@@ -275,6 +279,11 @@ def load_model_runtime(
         raise TypeError("GVHMR model config DINO checkpoint must be a path string.")
     raw.pop("defaults", None)
     raw.pop("hydra", None)
+    if asset_roots is not None:
+        raw["paths"] = {key: str(value) for key, value in asdict(asset_roots).items()}
+    if runtime_overrides is not None:
+        merged = OmegaConf.merge(raw["runtime"], dict(runtime_overrides))
+        raw["runtime"] = OmegaConf.to_container(merged, resolve=True)
     if checkpoint_root is not None:
         paths = raw.get("paths")
         if not isinstance(paths, dict):
@@ -394,6 +403,9 @@ class GvhmrMotionExtractor:
         max_frames: int | None,
         overwrite: bool,
         write_preview: bool,
+        reproducibility_digest: str,
+        seed: int,
+        deterministic: bool,
     ) -> None:
         self.dataset_root = Path(dataset_root).resolve()
         self.output_root = Path(output_root).resolve()
@@ -416,6 +428,9 @@ class GvhmrMotionExtractor:
         self.max_frames = max_frames
         self.overwrite = overwrite
         self.write_preview = write_preview
+        self.reproducibility_digest = reproducibility_digest
+        self.seed = seed
+        self.deterministic = deterministic
         self._records: dict[str, dict[str, object]] = {}
 
     def run(
@@ -472,20 +487,29 @@ class GvhmrMotionExtractor:
                         self.max_frames or clip.num_frames,
                     )
                     source_id = self._source_id(clip, camera)
+                    input_digest = content_digest(
+                        {
+                            "video": file_sha256(clip.media_path(camera.camera_id)),
+                            "clip_manifest": clip.digest(),
+                        }
+                    )
                     if self._can_resume(
                         paths,
                         source_id=source_id,
                         expected_frames=expected_frames,
+                        input_digest=input_digest,
                     ):
                         skipped += 1
                         continue
                     require_extraction_space(self.output_root, expected_frames)
+                    seed_motion(self.seed, source_id, self.deterministic)
                     result = self._extract_one(
                         models=models,
                         adapter=adapter,
                         clip=clip,
                         camera=camera,
                         paths=paths,
+                        input_digest=input_digest,
                     )
                     self._records[source_id] = result
                     self._save_collection_manifest()
@@ -505,6 +529,7 @@ class GvhmrMotionExtractor:
         clip: ClipManifest,
         camera: GvhmrCameraSelection,
         paths: ExtractionOutputPaths,
+        input_digest: str,
     ) -> dict[str, object]:
         if camera.camera_id not in clip.camera_ids:
             raise ValueError(
@@ -577,6 +602,8 @@ class GvhmrMotionExtractor:
             frame_valid=np.asarray(observed.cpu().numpy(), dtype=np.bool_),
             provenance={
                 "dataset_id": clip.dataset_id,
+                "input_sha256": input_digest,
+                "reproducibility_sha256": self.reproducibility_digest,
                 "clip_id": clip.clip_id,
                 "clip_manifest_sha256": clip.digest(),
                 "camera_id": camera.camera_id,
@@ -627,6 +654,8 @@ class GvhmrMotionExtractor:
         result: dict[str, object] = {
             "schema_version": RECORD_SCHEMA_VERSION,
             "source_id": source_id,
+            "input_sha256": input_digest,
+            "reproducibility_sha256": self.reproducibility_digest,
             "dataset_id": clip.dataset_id,
             "clip_id": clip.clip_id,
             "camera_id": camera.camera_id,
@@ -655,6 +684,7 @@ class GvhmrMotionExtractor:
         *,
         source_id: str,
         expected_frames: int,
+        input_digest: str,
     ) -> bool:
         required = {paths.common_motion, paths.raw_global_smpl, paths.record}
         if self.write_preview:
@@ -681,6 +711,11 @@ class GvhmrMotionExtractor:
             or record.get("selection_config_sha256") != self.selection_digest
             or record.get("schema_version") != RECORD_SCHEMA_VERSION
             or record.get("extraction_pipeline_version") != EXTRACTION_PIPELINE_VERSION
+            or record.get("input_sha256") != input_digest
+            or record.get("reproducibility_sha256") != self.reproducibility_digest
+            or clip.provenance.get("input_sha256") != input_digest
+            or clip.provenance.get("reproducibility_sha256")
+            != self.reproducibility_digest
         ):
             raise RuntimeError(
                 f"Existing GVHMR artifacts are incompatible for {source_id}; "
@@ -714,6 +749,7 @@ class GvhmrMotionExtractor:
                 "selection",
                 "updated_at",
                 "records",
+                "reproducibility_sha256",
             },
             name="GVHMR collection manifest",
         )
@@ -723,6 +759,7 @@ class GvhmrMotionExtractor:
             or mapping["selection_config_sha256"] != self.selection_digest
             or mapping["extraction_pipeline_version"] != EXTRACTION_PIPELINE_VERSION
             or mapping["selection"] != self.selection.to_dict()
+            or mapping["reproducibility_sha256"] != self.reproducibility_digest
         ):
             raise RuntimeError(f"Existing collection manifest is incompatible: {path}.")
         records = mapping["records"]
@@ -740,6 +777,7 @@ class GvhmrMotionExtractor:
         save_json_atomic(
             {
                 "schema_version": COLLECTION_SCHEMA_VERSION,
+                "reproducibility_sha256": self.reproducibility_digest,
                 "dataset_id": self.selection.dataset_id,
                 "selection_config_sha256": self.selection_digest,
                 "extraction_pipeline_version": EXTRACTION_PIPELINE_VERSION,
