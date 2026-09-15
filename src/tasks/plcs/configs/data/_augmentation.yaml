@@ -11,6 +11,13 @@
 augmentation:
   enabled: true
 
+  # Scene artifacts retain their native timing. Training samples alone are
+  # drawn at one of these rates, with every 2D/3D target sampled in lockstep.
+  frame_rate:
+    enabled: true
+    prob: 1.0
+    choices_hz: [28.0, 30.0, 60.0]
+
   uv_scale:
     enabled: false
     prob: 1.0

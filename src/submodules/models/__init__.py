@@ -18,6 +18,7 @@ from src.submodules.models.gvhmr.mesh_recovery import (
     GvhmrMeshRecovery,
     GvhmrRequest,
     GvhmrResult,
+    SmplCoco17Reconstructor,
     SmplVertexReconstructor,
 )
 from src.submodules.models.hmr2.feature_extractor import (
@@ -48,6 +49,7 @@ __all__ = [
     "PersonDetectionResult",
     "Pose2DRequest",
     "Pose2DResult",
+    "SmplCoco17Reconstructor",
     "SmplVertexReconstructor",
     "TrackRequest",
     "TrackResult",

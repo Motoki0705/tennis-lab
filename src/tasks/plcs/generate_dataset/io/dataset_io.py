@@ -290,6 +290,11 @@ class PLCSDatasetWriter(BaseDatasetWriter):
                 court_coordinate_normalization_metadata()
             ),
             "track_instances": scene.track_instances,
+            "motion_source_kind": scene.meta.get("motion_source_kind"),
+            "motion_source_id": scene.meta.get("motion_source_id"),
+            "motion_sources": scene.meta.get("motion_sources"),
+            "motion_source_kinds": scene.meta.get("motion_source_kinds"),
+            "motion_source_ids": scene.meta.get("motion_source_ids"),
         }
 
         meta = PLCSSceneMeta(**meta_dict)

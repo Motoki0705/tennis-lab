@@ -15,6 +15,7 @@ defaults:
 
 external_assets:
   smplh_model_path: smplx/smplh
+  coco17_regressor_path: src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt
 
 hydra:
   run:

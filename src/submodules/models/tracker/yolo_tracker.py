@@ -12,6 +12,7 @@ from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
+    resolve_track_frame_count,
     select_and_complete_tracks,
 )
 from src.utils.video.reader import probe_video_info
@@ -52,7 +53,9 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
                 "footpoint_polygon_px is supported only by DinoPersonTracker"
             )
         video_path = str(request.video_path)
-        num_frames = probe_video_info(video_path).frame_count
+        num_frames = resolve_track_frame_count(
+            probe_video_info(video_path).frame_count, request
+        )
 
         track_history = self._track(video_path, num_frames)
         return select_and_complete_tracks(track_history, request, num_frames)
@@ -70,7 +73,11 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
             stream=True,
         )
         track_history: list[list[dict]] = []
-        for result in tqdm(results, total=num_frames, desc="YOLO tracking"):
+        for frame_index, result in enumerate(
+            tqdm(results, total=num_frames, desc="YOLO tracking")
+        ):
+            if frame_index >= num_frames:
+                break
             if result.boxes.id is not None:
                 track_ids = result.boxes.id.int().cpu().tolist()  # (N,)
                 bbx_xyxy = result.boxes.xyxy.cpu().numpy()  # (N, 4)
