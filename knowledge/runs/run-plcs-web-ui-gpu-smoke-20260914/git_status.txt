@@ -1,0 +1,33 @@
+ M pyproject.toml
+ M src/tasks/blcs/README.md
+ M src/tasks/blcs/model_io/adapters.py
+ M src/tasks/plcs/README.md
+ M src/tasks/plcs/model_io/__init__.py
+ M src/tasks/plcs/model_io/factory.py
+ M src/tasks/plcs/visualization/review/README.md
+ M src/tasks/plcs/visualization/review/__init__.py
+ M src/utils/configuration/inventory.py
+ M tests/unit/tasks/blcs/model_io/test_adapters.py
+?? src/tasks/base/visualization/README.md
+?? src/tasks/base/visualization/inference_queue.py
+?? src/tasks/base/visualization/review/
+?? src/tasks/base/visualization/shared/
+?? src/tasks/base/visualization/web_assets.py
+?? src/tasks/blcs/scripts/inference_ui.py
+?? src/tasks/blcs/scripts/review_dataset.py
+?? src/tasks/blcs/visualization/inference/
+?? src/tasks/blcs/visualization/review/
+?? src/tasks/plcs/scripts/review_dataset.py
+?? src/tasks/plcs/scripts/serve_inference_ui.py
+?? src/tasks/plcs/visualization/inference/
+?? src/tasks/plcs/visualization/review/dataset_service.py
+?? src/tasks/plcs/visualization/review/dataset_web.py
+?? tests/e2e/tasks/blcs/dataset_review_browser.cjs
+?? tests/e2e/tasks/plcs/dataset_review_browser.cjs
+?? tests/unit/tasks/base/visualization/review/
+?? tests/unit/tasks/base/visualization/shared/
+?? tests/unit/tasks/base/visualization/test_inference_queue.py
+?? tests/unit/tasks/blcs/visualization/inference/
+?? tests/unit/tasks/blcs/visualization/review/
+?? tests/unit/tasks/plcs/visualization/inference/
+?? tests/unit/tasks/plcs/visualization/review/test_dataset_review.py

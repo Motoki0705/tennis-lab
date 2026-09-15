@@ -1,0 +1,16 @@
+{
+  "run_id": "1789374008926216562_11401_blcs-web-inference",
+  "name": "blcs-web-inference",
+  "command": "/home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.base.visualization.inference_queue /home/kamimura/projects/tennis-lab/.training_queue/ui_requests/blcs-t5xogd93/request.json",
+  "provider": "codex",
+  "session": "01a09e9c-5c30-7bf3-8e7b-9d2f9d6d3bd8",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "782fc137d85c054d0f5ef775fe5edbf8cf52f00f",
+  "branch": "codex/dataset-scene-review",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/dataset-scene-review",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/dataset-scene-review",
+  "captured_at": "2026-09-14T17:20:09+09:00"
+}

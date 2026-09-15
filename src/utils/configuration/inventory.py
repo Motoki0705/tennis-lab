@@ -288,6 +288,14 @@ def _runtime_boundary(
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    **{
+        f"src.tasks.{task}.scripts.{script}": (
+            f"{task}.{script}",
+            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+        )
+        for task in ("ball_detection", "court_detection")
+        for script in ("review_dataset", "inference_ui")
+    },
     "src.automation.chatgpt_mcp.scripts.capabilities": (
         "automation.chatgpt_mcp.capabilities",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -310,6 +318,22 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     ),
     "src.tasks.plcs.scripts.review_accad_motion": (
         "plcs.accad_motion_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.plcs.scripts.review_dataset": (
+        "plcs.dataset_scene_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.blcs.scripts.review_dataset": (
+        "blcs.dataset_scene_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.plcs.scripts.serve_inference_ui": (
+        "plcs.inference_ui",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.blcs.scripts.inference_ui": (
+        "blcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tennis_scene.scripts.migrate_video_clip_layout": (
@@ -346,7 +370,7 @@ def _non_hydra_boundary(
     )
 
 
-_RUNTIME_BOUNDARIES = (
+_RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary(
         "src.automation.chatgpt_mcp.scripts.capabilities",
         "main",
@@ -380,6 +404,30 @@ _RUNTIME_BOUNDARIES = (
         "src.tasks.plcs.scripts.review_accad_motion",
         "main",
         domain="plcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.review_dataset",
+        "main",
+        domain="plcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.blcs.scripts.review_dataset",
+        "main",
+        domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.serve_inference_ui",
+        "main",
+        domain="plcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.blcs.scripts.inference_ui",
+        "main",
+        domain="blcs",
         executable_module=True,
     ),
     _non_hydra_boundary(
@@ -502,6 +550,17 @@ _RUNTIME_BOUNDARIES = (
     _runtime_boundary("submodules", "src.submodules.scripts.demo_gvhmr"),
 )
 
+
+_RUNTIME_BOUNDARIES += tuple(
+    _non_hydra_boundary(
+        f"src.tasks.{task}.scripts.{script}",
+        "main",
+        domain=task,
+        executable_module=True,
+    )
+    for task in ("ball_detection", "court_detection")
+    for script in ("review_dataset", "inference_ui")
+)
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES
 
