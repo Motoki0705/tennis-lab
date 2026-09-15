@@ -31,6 +31,9 @@ from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_axial_camtoken_model import (
     PLCSMultiViewAxialCamTokenModel,
 )
+from src.tasks.plcs.models.plcs_multiview_axial_foot_residual_model import (
+    PLCSMultiViewAxialFootResidualModel,
+)
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.models.plcs_multiview_axial_reference_model import (
     PLCSMultiViewAxialReferenceModel,
@@ -198,15 +201,21 @@ def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSBoundModelIO:
             profile=PLCSInputProfile.MULTIVIEW,
             output_rank=3,
         )
-    elif model_name == "plcs_multiview_axial_split":
+    elif model_name in {
+        "plcs_multiview_axial_split",
+        "plcs_multiview_axial_foot_residual",
+    }:
         if num_court_tokens is None:
             raise ValueError("PLCS split models require data.num_court_kp.")
-        model = PLCSMultiViewAxialSplitModel.from_config(
-            model_cfg, num_court_tokens=num_court_tokens
+        split_type = (
+            PLCSMultiViewAxialFootResidualModel
+            if model_name == "plcs_multiview_axial_foot_residual"
+            else PLCSMultiViewAxialSplitModel
         )
+        model = split_type.from_config(model_cfg, num_court_tokens=num_court_tokens)
         adapter = _standard_adapter(
             runtime,
-            model_type=PLCSMultiViewAxialSplitModel,
+            model_type=split_type,
             profile=PLCSInputProfile.MULTIVIEW,
             output_rank=3,
         )
