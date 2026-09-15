@@ -308,6 +308,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "synthetic.court_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.plcs.scripts.extract_gvhmr_motions": (
+        "plcs.gvhmr_motion_extraction",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.scripts.migrate_video_clip_layout": (
         "tennis_scene.video_clip_migration",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -376,6 +380,12 @@ _RUNTIME_BOUNDARIES = (
         "src.tennis_scene.scripts.migrate_video_clip_layout",
         "main",
         domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.extract_gvhmr_motions",
+        "main",
+        domain="plcs",
         executable_module=True,
     ),
     _runtime_boundary(

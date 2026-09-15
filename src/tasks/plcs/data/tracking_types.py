@@ -35,10 +35,9 @@ class PLCSTrackingBatch(TypedDict):
     clean_human_kp: Tensor
     clean_human_vis: Tensor
     detection_gt_index: Tensor
+    frame_rate_hz: Tensor
     court_keypoint_metadata: NotRequired[tuple[Mapping[str, object], ...]]
-    court_reference_provenance: NotRequired[
-        tuple[CourtReferenceFrameProvenance, ...]
-    ]
+    court_reference_provenance: NotRequired[tuple[CourtReferenceFrameProvenance, ...]]
     selected_camera_ids: NotRequired[tuple[tuple[str, ...], ...]]
     reference_view_selection: NotRequired[tuple[ReferenceViewSelection, ...]]
     stable_camera_id_table: NotRequired[tuple[StableCameraIdTable, ...]]

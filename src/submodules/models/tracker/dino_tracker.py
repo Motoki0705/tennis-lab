@@ -1,4 +1,4 @@
-"""DINO person detections associated by the existing Ultralytics BoT-SORT."""
+"""DINO person detections associated by an explicit Ultralytics BoT-SORT."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from src.submodules.models.dino.person_detector import (
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
+    resolve_track_frame_count,
     select_and_complete_tracks,
 )
 from src.utils.video.reader import OpenCVVideoFrameReader, probe_video_info
@@ -54,7 +55,7 @@ def filter_detections_by_footpoint(
 
 
 class BotSortAssociator:
-    """Thin adapter around the same BoT-SORT backend used by YOLO.track()."""
+    """Thin adapter around an explicitly configured Ultralytics BoT-SORT backend."""
 
     def __init__(self) -> None:
         from ultralytics.trackers.bot_sort import BOTSORT
@@ -135,10 +136,12 @@ class DinoPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
 
     def _predict_impl(self, request: TrackRequest) -> TrackResult:
         video_path = Path(request.video_path)
-        expected_frames = probe_video_info(video_path).frame_count
+        expected_frames = resolve_track_frame_count(
+            probe_video_info(video_path).frame_count, request
+        )
         associator = BotSortAssociator()
         track_history: list[list[dict[str, Any]]] = []
-        frames = OpenCVVideoFrameReader(video_path)
+        frames = OpenCVVideoFrameReader(video_path, max_frames=expected_frames)
         for packet in tqdm(frames, total=expected_frames, desc="DINO + BoT-SORT"):
             detections = self._detector.predict(
                 PersonDetectionRequest(frame_bgr=packet.frame)

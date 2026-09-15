@@ -40,6 +40,7 @@ from src.tasks.plcs.court_keypoint_contract import (
     validate_plcs_dataset_court_keypoints,
     world_joints_physical_to_target,
 )
+from src.tasks.plcs.data.frame_rate_augmentation import PLCSFrameRateSampler
 from src.tasks.plcs.data.tracking_augmentation import (
     PLCSTrackingDetectionAugmentation,
 )
@@ -61,6 +62,7 @@ PLCS_TRACKING_KEYS = (
     "clean_human_kp",
     "clean_human_vis",
     "detection_gt_index",
+    "frame_rate_hz",
 )
 
 
@@ -101,6 +103,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             data_cfg["augmentation"],
             num_slots=self.num_queries,
         )
+        self.frame_rate_sampler = PLCSFrameRateSampler(data_cfg["augmentation"])
 
     def build_sample(self, scene: Scene) -> dict[str, Any]:
         position = torch.from_numpy(scene.get_array("position")).float()
@@ -121,7 +124,15 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             physical_presence = torch.ones((num_frames, num_physical), dtype=torch.bool)
         if physical_presence.shape != (num_frames, num_physical):
             raise ValueError("person_present must match the physical (T,P) axes.")
-        window = self.select_window(scene, full_len=num_frames)
+        frame_rate_plan = self.frame_rate_sampler.plan(
+            source_fps=scene.meta.get("fps"),
+            full_len=num_frames,
+            seq_len_range=self.config.seq_len_range,
+            crop_mode=("random" if self.augment else "center"),
+            augment=self.augment,
+            rng=self.rng,
+        )
+        window = frame_rate_plan.source_window
         cameras = self.select_cameras(scene)
         complete_views = scene_court_views(
             self.court_keypoint_validation,
@@ -140,11 +151,25 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
                     rng=self.rng,
                 )
             )
-        position = position[window.sl]
-        rotation = rotation[window.sl]
-        canonical_pose = canonical_pose[window.sl]
-        world_joints = world_joints[window.sl]
-        physical_presence = physical_presence[window.sl]
+        source_presence = physical_presence[window.sl]
+        position, physical_presence = frame_rate_plan.masked_linear(
+            position[window.sl], source_presence, axis=0
+        )
+        rotation, rotation_presence = frame_rate_plan.masked_heading(
+            rotation[window.sl], source_presence, axis=0
+        )
+        canonical_pose, canonical_presence = frame_rate_plan.masked_linear(
+            canonical_pose[window.sl], source_presence, axis=0
+        )
+        world_joints, world_presence = frame_rate_plan.masked_linear(
+            world_joints[window.sl], source_presence, axis=0
+        )
+        if not (
+            torch.equal(physical_presence, rotation_presence)
+            and torch.equal(physical_presence, canonical_presence)
+            and torch.equal(physical_presence, world_presence)
+        ):
+            raise RuntimeError("Synchronized lifecycle resampling disagreed.")
         views = selected_court_views(
             self.court_keypoint_validation,
             scene.path,
@@ -155,9 +180,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             complete_views,
             views,
             rng=self.rng if self.augment else None,
-            requested_camera_id=(
-                None if self.augment else self.reference_camera_id
-            ),
+            requested_camera_id=(None if self.augment else self.reference_camera_id),
         )
         provenance = (
             build_physical_court_provenance()
@@ -199,17 +222,27 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             visible = torch.from_numpy(
                 scene.get_camera_array(camera_index, "human_kp_vis", window=window)
             ).bool()
+            keypoints, visible = frame_rate_plan.masked_linear(
+                keypoints, visible, axis=0
+            )
             if keypoints.ndim == 3:
                 keypoints = keypoints[:, None]
                 visible = visible[:, None]
-            if keypoints.shape != (window.seq_len, num_physical, 17, 2):
+            if keypoints.shape != (
+                frame_rate_plan.output_frames,
+                num_physical,
+                17,
+                2,
+            ):
                 raise ValueError(
                     "PLCS tracking human_kp_uv must have shape (T,P,17,2)."
                 )
-            if visible.shape != (window.seq_len, num_physical, 17):
-                raise ValueError(
-                    "PLCS tracking human_kp_vis must have shape (T,P,17)."
-                )
+            if visible.shape != (
+                frame_rate_plan.output_frames,
+                num_physical,
+                17,
+            ):
+                raise ValueError("PLCS tracking human_kp_vis must have shape (T,P,17).")
             visible &= physical_presence[..., None]
             keypoints[~visible] = 0.0
             clean_kp_rows.append(keypoints.clone())
@@ -221,7 +254,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             ).view(1, num_physical)
             detection_index = torch.where(
                 visible.any(-1),
-                physical_ids.expand(window.seq_len, num_physical),
+                physical_ids.expand(frame_rate_plan.output_frames, num_physical),
                 -1,
             )
             kp_rows.append(keypoints)
@@ -252,6 +285,9 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
                     )[:, :14]
                 ).bool()
             )
+            court_rows[-1], court_vis_rows[-1] = frame_rate_plan.masked_linear(
+                court_rows[-1], court_vis_rows[-1], axis=0
+            )
             params = scene.data.get(f"cam_{camera_index}_params")
             if not isinstance(params, Mapping):
                 raise ValueError(
@@ -275,7 +311,9 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             "court_kp": torch.stack(court_rows),
             "court_vis": torch.stack(court_vis_rows),
             "padding_mask": torch.zeros(
-                len(cameras.indices), window.seq_len, dtype=torch.bool
+                len(cameras.indices),
+                frame_rate_plan.output_frames,
+                dtype=torch.bool,
             ),
             "target_position": target_packing.pack_tensor(position, physical_presence),
             "target_rotation": target_packing.pack_tensor(
@@ -297,6 +335,10 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             "detection_gt_index": torch.stack(index_rows),
             "camera_C": torch.stack(camera_center_rows),
             "camera_R": torch.stack(camera_rotation_rows),
+            "frame_rate_hz": torch.tensor(
+                frame_rate_plan.output_fps,
+                dtype=torch.float32,
+            ),
             # Consumed by ``augment_sample`` so overflow evidence reports the
             # selected source camera rather than the local view row.
             "_observation_camera_indices": tuple(int(i) for i in cameras.indices),
@@ -386,7 +428,10 @@ def _gather_tracked_clean_pose(
         raise ValueError("clean_human_vis must match clean_human_kp without UV.")
     if clean_human_vis.dtype != torch.bool:
         raise TypeError("clean_human_vis must have dtype torch.bool.")
-    if detection_indices.shape != detection_gt_index.shape or detection_indices.ndim != 3:
+    if (
+        detection_indices.shape != detection_gt_index.shape
+        or detection_indices.ndim != 3
+    ):
         raise ValueError(
             "Tracked detection indices and provenance must share shape (V,T,Q)."
         )
@@ -414,9 +459,7 @@ def _gather_tracked_clean_pose(
     value_indices = safe_indices[..., None, None].expand(-1, -1, -1, 17, 2)
     visibility_indices = safe_indices[..., None].expand(-1, -1, -1, 17)
     gathered_values = torch.gather(clean_human_kp, 2, value_indices)
-    gathered_visibility = torch.gather(
-        clean_human_vis, 2, visibility_indices
-    )
+    gathered_visibility = torch.gather(clean_human_vis, 2, visibility_indices)
     real_detection = (detection_indices >= 0) & (detection_gt_index >= 0)
     gathered_visibility &= real_detection[..., None]
     gathered_values = torch.where(

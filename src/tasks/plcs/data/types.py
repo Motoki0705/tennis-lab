@@ -46,10 +46,9 @@ class PLCSBatch(TypedDict):
     camera_cy: torch.Tensor
     camera_w: torch.Tensor
     camera_h: torch.Tensor
+    frame_rate_hz: NotRequired[torch.Tensor]
     court_keypoint_metadata: NotRequired[tuple[Mapping[str, object], ...]]
-    court_reference_provenance: NotRequired[
-        tuple[CourtReferenceFrameProvenance, ...]
-    ]
+    court_reference_provenance: NotRequired[tuple[CourtReferenceFrameProvenance, ...]]
     selected_camera_ids: NotRequired[tuple[tuple[str, ...], ...]]
     reference_view_selection: NotRequired[tuple[ReferenceViewSelection, ...]]
     stable_camera_id_table: NotRequired[tuple[StableCameraIdTable, ...]]
@@ -74,7 +73,7 @@ class PLCSSceneMeta:
     motion_source: str  # e.g., "amass", "custom"
     motion_category: str  # e.g., "walk", "run", "tennis_serve"
     gender: str  # "male", "female", or "neutral"
-    fps: int  # frames per second
+    fps: float  # native frames per second; resampling is a train-time operation
     num_frames: int  # total number of frames in the scene
     initial_position: list[float]  # [x, y] starting position on court
     initial_yaw: float  # initial yaw angle in radians
@@ -82,10 +81,15 @@ class PLCSSceneMeta:
     num_cameras: int  # number of cameras stored for this scene
     court_coordinate_normalization: dict[str, Any]
     track_instances: list[dict]
+    motion_source_kind: str | None = None
+    motion_source_id: str | None = None
+    motion_sources: list[str] | None = None
+    motion_source_kinds: list[str] | None = None
+    motion_source_ids: list[str] | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {
+        document = {
             "scene_id": self.scene_id,
             "motion_source": self.motion_source,
             "motion_category": self.motion_category,
@@ -99,6 +103,17 @@ class PLCSSceneMeta:
             "court_coordinate_normalization": self.court_coordinate_normalization,
             "track_instances": self.track_instances,
         }
+        if self.motion_source_kind is not None:
+            document["motion_source_kind"] = self.motion_source_kind
+        if self.motion_source_id is not None:
+            document["motion_source_id"] = self.motion_source_id
+        if self.motion_sources is not None:
+            document["motion_sources"] = self.motion_sources
+        if self.motion_source_kinds is not None:
+            document["motion_source_kinds"] = self.motion_source_kinds
+        if self.motion_source_ids is not None:
+            document["motion_source_ids"] = self.motion_source_ids
+        return document
 
     @classmethod
     def from_dict(cls, data: dict) -> PLCSSceneMeta:
@@ -116,4 +131,9 @@ class PLCSSceneMeta:
             num_cameras=data["num_cameras"],
             court_coordinate_normalization=data["court_coordinate_normalization"],
             track_instances=data["track_instances"],
+            motion_source_kind=data.get("motion_source_kind"),
+            motion_source_id=data.get("motion_source_id"),
+            motion_sources=data.get("motion_sources"),
+            motion_source_kinds=data.get("motion_source_kinds"),
+            motion_source_ids=data.get("motion_source_ids"),
         )

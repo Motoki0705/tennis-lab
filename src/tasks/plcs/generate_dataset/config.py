@@ -45,6 +45,7 @@ class PLCSExternalAssets:
     """Resolved external assets required by generation workers."""
 
     smplh_model_path: Path
+    coco17_regressor_path: Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,7 +180,10 @@ class PLCSGenerationConfig:
             num_scenes=scenes,
             generation_mode=mode,
             external_assets=PLCSExternalAssets(
-                smplh_model_path=Path(str(resolved.external_assets.smplh_model_path))
+                smplh_model_path=Path(str(resolved.external_assets.smplh_model_path)),
+                coco17_regressor_path=Path(
+                    str(resolved.external_assets.coco17_regressor_path)
+                ),
             ),
             train_ratio=ratios[0],
             val_ratio=ratios[1],
@@ -219,11 +223,24 @@ def _resolve_generation_paths(
     external_assets = require_config_mapping(
         root, "external_assets", path="configuration"
     )
-    _reject_unknown(external_assets, {"smplh_model_path"}, path="external_assets")
+    _reject_unknown(
+        external_assets,
+        {"smplh_model_path", "coco17_regressor_path"},
+        path="external_assets",
+    )
     smplh_relative = cast(
         "str",
         require_config_value(
             external_assets, "smplh_model_path", str, path="external_assets"
+        ),
+    )
+    coco17_regressor_relative = cast(
+        "str",
+        require_config_value(
+            external_assets,
+            "coco17_regressor_path",
+            str,
+            path="external_assets",
         ),
     )
     container = OmegaConf.to_container(value, resolve=True)
@@ -234,6 +251,9 @@ def _resolve_generation_paths(
         )
     resolved.external_assets.smplh_model_path = str(
         path_config.resolver.resolve(PathRole.EXTERNAL_ASSET, smplh_relative)
+    )
+    resolved.external_assets.coco17_regressor_path = str(
+        path_config.resolver.resolve(PathRole.PROJECT, coco17_regressor_relative)
     )
     for category, source in resolved.motion_sources.items():
         source_mapping = as_config_mapping(source, path=f"motion_sources.{category}")

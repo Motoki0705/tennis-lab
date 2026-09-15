@@ -91,6 +91,6 @@ git submodule update --init third_party/DINO
 TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace
 ```
 
-`DinoPersonTracker` は検出だけをDINOへ変更し、時系列対応付けには既存YOLO
-trackingと同じUltralytics BoT-SORT設定を使います。DINO自体からtrack IDが出る
-わけではありません。
+`DinoPersonTracker` はDINOによる検出後、明示的に構成したUltralytics
+BoT-SORTで時系列対応付けを行います。DINO自体からtrack IDが出るわけでは
+ありません。

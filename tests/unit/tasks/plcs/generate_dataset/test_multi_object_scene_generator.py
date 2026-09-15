@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -107,8 +108,17 @@ class _MotionSceneStub:
             ),
         )
         self.calls = 0
+        self.required_fps_values: list[float | None] = []
 
-    def generate_scene(self, scene_id: str) -> SceneData:
+    def generate_scene(
+        self,
+        scene_id: str,
+        *,
+        required_fps: float | None = None,
+    ) -> SceneData:
+        if required_fps is not None and required_fps != 30.0:
+            raise RuntimeError(f"Stub cannot satisfy required_fps={required_fps}.")
+        self.required_fps_values.append(required_fps)
         offset = float(self.calls)
         self.calls += 1
         frames = 4
@@ -153,7 +163,7 @@ class _MotionSceneStub:
         return SceneData(
             meta={
                 "scene_id": scene_id,
-                "motion_source": "stub",
+                "motion_source": f"motion_{int(offset)}.npz",
                 "motion_category": "test",
                 "gender": "neutral",
                 "fps": 30.0,
@@ -161,6 +171,8 @@ class _MotionSceneStub:
                 "initial_position": (0.0, 0.0),
                 "initial_yaw": 0.0,
                 "num_cameras_sampled": len(cameras),
+                "motion_source_kind": "accad",
+                "motion_source_id": f"motion_{int(offset)}",
             },
             position=position,
             rotation=rotation,
@@ -178,8 +190,13 @@ class _CourtViewMotionSceneStub(_MotionSceneStub):
             tuple[tuple[CourtViewRecord, np.ndarray, np.ndarray], ...]
         ] = []
 
-    def generate_scene(self, scene_id: str) -> SceneData:
-        scene = super().generate_scene(scene_id)
+    def generate_scene(
+        self,
+        scene_id: str,
+        *,
+        required_fps: float | None = None,
+    ) -> SceneData:
+        scene = super().generate_scene(scene_id, required_fps=required_fps)
         contract = resolve_court_keypoint_contract("camera_view_v2")
         for index, camera in enumerate(scene.cameras):
             view = build_court_view_record(
@@ -214,13 +231,18 @@ class _CourtViewMotionSceneStub(_MotionSceneStub):
 
 
 def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
+    source = _MotionSceneStub()
     scene = MultiPersonSceneGenerator(
-        _MotionSceneStub(),
+        source,
         timeline=_timeline(),
     ).generate_scene("scene_000000")
+    assert source.required_fps_values == [None, 30.0]
     assert scene.num_persons == 2
     assert scene.person_present is not None
     assert scene.position.shape == (12, 2, 3)
+    assert scene.meta["motion_sources"] == ["motion_0.npz", "motion_1.npz"]
+    assert scene.meta["motion_source_kinds"] == ["accad", "accad"]
+    assert scene.meta["motion_source_ids"] == ["motion_0", "motion_1"]
     assert scene.person_present[:, : scene.num_persons].any(0).all()
     assert scene.cameras[0].human_kp_uv.shape == (12, 2, 17, 2)
     assert len(scene.track_instances) == 2
@@ -236,6 +258,10 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert (scene_path / "cam_0_court_kp_vis.npy").exists()
     assert not (scene_path / "cam_0_human_kp_visible.npy").exists()
     assert not (scene_path / "cam_0_court_kp_visible.npy").exists()
+    persisted_meta = json.loads((scene_path / "meta.json").read_text())
+    assert persisted_meta["motion_sources"] == ["motion_0.npz", "motion_1.npz"]
+    assert persisted_meta["motion_source_kinds"] == ["accad", "accad"]
+    assert persisted_meta["motion_source_ids"] == ["motion_0", "motion_1"]
     sample = PLCSTrackingDataset(
         scene_dir=dataset_root,
         split_file="train.txt",

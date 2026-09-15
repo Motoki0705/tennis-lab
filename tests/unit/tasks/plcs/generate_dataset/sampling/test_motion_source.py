@@ -16,6 +16,7 @@ from src.tasks.plcs.generate_dataset.sampling import (
     PLCSMotionClip,
     load_amass_motion_clip,
 )
+from src.tasks.plcs.motion import Coco17MotionClip
 
 _FloatArray: TypeAlias = NDArray[np.float32] | NDArray[np.float64]
 
@@ -38,15 +39,11 @@ def _arrays(
     trans: _FloatArray
     betas: _FloatArray
     if dtype is np.float32:
-        poses = np.arange(frame_count * 156, dtype=np.float32).reshape(
-            frame_count, 156
-        )
+        poses = np.arange(frame_count * 156, dtype=np.float32).reshape(frame_count, 156)
         trans = np.arange(frame_count * 3, dtype=np.float32).reshape(frame_count, 3)
         betas = np.arange(16, dtype=np.float32)
     else:
-        poses = np.arange(frame_count * 156, dtype=np.float64).reshape(
-            frame_count, 156
-        )
+        poses = np.arange(frame_count * 156, dtype=np.float64).reshape(frame_count, 156)
         trans = np.arange(frame_count * 3, dtype=np.float64).reshape(frame_count, 3)
         betas = np.arange(16, dtype=np.float64)
     return _AMASSArrays(
@@ -83,9 +80,9 @@ def _save_arrays(
     )
 
 
-def test_public_sampling_package_preserves_legacy_and_canonical_apis() -> None:
+def test_public_sampling_package_exposes_canonical_generation_boundary() -> None:
     assert MotionSampler.__module__.endswith("motion_sampler")
-    assert MotionSequence.__module__.endswith("motion_sampler")
+    assert MotionSequence is Coco17MotionClip
     assert PLCSMotionClip.__module__.endswith("motion_source")
 
 

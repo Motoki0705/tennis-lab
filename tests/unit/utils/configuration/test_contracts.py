@@ -133,6 +133,36 @@ def test_all_inventoried_runtime_boundaries_expose_truthful_authorities() -> Non
         )
 
 
+def test_gvhmr_extraction_boundary_declares_every_storage_and_model_path() -> None:
+    boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id == "src.tasks.plcs.scripts.extract_gvhmr_motions:main"
+    )
+
+    assert boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+    assert (
+        "src.tasks.plcs.scripts.extract_gvhmr_motions.PATH_BOUNDARY"
+        in boundary.authority_symbols
+    )
+    assert {path.rsplit(".", maxsplit=1)[-1] for path in boundary.field_paths} >= {
+        "asset_repository_root",
+        "checkpoint_root",
+        "dataset_root",
+        "dino_checkpoint",
+        "model_config",
+        "output_root",
+        "selection_config",
+    }
+    assert {
+        value.split(":path-role:", maxsplit=1)[1].split(":", maxsplit=1)[0]
+        for value in boundary.path_role_authorities
+        if ":path-role:" in value
+    } >= {"checkpoint", "data", "output", "project"}
+
+
 def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None:
     expected = {
         "analyze_predictions": "SLCS_ANALYSIS_BOUNDARY_SCHEMA",
@@ -228,17 +258,20 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
     assert manual_boundary.validator_callable == (
         "src.utils.configuration.paths.NonHydraPathBoundary.validate"
     )
-    assert any("path-role:data" in value for value in manual_boundary.path_role_authorities)
+    assert any(
+        "path-role:data" in value for value in manual_boundary.path_role_authorities
+    )
     assert review_boundary.validator_callable == (
         "src.utils.configuration.paths.NonHydraPathBoundary.validate"
     )
-    assert any("path-role:data" in value for value in review_boundary.path_role_authorities)
+    assert any(
+        "path-role:data" in value for value in review_boundary.path_role_authorities
+    )
     assert compaction_boundary.validator_callable == (
         "src.utils.configuration.paths.NonHydraPathBoundary.validate"
     )
     assert any(
-        "path-role:data" in value
-        for value in compaction_boundary.path_role_authorities
+        "path-role:data" in value for value in compaction_boundary.path_role_authorities
     )
     assert any(
         "path-role:output" in value
