@@ -27,6 +27,7 @@
 - `shared/scene3d.mjs`: Three.jsによるコート・カメラ・GTと予測の描画。
 - `web_assets.py`: 固定されたローカル描画アセットのHTTP配信。
 - `inference_queue.py`: 推論Web UIから共有GPUキューへの接続。
+- `../scripts/inference_worker.py`: キューが起動するCLI。共有要求ディレクトリ内のパスを検証してから推論を実行する。
 
 ## Web UIのGPU実行
 

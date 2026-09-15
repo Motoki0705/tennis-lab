@@ -288,6 +288,10 @@ def _runtime_boundary(
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.base.scripts.inference_worker": (
+        "base.inference_worker",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     **{
         f"src.tasks.{task}.scripts.{script}": (
             f"{task}.{script}",
@@ -371,6 +375,12 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.base.scripts.inference_worker",
+        "main",
+        domain="base",
+        executable_module=True,
+    ),
     _non_hydra_boundary(
         "src.automation.chatgpt_mcp.scripts.capabilities",
         "main",

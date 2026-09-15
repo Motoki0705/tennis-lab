@@ -386,7 +386,8 @@ def describe_config(
     model = model_block.get("name")
     model_name = str(model) if isinstance(model, str) else ""
     input_mode = model_block.get("input_mode")
-    num_frames = _positive_int(model_block.get("num_frames")) or 0
+    parsed_num_frames = _positive_int(model_block.get("num_frames"))
+    num_frames = 0 if parsed_num_frames is None else parsed_num_frames
     minimum_frames = MINIMUM_FRAMES_BY_MODEL.get(model_name, 0)
     settings = read_metrics_settings(container)
     image_size = image_size_of(container, model=model_name)

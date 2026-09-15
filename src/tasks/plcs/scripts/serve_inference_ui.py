@@ -28,8 +28,7 @@ from src.utils.configuration import (
     PathRole,
     RuntimePathRoots,
 )
-
-REPO_ROOT = Path(__file__).resolve().parents[4]
+from src.utils.paths import PROJECT_ROOT as REPO_ROOT
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="plcs.inference_ui",

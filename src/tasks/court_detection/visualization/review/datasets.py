@@ -62,10 +62,11 @@ from src.utils.configuration import (
     PathResolver,
     RuntimePathRoots,
 )
+from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court import COURT_KP_NAMES, GROUND_COURT_KP_NAMES
 
-_TENNIS_SOURCE_PRESET = (
-    Path(__file__).resolve().parents[2]
+_TENNIS_SOURCE_PRESET: Path = (
+    PROJECT_ROOT / "src" / "tasks" / "court_detection"
     / "configs"
     / "data"
     / "source"
