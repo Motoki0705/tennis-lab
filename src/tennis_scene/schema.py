@@ -31,11 +31,17 @@ class SceneResult:
     Player-related arrays use ``(P, T, ...)`` as the canonical shape. Camera
     observations use a leading camera axis ``N``.
 
-    ``player_position`` and ``ball_3d`` are in court coordinates: XY is the
-    court plane and +Z is up. ``smpl_vertices_local`` and SMPL pose parameters
-    are stored in the GVHMR/SMPL body convention; rendering root-centers the
-    vertices and explicitly converts Y-up SMPL geometry to court Z-up before
-    applying ``player_yaw``.
+    ``player_position`` / ``player_yaw`` are the PLCS placement and
+    ``gvhmr_aligned_*`` fields are the alternative placement obtained by
+    aligning GVHMR world motion to PLCS. Both are retained so downstream
+    consumers choose the representation they need.
+
+    ``player_position``, ``gvhmr_aligned_player_position`` and ``ball_3d`` are
+    in court coordinates: XY is the court plane and +Z is up.
+    ``smpl_vertices_local`` and SMPL pose parameters are stored in the
+    GVHMR/SMPL body convention; rendering root-centers the vertices and
+    explicitly converts Y-up SMPL geometry to court Z-up before applying the
+    corresponding player yaw.
 
     Archive persistence is intentionally separate from this schema. Use
     :func:`src.tennis_scene.archive.save_scene_result` and
@@ -57,6 +63,13 @@ class SceneResult:
     smpl_global_orient: NDArray[np.float32] | None = None  # (P, T, 3)
     smpl_betas: NDArray[np.float32] | None = None  # (P, 10)
     smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
+
+    gvhmr_aligned_player_position: NDArray[np.float32] | None = (
+        None  # (P, T, 3), court coordinates
+    )
+    gvhmr_aligned_player_yaw: NDArray[np.float32] | None = None  # (P, T)
+    gvhmr_aligned_smpl_global_orient: NDArray[np.float32] | None = None  # (P, T, 3)
+    gvhmr_aligned_smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
     ball_uv: NDArray[np.float32] | None = None  # (N, T, 2)
     ball_vis: NDArray[np.bool_] | None = None  # (N, T)

@@ -148,12 +148,11 @@ def test_clip_studio_rejects_invalid_port(tmp_path: Path, port: int) -> None:
         parse_clip_studio_config(OmegaConf.create(config))
 
 
-def test_player_motion_defaults_select_plcs_and_reuse_the_bundled_regressor(
+def test_player_motion_defaults_configure_automatic_alignment(
     tmp_path: Path,
 ) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path))
 
-    assert runtime.player_motion.source == "plcs"
     assert runtime.player_motion.scale_mode == "fixed"
     assert (
         runtime.player_motion.smpl_joint_regressor
@@ -175,32 +174,31 @@ def test_player_motion_defaults_select_plcs_and_reuse_the_bundled_regressor(
     assert runtime.player_motion.fit_config().fixed_scale == 1.0
 
 
-def test_player_motion_accepts_the_aligned_source_and_free_scale(
+def test_player_motion_accepts_free_scale(
     tmp_path: Path,
 ) -> None:
     runtime = PipelineRuntimeConfig.from_config(
         _pipeline_config(
             tmp_path,
-            "player_motion.source=gvhmr_alignment",
             "player_motion.scale_mode=free",
         )
     )
 
-    assert runtime.player_motion.source == "gvhmr_alignment"
     assert runtime.player_motion.scale_mode == "free"
     assert runtime.player_motion.fit_config().fixed_scale is None
 
 
+def test_player_motion_rejects_the_removed_source_choice(tmp_path: Path) -> None:
+    with pytest.raises(UnknownConfigurationKeyError, match="player_motion.source"):
+        PipelineRuntimeConfig.from_config(
+            _pipeline_config(tmp_path, "+player_motion.source=plcs")
+        )
+
+
 @pytest.mark.parametrize(
-    "override",
-    [
-        "player_motion.source=world",
-        "player_motion.source=PLCS",
-        "player_motion.scale_mode=huge",
-        "player_motion.scale_mode=Fixed",
-    ],
+    "override", ["player_motion.scale_mode=huge", "player_motion.scale_mode=Fixed"]
 )
-def test_player_motion_rejects_unknown_choices(
+def test_player_motion_rejects_unknown_scale_modes(
     tmp_path: Path, override: str
 ) -> None:
     with pytest.raises(SemanticConfigurationError, match="player_motion"):
@@ -238,9 +236,7 @@ def test_player_motion_rejects_inverted_scale_bounds(tmp_path: Path) -> None:
 def test_player_motion_rejects_an_unknown_alignment_key(tmp_path: Path) -> None:
     with pytest.raises(UnknownConfigurationKeyError, match="alignment"):
         PipelineRuntimeConfig.from_config(
-            _pipeline_config(
-                tmp_path, "+player_motion.alignment.unexpected_value=1.0"
-            )
+            _pipeline_config(tmp_path, "+player_motion.alignment.unexpected_value=1.0")
         )
 
 

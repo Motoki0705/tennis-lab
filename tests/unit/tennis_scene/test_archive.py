@@ -28,6 +28,10 @@ def _scene() -> SceneResult:
         smpl_global_orient=np.zeros((2, 3, 3), dtype=np.float32),
         smpl_betas=np.zeros((2, 10), dtype=np.float32),
         smpl_vertices_local=np.zeros((2, 3, 5, 3), dtype=np.float32),
+        gvhmr_aligned_player_position=np.full((2, 3, 3), 10.0, dtype=np.float32),
+        gvhmr_aligned_player_yaw=np.full((2, 3), 0.5, dtype=np.float32),
+        gvhmr_aligned_smpl_global_orient=np.full((2, 3, 3), 1.0, dtype=np.float32),
+        gvhmr_aligned_smpl_vertices_local=np.full((2, 3, 5, 3), 2.0, dtype=np.float32),
         ball_uv=np.arange(2 * 3 * 2, dtype=np.float32).reshape(2, 3, 2),
         ball_vis=np.array([[True, False, True], [True, True, False]]),
         ball_3d=np.arange(3 * 3, dtype=np.float32).reshape(3, 3),
@@ -60,6 +64,10 @@ def test_archive_round_trip_preserves_every_array_and_metadata(tmp_path: Path) -
         "smpl_global_orient",
         "smpl_betas",
         "smpl_vertices_local",
+        "gvhmr_aligned_player_position",
+        "gvhmr_aligned_player_yaw",
+        "gvhmr_aligned_smpl_global_orient",
+        "gvhmr_aligned_smpl_vertices_local",
         "ball_uv",
         "ball_vis",
         "ball_3d",
@@ -109,6 +117,10 @@ def test_ball_archive_contract_has_camera_time_streams_but_no_ball_ids(
 def test_archive_preserves_absent_optional_arrays(tmp_path: Path) -> None:
     expected = _scene()
     expected.smpl_vertices_local = None
+    expected.gvhmr_aligned_player_position = None
+    expected.gvhmr_aligned_player_yaw = None
+    expected.gvhmr_aligned_smpl_global_orient = None
+    expected.gvhmr_aligned_smpl_vertices_local = None
     expected.ball_uv = None
     expected.ball_vis = None
     expected.ball_3d = None
@@ -122,6 +134,10 @@ def test_archive_preserves_absent_optional_arrays(tmp_path: Path) -> None:
     actual = load_scene_result(path)
 
     assert actual.smpl_vertices_local is None
+    assert actual.gvhmr_aligned_player_position is None
+    assert actual.gvhmr_aligned_player_yaw is None
+    assert actual.gvhmr_aligned_smpl_global_orient is None
+    assert actual.gvhmr_aligned_smpl_vertices_local is None
     assert actual.ball_uv is None
     assert actual.ball_vis is None
     assert actual.ball_3d is None

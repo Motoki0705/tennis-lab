@@ -36,6 +36,11 @@ def test_generate_publishes_complete_annotation_and_then_skips(
     annotation = load_json(first[0].annotation_path)
     assert annotation["clip_id"] == "video_000/clip_000"
     assert annotation["arrays"]["ball_3d"]["shape"] == [3, 3]
+    assert annotation["arrays"]["gvhmr_aligned_player_position"]["shape"] == [
+        2,
+        3,
+        3,
+    ]
     loaded = load_scene_result(first[0].annotation_path.parent / "scene.npz")
     assert loaded.metadata["dataset_clip_id"] == "video_000/clip_000"
 
