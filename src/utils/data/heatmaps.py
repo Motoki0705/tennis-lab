@@ -9,6 +9,13 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
+_NEIGHBOUR_OFFSETS_3X3 = tuple(
+    (row_offset, column_offset)
+    for row_offset in (-1, 0, 1)
+    for column_offset in (-1, 0, 1)
+    if (row_offset, column_offset) != (0, 0)
+)
+
 
 def generate_gaussian_heatmaps(
     size_hw: tuple[int, int],
@@ -254,6 +261,34 @@ def heatmaps_to_soft_argmax(
     return torch.stack([x, y], dim=-1)
 
 
+def _equal_value_row_major_maxima(maps: Tensor, candidates: Tensor) -> Tensor:
+    """Keep candidates that no equal-valued neighbour outranks.
+
+    Ties inside one equal-valued 3x3 neighbourhood are broken by row-major
+    index, which collapses a plateau to its last pixel without charging the
+    candidate that a separated equal-valued peak represents.
+    """
+    _, _, height, width = maps.shape
+    ranks = torch.arange(
+        height * width,
+        dtype=torch.float32,
+        device=maps.device,
+    ).reshape(1, 1, height, width)
+    padded_values = F.pad(maps, (1, 1, 1, 1), value=float("-inf"))
+    padded_ranks = F.pad(ranks, (1, 1, 1, 1), value=-1.0)
+    maxima = candidates
+    for row_offset, column_offset in _NEIGHBOUR_OFFSETS_3X3:
+        window = (
+            slice(None),
+            slice(None),
+            slice(1 + row_offset, 1 + row_offset + height),
+            slice(1 + column_offset, 1 + column_offset + width),
+        )
+        outranked = (padded_values[window] == maps) & (padded_ranks[window] > ranks)
+        maxima = maxima & ~outranked
+    return maxima
+
+
 def heatmaps_to_peaks(
     heatmaps: Tensor,
     *,
@@ -261,7 +296,20 @@ def heatmaps_to_peaks(
     nms_kernel: int,
     max_peaks: int,
 ) -> tuple[Tensor, Tensor, Tensor]:
-    """Extract thresholded local peaks from dense heatmaps.
+    """Extract thresholded, contrastive local peaks from dense heatmaps.
+
+    With ``nms_kernel > 1`` a candidate must be a thresholded local maximum
+    that is strictly larger than a pixel inside its NMS window, so a spatially
+    uniform heatmap emits no peak even when its value equals the threshold.
+    Max-pooling marks every pixel of an equal-valued plateau, so ties are then
+    broken by row-major index inside each equal-valued 3x3 neighbourhood: a
+    plateau collapses deterministically instead of exploding into one
+    candidate per pixel, while equal-valued peaks separated by lower values
+    stay distinct.
+
+    ``nms_kernel == 1`` (and any single-pixel map) has no neighbourhood to
+    compare against, so extraction degrades to the threshold test alone and a
+    uniform map reports candidates at every pixel.
 
     Args:
         heatmaps: Tensor with shape ``(..., H, W)``.
@@ -277,8 +325,8 @@ def heatmaps_to_peaks(
     """
     if heatmaps.ndim < 2:
         raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
-    if threshold < 0:
-        raise ValueError("threshold must be non-negative.")
+    if not math.isfinite(float(threshold)) or threshold < 0:
+        raise ValueError("threshold must be finite and non-negative.")
     if nms_kernel <= 0 or nms_kernel % 2 == 0:
         raise ValueError("nms_kernel must be a positive odd integer.")
     if max_peaks <= 0:
@@ -287,13 +335,26 @@ def heatmaps_to_peaks(
     *leading_shape, height, width = heatmaps.shape
     flattened_leading = math.prod(leading_shape) if leading_shape else 1
     maps = heatmaps.reshape(flattened_leading, 1, height, width)
-    pooled = F.max_pool2d(
-        maps,
-        kernel_size=nms_kernel,
-        stride=1,
-        padding=nms_kernel // 2,
-    )
-    local_maxima = (maps >= pooled) & (maps >= float(threshold))
+    threshold_mask = maps >= float(threshold)
+
+    if nms_kernel == 1 or height * width == 1:
+        local_maxima = threshold_mask
+    else:
+        pooled_max = F.max_pool2d(
+            maps,
+            kernel_size=nms_kernel,
+            stride=1,
+            padding=nms_kernel // 2,
+        )
+        pooled_min = -F.max_pool2d(
+            -maps,
+            kernel_size=nms_kernel,
+            stride=1,
+            padding=nms_kernel // 2,
+        )
+        local_maxima = (maps == pooled_max) & (maps > pooled_min) & threshold_mask
+        local_maxima &= _equal_value_row_major_maxima(maps, local_maxima)
+
     candidate_values = maps.masked_fill(~local_maxima, float("-inf")).flatten(1)
     k = min(max_peaks, height * width)
     values, indices = candidate_values.topk(k, dim=1)

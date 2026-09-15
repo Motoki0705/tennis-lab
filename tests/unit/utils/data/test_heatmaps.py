@@ -264,10 +264,67 @@ class TestHeatmapsToPeaks:
         )
         assert int(valid.sum()) == 0
 
+    def test_uniform_map_at_threshold_is_not_a_peak(self) -> None:
+        # A flat map has no local contrast, so threshold equality alone must
+        # not manufacture one candidate per pixel.
+        hm = torch.full((9, 9), 0.5)
+        _, values, valid = heatmaps_to_peaks(
+            hm, threshold=0.5, nms_kernel=3, max_peaks=4
+        )
+        assert valid.shape == (4,)
+        assert int(valid.sum()) == 0
+        assert torch.count_nonzero(values) == 0
+
+    def test_equal_plateau_collapses_to_one_deterministic_candidate(self) -> None:
+        hm = torch.zeros(9, 9)
+        hm[3:6, 3:6] = 0.9
+        _, values, valid = heatmaps_to_peaks(
+            hm, threshold=0.9, nms_kernel=3, max_peaks=4
+        )
+        assert int(valid.sum()) == 1
+        assert float(values[valid].max().item()) == pytest.approx(0.9)
+
+    def test_kernel_one_is_threshold_only(self) -> None:
+        # No neighbourhood means no contrast test, which is the documented
+        # degenerate behaviour rather than the uniform-map-is-empty rule.
+        hm = torch.full((3, 3), 0.5)
+        _, values, valid = heatmaps_to_peaks(
+            hm, threshold=0.5, nms_kernel=1, max_peaks=4
+        )
+        assert valid.tolist() == [True, True, True, True]
+        torch.testing.assert_close(values, torch.full((4,), 0.5))
+
+    def test_separated_peaks_beyond_the_nms_kernel_are_both_kept(self) -> None:
+        hm = torch.zeros(17, 17)
+        hm[3, 3] = 0.8
+        hm[12, 12] = 0.9
+        coords, values, valid = heatmaps_to_peaks(
+            hm, threshold=0.5, nms_kernel=3, max_peaks=2
+        )
+        assert valid.tolist() == [True, True]
+        # Scores are ordered, so the stronger peak leads.
+        assert float(values[0].item()) == pytest.approx(0.9)
+        torch.testing.assert_close(coords[0], torch.tensor([0.75, 0.75]))
+        torch.testing.assert_close(coords[1], torch.tensor([0.1875, 0.1875]))
+
+    def test_equal_valued_separated_peaks_stay_distinct(self) -> None:
+        # Ties only collapse inside one equal-valued neighbourhood, so a lower
+        # valley keeps two equally strong peaks as two candidates.
+        hm = torch.zeros(17, 17)
+        hm[4, 4] = 0.8
+        hm[7, 7] = 0.8
+        _, values, valid = heatmaps_to_peaks(
+            hm, threshold=0.5, nms_kernel=7, max_peaks=2
+        )
+        assert valid.tolist() == [True, True]
+        torch.testing.assert_close(values, torch.full((2,), 0.8))
+
     @pytest.mark.parametrize(
         "kwargs",
         [
             {"threshold": -1.0, "nms_kernel": 3, "max_peaks": 1},
+            {"threshold": float("nan"), "nms_kernel": 3, "max_peaks": 1},
+            {"threshold": float("inf"), "nms_kernel": 3, "max_peaks": 1},
             {"threshold": 0.0, "nms_kernel": 2, "max_peaks": 1},
             {"threshold": 0.0, "nms_kernel": 3, "max_peaks": 0},
         ],

@@ -23,6 +23,10 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelOutput,
 )
 from src.tasks.court_detection.model_io.images import prepare_court_image
+from src.tasks.court_detection.model_io.keypoint_decoder import (
+    CourtKeypointDecoderConfig,
+    decode_court_keypoint_logits,
+)
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
@@ -36,7 +40,12 @@ CourtBoundModelIO: TypeAlias = BoundModelIO[
 
 
 class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
-    """Predict one KP head from a single- or multi-target checkpoint."""
+    """Predict one KP head from a single- or multi-target checkpoint.
+
+    The default peak contract is one candidate per semantic channel, matching
+    the ordered single-court KP14 supervision. Multi-court callers must opt in
+    to additional candidates with an explicit ``max_peaks``.
+    """
 
     def __init__(
         self,
@@ -44,7 +53,9 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         device: torch.device,
         *,
         subpixel_refine: bool,
-        max_peaks: int = 4,
+        peak_threshold: float = 0.05,
+        nms_kernel: int = 7,
+        max_peaks: int = 1,
     ) -> None:
         if not isinstance(model_io.adapter, CourtModelIOAdapter):
             raise CourtModelIOError(
@@ -54,14 +65,16 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             raise CourtModelIOError(
                 "CourtKeypointPredictor requires a checkpoint with a KP head."
             )
-        if max_peaks <= 0:
-            raise ValueError("Court keypoint max_peaks must be positive.")
         self.model_io = model_io
         self.model = model_io.model
         self.adapter = model_io.adapter
         self.device = device
         self.subpixel_refine = subpixel_refine
-        self.max_peaks = max_peaks
+        self._decoder_config = CourtKeypointDecoderConfig(
+            threshold=peak_threshold,
+            nms_kernel=nms_kernel,
+            max_peaks=max_peaks,
+        )
 
         self.adapter.validate_model_pair(self.model)
         self.model.to(self.device)
@@ -75,7 +88,9 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         resolver: PathResolver,
         device: str | torch.device,
         subpixel_refine: bool,
-        max_peaks: int = 4,
+        peak_threshold: float = 0.05,
+        nms_kernel: int = 7,
+        max_peaks: int = 1,
         **kwargs: Any,
     ) -> Self:
         """Load one checkpoint and preserve its serialized target bundle."""
@@ -96,6 +111,8 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             ),
             resolved_device,
             subpixel_refine=subpixel_refine,
+            peak_threshold=peak_threshold,
+            nms_kernel=nms_kernel,
             max_peaks=max_peaks,
         )
 
@@ -132,20 +149,36 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             logits = (
                 output.dense_logits if isinstance(output, CourtModelOutput) else output
             )
-        return cast(
-            CourtKeypointPrediction,
-            self.adapter.decode_prediction(
-                "kp",
-                logits["kp"],
-                original_size_hw=original_size_hw,
-                subpixel_refine=self.subpixel_refine,
-                max_peaks=self.max_peaks,
-            ),
+        return decode_court_keypoint_logits(
+            logits["kp"],
+            original_size_hw=original_size_hw,
+            subpixel_refine=self.subpixel_refine,
+            config=self.decoder_config,
         )
 
     @property
     def task(self) -> CourtTargetKind:
         return "kp"
+
+    @property
+    def decoder_config(self) -> CourtKeypointDecoderConfig:
+        """Validated peak-extraction contract used by :meth:`predict`."""
+        return self._decoder_config
+
+    @property
+    def peak_threshold(self) -> float:
+        """Extraction threshold applied to each channel's peak scores."""
+        return self.decoder_config.threshold
+
+    @property
+    def nms_kernel(self) -> int:
+        """Odd max-pooling kernel used for peak non-maximum suppression."""
+        return self.decoder_config.nms_kernel
+
+    @property
+    def max_peaks(self) -> int:
+        """Candidate budget per semantic channel (1 for the singleton contract)."""
+        return self.decoder_config.max_peaks
 
     @property
     def short_side(self) -> int:

@@ -31,7 +31,6 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtConsistencyResult,
     CourtDecodedOutput,
     CourtDecodedPrediction,
-    CourtKeypointPrediction,
     CourtLinePrediction,
     CourtLogits,
     CourtModelCall,
@@ -48,6 +47,10 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtTrainingResult,
     CourtTrainingTargetKind,
 )
+from src.tasks.court_detection.model_io.keypoint_decoder import (
+    CourtKeypointDecoderConfig,
+    decode_court_keypoint_logits,
+)
 from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 from src.tasks.court_detection.training.losses import (
@@ -60,7 +63,6 @@ from src.tasks.court_detection.training.losses import (
 from src.utils.data.heatmaps import (
     heatmaps_to_peaks,
     heatmaps_to_soft_argmax,
-    refine_peaks_log_parabolic,
 )
 
 _NORMALIZED_IMAGE_MIN = tuple(
@@ -503,12 +505,15 @@ class CourtModelIOAdapter(nn.Module):
         predictions: dict[str, object] = {}
         for kind, value in logits.items():
             if kind == "kp":
+                config = CourtKeypointDecoderConfig(
+                    max_peaks=self._kp_point_capacity(batch, logits=value)
+                )
                 probability = torch.sigmoid(value)
                 coords, scores, valid = heatmaps_to_peaks(
                     probability,
-                    threshold=0.05,
-                    nms_kernel=7,
-                    max_peaks=4,
+                    threshold=config.threshold,
+                    nms_kernel=config.nms_kernel,
+                    max_peaks=config.max_peaks,
                 )
                 predictions[kind] = {
                     "keypoints_normalized": coords,
@@ -529,6 +534,78 @@ class CourtModelIOAdapter(nn.Module):
             "predictions": predictions,
         }
 
+    @staticmethod
+    def _kp_point_capacity(
+        batch: Mapping[str, object],
+        *,
+        logits: Tensor,
+    ) -> int:
+        """Return the supervised point capacity that the KP peak axis must match.
+
+        The value is read from the batch's own ``points_xy`` target so that a
+        singleton learner never emits incidental secondary peaks, and a
+        multi-point learner keeps every supervised candidate. A missing or
+        malformed target stops the run instead of silently falling back to one.
+        """
+
+        targets = batch.get("targets")
+        if not isinstance(targets, Mapping):
+            raise CourtModelIOError(
+                "Court KP test payload requires the batch targets mapping."
+            )
+        payload = targets.get("kp")
+        if not isinstance(payload, Mapping):
+            raise CourtModelIOError(
+                "Court KP test payload requires the batch KP target mapping."
+            )
+        points = payload.get("points_xy")
+        if (
+            not isinstance(points, Tensor)
+            or points.ndim != 4
+            or points.shape[-1] != 2
+            or points.shape[:2] != logits.shape[:2]
+        ):
+            raise CourtModelIOError(
+                "Court KP test payload requires points_xy with shape (B,C,P,2) "
+                "matching the KP logits."
+            )
+        if points.shape[2] <= 0:
+            raise CourtModelIOError(
+                "Court KP test payload requires a positive supervised point count."
+            )
+        if not points.is_floating_point():
+            raise CourtModelIOError("Court KP test payload points_xy must be floating.")
+        if not bool(torch.isfinite(points).all()):
+            raise CourtModelIOError(
+                "Court KP test payload points_xy must contain only finite values."
+            )
+        visible = payload.get("point_visible")
+        if visible is None:
+            raise CourtModelIOError(
+                "Court KP test payload requires point_visible for the supervised "
+                "point capacity."
+            )
+        if (
+            not isinstance(visible, Tensor)
+            or visible.dtype != torch.bool
+            or visible.shape != points.shape[:-1]
+        ):
+            raise CourtModelIOError(
+                "Court KP test payload point_visible must be bool (B,C,P) matching "
+                "points_xy."
+            )
+        physical = payload.get("physical_indices")
+        if (
+            not isinstance(physical, Tensor)
+            or physical.dtype != torch.long
+            or physical.shape != points.shape[:-1]
+        ):
+            raise CourtModelIOError(
+                "Court KP test payload physical_indices must be int64 (B,C,P) "
+                "matching points_xy."
+            )
+        return int(points.shape[2])
+
     def decode_prediction(
         self,
         kind: CourtTargetKind,
@@ -536,31 +613,18 @@ class CourtModelIOAdapter(nn.Module):
         *,
         original_size_hw: tuple[int, int],
         subpixel_refine: bool,
-        max_peaks: int = 4,
+        max_peaks: int = 1,
     ) -> CourtDecodedPrediction:
         spec = self.spec.target_bundle.targets.get(kind)
         if spec is None:
             raise CourtModelIOError(f"Court bundle has no {kind!r} head.")
         self._validate_one_logits(kind, logits, spec.output_channels)
         if kind == "kp":
-            probability = torch.sigmoid(logits)
-            coords, scores, valid = heatmaps_to_peaks(
-                probability,
-                threshold=0.05,
-                nms_kernel=7,
-                max_peaks=max_peaks,
-            )
-            if subpixel_refine:
-                coords = refine_peaks_log_parabolic(probability, coords)
-            height, width = original_size_hw
-            scale = coords.new_tensor(
-                [float(max(width - 1, 0)), float(max(height - 1, 0))]
-            )
-            return CourtKeypointPrediction(
-                keypoints=(coords[0] * scale).cpu(),
-                scores=scores[0].cpu(),
-                valid=valid[0].cpu(),
-                heatmaps=logits[0].cpu(),
+            return decode_court_keypoint_logits(
+                logits,
+                original_size_hw=original_size_hw,
+                subpixel_refine=subpixel_refine,
+                config=CourtKeypointDecoderConfig(max_peaks=max_peaks),
             )
         if kind in {"seg", "semantic_line"}:
             return CourtSegmentationPrediction(
