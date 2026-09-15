@@ -33,6 +33,16 @@ _REQUIRED_SMPL_WIDTHS = {
 }
 
 
+def _optional_array(
+    data: dict[str, object], name: str
+) -> NDArray[np.float32] | None:
+    """Decode one optional array field, keeping its absence explicit."""
+    value = data.get(name)
+    if value is None:
+        return None
+    return np.asarray(value, dtype=np.float32)
+
+
 class GVHMRContractError(ValueError):
     """A typed GVHMR chain request or model result violated its contract."""
 
@@ -97,6 +107,17 @@ class GVHMRResult:
     ``smpl_betas (P,10)``, optional ``smpl_vertices_local (P,T,V,3)``,
     ``human_kp_2d (P,T,17,2)``, ``human_kp_vis (P,T,17)``,
     ``bbx_xys (P,T,3)``, and ``track_ids (P,)``.
+
+    The optional world-motion fields expose the raw gravity-aligned GVHMR
+    numbers needed to place a track outside one camera:
+
+    - ``smpl_transl_incam (P,T,3)``: camera-frame ``transl``.
+    - ``smpl_transl_world (P,T,3)``: gravity-aligned Y-up ``transl``.
+    - ``smpl_global_orient_world (P,T,3)``: gravity-aligned Y-up axis-angle.
+
+    ``smpl_global_orient``, ``smpl_body_pose`` and ``smpl_vertices_local``
+    stay camera-frame; the world fields never replace them. Artifacts saved
+    before world-motion support simply omit all three.
     """
 
     smpl_body_pose: NDArray[np.float32]
@@ -107,6 +128,9 @@ class GVHMRResult:
     human_kp_vis: NDArray[np.float32]
     bbx_xys: NDArray[np.float32]
     track_ids: NDArray[np.int32]
+    smpl_transl_incam: NDArray[np.float32] | None = None
+    smpl_transl_world: NDArray[np.float32] | None = None
+    smpl_global_orient_world: NDArray[np.float32] | None = None
 
     def to_dict(self) -> dict[str, object]:
         result: dict[str, object] = {
@@ -120,6 +144,14 @@ class GVHMRResult:
         }
         if self.smpl_vertices_local is not None:
             result["smpl_vertices_local"] = self.smpl_vertices_local.tolist()
+        for name in (
+            "smpl_transl_incam",
+            "smpl_transl_world",
+            "smpl_global_orient_world",
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                result[name] = value.tolist()
         return result
 
     @classmethod
@@ -151,6 +183,11 @@ class GVHMRResult:
             human_kp_vis=np.asarray(data["human_kp_vis"], dtype=np.float32),
             bbx_xys=np.asarray(data["bbx_xys"], dtype=np.float32),
             track_ids=np.asarray(data["track_ids"], dtype=np.int32),
+            smpl_transl_incam=_optional_array(data, "smpl_transl_incam"),
+            smpl_transl_world=_optional_array(data, "smpl_transl_world"),
+            smpl_global_orient_world=_optional_array(
+                data, "smpl_global_orient_world"
+            ),
         )
 
     def save(self, path: str | Path) -> None:
@@ -230,6 +267,9 @@ class _DecodedTrack:
     human_kp_2d: NDArray[np.float32]
     human_kp_vis: NDArray[np.float32]
     bbx_xys: NDArray[np.float32]
+    smpl_transl_incam: NDArray[np.float32]
+    smpl_transl_world: NDArray[np.float32]
+    smpl_global_orient_world: NDArray[np.float32]
 
 
 @dataclass(slots=True)
@@ -328,6 +368,16 @@ class GVHMRChainAdapter:
             ),
             bbx_xys=np.stack([track.bbx_xys for track in decoded_tracks], axis=0),
             track_ids=np.asarray(track_ids, dtype=np.int32),
+            smpl_transl_incam=np.stack(
+                [track.smpl_transl_incam for track in decoded_tracks], axis=0
+            ),
+            smpl_transl_world=np.stack(
+                [track.smpl_transl_world for track in decoded_tracks], axis=0
+            ),
+            smpl_global_orient_world=np.stack(
+                [track.smpl_global_orient_world for track in decoded_tracks],
+                axis=0,
+            ),
         )
 
     def _predict_track(
@@ -426,7 +476,7 @@ class GVHMRChainAdapter:
             expected_frames=expected_frames,
             reference=boxes,
         )
-        _validate_smpl_parameters(
+        world = _validate_smpl_parameters(
             mesh_result.smpl_params_global,
             name="smpl_params_global",
             expected_frames=expected_frames,
@@ -471,6 +521,9 @@ class GVHMRChainAdapter:
             human_kp_2d=_as_float32_numpy(keypoints[..., :2]),
             human_kp_vis=_as_float32_numpy(keypoints[..., 2]),
             bbx_xys=_as_float32_numpy(boxes),
+            smpl_transl_incam=_as_float32_numpy(incam["transl"]),
+            smpl_transl_world=_as_float32_numpy(world["transl"]),
+            smpl_global_orient_world=_as_float32_numpy(world["global_orient"]),
         )
 
 
