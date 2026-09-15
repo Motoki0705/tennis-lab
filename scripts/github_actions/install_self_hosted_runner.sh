@@ -5,7 +5,6 @@ set -euo pipefail
 
 readonly RUNNER_USER="tennis-actions"
 readonly RUNNER_GROUP="tennis-actions"
-readonly TRUSTED_MCP_USER="kamimura"
 readonly RUNNER_ROOT="/opt/actions-runner"
 readonly TOOL_ROOT="/opt/tennis-lab-actions"
 readonly STATE_ROOT="/var/lib/tennis-lab-actions"
@@ -21,70 +20,11 @@ readonly SERVICE_PATH="/etc/systemd/system"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RUNNER_NAME="$(hostname)-wsl2-rtx5060ti"
-GPU_LOCK_ONLY=false
-
-usage() {
-  echo "usage: sudo bash $0 [--configure-gpu-lock-only]" >&2
-}
-
-if [ "$#" -gt 1 ]; then
-  usage
-  exit 2
-fi
-if [ "$#" -eq 1 ]; then
-  if [ "$1" != "--configure-gpu-lock-only" ]; then
-    usage
-    exit 2
-  fi
-  GPU_LOCK_ONLY=true
-fi
 
 if [ "${EUID}" -ne 0 ]; then
   echo "Run this installer with sudo." >&2
   echo "  sudo bash scripts/github_actions/install_self_hosted_runner.sh" >&2
   exit 1
-fi
-
-if ! id "$TRUSTED_MCP_USER" >/dev/null 2>&1; then
-  echo "Trusted MCP user is missing: $TRUSTED_MCP_USER" >&2
-  exit 1
-fi
-TRUSTED_MCP_GROUP="$(id -gn "$TRUSTED_MCP_USER")"
-readonly TRUSTED_MCP_GROUP
-
-configure_shared_gpu_lock() {
-  if ! id "$RUNNER_USER" >/dev/null 2>&1; then
-    echo "GPU runner user is missing: $RUNNER_USER" >&2
-    echo "Run the full installer before --configure-gpu-lock-only." >&2
-    exit 1
-  fi
-
-  # The MCP user may traverse STATE_ROOT but cannot list it. All other state
-  # remains mode 0700 and owned by the isolated GPU runner.
-  install -d -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0710 "$STATE_ROOT"
-  local lock_path
-  for lock_path in \
-    "$GPU_LOCK_FILE" "$GPU_GATE_FILE" "$GPU_SLOT_0_FILE" "$GPU_SLOT_1_FILE"; do
-    if [ -L "$lock_path" ] || { [ -e "$lock_path" ] && [ ! -f "$lock_path" ]; }; then
-      echo "Shared GPU lock must be a regular file: $lock_path" >&2
-      exit 1
-    fi
-    if [ ! -e "$lock_path" ]; then
-      install -o "$RUNNER_USER" -g "$TRUSTED_MCP_GROUP" -m 0660 /dev/null \
-        "$lock_path"
-    else
-      chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$lock_path"
-      chmod 0660 "$lock_path"
-    fi
-    runuser -u "$RUNNER_USER" -- test -w "$lock_path"
-    runuser -u "$TRUSTED_MCP_USER" -- test -w "$lock_path"
-  done
-}
-
-if [ "$GPU_LOCK_ONLY" = true ]; then
-  configure_shared_gpu_lock
-  echo "Shared GPU lock configured: $GPU_LOCK_FILE"
-  exit 0
 fi
 
 for source_dir in "$REPOSITORY_ROOT/data" "$REPOSITORY_ROOT/ckpt"; do
@@ -126,8 +66,8 @@ if ! id "$RUNNER_USER" >/dev/null 2>&1; then
     "$RUNNER_USER"
 fi
 
-configure_shared_gpu_lock
 install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0700 \
+  "$STATE_ROOT" \
   "$RUNNER_HOME" \
   "$STATE_ROOT/assets" \
   "$STATE_ROOT/runs" \
@@ -136,6 +76,20 @@ for asset_dir in "$STATE_ROOT/assets/data" "$STATE_ROOT/assets/ckpt"; do
   if ! mountpoint --quiet "$asset_dir"; then
     install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0700 "$asset_dir"
   fi
+done
+for lock_path in \
+  "$GPU_LOCK_FILE" "$GPU_GATE_FILE" "$GPU_SLOT_0_FILE" "$GPU_SLOT_1_FILE"; do
+  if [ -L "$lock_path" ] || { [ -e "$lock_path" ] && [ ! -f "$lock_path" ]; }; then
+    echo "GPU lock must be a regular file: $lock_path" >&2
+    exit 1
+  fi
+  if [ ! -e "$lock_path" ]; then
+    install -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0600 /dev/null "$lock_path"
+  else
+    chown "$RUNNER_USER:$RUNNER_GROUP" "$lock_path"
+    chmod 0600 "$lock_path"
+  fi
+  runuser -u "$RUNNER_USER" -- test -w "$lock_path"
 done
 install -d -o "$RUNNER_USER" -g "$RUNNER_GROUP" -m 0750 "$RUNNER_ROOT"
 install -d -o root -g root -m 0755 "$TOOL_ROOT/bin"
