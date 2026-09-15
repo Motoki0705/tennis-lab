@@ -14,6 +14,7 @@ from numpy.typing import NDArray
 from omegaconf import DictConfig
 from torch import Tensor
 
+from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
     COURT_KEYPOINT_METADATA_KEY,
     CourtKeypointContract,
@@ -68,6 +69,7 @@ from src.tasks.plcs.models.plcs_track_query_reference_model import (
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tennis_scene.pipeline.components.blcs import BLCSModule
 from src.tennis_scene.pipeline.components.plcs import PLCSModule
+from src.tennis_scene.pipeline.court_reference import reference_metadata
 from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
@@ -717,6 +719,7 @@ class _PhysicalPLCS:
     def __init__(self, provenance: CourtReferenceFrameProvenance) -> None:
         self.provenance = provenance
         self.calls = 0
+        self.received_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
 
     def require_input_profile(self, profile: str) -> None:
         assert profile == "multiview"
@@ -725,10 +728,14 @@ class _PhysicalPLCS:
         self.calls += 1
         human = cast("np.ndarray", kwargs["human_kp"])
         players, _, frames = human.shape[:3]
+        self.received_provenance = cast(
+            "tuple[CourtReferenceFrameProvenance, ...]",
+            kwargs["court_reference_provenance"],
+        )
         return PLCSPhysicalPrediction(
             position_meters=np.full((players, frames, 3), [2.0, 3.0, 1.0], np.float32),
             yaw_radians=np.zeros((players, frames), dtype=np.float32),
-            court_reference_provenance=(self.provenance,),
+            court_reference_provenance=(self.provenance,) * players,
         )
 
 
@@ -743,6 +750,14 @@ def test_tennis_scene_requires_v2_markers_and_publishes_physical_results(
     )
     provenance = build_reference_frame_provenance(
         (reference_view,),
+        reference_camera_id=reference_view.camera_id,
+    )
+    table = StableCameraIdTable.from_complete_scene_camera_ids(
+        (reference_view.camera_id,)
+    )
+    selection = ReferenceViewSelection.create(
+        stable_camera_id_table=table,
+        selected_views=(reference_view,),
         reference_camera_id=reference_view.camera_id,
     )
     document = _contract_document(contract)
@@ -765,6 +780,10 @@ def test_tennis_scene_requires_v2_markers_and_publishes_physical_results(
         **inputs,
         court_keypoint_document=document,
         court_reference_provenance=provenance,
+        reference_metadata=cast(
+            Any,
+            reference_metadata(selection, 1, "blcs"),
+        ),
     )
     np.testing.assert_array_equal(
         blcs_result.ball_3d,
@@ -782,11 +801,11 @@ def test_tennis_scene_requires_v2_markers_and_publishes_physical_results(
     plcs_predictor = _PhysicalPLCS(provenance)
     plcs._predictor = cast(Any, plcs_predictor)
     plcs_inputs: _PLCSProcessInputs = {
-        "human_kp_2d": np.full((1, 1, 2, 17, 2), 0.5, dtype=np.float32),
+        "human_kp_2d": np.full((2, 1, 2, 17, 2), 0.5, dtype=np.float32),
         "court_kp": np.full((1, 2, 20, 2), 0.5, dtype=np.float32),
-        "human_kp_vis": np.ones((1, 1, 2, 17), dtype=np.float32),
+        "human_kp_vis": np.ones((2, 1, 2, 17), dtype=np.float32),
         "court_vis": np.ones((1, 2, 20), dtype=np.float32),
-        "track_ids": np.array([7], dtype=np.int32),
+        "track_ids": np.array([7, 8], dtype=np.int32),
     }
     with pytest.raises(MissingCourtKeypointMetadataError):
         plcs.process(**plcs_inputs)
@@ -795,11 +814,16 @@ def test_tennis_scene_requires_v2_markers_and_publishes_physical_results(
         **plcs_inputs,
         court_keypoint_document=document,
         court_reference_provenance=provenance,
+        reference_metadata=cast(
+            Any,
+            reference_metadata(selection, 2, "plcs"),
+        ),
     )
     np.testing.assert_array_equal(
         plcs_result.position,
-        np.full((1, 2, 3), [2.0, 3.0, 1.0], dtype=np.float32),
+        np.full((2, 2, 3), [2.0, 3.0, 1.0], dtype=np.float32),
     )
+    assert plcs_predictor.received_provenance == (provenance, provenance)
     assert plcs_result.court_reference_provenance == provenance
     assert (
         plcs_result.to_dict(contract)[COURT_KEYPOINT_METADATA_KEY]

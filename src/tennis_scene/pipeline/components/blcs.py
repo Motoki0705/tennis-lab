@@ -27,13 +27,19 @@ from src.tennis_scene.schema import (
     validate_court_keypoint_provenance,
 )
 from src.utils.configuration import PathResolver
-from src.utils.inference.windowed import blend_windows, window_slices
+from src.utils.inference.windowed import (
+    blend_windows,
+    restore_sampled_frames,
+    sampled_frame_indices,
+    window_slices,
+)
 from src.utils.io import load_json, save_json
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from src.tasks.blcs.inference.predictor import BLCSPredictor
+    from src.tasks.blcs.model_io.contracts import BLCSReferenceMetadata
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +59,7 @@ class BLCSConfig:
             ``seq_len_range`` instead of extrapolating RoPE far beyond it.
         window_overlap: Frames shared by consecutive windows (blended with
             center-peaked weights).
+        sample_stride: Source-frame stride used before windowed inference.
 
     """
 
@@ -64,6 +71,7 @@ class BLCSConfig:
     load_path: Path | None
     window_size: int
     window_overlap: int
+    sample_stride: int
     resolver: PathResolver
     court_keypoint_contract: CourtKeypointContract = field(
         default_factory=lambda: resolve_court_keypoint_contract("physical_v1")
@@ -233,6 +241,7 @@ class BLCSModule(BasePipelineModule):
         *,
         court_keypoint_document: Mapping[str, object] | None = None,
         court_reference_provenance: CourtReferenceFrameProvenance | None = None,
+        reference_metadata: BLCSReferenceMetadata | None = None,
     ) -> BLCSResult:
         """Run BLCS inference.
 
@@ -288,36 +297,54 @@ class BLCSModule(BasePipelineModule):
             raise ValueError(
                 f"court_vis must have shape (N, T, K), got {court_vis.shape}"
             )
+        if self.config.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
+            if reference_metadata is not None:
+                raise ValueError("physical_v1 BLCS input forbids reference metadata.")
+        elif reference_metadata is None:
+            raise MissingCourtKeypointMetadataError(
+                "tennis_scene BLCS camera_view_v2 input requires typed reference metadata."
+            )
+        elif tuple(
+            selection.provenance for selection in reference_metadata.selections
+        ) != (input_provenance,):
+            raise CourtKeypointContractMismatchError(
+                "BLCS typed reference metadata does not match its validated input."
+            )
         LOGGER.info("Running BLCS ball localization...")
 
         num_frames = ball_uv.shape[1]
 
+        frame_indices = sampled_frame_indices(num_frames, self.config.sample_stride)
+        sampled_frames = len(frame_indices)
         slices = window_slices(
-            num_frames, self.config.window_size, self.config.window_overlap
+            sampled_frames, self.config.window_size, self.config.window_overlap
         )
         LOGGER.info(
             f"Running BLCS in {len(slices)} window(s) of <= "
-            f"{self.config.window_size} frames (overlap {self.config.window_overlap})"
+            f"{self.config.window_size} frames (overlap {self.config.window_overlap}, "
+            f"source stride {self.config.sample_stride})"
         )
         position_chunks = []
         for start, end in slices:
+            selected = frame_indices[start:end]
             if self.config.court_keypoint_contract.selector == PHYSICAL_V1_SELECTOR:
                 prediction = predictor.predict_multiview_arrays(
-                    ball_uv=ball_uv[:, start:end],
-                    court_kp=court_kp[:, start:end],
-                    ball_vis=ball_vis[:, start:end],
-                    court_vis=court_vis[:, start:end],
+                    ball_uv=ball_uv[:, selected],
+                    court_kp=court_kp[:, selected],
+                    ball_vis=ball_vis[:, selected],
+                    court_vis=court_vis[:, selected],
                     denormalize=True,
                 )
             else:
                 prediction = predictor.predict_multiview_arrays(
-                    ball_uv=ball_uv[:, start:end],
-                    court_kp=court_kp[:, start:end],
-                    ball_vis=ball_vis[:, start:end],
-                    court_vis=court_vis[:, start:end],
+                    ball_uv=ball_uv[:, selected],
+                    court_kp=court_kp[:, selected],
+                    ball_vis=ball_vis[:, selected],
+                    court_vis=court_vis[:, selected],
                     denormalize=True,
                     court_keypoint_document=court_keypoint_document,
                     court_reference_provenance=(input_provenance,),
+                    reference_metadata=reference_metadata,
                 )
                 if prediction.court_reference_provenance != (input_provenance,):
                     raise CourtKeypointContractMismatchError(
@@ -327,7 +354,12 @@ class BLCSModule(BasePipelineModule):
             win_pos = prediction.position.squeeze(0).cpu().numpy()
             position_chunks.append((start, win_pos))
 
-        ball_3d = blend_windows(position_chunks, num_frames).astype(np.float32)
+        sampled_ball_3d = blend_windows(position_chunks, sampled_frames)
+        ball_3d = restore_sampled_frames(
+            sampled_ball_3d,
+            frame_indices,
+            num_frames,
+        ).astype(np.float32)
         if ball_3d.shape != (num_frames, 3):
             raise ValueError(
                 f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"

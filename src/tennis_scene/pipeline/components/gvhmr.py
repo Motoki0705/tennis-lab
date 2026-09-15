@@ -15,6 +15,15 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
+class CourtFootpointFilterConfig:
+    """Optional target-court gate applied to DINO person detections."""
+
+    enabled: bool
+    sideline_margin_m: float
+    baseline_margin_m: float
+
+
+@dataclass(frozen=True, slots=True)
 class GVHMRConfig:
     """Validated configuration for GVHMR composition and stage I/O."""
 
@@ -31,6 +40,7 @@ class GVHMRConfig:
     runtime: SubmoduleRuntimeConfig
     track_selection: str
     num_tracks: int
+    court_footpoint_filter: CourtFootpointFilterConfig
     save_result: bool
     output_path: Path
     load_path: Path | None
@@ -78,6 +88,8 @@ class GVHMRModule(BasePipelineModule):
         self,
         video_path: Path,
         max_frames: int | None = None,
+        *,
+        footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None,
     ) -> gvhmr_io.GVHMRResult:
         """Load an artifact or invoke the already composed typed chain."""
         if self.config.source == "load":
@@ -100,6 +112,7 @@ class GVHMRModule(BasePipelineModule):
                 interactive=self.config.track_selection == "interactive",
                 bbox_enlarge=self.config.runtime.tracking.bbox_enlarge,
                 static_cam=self.config.runtime.static_cam,
+                footpoint_polygon_px=footpoint_polygon_px,
             )
         )
         if self.config.save_result:

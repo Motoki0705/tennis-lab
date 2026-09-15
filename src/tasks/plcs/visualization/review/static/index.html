@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ACCAD Motion Review</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="workspace">
+      <aside class="browser" aria-label="ディレクトリ検索">
+        <header class="browser-head">
+          <p class="brand"><span class="brand-mark" aria-hidden="true">◎</span>ACCAD <b>REVIEW</b></p>
+          <p class="brand-sub">AMASS / SMPL-H · 世界座標 +Z up / メートル</p>
+        </header>
+        <div class="search">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="16.5" y1="16.5" x2="21" y2="21" />
+          </svg>
+          <input
+            id="query"
+            type="search"
+            placeholder="ディレクトリ・モーションを検索"
+            aria-label="ディレクトリ・モーションを検索"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="clear" class="search-clear" type="button" aria-label="検索を消去" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <p class="result-count" id="result-count" role="status"></p>
+        <nav class="tree" id="tree" aria-label="モーション一覧"></nav>
+        <footer class="browser-foot" id="data-root"></footer>
+      </aside>
+      <section class="viewport" aria-label="世界座標の3Dビュー">
+        <header class="viewport-head">
+          <div class="title-block">
+            <span class="eyebrow" id="motion-subject">ACCAD</span>
+            <h1 id="motion-title">モーションを選択してください</h1>
+          </div>
+          <div class="chips" id="motion-chips"></div>
+          <div class="view-actions">
+            <button id="follow" class="icon-toggle" type="button" aria-pressed="false" title="ルート位置に追従">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <line x1="12" y1="2" x2="12" y2="6" />
+                <line x1="12" y1="18" x2="12" y2="22" />
+                <line x1="2" y1="12" x2="6" y2="12" />
+                <line x1="18" y1="12" x2="22" y2="12" />
+              </svg>
+              <span>追従</span>
+            </button>
+            <button id="trail" class="icon-toggle" type="button" aria-pressed="true" title="ルート軌跡を表示">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="6" cy="18" r="2.5" />
+                <circle cx="18" cy="6" r="2.5" />
+                <path d="M8.5 18H14a3.5 3.5 0 0 0 0-7H10a3.5 3.5 0 0 1 0-7h5.5" />
+              </svg>
+              <span>軌跡</span>
+            </button>
+            <button id="reset" class="icon-button" type="button" title="視点を戻す">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 9V4h5" />
+                <path d="M20 15v5h-5" />
+                <path d="M20 9V4h-5" />
+                <path d="M4 15v5h5" />
+              </svg>
+              <span>視点</span>
+            </button>
+          </div>
+        </header>
+        <div class="stage">
+          <canvas
+            id="view"
+            tabindex="0"
+            aria-label="ドラッグで回転、Shift＋ドラッグで移動、ホイールで拡大"
+          ></canvas>
+          <div class="legend" aria-hidden="true">
+            <span><i class="swatch axis-x"></i>X</span>
+            <span><i class="swatch axis-y"></i>Y</span>
+            <span><i class="swatch axis-z"></i>Z</span>
+            <span><i class="swatch left"></i>左</span>
+            <span><i class="swatch right"></i>右</span>
+          </div>
+          <dl class="hud" id="hud" hidden>
+            <div><dt>frame</dt><dd id="hud-frame">–</dd></div>
+            <div><dt>time</dt><dd id="hud-time">–</dd></div>
+            <div><dt>root x</dt><dd id="hud-x">–</dd></div>
+            <div><dt>root y</dt><dd id="hud-y">–</dd></div>
+            <div><dt>root z</dt><dd id="hud-z">–</dd></div>
+          </dl>
+          <p class="overlay" id="status" role="status" hidden></p>
+          <div class="transport" id="transport" hidden>
+            <button id="to-start" class="icon-button" type="button" title="先頭へ">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="19,5 9,12 19,19" fill="currentColor" stroke="none" />
+                <line x1="5" y1="5" x2="5" y2="19" />
+              </svg>
+            </button>
+            <button id="prev" class="icon-button" type="button" title="1フレーム戻る">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15,5 8,12 15,19" /></svg>
+            </button>
+            <button id="play" class="icon-button primary" type="button" title="再生 / 一時停止">
+              <svg id="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="7,4 20,12 7,20" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+            <button id="next" class="icon-button" type="button" title="1フレーム進む">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9,5 16,12 9,19" /></svg>
+            </button>
+            <button id="to-end" class="icon-button" type="button" title="末尾へ">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="5,5 15,12 5,19" fill="currentColor" stroke="none" />
+                <line x1="19" y1="5" x2="19" y2="19" />
+              </svg>
+            </button>
+            <input
+              id="scrub"
+              class="scrub"
+              type="range"
+              min="0"
+              max="0"
+              step="1"
+              value="0"
+              aria-label="再生フレーム"
+            />
+            <span class="clock" id="clock">0 / 0</span>
+            <div class="speeds" role="group" aria-label="再生速度">
+              <button type="button" data-speed="0.25">0.25×</button>
+              <button type="button" data-speed="0.5">0.5×</button>
+              <button type="button" data-speed="1" aria-pressed="true">1×</button>
+              <button type="button" data-speed="2">2×</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
