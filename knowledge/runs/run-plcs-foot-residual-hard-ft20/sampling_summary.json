@@ -1,0 +1,34 @@
+{
+  "seed": 42,
+  "sampling": "0.5 natural + 0.5 top-20%-mean-horizontal-error scenes",
+  "source": "/home/kamimura/projects/tennis-lab/data/plcs/single_object_camera_view_v2",
+  "train_examples": 7998,
+  "hard_threshold_mean_xy_m": 0.6176408544387957,
+  "natural_hard_scene_fraction": 0.2000500125031258,
+  "sampled_hard_scene_fraction": 0.6114028507126782,
+  "frame_xy_bins_m": [
+    "0-.25",
+    ".25-.5",
+    ".5-1",
+    "1-2",
+    "2+"
+  ],
+  "natural_frame_fractions": [
+    0.4476939547386847,
+    0.2847039884971243,
+    0.18503258627156788,
+    0.06745436359089772,
+    0.015115106901725432
+  ],
+  "resampled_frame_fractions": [
+    0.2537665666416604,
+    0.2224892160540135,
+    0.29575362590647664,
+    0.18126797324331081,
+    0.04672261815453863
+  ],
+  "natural_mean_scene_xy_m": 0.42727386972765496,
+  "resampled_mean_scene_xy_m": 0.7221502641688595,
+  "validation_test_unchanged": true,
+  "statistics_use_clean_observations": true
+}

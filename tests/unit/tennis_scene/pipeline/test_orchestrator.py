@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationSegment,
 )
 from src.tennis_scene.pipeline.components.plcs import PLCSResult
+from src.tennis_scene.pipeline.court_reference import CourtReferenceRuntimeConfig
 from src.tennis_scene.pipeline.dependency_graph import ResolutionResult, Stage
 from src.tennis_scene.pipeline.model_io.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
@@ -56,6 +57,10 @@ def _make_orchestrator(tmp_path: Path) -> TennisSceneOrchestrator:
         resolution=resolution,
         device="cpu",
         resolver=make_resolver(tmp_path),
+        court_reference_config=CourtReferenceRuntimeConfig(
+            reference_camera=None,
+            view_half_turns=None,
+        ),
     )
 
 
@@ -63,7 +68,9 @@ def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[tuple[Any, Path, int | None]] = []
+    calls: list[
+        tuple[Any, Path, int | None, tuple[tuple[float, float], ...] | None]
+    ] = []
     expected = GVHMRResult(
         smpl_body_pose=np.zeros((1, 2, 63), dtype=np.float32),
         smpl_global_orient=np.zeros((1, 2, 3), dtype=np.float32),
@@ -80,8 +87,16 @@ def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
             self.config = config
             assert chain is None
 
-        def process(self, video_path: str | Path, max_frames: int | None = None) -> Any:
-            calls.append((self.config, Path(video_path), max_frames))
+        def process(
+            self,
+            video_path: str | Path,
+            max_frames: int | None = None,
+            *,
+            footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None,
+        ) -> Any:
+            calls.append(
+                (self.config, Path(video_path), max_frames, footpoint_polygon_px)
+            )
             return expected
 
     monkeypatch.setattr(orchestrator_module, "GVHMRModule", FakeGVHMRModule)
@@ -92,13 +107,15 @@ def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
         camera_index=1,
         num_cameras=2,
         max_frames=2,
+        footpoint_polygon_px=((1.0, 2.0), (3.0, 4.0), (5.0, 6.0)),
     )
 
     assert result is expected
     assert len(calls) == 1
-    config, video_path, max_frames = calls[0]
+    config, video_path, max_frames, polygon = calls[0]
     assert video_path == Path("cam1.mp4")
     assert max_frames == 2
+    assert polygon == ((1.0, 2.0), (3.0, 4.0), (5.0, 6.0))
     assert config.gvhmr_checkpoint == (tmp_path / "ckpt/gvhmr.ckpt").resolve()
     assert config.detector == "dino"
     assert config.dino_checkpoint == (tmp_path / "ckpt/dino.pth").resolve()
@@ -211,6 +228,10 @@ def test_run_preserves_plcs_and_stores_alignment_separately(
         resolution=resolution,
         device="cpu",
         resolver=make_resolver(tmp_path),
+        court_reference_config=CourtReferenceRuntimeConfig(
+            reference_camera=None,
+            view_half_turns=None,
+        ),
     )
     monkeypatch.setattr(
         orchestrator,

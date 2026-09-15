@@ -115,7 +115,12 @@ def _make_adapter(
     return adapter, tracker, pose, feature, mesh, vertices
 
 
-def _request(video_path: Path, *, max_frames: int | None = None) -> GVHMRChainRequest:
+def _request(
+    video_path: Path,
+    *,
+    max_frames: int | None = None,
+    footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None,
+) -> GVHMRChainRequest:
     return GVHMRChainRequest(
         video_path=video_path,
         max_frames=max_frames,
@@ -123,6 +128,7 @@ def _request(video_path: Path, *, max_frames: int | None = None) -> GVHMRChainRe
         interactive=False,
         bbox_enlarge=1.2,
         static_cam=True,
+        footpoint_polygon_px=footpoint_polygon_px,
     )
 
 
@@ -263,7 +269,10 @@ def test_valid_chain_executes_typed_requests_and_decodes_result(
 ) -> None:
     adapter, tracker, pose, feature, mesh, vertices = _make_adapter()
 
-    result = adapter.predict(_request(video_path, max_frames=4))
+    polygon = ((10.0, 20.0), (30.0, 20.0), (30.0, 40.0), (10.0, 40.0))
+    result = adapter.predict(
+        _request(video_path, max_frames=4, footpoint_polygon_px=polygon)
+    )
 
     assert isinstance(result, GVHMRResult)
     assert result.smpl_body_pose.shape == (1, 4, 63)
@@ -271,6 +280,7 @@ def test_valid_chain_executes_typed_requests_and_decodes_result(
     assert result.smpl_vertices_local.shape == (1, 4, 8, 3)
     np.testing.assert_array_equal(result.track_ids, np.array([7], dtype=np.int32))
     assert isinstance(tracker.requests[0], submodule_models.TrackRequest)
+    assert tracker.requests[0].footpoint_polygon_px == polygon
     assert isinstance(pose.requests[0], submodule_models.Pose2DRequest)
     assert isinstance(feature.requests[0], submodule_models.ImageFeatureRequest)
     assert isinstance(mesh.requests[0], submodule_models.GvhmrRequest)

@@ -17,6 +17,7 @@ from src.submodules.configuration import (
     SubmoduleRuntimeConfig,
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
+from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tennis_scene.motion_alignment.similarity import SimilarityConfig
@@ -26,12 +27,16 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
-from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig
+from src.tennis_scene.pipeline.components.gvhmr import (
+    CourtFootpointFilterConfig,
+    GVHMRConfig,
+)
 from src.tennis_scene.pipeline.components.motion_alignment import PlayerMotionConfig
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
 )
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig
+from src.tennis_scene.pipeline.court_reference import CourtReferenceRuntimeConfig
 from src.utils.configuration import (
     ConfigField,
     PathResolver,
@@ -192,6 +197,14 @@ _COURT_SCHEMA = StrictConfigSchema(
         "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
     },
 )
+_COURT_FOOTPOINT_FILTER_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.gvhmr.court_footpoint_filter",
+    fields={
+        "enabled": ConfigField.of(bool),
+        "sideline_margin_m": ConfigField.of(float, int),
+        "baseline_margin_m": ConfigField.of(float, int),
+    },
+)
 _GVHMR_SCHEMA = StrictConfigSchema(
     name="tennis_scene.gvhmr",
     fields={
@@ -209,6 +222,7 @@ _GVHMR_SCHEMA = StrictConfigSchema(
         "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
         "track_selection": ConfigField.of(str),
         "num_tracks": ConfigField.of(int),
+        "court_footpoint_filter": ConfigField.mapping(_COURT_FOOTPOINT_FILTER_SCHEMA),
     },
 )
 _ASSOCIATION_SCHEMA = StrictConfigSchema(
@@ -259,6 +273,7 @@ _PLCS_SCHEMA = StrictConfigSchema(
         "checkpoint": ConfigField.of(str),
         "window_size": ConfigField.of(int),
         "window_overlap": ConfigField.of(int),
+        "sample_stride": ConfigField.of(int),
         "human_vis_threshold": ConfigField.of(float),
     },
 )
@@ -291,6 +306,18 @@ _BLCS_SCHEMA = StrictConfigSchema(
         "checkpoint": ConfigField.of(str),
         "window_size": ConfigField.of(int),
         "window_overlap": ConfigField.of(int),
+        "sample_stride": ConfigField.of(int),
+    },
+)
+_COURT_KEYPOINTS_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.court_keypoints",
+    fields={"selector": ConfigField.of(str)},
+)
+_COURT_REFERENCE_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.court_reference",
+    fields={
+        "reference_camera": ConfigField.of(str, type(None)),
+        "view_half_turns": ConfigField.of(list, tuple, type(None)),
     },
 )
 _PIPELINE_SCHEMA = StrictConfigSchema(
@@ -301,6 +328,8 @@ _PIPELINE_SCHEMA = StrictConfigSchema(
         "camera_ids": ConfigField.sequence(ConfigField.of(str)),
         "output_name": ConfigField.of(str),
         "device": ConfigField.of(str),
+        "court_keypoints": ConfigField.mapping(_COURT_KEYPOINTS_SCHEMA),
+        "court_reference": ConfigField.mapping(_COURT_REFERENCE_SCHEMA),
         "court_kp": ConfigField.mapping(_COURT_SCHEMA),
         "gvhmr": ConfigField.mapping(_GVHMR_SCHEMA),
         "player_association": ConfigField.mapping(_ASSOCIATION_SCHEMA),
@@ -325,6 +354,7 @@ class PipelineRuntimeConfig:
     device: str
     max_frames: int | None
     frame_index: int
+    court_reference: CourtReferenceRuntimeConfig
     court_kp: CourtKPConfig
     gvhmr: GVHMRConfig
     player_association: PlayerAssociationConfig
@@ -364,6 +394,43 @@ class PipelineRuntimeConfig:
         device = cast(str, value["device"])
         if not device.strip():
             raise SemanticConfigurationError("device must be a non-empty string.")
+
+        court_keypoints = _mapping(value["court_keypoints"], name="court_keypoints")
+        court_contract = resolve_court_keypoint_contract(
+            cast(str, court_keypoints["selector"])
+        )
+        raw_reference = _mapping(value["court_reference"], name="court_reference")
+        court_reference_camera = cast(str | None, raw_reference["reference_camera"])
+        raw_half_turns = raw_reference["view_half_turns"]
+        half_turns: tuple[bool, ...] | None
+        if raw_half_turns is None:
+            half_turns = None
+        else:
+            sequence = _sequence(raw_half_turns, name="court_reference.view_half_turns")
+            if any(type(item) is not bool for item in sequence):
+                raise TypeError(
+                    "court_reference.view_half_turns must contain exactly bool values."
+                )
+            half_turns = tuple(cast(bool, item) for item in sequence)
+        if court_contract.selector == "physical_v1":
+            if court_reference_camera is not None or half_turns is not None:
+                raise SemanticConfigurationError(
+                    "physical_v1 forbids court_reference reference_camera and "
+                    "view_half_turns."
+                )
+        elif (
+            court_reference_camera is None
+            or not court_reference_camera.strip()
+            or half_turns is None
+        ):
+            raise SemanticConfigurationError(
+                "camera_view_v2 requires a non-empty court_reference.reference_camera "
+                "and explicit court_reference.view_half_turns."
+            )
+        court_reference = CourtReferenceRuntimeConfig(
+            reference_camera=court_reference_camera,
+            view_half_turns=half_turns,
+        )
 
         court = _mapping(value["court_kp"], name="court_kp")
         post = _mapping(court["postprocess"], name="court_kp.postprocess")
@@ -427,14 +494,38 @@ class PipelineRuntimeConfig:
             )
         num_tracks = cast(int, gvhmr["num_tracks"])
         _positive(num_tracks, name="gvhmr.num_tracks")
+        raw_footpoint_filter = _mapping(
+            gvhmr["court_footpoint_filter"],
+            name="gvhmr.court_footpoint_filter",
+        )
+        footpoint_filter_enabled = cast(bool, raw_footpoint_filter["enabled"])
+        sideline_margin_m = float(
+            cast(float | int, raw_footpoint_filter["sideline_margin_m"])
+        )
+        baseline_margin_m = float(
+            cast(float | int, raw_footpoint_filter["baseline_margin_m"])
+        )
+        if (
+            not math.isfinite(sideline_margin_m)
+            or not math.isfinite(baseline_margin_m)
+            or sideline_margin_m < 0
+            or baseline_margin_m < 0
+        ):
+            raise SemanticConfigurationError(
+                "gvhmr.court_footpoint_filter margins must be finite and non-negative."
+            )
+        if footpoint_filter_enabled and cast(str, gvhmr["detector"]) != "dino":
+            raise SemanticConfigurationError(
+                "gvhmr.court_footpoint_filter requires detector='dino'."
+            )
         gvhmr_config = GVHMRConfig(
             gvhmr_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, gvhmr["gvhmr_checkpoint"])
+                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["gvhmr_checkpoint"])
             ),
             source=cast(Literal["execute", "load"], gvhmr["source"]),
             detector=cast(str, gvhmr["detector"]),
             yolo_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, gvhmr["yolo_checkpoint"])
+                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["yolo_checkpoint"])
             ),
             dino_checkpoint=resolver.resolve(
                 PathRole.CHECKPOINT, cast(str, gvhmr["dino_checkpoint"])
@@ -443,18 +534,23 @@ class PipelineRuntimeConfig:
                 PathRole.EXTERNAL_ASSET, cast(str, gvhmr["dino_repository"])
             ),
             vitpose_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, gvhmr["vitpose_checkpoint"])
+                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["vitpose_checkpoint"])
             ),
             hmr2_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, gvhmr["hmr2_checkpoint"])
+                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["hmr2_checkpoint"])
             ),
             body_models_dir=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, gvhmr["body_models_dir"])
+                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["body_models_dir"])
             ),
             bundled_assets=bundled_assets,
             runtime=gvhmr_runtime,
             track_selection=cast(str, gvhmr["track_selection"]),
             num_tracks=num_tracks,
+            court_footpoint_filter=CourtFootpointFilterConfig(
+                enabled=footpoint_filter_enabled,
+                sideline_margin_m=sideline_margin_m,
+                baseline_margin_m=baseline_margin_m,
+            ),
             save_result=cast(bool, gvhmr["save_result"]),
             output_path=gvhmr_output,
             load_path=gvhmr_load,
@@ -623,6 +719,8 @@ class PipelineRuntimeConfig:
         plcs_window_size = cast(int, plcs["window_size"])
         plcs_window_overlap = cast(int, plcs["window_overlap"])
         _window_contract(plcs_window_size, plcs_window_overlap, name="plcs")
+        plcs_sample_stride = cast(int, plcs["sample_stride"])
+        _positive(plcs_sample_stride, name="plcs.sample_stride")
         human_vis_threshold = cast(float, plcs["human_vis_threshold"])
         _unit_interval(human_vis_threshold, name="plcs.human_vis_threshold")
         plcs_config = PLCSConfig(
@@ -636,14 +734,18 @@ class PipelineRuntimeConfig:
             load_path=plcs_load,
             window_size=plcs_window_size,
             window_overlap=plcs_window_overlap,
+            sample_stride=plcs_sample_stride,
             human_vis_threshold=human_vis_threshold,
             resolver=resolver,
+            court_keypoint_contract=court_contract,
         )
         blcs = _mapping(value["blcs"], name="blcs")
         blcs_load, blcs_output = _stage_path(blcs, resolver, name="blcs")
         blcs_window_size = cast(int, blcs["window_size"])
         blcs_window_overlap = cast(int, blcs["window_overlap"])
         _window_contract(blcs_window_size, blcs_window_overlap, name="blcs")
+        blcs_sample_stride = cast(int, blcs["sample_stride"])
+        _positive(blcs_sample_stride, name="blcs.sample_stride")
         blcs_config = BLCSConfig(
             checkpoint=resolver.resolve(
                 PathRole.CHECKPOINT, cast(str, blcs["checkpoint"])
@@ -655,7 +757,9 @@ class PipelineRuntimeConfig:
             load_path=blcs_load,
             window_size=blcs_window_size,
             window_overlap=blcs_window_overlap,
+            sample_stride=blcs_sample_stride,
             resolver=resolver,
+            court_keypoint_contract=court_contract,
         )
         enabled = {
             name: cast(bool, section["enabled"])
@@ -685,6 +789,7 @@ class PipelineRuntimeConfig:
             device=device,
             max_frames=max_frames,
             frame_index=frame_index,
+            court_reference=court_reference,
             court_kp=court_config,
             gvhmr=gvhmr_config,
             player_association=association_config,

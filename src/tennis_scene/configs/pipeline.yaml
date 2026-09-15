@@ -7,6 +7,13 @@ camera_ids: [cam0]
 output_name: tennis_clip
 device: cuda
 
+court_keypoints:
+  selector: physical_v1
+
+court_reference:
+  reference_camera: null
+  view_half_turns: null
+
 court_kp:
   enabled: true
   source: execute
@@ -27,14 +34,14 @@ court_kp:
 gvhmr:
   enabled: true
   source: execute
-  gvhmr_checkpoint: gvhmr/gvhmr_siga24_release.ckpt
+  gvhmr_checkpoint: GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
   detector: dino
-  yolo_checkpoint: yolo/yolov8x.pt
+  yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
   dino_repository: DINO
-  vitpose_checkpoint: vitpose/vitpose-h-multi-coco.pth
-  hmr2_checkpoint: hmr2/epoch=10-step=25000.ckpt
-  body_models_dir: body_models
+  vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+  hmr2_checkpoint: GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
+  body_models_dir: GVHMR/inputs/checkpoints/body_models
   bundled_assets:
     hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
     smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt
@@ -67,6 +74,10 @@ gvhmr:
     static_cam: true
   track_selection: auto
   num_tracks: 2
+  court_footpoint_filter:
+    enabled: false
+    sideline_margin_m: 1.0
+    baseline_margin_m: 5.0
   save_result: true
   output_path: tennis_scene/gvhmr_result.json
   load_path: null
@@ -128,6 +139,7 @@ plcs:
   load_path: null
   window_size: 1024
   window_overlap: 64
+  sample_stride: 1
   human_vis_threshold: 0.15
 
 blcs:
@@ -139,6 +151,7 @@ blcs:
   load_path: null
   window_size: 1024
   window_overlap: 64
+  sample_stride: 1
 
 max_frames: null
 

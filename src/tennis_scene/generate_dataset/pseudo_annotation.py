@@ -17,6 +17,7 @@ from src.tennis_scene.generate_dataset.manifest import (
     DatasetClipRecord,
     load_dataset_manifest,
 )
+from src.tennis_scene.pipeline.dependency_graph import Stage
 from src.tennis_scene.schema import SceneResult
 from src.utils.io import save_json_atomic, utc_now_iso
 
@@ -94,10 +95,34 @@ def _validate_result(result: SceneResult, record: DatasetClipRecord) -> None:
         "player_yaw": (None, expected_t),
         "human_kp_2d": (None, expected_n, expected_t, 17, 2),
         "human_kp_vis": (None, expected_n, expected_t, 17),
-        "ball_uv": (expected_n, expected_t, 2),
-        "ball_vis": (expected_n, expected_t),
-        "ball_3d": (expected_t, 3),
     }
+    raw_enabled_stages = result.metadata.get("enabled_stages")
+    if raw_enabled_stages is None:
+        # Archives created before stage-aware publication represented the full
+        # pipeline and therefore retain the original strict requirements.
+        enabled_stages = {Stage.BALL_DETECTION.value, Stage.BLCS.value}
+    elif not isinstance(raw_enabled_stages, (list, tuple)) or any(
+        not isinstance(stage, str) for stage in raw_enabled_stages
+    ):
+        problems.append("metadata.enabled_stages must be a sequence of stage names")
+        enabled_stages = set()
+    else:
+        enabled_stages = set(raw_enabled_stages)
+        unknown_stages = enabled_stages - {stage.value for stage in Stage}
+        if unknown_stages:
+            problems.append(
+                "metadata.enabled_stages contains unknown stages: "
+                f"{sorted(unknown_stages)}"
+            )
+    if Stage.BALL_DETECTION.value in enabled_stages:
+        required_shapes.update(
+            {
+                "ball_uv": (expected_n, expected_t, 2),
+                "ball_vis": (expected_n, expected_t),
+            }
+        )
+    if Stage.BLCS.value in enabled_stages:
+        required_shapes["ball_3d"] = (expected_t, 3)
     for name, expected_shape in required_shapes.items():
         value = getattr(result, name)
         if value is None:

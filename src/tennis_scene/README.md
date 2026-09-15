@@ -51,7 +51,7 @@ GVHMRワールドモーションの整合もパイプライン内で常に実行
 - **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
 
 ### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`player_motion`/`ball_detection`/`plcs`/`blcs`)の実行設定。整列は常時実行し、`player_motion.scale_mode`・`alignment`が推定方法を制御する。
+- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`player_motion`/`ball_detection`/`plcs`/`blcs`)の実行設定。整列は常時実行し、`player_motion.scale_mode`・`alignment`が推定方法を制御する。`court_keypoints.selector`と`court_reference`はPLCS/BLCSが共有するreference-frame設定であり、camera-view checkpointではcamera IDと各viewの半回転を明示する。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
 - **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
 

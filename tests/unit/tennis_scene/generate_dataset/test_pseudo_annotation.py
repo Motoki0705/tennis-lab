@@ -96,3 +96,28 @@ def test_missing_blcs_labels_is_explicit_failure(
     )
     assert outcomes[0].status == "failed"
     assert "required pseudo-label array 'ball_3d' is missing" in str(outcomes[0].error)
+
+
+def test_plcs_only_result_does_not_require_disabled_ball_stages(
+    structured_dataset: Path, valid_scene_result: SceneResult
+) -> None:
+    valid_scene_result.ball_uv = None
+    valid_scene_result.ball_vis = None
+    valid_scene_result.ball_3d = None
+    valid_scene_result.metadata["enabled_stages"] = ["court_kp", "gvhmr", "plcs"]
+
+    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str]) -> SceneResult:
+        return valid_scene_result
+
+    outcomes = generate_pseudo_annotations(
+        structured_dataset,
+        runner,
+        pipeline_config_yaml="device: cpu\n",
+    )
+
+    assert outcomes[0].status == "generated"
+    assert outcomes[0].annotation_path is not None
+    annotation = load_json(outcomes[0].annotation_path)
+    assert "ball_uv" not in annotation["arrays"]
+    assert "ball_vis" not in annotation["arrays"]
+    assert "ball_3d" not in annotation["arrays"]

@@ -28,7 +28,11 @@ from src.tennis_scene.reference_pipeline.reference import (
     reference_metadata,
 )
 from src.tennis_scene.schema import SceneResult
-from src.utils.inference.windowed import blend_windows, window_slices
+from src.utils.inference.windowed import (
+    blend_windows,
+    restore_sampled_frames,
+    window_slices,
+)
 
 
 def associate_people(
@@ -66,13 +70,10 @@ def associate_people(
 
 def restore_frames(values: np.ndarray, indices: np.ndarray, total: int) -> np.ndarray:
     """Interpolate the time-leading result; hold the final sub-frame explicitly."""
-    flat = values.reshape(len(indices), -1)
-    result = np.stack(
-        [np.interp(np.arange(total), indices, column) for column in flat.T], axis=-1
+    restored: np.ndarray = restore_sampled_frames(values, indices, total).astype(
+        np.float32
     )
-    return cast(
-        np.ndarray, result.reshape((total,) + values.shape[1:]).astype(np.float32)
-    )
+    return restored
 
 
 def reconstruct(
