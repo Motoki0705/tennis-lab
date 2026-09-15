@@ -44,7 +44,7 @@ SMPLを実行せず、canonical poseと3D関節を保存できます。
 - **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
 
 ### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
+- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。`court_keypoints.selector`と`court_reference`はPLCS/BLCSが共有するreference-frame設定であり、camera-view checkpointではcamera IDと各viewの半回転を明示する。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
 - **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
 

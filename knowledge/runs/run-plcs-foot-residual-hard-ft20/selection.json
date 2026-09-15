@@ -1,0 +1,6 @@
+{
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual/outputs/plcs/foot_residual/training/logs/version_0/checkpoints/plcs-epoch=04.ckpt",
+  "epoch": 4,
+  "validation_position_error_m": 0.17953810095787048,
+  "selection_rule": "minimum validation position error; no test or real-clip selection"
+}
