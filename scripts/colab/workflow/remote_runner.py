@@ -1424,6 +1424,25 @@ def _prepare_live_output(request: dict[str, Any]) -> Path | None:
     return root
 
 
+def _read_training_progress_observation(
+    path: Path, previous: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """Read progress while tolerating only a transient atomic-replace gap.
+
+    Google Drive FUSE can briefly report the destination as absent while the
+    training callback replaces it. Preserve the last validated observation for
+    that narrow race. Existing malformed files still fail loudly.
+    """
+    if not path.is_file():
+        return previous
+    try:
+        return _read_json_object(path, "training progress")
+    except RemoteWorkflowError:
+        if not path.exists():
+            return previous
+        raise
+
+
 def _run_monitored_job(
     request: dict[str, Any],
     repo: Path,
@@ -1471,6 +1490,7 @@ def _run_monitored_job(
     lines: deque[str] = deque(maxlen=80)
     lock = threading.Lock()
     errors: list[BaseException] = []
+    last_training: dict[str, Any] | None = None
     started = time.monotonic()
     with (monitor_root / f"attempt-{status['attempt']}.log").open(
         "a", encoding="utf-8"
@@ -1502,11 +1522,10 @@ def _run_monitored_job(
         reader.start()
 
         def publish(state: str) -> None:
+            nonlocal last_training
             training_path = monitor_root / "training-progress.json"
-            training = (
-                _read_json_object(training_path, "training progress")
-                if training_path.is_file()
-                else None
+            last_training = _read_training_progress_observation(
+                training_path, last_training
             )
             with lock:
                 tail = list(lines)
@@ -1520,7 +1539,7 @@ def _run_monitored_job(
                 "elapsed_seconds": round(time.monotonic() - started, 1),
                 "pid": process.pid,
                 "returncode": process.poll(),
-                "training": training,
+                "training": last_training,
                 "output_root": str(_output_base(request, repo)),
                 "argv": argv,
                 "log_tail": tail,

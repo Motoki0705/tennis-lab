@@ -1,0 +1,156 @@
+{
+  "run_id": "meiji-l4-bmp-acc4-20260911-r2",
+  "request_digest": "280b85043fbcbc0b464afb093aff0b550eb00cd4152b977d7e70c4ce2a870830",
+  "source": {
+    "repo_sha": "4e530309b022aee393cb264bf211407c1012f835",
+    "repo_tree": "3416ddd413a522783d18368ef425b629950202bb",
+    "archive_sha256": "c5b5fe30a707d25d3acd3207575064d4fc72020fc44afa78077d9b70cb742866",
+    "content_digest": "ad89faa565b2b7cb76e92c33bcd1b57af1807e30309696e93cad8df54624e361"
+  },
+  "runtime": {
+    "collected": true,
+    "cuda": {
+      "available": true,
+      "device_count": 1,
+      "torch_cuda_available": true,
+      "torch_cuda_version": "13.0"
+    },
+    "gpu": {
+      "available": true,
+      "nvidia_smi": {
+        "available": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "NVIDIA L4, 580.82.07"
+      },
+      "requested": "L4",
+      "required": true
+    },
+    "platform": {
+      "available": true,
+      "description": "Linux-6.6.122+-x86_64-with-glibc2.39",
+      "machine": "x86_64",
+      "os_name": "posix",
+      "release": "6.6.122+",
+      "system": "Linux"
+    },
+    "python": {
+      "available": true,
+      "bootstrap_version": "3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]",
+      "executable": "/content/tennis-lab-runs/meiji-l4-bmp-acc4-20260911-r2/repo/.venv/bin/python",
+      "implementation": "CPython",
+      "probe": {
+        "available": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Python 3.11.16"
+      },
+      "version": "Python 3.11.16"
+    },
+    "torch": {
+      "available": true,
+      "error": null,
+      "probe": {
+        "available": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "{\"version\": \"2.13.0+cu130\", \"cuda_available\": true, \"cuda_version\": \"13.0\", \"device_count\": 1}"
+      },
+      "version": "2.13.0+cu130"
+    },
+    "uv": {
+      "available": true,
+      "error": null,
+      "probe": {
+        "available": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "uv 0.12.9 (x86_64-unknown-linux-gnu)"
+      },
+      "version": "uv 0.12.9 (x86_64-unknown-linux-gnu)"
+    }
+  },
+  "input_manifest": [
+    {
+      "destination": "data/meiji_3cam.tar",
+      "entries": [
+        {
+          "path": "data/meiji_3cam.tar",
+          "sha256": "8cd176d5cb0f5e2c0c5735af480459c04fb0591e0358583bdcfe3a82646567f0",
+          "size": 1739035648
+        }
+      ],
+      "source": "data/meiji_3cam.tar",
+      "writable": false
+    }
+  ],
+  "training": {
+    "state": "completed",
+    "returncode": 0,
+    "completed_at": "2026-09-11T11:57:43.416200+00:00",
+    "epochs": 20,
+    "final_epoch_index": 19,
+    "global_step": 6320,
+    "physical_batch_size": 8,
+    "accumulate_grad_batches": 4,
+    "effective_batch_size": 32,
+    "num_workers": 8,
+    "non_finite_metrics": [],
+    "best_checkpoint": {
+      "monitor": "val/loss",
+      "mode": "min",
+      "epoch": 12,
+      "global_step": 4108,
+      "value": 0.0007240797276608646,
+      "drive_path": "MyDrive/tennis_lab/colab-live/meiji-l4-bmp-acc4-20260911-r2/outputs/colab/ball_meiji_3cam_l4/logs/version_1/checkpoints/meiji-convnext-epoch=12.ckpt",
+      "local_path": "outputs/colab_import/meiji-l4-bmp-acc4-20260911-r2/checkpoints/best-val-epoch12.ckpt",
+      "sha256": "0ff29a4659fb823576fc35bd6b8862f5242ab5377256dcad50cf765e45e4ab03"
+    },
+    "final_checkpoint": {
+      "epoch": 19,
+      "global_step": 6320,
+      "drive_path": "MyDrive/tennis_lab/colab-live/meiji-l4-bmp-acc4-20260911-r2/outputs/colab/ball_meiji_3cam_l4/logs/version_3/checkpoints/last.ckpt",
+      "local_path": "outputs/colab_import/meiji-l4-bmp-acc4-20260911-r2/checkpoints/final-epoch19.ckpt",
+      "sha256": "53938c01c7a8ce5ee5a940d056c3c834b25f9088bef84fc0f11a7c07cce8c34b"
+    },
+    "validation_metrics": "knowledge/runs/run-meiji-convnext-l4-20260911/validation_metrics.json",
+    "test_executed": false
+  },
+  "inference_visualizations": [
+    {
+      "clip_id": "video_002/clip_023",
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "checkpoint_epoch": 12,
+      "checkpoint_sha256": "0ff29a4659fb823576fc35bd6b8862f5242ab5377256dcad50cf765e45e4ab03",
+      "device": "cpu",
+      "cpu_threads": 16,
+      "frame_count": 228,
+      "fps": 59.94006,
+      "sequence_length": 8,
+      "window_stride": 8,
+      "inference_batch_size": 1,
+      "peak_threshold": 0.5,
+      "inference_seconds": 100.6657313129981,
+      "render_seconds": 5.559246466000332,
+      "predictions_at_or_above_threshold": {
+        "cam0": 187,
+        "cam1": 151,
+        "cam2": 216
+      },
+      "maximum_confidence": {
+        "cam0": 0.9574877023696899,
+        "cam1": 0.9503616094589233,
+        "cam2": 0.9565746784210205
+      },
+      "video": "outputs/inference_visualizations/meiji-convnext-epoch12/video_002__clip_023.mp4",
+      "video_sha256": "d74d8b9569ecb879cdd8b0ff9605d68b02bc396b2b186fb23018d7477c173098",
+      "preview": "outputs/inference_visualizations/meiji-convnext-epoch12/video_002__clip_023_preview.jpg",
+      "metadata": "outputs/inference_visualizations/meiji-convnext-epoch12/video_002__clip_023.json",
+      "ground_truth_available": false
+    }
+  ]
+}

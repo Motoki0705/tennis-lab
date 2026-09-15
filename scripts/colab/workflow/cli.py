@@ -32,6 +32,7 @@ from .common import (
 )
 from .jobs import OVERRIDE_KEY_RE, Job, load_registry
 from .snapshot import Snapshot, create_snapshot
+from .transfer import UPLOAD_CHUNK_BYTES, upload_chunked
 
 DEFAULT_DRIVE_ROOT = "tennis_lab"
 DEFAULT_STATE_ROOT = (
@@ -644,6 +645,14 @@ def _exec_remote(
 def _upload(
     config_path: Path, session: str, local_path: Path, remote_path: str
 ) -> None:
+    if local_path.stat().st_size > UPLOAD_CHUNK_BYTES:
+        upload_chunked(
+            local_path.resolve(),
+            remote_path,
+            session=session,
+            invoke=lambda args: _invoke(config_path, args, capture=True),
+        )
+        return
     _invoke(
         config_path,
         ["upload", "-s", session, str(local_path.resolve()), remote_path],
@@ -1946,6 +1955,17 @@ def command_resume(args: argparse.Namespace) -> int:
                 "verify-drive",
                 timeout=60,
             )
+        # Initial provisioning can fail before either bootstrap file arrives.
+        # Re-upload the original, validated request and its immutable snapshot.
+        _exec_remote(
+            repo_root, config_path, session, request["run_id"], "prepare", timeout=120
+        )
+        _upload(config_path, session, run_dir / "request.json", remote["request"])
+        if request["source"]["mode"] == "snapshot":
+            snapshot = run_dir / "source-snapshot.tar.gz"
+            if sha256_file(snapshot) != request["source"]["archive_sha256"]:
+                raise WorkflowError("retained source snapshot digest mismatch")
+            _upload(config_path, session, snapshot, remote["snapshot"])
         if rclone_config is not None:
             remote_secret_uploaded = True
             _upload(config_path, session, rclone_config, remote["rclone_config"])

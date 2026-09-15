@@ -1,0 +1,4 @@
+# Recording-stratified clip split; Python Random(42), sorted IDs before shuffle.
+meiji_3cam/clip_005
+meiji_3cam_2/clip_005
+meiji_3cam_2/clip_020

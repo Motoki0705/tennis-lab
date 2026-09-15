@@ -26,6 +26,8 @@
 - **`dataset.py`**: `BallDetectionDataset`。`ClipWindow` をモデル入力サンプル(画像・heatmap・座標)へ変換する共通実装。
 - **`tracknet_datamodule.py`**: `TrackNetDataModule`。TrackNet形式(`Label.csv`+連番jpg)を読む。
 - **`youtube_datamodule.py`**: `YouTubeDataModule`。`TrackNetDataModule` を継承しYouTube split解決だけ変更。
+- **`multiview_datamodule.py`**: `MultiviewBallDataModule`。動画と `video_ball_annotation.v2` を共通Datasetへ接続。クリップ単位のsplitを検証し、教師位置のある連続窓を構築する。[Meiji / Colab L4学習レシピ](../../../scripts/colab/train/ball_meiji_3cam_l4.md)。
+- **`components/multiview.py`**: multiviewのアノテーション検証・動画ハッシュ確認・画像キャッシュ生成。
 - **`web_datamodule.py`**: `WebBallDataModule`。`data/tennis/web/unified` 統一ストアを読む(`static`/`temporal`モード)。
 - **`staged_datamodule.py`**: `StagedBallDataModule`(issue #579)。TrackNet+Webを混合し可変長 `T` で学習。
 - **`components/augmentation.py`**: `BallDetectionAugmentation`。回転/flip/affine/crop/色/ノイズ/ゼロマスク等の augmentation 合成。
@@ -39,6 +41,7 @@
 - **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
 - **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築の薄いアダプタ。
 - **`staged_calibration.py`**: `probe_batch_size_by_t()`。`T` ごとのOOM較正でバッチサイズを決定。
+- **`l4_calibration.py`**: 実学習loopを独立プロセスで実行し、L4に収まる2の累乗バッチサイズを較正する。
 - **`staged_lightning_module.py`**: `StagedBallDetectionLightningModule`。手動最適化による可変T勾配蓄積学習。
 - **`staged_runner.py`**: `StagedBallDetectionTrainingRunner`。フェーズ間のOOM較正とweightのみ引き継ぎを制御。
 
@@ -68,9 +71,11 @@
 
 ### scripts/
 - **`train.py` / `train_staged.py`**: 通常 / staged 学習エントリポイント。
+- **`train_meiji_l4.py`**: Meiji画像準備・L4バッチ較正・通常学習のエントリポイント。
 - **`eval.py`**: 単一checkpointの詳細診断評価。
 - **`evaluate_manifest.py`**: manifestベースの複数checkpoint比較評価。
 - **`visualize.py`**: クリップ単位のGIF可視化生成。
+- **`visualize_meiji_multiview.py`**: Meijiの同期3カメラ動画をCPUで推論し、予測ピークと信頼度を重ねたH.264 MP4を生成。
 - **`convert_web_dataset.py`**: web生データセット群を統一ストアへアトミック変換。
 - **`analyze_web_bbox_ratio.py`**: bbox最大辺比率の分布解析。
 - **`preview_augmentation.py` / `preview_heatmaps.py`**: augmentation / heatmap生成の確認用プレビュー。

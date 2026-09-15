@@ -12,6 +12,7 @@ from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.mixed_tracknet_datamodule import (
     MixedTrackNetDataModule,
 )
+from src.tasks.ball_detection.data.multiview_datamodule import MultiviewBallDataModule
 from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import (
@@ -33,6 +34,7 @@ def build_ball_detection_datamodule(config: Any) -> pl.LightningDataModule:
     datamodule_types: dict[str, type[pl.LightningDataModule]] = {
         "tracknet": TrackNetDataModule,
         "mixed_tracknet": MixedTrackNetDataModule,
+        "multiview": MultiviewBallDataModule,
         "youtube": YouTubeDataModule,
         "web": WebBallDataModule,
         "staged": StagedBallDataModule,
@@ -55,6 +57,7 @@ __all__ = [
     "ClipWindow",
     "FrameLabel",
     "MixedTrackNetDataModule",
+    "MultiviewBallDataModule",
     "StagedBallDataModule",
     "TrackNetDataModule",
     "WebBallDataModule",

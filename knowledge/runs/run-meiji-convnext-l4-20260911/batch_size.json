@@ -1,0 +1,57 @@
+{
+  "batch_size": 8,
+  "accumulate_grad_batches": 4,
+  "effective_batch_size": 32,
+  "next_power_failed": 16,
+  "trials": [
+    {
+      "status": "fits",
+      "batch_size": 1,
+      "accumulate_grad_batches": 4,
+      "effective_batch_size": 4,
+      "training_microbatches": 12,
+      "optimizer_updates": 3,
+      "gpu": "NVIDIA L4",
+      "peak_allocated_bytes": 1825338368,
+      "peak_reserved_bytes": 2208301056
+    },
+    {
+      "status": "fits",
+      "batch_size": 2,
+      "accumulate_grad_batches": 4,
+      "effective_batch_size": 8,
+      "training_microbatches": 12,
+      "optimizer_updates": 3,
+      "gpu": "NVIDIA L4",
+      "peak_allocated_bytes": 3193701888,
+      "peak_reserved_bytes": 3661627392
+    },
+    {
+      "status": "fits",
+      "batch_size": 4,
+      "accumulate_grad_batches": 4,
+      "effective_batch_size": 16,
+      "training_microbatches": 12,
+      "optimizer_updates": 3,
+      "gpu": "NVIDIA L4",
+      "peak_allocated_bytes": 5919355392,
+      "peak_reserved_bytes": 7038042112
+    },
+    {
+      "status": "fits",
+      "batch_size": 8,
+      "accumulate_grad_batches": 4,
+      "effective_batch_size": 32,
+      "training_microbatches": 12,
+      "optimizer_updates": 3,
+      "gpu": "NVIDIA L4",
+      "peak_allocated_bytes": 11366249472,
+      "peak_reserved_bytes": 13824425984
+    },
+    {
+      "status": "cuda_oom",
+      "batch_size": 16,
+      "error": "CUDA out of memory. Tried to allocate 576.00 MiB. GPU 0 has a total capacity of 22.03 GiB of which 409.12 MiB is free. Including non-PyTorch memory, this process has 21.62 GiB memory in use. Of the allocated memory 20.11 GiB is allocated by PyTorch, and 1.22 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)"
+    }
+  ]
+}
