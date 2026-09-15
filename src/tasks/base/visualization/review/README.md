@@ -10,10 +10,7 @@ BLCS / PLCS の生成データセット（`data/<task>/<form>/scenes/<scene_id>/
 リポジトリのPython環境から実行する。`--data-root` は `plcs` と `blcs` を
 含むデータディレクトリを指定する。
 
-```bash
-.venv/bin/python -m src.tasks.plcs.scripts.review_dataset --data-root /path/to/data
-.venv/bin/python -m src.tasks.blcs.scripts.review_dataset --data-root /path/to/data
-```
+コピー可能なコマンドは[PLCS利用ガイド](../../../plcs/visualization/README.md)・[BLCS利用ガイド](../../../blcs/visualization/README.md)を参照。
 
 PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 `--port` で変更できる。左のディレクトリからシーンを選択し、中央のコートを

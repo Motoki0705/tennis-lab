@@ -1,7 +1,7 @@
 # PLCS Review
 
 生成データセットの閲覧は `dataset_service.py` / `dataset_web.py` が提供する。
-起動・操作・API・座標契約は[共有review基盤](../../../base/visualization/review/README.md)を参照。
+起動・操作は[PLCS利用ガイド](../README.md)、API・座標契約は[共有review基盤](../../../base/visualization/review/README.md)を参照。
 
 ## ACCAD Motion Review
 

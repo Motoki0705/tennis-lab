@@ -1,5 +1,27 @@
 # Shared Visualization
 
+## タスク別の使い方
+
+起動コマンドと操作手順は各ガイドを正本とします。
+
+| タスク | ガイド | 閲覧 / 推論ポート |
+|---|---|---|
+| PLCS | [利用ガイド](../../plcs/visualization/README.md) | 8772 / 8771 |
+| BLCS | [利用ガイド](../../blcs/visualization/README.md) | 8773 / 8770 |
+| Court Detection | [利用ガイド](../../court_detection/visualization/README.md) | 8774 / 8775 |
+| Ball Detection | [利用ガイド](../../ball_detection/visualization/README.md) | 8776 / 8777 |
+
+## 実行前確認
+
+- コードのあるリポジトリまたはworktreeの直下で実行します。例えば現在のPR作業用なら`cd /home/kamimura/projects/tennis-lab/.claude/worktrees/dataset-scene-review`です。マージ後は通常のリポジトリ直下で使えます。
+- `scripts/run_in_repo_venv.sh`は元リポジトリの`.venv/bin/python`を使います。仮想環境がない場合は、元リポジトリで`uv sync --locked`を実行してください。
+- ガイド中の`ROOT`はGitの共通ディレクトリから元リポジトリを解決し、既存のdata・outputs・ckptを参照します。コードは現在の作業ディレクトリのものを実行します。
+- データと重みは別途配置が必要です。UIはダウンロード・データ生成を行いません。閲覧だけならGPUは不要です。
+- 信頼できるcheckpointだけを使ってください。PyTorchのcheckpointはpickleを含み、読み込み時にコードを実行し得ます。
+- ローカル利用向けです。フロントエンドのビルドは不要で、URLはサーバーを起動した端末から開きます。
+
+## 構成
+
 - [review](review/README.md): BLCS・PLCSの生成シーン閲覧API・データ契約。
 - [detection](detection/README.md): Court・Ball Detectionの画像閲覧・推論Web UI。
 - `shared/scene3d.mjs`: Three.jsによるコート・カメラ・GTと予測の描画。

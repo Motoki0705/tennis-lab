@@ -11,10 +11,7 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 | Court | `src.tasks.court_detection.scripts.review_dataset` | `src.tasks.court_detection.scripts.inference_ui` | 8774 / 8775 |
 | Ball | `src.tasks.ball_detection.scripts.review_dataset` | `src.tasks.ball_detection.scripts.inference_ui` | 8776 / 8777 |
 
-```bash
-.venv/bin/python -m src.tasks.court_detection.scripts.inference_ui
-.venv/bin/python -m src.tasks.ball_detection.scripts.review_dataset
-```
+コピー可能なコマンドは[Court利用ガイド](../../../court_detection/visualization/README.md)・[Ball利用ガイド](../../../ball_detection/visualization/README.md)を参照してください。
 
 共通引数: `--project-root`, `--data-root`, `--outputs-root`, `--checkpoints-root`, `--port`。
 データは既定で `<project>/data`、checkpoint候補は `<project>/outputs/<task>` と `<project>/ckpt/<task>` の再帰スキャンです。checkpointは信頼できるローカルファイルだけを配置してください。Lightning checkpointはpickleを含み、読み込み自体がコードを実行し得ます。

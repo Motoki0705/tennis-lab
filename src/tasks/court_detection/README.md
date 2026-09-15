@@ -158,8 +158,8 @@ pose有効時はcollateが必須の`pose_supervision_mask`を生成します。S
 ## Dataset review / inference UI
 
 画像座標系のWeb UIで、このタスクのdataset GTとcheckpoint predictionを重ねて確認します。
-起動・CLI引数・画面操作・HTTP API・GPUキュー・テスト方法の正本は
-[共有detection基盤](../base/visualization/detection/README.md)です。この節はCourt固有の
+起動コマンドと操作手順は[Web UI利用ガイド](visualization/README.md)、HTTP APIは
+[共有detection基盤](../base/visualization/detection/README.md)を参照してください。この節はCourt固有の
 source契約とcheckpoint互換契約だけを管理します。
 
 ### source契約

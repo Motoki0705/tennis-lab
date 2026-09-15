@@ -4,13 +4,7 @@
 GT と予測のボール軌道を 3D コート上で見比べるローカルWeb UI。カタログと
 シーンの読み込みは読み取り専用で、モデルの重みやデータは変更しない。
 
-```bash
-.venv/bin/python -m src.tasks.blcs.scripts.inference_ui \
-  --data-root /home/kamimura/projects/tennis-lab/data \
-  --outputs-root /home/kamimura/projects/tennis-lab/outputs/blcs \
-  --checkpoints-root /home/kamimura/projects/tennis-lab/ckpt/blcs \
-  --port 8770
-```
+起動コマンドと操作手順は[BLCS利用ガイド](../README.md)を参照してください。
 
 ブラウザで `http://127.0.0.1:8770` を開く。外部CDNやフロントエンドのビルドは
 不要。`--outputs-root` と `--checkpoints-root` は再帰的に `*.ckpt` を探索し、
