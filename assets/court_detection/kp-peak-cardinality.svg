@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560" role="img" aria-labelledby="kpCardinalityTitle">
+  <title id="kpCardinalityTitle">Court KP heatmap の peak cardinality 比較</title>
+  <desc>同じ 1 チャネル二峰 heatmap に対する、旧既定 K=4・新既定 K=1・明示 K=2 の peak 抽出結果と、一様マップ / 同値 plateau の扱いを示す図。</desc>
+  <defs>
+    <radialGradient id="kpMainPeak" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FEF3C7" stop-opacity="1" />
+      <stop offset="40%" stop-color="#F59E0B" stop-opacity="0.62" />
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="kpSubPeak" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E0F2FE" stop-opacity="1" />
+      <stop offset="40%" stop-color="#0EA5E9" stop-opacity="0.62" />
+      <stop offset="100%" stop-color="#0EA5E9" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="560" fill="#FFFFFF" />
+
+  <g font-family="'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif">
+    <text x="40" y="46" font-size="25" font-weight="700" fill="#111827">Court KP heatmap の peak cardinality</text>
+    <text x="40" y="78" font-size="16" fill="#4B5563">1 チャネルに複数の Gaussian を max 合成した教師に対し、同じ二峰マップから何候補を返すか</text>
+
+    <!-- Panel A: legacy default -->
+    <g>
+      <rect x="40" y="110" width="280" height="320" rx="10" fill="#F9FAFB" stroke="#E5E7EB" />
+      <text x="180" y="142" font-size="17" font-weight="700" text-anchor="middle" fill="#111827">旧既定: max_peaks=4</text>
+      <text x="180" y="164" font-size="12.5" text-anchor="middle" fill="#6B7280">1 チャネルあたり出力枠 K=4</text>
+      <rect x="95" y="196" width="170" height="170" fill="#0F141A" stroke="#2A3644" />
+      <path d="M129 196 V366 M163 196 V366 M197 196 V366 M231 196 V366" stroke="#223041" stroke-width="1" />
+      <path d="M95 230 H265 M95 264 H265 M95 298 H265 M95 332 H265" stroke="#223041" stroke-width="1" />
+      <circle cx="150" cy="251" r="62" fill="url(#kpMainPeak)" />
+      <circle cx="215" cy="316" r="48" fill="url(#kpSubPeak)" />
+      <circle cx="150" cy="251" r="12" fill="none" stroke="#FDE68A" stroke-width="2.5" />
+      <path d="M150 233 V269 M132 251 H168" stroke="#FDE68A" stroke-width="1.6" />
+      <circle cx="215" cy="316" r="10" fill="none" stroke="#7DD3FC" stroke-width="2.5" />
+      <path d="M215 300 V332 M199 316 H231" stroke="#7DD3FC" stroke-width="1.4" />
+      <circle cx="245" cy="226" r="9" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="4 3" />
+      <path d="M241 222 L249 230 M249 222 L241 230" stroke="#9CA3AF" stroke-width="1.6" />
+      <circle cx="130" cy="331" r="9" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="4 3" />
+      <path d="M126 327 L134 335 M134 327 L126 335" stroke="#9CA3AF" stroke-width="1.6" />
+      <text x="106" y="220" font-size="11.5" fill="#E5E7EB">主峰 0.90</text>
+      <text x="176" y="354" font-size="11.5" fill="#E5E7EB">副峰 0.62</text>
+      <text x="180" y="381" font-size="11" text-anchor="middle" fill="#9CA3AF">invalid padding ×2（valid=False）</text>
+      <text x="180" y="400" font-size="13" font-weight="600" text-anchor="middle" fill="#111827">主峰 + 副峰を返す（出力枠 K=4）</text>
+      <text x="180" y="419" font-size="11.5" text-anchor="middle" fill="#6B7280">shape [C,4,*] が singleton 教師 [C,1,*] と異なる</text>
+    </g>
+
+    <!-- Panel B: new default -->
+    <g>
+      <rect x="360" y="110" width="280" height="320" rx="10" fill="#F9FAFB" stroke="#E5E7EB" />
+      <text x="500" y="142" font-size="17" font-weight="700" text-anchor="middle" fill="#111827">新既定: max_peaks=1</text>
+      <text x="500" y="164" font-size="12.5" text-anchor="middle" fill="#6B7280">引数省略時の既定</text>
+      <rect x="415" y="196" width="170" height="170" fill="#0F141A" stroke="#2A3644" />
+      <path d="M449 196 V366 M483 196 V366 M517 196 V366 M551 196 V366" stroke="#223041" stroke-width="1" />
+      <path d="M415 230 H585 M415 264 H585 M415 298 H585 M415 332 H585" stroke="#223041" stroke-width="1" />
+      <circle cx="470" cy="251" r="62" fill="url(#kpMainPeak)" />
+      <circle cx="535" cy="316" r="48" fill="url(#kpSubPeak)" />
+      <circle cx="470" cy="251" r="12" fill="none" stroke="#FDE68A" stroke-width="2.5" />
+      <path d="M470 233 V269 M452 251 H488" stroke="#FDE68A" stroke-width="1.6" />
+      <circle cx="535" cy="316" r="10" fill="none" stroke="#6B7280" stroke-width="2" stroke-dasharray="4 3" />
+      <path d="M523 304 L547 328 M547 304 L523 328" stroke="#6B7280" stroke-width="1.6" />
+      <text x="426" y="220" font-size="11.5" fill="#E5E7EB">主峰 0.90</text>
+      <text x="497" y="354" font-size="11.5" fill="#9CA3AF">副峰は返さない</text>
+      <text x="500" y="398" font-size="13.5" font-weight="600" text-anchor="middle" fill="#111827">主峰だけを返す（K=1）</text>
+      <text x="500" y="420" font-size="12.5" text-anchor="middle" fill="#6B7280">singleton 教師 [C,1,*] と一致する</text>
+    </g>
+
+    <!-- Panel C: explicit opt-in -->
+    <g>
+      <rect x="680" y="110" width="280" height="320" rx="10" fill="#F9FAFB" stroke="#E5E7EB" />
+      <text x="820" y="142" font-size="17" font-weight="700" text-anchor="middle" fill="#111827">明示: max_peaks=2</text>
+      <text x="820" y="164" font-size="12.5" text-anchor="middle" fill="#6B7280">multi-peak は opt-in</text>
+      <rect x="735" y="196" width="170" height="170" fill="#0F141A" stroke="#2A3644" />
+      <path d="M769 196 V366 M803 196 V366 M837 196 V366 M871 196 V366" stroke="#223041" stroke-width="1" />
+      <path d="M735 230 H905 M735 264 H905 M735 298 H905 M735 332 H905" stroke="#223041" stroke-width="1" />
+      <circle cx="790" cy="251" r="62" fill="url(#kpMainPeak)" />
+      <circle cx="855" cy="316" r="48" fill="url(#kpSubPeak)" />
+      <circle cx="790" cy="251" r="12" fill="none" stroke="#FDE68A" stroke-width="2.5" />
+      <path d="M790 233 V269 M772 251 H808" stroke="#FDE68A" stroke-width="1.6" />
+      <circle cx="855" cy="316" r="10" fill="none" stroke="#7DD3FC" stroke-width="2.5" />
+      <path d="M855 300 V332 M839 316 H871" stroke="#7DD3FC" stroke-width="1.4" />
+      <text x="746" y="220" font-size="11.5" fill="#E5E7EB">主峰 0.90</text>
+      <text x="816" y="354" font-size="11.5" fill="#E5E7EB">副峰 0.62</text>
+      <text x="820" y="398" font-size="13.5" font-weight="600" text-anchor="middle" fill="#111827">score 順に主峰 + 副峰を返す</text>
+      <text x="820" y="420" font-size="12.5" text-anchor="middle" fill="#6B7280">legacy KP7 / all-courts の明示呼び出し向け</text>
+    </g>
+
+    <!-- Bottom band: degenerate maps -->
+    <g>
+      <rect x="40" y="456" width="920" height="80" rx="10" fill="#F3F4F6" stroke="#E5E7EB" />
+      <rect x="64" y="470" width="52" height="52" fill="#6B7280" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="5 4" />
+      <text x="132" y="492" font-size="13.5" font-weight="600" fill="#111827">閾値ちょうどの一様マップ</text>
+      <text x="132" y="514" font-size="12.5" fill="#4B5563">コントラストが無く候補 0（valid=False / score=0）</text>
+      <rect x="520" y="470" width="52" height="52" fill="#374151" stroke="#9CA3AF" stroke-width="2" />
+      <rect x="534" y="484" width="24" height="24" fill="#D1D5DB" />
+      <circle cx="546" cy="496" r="9" fill="none" stroke="#111827" stroke-width="2.5" />
+      <text x="588" y="492" font-size="13.5" font-weight="600" fill="#111827">同値 plateau</text>
+      <text x="588" y="514" font-size="12.5" fill="#4B5563">近傍ごとに 1 候補へ縮約し、離れた峰は保持</text>
+    </g>
+  </g>
+</svg>
