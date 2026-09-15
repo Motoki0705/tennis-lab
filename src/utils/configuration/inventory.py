@@ -300,14 +300,6 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         for task in ("ball_detection", "court_detection")
         for script in ("review_dataset", "inference_ui")
     },
-    "src.automation.chatgpt_mcp.scripts.capabilities": (
-        "automation.chatgpt_mcp.capabilities",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.automation.chatgpt_mcp.cli": (
-        "automation.chatgpt_mcp",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
     "src.synthetic_data_generation.scripts.edit_alignment": (
         "synthetic.manual_court_alignment",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -380,17 +372,6 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "main",
         domain="base",
         executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.automation.chatgpt_mcp.scripts.capabilities",
-        "main",
-        domain="automation",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.automation.chatgpt_mcp.cli",
-        "main",
-        domain="automation",
     ),
     _non_hydra_boundary(
         "src.synthetic_data_generation.scripts.compact_court_storage",

@@ -98,7 +98,6 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
         encoding="utf-8"
     )
     assert 'readonly RUNNER_USER="tennis-actions"' in installer
-    assert 'readonly TRUSTED_MCP_USER="kamimura"' in installer
     assert "ProtectHome=true" in installer
     assert "for mount_path in /mnt/?; do" in installer
     assert "InaccessiblePaths=$inaccessible_paths" in installer
@@ -106,13 +105,11 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert 'mountpoint --quiet "$asset_dir"' in installer
     assert "mount --options remount,bind,ro" in installer
     assert "TRAINING_QUEUE_LOCK_FILE=" in installer
-    assert '-g "$TRUSTED_MCP_GROUP" -m 0710 "$STATE_ROOT"' in installer
     for suffix in (".gate", ".slot-0", ".slot-1"):
         assert f'"${{GPU_LOCK_FILE}}{suffix}"' in installer
-    assert 'chown "$RUNNER_USER:$TRUSTED_MCP_GROUP" "$lock_path"' in installer
-    assert 'chmod 0660 "$lock_path"' in installer
+    assert 'chown "$RUNNER_USER:$RUNNER_GROUP" "$lock_path"' in installer
+    assert 'chmod 0600 "$lock_path"' in installer
     assert 'runuser -u "$RUNNER_USER" -- test -w "$lock_path"' in installer
-    assert 'runuser -u "$TRUSTED_MCP_USER" -- test -w "$lock_path"' in installer
     assert (
         "ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue "
         "$GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE"
