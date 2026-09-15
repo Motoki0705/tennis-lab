@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/accad_gvhmr_meiji_1000_v1_train/logs/version_0/checkpoints
