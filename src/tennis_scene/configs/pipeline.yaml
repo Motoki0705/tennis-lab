@@ -81,7 +81,6 @@ player_association:
   load_path: null
 
 player_motion:
-  source: plcs
   scale_mode: fixed
   alignment:
     sigma_position_m: 0.5

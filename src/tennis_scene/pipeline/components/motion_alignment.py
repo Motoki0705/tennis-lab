@@ -1,12 +1,9 @@
-"""Select the player motion source placed into a :class:`SceneResult`.
+"""Align GVHMR world motion to PLCS for storage alongside the PLCS placement.
 
-``player_motion.source=plcs`` keeps today's behaviour: the PLCS court track is
-placed with the camera-frame GVHMR SMPL parameters.
-
-``player_motion.source=gvhmr_alignment`` instead fits one gravity-fixed
-similarity transform shared by every frame of a track, mapping the
-gravity-aligned GVHMR world motion onto the PLCS court track. It rewrites the
-placed root, yaw and SMPL parameters so the existing renderer rule
+The module always fits one gravity-fixed similarity transform shared by every
+frame of a track. The aligned root, yaw and SMPL parameters are returned as an
+alternative representation; the original PLCS and camera-frame GVHMR fields
+remain unchanged in :class:`SceneResult`. The existing renderer rule
 ``Rz(yaw) @ A @ R(G)^T @ (V_local - root(V_local)) + position`` reproduces the
 direct similarity transform of the world vertices.
 
@@ -150,19 +147,13 @@ def _frame_rotations_z(yaw: NDArray[np.float64]) -> NDArray[np.float64]:
 
 @dataclass(frozen=True, slots=True)
 class PlayerMotionConfig:
-    """Validated choice of the player motion source for one pipeline run."""
+    """Validated GVHMR-to-PLCS alignment settings for one pipeline run."""
 
-    source: Literal["plcs", "gvhmr_alignment"]
     scale_mode: Literal["fixed", "free"]
     smpl_joint_regressor: Path
     similarity: SimilarityConfig
 
     def __post_init__(self) -> None:
-        if self.source not in {"plcs", "gvhmr_alignment"}:
-            raise ValueError(
-                "player_motion.source must be 'plcs' or 'gvhmr_alignment', got "
-                f"{self.source!r}."
-            )
         if self.scale_mode not in {"fixed", "free"}:
             raise ValueError(
                 "player_motion.scale_mode must be 'fixed' or 'free', got "
@@ -223,14 +214,12 @@ class AlignedTrack:
 
 @dataclass(frozen=True, slots=True)
 class PlayerMotionApplied:
-    """Selected player motion fields plus the ``player_motion`` metadata block."""
+    """Aligned player motion fields plus their diagnostic metadata."""
 
     player_position: NDArray[np.float32]
     player_yaw: NDArray[np.float32]
-    smpl_body_pose: NDArray[np.float32] | None
-    smpl_global_orient: NDArray[np.float32] | None
-    smpl_betas: NDArray[np.float32] | None
-    smpl_vertices_local: NDArray[np.float32] | None
+    smpl_global_orient: NDArray[np.float32]
+    smpl_vertices_local: NDArray[np.float32]
     metadata: dict[str, Any]
 
 
@@ -340,8 +329,7 @@ def derive_alignment_weights(
     rotations = np.asarray(rotation_court, dtype=np.float64)
     if target_raw.ndim != 2 or target_raw.shape[1] != 17:
         raise ValueError(
-            "target_visibility_ref must have shape (T, 17), got "
-            f"{target_raw.shape}."
+            f"target_visibility_ref must have shape (T, 17), got {target_raw.shape}."
         )
     if source_raw.shape != target_raw.shape:
         raise ValueError(
@@ -493,14 +481,6 @@ def _summarize_residuals(
     }
 
 
-def _rounded(values: NDArray[np.float64]) -> list[Any]:
-    """Round a float array to six decimals to bound the JSON payload size."""
-    rounded: list[Any] = np.round(
-        np.asarray(values, dtype=np.float64), 6
-    ).tolist()
-    return rounded
-
-
 def _player_metadata(
     *,
     track: AlignedTrack,
@@ -513,9 +493,7 @@ def _player_metadata(
     position_residual = np.linalg.norm(
         track.player_position - reference_position, axis=-1
     )
-    heading_residual = np.abs(
-        np.rad2deg(wrap_to_pi(track.player_yaw - reference_yaw))
-    )
+    heading_residual = np.abs(np.rad2deg(wrap_to_pi(track.player_yaw - reference_yaw)))
     diagnostics = track.fit.diagnostics
     return {
         "track_id": int(track_id),
@@ -537,21 +515,15 @@ def _player_metadata(
             "initializer": str(diagnostics.initializer),
         },
         "confidence_clipped": bool(confidence_clipped),
-        "reference_position": _rounded(reference_position),
-        "reference_yaw": _rounded(reference_yaw),
     }
 
 
 class MotionAlignmentModule:
-    """Choose the player motion source and build its ``SceneResult`` fields."""
+    """Build the GVHMR-aligned alternative fields for a ``SceneResult``."""
 
     def __init__(self, config: PlayerMotionConfig) -> None:
         self.config = config
-        self._joint_regressor: NDArray[np.float64] | None = (
-            load_joint_regressor(config.smpl_joint_regressor)
-            if config.source == "gvhmr_alignment"
-            else None
-        )
+        self._joint_regressor = load_joint_regressor(config.smpl_joint_regressor)
 
     def process(
         self,
@@ -562,17 +534,7 @@ class MotionAlignmentModule:
         court_visibility: NDArray[np.float32],
         reference_camera_index: int,
     ) -> PlayerMotionApplied:
-        """Return the placed player motion fields plus their metadata."""
-        if self.config.source == "plcs":
-            return PlayerMotionApplied(
-                player_position=plcs_position,
-                player_yaw=plcs_yaw,
-                smpl_body_pose=associated.smpl_body_pose,
-                smpl_global_orient=associated.smpl_global_orient,
-                smpl_betas=associated.smpl_betas,
-                smpl_vertices_local=associated.smpl_vertices_local,
-                metadata={"player_motion": {"source": "plcs"}},
-            )
+        """Return the aligned alternative fields plus their metadata."""
         return self._align(
             associated=associated,
             plcs_position=plcs_position,
@@ -591,11 +553,6 @@ class MotionAlignmentModule:
         reference_camera_index: int,
     ) -> PlayerMotionApplied:
         joint_regressor = self._joint_regressor
-        if joint_regressor is None:
-            raise RuntimeError(
-                "gvhmr_alignment requires a loaded SMPL joint regressor; "
-                "construct the module with source='gvhmr_alignment'."
-            )
         missing = [
             name
             for name, value in (
@@ -608,8 +565,8 @@ class MotionAlignmentModule:
         ]
         if missing:
             raise ValueError(
-                "player_motion.source='gvhmr_alignment' requires the GVHMR "
-                f"world-motion fields {sorted(missing)}, but they are absent. "
+                "GVHMR alignment requires the world-motion fields "
+                f"{sorted(missing)}, but they are absent. "
                 "The GVHMR artifact was produced before world-motion support; "
                 "regenerate it with the current pipeline."
             )
@@ -697,8 +654,7 @@ class MotionAlignmentModule:
                 )
             )
         metadata = {
-            "player_motion": {
-                "source": self.config.source,
+            "gvhmr_alignment": {
                 "scale_mode": self.config.scale_mode,
                 "players": players,
             }
@@ -706,9 +662,7 @@ class MotionAlignmentModule:
         return PlayerMotionApplied(
             player_position=np.stack(positions).astype(np.float32),
             player_yaw=np.stack(yaws).astype(np.float32),
-            smpl_body_pose=associated.smpl_body_pose,
             smpl_global_orient=np.stack(orients).astype(np.float32),
-            smpl_betas=associated.smpl_betas,
             smpl_vertices_local=np.stack(vertices).astype(np.float32),
             metadata=metadata,
         )

@@ -118,9 +118,7 @@ def _unit_interval(value: float, *, name: str) -> None:
 
 def _non_negative(value: float, *, name: str) -> None:
     if value < 0.0:
-        raise SemanticConfigurationError(
-            f"{name} must be non-negative, got {value}."
-        )
+        raise SemanticConfigurationError(f"{name} must be non-negative, got {value}.")
 
 
 def _window_contract(size: int, overlap: int, *, name: str) -> None:
@@ -281,7 +279,6 @@ _PLAYER_MOTION_ALIGNMENT_SCHEMA = StrictConfigSchema(
 _PLAYER_MOTION_SCHEMA = StrictConfigSchema(
     name="tennis_scene.player_motion",
     fields={
-        "source": ConfigField.of(str),
         "scale_mode": ConfigField.of(str),
         "alignment": ConfigField.mapping(_PLAYER_MOTION_ALIGNMENT_SCHEMA),
     },
@@ -498,15 +495,7 @@ class PipelineRuntimeConfig:
         )
 
         player_motion = _mapping(value["player_motion"], name="player_motion")
-        alignment = _mapping(
-            player_motion["alignment"], name="player_motion.alignment"
-        )
-        motion_source = cast(str, player_motion["source"])
-        if motion_source not in {"plcs", "gvhmr_alignment"}:
-            raise SemanticConfigurationError(
-                "player_motion.source must be 'plcs' or 'gvhmr_alignment', got "
-                f"{motion_source!r}."
-            )
+        alignment = _mapping(player_motion["alignment"], name="player_motion.alignment")
         scale_mode = cast(str, player_motion["scale_mode"])
         if scale_mode not in {"fixed", "free"}:
             raise SemanticConfigurationError(
@@ -545,7 +534,6 @@ class PipelineRuntimeConfig:
         max_nfev = cast(int, alignment["max_nfev"])
         _positive(max_nfev, name="player_motion.alignment.max_nfev")
         player_motion_config = PlayerMotionConfig(
-            source=cast(Literal["plcs", "gvhmr_alignment"], motion_source),
             scale_mode=cast(Literal["fixed", "free"], scale_mode),
             smpl_joint_regressor=bundled_assets.smpl_neutral_joint_regressor,
             similarity=SimilarityConfig(

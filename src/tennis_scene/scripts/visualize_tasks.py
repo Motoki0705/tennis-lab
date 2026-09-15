@@ -234,9 +234,7 @@ def _render_gvhmr_pose(
     # human_kp_2d: (P, C, T, 17, 2) normalized; single camera -> C index 0.
     kp = _denorm(_require_array(scene, "human_kp_2d")[:, 0], w, h)
     conf = _require_array(scene, "human_kp_vis")[:, 0]  # (P, T, 17)
-    track_ids = [
-        int(v) for v in _require_array(scene, "player_track_ids").tolist()
-    ]
+    track_ids = [int(v) for v in _require_array(scene, "player_track_ids").tolist()]
     num_players = kp.shape[0]
 
     writer = _open_writer(out_path, fps, w, h)
@@ -309,9 +307,7 @@ def _render_plcs(
 
     pos = scene.player_position  # (P, T, 3)
     yaw = scene.player_yaw  # (P, T)
-    track_ids = [
-        int(v) for v in _require_array(scene, "player_track_ids").tolist()
-    ]
+    track_ids = [int(v) for v in _require_array(scene, "player_track_ids").tolist()]
     num_players = pos.shape[0]
 
     court = CourtRenderer()
@@ -367,7 +363,7 @@ def _metadata_number(entry: Mapping[str, object], key: str) -> float:
     value = entry.get(key)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(
-            f"player_motion metadata field {key!r} must be numeric, got {value!r}"
+            f"gvhmr_alignment metadata field {key!r} must be numeric, got {value!r}"
         )
     return float(value)
 
@@ -376,48 +372,29 @@ def _metadata_median(entry: Mapping[str, object], key: str) -> float:
     summary = entry.get(key)
     if not isinstance(summary, Mapping):
         raise ValueError(
-            f"player_motion metadata field {key!r} must be a summary object"
+            f"gvhmr_alignment metadata field {key!r} must be a summary object"
         )
     return _metadata_number(summary, "median")
 
 
-def _metadata_array(entry: Mapping[str, object], key: str) -> NDArray[np.float64]:
-    value = entry.get(key)
-    if value is None:
-        raise ValueError(f"player_motion metadata field {key!r} is missing")
-    try:
-        return np.asarray(value, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise ValueError(
-            f"player_motion metadata field {key!r} must be numeric: {error}"
-        ) from error
-
-
 def _alignment_players(scene: SceneResult) -> list[Mapping[str, object]]:
     """Return the per-player alignment diagnostics or fail with a clear reason."""
-    player_motion = scene.metadata.get("player_motion")
-    if not isinstance(player_motion, Mapping):
+    alignment = scene.metadata.get("gvhmr_alignment")
+    if not isinstance(alignment, Mapping):
         raise ValueError(
-            "SceneResult metadata has no 'player_motion' block; the "
-            "gvhmr_alignment task needs a run with "
-            "player_motion.source='gvhmr_alignment'."
+            "SceneResult metadata has no 'gvhmr_alignment' block; the "
+            "gvhmr_alignment task needs a current pipeline result."
         )
-    if player_motion.get("source") != "gvhmr_alignment":
-        raise ValueError(
-            "SceneResult metadata player_motion.source is "
-            f"{player_motion.get('source')!r}, not 'gvhmr_alignment'; the "
-            "gvhmr_alignment task needs an aligned run."
-        )
-    raw_players = player_motion.get("players")
+    raw_players = alignment.get("players")
     if not isinstance(raw_players, list) or not raw_players:
         raise ValueError(
-            "SceneResult metadata player_motion.players must be a non-empty list"
+            "SceneResult metadata gvhmr_alignment.players must be a non-empty list"
         )
     players: list[Mapping[str, object]] = []
     for index, entry in enumerate(raw_players):
         if not isinstance(entry, Mapping):
             raise ValueError(
-                f"player_motion.players[{index}] must be a mapping, got "
+                f"gvhmr_alignment.players[{index}] must be a mapping, got "
                 f"{type(entry).__name__}"
             )
         players.append(entry)
@@ -439,33 +416,27 @@ def _render_gvhmr_alignment(
     from src.utils.rendering.court_renderer import CourtRenderer
 
     players_metadata = _alignment_players(scene)
-    pos = scene.player_position  # (P, T, 3), aligned
-    yaw = scene.player_yaw  # (P, T), aligned
+    pos = _require_array(scene, "gvhmr_aligned_player_position")
+    yaw = _require_array(scene, "gvhmr_aligned_player_yaw")
+    reference_position = scene.player_position
+    reference_yaw = scene.player_yaw
     num_players = pos.shape[0]
     if len(players_metadata) != num_players:
         raise ValueError(
-            "player_motion.players length "
+            "gvhmr_alignment.players length "
             f"{len(players_metadata)} does not match the SceneResult player "
             f"count {num_players}"
         )
-    track_ids = [
-        int(_metadata_number(entry, "track_id")) for entry in players_metadata
-    ]
-    reference_position = np.stack(
-        [_metadata_array(entry, "reference_position") for entry in players_metadata]
-    )
-    reference_yaw = np.stack(
-        [_metadata_array(entry, "reference_yaw") for entry in players_metadata]
-    )
+    track_ids = [int(_metadata_number(entry, "track_id")) for entry in players_metadata]
     if reference_position.shape != pos.shape:
         raise ValueError(
-            "player_motion reference_position shape "
+            "PLCS player_position shape "
             f"{reference_position.shape} does not match player_position "
             f"{pos.shape}"
         )
     if reference_yaw.shape != yaw.shape:
         raise ValueError(
-            "player_motion reference_yaw shape "
+            "PLCS player_yaw shape "
             f"{reference_yaw.shape} does not match player_yaw {yaw.shape}"
         )
 

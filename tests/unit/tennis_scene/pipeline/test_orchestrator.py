@@ -8,12 +8,11 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 import src.tennis_scene.pipeline.orchestrator as orchestrator_module
-from src.tennis_scene.motion_alignment.similarity import SimilarityConfig
 from src.tennis_scene.pipeline.components.motion_alignment import (
-    MotionAlignmentModule,
-    PlayerMotionConfig,
+    PlayerMotionApplied,
 )
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationApplied,
@@ -126,11 +125,11 @@ class _FakePLCSModule:
         return self.result
 
 
-def test_run_places_plcs_motion_unchanged_and_records_the_source(
+def test_run_preserves_plcs_and_stores_alignment_separately(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The default source keeps the PLCS arrays bit-for-bit and labels them."""
+    """The pipeline must retain both representations without overwriting either."""
     num_frames = 3
     resolution = ResolutionResult(
         enabled_order=(Stage.COURT_KP, Stage.GVHMR, Stage.PLCS),
@@ -148,9 +147,9 @@ def test_run_places_plcs_motion_unchanged_and_records_the_source(
         visibility=np.ones((1, num_frames, 20), dtype=np.float32),
         frame_indices=np.array([0], dtype=np.int64),
     )
-    position: np.ndarray = np.arange(
-        num_frames * 3, dtype=np.float32
-    ).reshape(1, num_frames, 3)
+    position: np.ndarray = np.arange(num_frames * 3, dtype=np.float32).reshape(
+        1, num_frames, 3
+    )
     yaw = np.linspace(0.0, 0.5, num_frames, dtype=np.float32).reshape(1, num_frames)
     plcs_result = PLCSResult(
         position=position,
@@ -163,9 +162,7 @@ def test_run_places_plcs_motion_unchanged_and_records_the_source(
         smpl_body_pose=np.full((1, num_frames, 63), 0.5, dtype=np.float32),
         smpl_global_orient=np.full((1, num_frames, 3), 0.25, dtype=np.float32),
         smpl_betas=np.full((1, 10), 0.125, dtype=np.float32),
-        smpl_vertices_local=np.full(
-            (1, num_frames, 4, 3), 0.75, dtype=np.float32
-        ),
+        smpl_vertices_local=np.full((1, num_frames, 4, 3), 0.75, dtype=np.float32),
         track_ids=np.array([5], dtype=np.int32),
         track_ids_by_camera=[np.array([5], dtype=np.int32)],
     )
@@ -181,6 +178,22 @@ def test_run_places_plcs_motion_unchanged_and_records_the_source(
         ],
         reference_camera="cam0",
     )
+    alignment_position = position + 10.0
+    alignment_yaw = yaw + 0.25
+    alignment_orient: NDArray[np.float32] = np.full(
+        (1, num_frames, 3), 1.25, dtype=np.float32
+    )
+    alignment_vertices: NDArray[np.float32] = np.full(
+        (1, num_frames, 4, 3), 1.75, dtype=np.float32
+    )
+    alignment = PlayerMotionApplied(
+        player_position=alignment_position,
+        player_yaw=alignment_yaw,
+        smpl_global_orient=alignment_orient,
+        smpl_vertices_local=alignment_vertices,
+        metadata={"gvhmr_alignment": {"scale_mode": "fixed", "players": []}},
+    )
+    motion_alignment_module = SimpleNamespace(process=lambda **_: alignment)
     orchestrator = TennisSceneOrchestrator(
         court_kp_module=cast(Any, _FakeCourtKPModule(court_result)),
         gvhmr_config=make_gvhmr_config(
@@ -191,14 +204,7 @@ def test_run_places_plcs_motion_unchanged_and_records_the_source(
         ),
         gvhmr_chain=None,
         player_association_module=cast(Any, object()),
-        motion_alignment_module=MotionAlignmentModule(
-            PlayerMotionConfig(
-                source="plcs",
-                scale_mode="fixed",
-                smpl_joint_regressor=tmp_path / "unused_regressor.pt",
-                similarity=SimilarityConfig(),
-            )
-        ),
+        motion_alignment_module=cast(Any, motion_alignment_module),
         ball_detection_module=None,
         plcs_module=cast(Any, _FakePLCSModule(plcs_result)),
         blcs_module=None,
@@ -228,5 +234,13 @@ def test_run_places_plcs_motion_unchanged_and_records_the_source(
     assert result.smpl_body_pose is aligned.smpl_body_pose
     assert result.smpl_global_orient is aligned.smpl_global_orient
     assert result.smpl_vertices_local is aligned.smpl_vertices_local
-    assert result.metadata["player_motion"] == {"source": "plcs"}
+    assert result.gvhmr_aligned_player_position is alignment_position
+    assert result.gvhmr_aligned_player_yaw is alignment_yaw
+    assert result.gvhmr_aligned_smpl_global_orient is alignment_orient
+    assert result.gvhmr_aligned_smpl_vertices_local is alignment_vertices
+    assert result.metadata["gvhmr_alignment"] == {
+        "scale_mode": "fixed",
+        "players": [],
+    }
+    assert "player_motion" not in result.metadata
     assert result.metadata["track_ids"] == [5]

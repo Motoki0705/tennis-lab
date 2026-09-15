@@ -1,4 +1,4 @@
-"""Boundary tests for the pipeline's player-motion selection module."""
+"""Boundary tests for the pipeline's automatic motion-alignment module."""
 
 from __future__ import annotations
 
@@ -28,11 +28,9 @@ _NUM_VERTICES = 5
 def _config(
     path: Path,
     *,
-    source: str = "plcs",
     scale_mode: str = "fixed",
 ) -> PlayerMotionConfig:
     return PlayerMotionConfig(
-        source=source,  # type: ignore[arg-type]
         scale_mode=scale_mode,  # type: ignore[arg-type]
         smpl_joint_regressor=path,
         similarity=SimilarityConfig(),
@@ -64,9 +62,7 @@ def _associated(*, with_world_motion: bool) -> PlayerAssociationApplied:
             (_NUM_PLAYERS, _NUM_CAMERAS, _NUM_FRAMES, 17), dtype=np.float32
         ),
         smpl_body_pose=np.zeros((_NUM_PLAYERS, _NUM_FRAMES, 63), dtype=np.float32),
-        smpl_global_orient=np.zeros(
-            (_NUM_PLAYERS, _NUM_FRAMES, 3), dtype=np.float32
-        ),
+        smpl_global_orient=np.zeros((_NUM_PLAYERS, _NUM_FRAMES, 3), dtype=np.float32),
         smpl_betas=np.zeros((_NUM_PLAYERS, 10), dtype=np.float32),
         smpl_vertices_local=np.zeros(
             (_NUM_PLAYERS, _NUM_FRAMES, _NUM_VERTICES, 3), dtype=np.float32
@@ -79,13 +75,15 @@ def _associated(*, with_world_motion: bool) -> PlayerAssociationApplied:
     )
 
 
-def test_plcs_source_returns_the_inputs_unchanged(tmp_path: Path) -> None:
-    module = MotionAlignmentModule(
-        _config(tmp_path / "unused_regressor.pt", source="plcs")
+def test_process_always_returns_alignment_as_separate_fields(tmp_path: Path) -> None:
+    module = MotionAlignmentModule(_config(_regressor_file(tmp_path)))
+    associated = _associated(with_world_motion=True)
+    position: NDArray[np.float32] = np.tile(
+        np.array([2.0, 3.0, 0.0], dtype=np.float32), (_NUM_PLAYERS, _NUM_FRAMES, 1)
     )
-    associated = _associated(with_world_motion=False)
-    position: NDArray[np.float32] = np.arange(9, dtype=np.float32).reshape(1, 3, 3)
-    yaw = np.array([[0.1, 0.2, 0.3]], dtype=np.float32)
+    yaw: NDArray[np.float32] = np.full(
+        (_NUM_PLAYERS, _NUM_FRAMES), 0.4, dtype=np.float32
+    )
 
     applied = module.process(
         associated=associated,
@@ -95,36 +93,36 @@ def test_plcs_source_returns_the_inputs_unchanged(tmp_path: Path) -> None:
         reference_camera_index=0,
     )
 
-    assert applied.player_position is position
-    assert applied.player_yaw is yaw
-    assert applied.smpl_global_orient is associated.smpl_global_orient
-    assert applied.smpl_vertices_local is associated.smpl_vertices_local
-    np.testing.assert_array_equal(applied.player_position, position)
-    np.testing.assert_array_equal(applied.player_yaw, yaw)
-    assert applied.metadata == {"player_motion": {"source": "plcs"}}
+    np.testing.assert_allclose(applied.player_position, position, atol=1e-5)
+    np.testing.assert_allclose(applied.player_yaw, yaw, atol=1e-5)
+    assert applied.smpl_global_orient.shape == (_NUM_PLAYERS, _NUM_FRAMES, 3)
+    assert applied.smpl_vertices_local.shape == (
+        _NUM_PLAYERS,
+        _NUM_FRAMES,
+        _NUM_VERTICES,
+        3,
+    )
+    assert applied.metadata["gvhmr_alignment"]["scale_mode"] == "fixed"
+    assert "source" not in applied.metadata["gvhmr_alignment"]
 
 
-def test_plcs_source_never_reads_the_regressor(tmp_path: Path) -> None:
+def test_module_always_requires_the_regressor(tmp_path: Path) -> None:
     missing = tmp_path / "does_not_exist.pt"
     assert not missing.exists()
 
-    # Constructing a source='plcs' module must not require the aligned asset.
-    MotionAlignmentModule(_config(missing, source="plcs"))
+    with pytest.raises(FileNotFoundError, match="joint regressor"):
+        MotionAlignmentModule(_config(missing))
 
 
-def test_alignment_source_raises_when_world_fields_are_absent(tmp_path: Path) -> None:
-    module = MotionAlignmentModule(
-        _config(_regressor_file(tmp_path), source="gvhmr_alignment")
-    )
+def test_automatic_alignment_raises_when_world_fields_are_absent(tmp_path: Path) -> None:
+    module = MotionAlignmentModule(_config(_regressor_file(tmp_path)))
 
     with pytest.raises(ValueError) as error:
         module.process(
             associated=_associated(with_world_motion=False),
             plcs_position=np.zeros((_NUM_PLAYERS, _NUM_FRAMES, 3), dtype=np.float32),
             plcs_yaw=np.zeros((_NUM_PLAYERS, _NUM_FRAMES), dtype=np.float32),
-            court_visibility=np.ones(
-                (_NUM_CAMERAS, _NUM_FRAMES, 20), dtype=np.float32
-            ),
+            court_visibility=np.ones((_NUM_CAMERAS, _NUM_FRAMES, 20), dtype=np.float32),
             reference_camera_index=0,
         )
 
@@ -180,15 +178,12 @@ def test_joint_regressor_rejects_invalid_shapes(
         load_joint_regressor(path)
 
 
-@pytest.mark.parametrize(
-    ("source", "scale_mode"),
-    [("world", "fixed"), ("plcs", "big"), ("gvhmr", "free")],
-)
-def test_player_motion_config_rejects_unknown_choices(
-    tmp_path: Path, source: str, scale_mode: str
+@pytest.mark.parametrize("scale_mode", ["big", "Fixed", "gvhmr"])
+def test_player_motion_config_rejects_unknown_scale_modes(
+    tmp_path: Path, scale_mode: str
 ) -> None:
     with pytest.raises(ValueError):
-        _config(tmp_path / "regressor.pt", source=source, scale_mode=scale_mode)
+        _config(tmp_path / "regressor.pt", scale_mode=scale_mode)
 
 
 def test_fit_config_applies_the_selected_scale_mode(tmp_path: Path) -> None:

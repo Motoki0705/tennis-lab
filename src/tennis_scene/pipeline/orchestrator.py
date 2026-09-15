@@ -265,7 +265,7 @@ class TennisSceneOrchestrator:
             court_vis=court_vis,
             track_ids=track_ids,
         )
-        player_motion = self.motion_alignment_module.process(
+        gvhmr_alignment = self.motion_alignment_module.process(
             associated=aligned_players,
             plcs_position=plcs_result.position,
             plcs_yaw=plcs_result.yaw,
@@ -306,12 +306,16 @@ class TennisSceneOrchestrator:
             height=height,
             court_kp=court_kp,
             court_vis=court_vis,
-            player_position=player_motion.player_position,
-            player_yaw=player_motion.player_yaw,
-            smpl_body_pose=player_motion.smpl_body_pose,
-            smpl_global_orient=player_motion.smpl_global_orient,
-            smpl_betas=player_motion.smpl_betas,
-            smpl_vertices_local=player_motion.smpl_vertices_local,
+            player_position=plcs_result.position,
+            player_yaw=plcs_result.yaw,
+            smpl_body_pose=aligned_players.smpl_body_pose,
+            smpl_global_orient=aligned_players.smpl_global_orient,
+            smpl_betas=aligned_players.smpl_betas,
+            smpl_vertices_local=aligned_players.smpl_vertices_local,
+            gvhmr_aligned_player_position=gvhmr_alignment.player_position,
+            gvhmr_aligned_player_yaw=gvhmr_alignment.player_yaw,
+            gvhmr_aligned_smpl_global_orient=(gvhmr_alignment.smpl_global_orient),
+            gvhmr_aligned_smpl_vertices_local=(gvhmr_alignment.smpl_vertices_local),
             ball_uv=ball_uv,
             ball_vis=ball_vis,
             ball_3d=ball_3d,
@@ -332,7 +336,7 @@ class TennisSceneOrchestrator:
                 ],
                 "player_association": association_result.to_dict(),
                 "enabled_stages": [stage.value for stage in self.execution_order],
-                **player_motion.metadata,
+                **gvhmr_alignment.metadata,
             },
         )
         if (

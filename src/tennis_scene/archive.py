@@ -57,6 +57,10 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
         "smpl_betas": result.smpl_betas,
         "player_canonical_pose": result.player_canonical_pose,
         "smpl_vertices_local": result.smpl_vertices_local,
+        "gvhmr_aligned_player_position": result.gvhmr_aligned_player_position,
+        "gvhmr_aligned_player_yaw": result.gvhmr_aligned_player_yaw,
+        "gvhmr_aligned_smpl_global_orient": (result.gvhmr_aligned_smpl_global_orient),
+        "gvhmr_aligned_smpl_vertices_local": (result.gvhmr_aligned_smpl_vertices_local),
         "ball_uv": result.ball_uv,
         "ball_vis": result.ball_vis,
         "ball_3d": result.ball_3d,
@@ -102,6 +106,18 @@ def load_scene_result(path: str | Path) -> SceneResult:
             smpl_betas=_optional_array(archive, "smpl_betas", dtype=np.float32),
             smpl_vertices_local=_optional_array(
                 archive, "smpl_vertices_local", dtype=np.float32
+            ),
+            gvhmr_aligned_player_position=_optional_array(
+                archive, "gvhmr_aligned_player_position", dtype=np.float32
+            ),
+            gvhmr_aligned_player_yaw=_optional_array(
+                archive, "gvhmr_aligned_player_yaw", dtype=np.float32
+            ),
+            gvhmr_aligned_smpl_global_orient=_optional_array(
+                archive, "gvhmr_aligned_smpl_global_orient", dtype=np.float32
+            ),
+            gvhmr_aligned_smpl_vertices_local=_optional_array(
+                archive, "gvhmr_aligned_smpl_vertices_local", dtype=np.float32
             ),
             ball_uv=_optional_array(archive, "ball_uv", dtype=np.float32),
             ball_vis=_optional_array(archive, "ball_vis", dtype=np.bool_),
