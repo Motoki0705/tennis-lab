@@ -115,6 +115,7 @@ def test_collection_manifest_rejects_previous_detector_pipeline(
                 "selection": selection.to_dict(),
                 "updated_at": "2026-09-14T00:00:00+00:00",
                 "records": [],
+                "reproducibility_sha256": "test-repro",
             }
         ),
         encoding="utf-8",
@@ -128,6 +129,9 @@ def test_collection_manifest_rejects_previous_detector_pipeline(
         max_frames=None,
         overwrite=False,
         write_preview=True,
+        reproducibility_digest="test-repro",
+        seed=42,
+        deterministic=True,
     )
 
     with pytest.raises(RuntimeError, match="manifest is incompatible"):

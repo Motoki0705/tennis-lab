@@ -4,7 +4,7 @@ defaults:
   - paths: default
   - simulation: default
   - camera: default
-  - motion_sources: default
+  - motion_sources: accad
   - run: generate_dataset
   - _self_
 

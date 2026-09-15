@@ -10,7 +10,7 @@ defaults:
   - generation: multi_object
   - paths: default
   - camera: default
-  - motion_sources: default
+  - motion_sources: accad
   - _self_
 
 external_assets:

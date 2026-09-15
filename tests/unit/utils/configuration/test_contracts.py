@@ -141,26 +141,25 @@ def test_gvhmr_extraction_boundary_declares_every_storage_and_model_path() -> No
     )
 
     assert boundary.validator_callable == (
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+        "src.tasks.plcs.motion.extraction_config.validate_extraction_boundary"
     )
     assert (
-        "src.tasks.plcs.scripts.extract_gvhmr_motions.PATH_BOUNDARY"
+        "src.tasks.plcs.motion.extraction_config.EXTRACTION_SCHEMA"
         in boundary.authority_symbols
     )
     assert {path.rsplit(".", maxsplit=1)[-1] for path in boundary.field_paths} >= {
-        "asset_repository_root",
         "checkpoint_root",
-        "dataset_root",
+        "root",
         "dino_checkpoint",
-        "model_config",
-        "output_root",
+        "config",
+        "output_dir",
         "selection_config",
     }
     assert {
         value.split(":path-role:", maxsplit=1)[1].split(":", maxsplit=1)[0]
         for value in boundary.path_role_authorities
         if ":path-role:" in value
-    } >= {"checkpoint", "data", "output", "project"}
+    } >= {"checkpoint", "data", "project"}
 
 
 def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None:

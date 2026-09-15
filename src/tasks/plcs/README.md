@@ -25,8 +25,8 @@ adapterはglobal SMPL-Xの`transl`/`global_orient`をそれぞれ保持します
 保存形式はpickleを使わないversioned `*.motion.npz` です。generatorの
 `motion_sources` entryは`format`、`paths`、`weight`を明示し、現在は
 `amass_smplh_v1`と`coco17_motion_v1`を登録しています。scene生成側はsource固有の
-SMPL形式を扱いません。`motion_sources=accad_gvhmr`によりACCADと抽出済みtennis
-motionを混合できます。
+SMPL形式を扱いません。ACCAD専用profileは`motion_sources=accad`、混合profileは
+`motion_sources=accad_gvhmr`です。曖昧な`motion_sources/default.yaml`は廃止しました。
 
 scene artifactはnative FPSを保持します。学習Datasetだけが
 `augmentation.frame_rate`の候補（既定は28/30/60 Hz）をsampleし、2D観測、3D
@@ -36,8 +36,10 @@ resampleしません。これにより入力ファイルを60 fpsへ固定せず
 同じnative FPSのsource群から選び、異なるrateをframe indexだけで混ぜることを禁止
 します。ACCAD/GVHMRの混合比はscene間で保たれます。
 
-meiji_3camのGVHMR抽出は`configs/gvhmr_motion/meiji_3cam.yaml`を選手選択の正本と
-します。人物検出はDINO 4-scale Swin-L、対応付けはBoT-SORTを使います。cam0は
+GVHMR抽出の入口は`configs/extract_gvhmr_motions.yaml`です。`dataset`の選択は必須で、
+`configs/dataset/<name>.yaml`が入力rootと選手選択設定を指定します。meiji_3camでは
+`configs/gvhmr_motion/meiji_3cam.yaml`を選手選択の正本とします。
+人物検出はDINO 4-scale Swin-L、対応付けはBoT-SORTを使います。cam0は
 使わず、cam1とcam2で各カメラの手前選手をfootpoint ROIで1人ずつ選びます。
 ROI内の単一選手についてtrack IDの分断を明示的に連結し、各入力clipから2本の
 motion、raw GVHMR sidecar、品質recordを生成します。抽出pipeline versionは成果物と
@@ -49,17 +51,35 @@ collection manifestの双方へ保存し、異なるdetectorによる再開・�
 
 ```bash
 # Local GPUでは共有training queue経由でこのcommandを実行する。
-REPOSITORY_ROOT="$(pwd -P)"
 .venv/bin/python -m src.tasks.plcs.scripts.extract_gvhmr_motions \
-  --dataset-root "$REPOSITORY_ROOT/data/tennis_multivew/processed/meiji_3cam/dataset" \
-  --output-root "$REPOSITORY_ROOT/data/plcs/motions/gvhmr/meiji_3cam" \
-  --selection-config "$REPOSITORY_ROOT/src/tasks/plcs/configs/gvhmr_motion/meiji_3cam.yaml" \
-  --model-config "$REPOSITORY_ROOT/src/submodules/configs/demo_gvhmr.yaml" \
-  --asset-repository-root "$REPOSITORY_ROOT" \
-  --checkpoint-root "$REPOSITORY_ROOT/third_party/GVHMR/inputs/checkpoints" \
-  --dino-checkpoint "$REPOSITORY_ROOT/ckpt/dino/checkpoint0029_4scale_swin.pth" \
-  --write-preview
+  dataset=meiji_3cam run.seed=42
+
+# 推論せず合成済み設定を確認する。
+.venv/bin/python -m src.tasks.plcs.scripts.extract_gvhmr_motions \
+  dataset=meiji_3cam --cfg job --resolve
 ```
+
+別データセットは`configs/dataset/<name>.yaml`と選手ROI設定を追加して`dataset=<name>`
+で切り替えます。入力は共通のdataset/clip manifest形式が必要です。モデル既定値は
+`models.config`の共通設定から読み、`models.runtime_overrides`で設定ファイル上の
+差分を指定できます。独自argparseは使いません。Pythonでは同じDictConfigを
+`scripts.extract_gvhmr_motions.run_extraction()`へ渡せます。
+
+出力rootに`config.yaml`（絶対rootを保存したHydra再実行用設定）と
+`reproducibility.json`（実効モデル設定、重み・人体モデル・実装のSHA256、依存版、
+seed、Git commitと未コミットのコード差分）を保存します。各motionには動画とclip manifestのSHA256も記録し、
+再開時に照合します。seedはsource IDから決定するため処理順・subsetに依存しません。
+設定や重み・実装が変わった場合は新しい`run.output_dir`が必要です。旧抽出結果には
+この検証情報がないため混在を拒否し、既定の出力先も`<dataset>_repro_v1`へ分けています。
+乱数と決定的演算を固定しますが、異なるGPU・依存環境間のbit単位一致は保証しません。
+
+保存設定での再実行は`--config-dir /absolute/output/root --config-name config`で行います。
+worktreeで共有モデルを使う場合は`paths.data_root`、`paths.checkpoint_root`、
+`paths.external_asset_root`を共有rootの絶対パスへ設定し、`paths.project_root`は実装を
+読み込むworktreeに保ちます。
+抽出先を変更した場合は、データ生成時の`motion_sources.tennis.paths`にもその
+data-root相対パスを指定してください。既存の混合profileは既に生成済みの
+`plcs/motions/gvhmr/meiji_3cam`を参照しています。
 
 ## Modules
 
