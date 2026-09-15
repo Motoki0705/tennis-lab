@@ -34,6 +34,7 @@ human UV/visibility には適用しません。
 - **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
 - **`plcs_multiview_axial_reference_model.py`**: `PLCSMultiViewAxialReferenceModel`。reference selectorを第3 RoPE軸に持ち、指定cameraの特徴からposition・rotation・canonical poseを読む。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
+- **`plcs_multiview_axial_foot_residual_model.py`**: split trunkに可視性・身体相対座標・足首ground priorの埋め込みを加え、位置をprior + XYZ残差として出力。観測だけから求める幾何は `geometry/footpoint.py` が所有する。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object streamをviewごとに1 tokenへ圧縮し、FFN-free attention block、`Q+V` spatial attention、stage末尾の共有FFNとmHC writebackを用いて複数playerの位置・rotation・presenceを推定する。
@@ -151,3 +152,13 @@ target, RoPE and selector markers; physical and track-query checkpoints cannot
 be substituted. Position, heading, world-joint and camera transformations follow
 the shared reference-frame contract. Direct scene inference requires a stable
 `reference_camera_id`; array inference requires explicit reference provenance.
+
+## Foot residual experiment
+
+現行の `plcs_multiview_axial_foot_residual` の構成は Modules の該当項目を参照。学習・同条件の
+本番推論比較の結果と当時の実験条件は knowledge の群ノード
+[足元疑似位置・幾何埋め込み・残差学習の比較](../../../knowledge/nodes/group-plcs-foot-residual.md)
+に集約している。
+`data.sampling_weights` はscene directory内のJSONファイル名を指定する任意項目で、
+filtered train splitの全scene名を正の有限重みに対応させる。固定dataset backendのみ対応し、
+val/test loaderには適用しない。未指定時は従来のshuffleを使う。

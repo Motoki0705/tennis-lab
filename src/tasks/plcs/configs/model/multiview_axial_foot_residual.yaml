@@ -1,0 +1,4 @@
+defaults:
+  - multiview_axial_split
+  - _self_
+name: plcs_multiview_axial_foot_residual
