@@ -1,0 +1,12 @@
+A  scripts/plcs_foot_residual/evaluate.py
+A  scripts/plcs_foot_residual/prepare.py
+A  src/tasks/plcs/configs/model/multiview_axial_foot_residual.yaml
+M  src/tasks/plcs/configuration.py
+M  src/tasks/plcs/data/datamodule.py
+A  src/tasks/plcs/geometry/__init__.py
+A  src/tasks/plcs/geometry/footpoint.py
+M  src/tasks/plcs/model_io/factory.py
+A  src/tasks/plcs/models/plcs_multiview_axial_foot_residual_model.py
+M  src/tasks/plcs/models/plcs_multiview_axial_split_model.py
+M  tests/unit/tasks/plcs/data/test_datamodule.py
+A  tests/unit/tasks/plcs/geometry/test_footpoint.py

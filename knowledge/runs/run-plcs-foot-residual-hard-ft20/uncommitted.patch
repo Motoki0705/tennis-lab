@@ -1,0 +1,1121 @@
+diff --git a/scripts/plcs_foot_residual/evaluate.py b/scripts/plcs_foot_residual/evaluate.py
+new file mode 100644
+index 00000000..8427d321
+--- /dev/null
++++ b/scripts/plcs_foot_residual/evaluate.py
+@@ -0,0 +1,305 @@
++"""Paired synthetic-test and production-observation clip inference for PLCS."""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++from pathlib import Path
++from typing import Any
++
++import cv2
++import numpy as np
++import torch
++from omegaconf import OmegaConf
++from torch.utils.data import DataLoader
++
++from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
++from src.tasks.plcs.geometry.footpoint import footpoint_prior
++from src.tasks.plcs.inference.predictor import PLCSPredictor
++from src.tasks.plcs.training.lightning_module import PLCSLightningModule
++from src.tennis_scene.reference_pipeline.reference import (
++    build_reference,
++    reference_metadata,
++)
++from src.utils.inference.windowed import blend_windows, window_slices
++from src.utils.schema.court import COURT_COORD_SCALE_XYZ
++
++
++def summary(error: np.ndarray) -> dict[str, float]:
++    return {
++        "mean": float(error.mean()),
++        "median": float(np.median(error)),
++        "p95": float(np.quantile(error, 0.95)),
++    }
++
++
++def synthetic(module: PLCSLightningModule, args: argparse.Namespace) -> None:
++    cfg = OmegaConf.load(args.baseline_config)
++    dataset = SceneDataset(
++        scene_dir=args.dataset,
++        split_file="test.txt",
++        config=cfg,
++        seed=1234,
++        augment=False,
++        reference_camera_id="camera_0",
++    )
++    loader = DataLoader(
++        dataset,
++        batch_size=4,
++        num_workers=4,
++        collate_fn=collate_plcs_batch,
++        shuffle=False,
++    )
++    records: dict[str, list[np.ndarray]] = {
++        k: []
++        for k in [
++            "position",
++            "target",
++            "rotation",
++            "target_rotation",
++            "anchor",
++            "anchor_valid",
++        ]
++    }
++    with torch.inference_mode():
++        for i, batch in enumerate(loader):
++            moved = {
++                k: v.to(args.device) if isinstance(v, torch.Tensor) else v
++                for k, v in batch.items()
++            }
++            with torch.autocast(
++                device_type="cuda",
++                dtype=torch.bfloat16,
++                enabled=args.device.startswith("cuda"),
++            ):
++                decoded, _ = module._forward_from_batch(moved)
++            _, valid, anchor = footpoint_prior(
++                *[
++                    moved[k]
++                    for k in [
++                        "human_kp",
++                        "court_kp",
++                        "human_vis",
++                        "court_vis",
++                        "padding_mask",
++                    ]
++                ]
++            )
++            for key, value in [
++                ("position", decoded.position),
++                ("target", moved["position"]),
++                ("rotation", decoded.rotation),
++                ("target_rotation", moved["rotation"]),
++                ("anchor", anchor),
++                ("anchor_valid", valid.any(1)),
++            ]:
++                records[key].append(value.float().cpu().numpy())
++            if (i + 1) % 50 == 0:
++                print(f"test {i + 1}/{len(loader)}", flush=True)
++    data = {k: np.concatenate(v) for k, v in records.items()}
++    scale = np.array(COURT_COORD_SCALE_XYZ)
++    delta = (data["position"] - data["target"]) * scale
++    error = np.linalg.norm(delta, axis=-1)
++    xy = np.linalg.norm(delta[..., :2], axis=-1)
++    prior_xy = np.linalg.norm(
++        (data["anchor"] - data["target"])[..., :2] * scale[:2], axis=-1
++    )
++    yaw = np.arctan2(data["rotation"][..., 1], data["rotation"][..., 0]) - np.arctan2(
++        data["target_rotation"][..., 1], data["target_rotation"][..., 0]
++    )
++    yaw = np.abs(np.arctan2(np.sin(yaw), np.cos(yaw))) * 180 / np.pi
++    correction = np.linalg.norm(
++        (data["position"] - data["anchor"])[..., :2] * scale[:2], axis=-1
++    )
++    metrics: dict[str, Any] = {
++        "checkpoint": str(args.checkpoint.resolve()),
++        "test_scene_count": len(dataset),
++        "test_seed": 1234,
++        "position_3d_m": summary(error),
++        "position_xy_m": summary(xy),
++        "angular_error_deg": summary(yaw),
++        "position_accuracy_0.5m": float((error < 0.5).mean()),
++        "zero_residual_xy_m": summary(prior_xy),
++        "strata": {},
++    }
++    for lo, hi in [(0, 0.25), (0.25, 0.5), (0.5, 1), (1, 2), (2, np.inf)]:
++        mask = (prior_xy >= lo) & (prior_xy < hi) & data["anchor_valid"].astype(bool)
++        if mask.any():
++            metrics["strata"][f"{lo}-{hi}"] = {
++                "frames": int(mask.sum()),
++                "position_3d_m": summary(error[mask]),
++                "position_xy_m": summary(xy[mask]),
++                "predicted_correction_xy_m": summary(correction[mask]),
++                "zero_correction_fraction_lt_5cm": float(
++                    (correction[mask] < 0.05).mean()
++                ),
++            }
++    np.savez_compressed(
++        args.output / f"{args.label}_test.npz",
++        **data,
++        scene_ids=np.array([p.name for p in dataset.scenes]),
++    )
++    (args.output / f"{args.label}_test_metrics.json").write_text(
++        json.dumps(metrics, indent=2)
++    )
++    print(json.dumps(metrics, indent=2), flush=True)
++
++
++def clip_inference(module: PLCSLightningModule, args: argparse.Namespace) -> None:
++    clip = json.loads((args.clip / "clip.json").read_text())
++    raw = json.loads(
++        (args.clip / "annotations/manual_court_kp_result.json").read_text()
++    )
++    raw_court = np.asarray(raw["keypoints"], dtype=np.float32)
++    aligned, selection, context = build_reference(
++        clip["camera_ids"],
++        raw_court,
++        [False, False, True],
++        "cam0",
++        (clip["width"], clip["height"]),
++    )
++    scene_path = args.clip / "annotations/tennis_scene/scene.npz"
++    with np.load(scene_path) as scene:
++        human = scene["human_kp_2d"].copy()
++        vis = (scene["human_kp_vis"] >= 0.15).astype(np.float32)
++        old_position = scene["player_position"].copy()
++        # Confirm frozen observations use the declared reference ordering.
++        np.testing.assert_allclose(scene["court_kp"], aligned, atol=1e-6)
++    court_vis = np.ones(aligned.shape[:-1], np.float32)
++    if not np.all(np.asarray(raw["visibility"]) == 1):
++        raise ValueError("This clip comparison requires all court points visible")
++    predictor = PLCSPredictor(
++        model=module.model, adapter=module.io_adapter, device=torch.device(args.device)
++    )
++    frames = human.shape[2]
++    selected = np.arange(0, frames, 2)
++    # Use the established production stride=2, 128/64 windows and triangular blend.
++    position_chunks = []
++    rotation_chunks = []
++    for start, end in window_slices(len(selected), 128, 64):
++        indices = selected[start:end]
++        with torch.autocast(
++            device_type="cuda",
++            dtype=torch.bfloat16,
++            enabled=args.device.startswith("cuda"),
++        ):
++            prediction = predictor.predict_multiview_observations(
++                human_kp=human[:, :, indices],
++                court_kp=aligned[:, indices],
++                human_vis=vis[:, :, indices],
++                court_vis=court_vis[:, indices],
++                padding_mask=np.zeros(human[:, :, indices].shape[:3], bool),
++                court_keypoint_metadata=context,
++                court_reference_provenance=(selection.provenance,) * human.shape[0],
++                reference_metadata=reference_metadata(
++                    selection, human.shape[0], "plcs"
++                ),
++            )
++        position_chunks.append((start, prediction.position_meters.transpose(1, 0, 2)))
++        yaw = prediction.yaw_radians
++        rotation_chunks.append(
++            (start, np.stack((np.cos(yaw), np.sin(yaw)), -1).transpose(1, 0, 2))
++        )
++
++    def restore(chunks: list) -> np.ndarray:
++        sampled = blend_windows(chunks, len(selected))
++        flat = sampled.reshape(len(selected), -1)
++        restored = np.stack(
++            [
++                np.interp(np.arange(frames), selected, flat[:, i])
++                for i in range(flat.shape[1])
++            ],
++            -1,
++        )
++        return restored.reshape(frames, *sampled.shape[1:]).transpose(1, 0, 2)
++
++    position = restore(position_chunks)
++    rotation = restore(rotation_chunks)
++    yaw = np.arctan2(rotation[..., 1], rotation[..., 0])
++    hip = (human[..., 11, :] + human[..., 12, :]) / 2
++    hip_valid = (vis[..., 11] > 0) & (vis[..., 12] > 0)
++    pixels = np.array([clip["width"], clip["height"]])
++    reprojections = []
++    errors = []
++    for v, fit in enumerate(context["camera_fits"]):
++        r = cv2.Rodrigues(np.array(fit["R"]))[0]
++        t = np.array(fit["t"])
++        k = np.array(fit["K"])
++        uv = cv2.projectPoints(position.reshape(-1, 3), r, t, k, None)[0][:, 0].reshape(
++            *position.shape[:2], 2
++        )
++        reprojections.append(uv)
++        errors.append(np.linalg.norm(uv - hip[:, v] * pixels, axis=-1))
++    projected = np.stack(reprojections, 1)
++    error = np.stack(errors, 1)
++    metrics = {
++        "checkpoint": str(args.checkpoint.resolve()),
++        "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
++        "clip": str(args.clip.resolve()),
++        "frames": frames,
++        "players": human.shape[0],
++        "evaluation": "root projection versus observed COCO hip midpoint; approximate court-only camera fits; no 3D ground truth",
++        "root_reprojection_px": summary(error[hip_valid]),
++        "per_camera": {
++            c: summary(error[:, v][hip_valid[:, v]])
++            for v, c in enumerate(clip["camera_ids"])
++        },
++        "per_player": {
++            str(p): summary(error[p][hip_valid[p]]) for p in range(human.shape[0])
++        },
++        "camera_fits": context["camera_fits"],
++        "source_stride": 2,
++        "window_size": 128,
++        "overlap": 64,
++        "old_scene_position_difference_m": summary(
++            np.linalg.norm(position - old_position, axis=-1)
++        ),
++    }
++    np.savez_compressed(
++        args.output / f"{args.label}_clip.npz",
++        position=position,
++        yaw=yaw,
++        projected_root_px=projected,
++        hip_observed_uv=hip,
++        hip_valid=hip_valid,
++        court=aligned,
++        human=human,
++        human_vis=vis,
++        reprojection_error_px=error,
++    )
++    (args.output / f"{args.label}_clip_metrics.json").write_text(
++        json.dumps(metrics, indent=2)
++    )
++    (args.output / "reference_context.json").write_text(json.dumps(context, indent=2))
++    print(json.dumps(metrics, indent=2), flush=True)
++
++
++def main() -> None:
++    p = argparse.ArgumentParser()
++    p.add_argument("--checkpoint", required=True, type=Path)
++    p.add_argument("--label", required=True)
++    p.add_argument("--baseline-config", required=True, type=Path)
++    p.add_argument("--dataset", required=True, type=Path)
++    p.add_argument("--clip", required=True, type=Path)
++    p.add_argument("--output", required=True, type=Path)
++    p.add_argument("--device", default="cuda:0")
++    p.add_argument("--clip-only", action="store_true")
++    args = p.parse_args()
++    args.output.mkdir(parents=True, exist_ok=True)
++    torch.set_num_threads(4)
++    torch.set_float32_matmul_precision("high")
++    checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
++    cfg = OmegaConf.create(checkpoint["hyper_parameters"]["config"])
++    cfg.training.compile.enabled = False
++    module = PLCSLightningModule(cfg)
++    module.on_load_checkpoint(checkpoint)
++    module.load_state_dict(checkpoint["state_dict"], strict=True)
++    module.to(args.device).eval()
++    if not args.clip_only:
++        synthetic(module, args)
++    clip_inference(module, args)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/plcs_foot_residual/prepare.py b/scripts/plcs_foot_residual/prepare.py
+new file mode 100644
+index 00000000..730308ce
+--- /dev/null
++++ b/scripts/plcs_foot_residual/prepare.py
+@@ -0,0 +1,191 @@
++"""Build an auditable train-only hard-scene resampling overlay and residual init."""
++
++from __future__ import annotations
++
++import argparse
++import json
++from concurrent.futures import ProcessPoolExecutor
++from pathlib import Path
++
++import numpy as np
++import torch
++from omegaconf import OmegaConf, open_dict
++
++from src.tasks.plcs.geometry.footpoint import footpoint_prior
++from src.tasks.plcs.training.lightning_module import PLCSLightningModule
++from src.utils.schema.court import COURT_COORD_SCALE_XYZ
++
++
++def score_scene(path: str) -> dict[str, object]:
++    torch.set_num_threads(1)
++    p = Path(path)
++    meta = json.loads((p / "meta.json").read_text())
++    gt = np.load(p / "position.npy", mmap_mode="r")
++    indices = np.unique(np.linspace(0, len(gt) - 1, 64).astype(int))
++    values: dict[str, list[np.ndarray]] = {
++        k: [] for k in ["human_kp", "court_kp", "human_vis", "court_vis"]
++    }
++    views = meta["court_keypoint_views"]
++    for v in range(4):
++        order = np.argsort(views[v]["semantic_to_physical"])
++        for key, suffix in [
++            ("human_kp", "human_kp_uv"),
++            ("court_kp", "court_kp_uv"),
++            ("human_vis", "human_kp_vis"),
++            ("court_vis", "court_kp_vis"),
++        ]:
++            a = np.load(p / f"cam_{v}_{suffix}.npy", mmap_mode="r")[indices].copy()
++            if key.startswith("court"):
++                a = a[:, order[:14]]
++            values[key].append(a)
++    tensors = [
++        torch.from_numpy(np.stack(values[k])).float().unsqueeze(0)
++        for k in ["human_kp", "court_kp", "human_vis", "court_vis"]
++    ]
++    _, valid, anchor = footpoint_prior(
++        *tensors, torch.zeros(1, 4, len(indices), dtype=torch.bool)
++    )
++    good = valid.any(1)[0].numpy()
++    delta = (anchor[0, :, :2].numpy() - gt[indices, :2]) * np.array(
++        COURT_COORD_SCALE_XYZ[:2]
++    )
++    error = np.linalg.norm(delta, axis=-1)
++    if good.sum() < len(indices) // 2:
++        raise ValueError(f"Insufficient ankle geometry: {p}")
++    return {
++        "scene": p.name,
++        "mean_xy_m": float(error[good].mean()),
++        "errors_xy_m": error[good].tolist(),
++        "valid_fraction": float(good.mean()),
++    }
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--baseline", type=Path, required=True)
++    parser.add_argument("--source", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--workers", type=int, default=8)
++    args = parser.parse_args()
++    out = args.output.resolve()
++    out.mkdir(parents=True, exist_ok=True)
++    source = args.source.resolve()
++    train = (source / "train.txt").read_text().splitlines()
++    stats_path = out / "train_geometry.json"
++    if not stats_path.exists():
++        rows = []
++        with ProcessPoolExecutor(max_workers=args.workers) as executor:
++            for i, row in enumerate(
++                executor.map(
++                    score_scene,
++                    [str(source / "scenes" / s) for s in train],
++                    chunksize=8,
++                )
++            ):
++                rows.append(row)
++                if (i + 1) % 500 == 0:
++                    print(f"scored {i + 1}/{len(train)}", flush=True)
++        stats_path.write_text(json.dumps(rows))
++    rows = json.loads(stats_path.read_text())
++    if [r["scene"] for r in rows] != train:
++        raise ValueError("Cached statistics do not match train split")
++    scores = np.array([r["mean_xy_m"] for r in rows])
++    hard = scores >= np.quantile(scores, 0.8)
++    weights = 0.5 * np.ones(len(train)) / len(train) + 0.5 * hard / hard.sum()
++    rng = np.random.default_rng(42)
++    sampled = rng.choice(len(train), size=len(train), replace=True, p=weights)
++    overlay = out / "sampled_scenes"
++    overlay.mkdir(exist_ok=True)
++    for name in ["scenes", "meta.json", "scenes_meta.json", "val.txt", "test.txt"]:
++        dest = overlay / name
++        if not dest.exists():
++            dest.symlink_to(source / name)
++    (overlay / "train.txt").write_text("\n".join(train) + "\n")
++    (overlay / "sampling_weights.json").write_text(
++        json.dumps(dict(zip(train, weights.tolist(), strict=True)))
++    )
++    bins = [0, 0.25, 0.5, 1.0, 2.0, float("inf")]
++    hist = np.array(
++        [np.histogram(r["errors_xy_m"], bins=bins)[0] for r in rows], dtype=float
++    )
++    hist = hist / hist.sum(1, keepdims=True)
++    summary = {
++        "seed": 42,
++        "sampling": "0.5 natural + 0.5 top-20%-mean-horizontal-error scenes",
++        "source": str(source),
++        "train_examples": len(train),
++        "hard_threshold_mean_xy_m": float(scores[hard].min()),
++        "natural_hard_scene_fraction": float(hard.mean()),
++        "sampled_hard_scene_fraction": float(hard[sampled].mean()),
++        "frame_xy_bins_m": ["0-.25", ".25-.5", ".5-1", "1-2", "2+"],
++        "natural_frame_fractions": hist.mean(0).tolist(),
++        "resampled_frame_fractions": hist[sampled].mean(0).tolist(),
++        "natural_mean_scene_xy_m": float(scores.mean()),
++        "resampled_mean_scene_xy_m": float(scores[sampled].mean()),
++        "validation_test_unchanged": True,
++        "statistics_use_clean_observations": True,
++    }
++    (out / "sampling_summary.json").write_text(json.dumps(summary, indent=2))
++    print(json.dumps(summary, indent=2), flush=True)
++    torch.set_num_threads(2)
++    checkpoint = torch.load(args.baseline, map_location="cpu", weights_only=False)
++    config = OmegaConf.create(checkpoint["hyper_parameters"]["config"])
++    config.model.name = "plcs_multiview_axial_foot_residual"
++    config.data.scene_dir = "sampled_scenes"
++    with open_dict(config.data):
++        config.data.sampling_weights = "sampling_weights.json"
++    config.training.compile.enabled = False
++    config.training.trainer.max_epochs = 20
++    config.training.trainer.check_val_every_n_epoch = 1
++    config.training.trainer.enable_progress_bar = False
++    config.training.learning_rate = 0.00005
++    config.training.warmup_steps = 250
++    config.training.checkpoint.save_top_k = 1
++    config.training.early_stopping.enabled = True
++    config.training.early_stopping.patience = 5
++    config.training.qualitative_logging.enabled = False
++    config.run.output_dir = "training"
++    config.run.init_weights = None
++    config.paths.project_root = str(Path.cwd())
++    config.paths.data_root = str(out)
++    config.paths.external_asset_root = str(source.parents[1])
++    config.paths.output_root = str(out)
++    config.paths.checkpoint_root = str(out)
++    torch.manual_seed(42)
++    model = PLCSLightningModule(config)
++    state = checkpoint["state_dict"]
++    # This explicit initialization conversion preserves all old trunk/rotation
++    # weights but resets final absolute-position layers to zero residual.
++    expected = model.state_dict()
++    missing = set(expected) - set(state)
++    unexpected = set(state) - set(expected)
++    if unexpected or any(not k.startswith("model.geometry_embed.") for k in missing):
++        raise ValueError(
++            f"Unexpected initialization differences: {missing=}, {unexpected=}"
++        )
++    for key in expected:
++        if key in state:
++            expected[key] = state[key]
++    for head in ["position_head", "aux_position_head"]:
++        for suffix in ["weight", "bias"]:
++            key = f"model.{head}.mlp.8.{suffix}"
++            expected[key] = torch.zeros_like(expected[key])
++    for suffix in ["weight", "bias"]:
++        key = f"model.geometry_embed.2.{suffix}"
++        expected[key] = torch.zeros_like(expected[key])
++    model.load_state_dict(expected, strict=True)
++    init = {
++        k: checkpoint[k] for k in ["court_coordinate_normalization", "court_keypoints"]
++    }
++    init.update(
++        state_dict=model.state_dict(),
++        hyper_parameters={"config": OmegaConf.to_container(config, resolve=True)},
++    )
++    init_path = out / "residual_init.ckpt"
++    torch.save(init, init_path)
++    config.run.init_weights = "residual_init.ckpt"
++    OmegaConf.save(config, out / "train.yaml")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/tasks/plcs/configs/model/multiview_axial_foot_residual.yaml b/src/tasks/plcs/configs/model/multiview_axial_foot_residual.yaml
+new file mode 100644
+index 00000000..67374972
+--- /dev/null
++++ b/src/tasks/plcs/configs/model/multiview_axial_foot_residual.yaml
+@@ -0,0 +1,4 @@
++defaults:
++  - multiview_axial_split
++  - _self_
++name: plcs_multiview_axial_foot_residual
+diff --git a/src/tasks/plcs/configuration.py b/src/tasks/plcs/configuration.py
+index c7da1def..2d54b33f 100644
+--- a/src/tasks/plcs/configuration.py
++++ b/src/tasks/plcs/configuration.py
+@@ -301,6 +301,10 @@ _MODEL_FIELDS["plcs_multiview_axial_reference"] = _MODEL_FIELDS[
+     }
+ )
+ 
++_MODEL_FIELDS["plcs_multiview_axial_foot_residual"] = _MODEL_FIELDS[
++    "plcs_multiview_axial_split"
++]
++
+ _TRACK_QUERY_MODEL_NAMES = frozenset(
+     {
+         "plcs_track_query",
+@@ -378,6 +382,7 @@ class PLCSModelConfig:
+             "plcs_multiview_axial": "multiview",
+             "plcs_multiview_axial_reference": "multiview",
+             "plcs_multiview_axial_split": "multiview",
++            "plcs_multiview_axial_foot_residual": "multiview",
+             "plcs_multiview_axial_camtoken": "multiview",
+             "plcs_track_query": None,
+             "plcs_track_query_reference": None,
+@@ -798,7 +803,7 @@ class PLCSDataConfig:
+         if tracking:
+             allowed.update({"association", "lifecycle"})
+         else:
+-            allowed.update({"mode", "num_court_kp"})
++            allowed.update({"mode", "num_court_kp", "sampling_weights"})
+             if model.input_profile == "multiview":
+                 allowed.add("min_cameras")
+             configured_mode = _string(initial, "mode", path="data")
+@@ -819,6 +824,7 @@ class PLCSDataConfig:
+                 allowed
+                 - {
+                     "seq_stride",
++                    "sampling_weights",
+                     "camera_candidates",
+                     "min_cameras",
+                     "evaluation_reference_camera_id",
+@@ -890,8 +896,12 @@ class PLCSDataConfig:
+                 raise SemanticConfigurationError(
+                     f"data.{key} must be a positive ordered range."
+                 )
+-        if model.name == "plcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+-            raise SemanticConfigurationError("Axial reference data requires 3 or 4 cameras.")
++        if model.name == "plcs_multiview_axial_reference" and not (
++            3 <= num_views_range[0] <= num_views_range[1] <= 4
++        ):
++            raise SemanticConfigurationError(
++                "Axial reference data requires 3 or 4 cameras."
++            )
+         if "max_views" in model.values and num_views_range[1] > model.integer(
+             "max_views"
+         ):
+@@ -958,6 +968,11 @@ class PLCSDataConfig:
+                     "PLCS data.association.min_common_keypoints must be within "
+                     f"[4, {NUM_HUMAN_KP}]."
+                 )
++        if "sampling_weights" in mapping:
++            _simple_name(
++                _string(mapping, "sampling_weights", path="data"),
++                path="data.sampling_weights",
++            )
+         scene_dir = _string(mapping, "scene_dir", path="data")
+         batch_size = _integer(mapping, "batch_size", path="data")
+         workers = _integer(mapping, "num_workers", path="data")
+diff --git a/src/tasks/plcs/data/datamodule.py b/src/tasks/plcs/data/datamodule.py
+index ad614e0f..0d926b10 100644
+--- a/src/tasks/plcs/data/datamodule.py
++++ b/src/tasks/plcs/data/datamodule.py
+@@ -2,13 +2,16 @@
+ 
+ from __future__ import annotations
+ 
++import json
++import math
+ from collections.abc import Callable
+ from pathlib import Path
+ from typing import Any
+ 
+-from torch.utils.data import Dataset
++from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+ 
+ from src.tasks.base.data.datamodule import SceneDirectoryDataModule
++from src.tasks.base.data.rng import seed_scene_dataset_worker
+ from src.tasks.base.generate_dataset import CAMERA_VIEW_V2_SELECTOR
+ from src.tasks.plcs.configuration import PLCSTrainingConfig
+ from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
+@@ -35,9 +38,7 @@ class PLCSDataModule(SceneDirectoryDataModule):
+             scene_dir=scene_dir,
+             split_file=split_file,
+             config=self.plcs_runtime.raw,
+-            seed=(
+-                self._dataset_seed(scene_dir, split_file) if seed is None else seed
+-            ),
++            seed=(self._dataset_seed(scene_dir, split_file) if seed is None else seed),
+             augment=augment,
+             reference_camera_id=(
+                 self.plcs_runtime.data.evaluation_reference_camera_id
+@@ -52,3 +53,41 @@ class PLCSDataModule(SceneDirectoryDataModule):
+ 
+     def _dataset_name(self) -> str:
+         return "plcs"
++
++    def train_dataloader(self) -> DataLoader:
++        weights_name = self.plcs_runtime.data.values.get("sampling_weights")
++        if weights_name is None:
++            return super().train_dataloader()
++        if not isinstance(self.train_dataset, SceneDataset):
++            raise RuntimeError("Weighted PLCS training requires setup('fit') first.")
++        path = self.scene_dir / str(weights_name)
++        weights_by_scene = json.loads(path.read_text())
++        if not isinstance(weights_by_scene, dict) or set(weights_by_scene) != {
++            p.name for p in self.train_dataset.scenes
++        }:
++            raise ValueError(
++                "Sampling weights must match the complete filtered train split exactly."
++            )
++        weights = [weights_by_scene[p.name] for p in self.train_dataset.scenes]
++        if any(
++            type(w) not in (int, float) or not math.isfinite(w) or w <= 0
++            for w in weights
++        ):
++            raise ValueError("Sampling weights must be finite and positive.")
++        sampler = WeightedRandomSampler(
++            weights,
++            len(weights),
++            replacement=True,
++            generator=self._loader_generators["train"],
++        )
++        return DataLoader(
++            self.train_dataset,
++            batch_size=self.batch_size,
++            sampler=sampler,
++            num_workers=self.num_workers,
++            pin_memory=self.pin_memory,
++            drop_last=True,
++            collate_fn=self.collate_fn,
++            generator=self._loader_generators["train"],
++            worker_init_fn=seed_scene_dataset_worker,
++        )
+diff --git a/src/tasks/plcs/geometry/__init__.py b/src/tasks/plcs/geometry/__init__.py
+new file mode 100644
+index 00000000..e69de29b
+diff --git a/src/tasks/plcs/geometry/footpoint.py b/src/tasks/plcs/geometry/footpoint.py
+new file mode 100644
+index 00000000..fa2ceb1d
+--- /dev/null
++++ b/src/tasks/plcs/geometry/footpoint.py
+@@ -0,0 +1,88 @@
++"""Observation-only ground-plane ankle prior in aligned CourtKP14 coordinates.
++
++Invalid homographies/ankles have explicit validity flags and zero coordinates.
++An unknown prior is therefore a distinct model input, never a claimed location.
++All geometric arithmetic runs in float32 even under mixed precision.
++"""
++
++from __future__ import annotations
++
++import torch
++from torch import Tensor
++
++from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
++from src.utils.schema.court_normalization import normalize_court_position
++
++
++def footpoint_prior(
++    human_kp: Tensor,
++    court_kp: Tensor,
++    human_vis: Tensor,
++    court_vis: Tensor,
++    padding_mask: Tensor,
++) -> tuple[Tensor, Tensor, Tensor]:
++    """Return per-view XY, validity (B,V,T), and fused XYZ (B,T,3).
++
++    Fit image -> normalized ground XY with visible CourtKP14 correspondences.
++    A ridge stabilizes the 8-parameter least squares system; rank, fit residual,
++    projective denominator and domain bounds explicitly reject unstable fits.
++    Average the visible ankles, then average valid views. Z is ground height;
++    the residual head learns root height as well as horizontal displacement.
++    """
++    with torch.autocast(device_type=human_kp.device.type, enabled=False):
++        uv = court_kp.float()[..., :14, :] - 0.5
++        vis = (court_vis[..., :14] > 0) & ~padding_mask.unsqueeze(-1)
++        xy = normalize_court_position(court_keypoints_3d(STANDARD_COURT_CONFIG)).to(uv)[
++            :14, :2
++        ]
++        xy = xy.expand_as(uv)
++        u, v = uv.unbind(-1)
++        x, y = xy.unbind(-1)
++        z, o = torch.zeros_like(u), torch.ones_like(u)
++        a = torch.stack(
++            (
++                torch.stack((u, v, o, z, z, z, -u * x, -v * x), -1),
++                torch.stack((z, z, z, u, v, o, -u * y, -v * y), -1),
++            ),
++            -2,
++        ).flatten(-3, -2)
++        b = xy.flatten(-2)
++        w = vis.unsqueeze(-1).expand(*vis.shape, 2).flatten(-2).float()
++        aw = a * w.unsqueeze(-1)
++        ata = a.transpose(-1, -2) @ aw
++        eig = torch.linalg.eigvalsh(ata)
++        eye = torch.eye(8, device=uv.device)
++        h = torch.linalg.solve(
++            ata + 1e-7 * eye, (aw.transpose(-1, -2) @ b.unsqueeze(-1))
++        ).squeeze(-1)
++        residual = ((a @ h.unsqueeze(-1)).squeeze(-1) - b).square() * w
++        fit_valid = (
++            (vis.sum(-1) >= 4)
++            & (eig[..., 0] > 1e-7)
++            & (residual.sum(-1) / w.sum(-1).clamp_min(1) < 0.0025)
++        )
++        av = (human_vis[..., 15:17] > 0).float()
++        ankle = (human_kp.float()[..., 15:17, :] * av.unsqueeze(-1)).sum(-2) / av.sum(
++            -1
++        ).clamp_min(1).unsqueeze(-1) - 0.5
++        au, avv = ankle.unbind(-1)
++        den = h[..., 6] * au + h[..., 7] * avv + 1
++        safe_den = torch.where(den.abs() > 1e-4, den, torch.ones_like(den))
++        ground = torch.stack(
++            (
++                (h[..., 0] * au + h[..., 1] * avv + h[..., 2]) / safe_den,
++                (h[..., 3] * au + h[..., 4] * avv + h[..., 5]) / safe_den,
++            ),
++            -1,
++        )
++        valid = (
++            fit_valid
++            & (av.sum(-1) > 0)
++            & (den.abs() > 1e-4)
++            & (ground.abs().amax(-1) < 4)
++            & ~padding_mask
++        )
++        ground = torch.where(valid.unsqueeze(-1), ground, torch.zeros_like(ground))
++        fused_xy = ground.sum(1) / valid.sum(1).clamp_min(1).unsqueeze(-1)
++        fused = torch.cat((fused_xy, torch.zeros_like(fused_xy[..., :1])), -1)
++    return ground, valid, fused
+diff --git a/src/tasks/plcs/model_io/factory.py b/src/tasks/plcs/model_io/factory.py
+index 882a6086..b491c791 100644
+--- a/src/tasks/plcs/model_io/factory.py
++++ b/src/tasks/plcs/model_io/factory.py
+@@ -30,6 +30,9 @@ from src.tasks.plcs.models.plcs_model import PLCSModel
+ from src.tasks.plcs.models.plcs_multiview_axial_camtoken_model import (
+     PLCSMultiViewAxialCamTokenModel,
+ )
++from src.tasks.plcs.models.plcs_multiview_axial_foot_residual_model import (
++    PLCSMultiViewAxialFootResidualModel,
++)
+ from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
+ from src.tasks.plcs.models.plcs_multiview_axial_reference_model import (
+     PLCSMultiViewAxialReferenceModel,
+@@ -178,15 +181,21 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+             profile=PLCSInputProfile.MULTIVIEW,
+             output_rank=3,
+         )
+-    elif model_name == "plcs_multiview_axial_split":
++    elif model_name in {
++        "plcs_multiview_axial_split",
++        "plcs_multiview_axial_foot_residual",
++    }:
+         if num_court_tokens is None:
+             raise ValueError("PLCS split models require data.num_court_kp.")
+-        model = PLCSMultiViewAxialSplitModel.from_config(
+-            model_cfg, num_court_tokens=num_court_tokens
++        split_type = (
++            PLCSMultiViewAxialFootResidualModel
++            if model_name == "plcs_multiview_axial_foot_residual"
++            else PLCSMultiViewAxialSplitModel
+         )
++        model = split_type.from_config(model_cfg, num_court_tokens=num_court_tokens)
+         adapter = _standard_adapter(
+             runtime,
+-            model_type=PLCSMultiViewAxialSplitModel,
++            model_type=split_type,
+             profile=PLCSInputProfile.MULTIVIEW,
+             output_rank=3,
+         )
+diff --git a/src/tasks/plcs/models/plcs_multiview_axial_foot_residual_model.py b/src/tasks/plcs/models/plcs_multiview_axial_foot_residual_model.py
+new file mode 100644
+index 00000000..a4e2c812
+--- /dev/null
++++ b/src/tasks/plcs/models/plcs_multiview_axial_foot_residual_model.py
+@@ -0,0 +1,76 @@
++"""Geometry-aware tokens and observation-only ankle prior + learned XYZ residual."""
++
++from __future__ import annotations
++
++import torch
++from torch import Tensor, nn
++
++from src.tasks.plcs.geometry.footpoint import footpoint_prior
++from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
++    PLCSMultiViewAxialSplitModel,
++)
++
++
++class PLCSMultiViewAxialFootResidualModel(PLCSMultiViewAxialSplitModel):
++    """Preserve axial trunks and add explicit visibility, relative pose and geometry.
++
++    Input court UV must already be aligned to the output reference frame by the
++    standard adapter. No camera calibration or target 3D enters forward.
++    Invalid priors use zero with a separate validity feature. The output heads
++    predict normalized XYZ offsets, including root height above the ground.
++    """
++
++    def _configure_observation_embedding(self) -> None:
++        if self.num_court_tokens != 14:
++            raise ValueError("Foot residual model requires aligned CourtKP14.")
++        # 17 relative XY + 17 visibility + 14 visibility + ankle UV + body
++        # extent XY + per-view ground XY + prior-valid + fused XYZ + disagreement XY.
++        self.geometry_embed = nn.Sequential(
++            nn.Linear(77, self.hidden_dim),
++            nn.GELU(),
++            nn.Linear(self.hidden_dim, self.hidden_dim),
++        )
++
++    def _embed_observations(
++        self,
++        human_kp: Tensor,
++        court_kp: Tensor,
++        human_vis: Tensor,
++        court_vis: Tensor,
++        padding_mask: Tensor,
++    ) -> tuple[Tensor, Tensor]:
++        x, _ = super()._embed_observations(
++            human_kp, court_kp, human_vis, court_vis, padding_mask
++        )
++        ground, valid, anchor = footpoint_prior(
++            human_kp, court_kp, human_vis, court_vis, padding_mask
++        )
++        visible = (human_vis > 0).to(human_kp.dtype)
++        ankle_vis = visible[..., 15:17]
++        ankle = (human_kp[..., 15:17, :] * ankle_vis.unsqueeze(-1)).sum(
++            -2
++        ) / ankle_vis.sum(-1).clamp_min(1).unsqueeze(-1)
++        center = (human_kp * visible.unsqueeze(-1)).sum(-2) / visible.sum(-1).clamp_min(
++            1
++        ).unsqueeze(-1)
++        relative = (human_kp - center.unsqueeze(-2)) * visible.unsqueeze(-1)
++        extent = relative.square().sum(-2).sqrt().clamp_min(0.01)
++        relative = relative / extent.unsqueeze(-2)
++        fused = anchor.unsqueeze(1).expand(-1, human_kp.shape[1], -1, -1)
++        features = torch.cat(
++            (
++                relative.flatten(-2),
++                visible,
++                (court_vis > 0).to(visible),
++                ankle,
++                extent,
++                ground,
++                valid.unsqueeze(-1).to(visible),
++                fused,
++                ground - fused[..., :2],
++            ),
++            -1,
++        )
++        extra = self.geometry_embed(features)
++        extra = extra * (~padding_mask).unsqueeze(-1)
++        return x + extra.permute(0, 2, 1, 3), anchor
+diff --git a/src/tasks/plcs/models/plcs_multiview_axial_split_model.py b/src/tasks/plcs/models/plcs_multiview_axial_split_model.py
+index 89ca32a8..3f1e4724 100644
+--- a/src/tasks/plcs/models/plcs_multiview_axial_split_model.py
++++ b/src/tasks/plcs/models/plcs_multiview_axial_split_model.py
+@@ -30,6 +30,7 @@ from __future__ import annotations
+ 
+ from typing import TYPE_CHECKING, Literal, cast
+ 
++import torch
+ import torch.nn as nn
+ from torch import Tensor
+ 
+@@ -179,6 +180,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+             (False, True): self._decode_split_outputs_with_auxiliary_position,
+             (True, True): self._decode_split_outputs_with_all_heads,
+         }[output_profile]
++        self._configure_observation_embedding()
+ 
+     @classmethod
+     def from_config(
+@@ -262,17 +264,8 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+         human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
+         court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
+ 
+-        token_valid = ~padding_mask
+-
+-        court_flat = court_kp.reshape(
+-            batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
+-        )
+-        human_flat = human_kp.reshape(batch_size * n_cams * seq_len_in, NUM_HUMAN_KP, 2)
+-        group_vis = token_valid.reshape(batch_size * n_cams * seq_len_in)
+-        x = (
+-            self.group_embed(court_flat, human_flat, group_vis)
+-            .reshape(batch_size, n_cams, seq_len_in, self.hidden_dim)
+-            .permute(0, 2, 1, 3)
++        x, anchor = self._embed_observations(
++            human_kp, court_kp, human_vis, court_vis, padding_mask
+         )
+ 
+         camera_freqs = self._camera_freqs(
+@@ -325,7 +318,35 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
+         pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
+         frame_valid = ~padding_mask.all(dim=1)
+ 
+-        return self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
++        output = self._decode_split_outputs(rot_feat, pose_feat, frame_valid)
++        output["position"] = output["position"] + anchor
++        if "aux_position" in output:
++            output["aux_position"] = output["aux_position"] + anchor
++        return output
++
++    def _configure_observation_embedding(self) -> None:
++        """Construction hook for observation-specific embeddings."""
++
++    def _embed_observations(
++        self,
++        human_kp: Tensor,
++        court_kp: Tensor,
++        human_vis: Tensor,
++        court_vis: Tensor,
++        padding_mask: Tensor,
++    ) -> tuple[Tensor, Tensor]:
++        del human_vis, court_vis
++        batch_size, n_cams, seq_len = human_kp.shape[:3]
++        x = (
++            self.group_embed(
++                court_kp.reshape(-1, self.num_court_tokens, 2),
++                human_kp.reshape(-1, NUM_HUMAN_KP, 2),
++                (~padding_mask).reshape(-1),
++            )
++            .reshape(batch_size, n_cams, seq_len, self.hidden_dim)
++            .permute(0, 2, 1, 3)
++        )
++        return x, torch.zeros_like(human_kp[:, 0, :, 0, :1]).expand(-1, -1, 3)
+ 
+     def _decode_split_outputs_basic(
+         self, rot_feat: Tensor, pose_feat: Tensor, frame_valid: Tensor
+diff --git a/tests/unit/tasks/plcs/data/test_datamodule.py b/tests/unit/tasks/plcs/data/test_datamodule.py
+index 95856324..11a355b3 100644
+--- a/tests/unit/tasks/plcs/data/test_datamodule.py
++++ b/tests/unit/tasks/plcs/data/test_datamodule.py
+@@ -35,3 +35,40 @@ def test_ordinary_datamodule_passes_distinct_replayable_split_seeds(
+ 
+     assert received[0]["seed"] == received[2]["seed"]
+     assert received[0]["seed"] != received[1]["seed"]
++
++
++def test_train_weights_increase_hard_sampling_and_are_replayable(
++    tmp_path: Path,
++) -> None:
++    import json
++
++    from src.tasks.plcs.data.dataset import SceneDataset
++
++    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
++        config = compose(
++            config_name="train", overrides=["+data.sampling_weights=weights.json"]
++        )
++    scenes = [tmp_path / f"scene_{i}" for i in range(1000)]
++    weights = {p.name: (3.0 if i < 200 else 0.5) for i, p in enumerate(scenes)}
++    (tmp_path / "weights.json").write_text(json.dumps(weights))
++
++    def sampler_indices() -> list[int]:
++        dm = PLCSDataModule(config)
++        dm.scene_dir = tmp_path
++        dataset = object.__new__(SceneDataset)
++        dataset.scenes = scenes
++        dm.train_dataset = dataset
++        return list(dm.train_dataloader().sampler)
++
++    first = sampler_indices()
++    assert first == sampler_indices()
++    assert 0.55 < sum(i < 200 for i in first) / len(first) < 0.65
++    weights["outside_train"] = 1.0
++    (tmp_path / "weights.json").write_text(json.dumps(weights))
++    with pytest.raises(ValueError, match="complete filtered train split"):
++        sampler_indices()
++    weights.pop("outside_train")
++    weights[scenes[0].name] = float("nan")
++    (tmp_path / "weights.json").write_text(json.dumps(weights))
++    with pytest.raises(ValueError, match="finite and positive"):
++        sampler_indices()
+diff --git a/tests/unit/tasks/plcs/geometry/test_footpoint.py b/tests/unit/tasks/plcs/geometry/test_footpoint.py
+new file mode 100644
+index 00000000..7dfac3fe
+--- /dev/null
++++ b/tests/unit/tasks/plcs/geometry/test_footpoint.py
+@@ -0,0 +1,114 @@
++from __future__ import annotations
++
++import torch
++
++from src.tasks.plcs.geometry.footpoint import footpoint_prior
++from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
++from src.utils.schema.court_normalization import normalize_court_position
++
++
++def observations() -> tuple[torch.Tensor, ...]:
++    xy = normalize_court_position(court_keypoints_3d(STANDARD_COURT_CONFIG))[:14, :2]
++    h = torch.tensor([[0.3, 0.06, 0.5], [0.02, -0.25, 0.5], [0.04, 0.12, 1.0]])
++
++    def project(p: torch.Tensor) -> torch.Tensor:
++        q = torch.cat((p, torch.ones_like(p[..., :1])), -1) @ h.T
++        return q[..., :2] / q[..., 2:]
++
++    court = project(xy).reshape(1, 1, 1, 14, 2).expand(2, 3, 4, 14, 2).clone()
++    human = (
++        project(torch.tensor([0.12, -0.45]))
++        .reshape(1, 1, 1, 1, 2)
++        .expand(2, 3, 4, 17, 2)
++        .clone()
++    )
++    return (
++        human,
++        court,
++        torch.ones(2, 3, 4, 17),
++        torch.ones(2, 3, 4, 14),
++        torch.zeros(2, 3, 4, dtype=torch.bool),
++    )
++
++
++def test_projective_ground_recovery_and_masked_corruption() -> None:
++    human, court, hv, cv, pad = observations()
++    court[..., 4, :] = 1000
++    cv[..., 4] = 0
++    human[..., 15, :] = -1000
++    hv[..., 15] = 0
++    ground, valid, anchor = footpoint_prior(human, court, hv, cv, pad)
++    assert valid.all()
++    torch.testing.assert_close(
++        ground, torch.tensor([0.12, -0.45]).expand_as(ground), atol=2e-4, rtol=0
++    )
++    torch.testing.assert_close(anchor[..., 2], torch.zeros_like(anchor[..., 2]))
++
++
++def test_invalid_geometry_and_padding_are_explicit() -> None:
++    human, court, hv, cv, pad = observations()
++    cv[:, 0] = 0
++    court[:, 1] = 0.5  # degenerate, many visible but no geometric information
++    pad[:, 2] = True
++    ground, valid, anchor = footpoint_prior(human, court, hv, cv, pad)
++    assert not valid.any()
++    assert torch.isfinite(anchor).all()
++    assert not ground.any() and not anchor.any()
++
++
++def test_missing_ankles_excluded_from_multiview_average() -> None:
++    human, court, hv, cv, pad = observations()
++    hv[:, 0, :, 15:17] = 0
++    ground, valid, anchor = footpoint_prior(human, court, hv, cv, pad)
++    assert not valid[:, 0].any()
++    assert valid[:, 1:].all()
++    torch.testing.assert_close(anchor[..., :2], ground[:, 1], atol=1e-5, rtol=0)
++
++
++def test_residual_model_zero_head_returns_prior_and_learns_correction() -> None:
++    from pathlib import Path
++
++    from hydra import compose, initialize_config_dir
++
++    from src.tasks.plcs.configuration import PLCSTrainingConfig
++    from src.tasks.plcs.model_io.attention_masks import prepare_axial_attention_masks
++    from src.tasks.plcs.model_io.factory import build_plcs_model_io
++
++    with initialize_config_dir(
++        config_dir=str(Path("src/tasks/plcs/configs").resolve()), version_base="1.3"
++    ):
++        config = compose(
++            config_name="train",
++            overrides=[
++                "model=multiview_axial_foot_residual",
++                "data.num_court_kp=14",
++                "model.hidden_dim=32",
++                "model.num_heads=4",
++                "model.ffn_dim=64",
++                "model.rope_dim=4",
++                "model.rot_num_task_layers=1",
++                "model.pose_num_task_layers=1",
++                "training.compile.enabled=false",
++            ],
++        )
++    bound = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
++    model = bound.model
++    torch.nn.init.zeros_(model.position_head.mlp[-1].weight)
++    torch.nn.init.zeros_(model.position_head.mlp[-1].bias)
++    human, court, hv, cv, pad = observations()
++    cm, tm = prepare_axial_attention_masks(pad)
++    output = model(human, court, hv, pad, cv, cm, tm)
++    _, _, anchor = footpoint_prior(human, court, hv, cv, pad)
++    torch.testing.assert_close(output["position"], anchor)
++    target = anchor + torch.tensor([0.04, -0.02, 0.08])
++    loss = (output["position"] - target).square().mean()
++    loss.backward()
++    assert model.position_head.mlp[-1].weight.grad.abs().sum() > 0
++    assert torch.isfinite(output["rotation"]).all()
++    # Strict checkpoints must not silently restore an absolute-head architecture.
++    config.model.name = "plcs_multiview_axial_split"
++    original = build_plcs_model_io(PLCSTrainingConfig.from_config(config)).model
++    import pytest
++
++    with pytest.raises(RuntimeError, match="Unexpected key"):
++        original.load_state_dict(model.state_dict(), strict=True)

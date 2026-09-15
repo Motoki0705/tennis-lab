@@ -47,6 +47,7 @@ class GVHMRChainRequest:
     interactive: bool
     bbox_enlarge: float
     static_cam: bool
+    footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.video_path, Path):
@@ -74,6 +75,17 @@ class GVHMRChainRequest:
             )
         if type(self.static_cam) is not bool:
             raise TypeError("GVHMRChainRequest.static_cam must be a bool.")
+        if self.footpoint_polygon_px is not None:
+            polygon = np.asarray(self.footpoint_polygon_px, dtype=np.float64)
+            if (
+                polygon.ndim != 2
+                or polygon.shape[1] != 2
+                or len(polygon) < 3
+                or not np.isfinite(polygon).all()
+            ):
+                raise GVHMRContractError(
+                    "GVHMRChainRequest.footpoint_polygon_px must be a finite polygon."
+                )
 
 
 @dataclass
@@ -273,6 +285,7 @@ class GVHMRChainAdapter:
                 video_path=request.video_path,
                 num_tracks=request.num_tracks,
                 interactive=request.interactive,
+                footpoint_polygon_px=request.footpoint_polygon_px,
             )
         )
         track_ids = _validate_track_result(track_result, info=info)

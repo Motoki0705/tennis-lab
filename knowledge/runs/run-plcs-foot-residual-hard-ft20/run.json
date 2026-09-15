@@ -1,0 +1,16 @@
+{
+  "run_id": "1789311521848070738_3727970_plcs_foot_residual_hard_ft20",
+  "name": "plcs_foot_residual_hard_ft20",
+  "command": "OMP_NUM_THREADS=4 PYTHONPATH=. .venv/bin/python -m src.tasks.plcs.scripts.train --config-path /home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual/outputs/plcs/foot_residual --config-name train",
+  "provider": "codex",
+  "session": "01a09b38-6993-7e23-9122-9482895fe0b4",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "b8ccc6bac5beac082b97e94c8b42edd9da8d2f40",
+  "branch": "experiments/plcs-foot-residual",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual",
+  "captured_at": "2026-09-13T23:59:02+09:00"
+}

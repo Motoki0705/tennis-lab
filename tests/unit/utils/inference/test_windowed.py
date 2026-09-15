@@ -5,7 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src.utils.inference.windowed import blend_windows, window_slices
+from src.utils.inference.windowed import (
+    blend_windows,
+    restore_sampled_frames,
+    sampled_frame_indices,
+    window_slices,
+)
 
 
 class TestWindowSlices:
@@ -90,3 +95,18 @@ class TestBlendWindows:
     def test_empty_chunks_raise(self) -> None:
         with pytest.raises(ValueError, match="empty"):
             blend_windows([], 10)
+
+
+class TestSampledFrames:
+    def test_indices_and_restore_include_final_held_frame(self) -> None:
+        indices = sampled_frame_indices(6, 2)
+        np.testing.assert_array_equal(indices, [0, 2, 4])
+        values = np.array([[0.0, 2.0], [2.0, 4.0], [4.0, 6.0]])
+        restored = restore_sampled_frames(values, indices, 6)
+        np.testing.assert_allclose(restored[:, 0], [0, 1, 2, 3, 4, 4])
+
+    def test_invalid_stride_and_indices_raise(self) -> None:
+        with pytest.raises(ValueError, match="stride"):
+            sampled_frame_indices(6, 0)
+        with pytest.raises(ValueError, match="strictly increasing"):
+            restore_sampled_frames(np.ones((2, 1)), np.array([0, 0]), 3)
