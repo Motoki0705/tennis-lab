@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSequence
 from src.tasks.plcs.generate_dataset.scene_generator import SceneGenerator
+from src.tasks.plcs.motion import Coco17MotionClip, MotionSourceKind
 from src.utils.schema.court_normalization import denormalize_court_position
 
 
@@ -15,19 +15,22 @@ def test_transform_normalizes_only_court_translation() -> None:
         [[2.0, -3.0, 1.0], [3.0, -1.0, 1.1], [4.0, 1.0, 1.2]],
         dtype=np.float32,
     )
-    joints: np.ndarray = np.zeros((frames, 52, 3), dtype=np.float32)
-    joints[:, 0] = trans
-    joints[:, 1] = trans
+    joints: np.ndarray = np.repeat(trans[:, None, :], 17, axis=1)
     joints[:, 1, 0] += 0.25
-    motion = MotionSequence(
+    motion = Coco17MotionClip(
+        source_id="test-motion",
         source_path="test",
+        source_kind=MotionSourceKind.ACCAD,
         category="test",
         gender="neutral",
         fps=30.0,
-        poses=np.zeros((frames, 156), dtype=np.float32),
-        trans=trans,
-        betas=np.zeros(16, dtype=np.float32),
-        joints_3d=joints,
+        timestamps_s=np.arange(frames, dtype=np.float64) / 30.0,
+        joints_3d_m=joints,
+        root_translation_m=trans,
+        root_rotation=np.repeat(np.eye(3, dtype=np.float32)[None], frames, axis=0),
+        joint_confidence=np.ones((frames, 17), dtype=np.float32),
+        frame_valid=np.ones(frames, dtype=np.bool_),
+        provenance={"fixture": True},
     )
     generator = object.__new__(SceneGenerator)
 

@@ -23,6 +23,7 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "PersonDetectionResult",
         "Pose2DRequest",
         "Pose2DResult",
+        "SmplCoco17Reconstructor",
         "SmplVertexReconstructor",
         "TrackRequest",
         "TrackResult",
@@ -59,9 +60,7 @@ def test_nested_packages_do_not_reexport_root_api() -> None:
 
 
 def test_removed_pass_through_and_yolo_helper_aliases_are_absent() -> None:
-    yolo_tracker = importlib.import_module(
-        "src.submodules.models.tracker.yolo_tracker"
-    )
+    yolo_tracker = importlib.import_module("src.submodules.models.tracker.yolo_tracker")
     assert "__call__" not in BaseInferenceModel.__dict__
     assert not hasattr(yolo_tracker, "_sort_tracks")
     assert not hasattr(yolo_tracker, "_build_track_tensor")

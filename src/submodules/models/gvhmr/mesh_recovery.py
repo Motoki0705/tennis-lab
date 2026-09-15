@@ -295,7 +295,9 @@ class SmplVertexReconstructor:
         with torch.no_grad():
             self._ensure_loaded()
             if self._smplx is None or self._smplx2smpl is None:
-                raise RuntimeError("SMPL vertex assets did not load before reconstruction.")
+                raise RuntimeError(
+                    "SMPL vertex assets did not load before reconstruction."
+                )
             params = {k: v.to(self._device) for k, v in smpl_params.items()}
             smplx_out = self._smplx(**params)
             vertices = torch.stack(
@@ -303,3 +305,101 @@ class SmplVertexReconstructor:
                 dim=0,
             )
             return vertices.float().cpu()
+
+
+class SmplCoco17Reconstructor:
+    """Reconstruct only COCO-17 joints from GVHMR SMPL-X parameters.
+
+    Unlike :class:`SmplVertexReconstructor`, this path evaluates only the 132
+    SMPL-X vertices touched by the bundled COCO-17 regressor. It is therefore
+    the canonical boundary for motion datasets that do not need a renderable
+    mesh.
+    """
+
+    _WIDTHS = {
+        "body_pose": 63,
+        "betas": 10,
+        "global_orient": 3,
+        "transl": 3,
+    }
+
+    def __init__(
+        self,
+        body_models_dir: str | Path,
+        *,
+        device: str | torch.device,
+        bundled_assets: BundledModelAssetPaths,
+    ) -> None:
+        from src.utils.device import resolve_device
+
+        self._device = resolve_device(device)
+        self._body_models_dir = require_absolute_path(
+            body_models_dir, name="SMPL-X body-model directory"
+        )
+        if not isinstance(bundled_assets, BundledModelAssetPaths):
+            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
+        bundled_assets.require_files()
+        self._bundled_assets = bundled_assets
+        self._model: torch.nn.Module | None = None
+
+    def _ensure_loaded(self) -> None:
+        if self._model is None:
+            self._model = (
+                make_smplx(
+                    "supermotion_coco17",
+                    model_path=self._body_models_dir,
+                    bundled_assets=self._bundled_assets,
+                )
+                .to(self._device)
+                .eval()
+            )
+
+    def unload(self) -> None:
+        """Release the lazily loaded body model."""
+        self._model = None
+
+    def reconstruct(self, smpl_params: dict[str, torch.Tensor]) -> torch.Tensor:
+        """SMPL-X params (each ``(F,C)``) -> COCO-17 joints, float32 CPU."""
+        if not isinstance(smpl_params, dict) or set(smpl_params) != set(self._WIDTHS):
+            raise ValueError(
+                f"SMPL COCO-17 reconstruction requires exactly {sorted(self._WIDTHS)}."
+            )
+        frame_count: int | None = None
+        validated: dict[str, torch.Tensor] = {}
+        for name, width in self._WIDTHS.items():
+            tensor = smpl_params[name]
+            if not isinstance(tensor, torch.Tensor):
+                raise TypeError(f"SMPL parameter {name} must be a torch.Tensor.")
+            if (
+                tensor.dtype != torch.float32
+                or tensor.ndim != 2
+                or tensor.shape[1] != width
+            ):
+                raise ValueError(
+                    f"SMPL parameter {name} must have float32 shape (F,{width}), "
+                    f"got {tensor.dtype} {tuple(tensor.shape)}."
+                )
+            if not bool(torch.isfinite(tensor).all()):
+                raise ValueError(f"SMPL parameter {name} contains NaN or infinity.")
+            current_frames = int(tensor.shape[0])
+            if current_frames <= 0:
+                raise ValueError("SMPL parameters must contain at least one frame.")
+            if frame_count is None:
+                frame_count = current_frames
+            elif current_frames != frame_count:
+                raise ValueError(
+                    "All SMPL parameters must contain the same frame count."
+                )
+            validated[name] = tensor.to(self._device)
+
+        with torch.no_grad():
+            self._ensure_loaded()
+            if self._model is None:
+                raise RuntimeError("SMPL COCO-17 model did not load.")
+            joints = self._model(**validated)
+        if not isinstance(joints, torch.Tensor) or joints.shape != (frame_count, 17, 3):
+            raise RuntimeError(
+                "SMPL COCO-17 model returned an invalid shape: "
+                f"{getattr(joints, 'shape', None)}."
+            )
+        return joints.detach().float().cpu()

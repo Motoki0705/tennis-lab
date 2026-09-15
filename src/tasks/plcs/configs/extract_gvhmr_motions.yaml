@@ -1,0 +1,33 @@
+defaults:
+  - paths: default
+  - dataset: ???
+  - _self_
+
+paths:
+  checkpoint_root: ckpt
+  external_asset_root: third_party
+
+# Model defaults have one owner; runtime overrides are validated by that owner.
+models:
+  config: src/submodules/configs/demo_gvhmr.yaml
+  checkpoint_root: GVHMR/inputs/checkpoints
+  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  runtime_overrides: {}
+
+run:
+  output_dir: plcs/motions/gvhmr/${dataset.name}_repro_v1
+  seed: 42
+  deterministic: true
+  clip_ids: null
+  camera_ids: null
+  max_clips: null
+  max_frames: null
+  overwrite: false
+  write_preview: true
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/extract_gvhmr_motions}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: .hydra
+  job:
+    chdir: false

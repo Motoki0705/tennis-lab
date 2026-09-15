@@ -330,9 +330,23 @@ def _validate_motion_sources(
             )
         source_mapping = _reject_unknown(
             source,
-            {"paths", "weight"},
+            {"format", "paths", "weight"},
             path=f"motion_sources.{category}",
         )
+        source_format = cast(
+            "str",
+            require_config_value(
+                source_mapping,
+                "format",
+                str,
+                path=f"motion_sources.{category}",
+            ),
+        )
+        if source_format not in {"amass_smplh_v1", "coco17_motion_v1"}:
+            raise SemanticConfigurationError(
+                f"motion_sources.{category}.format is not registered: "
+                f"{source_format!r}."
+            )
         source_paths = _sequence(
             source_mapping,
             "paths",

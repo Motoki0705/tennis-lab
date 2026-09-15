@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Iterator, Mapping
 from typing import Any, Protocol
@@ -23,7 +24,12 @@ class _PLCSSceneSource(Protocol):
 
     camera_projector: CameraProjector
 
-    def generate_scene(self, scene_id: str) -> SceneData: ...
+    def generate_scene(
+        self,
+        scene_id: str,
+        *,
+        required_fps: float | None = None,
+    ) -> SceneData: ...
 
 
 class MultiPersonSceneGenerator:
@@ -47,12 +53,26 @@ class MultiPersonSceneGenerator:
     def generate_scene(self, scene_id: str) -> SceneData:
         """Generate one fixed-length multi-person lifecycle scene."""
         num_persons = self.composer.sample_num_tracks()
-        objects = [
-            self.scene_generator.generate_scene(
-                scene_id=f"{scene_id}_person_{index:02d}"
+        first = self.scene_generator.generate_scene(scene_id=f"{scene_id}_person_00")
+        native_fps = _scene_native_fps(first)
+        objects = [first]
+        for index in range(1, num_persons):
+            candidate = self.scene_generator.generate_scene(
+                scene_id=f"{scene_id}_person_{index:02d}",
+                required_fps=native_fps,
             )
-            for index in range(num_persons)
-        ]
+            candidate_fps = _scene_native_fps(candidate)
+            if not math.isclose(
+                candidate_fps,
+                native_fps,
+                rel_tol=0.0,
+                abs_tol=1e-6,
+            ):
+                raise RuntimeError(
+                    "PLCS single-person generator violated required_fps: "
+                    f"expected {native_fps}, got {candidate_fps}."
+                )
+            objects.append(candidate)
         if any(scene.human_kp_3d is None for scene in objects):
             raise RuntimeError(
                 "PLCS scene generation must provide COCO17 world joints."
@@ -121,6 +141,10 @@ class MultiPersonSceneGenerator:
             "num_frames": self.timeline.num_frames,
             "num_persons": num_persons,
             "motion_sources": [scene.meta["motion_source"] for scene in objects],
+            "motion_source_kinds": [
+                scene.meta["motion_source_kind"] for scene in objects
+            ],
+            "motion_source_ids": [scene.meta["motion_source_id"] for scene in objects],
         }
         base.position = position
         base.rotation = rotation
@@ -138,3 +162,15 @@ class MultiPersonSceneGenerator:
         """Yield canonical multi-person lifecycle scenes."""
         for index in range(num_scenes):
             yield self.generate_scene(f"scene_{index:06d}")
+
+
+def _scene_native_fps(scene: SceneData) -> float:
+    value = scene.meta.get("fps")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError("Generated PLCS scene metadata must contain numeric fps.")
+    fps = float(value)
+    if not math.isfinite(fps) or fps <= 0.0:
+        raise ValueError(
+            "Generated PLCS scene metadata fps must be positive and finite."
+        )
+    return fps

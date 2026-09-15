@@ -1,6 +1,6 @@
 # PLCS
 
-2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。AMASS/SMPL-H モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
+2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。ACCAD (AMASS/SMPL-H) または GVHMR モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
 ## Court keypoint contract
 
@@ -13,6 +13,74 @@ sample が整列後の先頭14点を使うことです。reference transform は
 heading、court-space world joints に適用し、player-local `canonical_pose_3d` と
 human UV/visibility には適用しません。
 
+## Motion source contract
+
+dataset generator へ渡すモーションの唯一の境界は
+`motion/contracts.py` の `Coco17MotionClip` です。全source adapterは、右手系・metre・
+Z-upのCOCO-17 joint、native timestamp/FPS、root translation、完全なroot rotation、
+joint confidence、frame validityへ変換します。COCO-17にはpelvisがないため、rootの
+並進・回転を17点から再推定しません。ACCAD adapterはSMPL-Hのroot信号を、GVHMR
+adapterはglobal SMPL-Xの`transl`/`global_orient`をそれぞれ保持します。
+
+保存形式はpickleを使わないversioned `*.motion.npz` です。generatorの
+`motion_sources` entryは`format`、`paths`、`weight`を明示し、現在は
+`amass_smplh_v1`と`coco17_motion_v1`を登録しています。scene生成側はsource固有の
+SMPL形式を扱いません。ACCAD専用profileは`motion_sources=accad`、混合profileは
+`motion_sources=accad_gvhmr`です。曖昧な`motion_sources/default.yaml`は廃止しました。
+
+scene artifactはnative FPSを保持します。学習Datasetだけが
+`augmentation.frame_rate`の候補（既定は28/30/60 Hz）をsampleし、2D観測、3D
+target、visibility、instance lifecycleを同じ時刻へ同期resampleします。評価時は
+resampleしません。これにより入力ファイルを60 fpsへ固定せず、時間スケールへの
+耐性を学習時に付与します。1本の共有timelineへ複数人を配置するsceneでは、全員を
+同じnative FPSのsource群から選び、異なるrateをframe indexだけで混ぜることを禁止
+します。ACCAD/GVHMRの混合比はscene間で保たれます。
+
+GVHMR抽出の入口は`configs/extract_gvhmr_motions.yaml`です。`dataset`の選択は必須で、
+`configs/dataset/<name>.yaml`が入力rootと選手選択設定を指定します。meiji_3camでは
+`configs/gvhmr_motion/meiji_3cam.yaml`を選手選択の正本とします。
+人物検出はDINO 4-scale Swin-L、対応付けはBoT-SORTを使います。cam0は
+使わず、cam1とcam2で各カメラの手前選手をfootpoint ROIで1人ずつ選びます。
+ROI内の単一選手についてtrack IDの分断を明示的に連結し、各入力clipから2本の
+motion、raw GVHMR sidecar、品質recordを生成します。抽出pipeline versionは成果物と
+collection manifestの双方へ保存し、異なるdetectorによる再開・混在を拒否します。
+容量を制御するため、dense mesh vertex列とrendered videoは保存しません。raw sidecarも
+再現に必要なSMPL parameter・camera intrinsic・2D観測だけに限定します。
+各clipの推論前と保存前に、1 GiBの予備容量とclipの保守的な保存容量を確認し、
+不足時は完了済み成果物を保持して停止します。容量確保後、同じcommandで再開できます。
+
+```bash
+# Local GPUでは共有training queue経由でこのcommandを実行する。
+.venv/bin/python -m src.tasks.plcs.scripts.extract_gvhmr_motions \
+  dataset=meiji_3cam run.seed=42
+
+# 推論せず合成済み設定を確認する。
+.venv/bin/python -m src.tasks.plcs.scripts.extract_gvhmr_motions \
+  dataset=meiji_3cam --cfg job --resolve
+```
+
+別データセットは`configs/dataset/<name>.yaml`と選手ROI設定を追加して`dataset=<name>`
+で切り替えます。入力は共通のdataset/clip manifest形式が必要です。モデル既定値は
+`models.config`の共通設定から読み、`models.runtime_overrides`で設定ファイル上の
+差分を指定できます。独自argparseは使いません。Pythonでは同じDictConfigを
+`scripts.extract_gvhmr_motions.run_extraction()`へ渡せます。
+
+出力rootに`config.yaml`（絶対rootを保存したHydra再実行用設定）と
+`reproducibility.json`（実効モデル設定、重み・人体モデル・実装のSHA256、依存版、
+seed、Git commitと未コミットのコード差分）を保存します。各motionには動画とclip manifestのSHA256も記録し、
+再開時に照合します。seedはsource IDから決定するため処理順・subsetに依存しません。
+設定や重み・実装が変わった場合は新しい`run.output_dir`が必要です。旧抽出結果には
+この検証情報がないため混在を拒否し、既定の出力先も`<dataset>_repro_v1`へ分けています。
+乱数と決定的演算を固定しますが、異なるGPU・依存環境間のbit単位一致は保証しません。
+
+保存設定での再実行は`--config-dir /absolute/output/root --config-name config`で行います。
+worktreeで共有モデルを使う場合は`paths.data_root`、`paths.checkpoint_root`、
+`paths.external_asset_root`を共有rootの絶対パスへ設定し、`paths.project_root`は実装を
+読み込むworktreeに保ちます。
+抽出先を変更した場合は、データ生成時の`motion_sources.tennis.paths`にもその
+data-root相対パスを指定してください。既存の混合profileは既に生成済みの
+`plcs/motions/gvhmr/meiji_3cam`を参照しています。
+
 ## Modules
 
 ### configuration
@@ -22,6 +90,7 @@ human UV/visibility には適用しません。
 ### data/
 - **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。augmentation前の`human_kp_target`/`human_vis_target`と選択camera parameterも保持し、2D reprojection supervisionへ渡す。
 - **`datamodule.py`**: `PLCSDataModule`。model非依存のcanonical `(B,V,T,...)` batchを構築し、profile固有変換は行わない。
+- **`frame_rate_augmentation.py`**: native timingを保持したsceneから学習時のtarget FPSをsampleし、continuous/discrete/heading信号を意味に応じて同期resampleする。
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
@@ -62,9 +131,9 @@ human UV/visibility には適用しません。
 
 ### generate_dataset/
 - **`config.py`**: standalone generation boundary。共有契約を消費し、run/device/split と生成 worker 用の絶対 path を検証・解決する。
-- **`scene_generator.py`**: `SceneGenerator`。AMASSモーションをコート座標へ変換しマルチカメラ投影してsceneを構築。
+- **`scene_generator.py`**: `SceneGenerator`。source-independentなCOCO-17モーションをコート座標へ配置し、マルチカメラ投影してsceneを構築。
 - **`multi_object_scene_generator.py`**: `MultiPersonSceneGenerator`。既存のAMASS/SMPL-H sceneを複数生成し、同一の仮想カメラへ再投影してcanonical multi-person sceneへ合成する。`generation=multi_object` で選択する。
-- **`sampling/motion_sampler.py`**: `MotionSampler`。AMASS/SMPL-Hモーションの重み付きサンプリングとjoint計算。
+- **`sampling/motion_sampler.py`**: `MotionSampler`。登録済みsource formatをadapter層で共通契約へ変換し、category weightに従ってsampleする。
 - **`io/dataset_io.py` / `io/scene_loader.py`**: シーンのnpy/json書き出し・読み込み。
 - normalized translation、scene metadata、checkpoint互換性は [`src/utils/README.md`](../../utils/README.md) の単一契約に従い、canonical poseはmetreのまま保持する。
 - **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
@@ -80,6 +149,7 @@ human UV/visibility には適用しません。
 ### scripts/
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
+- **`extract_gvhmr_motions.py`**: dataset manifestとcamera別foreground ROIからGVHMR motion/raw sidecar/品質recordを抽出する再開可能なエントリポイント。
 - **`generate_dataset_samples.py`**: 生成済み各datasetへ層化されたcamera-view GIFとmanifestを作成。
 - **`visualize.py`**: 可視化エントリポイント。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
@@ -102,7 +172,7 @@ BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+V) -> qu
 
 `model=tracking_query`がこの唯一のcanonical architectureを選びます。各attention blockはFFNを持ちません。旧track-query checkpointはarchitectureが異なるためstrict load errorです。
 
-multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
+multi-object generatorは1024-frame global timelineに3〜10個の共通COCO-17 source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
 # 固定train/val/testデータを事前生成
@@ -126,6 +196,10 @@ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H s
 
 # trainだけon-the-fly chunk生成（val/testは上記の固定データ）
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked
+
+# train chunkだけACCAD+GVHMRに拡張し、val/testは同じ固定データを維持
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked \
+  motion_sources=accad_gvhmr
 ```
 
 ## Axial reference training recipe
