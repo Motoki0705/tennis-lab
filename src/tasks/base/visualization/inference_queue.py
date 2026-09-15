@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import shlex
@@ -14,8 +13,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Literal
 
+from src.utils.paths import PROJECT_ROOT
+
 Task = Literal["blcs", "plcs", "ball_detection", "court_detection"]
-SOURCE_ROOT = Path(__file__).resolve().parents[4]
+SOURCE_ROOT: Path = PROJECT_ROOT
 
 
 def shared_repository_root(source_root: Path = SOURCE_ROOT) -> Path:
@@ -53,7 +54,7 @@ def run_queued_inference(
         [
             sys.executable,
             "-m",
-            "src.tasks.base.visualization.inference_queue",
+            "src.tasks.base.scripts.inference_worker",
             str(input_path),
         ]
     )
@@ -170,18 +171,16 @@ def execute_request(document: Mapping[str, Any]) -> bytes:
     raise ValueError("Unknown inference task.")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("request", type=Path)
-    args = parser.parse_args()
+def process_request(request_path: Path) -> None:
+    """Execute a validated request file and publish its result atomically."""
     try:
-        document = json.loads(args.request.read_text(encoding="utf-8"))
+        document = json.loads(request_path.read_text(encoding="utf-8"))
         payload = execute_request(document)
-        temporary = args.request.parent / "result.tmp"
+        temporary = request_path.parent / "result.tmp"
         temporary.write_bytes(payload)
-        temporary.replace(args.request.parent / "result.bin")
+        temporary.replace(request_path.parent / "result.bin")
     except Exception as error:
-        (args.request.parent / "error.json").write_text(
+        (request_path.parent / "error.json").write_text(
             json.dumps(
                 {
                     "type": "ValueError"
@@ -193,7 +192,3 @@ def main() -> None:
             encoding="utf-8",
         )
         raise
-
-
-if __name__ == "__main__":
-    main()
