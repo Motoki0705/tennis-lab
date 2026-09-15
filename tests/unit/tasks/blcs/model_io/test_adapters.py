@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import torch
 
@@ -284,3 +285,64 @@ def test_track_query_config_rejects_removed_fusion_keys(removed_key: str) -> Non
     model[removed_key] = True if removed_key == "mask_invisible_observations" else {}
     with pytest.raises(UnknownConfigurationKeyError, match=removed_key):
         parse_model_config({"model": model})
+
+
+def _multiview_scene_adapter() -> AxialTrajectoryModelIOAdapter:
+    return AxialTrajectoryModelIOAdapter(
+        num_court_tokens=14,
+        max_seq_len=8,
+        predict_velocity=False,
+        input_profile="multiview",
+        max_num_cameras=4,
+    )
+
+
+def _scene_camera(frames: int, court_keypoints: int) -> dict[str, np.ndarray]:
+    return {
+        "ball_uv": np.full((frames, 2), 0.5, dtype=np.float32),
+        "ball_vis": np.ones((frames,), dtype=bool),
+        "court_kp_uv": np.full((court_keypoints, 2), 0.25, dtype=np.float32),
+        "court_kp_vis": np.ones((court_keypoints,), dtype=bool),
+    }
+
+
+def test_scene_batch_slices_court_keypoints_to_the_model_contract() -> None:
+    """A 20-point scene camera is truncated to the model's 14 court tokens."""
+    scene = {
+        "cameras": [_scene_camera(frames=4, court_keypoints=20) for _ in range(3)]
+    }
+    batch = _multiview_scene_adapter().build_inference_batch_from_scene(
+        scene,
+        [0, 1, 2],
+    )
+    assert batch["court_kp"].shape == (1, 3, 14, 2)
+    assert batch["court_vis"].shape == (1, 3, 14)
+
+
+def test_single_profile_scene_batch_slices_court_keypoints() -> None:
+    scene = {"cameras": [_scene_camera(frames=4, court_keypoints=20)]}
+    batch = SingleTrajectoryModelIOAdapter(
+        num_court_tokens=14,
+        max_seq_len=8,
+        predict_velocity=False,
+        input_profile="single",
+        max_num_cameras=None,
+    ).build_inference_batch_from_scene(scene, [0])
+    assert batch["court_kp"].shape == (1, 14, 2)
+    assert batch["court_vis"].shape == (1, 14)
+
+
+def test_scene_batch_rejects_too_few_court_keypoints() -> None:
+    scene = {"cameras": [_scene_camera(frames=4, court_keypoints=10)]}
+    with pytest.raises(ModelInputContractError, match="court_kp_uv"):
+        _multiview_scene_adapter().build_inference_batch_from_scene(scene, [0])
+
+
+def test_scene_batch_rejects_too_few_court_visibility_entries() -> None:
+    camera = _scene_camera(frames=4, court_keypoints=20)
+    camera["court_kp_vis"] = np.ones((10,), dtype=bool)
+    with pytest.raises(ModelInputContractError, match="court_kp_vis"):
+        _multiview_scene_adapter().build_inference_batch_from_scene(
+            {"cameras": [camera]},
+            [0],
+        )

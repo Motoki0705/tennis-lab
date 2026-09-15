@@ -1,0 +1,10 @@
+# Keep bundled upstream rendering libraries out of the default review surface.
+src/tasks/base/visualization/shared/three.core.js linguist-vendored whitespace=-space-before-tab
+src/tasks/base/visualization/shared/three.module.js linguist-vendored
+src/tasks/base/visualization/shared/OrbitControls.js linguist-vendored
+
+# Preserve the context-line spaces in recorded reproduction patches.
+knowledge/runs/run-ball-detection-ui-gpu-smoke-20260915/uncommitted.patch -whitespace
+knowledge/runs/run-court-detection-ui-gpu-smoke-20260915/uncommitted.patch -whitespace
+knowledge/runs/run-blcs-web-ui-gpu-smoke-20260914/uncommitted.patch -whitespace
+knowledge/runs/run-plcs-web-ui-gpu-smoke-20260914/uncommitted.patch -whitespace

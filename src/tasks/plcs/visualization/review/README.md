@@ -1,4 +1,9 @@
-# ACCAD Motion Review
+# PLCS Review
+
+生成データセットの閲覧は `dataset_service.py` / `dataset_web.py` が提供する。
+起動・操作は[PLCS利用ガイド](../README.md)、API・座標契約は[共有review基盤](../../../base/visualization/review/README.md)を参照。
+
+## ACCAD Motion Review
 
 `data/ACCAD` の生モーション（AMASS / SMPL-H）を、PLCS の世界座標系で目視確認する
 ローカルWeb UI。読み取り専用で、npzやモデルは変更しない。
