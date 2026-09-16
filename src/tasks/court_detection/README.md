@@ -154,3 +154,61 @@ python -m src.tasks.court_detection.scripts.train_mixed \
 pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
 
 `run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。
+
+## Cross-model alignment benchmark
+
+`scripts/benchmark_alignment.py` は、学習済みcheckpointと外部baselineを CPU のみで同一sample集合に推論し、共通metric・可視化・再現artifactを一度に出力します。GPUは受け付けません（`--device`は`cpu`のみ）。
+
+評価対象は2 domainです。`real`は yastrebksv/TennisCourtDetector の held-out **validation** split（公式testではないため、常にvalidationとして表示・報告します）で、`synthetic`は Synthetic Court V3 の明示test split（trajectory groupがtrain/validationとdisjoint）です。sample ID、GT可視性、canonical templateは既存のinput layer（`data/inputs/`）から取得し、benchmark側でannotationやcoverageを再解釈しません。
+
+可視性の意味はdomain間で同一ではありません。`synthetic`の`visible`は`renderer_visible`（occluderを含む描画上の可視性）まで反映したsupervision可視性である一方、`real`はannotation座標が画像内にあるかというin-frame可視性です。したがってcompletenessのようなGT可視点数を分母にする指標の絶対値をdomain横断で直接比較せず、同一domain内のmodel比較として読んでください。
+
+両modelは同じmanifestの同じsampleだけを推論します。manifestは一度だけ書き込み、既存manifest・prediction index・設定fingerprintのいずれかが一致しなければ停止します。予測は1 sampleごとに`predictions/<domain>/<model>/`へ永続化するため、中断後は同じCLIを再実行すれば残りだけを推論します（`--force`で当該cacheを破棄）。
+
+対象modelは`ours`（repo checkpoint）と`tcd`（外部 yastrebksv/TennisCourtDetector）です。外部repoはLICENSEがないため、codeもweightも本repoへcopy・vendor・commitしません。実行時に`--tcd-repo`/`--tcd-checkpoint`で指定し、`tracknet.py`/`postprocess.py`はdynamic importで読み込みます。入力は640x360にresize（BGR, /255）、15 heatmapsの先頭14を使用し、公式validation相当の`low_thresh=155`/`max_radius=30`でHough postprocessします。座標は任意解像度へ`x*W/640`, `y*H/360`で戻し、固定`*2`は使いません。外部repoのhomography postprocessは使用せず、model比較は両者共通のrepo-native RANSAC alignmentで行います。
+
+`ours`側はcheckpointに保存された学習configをそのままreplayします。pose supervisor有効なcheckpointは学習・validationと同じ**long-side** isotropic resize + patch alignmentを再現します（repoの単一画像predictorはshort-side resizeであり、このcheckpointでは一致しません）。checkpointが現行configでreplayできない場合はmodel構築前に停止します。
+
+metricの定義は次の通りです。分母は常に明示します。
+
+- completeness: GT-visible keypointのうちmodelが有効値を出した割合。missingは不正解として扱い、除外しません。
+- PCK@d: GT-visible keypointのうち、誤差が画像対角長の`d`以下だった割合（`d = 0.005, 0.01, 0.02, 0.05`）。missingは不正解。
+- pair error: 両者が有効なpairのみのpixel誤差と対角長正規化誤差の mean / median / q90。pair数も併記します。
+- homography: 4点以上のvalid pairからcanonical court template→image Hを`cv2.findHomography` RANSAC（thresholdは対角長比）で推定し、失敗込みの分母でsuccess rateを報告します。
+- homography inliers: `predicted_homography_inliers_on_success`は**成功したfitのみ**を対象にしたinlier数の分布です。失敗したfitは0点として平均に混ぜず、success rateとfailure reasonで数えます。
+- line reprojection: GT Hと予測Hで規定コート線を密サンプルし、symmetricなpixel誤差を計算します。frame外へ投影されるtemplate lineはHの外挿になるため、全サンプルの値に加えて「GT投影が画像内に入るline sampleだけ」の値（`line_reprojection_in_frame_*`）と画像内sample比率も併記します。
+- doubles IoU: 画像内へclipしたdoubles polygon同士のIoU。
+
+定義できない値（GT可視点が0、GT Hが推定不能、予測Hが失敗など）は0ではなく`null`/`--`とし、`undefined_reasons`に件数を記録します。scene/coverage/visible keypoint数で層別した結果も`metrics.json`に含まれます。
+
+```bash
+# 実画像validationと合成testの両方で、repo checkpointと外部baselineを比較
+CUDA_VISIBLE_DEVICES='' python -m src.tasks.court_detection.scripts.benchmark_alignment \
+  --output-dir /abs/path/to/run \
+  --repo-root /abs/path/to/tennis-lab \
+  --datasets all --models all \
+  --ours-checkpoint outputs/court_detection/.../checkpoints/court-detection-epoch=17.ckpt \
+  --tcd-repo /abs/path/to/TCD --tcd-checkpoint /abs/path/to/TCD/model_best.pt
+
+# 決定的samplingで件数を絞ったsmoke
+CUDA_VISIBLE_DEVICES='' python -m src.tasks.court_detection.scripts.benchmark_alignment \
+  --output-dir /tmp/court-benchmark-smoke --repo-root /abs/path/to/tennis-lab \
+  --datasets real_validation --models all --max-samples-per-domain 2 \
+  --ours-checkpoint ... --tcd-repo ... --tcd-checkpoint ...
+```
+
+`--max-samples-per-domain`は(scene, trajectory group)をround-robinで巡回し、group内のframeはseed依存で回転させるため、件数を絞ってもscene/groupが偏りません。同じseed・同じ入力なら同じmanifestになります。
+
+出力は次の通りです。
+
+- `manifest.json`: 採用sample、selection/quality設定、fingerprint（両modelが共有）
+- `provenance.json`: command、torch/cv2/python、device、repo commit、checkpoint/repo hash、model fingerprint、所要時間
+- `predictions/<domain>/<model>/`: 1 sample 1 NPZの予測cacheと`index.jsonl`（checksum付き）
+- `metrics.json` / `metrics.csv` / `metrics.tex`: 集計値（TeXはpaper側から`\input`できる形。paper配下は変更しません）
+- `figures/error_cdf.png`, `figures/summary_bars.png`, `figures/montage_<domain>.png`
+
+montageのsampleはbest/quantile/median/worstとalignment失敗例を固定規則で選び、bestだけを並べません。各行はRGB+GT緑、`ours`、`tcd`、両者のHで投影したコート線を並べます。
+
+`--models`は`ours`/`tcd`単独でも動作し、その場合は選択したmodelをreview primaryとしてfigureを生成します。summary barは実際に評価したmodelだけを描き、未実行のmodelを0本のbarとしては描きません。combined panelのIoU表示は行わず、IoUとH成否は各model panelに明記します。コート線は規定segmentごとに独立したpolylineとして描画するため、segment間を結ぶ線は入りません。
+
+cacheのファイル名はsample IDそのものではなく、`sample-` + percent-encoded IDです（`:`は`%3A`、先頭`-`はそのまま）。sample IDはopaqueな識別子として扱い、`/`・`\`・NULだけを拒否するためpath traversalは表現できず、encodingがinjectiveなので別IDが同じファイルへ衝突しません（旧`:`→`__`置換は`a:b`と`a__b`が衝突し、先頭`-`のYouTube IDを拒否していました）。`index.jsonl`読み込み時にも同名衝突とchecksumを再検査するため、もし将来encoderが非injectiveになっても古いcacheは黙って再利用されず停止します。

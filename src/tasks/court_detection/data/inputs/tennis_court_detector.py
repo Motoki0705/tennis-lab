@@ -43,7 +43,16 @@ _TCD_SAMPLE_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
 class TennisCourtDetectorInput:
-    """Convert upstream ordered-14 annotations into canonical raw samples."""
+    """Convert upstream ordered-14 annotations into canonical raw samples.
+
+    ``requested_splits`` selects an explicit partial read.  The default reads
+    every split enabled by ``config.split_mapping`` and validates every
+    configured quarantine against the whole source.  A partial read loads - and
+    therefore preflights - only the named splits, so a consumer that needs one
+    split (for example a validation-only benchmark) never touches the images of
+    the others.  Quarantines a partial read cannot attribute to a loaded split
+    stay unverified and are reported through ``deferred_excluded_sample_ids``.
+    """
 
     def __init__(
         self,
@@ -51,11 +60,13 @@ class TennisCourtDetectorInput:
         *,
         target_store: CourtDerivedTargetStore,
         line_target_schema: str = LINE_TARGET_SCHEMA,
+        requested_splits: Sequence[CourtSourceSplit] | None = None,
     ) -> None:
         self.config = config
         self.root = config.root
         self.target_store = target_store
         self.line_target_schema = line_target_schema
+        self._requested_splits = self._resolve_requested_splits(requested_splits)
         self._spec = CourtInputSpec(
             source_kind="tennis_court_detector",
             source_schema="tennis_court_detector_annotations_v1",
@@ -72,6 +83,7 @@ class TennisCourtDetectorInput:
             keypoint_channel_names=_TCD_CHANNEL_NAMES,
             keypoint_flip_permutation=_TCD_FLIP_PERMUTATION,
         )
+        self._deferred_excluded_sample_ids: frozenset[str] = frozenset()
         self._records = self._load_records()
 
     @property
@@ -82,10 +94,28 @@ class TennisCourtDetectorInput:
     def available_splits(self) -> tuple[CourtSourceSplit, ...]:
         return tuple(self._records)
 
+    @property
+    def deferred_excluded_sample_ids(self) -> frozenset[str]:
+        """Return configured quarantines this instance did not verify.
+
+        A partial read can only attribute a quarantine to the splits it loaded,
+        so an exclusion that matches no record there belongs either to a split
+        that was not requested or to no split at all.  Those IDs are reported
+        here instead of being dropped silently.  The default full read always
+        returns an empty set and fails when an exclusion matches no annotation
+        record.
+        """
+        return self._deferred_excluded_sample_ids
+
     def records(self, split: CourtSourceSplit) -> tuple[CourtSampleRecord, ...]:
-        if split not in self._records:
+        if split not in self.config.split_mapping:
             raise ValueError(
                 f"TennisCourtDetector split {split!r} has no explicit split_mapping."
+            )
+        if split not in self._records:
+            raise ValueError(
+                f"TennisCourtDetector split {split!r} was not requested; this "
+                f"instance loaded {tuple(self._records)!r}."
             )
         return self._records[split]
 
@@ -159,8 +189,9 @@ class TennisCourtDetectorInput:
         records: dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]] = {}
         excluded_counts = dict.fromkeys(self.config.excluded_sample_ids, 0)
         sample_splits: dict[str, CourtSourceSplit] = {}
-        for split, source_split in self.config.split_mapping.items():
-            if source_split is None:
+        for split in self._loaded_splits():
+            source_split = self.config.split_mapping[split]
+            if source_split is None:  # pragma: no cover - requested splits pre-validate
                 continue
             source_records = self._read_source_split(split, source_split)
             retained: list[CourtSampleRecord] = []
@@ -184,12 +215,74 @@ class TennisCourtDetectorInput:
             for sample_id, count in excluded_counts.items()
             if count != 1
         }
-        if invalid_exclusions:
+        if self._requested_splits is None:
+            if invalid_exclusions:
+                raise ValueError(
+                    "Every TennisCourtDetector excluded_sample_id must match exactly "
+                    f"one annotation record; got {invalid_exclusions}."
+                )
+            return records
+        # A partial read never sees the other splits, so a quarantine that
+        # matches nothing here cannot be attributed or refuted.  Reporting it is
+        # the only honest option; only a duplicate match is a real conflict.
+        duplicated = {
+            sample_id: count
+            for sample_id, count in invalid_exclusions.items()
+            if count > 1
+        }
+        if duplicated:  # pragma: no cover - split uniqueness already forbids this
             raise ValueError(
-                "Every TennisCourtDetector excluded_sample_id must match exactly "
-                f"one annotation record; got {invalid_exclusions}."
+                "Every TennisCourtDetector excluded_sample_id must match at most one "
+                f"annotation record; got {duplicated}."
             )
+        self._deferred_excluded_sample_ids = frozenset(invalid_exclusions)
         return records
+
+    def _loaded_splits(self) -> tuple[CourtSourceSplit, ...]:
+        """Return the splits this instance preflights, in configuration order."""
+        if self._requested_splits is not None:
+            return self._requested_splits
+        return tuple(
+            split
+            for split, source_split in self.config.split_mapping.items()
+            if source_split is not None
+        )
+
+    def _resolve_requested_splits(
+        self, requested_splits: Sequence[CourtSourceSplit] | None
+    ) -> tuple[CourtSourceSplit, ...] | None:
+        if requested_splits is None:
+            return None
+        if isinstance(requested_splits, (str, bytes)) or not isinstance(
+            requested_splits, Sequence
+        ):
+            raise ValueError(
+                "TennisCourtDetector requested_splits must be a sequence of split "
+                "names."
+            )
+        resolved: list[CourtSourceSplit] = []
+        for split in requested_splits:
+            if split not in self.config.split_mapping:
+                raise ValueError(
+                    f"TennisCourtDetector requested_splits names an unknown split "
+                    f"{split!r}; the configured split_mapping does not contain it."
+                )
+            if self.config.split_mapping[split] is None:
+                raise ValueError(
+                    f"TennisCourtDetector requested_splits cannot select {split!r}; "
+                    "split_mapping disables that split."
+                )
+            if split in resolved:
+                raise ValueError(
+                    "TennisCourtDetector requested_splits must not repeat a split; "
+                    f"{split!r} appears twice."
+                )
+            resolved.append(split)
+        if not resolved:
+            raise ValueError(
+                "TennisCourtDetector requested_splits must name at least one split."
+            )
+        return tuple(resolved)
 
     def _read_source_split(
         self, split: CourtSourceSplit, source_split: str

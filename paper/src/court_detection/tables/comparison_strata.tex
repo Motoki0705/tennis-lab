@@ -1,0 +1,46 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{合成 test を撮影範囲の被覆率で層別した内訳（ours）。}
+  層は GT のコート線サンプルのうち画像内に落ちる割合で分けた。
+  \texttt{full} はコート全体、\texttt{near\_full} はほぼ全体、
+  \texttt{partial} は一部だけが画面内に入る。
+  coverage の低い層ほど誤差の裾が伸びるが、
+  どの層でも PCK@0.01 は 0.92 を下回らない。
+  }
+  \label{tab:comparison_strata}
+  \small
+  \begin{tabular}{@{}lrrrr@{}}
+    \toprule
+    層 & \(n\) & 画面内線 median (px) & PCK@0.01 & GT-visible 点 \\
+    \midrule
+    \texttt{full} & \resSynthOursFullN &
+      \resSynthOursFullLineMedian & \resSynthOursFullPckOne & \resSynthOursFullVisible \\
+    \texttt{near\_full} & \resSynthOursNearFullN &
+      \resSynthOursNearFullLineMedian & \resSynthOursNearFullPckOne & \resSynthOursNearFullVisible \\
+    \texttt{partial} & \resSynthOursPartialN &
+      \resSynthOursPartialLineMedian & \resSynthOursPartialPckOne & \resSynthOursPartialVisible \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{\textbf{合成 test の会場別 PCK@0.01（ours）。}
+  test は trajectory-group-disjoint であり、
+  会場自体は学習にも現れる。したがってこの表は
+  未知会場への汎化ではなく、
+  同じ会場の未学習軌道でのばらつきを示す。
+  }
+  \label{tab:comparison_scene}
+  \small
+  \begin{tabular}{@{}lrr@{}}
+    \toprule
+    会場 & \(n\) & PCK@0.01 \\
+    \midrule
+    \texttt{B00} & \resSynthOursSceneBzeroN & \resSynthOursSceneBzeroPckOne \\
+    \texttt{B01} & \resSynthOursSceneBoneN & \resSynthOursSceneBonePckOne \\
+    \texttt{B02} & \resSynthOursSceneBtwoN & \resSynthOursSceneBtwoPckOne \\
+    \texttt{B03} & \resSynthOursSceneBthreeN & \resSynthOursSceneBthreePckOne \\
+    \bottomrule
+  \end{tabular}
+\end{table}

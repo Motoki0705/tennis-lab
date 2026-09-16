@@ -1,0 +1,20 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{実写データの分割。}
+  公開実装付属のデータには独立した test split が無い。
+  したがって実写側で報告できるのは held-out validation であり、
+  これを未知会場や非放送実写への汎化とは呼ばない。
+  }
+  \label{tab:data_partitions}
+  \small
+  \begin{tabular}{@{}lrrl@{}}
+    \toprule
+    集合 & 枚数 & 分割 & 本研究での扱い \\
+    \midrule
+    公開実写データ全体 & \TCDImageCount & --- & 十四点注釈 \\
+    train & \TCDTrainCount & 75\% & 学習に使用 \\
+    validation & \TCDValCount & 25\% & held-out validation \\
+    test & --- & 無し & 未知会場・非放送の評価には別途データが必要 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

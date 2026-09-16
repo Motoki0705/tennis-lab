@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from types import MappingProxyType
+from typing import cast
 
 import pytest
 from PIL import Image
 
 from src.tasks.court_detection.configuration import TennisCourtDetectorSourceConfig
+from src.tasks.court_detection.data.contracts import CourtSourceSplit
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     TennisCourtDetectorInput,
 )
@@ -34,6 +37,7 @@ def _input(
     root: Path,
     *,
     excluded_sample_ids: tuple[str, ...] = (),
+    requested_splits: Sequence[CourtSourceSplit] | None = None,
 ) -> TennisCourtDetectorInput:
     return TennisCourtDetectorInput(
         TennisCourtDetectorSourceConfig(
@@ -45,6 +49,7 @@ def _input(
             excluded_sample_ids=excluded_sample_ids,
         ),
         target_store=CourtDerivedTargetStore(root.parent / "derived"),
+        requested_splits=requested_splits,
     )
 
 
@@ -178,6 +183,112 @@ def test_configured_sample_quarantine_must_match_exactly_one_record(
 
     assert input_layer.records("train") == ()
     assert len(input_layer.records("val")) == 1
+    assert input_layer.deferred_excluded_sample_ids == frozenset()
 
     with pytest.raises(ValueError, match="must match exactly one"):
         _input(root, excluded_sample_ids=("missing",))
+
+
+def test_the_default_read_preflights_every_configured_split(tmp_path: Path) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+
+    input_layer = _input(root)
+
+    assert input_layer.available_splits == ("train", "val")
+    assert [record.sample_id for record in input_layer.records("train")] == ["sample"]
+    assert [record.sample_id for record in input_layer.records("val")] == ["validation"]
+
+
+def test_the_default_read_still_validates_quarantines_of_every_split(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+
+    input_layer = _input(root, excluded_sample_ids=("validation",))
+
+    assert input_layer.records("val") == ()
+    assert len(input_layer.records("train")) == 1
+    with pytest.raises(ValueError, match="must match exactly one"):
+        _input(root, excluded_sample_ids=("validation", "train-missing"))
+
+
+def test_requested_splits_read_only_the_requested_split(tmp_path: Path) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+    # Make train unreadable in both directions: its annotation is gone and its
+    # image is not an image.  A partial read that touched train at all - even to
+    # preflight the record - would fail here.
+    (root / "data_train.json").unlink()
+    (root / "images" / "sample.png").write_bytes(b"not a png")
+
+    input_layer = _input(root, requested_splits=("val",))
+
+    assert input_layer.available_splits == ("val",)
+    assert [record.sample_id for record in input_layer.records("val")] == ["validation"]
+
+    with pytest.raises(FileNotFoundError, match="annotation is missing"):
+        _input(root)
+
+
+def test_requested_splits_defer_quarantines_of_unread_splits(tmp_path: Path) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+
+    input_layer = _input(
+        root, requested_splits=("val",), excluded_sample_ids=("sample",)
+    )
+
+    assert input_layer.deferred_excluded_sample_ids == frozenset({"sample"})
+    assert [record.sample_id for record in input_layer.records("val")] == ["validation"]
+
+
+def test_requested_splits_still_apply_quarantines_they_can_resolve(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+
+    input_layer = _input(
+        root, requested_splits=("val",), excluded_sample_ids=("validation",)
+    )
+
+    assert input_layer.records("val") == ()
+    assert input_layer.deferred_excluded_sample_ids == frozenset()
+
+
+@pytest.mark.parametrize(
+    "requested_splits",
+    [
+        pytest.param((), id="empty"),
+        pytest.param(("test",), id="disabled-by-split-mapping"),
+        pytest.param(("train-2",), id="unknown"),
+        pytest.param(("val", "val"), id="repeated"),
+        pytest.param("val", id="bare-string"),
+    ],
+)
+def test_requested_splits_fail_closed_on_invalid_requests(
+    tmp_path: Path,
+    requested_splits: object,
+) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+
+    with pytest.raises(ValueError, match="requested_splits"):
+        _input(
+            root,
+            requested_splits=cast("Sequence[CourtSourceSplit]", requested_splits),
+        )
+
+
+def test_records_of_an_unrequested_split_fail_closed(tmp_path: Path) -> None:
+    root = tmp_path / "court"
+    _write_source(root, _record())
+
+    input_layer = _input(root, requested_splits=("val",))
+
+    with pytest.raises(ValueError, match="was not requested"):
+        input_layer.records("train")
+    with pytest.raises(ValueError, match="no explicit split_mapping"):
+        input_layer.records(cast("CourtSourceSplit", "unknown"))

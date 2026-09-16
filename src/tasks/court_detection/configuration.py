@@ -1859,9 +1859,14 @@ def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
             "Pose supervision rejects horizontal flip, random-resized crop, unequal "
             "axes, affine, shear, and perspective transforms."
         )
-    if len(config.train_scales) != 1 or config.train_scales[0] != config.val_short_side:
+    # ``train_scales`` are isotropic long-side sizes: the sampled scale is applied
+    # to both axes, so a multi-scale schedule preserves the square-pixel /
+    # fx == fy contract that pose supervision requires.  The pose target rescales
+    # the intrinsics with the same source-to-output matrix, which keeps the focal
+    # target consistent with whichever long-side size a sample drew.
+    if any(scale <= 0 for scale in config.train_scales):
         raise SemanticConfigurationError(
-            "Pose-safe train_scales must contain exactly the validation long-side size."
+            "Pose-safe train_scales must be positive long-side sizes."
         )
 
 

@@ -1,0 +1,117 @@
+% 自己完結した日本語原稿用プリアンブル。
+% LuaLaTeX + luatexja を前提とし、外部スタイルファイルをコピーしない。
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{placeins}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric,patterns}
+
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,
+            linkcolor=black,
+            citecolor=blue!60!black,
+            urlcolor=blue!60!black]{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
+
+\captionsetup{labelfont=bf, font=small}
+\captionsetup[table]{skip=4pt}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0.2em}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.12}
+\linespread{1.05}
+
+% --- 図表で共有する配色 -------------------------------------------------
+\definecolor{courtgreen}{HTML}{2E7D5B}
+\definecolor{gsblue}{HTML}{2F6FA5}
+\definecolor{poseorange}{HTML}{D9772B}
+\definecolor{lossred}{HTML}{B94A48}
+\definecolor{softgray}{HTML}{F0F2F4}
+\definecolor{unmeasuredgray}{HTML}{6B6B6B}
+
+% --- 図で共有する TikZ スタイル ----------------------------------------
+\tikzset{
+  block/.style={draw, rounded corners=2pt, align=center, fill=softgray,
+    minimum height=7mm, inner sep=4pt, font=\sffamily\scriptsize},
+  datablock/.style={block, draw=gsblue, fill=gsblue!10},
+  geomblock/.style={block, draw=courtgreen, fill=courtgreen!10},
+  modelblock/.style={block, draw=poseorange, fill=poseorange!10},
+  objblock/.style={block, draw=lossred, fill=lossred!10},
+  gateblock/.style={block, draw=black!45, fill=white,
+    font=\sffamily\fontsize{6.4}{7.4}\selectfont},
+  flow/.style={-{Latex[length=2.0mm,width=1.4mm]}, semithick},
+  supflow/.style={flow, dashed, draw=lossred},
+  boundary/.style={draw=gsblue, dashed, rounded corners=3pt, inner sep=3pt},
+  figtitle/.style={font=\sffamily\bfseries\footnotesize, text=black!85},
+  figlabel/.style={font=\sffamily\fontsize{6.4}{7.4}\selectfont,
+    text=black!70, align=center},
+}
+
+% --- 表記 ---------------------------------------------------------------
+% T^{b<-a} はフレーム a の座標をフレーム b へ写す同次変換。
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\SEthree}{\mathrm{SE}(3)}
+\newcommand{\SOthree}{\mathrm{SO}(3)}
+\newcommand{\T}[2]{\mathbf{T}^{#1\leftarrow #2}}
+\newcommand{\Rot}[2]{\mathbf{R}^{#1\leftarrow #2}}
+\newcommand{\trans}[2]{\mathbf{t}^{#1\leftarrow #2}}
+\newcommand{\Scene}{\mathcal{S}}
+\newcommand{\Court}{\mathcal{C}}
+\newcommand{\Canon}{\mathcal{N}}
+\newcommand{\Cam}{\mathcal{V}}
+\newcommand{\Kmat}{\mathbf{K}}
+\newcommand{\point}[1]{\mathbf{x}_{#1}}
+\newcommand{\pixel}[1]{\mathbf{u}_{#1}}
+\newcommand{\etal}{ほか}
+
+% --- 手法・データ・版のマクロ -------------------------------------------
+\newcommand{\Method}{\textsc{GS-Court}\xspace}
+\newcommand{\MethodLong}{3DGS再構成に基づくコート検出データ生成\xspace}
+\newcommand{\SyntheticDataset}{\textsc{3DGS Synthetic Court V3}\xspace}
+\newcommand{\BaselineName}{\textsc{TennisCourtDetector}\xspace}
+\newcommand{\BaselineShort}{\textsc{TCD}\xspace}
+\newcommand{\BackboneName}{\textsc{DINOv3} ViT-B/16\xspace}
+\newcommand{\NHTName}{\textsc{NHT}\xspace}
+\newcommand{\KPName}{\textsc{KP14}\xspace}
+\newcommand{\SceneSet}{\texttt{B00}--\texttt{B03}\xspace}
+\newcommand{\RunName}{\texttt{court-ms5-depth3-local-rtx-resume1}\xspace}
+\newcommand{\CheckpointName}{\texttt{court-detection-epoch=17.ckpt}\xspace}
+\newcommand{\BaselineCommit}{\texttt{e5cd4f1c}\xspace}
+\newcommand{\ClassicBaselineCommit}{\texttt{762d0775}\xspace}
+\newcommand{\TCDImageCount}{8{,}841\xspace}
+\newcommand{\TCDTrainCount}{6{,}630\xspace}
+\newcommand{\TCDValCount}{2{,}211\xspace}
+
+% --- 状態ラベル ---------------------------------------------------------
+\newcommand{\statusimplemented}{\textcolor{courtgreen}{\textsc{実装済}}}
+\newcommand{\statuspartial}{\textcolor{poseorange}{\textsc{一部実装}}}
+\newcommand{\statusunmeasured}{\textcolor{unmeasuredgray}{\textsc{未測定}}}
+\newcommand{\statushypothesis}{\textcolor{poseorange}{\textsc{仮説}}}
+
+% --- cleveref の日本語名 ------------------------------------------------
+\crefname{equation}{式}{式}
+\Crefname{equation}{式}{式}
+\crefname{figure}{図}{図}
+\Crefname{figure}{図}{図}
+\crefname{table}{表}{表}
+\Crefname{table}{表}{表}
+\crefname{section}{節}{節}
+\Crefname{section}{節}{節}
+\crefname{appendix}{付録}{付録}
+\Crefname{appendix}{付録}{付録}
+
+% 実測値は results/generated/ の生成物から読み込む。
+% 未測定の項目は「未測定」と明示され、値があるようには表示しない。
+\input{results/generated/benchmark_metrics}

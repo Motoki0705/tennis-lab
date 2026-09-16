@@ -1,0 +1,297 @@
+\section{再現性と測定物の来歴}
+\label{app:reproducibility}
+
+\subsection{交差モデル比較 run の同定情報}
+\label{app:benchmark_run}
+
+\cref{sec:results} の交差モデル比較は、
+次の 1 回の実行に由来する。
+
+\begin{center}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.30\linewidth}X@{}}
+    \toprule
+    項目 & 値 \\
+    \midrule
+    実行ディレクトリ &
+      \texttt{knowledge/runs/run-court-alignment-crossmodel-n120-s42/} \\
+    manifest fingerprint &
+      \texttt{bfc02859}\allowbreak\texttt{40621d6b6}\allowbreak
+      \texttt{aa96fc79b6e308f}\allowbreak\texttt{d24e9d7843}\allowbreak
+      \texttt{41f5b7668caa}\allowbreak\texttt{964d77675c} \\
+    標本 & domain ごとに決定論的 \resBenchDomainSamples 件、seed \resBenchSeed \\
+    推論デバイス & CPU のみ。
+      \texttt{CUDA\_VISIBLE\_DEVICES} は空、
+      \texttt{torch.cuda.is\_available()} は偽 \\
+    実行時間 & \resBenchElapsedSeconds 秒（二つの domain と二つのモデルの合計） \\
+    設定 fingerprint &
+      \texttt{settings\_fingerprint} として manifest に保存 \\
+    生成物 & \texttt{manifest.json}, \texttt{metrics.json},
+      \texttt{metrics.csv}, \texttt{metrics.tex},
+      \texttt{provenance.json}, \texttt{figures/} \\
+    原稿側の数値 & \texttt{results/generated/benchmark\_metrics.tex} \\
+    \bottomrule
+  \end{tabularx}
+\end{center}
+
+\paragraph{domain の定義}
+\texttt{real\_validation} は公開実装付属データの held-out validation であり、
+公式の test split ではない。
+\texttt{synthetic\_test} は \SyntheticDataset の trajectory-group-disjoint test で、
+同じ会場群の未学習軌道である。
+未知会場ではない。
+
+\paragraph{両モデルの同定情報}
+\Method 側の checkpoint は次のとおりである。
+checkpoint SHA-256 は
+\texttt{b863df1f01f00d2ff00a21d56a461879}\allowbreak
+\texttt{e3c5af193a9f32cec47a88d2842f8383}（\resBenchOursCheckpointHashShort で始まる）、
+読み込み時は checkpoint の hyper-parameters から
+入力解像度と前処理を復元し、
+補間は training 側の幾何に合わせる。
+\BaselineShort 側は commit \BaselineCommit の実装と
+配布重み（SHA-256 \texttt{09aa8c4338459ba1d643f2dc329f45f}\allowbreak
+\texttt{464dedec3720fccc1a4abfd1f7b464d04}）を、
+補助中心点を除いた十四点で評価した。
+どちらも adapter のソースハッシュが
+\texttt{provenance.json} に記録されている。
+
+\paragraph{RANSAC の失敗理由を残す}
+ホモグラフィが失敗した標本は成功率の分母から除かず、
+理由別の件数も \texttt{metrics.json} に保存する。
+合成 \BaselineShort の失敗は
+有効キーポイント不足 \resSynthTcdInsufficientFailures 件と
+RANSAC 失敗 \resSynthTcdRansacFailures 件である。
+
+\paragraph{結果図の同定情報}
+\texttt{figures/generated/} の PNG はこの run の
+\texttt{figures/} から複製したものである。
+SHA-256 は次のとおり。
+
+\begin{center}
+  \small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    ファイル & SHA-256（先頭 16 桁） \\
+    \midrule
+    \texttt{summary\_bars.png} & \texttt{9d5d9924f9295d3d} \\
+    \texttt{error\_cdf.png} & \texttt{91ec0abeececd7bd} \\
+    \texttt{montage\_real\_validation.png} & \texttt{68de4e8ac1623cc9} \\
+    \texttt{montage\_synthetic\_test.png} & \texttt{740f32bd04c70ada} \\
+    \midrule
+    \texttt{classical/real\_outlier\_overlay.png} & \texttt{71de969082dde964} \\
+    \texttt{classical/synthetic\_wrong\_fit.png} & \texttt{21e85304a494d630} \\
+    \texttt{classical/synthetic\_extreme\_overlay.png} & \texttt{9e56ad70a7ac4185} \\
+    \texttt{classical/synthetic\_degenerate\_fit.png} & \texttt{5d42c87bed4b6686} \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+montage の列は GT を緑、\Method を橙、\BaselineShort を青で描き、
+4 列目で重ねる。
+どの標本を描くかは、その domain の対応誤差の分位点から
+決定論的に選ぶ。
+補助 probe の PNG は代表例を複製したもので、
+\cref{fig:classical_probe} が使うのは 3 枚である。
+残りは来歴の記録として置く。
+
+\subsection{古典的 baseline 補助 probe の同定情報}
+\label{app:classical_probe}
+
+\cref{sec:results_classical} の補助 probe は、
+主比較とは別の実行である。
+
+\begin{center}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.30\linewidth}X@{}}
+    \toprule
+    項目 & 値 \\
+    \midrule
+    実行ディレクトリ &
+      \texttt{knowledge/runs/run-court-classical-probe-n10/} \\
+    upstream & \cite{gchlebusrepo} の commit \resClassicCommitShort \\
+    ライセンス & BSD-3-Clause \\
+    OpenCV 4 互換 patch & SHA-256
+      \texttt{12422aec}\allowbreak\texttt{27f589b9}\allowbreak
+      \texttt{2be68971e56f74c}\allowbreak\texttt{a13431decf}\allowbreak
+      \texttt{bec7482f0f5cc}\allowbreak\texttt{45a2d8f555} \\
+    環境 & \resClassicEnv \\
+    実行バイナリ & SHA-256
+      \texttt{1a805c96389e6d33}\allowbreak
+      \texttt{7a5666b06f38b0d1}\allowbreak
+      \texttt{5bf8a73119eb9d3e}\allowbreak
+      \texttt{0c4107a136614443} \\
+    標本 & \resClassicProbeSamples（主比較とは別） \\
+    閾値 & 既定値のまま。検出閾値の調整はしない \\
+    権威記録 & \texttt{REPORT.md}, \texttt{sweep\_results.json} \\
+    再実行 & \texttt{repro.sh}（作業ディレクトリを \texttt{mktemp} で作る） \\
+    \bottomrule
+  \end{tabularx}
+\end{center}
+
+patch は OpenCV 4 の API 名と CMake の依存解決、
+および検証用 overlay 出力の追加だけを行う。
+overlay は環境変数を設定したときだけ保存され、
+未設定時は upstream と同一の挙動である。
+入力は lossless に固定し、
+合成入力は正準の \texttt{rgb.f32.npz} から
+量子化した画像を使う（元画像との最大絶対差は 0）。
+
+この probe の限界は次のとおりである。
+失敗率は 10 件ずつの標本であり、
+\texttt{B00} test の \resClassicBzeroTestFrames 枚すべてではない。
+幾何の妥当性は「外接矩形がフレームの 10\% 未満なら縮退」という
+事前に決めた補助基準と目視のみで、
+GT との点対応比較は行っていない。
+
+\subsection{学習 run の同定情報}
+
+\cref{tab:ckpt_validation} の値は次の run に由来する。
+
+\begin{center}
+  \small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    項目 & 値 \\
+    \midrule
+    run 記録 & \RunName \\
+    実行 commit & \texttt{b8ccc6bac5beac082b97e94c8b42edd9da8d2f40} \\
+    作業ブランチ & \texttt{codex/court-colab-multiscale} \\
+    設定名 & \texttt{train\_mixed\_multiscale} \\
+    checkpoint & \CheckpointName \\
+    seed & 42 \\
+    記録 step & 29843 \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+\paragraph{学習条件}
+検出器は \BackboneName を凍結して入力に使い、
+タスク Transformer と DPT 系デコーダ、
+深さ 3 の残余密ヘッドを用いる。
+入力は長辺 256、320、384、448、512 を混ぜた multiscale である。
+再開元は同じ出力ディレクトリの version 1 の最終 checkpoint である。
+
+\paragraph{混合条件}
+学習は実写と合成の混合であり、
+バッチ内の固定比率は合成 4、実写 4 である。
+混合の指定は設定ファイル
+\texttt{train\_mixed\_multiscale.yaml} と run 記録にあり、
+runner は学習前に混合節を分離してから
+標準側の設定だけを保存する。
+そのため checkpoint と一緒に保存される
+\texttt{hparams.yaml} には混合節が残らず、
+このファイルだけを見ると合成のみの設定に見える。
+したがって本稿は、この run を
+\emph{合成のみで学習した run} とは記述しない。
+学習データは実写と合成の両方を含む。
+
+\paragraph{データ}
+合成側は \SyntheticDataset の \SceneSet で、
+採用フレームは trajectory-group-disjoint に分割されている
+（\cref{tab:dataset_summary}）。
+実写側は公開実装付属の train と validation を用いる。
+独立した test split は合成側にのみ存在し、
+実写側には独立した test が無い。
+公開実写データは train \TCDTrainCount / validation \TCDValCount である。
+変換時に、十四点注釈が縮退してコート平面を定められない
+1 サンプルを学習から除外する。
+
+\subsection{run の停止}
+
+この run は epoch 18 の 91\% で失敗した。
+データ読み込み時に、
+\texttt{npz} アーカイブ内の \texttt{byte\_planes.npy} で
+CRC-32 の不一致が発生し、
+\texttt{BadZipFile} として送出された。
+
+したがって次の二点を明示する。
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item この run は設定上の最大 epoch まで完走していない。
+  \item \cref{tab:ckpt_validation} の値は、
+  epoch \resCkptEpoch の checkpoint 選択時に記録された
+  synthetic validation であり、
+  完走した最良モデルの成績ではない。
+\end{enumerate}
+
+今後の比較では、
+同じ停止を避けるためにデータの健全性検査を学習前に行い、
+停止した run は
+結果を見た後に取り除かず、
+そのまま記録する。
+
+\subsection{ベースラインの同定情報}
+
+\begin{table}[h]
+  \centering
+  \caption{\textbf{比較に用いる公開実装。}
+  コードと重みは再配布せず、
+  固定した commit と取得物のハッシュのみを記録する。
+  }
+  \label{tab:baseline_ids}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.24\linewidth}X@{}}
+    \toprule
+    項目 & 値 \\
+    \midrule
+    リポジトリ & \BaselineName\cite{tcdrepo} \\
+    commit & \texttt{e5cd4f1ce26b15361700d3d89e068cbf0e82749e} \\
+    構造 & 補助中心点を含む十五チャネルのヒートマップ回帰 \\
+    入力解像度 & 640\(\times\)360 \\
+    付属データ & \TCDImageCount 枚、十四点注釈、
+      train \TCDTrainCount / validation \TCDValCount \\
+    ライセンス & リポジトリに確認できるライセンス表記が無い。
+      論文も確認できない \\
+    本研究での扱い & 実装ベースライン。コードと重みは再配布しない \\
+    公式重み & 配布物から取得し SHA-256
+      \texttt{09aa8c4338459ba1d643f2dc329f45f}\allowbreak
+      \texttt{464dedec3720fccc1a4abfd1f7b464d04} \\
+    \midrule
+    補助 probe & 古典的コートモデル当てはめ\cite{farin2004courtmodels}の
+      派生実装\cite{gchlebusrepo} \\
+    commit & \texttt{762d077541a77abf4923f5f8f689a1410927d35e} \\
+    ライセンス & BSD-3-Clause \\
+    状態 & CPU のみで実行済み。主比較とは別標本の補助 probe
+      （付録~\ref{app:classical_probe}） \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{その他の比較候補}
+サッカー向けの校正手法は、
+テンプレートと出力の形式が異なるため、
+そのままテニスの定量比較へ混ぜない。
+比較する場合は、
+対象のプレー面と出力の型を揃えた条件を別に定義する。
+
+\subsection{ビルドと再現}
+
+本原稿は LuaLaTeX と luatexja で組版する。
+数値は \texttt{results/generated/} に置いた
+\texttt{benchmark\_metrics.tex} が定義するマクロだけを参照し、
+本文・表・図へ直接書き込まない。
+したがって数値を更新する場合は、
+この 1 ファイルを差し替えれば本文と表が追従する。
+
+\texttt{make} は本文を 1 回ビルドし、
+\texttt{make check} は未定義の参照・引用、
+TeX エラー、欠落した入力ファイル、
+40\,pt を超える Overfull box を検査する。
+\texttt{make watch} は \texttt{latexmk -pvc} で監視し、
+TeX ソースだけでなく
+\texttt{figures/generated/} の PNG が変わったときにも再ビルドする。
+\texttt{Makefile} の \texttt{SOURCES} が
+生成図の PNG を wildcard で含むためである。
+ビルドに成功した時点で
+\texttt{build/main.pdf} がトップレベルの \texttt{main.pdf} へ複製され、
+失敗時は複製しない。
+
+\paragraph{測定済みであることの担保}
+\texttt{resultsmeasured} と \texttt{resultsfigures} は
+この版で真にしてある。
+未測定として残るのは、
+\cref{tab:ablation_plan} の視点分布 ablation と
+採用視点分布の集計図だけであり、
+これらは「未測定」または「未作成」と本文で明示する。
+値があるように見せる既定値は置かない。

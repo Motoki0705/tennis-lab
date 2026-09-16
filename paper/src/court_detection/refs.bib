@@ -1,0 +1,316 @@
+% =====================================================================
+% 参考文献。すべて一次資料または公式リポジトリを確認して作成した。
+% 直接引用はせず、内容を要約して参照する。
+% 版が動くものは arXiv 番号・DOI・access date を固定する。
+% =====================================================================
+
+%% --- 3D 再構成・合成データ ----------------------------------------------
+
+@article{kerbl2023gaussian,
+  author  = {Bernhard Kerbl and Georgios Kopanas and Thomas Leimk{\"u}hler and George Drettakis},
+  title   = {{3D} Gaussian Splatting for Real-Time Radiance Field Rendering},
+  journal = {ACM Transactions on Graphics},
+  year    = {2023},
+  volume  = {42},
+  number  = {4},
+  pages   = {1--14},
+  doi     = {10.1145/3592433},
+}
+
+@inproceedings{ge2022neuralsim,
+  author    = {Yunhao Ge and Harkirat Behl and Jiashu Xu and Suriya Gunasekar and Neel Joshi and Yale Song and Xin Wang and Laurent Itti and Vibhav Vineet},
+  title     = {Neural-Sim: Learning to Generate Training Data with {NeRF}},
+  booktitle = {Computer Vision -- ECCV 2022},
+  year      = {2022},
+  eprint    = {2207.11368},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url       = {https://arxiv.org/abs/2207.11368},
+}
+
+@inproceedings{moreau2021lens,
+  author    = {Arthur Moreau and Nathan Piasco and Dzmitry Tsishkou and Bogdan Stanciulescu and Arnaud de La Fortelle},
+  title     = {{LENS}: Localization Enhanced by {NeRF} Synthesis},
+  booktitle = {Proceedings of the 5th Conference on Robot Learning},
+  year      = {2021},
+  eprint    = {2110.06558},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url       = {https://arxiv.org/abs/2110.06558},
+}
+
+@inproceedings{meyer2024pegasus,
+  author    = {Lukas Meyer and Floris Erich and Yusuke Yoshiyasu and Marc Stamminger and Noriaki Ando and Yukiyasu Domae},
+  title     = {{PEGASUS}: Physically Enhanced {G}aussian Splatting Simulation System for {6DoF} Object Pose Dataset Generation},
+  booktitle = {2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  year      = {2024},
+  pages     = {10710--10715},
+  doi       = {10.1109/IROS58592.2024.10802037},
+  eprint    = {2401.02281},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+}
+
+@misc{vanherle2025cutandsplat,
+  author        = {Bram Vanherle and Brent Zoomers and Jeroen Put and Frank Van Reeth and Nick Michiels},
+  title         = {Cut-and-Splat: Leveraging {G}aussian Splatting for Synthetic Data Generation},
+  year          = {2025},
+  eprint        = {2504.08473},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2504.08473},
+}
+
+@misc{zanjani2025gsgenerator,
+  author        = {Farhad G. Zanjani and Davide Abati and Auke Wiggers and Dimitris Kalatzis and Jens Petersen and Hong Cai and Amirhossein Habibian},
+  title         = {Gaussian Splatting is an Effective Data Generator for {3D} Object Detection},
+  year          = {2025},
+  eprint        = {2504.16740},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2504.16740},
+}
+
+@inproceedings{greff2022kubric,
+  author    = {Klaus Greff and Francois Belletti and Lucas Beyer and Carl Doersch and Yilun Du and Daniel Duckworth and David J. Fleet and Dan Gnanapragasam and Florian Golemo and Charles Herrmann and Thomas Kipf and Abhijit Kundu and Dmitry Lagun and Issam Laradji and Hsueh-Ti Liu and Henning Meyer and Yishu Miao and Derek Nowrouzezahrai and Cengiz Oztireli and Etienne Pot and Noha Radwan and Daniel Rebain and Sara Sabour and Mehdi S. M. Sajjadi and Matan Sela and Vincent Sitzmann and Austin Stone and Deqing Sun and Suhani Vora and Ziyu Wang and Tianhao Wu and Kwang Moo Yi and Fangcheng Zhong and Andrea Tagliasacchi},
+  title     = {Kubric: A Scalable Dataset Generator},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2022},
+  pages     = {3739--3751},
+  doi       = {10.1109/CVPR52688.2022.00373},
+}
+
+@misc{denninger2019blenderproc,
+  author        = {Maximilian Denninger and Martin Sundermeyer and Dominik Winkelbauer and Youssef Zidan and Dmitry Olefir and Mohamad Elbadrawy and Ahsan Lodhi and Harinandan Katam},
+  title         = {{BlenderProc}},
+  year          = {2019},
+  eprint        = {1911.01911},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url           = {https://arxiv.org/abs/1911.01911},
+}
+
+@misc{qin2025soccersynth,
+  author        = {HaoBin Qin and Jiale Fang and Keisuke Fujii},
+  title         = {{SoccerSynth} Field: Enhancing Field Detection with Synthetic Data from Virtual Soccer Simulator},
+  year          = {2025},
+  eprint        = {2503.13969},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2503.13969},
+  note          = {arXiv v2、ACIVS 2026 採録},
+}
+
+%% --- スポーツフィールドの登録と校正 -------------------------------------
+
+@inproceedings{homayounfar2017sportsfield,
+  author    = {Namdar Homayounfar and Sanja Fidler and Raquel Urtasun},
+  title     = {Sports Field Localization via Deep Structured Models},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2017},
+  pages     = {4012--4020},
+  doi       = {10.1109/CVPR.2017.427},
+}
+
+@inproceedings{chen2019sports,
+  author    = {Jianhui Chen and James J. Little},
+  title     = {Sports Camera Calibration via Synthetic Data},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
+  year      = {2019},
+  pages     = {2497--2504},
+  doi       = {10.1109/CVPRW.2019.00305},
+}
+
+@inproceedings{sha2020endtoend,
+  author    = {Long Sha and Jennifer Hobbs and Panna Felsen and Xinyu Wei and Patrick Lucey and Sujoy Ganguly},
+  title     = {End-to-End Camera Calibration for Broadcast Videos},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2020},
+  pages     = {13624--13633},
+  doi       = {10.1109/CVPR42600.2020.01364},
+}
+
+@inproceedings{jiang2020optimizing,
+  author    = {Wei Jiang and Juan Camilo Gamboa Higuera and Baptiste Angles and Weiwei Sun and Mehrsan Javan and Kwang Moo Yi},
+  title     = {Optimizing Through Learned Errors for Accurate Sports Field Registration},
+  booktitle = {2020 IEEE Winter Conference on Applications of Computer Vision (WACV)},
+  year      = {2020},
+  pages     = {201--210},
+  doi       = {10.1109/WACV45572.2020.9093581},
+}
+
+@inproceedings{nie2021robust,
+  author    = {Xiaohan Nie and Shixing Chen and Raffay Hamid},
+  title     = {A Robust and Efficient Framework for Sports-Field Registration},
+  booktitle = {2021 IEEE Winter Conference on Applications of Computer Vision (WACV)},
+  year      = {2021},
+  pages     = {1935--1943},
+  doi       = {10.1109/WACV48630.2021.00198},
+}
+
+@inproceedings{chu2022kpsfr,
+  author    = {Yen-Jui Chu and Jheng-Wei Su and Kai-Wen Hsiao and Chi-Yu Lien and Shao-Hua Sun and Min-Chun Hu},
+  title     = {Sports Field Registration via Keypoints-Aware Label Condition},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
+  year      = {2022},
+  pages     = {3522--3529},
+  doi       = {10.1109/CVPRW56347.2022.00396},
+}
+
+@inproceedings{jacquelin2022oneshot,
+  author    = {Nicolas Jacquelin and Romain Vuillemot and Stefan Duffner},
+  title     = {Efficient One-Shot Sports Field Image Registration with Arbitrary Keypoint Segmentation},
+  booktitle = {2022 IEEE International Conference on Image Processing (ICIP)},
+  year      = {2022},
+  pages     = {1771--1775},
+  doi       = {10.1109/ICIP46576.2022.9897170},
+}
+
+@inproceedings{theiner2023tvcalib,
+  author    = {Jonas Theiner and Ralph Ewerth},
+  title     = {{TVCalib}: Camera Calibration for Sports Field Registration in Soccer},
+  booktitle = {2023 IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+  year      = {2023},
+  pages     = {1166--1175},
+  doi       = {10.1109/WACV56688.2023.00122},
+}
+
+@article{gutierrez2026pnlcalib,
+  author  = {Marc Guti{\'e}rrez-P{\'e}rez and Antonio Agudo},
+  title   = {{PnLCalib}: Sports Field Registration via Points and Lines Optimization},
+  journal = {Computer Vision and Image Understanding},
+  year    = {2026},
+  volume  = {267},
+  pages   = {104712},
+  doi     = {10.1016/j.cviu.2026.104712},
+  note    = {arXiv:2404.08401. Extended version of ``No Bells, Just Whistles'' (CVPRW 2024)},
+}
+
+@inproceedings{magera2024procc,
+  author    = {Floriane Magera and Thomas Hoyoux and Olivier Barnich and Marc Van Droogenbroeck},
+  title     = {A Universal Protocol to Benchmark Camera Calibration for Sports},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
+  year      = {2024},
+  pages     = {3335--3346},
+  doi       = {10.1109/CVPRW63382.2024.00338},
+}
+
+@inproceedings{magera2025centralviews,
+  author    = {Floriane Magera and Thomas Hoyoux and Martin Castin and Olivier Barnich and Anthony Cioppa and Marc Van Droogenbroeck},
+  title     = {Can Geometry Save Central Views for Sports Field Registration?},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
+  year      = {2025},
+  pages     = {6060--6069},
+  doi       = {10.1109/CVPRW67362.2025.00604},
+}
+
+@inproceedings{magera2025broadtrack,
+  author    = {Floriane Magera and Thomas Hoyoux and Olivier Barnich and Marc Van Droogenbroeck},
+  title     = {{BroadTrack}: Broadcast Camera Tracking for Soccer},
+  booktitle = {2025 IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+  year      = {2025},
+  doi       = {10.1109/WACV61041.2025.00602},
+  eprint    = {2412.01721},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+}
+
+@article{citraro2020realtime,
+  author  = {Leonardo Citraro and Pablo M{\'a}rquez-Neila and Stefano Savar{\`e} and Vivek Jayaram and Charles Dubout and F{\'e}lix Renaut and Andr{\'e}s Hasfura and Horesh Ben Shitrit and Pascal Fua},
+  title   = {Real-Time Camera Pose Estimation for Sports Fields},
+  journal = {Machine Vision and Applications},
+  year    = {2020},
+  volume  = {31},
+  number  = {3},
+  pages   = {16},
+  doi     = {10.1007/s00138-020-01064-7},
+}
+
+@misc{agrawal2024amateur,
+  author        = {Sameer Agrawal and Ragoth Sundararajan and Vishak Sagar},
+  title         = {Accurate Tennis Court Line Detection on Amateur Recorded Matches},
+  year          = {2024},
+  eprint        = {2404.06977},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2404.06977},
+}
+
+@inproceedings{farin2004courtmodels,
+  author    = {Dirk Farin and Susanne Krabbe and Peter H. N. de With and Wolfgang Effelsberg},
+  title     = {Robust Camera Calibration for Sport Videos Using Court Models},
+  booktitle = {Storage and Retrieval Methods and Applications for Multimedia 2004},
+  series    = {SPIE Proceedings},
+  volume    = {5307},
+  year      = {2004},
+  pages     = {80--91},
+  doi       = {10.1117/12.526813},
+}
+
+@inproceedings{huang2019tracknet,
+  author    = {Yu-Chuan Huang and I-No Liao and Ching-Hsuan Chen and Ts{\`i}-U{\'i} {\.I}k and Wen-Chih Peng},
+  title     = {{TrackNet}: A Deep Learning Network for Tracking High-Speed and Tiny Objects in Sports Applications},
+  booktitle = {2019 16th IEEE International Conference on Advanced Video and Signal Based Surveillance (AVSS)},
+  year      = {2019},
+  doi       = {10.1109/AVSS.2019.8909871},
+  eprint    = {1907.03698},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+}
+
+%% --- 検出器の構成要素 ---------------------------------------------------
+
+@misc{simeoni2025dinov3,
+  author        = {Oriane Sim{\'e}oni and Huy V. Vo and Maximilian Seitzer and Federico Baldassarre and Maxime Oquab and Cijo Jose and Vasil Khalidov and Marc Szafraniec and Seungeun Yi and Micha{\"e}l Ramamonjisoa and Francisco Massa and Daniel Haziza and Luca Wehrstedt and Jianyuan Wang and Timoth{\'e}e Darcet and Th{\'e}o Moutakanni and Leonel Sentana and Claire Roberts and Andrea Vedaldi and Jamie Tolan and John Brandt and Camille Couprie and Julien Mairal and Herv{\'e} J{\'e}gou and Patrick Labatut and Piotr Bojanowski},
+  title         = {{DINOv3}},
+  year          = {2025},
+  eprint        = {2508.10104},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2508.10104},
+}
+
+@inproceedings{ranftl2021dpt,
+  author    = {Ren{\'e} Ranftl and Alexey Bochkovskiy and Vladlen Koltun},
+  title     = {Vision Transformers for Dense Prediction},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2021},
+  pages     = {12159--12168},
+  doi       = {10.1109/ICCV48922.2021.01196},
+}
+
+@article{su2021roformer,
+  author  = {Jianlin Su and Murtadha Ahmed and Yu Lu and Shengfeng Pan and Wen Bo and Yunfeng Liu},
+  title   = {{RoFormer}: Enhanced Transformer with Rotary Position Embedding},
+  journal = {Neurocomputing},
+  year    = {2024},
+  volume  = {568},
+  pages   = {127063},
+  doi     = {10.1016/j.neucom.2023.127063},
+}
+
+@inproceedings{zhou2019continuity,
+  author    = {Yi Zhou and Connelly Barnes and Jingwan Lu and Jimei Yang and Hao Li},
+  title     = {On the Continuity of Rotation Representations in Neural Networks},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2019},
+  doi       = {10.1109/CVPR.2019.00589},
+}
+
+%% --- 公開実装（論文とは区別する） ---------------------------------------
+
+@misc{tcdrepo,
+  author       = {{yastrebksv}},
+  title        = {{TennisCourtDetector}},
+  howpublished = {GitHub repository},
+  note         = {commit e5cd4f1ce26b15361700d3d89e068cbf0e82749e, accessed 2026-09-16},
+  url          = {https://github.com/yastrebksv/TennisCourtDetector},
+}
+
+@misc{gchlebusrepo,
+  author       = {{gchlebus}},
+  title        = {{tennis-court-detection}},
+  howpublished = {GitHub repository, BSD-3-Clause},
+  note         = {commit 762d077541a77abf4923f5f8f689a1410927d35e, accessed 2026-09-16},
+  url          = {https://github.com/gchlebus/tennis-court-detection},
+}

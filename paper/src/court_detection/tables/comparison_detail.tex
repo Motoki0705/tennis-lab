@@ -1,0 +1,71 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{キーポイント指標の閾値掃引と対応誤差の分布。}
+  PCK は画像対角線に対する閾値で、返さなかったキーポイントは不正解として数える。
+  対応誤差の統計はモデルが返した点だけを対象にし、
+  pair 数 \(n\) を併記する（モデル間で \(n\) が異なる）。
+  }
+  \label{tab:keypoint_detail}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}llrrrrrrr@{}}
+    \toprule
+    Domain & Model & @0.005 & @0.01 & @0.02 & @0.05 &
+      \(n\) & Pair med. (px) \\
+    \midrule
+    \texttt{real\_validation} & ours &
+      \resRealOursPckHalf & \resRealOursPckOne & \resRealOursPckTwo & --- &
+      \resRealOursPairN & \resRealOursPairMedian \\
+    \texttt{real\_validation} & TCD &
+      \resRealTcdPckHalf & \resRealTcdPckOne & \resRealTcdPckTwo & --- &
+      \resRealTcdPairN & \resRealTcdPairMedian \\
+    \midrule
+    \texttt{synthetic\_test} & ours &
+      \resSynthOursPckHalf & \resSynthOursPckOne & \resSynthOursPckTwo & \resSynthOursPckFive &
+      \resSynthOursPairN & \resSynthOursPairMedian \\
+    \texttt{synthetic\_test} & TCD &
+      \resSynthTcdPckHalf & \resSynthTcdPckOne & \resSynthTcdPckTwo & \resSynthTcdPckFive &
+      \resSynthTcdPairN & \resSynthTcdPairMedian \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{\textbf{線再投影誤差の全標本と画面内標本。}
+  規制線を各セグメント \resBenchLineSegmentSamples 点でサンプルし、
+  モデルのホモグラフィと GT ホモグラフィの対称再投影誤差を測る。
+  「全サンプル」は画面外へ外挿したサンプルを含むため、
+  合成側では桁が変わりうる（\cref{sec:results_metrics} を参照）。
+  「画面内」は GT の投影が画像内に落ちるサンプルだけの集計であり、
+  画面内率はその割合である。
+  }
+  \label{tab:line_detail}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}llrrrrr@{}}
+    \toprule
+    Domain & Model &
+      全 med. (px) &
+      画面内 mean & 画面内 med. & 画面内 q90 & 画面内率 \\
+    \midrule
+    \texttt{real\_validation} & ours &
+      \resRealOursLineMedian &
+      \resRealOursLineInMean & \resRealOursLineInMedian &
+      \resRealOursLineInQ & \resRealOursLineInFraction \\
+    \texttt{real\_validation} & TCD &
+      \resRealTcdLineMedian &
+      \resRealTcdLineInMean & \resRealTcdLineInMedian &
+      \resRealTcdLineInQ & \resRealTcdLineInFraction \\
+    \midrule
+    \texttt{synthetic\_test} & ours &
+      \resSynthOursLineMedian &
+      \resSynthOursLineInMean & \resSynthOursLineInMedian &
+      \resSynthOursLineInQ & \resSynthOursLineInFraction \\
+    \texttt{synthetic\_test} & TCD &
+      \resSynthTcdLineMedian &
+      \resSynthTcdLineInMean & \resSynthTcdLineInMedian &
+      \resSynthTcdLineInQ & \resSynthTcdLineInFraction \\
+    \bottomrule
+  \end{tabular}
+\end{table}

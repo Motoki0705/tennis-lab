@@ -1,0 +1,193 @@
+\section{比較実験の設計}
+\label{sec:experiments}
+
+本節は評価の設計を述べる。
+数値そのものは\cref{sec:results} に置き、
+本節ではどの比較が何を切り分けるかを固定する。
+
+\subsection{データ}
+\label{sec:data}
+
+\paragraph{合成側}
+実会場の3DGS再構成から作ったデータセットを用いる。
+\cref{tab:dataset_summary} に採用数を示す。
+四つの会場 \SceneSet を対象とし、
+trajectory group 単位で train / validation / test を分けている。
+test 集合は trajectory-group-disjoint であり、
+同じ会場の未学習視点を評価する。
+これは未知会場への汎化ではない。
+
+\input{tables/dataset_summary}
+
+\paragraph{実写側}
+\BaselineName 公開実装付属の実写データ
+（\TCDImageCount 枚、十四点注釈）を用いる。
+配布物は train と validation に分かれており、
+本研究が確認した範囲では独立した test split が存在しない。
+したがって実写側で報告できるのは held-out validation である。
+
+\input{tables/data_partitions}
+
+\subsection{比較相手}
+\label{sec:baselines}
+
+\paragraph{公開実装ベースライン}
+\BaselineName\cite{tcdrepo} の固定 commit \BaselineCommit を用いる。
+この実装は TrackNet 系のヒートマップ回帰\cite{huang2019tracknet}を
+コート点検出に適用したもので、
+補助中心点を含む十五チャネルを 640\(\times\)360 で出力する。
+学習済み重みは公開配布物から取得し、
+取得物の SHA-256 を付録~\ref{app:reproducibility} に記録する。
+本研究は重みを再学習せず、
+配布された検出器をそのまま比較相手として使う。
+
+\paragraph{古典的手法}
+Farin らの古典的コートモデル当てはめ\cite{farin2004courtmodels}の
+派生実装\cite{gchlebusrepo}（commit \ClassicBaselineCommit、BSD-3-Clause）を
+補助的な stress probe として走らせる。
+主比較と同じ標本ではなく、
+決定論的に選んだ実写 10 件と合成 \texttt{B00} 10 件を使う。
+結果は\cref{sec:results_classical} に主比較とは別に示す。
+
+\paragraph{比較手続き}
+アーキテクチャも学習データも異なる検出器の生の点誤差を並べても、
+幾何の良し悪しは決まらない。
+そこで我々は、各検出器の生のキーポイントに対し、
+\emph{同一の RANSAC ベースアライメント}を適用し、
+その成功率と再投影残差を報告する。
+これにより検出精度と登録精度を分ける。
+公開実装は生のキーポイントからホモグラフィを解く段階も持つが、
+確認した環境ではこの段階が現行の NumPy と SciPy で動作しないため、
+本研究はこれを再現せず、生のキーポイントを共通手続きへ渡す。
+
+共通手続きは正準規制テンプレートのキーポイントを画像へ写す
+ホモグラフィを RANSAC で解く。
+閾値は画像対角線の \resBenchRansacThreshold である。
+有効な対応が足りない場合は失敗として数え、
+成功率の分母から除かない。
+
+\subsection{測定済みと未実施の境界}
+\label{sec:measurement_boundary}
+
+本稿の時点で測定済みなのは次の二つである。
+
+\begin{enumerate}[leftmargin=1.6em]
+  \item 実写 held-out validation と合成 trajectory-group test での
+  \Method 対 \BaselineShort の交差モデル比較。
+  domain ごとに決定論的 \resBenchDomainSamples 件、seed \resBenchSeed。
+  \item 一つの checkpoint を選んだときに記録された
+  合成 validation の値（\cref{sec:ckpt_validation}）。
+\end{enumerate}
+
+古典的コートモデル当てはめは、
+主比較とは別の小標本での補助 stress probe までを測定済みとする。
+
+\paragraph{まだ実施していない比較}
+視点分布の効果を切り分けるため、次の条件を計画する。
+
+\input{tables/ablation_plan}
+
+このうち A--E はチェックリストではなく、
+本稿の主張に必要な順序である。
+B 対 C が、同じ枚数で視点範囲だけを変えた比較、
+D 対 E が、実写量と合成量を固定して視点範囲を変えた比較である。
+この二つが揃って初めて、
+\cref{sec:view_variable} の問いに答えられる。
+したがって本稿の比較は、
+視点拡張の効果そのものを分離しない。
+アーキテクチャと学習データが同時に異なる条件での、
+実測に基づく現状の性能差である。
+
+採用された視点の分布そのものを描く集計は本稿には含めない。
+視点の方位・高さ・距離の分布は\cref{sec:view_generation} の
+生成契約から決まるが、
+実際に学習へ渡った分布の集計図は未作成である。
+本稿はこれを測定済みとして提示しない。
+
+\subsection{指標}
+\label{sec:metrics}
+
+検出とアライメントの指標は、
+次の定義で固定する。
+数値は\cref{sec:results} に置き、定義はここに置く。
+
+\paragraph{Complete（completeness）}
+GT-visible なキーポイントのうち、
+モデルが対応を返したものの割合である。
+分母は GT-visible の点数であり、
+位置誤差ではなく\emph{検出の網羅性}を測る。
+
+\paragraph{PCK}
+画像対角線に対する閾値
+\(0.005, 0.01, 0.02, 0.05\) の割合で、
+予測と GT の距離が閾値以内なら正解とする。
+モデルが返さなかったキーポイントは不正解として数える。
+したがって PCK は Complete と対応精度の両方に依存する。
+
+\paragraph{pair error}
+有効な対応だけを対象にした画素距離の平均・中央値・q90 である。
+有効対応の件数を必ず併記する。
+この統計は欠落を罰しないため、
+PCK と Complete と一緒に読む。
+
+\paragraph{共通ホモグラフィと成功率}
+正準規制テンプレートから画像へのホモグラフィを
+RANSAC で解き、その成功率を報告する。
+分母は全標本であり、失敗も含める。
+有効対応が不足する場合は失敗として扱い、
+成功率から暗黙に除外しない。
+
+\paragraph{線再投影誤差}
+規制コートの線を各セグメント \resBenchLineSegmentSamples 点でサンプルし、
+モデルのホモグラフィと GT ホモグラフィの対称再投影誤差を測る。
+全サンプルの統計と、
+GT の投影が画像内に落ちるサンプルだけの統計を分けて報告する。
+前者は画面外への外挿を含むため、
+撮影範囲の狭い標本では幾何の誤差より外挿距離を反映しやすい。
+画面内率も併記し、
+どれだけのコートがフレームに入っているかを示す。
+
+\paragraph{コート多角形 IoU}
+ダブルスコートの多角形を画像でクリップした後の IoU である。
+クリップ後の多角形が縮退した標本には値が無い。
+そのような標本を 0 として混ぜず、
+定義できた件数と全件数を併記する。
+
+\paragraph{姿勢指標}
+カメラ中心の L2 距離（メートル）、
+\(\SOthree\) の測地距離（度）、焦点距離の相対誤差、
+対数焦点距離の絶対誤差、
+および真値の正準点を予測姿勢で投影した再投影距離を使う。
+
+再投影距離は\emph{姿勢のみ}の指標であり、
+密なキーポイント予測を入力しない。
+真のカメラ校正が無い実写画像に対して、
+姿勢誤差を擬似的に作らない。
+実写側では検出とアライメントの指標のみを報告し、
+姿勢指標は合成 test に限る。
+checkpoint 選択時の合成 validation が報告する姿勢指標は、
+この定義に従う。
+
+field registration の IoU と領域分割の mIoU は別の量として扱う。
+前者はコートの平面的な重なり、
+後者は画素単位の分類であり、
+一つの数値へまとめない。
+
+\paragraph{domain を跨ぐ比較の禁止}
+実写と合成で GT-visible の定義が異なる。
+実写は注釈が画像内にあること、
+合成はカメラ前方・画面内・レンダラ可視の三条件である。
+したがって本稿は、
+Complete の絶対値を domain 間で比較しない。
+domain 内のモデル比較は同じ分母で行う。
+
+\subsection{失敗の扱い}
+\label{sec:failures}
+
+アライメントを棄却したシーンは結果から除かず、
+negative evidence として報告する。
+学習が完走しなかった run も、
+可能な限り理由と停止時点を記録する。
+失敗 run を結果を見た後に削除し、
+成功した seed だけで平均を取る運用はしない。
+補助 probe のクラッシュと縮退も同じ扱いである。

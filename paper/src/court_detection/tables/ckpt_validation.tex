@@ -1,0 +1,29 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{checkpoint 選択時に記録された合成 validation の値。}
+  単一 run、単一 validation、epoch \resCkptEpoch の一行である。
+  同一条件の比較ベンチマークではなく、
+  実写 held-out でも、複数 seed の平均でもない。
+  この run は epoch 18 で停止しており、完走していない。
+  }
+  \label{tab:ckpt_validation}
+  \small
+  \begin{tabular}{@{}llr@{}}
+    \toprule
+    指標 & 単位 & 値 \\
+    \midrule
+    \KPName{} 平均距離 & px & \resCkptKPMeanPx \\
+    \KPName{} 中央値距離 & px & \resCkptKPMedianPx \\
+    領域分割 mIoU & --- & \resCkptSegMIoU \\
+    二値線 Dice & --- & \resCkptLineDice \\
+    線の意味分類 mIoU & --- & \resCkptSemanticLineMIoU \\
+    姿勢再投影距離（姿勢のみ） & px & \resCkptPoseReprojectionPx \\
+    カメラ中心 L2 誤差 & m & \resCkptTranslationLtwoM \\
+    回転測地誤差 & 度 & \resCkptRotationGeodesicDeg \\
+    焦点距離の相対誤差 & --- & \resCkptFocalRelativeError \\
+    対数焦点距離の絶対誤差 & --- & \resCkptLogFocalAbsError \\
+    教師有効キーポイント数（validation 合計） & 個 &
+      \resCkptVisiblePointCount \\
+    \bottomrule
+  \end{tabular}
+\end{table}

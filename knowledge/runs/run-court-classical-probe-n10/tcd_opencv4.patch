@@ -1,0 +1,113 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index dc6387f..323503a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3,9 +3,9 @@ project(detect)
+ 
+ set(CMAKE_CXX_STANDARD 11)
+ 
+-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+-conan_basic_setup(TARGETS)
++find_package(OpenCV REQUIRED)
++include_directories(${OpenCV_INCLUDE_DIRS})
+ 
+ file(GLOB SRC_FILES *.cpp)
+ add_executable(${CMAKE_PROJECT_NAME} ${SRC_FILES})
+-target_link_libraries(${CMAKE_PROJECT_NAME} CONAN_PKG::opencv)
+\ No newline at end of file
++target_link_libraries(${CMAKE_PROJECT_NAME} ${OpenCV_LIBS})
+\ No newline at end of file
+diff --git a/CourtLinePixelDetector.cpp b/CourtLinePixelDetector.cpp
+index 6630c63..a8825f6 100644
+--- a/CourtLinePixelDetector.cpp
++++ b/CourtLinePixelDetector.cpp
+@@ -57,7 +57,7 @@ Mat CourtLinePixelDetector::run(const Mat& frame)
+ cv::Mat CourtLinePixelDetector::getLuminanceChannel(const cv::Mat& frame)
+ {
+   Mat imgYCbCr;
+-  cvtColor(frame, imgYCbCr, CV_RGB2YCrCb);
++  cvtColor(frame, imgYCbCr, cv::COLOR_RGB2YCrCb);
+   Mat luminanceChannel(frame.rows, frame.cols, CV_8UC1);
+   const int from_to[2] = {0, 0};
+   mixChannels(&frame, 1, &luminanceChannel, 1, from_to, 1);
+diff --git a/DebugHelpers.cpp b/DebugHelpers.cpp
+index ed52fe5..ee97739 100644
+--- a/DebugHelpers.cpp
++++ b/DebugHelpers.cpp
+@@ -9,17 +9,17 @@ using namespace cv;
+ 
+ void printVideoInfo(const cv::VideoCapture vc)
+ {
+-  int frameCount = int(vc.get(CV_CAP_PROP_FRAME_COUNT));
+-  int width = int(vc.get(CV_CAP_PROP_FRAME_WIDTH));
+-  int height = int(vc.get(CV_CAP_PROP_FRAME_HEIGHT));
+-  int fps = int(vc.get(CV_CAP_PROP_FPS));
++  int frameCount = int(vc.get(cv::CAP_PROP_FRAME_COUNT));
++  int width = int(vc.get(cv::CAP_PROP_FRAME_WIDTH));
++  int height = int(vc.get(cv::CAP_PROP_FRAME_HEIGHT));
++  int fps = int(vc.get(cv::CAP_PROP_FPS));
+   std::cout << "Video properties (frames: " << frameCount << ", w: " << width << ", h: " << height
+     << ", fps: " << fps << ")" << std::endl;
+ }
+ 
+ void displayImage(const string& windowName, const Mat& image, int delay)
+ {
+-  namedWindow(windowName, CV_WINDOW_AUTOSIZE);
++  namedWindow(windowName, cv::WINDOW_AUTOSIZE);
+   imshow(windowName, image);
+   waitKey(delay);
+ }
+diff --git a/TennisCourtModel.cpp b/TennisCourtModel.cpp
+index 4b767f4..d36cf4d 100644
+--- a/TennisCourtModel.cpp
++++ b/TennisCourtModel.cpp
+@@ -7,6 +7,7 @@
+ #include "GlobalParameters.h"
+ #include "DebugHelpers.h"
+ #include "geometry.h"
++#include <fstream>
+ #include "TimeMeasurement.h"
+ 
+ using namespace cv;
+diff --git a/main.cpp b/main.cpp
+index 793adbd..5740480 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -1,5 +1,7 @@
+ #include <opencv2/opencv.hpp>
+ 
++#include <cstdlib>
++
+ #include "TimeMeasurement.h"
+ #include "Line.h"
+ #include "CourtLinePixelDetector.h"
+@@ -35,8 +37,8 @@ int main(int argc, char** argv)
+   }
+   printVideoInfo(vc);
+   Mat frame;
+-  int frameIndex = int(vc.get(CV_CAP_PROP_FRAME_COUNT)) / 2;
+-  vc.set(CV_CAP_PROP_POS_FRAMES, frameIndex);
++  int frameIndex = int(vc.get(cv::CAP_PROP_FRAME_COUNT)) / 2;
++  vc.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
+   if (!vc.read(frame))
+   {
+     std::cerr << "Failed to read frame with index " << frameIndex << std::endl;
+@@ -67,6 +69,18 @@ int main(int argc, char** argv)
+       std::string outFilename(argv[2]);
+       model.writeToFile(outFilename);
+       std::cout << "Result written to " << outFilename << std::endl;
++      const char* overlayPath = std::getenv("TCD_OVERLAY");
++      if (overlayPath != nullptr)
++      {
++        Mat overlay = frame.clone();
++        model.drawModel(overlay);
++        if (!imwrite(overlayPath, overlay))
++        {
++          std::cerr << "Cannot write overlay " << overlayPath << std::endl;
++          return 4;
++        }
++        std::cout << "Overlay written to " << overlayPath << std::endl;
++      }
+     }
+ 
+   }

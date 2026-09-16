@@ -1,0 +1,24 @@
+== binary
+-rwxr-xr-x 1 root root 117160 Sep 15 14:51 /build/build/detect
+1a805c96389e6d337a5666b06f38b0d15bf8a73119eb9d3e0c4107a136614443  /build/build/detect
+== opencv libs linked (CPU debs)
+	libopencv_highgui.so.4.5d => /lib/x86_64-linux-gnu/libopencv_highgui.so.4.5d (0x0000721e9436b000)
+	libopencv_videoio.so.4.5d => /lib/x86_64-linux-gnu/libopencv_videoio.so.4.5d (0x0000721e942e5000)
+	libopencv_imgcodecs.so.4.5d => /lib/x86_64-linux-gnu/libopencv_imgcodecs.so.4.5d (0x0000721e9428c000)
+	libopencv_imgproc.so.4.5d => /lib/x86_64-linux-gnu/libopencv_imgproc.so.4.5d (0x0000721e93d5f000)
+	libopencv_core.so.4.5d => /lib/x86_64-linux-gnu/libopencv_core.so.4.5d (0x0000721e939ef000)
+== cuda/nvidia libs
+	libicudata.so.70 => /lib/x86_64-linux-gnu/libicudata.so.70 (0x00007fd0910e1000)
+(none = no CUDA runtime linked)
+== opencv deb version
+libopencv-core4.5d 4.5.4+dfsg-9ubuntu4
+libopencv-highgui4.5d 4.5.4+dfsg-9ubuntu4
+libopencv-imgproc4.5d 4.5.4+dfsg-9ubuntu4
+libopencv-videoio4.5d 4.5.4+dfsg-9ubuntu4
+== CUDA in cv::getBuildInformation
+    Unavailable:                 cudaarithm cudabgsegm cudacodec cudafeatures2d cudafilters cudaimgproc cudalegacy cudaobjdetect cudaoptflow cudastereo cudawarping cudev cvv gapi julia matlab ovis python2 ts
+== gpu device nodes inside image
+0
+(0 = no GPU device nodes)
+== docker runtime
+default_runtime=runc

@@ -1,0 +1,88 @@
+% 視点生成と教師生成。すべて本稿のために作成した TikZ 図である。
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  panel/.style={draw=black!28, rounded corners=2.5pt, fill=none,
+    inner sep=3mm, line width=0.45pt},
+  title/.style={font=\sffamily\bfseries\footnotesize, text=black!85},
+  tinylabel/.style={font=\sffamily\fontsize{6.3}{7.2}\selectfont,
+    text=black!70, align=center},
+  cam/.style={regular polygon, regular polygon sides=3, minimum size=2.6mm,
+    inner sep=0pt, draw=poseorange, fill=poseorange!25, line width=0.45pt},
+  ptdot/.style={circle, inner sep=0pt, minimum size=1.3mm, fill=gsblue},
+  arr/.style={-{Stealth[length=1.7mm,width=1.2mm]}, line width=0.65pt},
+  hull/.style={draw=gsblue, dashed, line width=0.6pt},
+]
+  % ---------- (a) SfM 制約付き軌道候補 ----------
+  \begin{scope}[local bounding box=pa]
+    \coordinate (o) at (1.75,1.55);
+    \draw[hull, fill=gsblue!5] (0.05,0.90) -- (1.35,0.65) -- (3.45,1.05)
+      -- (3.30,2.35) -- (0.70,2.50) -- cycle;
+    \foreach \a in {20,70,140,215,290} {
+      \node[ptdot] at ($(o)+(\a:1.45)$) {};
+    }
+    \draw[courtgreen, line width=0.7pt] ($(o)+(1.05,0)$) arc (0:345:1.05);
+    \draw[courtgreen, line width=0.7pt] (1.15,1.25) -- (2.35,1.25)
+      (1.15,1.25) -- (1.15,1.90) (2.35,1.25) -- (2.35,1.90)
+      (1.15,1.90) -- (2.35,1.90);
+    \draw[courtgreen, line width=0.4pt] (1.75,1.25) -- (1.75,1.90);
+    \node[cam] at ($(o)+(40:1.05)$) {};
+    \node[cam] at ($(o)+(150:1.05)$) {};
+    \node[cam] at ($(o)+(268:1.05)$) {};
+    \draw[poseorange, line width=0.45pt]
+      ($(o)+(40:1.05)$) -- (1.95,1.55);
+    \draw[poseorange, line width=0.45pt, dashed]
+      ($(o)+(150:1.05)$) -- (1.55,1.55);
+    \node[tinylabel, anchor=north, text width=44mm] at (1.75,0.35)
+      {点 = 復元カメラ、実線 = 軌道候補。\\破線は凸包の内側オフセット境界};
+  \end{scope}
+
+  % ---------- (b) 弧長一様サンプリングと分割 ----------
+  \begin{scope}[shift={(4.7,0)}, local bounding box=pb]
+    \draw[black!22, line width=0.4pt] (0,0) rectangle (3.3,2.2);
+    \draw[poseorange, line width=0.7pt] (0.35,1.1) .. controls (1.4,2.05) and (2.1,0.25) .. (3.0,1.25);
+    \foreach \x/\y in {0.35/1.10, 0.72/1.44, 1.10/1.68, 1.55/1.72, 2.00/1.55,
+                        2.42/1.28, 2.75/1.24, 3.00/1.25} {
+      \node[cam] at (\x,\y) {};
+    }
+    \node[tinylabel, anchor=north west] at (0.05,2.14)
+      {3D 弧長で一様に並べる};
+    \node[tinylabel, anchor=north, text width=44mm] at (1.65,-0.05)
+      {近接フレームを跨がせないよう、
+        trajectory group 単位で train/val/test を分ける};
+    \node[tinylabel, text=gsblue, anchor=north west] at (0.08,2.12)
+      {円 / 楕円 / 矩形 / 超楕円、平面または正弦高さ};
+  \end{scope}
+
+  % ---------- (c) 同一変換からの整合教師 ----------
+  \begin{scope}[shift={(9.6,0)}, local bounding box=pc]
+    \draw[fill=softgray!75, draw=black!25, line width=0.35pt]
+      (0.35,1.00) -- (3.10,1.00) -- (2.60,1.95) -- (0.85,1.95) -- cycle;
+    \draw[courtgreen, line width=0.5pt] (0.85,1.95) -- (2.60,1.95)
+      (0.73,1.48) -- (2.93,1.48)
+      (1.20,1.00) -- (1.07,1.95)
+      (2.35,1.00) -- (2.40,1.95);
+    \node[ptdot] at (1.72,1.95) {};
+    \node[ptdot] at (0.97,1.95) {};
+    \node[ptdot] at (2.49,1.95) {};
+    \node[ptdot] at (0.80,1.48) {};
+    \node[ptdot] at (2.87,1.48) {};
+    \node[tinylabel, text=gsblue, anchor=south] at (1.72,2.05)
+      {\KPName{} + 領域 + 二値線 + 線の意味};
+    \draw[poseorange, line width=0.6pt, ->] (3.70,1.40) -- (2.20,1.40);
+    \node[cam] at (3.90,1.40) {};
+    \node[tinylabel, text=poseorange, anchor=south] at (3.90,1.58)
+      {カメラ姿勢\\と焦点距離};
+    \node[tinylabel, anchor=north, text width=50mm] at (1.60,0.92)
+      {同一画像フレーム内で全教師の可視性と座標が一致する};
+  \end{scope}
+
+  \node[panel, fit=(pa)] (fa) {};
+  \node[panel, fit=(pb)] (fb) {};
+  \node[panel, fit=(pc)] (fc) {};
+  \node[title, anchor=south] at ($(fa.north)+(0,1.3mm)$) {(a) 軌道候補};
+  \node[title, anchor=south] at ($(fb.north)+(0,1.3mm)$) {(b) 弧長一様サンプルと分割};
+  \node[title, anchor=south] at ($(fc.north)+(0,1.3mm)$) {(c) 整合教師の生成};
+
+  \draw[arr] (fa.east) -- (fb.west);
+  \draw[arr] (fb.east) -- (fc.west);
+\end{tikzpicture}

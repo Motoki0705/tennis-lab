@@ -1,0 +1,74 @@
+% システム概要。すべて本稿のために作成した TikZ 図である。
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  card/.style={draw=black!35, rounded corners=2.2pt, align=center,
+    minimum height=24mm, inner sep=3pt, line width=0.45pt},
+  pipe/.style={-{Stealth[length=2.2mm,width=1.45mm]}, line width=0.75pt, draw=black!72},
+  tag/.style={rounded corners=1.5pt, inner xsep=3pt, inner ysep=1.2pt,
+    font=\sffamily\fontsize{6.4}{7.4}\selectfont},
+  note/.style={font=\sffamily\fontsize{6.3}{7.2}\selectfont, text=black!67, align=center},
+]
+  \node[card, fill=softgray!70, minimum width=21mm] (video) {
+    \textbf{単一カメラ動画}\\[0.4em]
+    RGB 系列\\
+    + 会場 ID
+  };
+  \node[card, fill=gsblue!10, draw=gsblue, minimum width=25mm,
+    right=3.2mm of video] (recon) {
+    \textbf{再構成}\\[0.4em]
+    SfM カメラ\\
+    + 3DGS モデル
+  };
+  \node[card, fill=courtgreen!10, draw=courtgreen, minimum width=30mm,
+    right=3.2mm of recon] (align) {
+    \textbf{メートル系}\\[0.1em]
+    \textbf{コートアライメント}\\[0.4em]
+    fit 証拠で当てはめ\\
+    holdout で凍結検証
+  };
+  \node[card, fill=softgray!70, minimum width=28mm,
+    right=3.2mm of align] (render) {
+    \textbf{視点生成と}\\[0.1em]
+    \textbf{レンダリング}\\[0.4em]
+    SfM 制約付き軌道\\
+    弧長一様サンプル
+  };
+  \node[card, fill=lossred!8, draw=lossred, minimum width=28mm,
+    right=3.2mm of render] (labels) {
+    \textbf{整合教師}\\[0.4em]
+    \KPName{} + 領域 + 線\\
+    + 線の意味 + 姿勢
+  };
+  \node[card, fill=poseorange!10, draw=poseorange, minimum width=23mm,
+    right=3.2mm of labels] (model) {
+    \textbf{コート検出器}\\[0.4em]
+    共有特徴\\
+    + 密予測と姿勢
+  };
+
+  \draw[pipe] (video) -- (recon);
+  \draw[pipe, draw=gsblue] (recon) -- (align);
+  \draw[pipe, draw=courtgreen] (align) -- (render);
+  \draw[pipe] (render) -- (labels);
+  \draw[pipe, draw=lossred] (labels) -- (model);
+
+  % 二つの検証境界。ここを通過しないシーンは後段へ流れない。
+  \node[boundary, fit=(recon), inner sep=2.4mm] (scene_boundary) {};
+  \node[tag, fill=gsblue!12, draw=gsblue, anchor=south west]
+    at (scene_boundary.north west) {境界 1: 公開シーン出力};
+  \node[boundary, draw=courtgreen, fit=(align), inner sep=2.4mm] (metric_boundary) {};
+  \node[tag, fill=courtgreen!12, draw=courtgreen, anchor=south west]
+    at (metric_boundary.north west) {境界 2: アライメント受理};
+
+  % 下段: 同一変換が画像と教師の両方を支配する。
+  \node[note, below=6.5mm of labels, text width=52mm] (share) {
+    一つの変換グラフが\\画像と教師の両方を支配する
+  };
+  \draw[-{Stealth[length=1.8mm,width=1.2mm]}, draw=courtgreen, dashed, line width=0.6pt]
+    (metric_boundary.south) .. controls +(0,-6mm) and +(-14mm,2mm) .. (share.west);
+  \draw[-{Stealth[length=1.8mm,width=1.2mm]}, draw=courtgreen, dashed, line width=0.6pt]
+    (share.east) .. controls +(14mm,-2mm) and +(0,-6mm) .. (labels.south);
+
+  \node[note, below=14.5mm of video, text width=30mm, anchor=north west]
+    at (video.south west) {人手の費用は\\シーン単位の検証に移る};
+\end{tikzpicture}

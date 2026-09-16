@@ -1,0 +1,10 @@
+# LuaLaTeX + BibTeX でビルドし、中間物は build/ に隔離する。
+$pdf_mode = 4;
+$bibtex_use = 2;
+$out_dir = 'build';
+$max_repeat = 5;
+$silence_logfile_warnings = 0;
+
+# watch 中もトップレベルの main.pdf を最新に保つ。
+# 失敗時はコピーしないので、古い PDF を新しい結果と誤認しない。
+$success_cmd = 'cp build/main.pdf main.pdf';

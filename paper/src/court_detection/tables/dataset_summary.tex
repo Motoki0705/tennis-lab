@@ -1,0 +1,25 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{合成データセットの採用数。}
+  数値は生成 manifest（\texttt{dataset.json} と \texttt{splits.json}）から集計した。
+  分割は trajectory group 単位で、
+  同じグループのフレームは分割を跨がない。
+  合計は公開記録にある \datasetEarlierReportTotal 枚と
+  \datasetAcceptedBtwo の再生成差分だけ異なる。
+  }
+  \label{tab:dataset_summary}
+  \small
+  \begin{tabular}{@{}lrrrrr@{}}
+    \toprule
+    会場 & コート数 & 採用 & train & validation & test \\
+    \midrule
+    \texttt{B00} & 2 & \datasetAcceptedBzero & 1{,}718 & 220 & 238 \\
+    \texttt{B01} & 3 & \datasetAcceptedBone & 1{,}559 & 295 & 198 \\
+    \texttt{B02} & 1 & \datasetAcceptedBtwo & 1{,}648 & 194 & 252 \\
+    \texttt{B03} & 1 & \datasetAcceptedBthree & 1{,}669 & 226 & 198 \\
+    \midrule
+    合計 & 7 & \datasetAcceptedTotal & \datasetTrainFrames &
+      \datasetValidationFrames & \datasetTestFrames \\
+    \bottomrule
+  \end{tabular}
+\end{table}
