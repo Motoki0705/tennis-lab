@@ -1,0 +1,48 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{交差モデル比較。}
+  実写 \texttt{real\_validation} は公開実装付属の held-out validation
+  （公式 test ではない）、合成 \texttt{synthetic\_test} は
+  trajectory-group-disjoint test（同じ会場群の未学習軌道であり未知会場ではない）。
+  両 domain は決定論的に選んだ \resBenchDomainSamples 件（seed \resBenchSeed）である。
+  Complete は GT-visible のキーポイントのうちモデルが返したものの割合、
+  PCK は画像対角線に対する閾値（@0.01 は 1\%）で、
+  返さなかった点は不正解として数える。
+  Pair median はモデルが返した点だけの対応誤差の中央値であり、
+  括弧内はその pair 数である。
+  H success は正準規制テンプレートから画像への共通 RANSAC ホモグラフィの成功率で、
+  分母は全 \resBenchDomainSamples 件、失敗も分母に含める。
+  IoU 定義/全 は画像でクリップしたダブルス多角形の IoU の中央値と、
+  値が定義できた件数/全件数であり、
+  縮退した多角形は値を持たないため定義件数を併記する。
+  domain を跨いだ Complete の絶対値は直接比較しない。
+  }
+  \label{tab:court-alignment}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}llrrrrrr@{}}
+    \toprule
+    Domain & Model & Complete & @0.01 & @0.02 &
+      Pair med. (px) & H succ. & IoU 定義/全 \\
+    \midrule
+    \texttt{real\_validation} & ours &
+      \resRealOursComplete & \resRealOursPckOne & \resRealOursPckTwo &
+      \resRealOursPairMedian\ (\resRealOursPairN) &
+      \resRealOursHSuccessCount & \resRealOursIouMedian\ (\resRealOursIouDefined/\resRealOursIouTotal) \\
+    \texttt{real\_validation} & TCD &
+      \resRealTcdComplete & \resRealTcdPckOne & \resRealTcdPckTwo &
+      \resRealTcdPairMedian\ (\resRealTcdPairN) &
+      \resRealTcdHSuccessCount & \resRealTcdIouMedian\ (\resRealTcdIouDefined/\resRealTcdIouTotal) \\
+    \midrule
+    \texttt{synthetic\_test} & ours &
+      \resSynthOursComplete & \resSynthOursPckOne & \resSynthOursPckTwo &
+      \resSynthOursPairMedian\ (\resSynthOursPairN) &
+      \resSynthOursHSuccessCount & \resSynthOursIouMedian\ (\resSynthOursIouDefined/\resSynthOursIouTotal) \\
+    \texttt{synthetic\_test} & TCD &
+      \resSynthTcdComplete & \resSynthTcdPckOne & \resSynthTcdPckTwo &
+      \resSynthTcdPairMedian\ (\resSynthTcdPairN) &
+      \resSynthTcdHSuccessCount &
+      \resNotApplicable\ (\resSynthTcdIouDefined/\resSynthTcdIouTotal) \\
+    \bottomrule
+  \end{tabular}
+\end{table}

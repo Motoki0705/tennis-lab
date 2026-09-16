@@ -1,0 +1,14 @@
+# build/ 配下の中間生成物は管理しない。
+build/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.run.xml
+
+# トップレベルの main.pdf は閲覧用の論文成果物として管理する。

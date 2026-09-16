@@ -1,0 +1,92 @@
+% メートル系アライメントの流れ。すべて本稿のために作成した TikZ 図である。
+\begin{tikzpicture}[
+  font=\sffamily\scriptsize,
+  frame/.style={draw=black!28, rounded corners=2.5pt, fill=none,
+    inner sep=3mm, line width=0.45pt},
+  title/.style={font=\sffamily\bfseries\footnotesize, text=black!85},
+  tinylabel/.style={font=\sffamily\fontsize{6.3}{7.2}\selectfont,
+    text=black!70, align=center},
+  fitcam/.style={regular polygon, regular polygon sides=3, minimum size=3.2mm,
+    inner sep=0pt, draw=gsblue, fill=gsblue!20, line width=0.5pt},
+  holdcam/.style={regular polygon, regular polygon sides=3, minimum size=3.2mm,
+    inner sep=0pt, draw=poseorange, fill=poseorange!22, line width=0.5pt},
+  arr/.style={-{Stealth[length=1.7mm,width=1.2mm]}, line width=0.65pt},
+  dot/.style={circle, inner sep=0pt, minimum size=1.2mm},
+  gate/.style={rounded corners=1.5pt, inner sep=2pt, draw=lossred,
+    fill=lossred!8, font=\sffamily\fontsize{6.2}{7.2}\selectfont, align=center},
+]
+
+  % ---------- (a) カメラ証拠を fit / holdout に先に分ける ----------
+  \begin{scope}[local bounding box=pa]
+    \node[fitcam, shape border rotate=-90] (f1) at (0.05,2.05) {};
+    \node[fitcam, shape border rotate=-90] (f2) at (1.05,2.25) {};
+    \node[fitcam, shape border rotate=-90] (f3) at (2.05,2.05) {};
+    \node[holdcam, shape border rotate=-90] (h1) at (1.05,0.05) {};
+    \draw[fill=softgray!70, draw=black!30, line width=0.4pt]
+      (-0.35,0.60) rectangle (2.45,1.55);
+    \node[tinylabel] at (1.05,1.08) {コート面の画像領域};
+    \draw[arr, draw=gsblue] (f1) -- (0.40,1.55);
+    \draw[arr, draw=gsblue] (f2) -- (1.05,1.55);
+    \draw[arr, draw=gsblue] (f3) -- (1.70,1.55);
+    \draw[arr, draw=poseorange, dashed] (h1) -- (1.05,0.60);
+    \node[tinylabel, text=gsblue, anchor=south] at (1.05,2.50)
+      {fit カメラ（変換の推定）};
+    \node[tinylabel, text=poseorange, anchor=north] at (1.05,-0.25)
+      {holdout カメラ（凍結検証）};
+  \end{scope}
+
+  % ---------- (b) 地面推定と光線交差 ----------
+  \begin{scope}[shift={(4.6,0)}, local bounding box=pb]
+    \coordinate (bl) at (0,-0.30);
+    \coordinate (br) at (3.3,-0.30);
+    \coordinate (tl) at (0.55,1.05);
+    \coordinate (tr) at (2.75,1.05);
+    \fill[softgray!80] (bl) -- (br) -- (tr) -- (tl) -- cycle;
+    \draw[black!35, line width=0.4pt] (bl) -- (br) -- (tr) -- (tl) -- cycle;
+    \draw[black!18] (0.50,-0.30) -- (0.95,1.05)
+      (1.15,-0.30) -- (1.45,1.05)
+      (1.85,-0.30) -- (1.90,1.05)
+      (2.55,-0.30) -- (2.35,1.05);
+    \node[fitcam, shape border rotate=-90] (g1) at (0.15,2.20) {};
+    \coordinate (e1) at (1.05,0.30);
+    \coordinate (e2) at (1.95,-0.20);
+    \draw[arr, draw=gsblue] (g1) -- (e1);
+    \draw[arr, draw=gsblue, dashed] (g1) -- (e2);
+    \node[dot, fill=gsblue] at (e1) {};
+    \node[dot, fill=gsblue] at (e2) {};
+    \node[tinylabel, text=gsblue, anchor=south west] at (0.45,2.35)
+      {線画素の光線と\\推定地上面の交差};
+    \node[tinylabel, anchor=north, text width=42mm] at (1.65,-0.55)
+      {採用画素数と光線--平面角が\\閾値未満なら、そのカメラを外す};
+  \end{scope}
+
+  % ---------- (c) 共通尺度の 2 面当てはめ ----------
+  \begin{scope}[shift={(9.7,0)}, local bounding box=pc]
+    \draw[courtgreen, line width=0.6pt, fill=courtgreen!7]
+      (0.20,0.85) rectangle (1.75,2.05);
+    \draw[courtgreen, line width=0.35pt] (0.975,0.85) -- (0.975,2.05);
+    \draw[black!28, line width=0.35pt] (0.20,1.45) -- (1.75,1.45);
+    \draw[courtgreen, line width=0.6pt, fill=courtgreen!7]
+      (2.50,0.55) rectangle (4.05,1.75);
+    \draw[courtgreen, line width=0.35pt] (3.275,0.55) -- (3.275,1.75);
+    \draw[black!28, line width=0.35pt] (2.50,1.15) -- (4.05,1.15);
+    \draw[<->, courtgreen, line width=0.5pt] (0.35,2.20) -- (3.90,2.20);
+    \node[tinylabel, text=courtgreen, anchor=south] at (2.125,2.22)
+      {共通尺度 \(s\)（メートル換算）};
+    \node[gate, anchor=north] at (2.125,0.40)
+      {中心間距離 \(\geq 10.97\) m、\\フットプリント重なり \(\leq 10^{-9}\)};
+    \node[tinylabel, anchor=north, text width=44mm] at (2.125,-0.55)
+      {トポロジーと尺度が食い違えば\\シーン全体を棄却する};
+  \end{scope}
+
+  % ---------- パネル枠と見出し ----------
+  \node[frame, fit=(pa)] (fa) {};
+  \node[frame, fit=(pb)] (fb) {};
+  \node[frame, fit=(pc)] (fc) {};
+  \node[title, anchor=south] at ($(fa.north)+(0,1.3mm)$) {(a) 証拠の分割};
+  \node[title, anchor=south] at ($(fb.north)+(0,1.3mm)$) {(b) 地上面への持ち上げ};
+  \node[title, anchor=south] at ($(fc.north)+(0,1.3mm)$) {(c) 共通尺度の 2 面当てはめ};
+
+  \draw[arr] (fa.east) -- (fb.west);
+  \draw[arr] (fb.east) -- (fc.west);
+\end{tikzpicture}

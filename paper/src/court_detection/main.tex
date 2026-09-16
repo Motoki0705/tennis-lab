@@ -1,0 +1,43 @@
+\documentclass[11pt,a4paper]{ltjsarticle}
+
+\input{preamble}
+
+\title{\bfseries
+  3Dガウススプラッティング再構成を用いた\\
+  テニスコート検出向け視点分布拡張データ生成\\[0.4em]
+  \large 単一のメートル系シーン--コートアライメントを共通の幾何情報源とする\\
+  \large キーポイント・領域・線・姿勢教師の整合生成
+}
+\author{Motoki Kamimura\\[0.25em]
+  \small Tennis Lab\\
+  \small \url{https://github.com/Motoki0705/tennis-lab}}
+\date{2026年9月16日}
+
+\begin{document}
+
+\maketitle
+
+\input{sections/00_abstract}
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_problem_setting}
+\input{sections/04_system_overview}
+\input{sections/05_alignment}
+\input{sections/06_view_generation}
+\input{sections/07_detector}
+\input{sections/08_experiments}
+\input{sections/09_results}
+\input{sections/10_discussion}
+\input{sections/11_conclusion}
+
+\clearpage
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\clearpage
+\appendix
+\input{appendices/A_coordinate_contracts}
+\input{appendices/B_thresholds}
+\input{appendices/C_reproducibility}
+
+\end{document}

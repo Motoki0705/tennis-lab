@@ -1,0 +1,30 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{古典的コートモデル当てはめの補助 stress probe。}
+  \cref{tab:court-alignment} とは別の決定論的な標本
+  （\resClassicProbeSamples）で固定版を走らせた結果であり、
+  主比較の数値と直接比較しない。
+  実装は \cite{gchlebusrepo} の commit \resClassicCommitShort を
+  OpenCV 4 向けに patch（\texttt{12422aec}）してビルドし、
+  既定閾値のまま CPU のみで実行した。
+  成功とは有限な 16 点を出力したことを指し、
+  幾何の正しさは含まない。
+  }
+  \label{tab:classical_probe}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.20\linewidth}r r X@{}}
+    \toprule
+    標本 & 実行 & 出力 16 点が有限 & 観察 \\
+    \midrule
+    実写 10 件 &
+      \resClassicRealSuccess & 全件 &
+      \resClassicRealInFramePartial 件は \resClassicRealInFramePairs 点のみ画像内で、
+      大きな外挿を含む \\
+    合成 \texttt{B00} 10 件 &
+      \resClassicSynthSuccess & 成功分のみ &
+      失敗 \resClassicSynthFailure（クラッシュ \resClassicSynthCrash，
+      exit 3 が \resClassicSynthExitThree）。
+      成功分にも誤フィットと縮退がある \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

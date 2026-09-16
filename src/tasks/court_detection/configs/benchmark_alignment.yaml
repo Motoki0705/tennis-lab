@@ -1,0 +1,55 @@
+# Cross-model court-alignment benchmark (CPU only).
+#
+# `real` is the held-out TennisCourtDetector *validation* split; it is not an
+# official upstream test split and must always be reported as validation.
+# `synthetic` uses the explicit Synthetic Court V3 test split, whose samples are
+# trajectory-group disjoint from train/validation.
+paths:
+  data_root: data
+  checkpoint_root: outputs
+  artifact_root: assets
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+
+derived_target_root: court_detection/derived_targets
+
+real:
+  display_name: real_validation
+  split: val
+  source:
+    kind: tennis_court_detector
+    root: court
+    split_mapping:
+      # Production contract: the mapping itself stays train -> train.  The
+      # benchmark asks the input layer for the validation split alone, so the
+      # 6,630 train images are never preflighted for this run.
+      train: train
+      val: val
+      test: null
+    excluded_sample_ids: [QszoUKyCOHo_600]
+
+synthetic:
+  display_name: synthetic_test
+  split: test
+  source:
+    kind: synthetic_court
+    schema: v3
+    court_scope: target_court
+    workspace_root: synthetic_data_generation/scenes
+    scene_ids: [B00, B01, B02, B03]
+
+quality:
+  # PCK thresholds are fractions of each image diagonal.
+  pck_fractions: [0.005, 0.01, 0.02, 0.05]
+  # RANSAC inlier threshold, likewise a fraction of the image diagonal.
+  ransac_threshold_fraction: 0.01
+  line_samples_per_segment: 21
+  strata_axes: [scene, coverage_mode, visible_kp_count]
+
+selection:
+  seed: 42
+  max_samples_per_domain: null
+
+visualization:
+  samples_per_domain: 6

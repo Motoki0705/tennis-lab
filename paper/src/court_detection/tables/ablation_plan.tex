@@ -1,0 +1,22 @@
+\begin{table}[t]
+  \centering
+  \caption{\textbf{視点分布を切り分けるための比較計画。}
+  本稿の時点ですべて未実施である。
+  各条件は同じ再構成シーン、同じ教師 schema、同じモデル、
+  同じ初期重み、同じ更新回数を持ち、
+  動かす変数を一行に一つだけにする。
+  }
+  \label{tab:ablation_plan}
+  \small
+  \begin{tabularx}{\linewidth}{@{}p{0.05\linewidth}p{0.28\linewidth}X@{}}
+    \toprule
+    & 学習データ & 切り分けるもの \\
+    \midrule
+    A & 実写のみ & 実写学習の基準 \\
+    B & 合成・視点狭域のみ（同枚数） & 制限された視点での基準 \\
+    C & 合成・視点広域のみ（B と同枚数） & 視点範囲だけの効果 \\
+    D & 同じ実写量 + 合成・狭域（同じ合成枚数） & 実写を使う条件の基準 \\
+    E & 同じ実写量 + 合成・広域（D と同合成枚数） & 実写下での視点範囲の効果 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

@@ -1,0 +1,222 @@
+% =====================================================================
+% 生成物: results/generated/benchmark_metrics.tex
+%
+% このファイルは数値の唯一の入力点である。本文・表・図はここで定義した
+% マクロだけを参照し、数値を直接書かない。
+%
+% 出典: knowledge/runs/run-court-alignment-crossmodel-n120-s42/
+%       manifest.json, metrics.json, metrics.csv, provenance.json
+% manifest fingerprint:
+%   bfc0285940621d6b6aa96fc79b6e308fd24e9d784341f5b7668caa964d77675c
+%
+% 画像を混ぜない。real_validation は公開実装付属の held-out validation
+% （公式 test ではない）、synthetic_test は trajectory-group-disjoint test
+% （同じ会場群の未学習軌道であり未知会場ではない）。
+% =====================================================================
+
+% 交差モデル比較は測定済みである。
+% 本文・表・図は実測マクロを直接参照し、未測定の項目だけが
+% \resultsUnmeasured を返す。この flag は測定状態の記録として残す。
+\newif\ifresultsmeasured
+\resultsmeasuredtrue
+
+% 結果図 (figures/generated/) は実測から生成した PNG を置いてある。
+\newif\ifresultsfigures
+\resultsfigurestrue
+
+% 真に未測定の項目だけがこれを返す。
+\newcommand{\resultsUnmeasured}{\textcolor{unmeasuredgray}{\textbf{未測定}}}
+\newcommand{\resultsPendingFigure}{\textcolor{unmeasuredgray}{\textbf{図は未生成}}}
+\newcommand{\resNotApplicable}{\textcolor{unmeasuredgray}{---}}
+
+% --- checkpoint 選択時に記録された synthetic validation -----------------
+% 出典: outputs/court_detection/multiscale-depth3-local-rtx/logs/version_4
+%       events.out.tfevents.*, step 29843 (epoch 17), validation は 1 回のみ。
+% 注意: 同一比較条件のベンチマークではなく、実写 held-out test でもない。
+\newcommand{\resCkptEpoch}{17}
+\newcommand{\resCkptKPMeanPx}{1.6223}
+\newcommand{\resCkptKPMedianPx}{1.2166}
+\newcommand{\resCkptSegMIoU}{0.9684}
+\newcommand{\resCkptLineDice}{0.7758}
+\newcommand{\resCkptSemanticLineMIoU}{0.5460}
+\newcommand{\resCkptPoseReprojectionPx}{21.0041}
+\newcommand{\resCkptTranslationLtwoM}{0.8791}
+\newcommand{\resCkptRotationGeodesicDeg}{2.6453}
+\newcommand{\resCkptFocalRelativeError}{0.0609}
+\newcommand{\resCkptLogFocalAbsError}{0.0620}
+\newcommand{\resCkptVisiblePointCount}{7{,}346}
+
+% --- 交差モデル比較の共通設定 -------------------------------------------
+% 各 domain 決定論的 120 件、seed 42、全推論 CPU
+% (CUDA_VISIBLE_DEVICES 空、torch_cuda_available=false)。
+\newcommand{\resBenchSamples}{120}
+\newcommand{\resBenchSeed}{42}
+\newcommand{\resBenchDomainSamples}{120}
+\newcommand{\resBenchLineSegmentSamples}{21}
+\newcommand{\resBenchRansacThreshold}{1\%}
+\newcommand{\resBenchElapsedSeconds}{410.1}
+\newcommand{\resBenchManifestShort}{\texttt{bfc02859}\xspace}
+\newcommand{\resBenchOursCheckpointHashShort}{\texttt{b863df1f}\xspace}
+
+% --- real_validation / ours ---------------------------------------------
+\newcommand{\resRealOursN}{120}
+\newcommand{\resRealOursVisible}{1{,}673}
+\newcommand{\resRealOursComplete}{1.0000}
+\newcommand{\resRealOursPckHalf}{0.9797}
+\newcommand{\resRealOursPckOne}{1.0000}
+\newcommand{\resRealOursPckTwo}{1.0000}
+\newcommand{\resRealOursPairN}{1{,}673}
+\newcommand{\resRealOursPairMean}{3.1835}
+\newcommand{\resRealOursPairMedian}{2.9155}
+\newcommand{\resRealOursPairQ}{5.4083}
+\newcommand{\resRealOursHSuccess}{1.0000}
+\newcommand{\resRealOursHSuccessCount}{120/120}
+\newcommand{\resRealOursLineInMean}{2.0243}
+\newcommand{\resRealOursLineInMedian}{1.8563}
+\newcommand{\resRealOursLineInQ}{2.8871}
+\newcommand{\resRealOursLineMedian}{1.8563}
+\newcommand{\resRealOursLineQ}{2.8871}
+\newcommand{\resRealOursLineInFraction}{0.9988}
+\newcommand{\resRealOursIouDefined}{120}
+\newcommand{\resRealOursIouTotal}{120}
+\newcommand{\resRealOursIouMean}{0.9878}
+\newcommand{\resRealOursIouMedian}{0.9879}
+
+% --- real_validation / tcd ----------------------------------------------
+\newcommand{\resRealTcdN}{120}
+\newcommand{\resRealTcdComplete}{0.9952}
+\newcommand{\resRealTcdPckHalf}{0.9271}
+\newcommand{\resRealTcdPckOne}{0.9779}
+\newcommand{\resRealTcdPckTwo}{0.9922}
+\newcommand{\resRealTcdPairN}{1{,}665}
+\newcommand{\resRealTcdPairMean}{3.7136}
+\newcommand{\resRealTcdPairMedian}{3.0000}
+\newcommand{\resRealTcdPairQ}{6.3717}
+\newcommand{\resRealTcdHSuccess}{1.0000}
+\newcommand{\resRealTcdHSuccessCount}{120/120}
+\newcommand{\resRealTcdLineInMean}{24.8039}
+\newcommand{\resRealTcdLineInMedian}{2.1039}
+\newcommand{\resRealTcdLineInQ}{3.7086}
+\newcommand{\resRealTcdLineMedian}{2.1039}
+\newcommand{\resRealTcdLineQ}{3.7086}
+\newcommand{\resRealTcdLineInFraction}{0.9988}
+\newcommand{\resRealTcdIouDefined}{119}
+\newcommand{\resRealTcdIouTotal}{120}
+\newcommand{\resRealTcdIouMean}{0.9858}
+\newcommand{\resRealTcdIouMedian}{0.9873}
+\newcommand{\resRealTcdOutlierPx}{2{,}691.3}
+\newcommand{\resRealTcdOutlierVisible}{10}
+
+% --- synthetic_test / ours ----------------------------------------------
+\newcommand{\resSynthOursN}{120}
+\newcommand{\resSynthOursVisible}{1{,}033}
+\newcommand{\resSynthOursComplete}{1.0000}
+\newcommand{\resSynthOursPckHalf}{0.7144}
+\newcommand{\resSynthOursPckOne}{0.9313}
+\newcommand{\resSynthOursPckTwo}{0.9816}
+\newcommand{\resSynthOursPckFive}{0.9952}
+\newcommand{\resSynthOursPairN}{1{,}033}
+\newcommand{\resSynthOursPairMean}{7.0454}
+\newcommand{\resSynthOursPairMedian}{3.6503}
+\newcommand{\resSynthOursPairQ}{9.5168}
+\newcommand{\resSynthOursHSuccess}{1.0000}
+\newcommand{\resSynthOursHSuccessCount}{120/120}
+\newcommand{\resSynthOursLineInMean}{56.7582}
+\newcommand{\resSynthOursLineInMedian}{7.4264}
+\newcommand{\resSynthOursLineInQ}{199.2716}
+\newcommand{\resSynthOursLineInFraction}{0.7127}
+\newcommand{\resSynthOursLineMedian}{422.0964}
+\newcommand{\resSynthOursLineQ}{4{,}547.4852}
+\newcommand{\resSynthOursIouDefined}{50}
+\newcommand{\resSynthOursIouTotal}{120}
+\newcommand{\resSynthOursIouMean}{0.9003}
+\newcommand{\resSynthOursIouMedian}{0.9490}
+
+% synthetic_test / ours の coverage 層別（主指標を層で割った内訳）
+\newcommand{\resSynthOursFullN}{7}
+\newcommand{\resSynthOursFullLineMedian}{4.2441}
+\newcommand{\resSynthOursFullPckOne}{0.9490}
+\newcommand{\resSynthOursFullVisible}{98}
+\newcommand{\resSynthOursNearFullN}{53}
+\newcommand{\resSynthOursNearFullLineMedian}{6.3320}
+\newcommand{\resSynthOursNearFullPckOne}{0.9318}
+\newcommand{\resSynthOursNearFullVisible}{557}
+\newcommand{\resSynthOursPartialN}{60}
+\newcommand{\resSynthOursPartialLineMedian}{11.3766}
+\newcommand{\resSynthOursPartialPckOne}{0.9259}
+\newcommand{\resSynthOursPartialVisible}{378}
+
+% synthetic_test / ours の会場別 PCK@0.01
+\newcommand{\resSynthOursSceneBzeroN}{28}
+\newcommand{\resSynthOursSceneBzeroPckOne}{0.9600}
+\newcommand{\resSynthOursSceneBzeroVisible}{250}
+\newcommand{\resSynthOursSceneBoneN}{18}
+\newcommand{\resSynthOursSceneBonePckOne}{0.7452}
+\newcommand{\resSynthOursSceneBoneVisible}{157}
+\newcommand{\resSynthOursSceneBtwoN}{38}
+\newcommand{\resSynthOursSceneBtwoPckOne}{0.9829}
+\newcommand{\resSynthOursSceneBtwoVisible}{351}
+\newcommand{\resSynthOursSceneBthreeN}{36}
+\newcommand{\resSynthOursSceneBthreePckOne}{0.9455}
+\newcommand{\resSynthOursSceneBthreeVisible}{275}
+
+% --- synthetic_test / tcd -----------------------------------------------
+\newcommand{\resSynthTcdN}{120}
+\newcommand{\resSynthTcdComplete}{0.0281}
+\newcommand{\resSynthTcdPckHalf}{0.0010}
+\newcommand{\resSynthTcdPckOne}{0.0019}
+\newcommand{\resSynthTcdPckTwo}{0.0058}
+\newcommand{\resSynthTcdPckFive}{0.0126}
+\newcommand{\resSynthTcdPairN}{29}
+\newcommand{\resSynthTcdPairMean}{108.5576}
+\newcommand{\resSynthTcdPairMedian}{66.8262}
+\newcommand{\resSynthTcdPairQ}{178.8752}
+\newcommand{\resSynthTcdHSuccess}{0.0167}
+\newcommand{\resSynthTcdHSuccessCount}{2/120}
+\newcommand{\resSynthTcdLineInMean}{156.2766}
+\newcommand{\resSynthTcdLineInMedian}{156.2766}
+\newcommand{\resSynthTcdLineInQ}{172.5752}
+\newcommand{\resSynthTcdLineInFraction}{0.0124}
+\newcommand{\resSynthTcdLineMedian}{1{,}517.8520}
+\newcommand{\resSynthTcdLineQ}{2{,}569.1827}
+\newcommand{\resSynthTcdIouDefined}{0}
+\newcommand{\resSynthTcdIouTotal}{120}
+\newcommand{\resSynthTcdInsufficientFailures}{117}
+\newcommand{\resSynthTcdRansacFailures}{1}
+\newcommand{\resSynthTcdSceneBzeroN}{28}
+\newcommand{\resSynthTcdSceneBzeroComplete}{0.1160}
+\newcommand{\resSynthTcdSceneBzeroHSuccess}{2}
+\newcommand{\resSynthTcdSceneBzeroPairs}{29}
+\newcommand{\resSynthTcdSceneOtherValid}{0}
+
+% --- 古典 baseline 補助 stress probe ------------------------------------
+% 主比較とは別の決定論的な 10 real + 10 B00 synthetic 標本である。
+% 主表の数値と直接比較しない。
+\newcommand{\resClassicCommitShort}{\texttt{762d0775}\xspace}
+\newcommand{\resClassicPatchHashShort}{\texttt{12422aec}\xspace}
+\newcommand{\resClassicEnv}{Ubuntu 22.04 / OpenCV 4.5.4 / CPU のみの Docker\xspace}
+\newcommand{\resClassicProbeSamples}{real 10 件 + \texttt{B00} synthetic 10 件}
+\newcommand{\resClassicRealSuccess}{10/10}
+\newcommand{\resClassicRealFinitePairs}{16}
+\newcommand{\resClassicRealInFramePartial}{1/10}
+\newcommand{\resClassicRealInFramePairs}{8/16}
+\newcommand{\resClassicSynthSuccess}{6/10}
+\newcommand{\resClassicSynthFailure}{4/10}
+\newcommand{\resClassicSynthCrash}{3}
+\newcommand{\resClassicSynthExitThree}{1}
+\newcommand{\resClassicBzeroTestFrames}{238}
+\newcommand{\resClassicBzeroCourts}{2}
+
+% --- データセット集計 (manifest から確認済み) ---------------------------
+\newcommand{\datasetAcceptedTotal}{8{,}415}
+\newcommand{\datasetAcceptedBzero}{2{,}176}
+\newcommand{\datasetAcceptedBone}{2{,}052}
+\newcommand{\datasetAcceptedBtwo}{2{,}094}
+\newcommand{\datasetAcceptedBthree}{2{,}093}
+\newcommand{\datasetTrainFrames}{6{,}594}
+\newcommand{\datasetValidationFrames}{935}
+\newcommand{\datasetTestFrames}{886}
+\newcommand{\datasetTrainGroups}{113}
+\newcommand{\datasetValidationGroups}{15}
+\newcommand{\datasetTestGroups}{13}
+\newcommand{\datasetEarlierReportTotal}{8{,}433}

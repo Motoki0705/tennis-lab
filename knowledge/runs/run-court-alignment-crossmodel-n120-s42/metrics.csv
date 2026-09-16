@@ -1,0 +1,309 @@
+domain,domain_display_name,model,metric_group,metric,subkey,value,count
+real_validation,real_validation,ours,keypoints,completeness,,1,
+real_validation,real_validation,ours,keypoints,ground_truth_visible_keypoints,,1673,
+real_validation,real_validation,ours,keypoints,pair_error_diagonal,count,1673,1673
+real_validation,real_validation,ours,keypoints,pair_error_diagonal,mean,0.00216768,1673
+real_validation,real_validation,ours,keypoints,pair_error_diagonal,median,0.0019852,1673
+real_validation,real_validation,ours,keypoints,pair_error_diagonal,q90,0.00368263,1673
+real_validation,real_validation,ours,keypoints,pair_error_px,count,1673,1673
+real_validation,real_validation,ours,keypoints,pair_error_px,mean,3.18347,1673
+real_validation,real_validation,ours,keypoints,pair_error_px,median,2.91548,1673
+real_validation,real_validation,ours,keypoints,pair_error_px,q90,5.40833,1673
+real_validation,real_validation,ours,keypoints,pck,0.005,0.979677,
+real_validation,real_validation,ours,keypoints,pck,0.01,1,
+real_validation,real_validation,ours,keypoints,pck,0.02,1,
+real_validation,real_validation,ours,keypoints,pck,0.05,1,
+real_validation,real_validation,ours,keypoints,predicted_valid_keypoints_among_visible,,1673,
+real_validation,real_validation,ours,keypoints,sample_count,,120,
+real_validation,real_validation,ours,alignment,doubles_polygon_iou,count,120,120
+real_validation,real_validation,ours,alignment,doubles_polygon_iou,mean,0.987845,120
+real_validation,real_validation,ours,alignment,doubles_polygon_iou,median,0.987925,120
+real_validation,real_validation,ours,alignment,doubles_polygon_iou,q90,0.993358,120
+real_validation,real_validation,ours,alignment,ground_truth_homography_success,,120,
+real_validation,real_validation,ours,alignment,line_reprojection_diagonal,count,120,120
+real_validation,real_validation,ours,alignment,line_reprojection_diagonal,mean,0.00138167,120
+real_validation,real_validation,ours,alignment,line_reprojection_diagonal,median,0.00126401,120
+real_validation,real_validation,ours,alignment,line_reprojection_diagonal,q90,0.00196585,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_diagonal,count,120,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_diagonal,mean,0.00137839,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_diagonal,median,0.00126401,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_diagonal,q90,0.00196585,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_px,count,120,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_px,mean,2.02432,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_px,median,1.85633,120
+real_validation,real_validation,ours,alignment,line_reprojection_in_frame_px,q90,2.88706,120
+real_validation,real_validation,ours,alignment,line_reprojection_px,count,120,120
+real_validation,real_validation,ours,alignment,line_reprojection_px,mean,2.02913,120
+real_validation,real_validation,ours,alignment,line_reprojection_px,median,1.85633,120
+real_validation,real_validation,ours,alignment,line_reprojection_px,q90,2.88706,120
+real_validation,real_validation,ours,alignment,line_samples_in_frame,,32721,32721
+real_validation,real_validation,ours,alignment,line_samples_in_frame_fraction,,0.99881,
+real_validation,real_validation,ours,alignment,line_samples_total,,32760,32760
+real_validation,real_validation,ours,alignment,predicted_homography_inliers_on_success,count,120,120
+real_validation,real_validation,ours,alignment,predicted_homography_inliers_on_success,mean,13.9333,120
+real_validation,real_validation,ours,alignment,predicted_homography_inliers_on_success,median,14,120
+real_validation,real_validation,ours,alignment,predicted_homography_inliers_on_success,q90,14,120
+real_validation,real_validation,ours,alignment,predicted_homography_success,,120,
+real_validation,real_validation,ours,alignment,predicted_homography_success_rate,,1,
+real_validation,real_validation,ours,alignment,sample_count,,120,
+real_validation,real_validation,ours,per_channel,far_doubles_left,pck,0.005=0.983333; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_doubles_left,pair_error_px.mean,3.10132,120
+real_validation,real_validation,ours,per_channel,far_doubles_right,pck,0.005=0.983333; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_doubles_right,pair_error_px.mean,3.20987,120
+real_validation,real_validation,ours,per_channel,near_doubles_left,pck,0.005=0.983051; 0.01=1; 0.02=1; 0.05=1,118
+real_validation,real_validation,ours,per_channel,near_doubles_left,pair_error_px.mean,3.22113,118
+real_validation,real_validation,ours,per_channel,near_doubles_right,pck,0.005=0.931624; 0.01=1; 0.02=1; 0.05=1,117
+real_validation,real_validation,ours,per_channel,near_doubles_right,pair_error_px.mean,4.1643,117
+real_validation,real_validation,ours,per_channel,far_singles_left,pck,0.005=0.991667; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_singles_left,pair_error_px.mean,2.90778,120
+real_validation,real_validation,ours,per_channel,near_singles_left,pck,0.005=0.991597; 0.01=1; 0.02=1; 0.05=1,119
+real_validation,real_validation,ours,per_channel,near_singles_left,pair_error_px.mean,3.08609,119
+real_validation,real_validation,ours,per_channel,far_singles_right,pck,0.005=0.966667; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_singles_right,pair_error_px.mean,3.15241,120
+real_validation,real_validation,ours,per_channel,near_singles_right,pck,0.005=0.991597; 0.01=1; 0.02=1; 0.05=1,119
+real_validation,real_validation,ours,per_channel,near_singles_right,pair_error_px.mean,3.43346,119
+real_validation,real_validation,ours,per_channel,far_service_left,pck,0.005=0.975; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_service_left,pair_error_px.mean,3.11182,120
+real_validation,real_validation,ours,per_channel,far_service_right,pck,0.005=0.983333; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_service_right,pair_error_px.mean,2.966,120
+real_validation,real_validation,ours,per_channel,near_service_left,pck,0.005=0.975; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,near_service_left,pair_error_px.mean,2.81142,120
+real_validation,real_validation,ours,per_channel,near_service_right,pck,0.005=0.991667; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,near_service_right,pair_error_px.mean,2.99408,120
+real_validation,real_validation,ours,per_channel,far_service_t,pck,0.005=0.991667; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,far_service_t,pair_error_px.mean,3.24164,120
+real_validation,real_validation,ours,per_channel,near_service_t,pck,0.005=0.975; 0.01=1; 0.02=1; 0.05=1,120
+real_validation,real_validation,ours,per_channel,near_service_t,pair_error_px.mean,3.19369,120
+real_validation,real_validation,tcd,keypoints,completeness,,0.995218,
+real_validation,real_validation,tcd,keypoints,ground_truth_visible_keypoints,,1673,
+real_validation,real_validation,tcd,keypoints,pair_error_diagonal,count,1665,1665
+real_validation,real_validation,tcd,keypoints,pair_error_diagonal,mean,0.00252864,1665
+real_validation,real_validation,tcd,keypoints,pair_error_diagonal,median,0.00204276,1665
+real_validation,real_validation,tcd,keypoints,pair_error_diagonal,q90,0.00433861,1665
+real_validation,real_validation,tcd,keypoints,pair_error_px,count,1665,1665
+real_validation,real_validation,tcd,keypoints,pair_error_px,mean,3.71357,1665
+real_validation,real_validation,tcd,keypoints,pair_error_px,median,3,1665
+real_validation,real_validation,tcd,keypoints,pair_error_px,q90,6.3717,1665
+real_validation,real_validation,tcd,keypoints,pck,0.005,0.927077,
+real_validation,real_validation,tcd,keypoints,pck,0.01,0.977884,
+real_validation,real_validation,tcd,keypoints,pck,0.02,0.99223,
+real_validation,real_validation,tcd,keypoints,pck,0.05,0.995218,
+real_validation,real_validation,tcd,keypoints,predicted_valid_keypoints_among_visible,,1665,
+real_validation,real_validation,tcd,keypoints,sample_count,,120,
+real_validation,real_validation,tcd,alignment,doubles_polygon_iou,count,119,119
+real_validation,real_validation,tcd,alignment,doubles_polygon_iou,mean,0.985767,119
+real_validation,real_validation,tcd,alignment,doubles_polygon_iou,median,0.987279,119
+real_validation,real_validation,tcd,alignment,doubles_polygon_iou,q90,0.99204,119
+real_validation,real_validation,tcd,alignment,ground_truth_homography_success,,120,
+real_validation,real_validation,tcd,alignment,line_reprojection_diagonal,count,120,120
+real_validation,real_validation,tcd,alignment,line_reprojection_diagonal,mean,0.016784,120
+real_validation,real_validation,tcd,alignment,line_reprojection_diagonal,median,0.00143257,120
+real_validation,real_validation,tcd,alignment,line_reprojection_diagonal,q90,0.00252527,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_diagonal,count,120,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_diagonal,mean,0.0168895,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_diagonal,median,0.00143257,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_diagonal,q90,0.00252527,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_px,count,120,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_px,mean,24.8039,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_px,median,2.10388,120
+real_validation,real_validation,tcd,alignment,line_reprojection_in_frame_px,q90,3.70862,120
+real_validation,real_validation,tcd,alignment,line_reprojection_px,count,120,120
+real_validation,real_validation,tcd,alignment,line_reprojection_px,mean,24.649,120
+real_validation,real_validation,tcd,alignment,line_reprojection_px,median,2.10388,120
+real_validation,real_validation,tcd,alignment,line_reprojection_px,q90,3.70862,120
+real_validation,real_validation,tcd,alignment,line_samples_in_frame,,32721,32721
+real_validation,real_validation,tcd,alignment,line_samples_in_frame_fraction,,0.99881,
+real_validation,real_validation,tcd,alignment,line_samples_total,,32760,32760
+real_validation,real_validation,tcd,alignment,predicted_homography_inliers_on_success,count,120,120
+real_validation,real_validation,tcd,alignment,predicted_homography_inliers_on_success,mean,13.7,120
+real_validation,real_validation,tcd,alignment,predicted_homography_inliers_on_success,median,14,120
+real_validation,real_validation,tcd,alignment,predicted_homography_inliers_on_success,q90,14,120
+real_validation,real_validation,tcd,alignment,predicted_homography_success,,120,
+real_validation,real_validation,tcd,alignment,predicted_homography_success_rate,,1,
+real_validation,real_validation,tcd,alignment,sample_count,,120,
+real_validation,real_validation,tcd,alignment,undefined_reasons,degenerate_polygon,1,
+real_validation,real_validation,tcd,per_channel,far_doubles_left,pck,0.005=0.958333; 0.01=0.983333; 0.02=1; 0.05=1,120
+real_validation,real_validation,tcd,per_channel,far_doubles_left,pair_error_px.mean,3.62526,120
+real_validation,real_validation,tcd,per_channel,far_doubles_right,pck,0.005=0.941667; 0.01=0.991667; 0.02=0.991667; 0.05=0.991667,120
+real_validation,real_validation,tcd,per_channel,far_doubles_right,pair_error_px.mean,3.34902,119
+real_validation,real_validation,tcd,per_channel,near_doubles_left,pck,0.005=0.813559; 0.01=0.983051; 0.02=0.991525; 0.05=0.991525,118
+real_validation,real_validation,tcd,per_channel,near_doubles_left,pair_error_px.mean,4.84153,117
+real_validation,real_validation,tcd,per_channel,near_doubles_right,pck,0.005=0.923077; 0.01=0.974359; 0.02=1; 0.05=1,117
+real_validation,real_validation,tcd,per_channel,near_doubles_right,pair_error_px.mean,4.07078,117
+real_validation,real_validation,tcd,per_channel,far_singles_left,pck,0.005=0.975; 0.01=0.991667; 0.02=1; 0.05=1,120
+real_validation,real_validation,tcd,per_channel,far_singles_left,pair_error_px.mean,3.29698,120
+real_validation,real_validation,tcd,per_channel,near_singles_left,pck,0.005=0.94958; 0.01=0.97479; 0.02=0.991597; 0.05=1,119
+real_validation,real_validation,tcd,per_channel,near_singles_left,pair_error_px.mean,4.11303,119
+real_validation,real_validation,tcd,per_channel,far_singles_right,pck,0.005=0.941667; 0.01=0.991667; 0.02=0.991667; 0.05=0.991667,120
+real_validation,real_validation,tcd,per_channel,far_singles_right,pair_error_px.mean,3.21918,119
+real_validation,real_validation,tcd,per_channel,near_singles_right,pck,0.005=0.907563; 0.01=0.957983; 0.02=0.97479; 0.05=0.983193,119
+real_validation,real_validation,tcd,per_channel,near_singles_right,pair_error_px.mean,3.91817,117
+real_validation,real_validation,tcd,per_channel,far_service_left,pck,0.005=0.891667; 0.01=0.958333; 0.02=0.991667; 0.05=1,120
+real_validation,real_validation,tcd,per_channel,far_service_left,pair_error_px.mean,4.19675,120
+real_validation,real_validation,tcd,per_channel,far_service_right,pck,0.005=0.9; 0.01=0.975; 0.02=0.991667; 0.05=0.991667,120
+real_validation,real_validation,tcd,per_channel,far_service_right,pair_error_px.mean,3.94562,119
+real_validation,real_validation,tcd,per_channel,near_service_left,pck,0.005=0.941667; 0.01=0.966667; 0.02=0.991667; 0.05=1,120
+real_validation,real_validation,tcd,per_channel,near_service_left,pair_error_px.mean,3.66825,120
+real_validation,real_validation,tcd,per_channel,near_service_right,pck,0.005=0.941667; 0.01=0.983333; 0.02=0.991667; 0.05=0.991667,120
+real_validation,real_validation,tcd,per_channel,near_service_right,pair_error_px.mean,3.35408,119
+real_validation,real_validation,tcd,per_channel,far_service_t,pck,0.005=0.95; 0.01=0.975; 0.02=1; 0.05=1,120
+real_validation,real_validation,tcd,per_channel,far_service_t,pair_error_px.mean,3.19474,120
+real_validation,real_validation,tcd,per_channel,near_service_t,pck,0.005=0.941667; 0.01=0.983333; 0.02=0.983333; 0.05=0.991667,120
+real_validation,real_validation,tcd,per_channel,near_service_t,pair_error_px.mean,3.22996,119
+synthetic_test,synthetic_test,ours,keypoints,completeness,,1,
+synthetic_test,synthetic_test,ours,keypoints,ground_truth_visible_keypoints,,1033,
+synthetic_test,synthetic_test,ours,keypoints,pair_error_diagonal,count,1033,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_diagonal,mean,0.00640439,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_diagonal,median,0.00331814,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_diagonal,q90,0.0086509,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_px,count,1033,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_px,mean,7.04542,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_px,median,3.65025,1033
+synthetic_test,synthetic_test,ours,keypoints,pair_error_px,q90,9.51679,1033
+synthetic_test,synthetic_test,ours,keypoints,pck,0.005,0.714424,
+synthetic_test,synthetic_test,ours,keypoints,pck,0.01,0.931268,
+synthetic_test,synthetic_test,ours,keypoints,pck,0.02,0.981607,
+synthetic_test,synthetic_test,ours,keypoints,pck,0.05,0.99516,
+synthetic_test,synthetic_test,ours,keypoints,predicted_valid_keypoints_among_visible,,1033,
+synthetic_test,synthetic_test,ours,keypoints,sample_count,,120,
+synthetic_test,synthetic_test,ours,alignment,doubles_polygon_iou,count,50,50
+synthetic_test,synthetic_test,ours,alignment,doubles_polygon_iou,mean,0.900291,50
+synthetic_test,synthetic_test,ours,alignment,doubles_polygon_iou,median,0.949045,50
+synthetic_test,synthetic_test,ours,alignment,doubles_polygon_iou,q90,0.98663,50
+synthetic_test,synthetic_test,ours,alignment,ground_truth_homography_success,,120,
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_diagonal,count,120,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_diagonal,mean,1.83317,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_diagonal,median,0.383692,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_diagonal,q90,4.13373,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_diagonal,count,120,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_diagonal,mean,0.0515941,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_diagonal,median,0.00675075,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_diagonal,q90,0.181141,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_px,count,120,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_px,mean,56.7582,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_px,median,7.42644,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_in_frame_px,q90,199.272,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_px,count,120,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_px,mean,2016.66,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_px,median,422.096,120
+synthetic_test,synthetic_test,ours,alignment,line_reprojection_px,q90,4547.49,120
+synthetic_test,synthetic_test,ours,alignment,line_samples_in_frame,,23347,23347
+synthetic_test,synthetic_test,ours,alignment,line_samples_in_frame_fraction,,0.712668,
+synthetic_test,synthetic_test,ours,alignment,line_samples_total,,32760,32760
+synthetic_test,synthetic_test,ours,alignment,predicted_homography_inliers_on_success,count,120,120
+synthetic_test,synthetic_test,ours,alignment,predicted_homography_inliers_on_success,mean,8.49167,120
+synthetic_test,synthetic_test,ours,alignment,predicted_homography_inliers_on_success,median,9,120
+synthetic_test,synthetic_test,ours,alignment,predicted_homography_inliers_on_success,q90,12,120
+synthetic_test,synthetic_test,ours,alignment,predicted_homography_success,,120,
+synthetic_test,synthetic_test,ours,alignment,predicted_homography_success_rate,,1,
+synthetic_test,synthetic_test,ours,alignment,sample_count,,120,
+synthetic_test,synthetic_test,ours,alignment,undefined_reasons,degenerate_polygon,70,
+synthetic_test,synthetic_test,ours,per_channel,far_doubles_left,pck,0.005=0.75; 0.01=0.94; 0.02=0.99; 0.05=1,100
+synthetic_test,synthetic_test,ours,per_channel,far_doubles_left,pair_error_px.mean,4.69274,100
+synthetic_test,synthetic_test,ours,per_channel,far_doubles_right,pck,0.005=0.596154; 0.01=0.894231; 0.02=0.980769; 0.05=1,104
+synthetic_test,synthetic_test,ours,per_channel,far_doubles_right,pair_error_px.mean,5.99986,104
+synthetic_test,synthetic_test,ours,per_channel,near_doubles_left,pck,0.005=0.736842; 0.01=0.894737; 0.02=1; 0.05=1,19
+synthetic_test,synthetic_test,ours,per_channel,near_doubles_left,pair_error_px.mean,4.77883,19
+synthetic_test,synthetic_test,ours,per_channel,near_doubles_right,pck,0.005=0.444444; 0.01=0.777778; 0.02=0.888889; 0.05=1,9
+synthetic_test,synthetic_test,ours,per_channel,near_doubles_right,pair_error_px.mean,11.5351,9
+synthetic_test,synthetic_test,ours,per_channel,far_singles_left,pck,0.005=0.666667; 0.01=0.960784; 0.02=0.990196; 0.05=1,102
+synthetic_test,synthetic_test,ours,per_channel,far_singles_left,pair_error_px.mean,4.91072,102
+synthetic_test,synthetic_test,ours,per_channel,near_singles_left,pck,0.005=0.722222; 0.01=1; 0.02=1; 0.05=1,18
+synthetic_test,synthetic_test,ours,per_channel,near_singles_left,pair_error_px.mean,4.56102,18
+synthetic_test,synthetic_test,ours,per_channel,far_singles_right,pck,0.005=0.548077; 0.01=0.865385; 0.02=0.980769; 0.05=1,104
+synthetic_test,synthetic_test,ours,per_channel,far_singles_right,pair_error_px.mean,6.21374,104
+synthetic_test,synthetic_test,ours,per_channel,near_singles_right,pck,0.005=0.538462; 0.01=0.615385; 0.02=0.923077; 0.05=1,13
+synthetic_test,synthetic_test,ours,per_channel,near_singles_right,pair_error_px.mean,9.35423,13
+synthetic_test,synthetic_test,ours,per_channel,far_service_left,pck,0.005=0.745455; 0.01=0.936364; 0.02=0.972727; 0.05=0.981818,110
+synthetic_test,synthetic_test,ours,per_channel,far_service_left,pair_error_px.mean,12.162,110
+synthetic_test,synthetic_test,ours,per_channel,far_service_right,pck,0.005=0.682243; 0.01=0.934579; 0.02=0.971963; 0.05=0.990654,107
+synthetic_test,synthetic_test,ours,per_channel,far_service_right,pair_error_px.mean,5.50925,107
+synthetic_test,synthetic_test,ours,per_channel,near_service_left,pck,0.005=0.808219; 0.01=0.972603; 0.02=0.986301; 0.05=1,73
+synthetic_test,synthetic_test,ours,per_channel,near_service_left,pair_error_px.mean,3.69237,73
+synthetic_test,synthetic_test,ours,per_channel,near_service_right,pck,0.005=0.897436; 0.01=0.987179; 0.02=1; 0.05=1,78
+synthetic_test,synthetic_test,ours,per_channel,near_service_right,pair_error_px.mean,3.35261,78
+synthetic_test,synthetic_test,ours,per_channel,far_service_t,pck,0.005=0.733333; 0.01=0.933333; 0.02=0.975; 0.05=0.991667,120
+synthetic_test,synthetic_test,ours,per_channel,far_service_t,pair_error_px.mean,10.4487,120
+synthetic_test,synthetic_test,ours,per_channel,near_service_t,pck,0.005=0.868421; 0.01=0.973684; 0.02=0.986842; 0.05=0.986842,76
+synthetic_test,synthetic_test,ours,per_channel,near_service_t,pair_error_px.mean,12.1976,76
+synthetic_test,synthetic_test,tcd,keypoints,completeness,,0.0280736,
+synthetic_test,synthetic_test,tcd,keypoints,ground_truth_visible_keypoints,,1033,
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_diagonal,count,29,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_diagonal,mean,0.0986805,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_diagonal,median,0.060746,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_diagonal,q90,0.1626,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_px,count,29,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_px,mean,108.558,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_px,median,66.8262,29
+synthetic_test,synthetic_test,tcd,keypoints,pair_error_px,q90,178.875,29
+synthetic_test,synthetic_test,tcd,keypoints,pck,0.005,0.000968054,
+synthetic_test,synthetic_test,tcd,keypoints,pck,0.01,0.00193611,
+synthetic_test,synthetic_test,tcd,keypoints,pck,0.02,0.00580833,
+synthetic_test,synthetic_test,tcd,keypoints,pck,0.05,0.0125847,
+synthetic_test,synthetic_test,tcd,keypoints,predicted_valid_keypoints_among_visible,,29,
+synthetic_test,synthetic_test,tcd,keypoints,sample_count,,120,
+synthetic_test,synthetic_test,tcd,alignment,doubles_polygon_iou,count,0,0
+synthetic_test,synthetic_test,tcd,alignment,doubles_polygon_iou,mean,,0
+synthetic_test,synthetic_test,tcd,alignment,doubles_polygon_iou,median,,0
+synthetic_test,synthetic_test,tcd,alignment,doubles_polygon_iou,q90,,0
+synthetic_test,synthetic_test,tcd,alignment,ground_truth_homography_success,,120,
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_diagonal,count,2,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_diagonal,mean,1.37975,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_diagonal,median,1.37975,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_diagonal,q90,2.33543,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_diagonal,count,2,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_diagonal,mean,0.142058,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_diagonal,median,0.142058,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_diagonal,q90,0.156873,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_px,count,2,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_px,mean,156.277,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_px,median,156.277,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_in_frame_px,q90,172.575,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_px,count,2,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_px,mean,1517.85,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_px,median,1517.85,2
+synthetic_test,synthetic_test,tcd,alignment,line_reprojection_px,q90,2569.18,2
+synthetic_test,synthetic_test,tcd,alignment,line_samples_in_frame,,406,406
+synthetic_test,synthetic_test,tcd,alignment,line_samples_in_frame_fraction,,0.0123932,
+synthetic_test,synthetic_test,tcd,alignment,line_samples_total,,32760,32760
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_failure_reasons,insufficient_valid_keypoints,117,
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_failure_reasons,ransac_failed,1,
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_inliers_on_success,count,2,2
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_inliers_on_success,mean,4,2
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_inliers_on_success,median,4,2
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_inliers_on_success,q90,4,2
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_success,,2,
+synthetic_test,synthetic_test,tcd,alignment,predicted_homography_success_rate,,0.0166667,
+synthetic_test,synthetic_test,tcd,alignment,sample_count,,120,
+synthetic_test,synthetic_test,tcd,alignment,undefined_reasons,degenerate_polygon,2,
+synthetic_test,synthetic_test,tcd,alignment,undefined_reasons,insufficient_valid_keypoints,117,
+synthetic_test,synthetic_test,tcd,alignment,undefined_reasons,no_valid_prediction_court_homography,118,
+synthetic_test,synthetic_test,tcd,alignment,undefined_reasons,ransac_failed,1,
+synthetic_test,synthetic_test,tcd,per_channel,far_doubles_left,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0.02,100
+synthetic_test,synthetic_test,tcd,per_channel,far_doubles_left,pair_error_px.mean,172.796,6
+synthetic_test,synthetic_test,tcd,per_channel,far_doubles_right,pck,0.005=0.00961538; 0.01=0.00961538; 0.02=0.0192308; 0.05=0.0288462,104
+synthetic_test,synthetic_test,tcd,per_channel,far_doubles_right,pair_error_px.mean,62.1438,5
+synthetic_test,synthetic_test,tcd,per_channel,near_doubles_left,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0,19
+synthetic_test,synthetic_test,tcd,per_channel,near_doubles_left,pair_error_px.mean,,0
+synthetic_test,synthetic_test,tcd,per_channel,near_doubles_right,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0,9
+synthetic_test,synthetic_test,tcd,per_channel,near_doubles_right,pair_error_px.mean,,0
+synthetic_test,synthetic_test,tcd,per_channel,far_singles_left,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0.00980392,102
+synthetic_test,synthetic_test,tcd,per_channel,far_singles_left,pair_error_px.mean,70.8876,4
+synthetic_test,synthetic_test,tcd,per_channel,near_singles_left,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0,18
+synthetic_test,synthetic_test,tcd,per_channel,near_singles_left,pair_error_px.mean,,0
+synthetic_test,synthetic_test,tcd,per_channel,far_singles_right,pck,0.005=0; 0.01=0; 0.02=0.00961538; 0.05=0.0192308,104
+synthetic_test,synthetic_test,tcd,per_channel,far_singles_right,pair_error_px.mean,68.4542,4
+synthetic_test,synthetic_test,tcd,per_channel,near_singles_right,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0,13
+synthetic_test,synthetic_test,tcd,per_channel,near_singles_right,pair_error_px.mean,,0
+synthetic_test,synthetic_test,tcd,per_channel,far_service_left,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0.00909091,110
+synthetic_test,synthetic_test,tcd,per_channel,far_service_left,pair_error_px.mean,57.8342,2
+synthetic_test,synthetic_test,tcd,per_channel,far_service_right,pck,0.005=0; 0.01=0; 0.02=0.00934579; 0.05=0.0186916,107
+synthetic_test,synthetic_test,tcd,per_channel,far_service_right,pair_error_px.mean,24.7723,2
+synthetic_test,synthetic_test,tcd,per_channel,near_service_left,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0,73
+synthetic_test,synthetic_test,tcd,per_channel,near_service_left,pair_error_px.mean,,0
+synthetic_test,synthetic_test,tcd,per_channel,near_service_right,pck,0.005=0; 0.01=0.0128205; 0.02=0.0128205; 0.05=0.0128205,78
+synthetic_test,synthetic_test,tcd,per_channel,near_service_right,pair_error_px.mean,6.04996,1
+synthetic_test,synthetic_test,tcd,per_channel,far_service_t,pck,0.005=0; 0.01=0; 0.02=0.00833333; 0.05=0.00833333,120
+synthetic_test,synthetic_test,tcd,per_channel,far_service_t,pair_error_px.mean,60.9605,3
+synthetic_test,synthetic_test,tcd,per_channel,near_service_t,pck,0.005=0; 0.01=0; 0.02=0; 0.05=0,76
+synthetic_test,synthetic_test,tcd,per_channel,near_service_t,pair_error_px.mean,444.581,2
