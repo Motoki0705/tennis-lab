@@ -69,6 +69,8 @@ members:
 - run-slcs-host-storage-audit-v1
 - run-slcs-meiji-v9-observation-reuse-v2
 - run-slcs-meiji-stream-byte-diff-v1
+- run-slcs-host-storage-audit-v2
+- run-slcs-meiji-read-modes-v1
 parents: []
 tags:
 - slcs
@@ -115,6 +117,8 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 [人物観測の読取stream付き再利用](run-slcs-meiji-v9-observation-reuse-v2.md)は初回ViTPose pin照合で停止し、不一致byte列の保存に成功した。2実装の同stream hash、保存snapshotの独立Python2実装と外部sha256sumが全て同じ不一致値となり、長さ・stat・保存chunk照合は一致した。人物選択前で公開0。正常snapshotとは1MiB chunk index1808だけhashが異なり、live fileを再読せず保存内容同士のbyte差分を調べる。
 
 [保存snapshotの全byte比較](run-slcs-meiji-stream-byte-diff-v1.md)で、2,549,075,546bytes中ちょうど1byte/1bitの差を確認した。offset1896501665で0x9D→0xBD、XOR0x20。両snapshotの二実装SHA・stat・長さとmetadata前後照合は通過し、ZIP headerだけで重みarchiveのstored payload内と特定した。原因がstorage/cache/memory/softwareのどこかは未確定で、SSD故障等の断定や失敗結果の採用はしない。
+
+[同位置4KiBの通常/direct read比較](run-slcs-meiji-read-modes-v1.md)はstatx alignmentを確認し、live3readがすべてgood保存blockに一致した。これは限定した時点と位置の結果で、全体生成を再開できる安定性の根拠とはしない。[Windows collectorの実行](run-slcs-host-storage-audit-v2.md)はUNC上の未署名scriptとして実行前に拒否され、新規ログは取得できなかった。ポリシーは変更せず、ローカルコピーでの読み取り収集についてユーザーへ確認している。
 
 ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
 
