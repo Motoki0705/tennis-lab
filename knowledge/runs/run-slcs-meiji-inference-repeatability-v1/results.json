@@ -1,0 +1,421 @@
+{
+  "status": "passed",
+  "phase": "inputs_end",
+  "hash_rows": [
+    {
+      "phase": "before_torch_import",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected_source": "supplied_known_sha",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_changed": false,
+      "bytes": 2549075546,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 14.341903849001028
+    },
+    {
+      "phase": "inputs_start",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam0.mp4",
+      "hashlib": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "_sha256": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "expected": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "expected_source": "supplied_known_sha",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 3358985,
+        "st_size": 6876364,
+        "st_mtime_ns": 1788955555864499957,
+        "st_ctime_ns": 1789731144719164891
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 3358985,
+        "st_size": 6876364,
+        "st_mtime_ns": 1788955555864499957,
+        "st_ctime_ns": 1789731144719164891
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 3358985,
+        "st_size": 6876364,
+        "st_mtime_ns": 1788955555864499957,
+        "st_ctime_ns": 1789731144719164891
+      },
+      "stat_changed": false,
+      "bytes": 6876364,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 0.040501143999790656
+    },
+    {
+      "phase": "inputs_start",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam0_people.npz",
+      "hashlib": "594023983f209ccb5d971f7d54b22cde65cbdd0c0d1b0cddc1cd1b4bd08b1196",
+      "_sha256": "594023983f209ccb5d971f7d54b22cde65cbdd0c0d1b0cddc1cd1b4bd08b1196",
+      "expected": null,
+      "expected_source": "start_baseline",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 170563,
+        "st_size": 202270,
+        "st_mtime_ns": 1789732112815620370,
+        "st_ctime_ns": 1789732112815620370
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 170563,
+        "st_size": 202270,
+        "st_mtime_ns": 1789732112815620370,
+        "st_ctime_ns": 1789732112815620370
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 170563,
+        "st_size": 202270,
+        "st_mtime_ns": 1789732112815620370,
+        "st_ctime_ns": 1789732112815620370
+      },
+      "stat_changed": false,
+      "bytes": 202270,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 0.0019195639997633407
+    },
+    {
+      "phase": "model_loaded",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected_source": "supplied_known_sha",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_changed": false,
+      "bytes": 2549075546,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 13.008898430000045
+    },
+    {
+      "phase": "after_two_predicts",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected_source": "supplied_known_sha",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_changed": false,
+      "bytes": 2549075546,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 13.016513222999492
+    },
+    {
+      "phase": "after_unload",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected_source": "supplied_known_sha",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_changed": false,
+      "bytes": 2549075546,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 13.101901652999004
+    },
+    {
+      "phase": "inputs_end",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam0.mp4",
+      "hashlib": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "_sha256": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "expected": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "expected_source": "supplied_known_sha",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 3358985,
+        "st_size": 6876364,
+        "st_mtime_ns": 1788955555864499957,
+        "st_ctime_ns": 1789731144719164891
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 3358985,
+        "st_size": 6876364,
+        "st_mtime_ns": 1788955555864499957,
+        "st_ctime_ns": 1789731144719164891
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 3358985,
+        "st_size": 6876364,
+        "st_mtime_ns": 1788955555864499957,
+        "st_ctime_ns": 1789731144719164891
+      },
+      "stat_changed": false,
+      "bytes": 6876364,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 0.035179227001208346
+    },
+    {
+      "phase": "inputs_end",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam0_people.npz",
+      "hashlib": "594023983f209ccb5d971f7d54b22cde65cbdd0c0d1b0cddc1cd1b4bd08b1196",
+      "_sha256": "594023983f209ccb5d971f7d54b22cde65cbdd0c0d1b0cddc1cd1b4bd08b1196",
+      "expected": "594023983f209ccb5d971f7d54b22cde65cbdd0c0d1b0cddc1cd1b4bd08b1196",
+      "expected_source": "start_baseline",
+      "stat_initial": {
+        "st_dev": 2096,
+        "st_ino": 170563,
+        "st_size": 202270,
+        "st_mtime_ns": 1789732112815620370,
+        "st_ctime_ns": 1789732112815620370
+      },
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 170563,
+        "st_size": 202270,
+        "st_mtime_ns": 1789732112815620370,
+        "st_ctime_ns": 1789732112815620370
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 170563,
+        "st_size": 202270,
+        "st_mtime_ns": 1789732112815620370,
+        "st_ctime_ns": 1789732112815620370
+      },
+      "stat_changed": false,
+      "bytes": 202270,
+      "chunk_bytes": 1048576,
+      "match": true,
+      "seconds": 0.0010949610004900023
+    }
+  ],
+  "predictions": [
+    {
+      "index": 1,
+      "shape": [
+        652,
+        17,
+        3
+      ],
+      "dtype": "float32",
+      "finite": true,
+      "path": "outputs/tennis_scene/analyze/meiji_inference_repeatability/s42-001/prediction_1.npz",
+      "request_unchanged": true,
+      "seconds_including_sync_and_save": 17.87289909500032
+    },
+    {
+      "index": 2,
+      "shape": [
+        652,
+        17,
+        3
+      ],
+      "dtype": "float32",
+      "finite": true,
+      "path": "outputs/tennis_scene/analyze/meiji_inference_repeatability/s42-001/prediction_2.npz",
+      "request_unchanged": true,
+      "seconds_including_sync_and_save": 17.20976530900043
+    }
+  ],
+  "errors": [],
+  "internal_limit_seconds": 540,
+  "interpretation": "Exact numerical repeatability only; not GT accuracy. Any positive difference is a difference, not a hardware fault diagnosis. No retry, deterministic-algorithm setting, or production hash change.",
+  "source_code": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-gpu-control-v1/probe.py",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v3/probe.py",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/submodules/models/vitpose/pose2d.py",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/submodules/models/_base/inference_model.py"
+  ],
+  "provenance": {
+    "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+    "executable": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "openssl": "OpenSSL 3.5.5 27 Jan 2026",
+    "hashlib_type": "<class '_hashlib.HASH'>",
+    "software_hash_type": "<class '_sha256.sha256'>",
+    "environment": {
+      "CUDA_VISIBLE_DEVICES": "0",
+      "CUBLAS_WORKSPACE_CONFIG": null,
+      "OPENSSL_ia32cap": null,
+      "LD_LIBRARY_PATH": null,
+      "PYTHONPATH": "."
+    },
+    "torch": "2.13.0+cu130",
+    "torch_cuda": "13.0",
+    "deterministic_algorithms": false,
+    "cudnn_deterministic": false,
+    "cudnn_benchmark": false,
+    "cuda_matmul_allow_tf32": false,
+    "gpu": "NVIDIA GeForce RTX 5060 Ti"
+  },
+  "elapsed_seconds": 106.98457846199926,
+  "input_metadata": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam0_people.metadata.json",
+    "contents": {
+      "schema_version": 4,
+      "video_sha256": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+      "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "settings": {
+        "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
+        "dino_repository": "DINO",
+        "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+        "confidence": 0.3,
+        "short_side": 800,
+        "max_long_side": 1333,
+        "batch_size": 8,
+        "precision": "bfloat16",
+        "detection_stride": 4,
+        "court_half_width_m": 6.5,
+        "court_half_length_m": 18.0,
+        "min_sample_coverage": 0.7,
+        "max_gap_seconds": 1.0,
+        "long_gap_policy": "mask",
+        "selection_policy": "temporal_continuity",
+        "association": {
+          "min_iou": 0.0,
+          "max_center_distance": 1.0,
+          "max_prediction_frames": 60,
+          "max_prediction_distance": 1.0
+        }
+      },
+      "homography": [
+        [
+          7.597732441512686,
+          53.63891335620501,
+          1004.7060733947409
+        ],
+        [
+          -8.055510745671345,
+          11.702033076420916,
+          398.40613706456276
+        ],
+        [
+          -0.01932046649802397,
+          0.04182901599763462,
+          1.0
+        ]
+      ],
+      "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
+    },
+    "track_known_sha": null,
+    "track_known_sha_reason": "Not present in saved people metadata"
+  },
+  "workload": {
+    "video": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam0.mp4",
+    "observations": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam0_people.npz",
+    "num_frames": 652,
+    "track_id": 0,
+    "boxes_shape": [
+      652,
+      4
+    ],
+    "request_shape": [
+      652,
+      3
+    ],
+    "precision": "bfloat16",
+    "batch_size": 8,
+    "flip_test": true,
+    "seed": 42,
+    "predictions_planned": 2,
+    "same_request_object": true,
+    "frame_order": "clip-local indices 0 through 651"
+  },
+  "comparison": {
+    "shape_equal": true,
+    "both_finite": true,
+    "array_equal": true,
+    "coordinate_max_absolute_difference": 0.0,
+    "coordinate_mean_absolute_difference": 0.0,
+    "confidence_max_absolute_difference": 0.0,
+    "differing_elements": 0,
+    "coordinate_differing_elements": 0,
+    "confidence_differing_elements": 0
+  }
+}

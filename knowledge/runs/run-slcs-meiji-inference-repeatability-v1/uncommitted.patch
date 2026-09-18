@@ -1,0 +1,12 @@
+diff --git a/knowledge/nodes/group-slcs-real-rgb.md b/knowledge/nodes/group-slcs-real-rgb.md
+index 67807a13..cd8e5177 100644
+--- a/knowledge/nodes/group-slcs-real-rgb.md
++++ b/knowledge/nodes/group-slcs-real-rgb.md
+@@ -40,6 +40,7 @@ members:
+ - run-slcs-meiji-checkpoint-hash-cpu-v1
+ - run-slcs-meiji-checkpoint-hash-gpu-control-v1
+ - run-slcs-known-memory-cpu-audit-v1
++- run-slcs-meiji-root-support-probe-v1
+ parents: []
+ tags:
+ - slcs
