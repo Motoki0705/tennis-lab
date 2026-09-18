@@ -45,6 +45,12 @@ Pythonはrepoの `.venv/bin/python`。DINO detectorのCUDA拡張は実行環境�
 wrapperはworktreeから元repoの `third_party` を参照する。
 
 Courtには設定で選定した **`outputs/court_detection/` 内のcheckpoint** を使う。
+Meijiではball cropで初期Courtを推定し、その14点を含む範囲へ
+`court.crop_refinement_padding_px`（20px）を加えたcropで再推論する。
+同じframe・checkpoint・fit閾値を使い、2回目のfit失敗は生成失敗とする。
+full画像を使うcameraは1回の推論を維持する。初回・再推論のraw点、ROI、H、
+診断を別々に保存する。この設定を省略したrecipeは従来の1回推論を維持する。
+Courtの変更は人物選択と3D教師に影響するため、Meijiは新しいv9と観測rootへ分離する。
 Meijiのボールは各clipの `outsource/cam*_annotations.json` のみを取り込み、
 画像動画のSHA-256・frame数・statusを検証する。ボール検出器は実行しない。
 放送側は承認済みの保存 `scene.npz` から2Dボールだけを取り出し、孤立したUV spikeを除く。

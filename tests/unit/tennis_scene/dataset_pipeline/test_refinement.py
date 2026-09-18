@@ -129,7 +129,7 @@ def test_omitted_root_support_policy_keeps_legacy_hips():
     )
 
 
-def test_meiji_v8_and_broadcast_v4_profiles_keep_separate_root_policies():
+def test_meiji_v9_and_broadcast_v4_profiles_keep_separate_root_policies():
     with initialize_config_dir(
         config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"
     ):
@@ -151,11 +151,13 @@ def test_meiji_v8_and_broadcast_v4_profiles_keep_separate_root_policies():
     assert (
         meiji.dataset_output_directory
         == report.dataset_directory
-        == "slcs/meiji_rgb_v8"
+        == "slcs/meiji_rgb_v9"
     )
     assert report.generation_directories == [meiji.output_dir]
-    assert meiji.observation_directory.endswith("meiji_dino_vitpose/s42-004")
+    assert meiji.observation_directory.endswith("meiji_dino_vitpose/s42-005")
+    assert meiji.court.crop_refinement_padding_px == 20.0
+    assert "crop_refinement_padding_px" not in broadcast.court
     assert list(assembly.source_datasets) == [
-        "slcs/meiji_rgb_v8",
+        "slcs/meiji_rgb_v9",
         "slcs/broadcast_rgb_v4",
     ]

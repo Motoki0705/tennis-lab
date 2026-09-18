@@ -211,7 +211,17 @@ class DatasetBuildConfig:
                 "max_fit_error_px",
                 "ball_crop_margins",
             },
+            optional_keys={"crop_refinement_padding_px"},
         )
+        padding = raw.get("crop_refinement_padding_px")
+        if padding is not None and (
+            type(padding) not in (int, float)
+            or not math.isfinite(cast(float, padding))
+            or cast(float, padding) < 0
+        ):
+            raise ValueError(
+                "court.crop_refinement_padding_px must be finite and nonnegative"
+            )
         for name in ("samples_per_clip", "min_points"):
             if type(raw[name]) is not int or cast(int, raw[name]) <= 0:
                 raise ValueError(f"court.{name} must be a positive integer")
@@ -236,6 +246,7 @@ class DatasetBuildConfig:
             float(cfg.court.ransac_px),
             float(cfg.court.max_fit_error_px),
             margins,
+            None if padding is None else float(cast(float, padding)),
         )
         exact_config_mapping(
             cfg.features, path="features", required_keys={"enabled", "checkpoint"}

@@ -187,6 +187,7 @@ def test_all_task_cli_output_contracts(
     for key in (
         "run.output_dir",
         "preview.output_dir",
+        "generate_line_masks.preview_dir",
         "evaluate.output_dir",
         "predict.output_dir",
         "analysis.output_dir",
@@ -196,12 +197,6 @@ def test_all_task_cli_output_contracts(
     ):
         fragment = OmegaConf.select(job, key)
         if fragment is None:
-            continue
-        # PLCS visualize has a legacy, unused run.output_dir setting.
-        if (
-            boundary.module == "src.tasks.plcs.scripts.visualize"
-            and key == "run.output_dir"
-        ):
             continue
         expected_role = PathRole.OUTPUT
         if key == "visualization.save" and boundary.domain in {
