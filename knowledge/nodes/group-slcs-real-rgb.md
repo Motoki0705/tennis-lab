@@ -46,6 +46,7 @@ members:
 - run-slcs-meiji-v8-root-replay-v1
 - run-slcs-meiji-v8-root-replay-v2
 - run-slcs-meiji-observation-review-v1
+- run-slcs-meiji-observation-review-v2
 - run-slcs-ball-gradient-probe-v1
 parents: []
 tags:
