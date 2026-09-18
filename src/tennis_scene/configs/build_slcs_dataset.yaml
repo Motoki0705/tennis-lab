@@ -2,6 +2,18 @@ defaults:
   - build_slcs_dataset_base
   - _self_
 
+# Fixed accepted checkpoint identities; observations and receipts do not update these.
+checkpoint_sha256:
+  court: b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383
+  dino: e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5
+  vitpose: 50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc
+  plcs: e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a
+  blcs: dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32
+  dinov3: 73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c
+
+refinement:
+  player_root_view_support: hips_and_shoulders
+
 people:
   selection_policy: temporal_continuity
   association:

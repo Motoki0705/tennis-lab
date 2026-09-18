@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any, cast
@@ -13,13 +12,13 @@ from omegaconf import DictConfig
 
 from src.tennis_scene.configuration import ReferenceClipPaths
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionResult
+from src.utils.checksum import dual_sha256
 from src.utils.io import save_json_atomic
 from src.utils.schema.court import CourtConfig, court_keypoints_3d
 
 
 def sha256(path: Path) -> str:
-    with path.open("rb") as handle:
-        return hashlib.file_digest(handle, "sha256").hexdigest()
+    return dual_sha256(path)
 
 
 def read_clip(path: Path, *, minimum_views: int = 3) -> dict[str, Any]:
