@@ -1,6 +1,6 @@
 {
   "requested": 2,
-  "attempted": 1,
+  "attempted": 2,
   "completed": 1,
   "rounds": [
     {
@@ -24,6 +24,12 @@
           "resolution": "Added a two-pass PDF builder and committed build receipt; offline verification binds PDF/TeX/figures without report.log. Added no-log and tampering tests."
         }
       ]
+    },
+    {
+      "round": 2,
+      "status": "starting",
+      "model_provider_effort": "inherited from parent",
+      "fork_turns": "none"
     }
   ]
 }
