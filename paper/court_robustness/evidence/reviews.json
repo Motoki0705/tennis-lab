@@ -56,9 +56,16 @@
     {
       "request": "RANSAC ground-plane and multiview LINE projection visualization; explicit unseen-image LINE panels",
       "requested": 1,
-      "attempted": 0,
+      "attempted": 1,
       "completed": 0,
-      "rounds": []
+      "rounds": [
+        {
+          "round": 1,
+          "status": "starting",
+          "model_provider_effort": "inherited from parent",
+          "fork_turns": "none"
+        }
+      ]
     }
   ]
 }
