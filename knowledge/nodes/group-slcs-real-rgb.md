@@ -49,6 +49,7 @@ members:
 - run-slcs-meiji-observation-review-v2
 - run-slcs-ball-gradient-probe-v1
 - run-slcs-ball-train-mean-v1
+- run-slcs-meiji-observation-review-v3
 parents: []
 tags:
 - slcs
