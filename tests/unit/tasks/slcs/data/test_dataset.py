@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 from src.tasks.slcs.data.dataset import collate_slcs
@@ -28,7 +29,9 @@ def _sample(*, dino_samples: int, padding_mask: torch.Tensor) -> SLCSSample:
         target_player_position=torch.zeros(players, frames, 3),
         target_player_rotation=torch.ones(players, frames, 2),
         target_player_valid=real_frames.view(1, frames).expand(players, frames),
-        target_player_weight=real_frames.view(1, frames).expand(players, frames).float(),
+        target_player_weight=real_frames.view(1, frames)
+        .expand(players, frames)
+        .float(),
         target_ball_position=torch.zeros(frames, 3),
         target_ball_valid=real_frames,
         target_ball_weight=real_frames.float(),
@@ -70,3 +73,32 @@ def test_collate_uses_one_explicit_padding_slot_when_every_dino_axis_is_empty() 
 
     assert batch["dino_tokens"].shape == (1, 1, 2, 3)
     assert batch["dino_padding_mask"].tolist() == [[True]]
+
+
+@pytest.mark.parametrize("name", ["human_kp_vis", "court_vis"])
+@pytest.mark.parametrize("value", [1.03125, -0.01, float("nan"), float("inf")])
+def test_load_rejects_invalid_visibility_before_sampling(
+    monkeypatch, data_config, name, value
+):
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from src.tasks.slcs.data import dataset
+    from src.tennis_scene.generate_dataset.manifest import DatasetManifestError
+    from tests.support.tasks.slcs.dataset import (
+        SLCSFixtureDatasetConfig,
+        make_fixture_scene,
+    )
+
+    scene = make_fixture_scene(SLCSFixtureDatasetConfig(), np.random.default_rng(0))
+    getattr(scene, name).flat[0] = value
+    monkeypatch.setattr(dataset, "load_slcs_annotation", lambda *a, **kw: scene)
+    with pytest.raises(
+        DatasetManifestError, match=rf"{name} must contain finite values in \[0, 1\]"
+    ):
+        dataset.load_clip_arrays(
+            SimpleNamespace(clip_id="bad-visibility"), config=data_config
+        )
+    actual = getattr(scene, name).flat[0]
+    assert actual == value or (np.isnan(actual) and np.isnan(value))

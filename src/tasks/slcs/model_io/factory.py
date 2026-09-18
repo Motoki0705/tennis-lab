@@ -65,7 +65,7 @@ def create_slcs_frame_token_encoder(
     model.to(device)
     model.eval()
     adapter = SLCSFrameTokenIOAdapter(spec, device)
-    backbone = adapter.validate_model(model)
+    backbone = adapter.validate_model(model.module)
     return BoundSLCSFrameTokenEncoder(model=backbone, adapter=adapter)
 
 

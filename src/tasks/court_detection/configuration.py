@@ -1560,6 +1560,41 @@ CourtAnyLossConfig: TypeAlias = CourtLossConfig
 
 
 @dataclass(frozen=True, slots=True)
+class CourtInferenceConfig:
+    """The serialized architecture and validation transform needed at inference.
+
+    Optimizer, training augmentation, and artifact-store settings do not affect
+    inference. Their historical schemas must not prevent loading exact weights.
+    """
+
+    model: CourtModelConfig
+    loss: CourtLossConfig
+    short_side: int
+    pose_long_side: bool
+    patch_size: int
+
+    @classmethod
+    def from_config(cls, value: object, *, resolver: PathResolver) -> CourtInferenceConfig:
+        config = as_config_mapping(value, path="checkpoint.config")
+        data = require_config_mapping(config, "data", path="checkpoint.config")
+        augmentation = require_config_mapping(data, "augmentation", path="data")
+        short_side = _integer(augmentation, "val_short_side", path="data.augmentation")
+        if short_side <= 0:
+            raise SemanticConfigurationError("Validation image size must be positive")
+        loss = CourtLossConfig.from_mapping(require_config_mapping(config, "loss", path="checkpoint.config"))
+        patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
+        if patch_size <= 0:
+            raise SemanticConfigurationError("Validation patch size must be positive")
+        if loss.pose.enabled and not _bool(augmentation, "preserve_fx_fy", path="data.augmentation"):
+            raise SemanticConfigurationError("Pose inference requires preserve_fx_fy=true")
+        return cls(
+            CourtModelConfig.from_mapping(require_config_mapping(config, "model", path="checkpoint.config"), resolver=resolver),
+            loss,
+            short_side, loss.pose.enabled, patch_size,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class CourtTrainingConfig:
     shared: TrainingRuntimeConfig
     data: CourtDataConfig

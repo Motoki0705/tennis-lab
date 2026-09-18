@@ -13,7 +13,7 @@ splits:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},slcs/make_splits,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:slcs,generate,make_splits,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

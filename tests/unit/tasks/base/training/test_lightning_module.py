@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 import torch
 import torch.nn as nn
+import yaml
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, SequentialLR
@@ -42,6 +43,17 @@ class _TinyModule(BaseLightningModule):
 @dataclass(frozen=True)
 class _FrozenRuntimeDependency:
     value: int
+
+
+@dataclass(frozen=True)
+class _RuntimeConfig:
+    raw: dict[str, object]
+    output_dir: Path
+
+
+class _ModuleWithTypedConfig(BaseLightningModule):
+    def __init__(self, config: _RuntimeConfig) -> None:
+        super().__init__(config.raw)
 
 
 class _ModuleWithRuntimeDependency(BaseLightningModule):
@@ -86,10 +98,11 @@ def _config(
             "data_root": "data",
             "checkpoint_root": "checkpoints",
             "artifact_root": str(artifact_root),
-            "output_root": "outputs",
+            "output_root": str(artifact_root / "outputs"),
             "cache_root": ".cache",
             "external_asset_root": "external",
         },
+        "run": {"output_dir": "tiny/train/default/run-1"},
         "training": {
             "trainer": {
                 "max_epochs": max_epochs,
@@ -171,6 +184,19 @@ def test_hyperparameters_only_capture_serializable_config(tmp_path: Path) -> Non
     assert set(module.hparams) == {"config"}
     logger.log_hyperparams(cast("dict[str, Any]", dict(module.hparams)))
     logger.save()
+
+
+def test_hyperparameters_save_raw_config_passed_by_typed_subclass(tmp_path: Path) -> None:
+    config = _config()
+    module = _ModuleWithTypedConfig(_RuntimeConfig(config, tmp_path))
+    logger = TensorBoardLogger(save_dir=tmp_path)
+
+    assert module.hparams["config"] == config
+    logger.log_hyperparams(dict(module.hparams))
+    logger.save()
+    saved = yaml.safe_load((Path(logger.log_dir) / "hparams.yaml").read_text())
+    assert saved["config"]["run"] == config["run"]
+    assert saved["config"]["training"]["learning_rate"] == 1.0e-3
 
 
 def test_compilation_targets_exposes_primary_model() -> None:
@@ -349,7 +375,7 @@ def test_default_payload_empty_and_collect_noop() -> None:
     assert not getattr(m, "_test_pred_arrays", None)
 
 
-def test_save_test_predictions_preserves_legacy_artifact_location(
+def test_save_test_predictions_uses_configured_run_location(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -370,7 +396,7 @@ def test_save_test_predictions_preserves_legacy_artifact_location(
         diagnostic_metrics={"x_error_m": 0.05, "loss_position": 0.01},
     )
     assert npz_path is not None
-    assert npz_path == tmp_path / "test_predictions" / "pred_test.npz"
+    assert npz_path == tmp_path / "outputs/tiny/train/default/run-1/predictions/pred_test.npz"
     loaded = np.load(npz_path)
     assert loaded["position"].shape == (3, 5, 3)  # batch 2+1, T padded to 5
     assert loaded["scene_ids"].shape == (3,)
@@ -451,3 +477,70 @@ def test_save_test_predictions_rejects_invalid_queue_dir_before_writes(
 def test_save_test_predictions_none_when_empty(tmp_path: Path) -> None:
     m = _TinyModule(_config(artifact_root=tmp_path))
     assert m.save_test_predictions() is None  # nothing collected
+
+
+def test_saved_padding_excludes_short_batch_tail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class PredModule(_TinyModule):
+        def test_prediction_payload(self, batch: Any, result: dict[str, Any]) -> dict[str, torch.Tensor]:
+            return result
+
+    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
+    module = PredModule(_config(artifact_root=tmp_path))
+    for length in (2, 4):
+        module.collect_test_predictions(None, {
+            "position": torch.ones(1, length, 3),
+            "padding_mask": torch.zeros(1, length, dtype=torch.bool),
+        })
+    saved = module.save_test_predictions()
+    assert saved is not None
+    with np.load(saved) as payload:
+        assert payload["padding_mask"].tolist() == [[False, False, True, True], [False, False, False, False]]
+        assert (~payload["padding_mask"]).sum() == 6
+
+
+@pytest.mark.parametrize("explicit", [True, False])
+def test_prediction_ids_preserve_namespace_and_legacy_paths(
+    monkeypatch: pytest.MonkeyPatch, explicit: bool
+) -> None:
+    from types import SimpleNamespace
+
+    class Dataset:
+        scenes = ["video_a/clip@cam@000000", "video_b/clip@cam@000000"]
+
+        def __len__(self) -> int:
+            return 2
+
+    dataset = Dataset()
+    if explicit:
+        dataset.prediction_ids = dataset.scenes  # type: ignore[attr-defined]
+    module = _TinyModule(_config())
+    module._reset_test_prediction_buffer()
+    monkeypatch.setattr(module, "_safe_trainer", lambda: SimpleNamespace(
+        datamodule=SimpleNamespace(test_dataset=dataset)
+    ))
+    ids = module._scene_ids_for_test_batch(1) + module._scene_ids_for_test_batch(1)
+    assert ids == (dataset.scenes if explicit else ["clip@cam@000000"] * 2)
+    if explicit:
+        with pytest.raises(ValueError, match="exceeds"):
+            module._scene_ids_for_test_batch(1)
+
+
+@pytest.mark.parametrize("ids", [None, "abc", ["same", "same"], [""], [3]])
+def test_invalid_explicit_prediction_ids_fail(
+    monkeypatch: pytest.MonkeyPatch, ids: object
+) -> None:
+    from types import SimpleNamespace
+
+    class Dataset:
+        prediction_ids = ids
+
+        def __len__(self) -> int:
+            return 2
+
+    module = _TinyModule(_config())
+    module._reset_test_prediction_buffer()
+    monkeypatch.setattr(module, "_safe_trainer", lambda: SimpleNamespace(
+        datamodule=SimpleNamespace(test_dataset=Dataset())
+    ))
+    with pytest.raises(ValueError, match="prediction_ids"):
+        module._scene_ids_for_test_batch(1)

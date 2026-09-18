@@ -285,7 +285,7 @@ def test_checkpoint_callbacks_omit_true_last_when_disabled(
     assert checkpoints[0].save_last is False
 
 
-def test_checkpoint_pointer_preserves_legacy_artifact_location_without_queue(
+def test_checkpoint_pointer_stays_with_training_run_without_queue(
     make_training_config: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -296,7 +296,7 @@ def test_checkpoint_pointer_preserves_legacy_artifact_location_without_queue(
 
     runner._record_ckpt_dir_pointer(checkpoint_dir, runtime.resolver)
 
-    pointer = runtime.resolver.roots.artifact_root / "repro" / "output_dir.txt"
+    pointer = checkpoint_dir.parent / "repro" / "output_dir.txt"
     assert pointer.read_text(encoding="utf-8") == f"{checkpoint_dir.resolve()}\n"
 
 
@@ -349,3 +349,15 @@ def test_checkpoint_dir_rejects_logger_parent_outside_output_role(
             datamodule=cast(Any, object()),
             logger=cast(Any, SimpleNamespace(log_dir=str(tmp_path / "outside"))),
         )
+
+
+def test_fresh_training_rejects_existing_run_before_config_overwrite(make_training_config: Any) -> None:
+    config = OmegaConf.create(make_training_config())
+    runner = BaseTrainingRunner()
+    runtime = runner.validate_runtime_config(config)
+    runtime.run.output_dir.mkdir(parents=True)
+    saved = runtime.run.output_dir / "config.yaml"
+    saved.write_text("original: true\n")
+    with pytest.raises(FileExistsError, match="Choose a new run.output_dir"):
+        runner.run(config)
+    assert saved.read_text() == "original: true\n"

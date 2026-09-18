@@ -327,6 +327,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(
         "video_paths": ConfigField.sequence(ConfigField.of(str)),
         "camera_ids": ConfigField.sequence(ConfigField.of(str)),
         "output_name": ConfigField.of(str),
+        "output_directory": ConfigField.of(str),
         "device": ConfigField.of(str),
         "court_keypoints": ConfigField.mapping(_COURT_KEYPOINTS_SCHEMA),
         "court_reference": ConfigField.mapping(_COURT_REFERENCE_SCHEMA),
@@ -389,7 +390,7 @@ class PipelineRuntimeConfig:
             cast(str, value["output_name"]), name="output_name"
         )
         output_path = resolver.resolve(
-            PathRole.OUTPUT, "tennis_scene", f"{output_name}.npz"
+            PathRole.OUTPUT, cast(str, value["output_directory"]), f"{output_name}.npz"
         )
         device = cast(str, value["device"])
         if not device.strip():

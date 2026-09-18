@@ -188,6 +188,8 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_clips": "tennis_scene.export_clips",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
+    "src.tennis_scene.scripts.build_slcs_dataset": "tennis_scene.build_slcs_dataset",
+    "src.tennis_scene.scripts.assemble_slcs_dataset": "tennis_scene.assemble_slcs_dataset",
     "src.tennis_scene.scripts.reconstruct_reference_clip": "tennis_scene.reference_clip",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
@@ -255,6 +257,8 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_clips": "src.tennis_scene.configuration.validate_export_clips_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
+    "src.tennis_scene.scripts.build_slcs_dataset": "src.tennis_scene.dataset_pipeline.configuration.validate_build_config",
+    "src.tennis_scene.scripts.assemble_slcs_dataset": "src.tennis_scene.dataset_pipeline.assemble.validate_assembly_config",
     "src.tennis_scene.scripts.reconstruct_reference_clip": "src.tennis_scene.configuration.validate_reference_clip_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
@@ -538,6 +542,8 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_clips"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.build_slcs_dataset"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.assemble_slcs_dataset"),
     _runtime_boundary(
         "tennis_scene", "src.tennis_scene.scripts.reconstruct_reference_clip"
     ),

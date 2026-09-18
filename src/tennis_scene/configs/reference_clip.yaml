@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 clip_dir: tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000
-output_dir: meiji_clip000
+output_dir: ${tennis_output:tennis_scene,generate,reference_clip,${tennis_run_id:}}
 device: cuda:0
 stage: observe
 reference_camera: cam0
@@ -25,6 +25,6 @@ sample_stride: 2
 pose_visibility_threshold: 0.15
 hydra:
   run:
-    dir: ${paths.output_root}/${output_dir}/hydra/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${output_dir},hydra}
   job:
     chdir: false

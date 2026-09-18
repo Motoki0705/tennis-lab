@@ -63,6 +63,12 @@ class BaseTrainingRunner:
 
         output_dir = self.prepare_output_dir(runtime)
         output_dir.mkdir(parents=True, exist_ok=True)
+        if (output_dir / "config.yaml").exists() and runtime.run.resume is None:
+            raise FileExistsError(
+                f"Training output already exists: {output_dir}. "
+                "Choose a new run.output_dir for a new experiment, or explicitly "
+                "set run.resume for a continuation."
+            )
         self.save_config(config, output_dir)
 
         if self.is_dry_run(config):
@@ -303,7 +309,11 @@ class BaseTrainingRunner:
             output_dir,
             "config.yaml",
         )
-        OmegaConf.save(config, config_path)
+        # Persist resolved run IDs and explicit roots: reloading this file must
+        # not select a new output tree or reinterpret shared assets in another CWD.
+        saved = OmegaConf.create(OmegaConf.to_container(config, resolve=True))
+        saved.paths = dict(runtime.resolver.roots.as_mapping())
+        OmegaConf.save(saved, config_path, resolve=True)
 
     def build_logger(self, config: Any, output_dir: Path) -> TensorBoardLogger:
         """Build TensorBoard logger."""
@@ -327,7 +337,7 @@ class BaseTrainingRunner:
         """
         queue_repro_dir = resolve_queue_repro_dir()
         target = (
-            resolver.resolve(PathRole.ARTIFACT, "repro")
+            resolver.validate(PathRole.OUTPUT, checkpoint_dir.parent / "repro")
             if queue_repro_dir is None
             else queue_repro_dir
         )

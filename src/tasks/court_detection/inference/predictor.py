@@ -12,8 +12,9 @@ from PIL import Image
 from torch import Tensor
 
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.model_io import BoundModelIO, bind_model_io
+from src.tasks.base.model_io import BoundModelIO
 from src.tasks.court_detection.data.contracts import CourtTargetKind
+from src.tasks.court_detection.inference.checkpoint import load_court_pair
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtDecodedOutput,
@@ -22,15 +23,13 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelIOError,
     CourtModelOutput,
 )
-from src.tasks.court_detection.model_io.images import prepare_court_image
+from src.tasks.court_detection.model_io.images import prepare_court_input
 from src.tasks.court_detection.model_io.keypoint_decoder import (
     CourtKeypointDecoderConfig,
     decode_court_keypoint_logits,
 )
-from src.tasks.court_detection.training.lightning_module import (
-    CourtDetectionLightningModule,
-)
 from src.utils.configuration import PathResolver
+from src.utils.device import resolve_device
 
 CourtBoundModelIO: TypeAlias = BoundModelIO[
     Mapping[str, object],
@@ -94,21 +93,13 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         **kwargs: Any,
     ) -> Self:
         """Load one checkpoint and preserve its serialized target bundle."""
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
-            CourtDetectionLightningModule,
-            resolver=resolver,
-            device=device,
-            weights_only=False,
-            **kwargs,
-        )
-        adapter = lightning_module.model_io
-        adapter.validate_model_pair(lightning_module.model)
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError("Court inference requires exactly one checkpoint")
+        pair = load_court_pair(checkpoints[0], resolver=resolver, **kwargs)
+        resolved_device = resolve_device(device)
         return cls(
-            cast(
-                CourtBoundModelIO,
-                bind_model_io(lightning_module.model, adapter),
-            ),
+            pair,
             resolved_device,
             subpixel_refine=subpixel_refine,
             peak_threshold=peak_threshold,
@@ -121,6 +112,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
         image: np.ndarray | Image.Image | Tensor,
     ) -> CourtKeypointPrediction:
         """Return multi-peak KP channels, scores, validity, and heatmaps."""
+        source_from_model_xy = (1.0, 1.0)
         if isinstance(image, Tensor):
             if image.ndim not in {3, 4}:
                 raise CourtModelIOError(
@@ -135,12 +127,10 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
                 )
             images = images.to(self.device)
         else:
-            images, original_height, original_width = prepare_court_image(
-                image,
-                short_side=self.adapter.spec.short_side,
-                device=self.device,
-            )
-            original_size_hw = (original_height, original_width)
+            prepared = prepare_court_input(image, spec=self.adapter.spec, device=self.device)
+            images = prepared.images
+            original_size_hw = prepared.original_size_hw
+            source_from_model_xy = prepared.source_from_model_xy
 
         with torch.no_grad():
             call = self.adapter.prepare_images(images)
@@ -149,12 +139,18 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
             logits = (
                 output.dense_logits if isinstance(output, CourtModelOutput) else output
             )
-        return decode_court_keypoint_logits(
+        decoded = decode_court_keypoint_logits(
             logits["kp"],
-            original_size_hw=original_size_hw,
+            original_size_hw=(images.shape[-2], images.shape[-1]),
             subpixel_refine=self.subpixel_refine,
             config=self.decoder_config,
         )
+
+        points = decoded.keypoints * decoded.keypoints.new_tensor(source_from_model_xy)
+        height, width = original_size_hw
+        inside = (points[..., 0] >= 0) & (points[..., 0] < width) & (points[..., 1] >= 0) & (points[..., 1] < height)
+        valid = decoded.valid & inside
+        return CourtKeypointPrediction(points, decoded.scores * valid, valid, decoded.heatmaps)
 
     @property
     def task(self) -> CourtTargetKind:
@@ -168,17 +164,17 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
     @property
     def peak_threshold(self) -> float:
         """Extraction threshold applied to each channel's peak scores."""
-        return self.decoder_config.threshold
+        return float(self.decoder_config.threshold)
 
     @property
     def nms_kernel(self) -> int:
         """Odd max-pooling kernel used for peak non-maximum suppression."""
-        return self.decoder_config.nms_kernel
+        return int(self.decoder_config.nms_kernel)
 
     @property
     def max_peaks(self) -> int:
         """Candidate budget per semantic channel (1 for the singleton contract)."""
-        return self.decoder_config.max_peaks
+        return int(self.decoder_config.max_peaks)
 
     @property
     def short_side(self) -> int:
