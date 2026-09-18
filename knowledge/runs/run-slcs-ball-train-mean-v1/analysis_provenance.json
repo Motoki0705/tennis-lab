@@ -1,0 +1,14 @@
+{
+  "reproduction_commit": "11c35c1759b4a434c979da17f82c68a90cb335dc",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -B knowledge/runs/run-slcs-ball-train-mean-v1/probe.py --training-config outputs/slcs/train/real_rgb_pilot_augmented/s42-002/config.yaml --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_baseline_val_full/s42-002 --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_baseline_test_full/s42-002 --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_augmented_val_full/s42-002 --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_augmented_test_full/s42-002 --output-dir outputs/slcs/analyze/ball_train_mean/s42-001",
+  "gpu_used": false,
+  "optimizer_steps": 0,
+  "exit_code": 0,
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/analyze/ball_train_mean/s42-001",
+  "script_sha256": "32aedc0cf6bcbf96afb667b8585c948b2e4cc5969fe1b0ba1d16a0e7ca4d2592",
+  "copied_artifacts": {
+    "results.json": "027899e5e9606db229a80a0253c32101609b465961d3b16527043275311d121c",
+    "fit_evidence.npz": "81100fadf51e335934b4378bb5bdd738df3d223b05a04b1e29b7d9d67dff90c0",
+    "status.json": "0cb87b61f0afab118ac222a0af92bc06c579959aeea208461294d16becf11b39"
+  }
+}

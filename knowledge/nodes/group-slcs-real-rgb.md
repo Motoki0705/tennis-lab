@@ -48,6 +48,7 @@ members:
 - run-slcs-meiji-observation-review-v1
 - run-slcs-meiji-observation-review-v2
 - run-slcs-ball-gradient-probe-v1
+- run-slcs-ball-train-mean-v1
 parents: []
 tags:
 - slcs
@@ -65,7 +66,7 @@ Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付�
 
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 
-SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseline](run-slcs-rgb-pilot-baseline-selected-conditions-v2.md)と[入力欠損augmentation](run-slcs-rgb-pilot-augmented-selected-conditions-v2.md)を各60epoch比較した。testはbroadcast 1収録のみで、Meiji testは含まれない。augmentationは欠損時の選手精度を改善したがfull入力は微悪化し、ballはtrain/testとも大きな誤差と低分散出力が残った。現在の重みを頑健な実世界モデルとして採用しない。
+SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseline](run-slcs-rgb-pilot-baseline-selected-conditions-v2.md)と[入力欠損augmentation](run-slcs-rgb-pilot-augmented-selected-conditions-v2.md)を各60epoch比較した。testはbroadcast 1収録のみで、Meiji testは含まれない。augmentationは欠損時の選手精度を改善したがfull入力は微悪化し、ballはtrain/testとも大きな誤差と低分散出力が残った。[train限定の平均位置baselineとの比較](run-slcs-ball-train-mean-v1.md)でも誤差差は小さく、軌道未学習の診断を支持した。現在の重みを頑健な実世界モデルとして採用しない。
 
 全体生成の途中で[人物対応の切替とcache記録不一致](run-slcs-meiji-v6-tracking-qc.md)を確認した。旧v6の生成を取り消し、[時間的な人物対応](run-slcs-meiji-temporal-probe-v1.md)を適用したv7で4clipを生成した。教師の利用率は改善したが、[推論後のchecksum不一致](run-slcs-meiji-checkpoint-hash-probe-v1.md)を再現した。[別processのsha256sumでも不一致](run-slcs-meiji-checkpoint-hash-probe-v3.md)が発生し、実行環境の切り分けを行った。[CPU対照](run-slcs-meiji-checkpoint-hash-cpu-v1.md)と[推論後の命令制限対照](run-slcs-meiji-checkpoint-hash-gpu-control-v1.md)はともに成功し、間欠的な不一致の原因は未確定である。[既知メモリのみの384比較](run-slcs-known-memory-cpu-audit-v1.md)も全件一致し、入力fileを除いた条件では再現しなかった。[同一652frameの反復推論](run-slcs-meiji-inference-repeatability-v1.md)は全33,252要素が完全一致し、8行の二実装hashも一致した。原因解決とは区別し、二重hash・期待checkpoint SHA照合・即時停止を追加した。[肩支持の本番CPU照合](run-slcs-meiji-v8-root-replay-v2.md)を通し、新しいMeiji v8で観測生成を再開した。v7の4clipは比較根拠として保持し、v8の生成完了数とは区別する。
 
