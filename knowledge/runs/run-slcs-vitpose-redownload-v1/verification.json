@@ -1,0 +1,1369 @@
+{
+  "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload/s42-001/vitpose-h-multi-coco.pth.part",
+  "expected_size": 2549075546,
+  "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "hash_passes": 1,
+  "size": 2549075546,
+  "sha256_openssl": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "sha256_builtin": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "zip_members": 405,
+  "zip_bad_member": null,
+  "top_level_keys": [
+    "meta",
+    "state_dict"
+  ],
+  "state_dict_entries": 403,
+  "tensor_entries": 403,
+  "tensor_numel": 637209875,
+  "tensor_shapes": {
+    "backbone.pos_embed": [
+      1,
+      193,
+      1280
+    ],
+    "backbone.patch_embed.proj.weight": [
+      1280,
+      3,
+      16,
+      16
+    ],
+    "backbone.patch_embed.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.0.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.0.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.0.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.0.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.0.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.0.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.0.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.0.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.0.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.0.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.0.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.0.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.1.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.1.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.1.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.1.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.1.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.1.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.1.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.1.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.1.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.1.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.1.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.1.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.2.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.2.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.2.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.2.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.2.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.2.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.2.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.2.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.2.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.2.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.2.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.2.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.3.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.3.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.3.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.3.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.3.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.3.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.3.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.3.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.3.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.3.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.3.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.3.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.4.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.4.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.4.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.4.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.4.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.4.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.4.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.4.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.4.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.4.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.4.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.4.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.5.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.5.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.5.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.5.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.5.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.5.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.5.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.5.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.5.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.5.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.5.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.5.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.6.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.6.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.6.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.6.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.6.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.6.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.6.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.6.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.6.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.6.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.6.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.6.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.7.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.7.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.7.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.7.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.7.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.7.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.7.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.7.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.7.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.7.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.7.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.7.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.8.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.8.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.8.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.8.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.8.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.8.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.8.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.8.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.8.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.8.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.8.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.8.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.9.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.9.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.9.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.9.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.9.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.9.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.9.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.9.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.9.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.9.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.9.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.9.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.10.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.10.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.10.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.10.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.10.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.10.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.10.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.10.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.10.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.10.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.10.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.10.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.11.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.11.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.11.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.11.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.11.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.11.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.11.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.11.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.11.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.11.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.11.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.11.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.12.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.12.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.12.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.12.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.12.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.12.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.12.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.12.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.12.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.12.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.12.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.12.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.13.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.13.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.13.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.13.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.13.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.13.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.13.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.13.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.13.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.13.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.13.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.13.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.14.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.14.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.14.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.14.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.14.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.14.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.14.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.14.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.14.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.14.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.14.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.14.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.15.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.15.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.15.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.15.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.15.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.15.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.15.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.15.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.15.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.15.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.15.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.15.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.16.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.16.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.16.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.16.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.16.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.16.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.16.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.16.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.16.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.16.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.16.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.16.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.17.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.17.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.17.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.17.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.17.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.17.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.17.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.17.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.17.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.17.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.17.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.17.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.18.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.18.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.18.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.18.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.18.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.18.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.18.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.18.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.18.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.18.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.18.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.18.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.19.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.19.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.19.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.19.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.19.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.19.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.19.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.19.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.19.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.19.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.19.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.19.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.20.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.20.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.20.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.20.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.20.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.20.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.20.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.20.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.20.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.20.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.20.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.20.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.21.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.21.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.21.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.21.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.21.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.21.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.21.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.21.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.21.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.21.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.21.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.21.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.22.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.22.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.22.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.22.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.22.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.22.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.22.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.22.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.22.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.22.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.22.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.22.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.23.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.23.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.23.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.23.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.23.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.23.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.23.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.23.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.23.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.23.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.23.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.23.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.24.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.24.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.24.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.24.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.24.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.24.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.24.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.24.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.24.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.24.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.24.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.24.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.25.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.25.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.25.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.25.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.25.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.25.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.25.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.25.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.25.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.25.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.25.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.25.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.26.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.26.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.26.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.26.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.26.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.26.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.26.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.26.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.26.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.26.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.26.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.26.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.27.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.27.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.27.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.27.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.27.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.27.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.27.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.27.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.27.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.27.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.27.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.27.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.28.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.28.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.28.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.28.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.28.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.28.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.28.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.28.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.28.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.28.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.28.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.28.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.29.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.29.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.29.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.29.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.29.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.29.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.29.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.29.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.29.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.29.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.29.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.29.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.30.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.30.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.30.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.30.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.30.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.30.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.30.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.30.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.30.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.30.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.30.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.30.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.blocks.31.norm1.weight": [
+      1280
+    ],
+    "backbone.blocks.31.norm1.bias": [
+      1280
+    ],
+    "backbone.blocks.31.attn.qkv.weight": [
+      3840,
+      1280
+    ],
+    "backbone.blocks.31.attn.qkv.bias": [
+      3840
+    ],
+    "backbone.blocks.31.attn.proj.weight": [
+      1280,
+      1280
+    ],
+    "backbone.blocks.31.attn.proj.bias": [
+      1280
+    ],
+    "backbone.blocks.31.norm2.weight": [
+      1280
+    ],
+    "backbone.blocks.31.norm2.bias": [
+      1280
+    ],
+    "backbone.blocks.31.mlp.fc1.weight": [
+      5120,
+      1280
+    ],
+    "backbone.blocks.31.mlp.fc1.bias": [
+      5120
+    ],
+    "backbone.blocks.31.mlp.fc2.weight": [
+      1280,
+      5120
+    ],
+    "backbone.blocks.31.mlp.fc2.bias": [
+      1280
+    ],
+    "backbone.last_norm.weight": [
+      1280
+    ],
+    "backbone.last_norm.bias": [
+      1280
+    ],
+    "keypoint_head.deconv_layers.0.weight": [
+      1280,
+      256,
+      4,
+      4
+    ],
+    "keypoint_head.deconv_layers.1.weight": [
+      256
+    ],
+    "keypoint_head.deconv_layers.1.bias": [
+      256
+    ],
+    "keypoint_head.deconv_layers.1.running_mean": [
+      256
+    ],
+    "keypoint_head.deconv_layers.1.running_var": [
+      256
+    ],
+    "keypoint_head.deconv_layers.1.num_batches_tracked": [],
+    "keypoint_head.deconv_layers.3.weight": [
+      256,
+      256,
+      4,
+      4
+    ],
+    "keypoint_head.deconv_layers.4.weight": [
+      256
+    ],
+    "keypoint_head.deconv_layers.4.bias": [
+      256
+    ],
+    "keypoint_head.deconv_layers.4.running_mean": [
+      256
+    ],
+    "keypoint_head.deconv_layers.4.running_var": [
+      256
+    ],
+    "keypoint_head.deconv_layers.4.num_batches_tracked": [],
+    "keypoint_head.final_layer.weight": [
+      17,
+      256,
+      1,
+      1
+    ],
+    "keypoint_head.final_layer.bias": [
+      17
+    ]
+  },
+  "nonfinite_tensors": [],
+  "status": "passed"
+}

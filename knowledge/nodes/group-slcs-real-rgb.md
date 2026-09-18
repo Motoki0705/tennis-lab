@@ -71,6 +71,10 @@ members:
 - run-slcs-meiji-stream-byte-diff-v1
 - run-slcs-host-storage-audit-v2
 - run-slcs-meiji-read-modes-v1
+- run-slcs-vitpose-redownload-v1
+- run-slcs-vitpose-redownload-smoke-v1
+- run-slcs-meiji-v9-observation-reuse-v3
+- run-slcs-meiji-v9-observation-reuse-v4
 parents: []
 tags:
 - slcs
@@ -84,7 +88,7 @@ tags:
 
 ## まとめ
 
-Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19時点でMeiji v8の全56clipの観測ファイルを生成し、事後検査で見つかった3cameraのproducer SHA不一致は保存・隔離・再生成により修復した。全168cameraの固定pinsと旧新配列監査が通過し、Court補正を反映したv9の全56clip生成と校正3clipの150完全一致比較も通過した。RGB特徴は全56clipを新たに照合してv9へ再利用済み。一方、v9人物観測の再利用前照合でViTPose SHA不一致が発生し、公開0で停止した。全体教師と全体版SLCSの頑健性は未完成。
+Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19時点でCourt補正を反映したv9の全56clipのCourt・outsourceボールとRGB特徴が準備できた。ViTPoseを再取得し実RGBの単独GPU推論を確認後、v9へ全168cameraのraw検出と142cameraの人物観測を再利用した。残り26cameraの人物再計算と全体3D教師・全体版SLCSの頑健性評価は未完成。旧観測の不整合・再生成・間欠的なSHA差の記録は以下に保持する。
 
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 
@@ -118,8 +122,26 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 
 [保存snapshotの全byte比較](run-slcs-meiji-stream-byte-diff-v1.md)で、2,549,075,546bytes中ちょうど1byte/1bitの差を確認した。offset1896501665で0x9D→0xBD、XOR0x20。両snapshotの二実装SHA・stat・長さとmetadata前後照合は通過し、ZIP headerだけで重みarchiveのstored payload内と特定した。原因がstorage/cache/memory/softwareのどこかは未確定で、SSD故障等の断定や失敗結果の採用はしない。
 
-[同位置4KiBの通常/direct read比較](run-slcs-meiji-read-modes-v1.md)はstatx alignmentを確認し、live3readがすべてgood保存blockに一致した。これは限定した時点と位置の結果で、全体生成を再開できる安定性の根拠とはしない。[Windows collectorの実行](run-slcs-host-storage-audit-v2.md)はUNC上の未署名scriptとして実行前に拒否され、新規ログは取得できなかった。ポリシーは変更せず、ローカルコピーでの読み取り収集についてユーザーへ確認している。
+[同位置4KiBの通常/direct read比較](run-slcs-meiji-read-modes-v1.md)はstatx alignmentを確認し、live3readがすべてgood保存blockに一致した。これは限定した時点と位置の結果で、環境全体の安定性を保証しない。[Windows collectorの実行](run-slcs-host-storage-audit-v2.md)はUNC上の未署名scriptとして実行前に拒否され、新規ログは取得できなかった。
+
+2026-09-19の追加指示で、ユーザーはViTPose読取問題のような再現性の不安材料では作業を止めず進めることと、重みの再ダウンロードを許可した。以後はハードウェア原因の特定やWindows collectorの実行許可をMeiji生成再開の条件にしない。過去の不一致記録は維持し、モデル実行・教師品質の確認を進める。ViTPoseは外部配布された2D姿勢モデルであり、この問題は学習済みPLCS/BLCSの使用不能を示すものではない。SLCSのball低分散出力は別の精度課題として扱う。
+
+[ViTPoseの再取得](run-slcs-vitpose-redownload-v1.md)はHugging Faceの固定revisionから完了し、2,549,075,546 bytesの全体SHAが既存pinと一致した。ZIP CRC、CPUのweights_only読込、403tensorの構造・有限性を確認し、旧inodeをバックアップして本体をatomic置換した。続く[人物再利用v3](run-slcs-meiji-v9-observation-reuse-v3.md)はDINOの初回SHA不一致で40.002秒・公開0で停止した。ViTPose照合前であり、新しいViTPoseの不良を示す結果ではない。既存driverの例外後監査ではDINOの固定pinと一致したが、失敗を成功へ置き換えない。指定checkpointの不一致を実測値付きで記録し、宣言したモデル識別に基づいて続行する明示policyの実装へ進む。媒体・配列の整合性と教師の品質判定は維持する。
+
+[再取得ViTPoseの単独GPU smoke](run-slcs-vitpose-redownload-smoke-v1.md)では既存モデルへのstrictロードがmissing/unexpectedとも0で成功し、Meiji実RGBの2人・34関節すべて有限かつ画像内の予測を得た。DINOを通さない機能確認であり、姿勢推定精度や生成全体の成功を意味しない。checkpoint例外の運用はDINO/ViTPoseの2役割だけに限定して実装し、117 CPU testsと対象型検査を通した。品質監査が元の生成物へ追記しないことと、実測digest・宣言モデルの区別も検証した。実行時の保証範囲は生成ガイドを正本とする。
+
+[人物再利用v4](run-slcs-meiji-v9-observation-reuse-v4.md)は134.966秒の1回実行で成功した。全56clipの168cameraのraw検出を公開し、人物選択6配列が完全一致した142cameraのposeを再利用した。差がある26camera・20clipは再計算対象として残す。2064入力の初回・公開前・公開後digestは全て一致し、DINO/ViTPoseも全段階で固定pinと一致した。このrunでは許可したchecksum例外を適用する必要はなく、警告0だった。
 
 ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
+
+### 論文を踏まえた施策候補（未実施）
+
+Courtは[Chen & Little, Sports Camera Calibration via Synthetic Data](https://arxiv.org/html/1810.10658)と[著者のPython実装](https://github.com/lood339/SCCvSD)を参照し、合成カメラから投影した線画像のDB・検索・距離画像の位置合わせを導入候補とする。原論文の学習特徴に先行してHOG比較を行えるが、テニス低視点への有効性は未確認。既存のcourt形状とcamera生成を再利用し、RGBの線を観測証拠にする。検出KPを結線しただけのqueryはKP依存の比較として区別する。同じKPに対するfit誤差だけで改善と判定せず、既存手動注釈と別frameの線対応を比較し、近似pinholeの限界も残す。Court変更を採用する場合は人物選択と教師の版を分ける。
+
+[独立CPU baseline](../../src/synthetic_data_generation/court_calibration/README.md)としてDB生成・HOG検索・距離画像ECCを実装し、既知変換の14点が1px以内に回復する例を含む17テストを通した。これは実装の検証であり、Meiji実画像での有効性比較・本番生成への組込みは未実施。
+
+SLCSは予定済みのball平滑化weight=0を先に比較し、その後に[GradNorm](https://proceedings.mlr.press/v80/chen18a.html)を根拠とするplayer/ballの勾配調整を検討する。[Where Is The Ball](https://arxiv.org/html/2506.05763v1)の光線と高さによる表現、[SynthNet](https://stellagrasshof.com/assets/pdf/2024_ertner_mmisport.pdf)のhit/bounce間の飛行モデルは、投影整合性とイベントを跨がない制約の候補とする。これは本repoへの設計上の推論であり、効果は未検証。誤差・平均位置baseline差・予測分散・速度・player精度を同時に比較し、予測分散だけで成功としない。可能なMeiji評価では2視点で教師を作り残る1視点を検証に使うが、独立3D GTとは呼ばない。
+
+RGB欠損対策はball学習成立後に[ModDrop](https://arxiv.org/abs/1501.00102)を参考に枝ごとの学習と段階的dropoutを比較する。Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.03698)等の追加検出器学習は現状の教師作成に不要。PLCSは実clipごとの位置・yawの裾誤差と教師品質の確認を優先する。全施策で収録分離split・教師版・seedを固定し、一度に変更する要因を限定する。
 
 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
