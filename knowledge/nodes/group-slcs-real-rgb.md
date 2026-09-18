@@ -34,6 +34,7 @@ members:
 - run-slcs-vitpose-precision-v1
 - run-slcs-meiji-temporal-probe-v1
 - run-slcs-meiji-checkpoint-hash-probe-v1
+- run-slcs-meiji-checkpoint-hash-probe-v2
 parents: []
 tags:
 - slcs

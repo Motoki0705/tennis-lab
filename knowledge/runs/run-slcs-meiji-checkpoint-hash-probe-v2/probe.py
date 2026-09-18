@@ -84,7 +84,8 @@ class Probe:
                 "hashlib_sha256_module": hashlib.sha256.__module__,
                 "software_sha256_type": str(type(_sha256.sha256())),
                 "modules": {
-                    m.__name__: m.__file__ for m in (_hashlib, _sha256, hashlib)
+                    m.__name__: getattr(m, "__file__", m.__spec__.origin)
+                    for m in (_hashlib, _sha256, hashlib)
                 },
                 "environment": {
                     key: value
