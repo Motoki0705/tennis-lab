@@ -15,8 +15,6 @@ import platform
 import random
 import subprocess
 import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
@@ -28,7 +26,7 @@ os.environ["MKL_NUM_THREADS"] = "2"
 
 import numpy as np
 import torch
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
 from src.tasks.slcs.data.annotation import (
@@ -179,7 +177,7 @@ def probe_mode(
     ):
         raise ValueError("Gradient objectives do not partition production total loss")
     prefixes = ("entity_layers.", "time_layers.", "dino_cross_layers.", "final_norm.")
-    groups: dict[str, list[tuple[str, torch.Tensor]]] = {
+    groups = {
         "shared_axial_trunk": [
             (name, p)
             for name, p in predictor.model.named_parameters()
@@ -249,38 +247,6 @@ def probe_mode(
     return result, arrays
 
 
-def publish_results(output_dir: Path, report: dict[str, Any]) -> None:
-    """Atomic replacement keeps readers from seeing partially written JSON."""
-    text = json.dumps(report, indent=2, allow_nan=False) + "\n"
-    temporary = output_dir / "results.json.tmp"
-    with temporary.open("w", encoding="utf-8") as handle:
-        handle.write(text)
-        handle.flush()
-        os.fsync(handle.fileno())
-    temporary.replace(output_dir / "results.json")
-
-
-@contextmanager
-def publish_run(output_dir: Path) -> Iterator[dict[str, Any]]:
-    """Preserve completed progress and re-raise the original error without retry."""
-    report: dict[str, Any] = {
-        "status": "running",
-        "stage": "initializing",
-        "domains": {},
-    }
-    publish_results(output_dir, report)
-    try:
-        yield report
-    except BaseException as error:
-        report["status"] = "failed"
-        report["error"] = {"type": type(error).__name__, "message": str(error)}
-        try:
-            publish_results(output_dir, report)
-        except Exception as publication_error:
-            error.add_note(f"Could not publish failure results: {publication_error!r}")
-        raise
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -292,17 +258,10 @@ def main() -> None:
     args = parser.parse_args()
     args.output_dir = args.output_dir.resolve()
     args.output_dir.mkdir(parents=True, exist_ok=False)
-    with publish_run(args.output_dir) as report:
-        run_probe(args.output_dir, report)
-
-
-def run_probe(output_dir: Path, report: dict[str, Any]) -> None:
     torch.set_num_threads(2)
     torch.set_num_interop_threads(2)
     torch.use_deterministic_algorithms(True)
     config = OmegaConf.load(CONFIG)
-    if not isinstance(config, DictConfig):
-        raise TypeError("Training configuration must be a mapping")
     runtime = SLCSTrainingRuntimeConfig.from_config(config)
     if runtime.data.pipeline.window_size != 120:
         raise ValueError("This diagnostic requires the fixed 120-frame pilot config")
@@ -339,45 +298,42 @@ def run_probe(output_dir: Path, report: dict[str, Any]) -> None:
         augment=False,
     )
     chosen = selected_windows(dataset)
-    OmegaConf.save(config, output_dir / "resolved_training_config.yaml", resolve=True)
-    report.update(
-        {
-            "status": "running",
-            "scope": "Local checkpoint diagnostic, two batch-size-1 train windows; not proof of training causality or population gradient dominance.",
-            "checkpoint": str(CHECKPOINT),
-            "checkpoint_sha256": checkpoint_sha,
-            "config": str(CONFIG),
-            "seed": SEED,
-            "device": "cpu",
-            "threads": 2,
-            "training_precision": str(config.training.trainer.precision),
-            "diagnostic_precision": "float32",
-            "augmentation": {
-                "dataset_augment": False,
-                "pipeline_augmentation": None,
-                "same_batch_between_modes": True,
-            },
-            "selection": "First eligible dataset index per domain, full 120 frames, positive-weight ball supervision; no random search",
-            "shared_group_definition": "Shared axial entity/time/DINO cross layers and final norm, excludes input embeddings/projections and task heads; see exact names",
-            "versions": {
-                "python": platform.python_version(),
-                "torch": torch.__version__,
-                "numpy": np.__version__,
-            },
-            "command": [sys.executable, *sys.argv],
-            "cwd": str(Path.cwd()),
-            "git_head": subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], text=True
-            ).strip(),
-            "git_status": subprocess.check_output(
-                ["git", "status", "--short"], text=True
-            ),
-            "court_coordinate_scale_xyz": list(COURT_COORD_SCALE_XYZ),
-            "input_sha256": {},
-            "domains": {},
-        }
+    OmegaConf.save(
+        config, args.output_dir / "resolved_training_config.yaml", resolve=True
     )
-    publish_results(output_dir, report)
+    report: dict[str, Any] = {
+        "status": "running",
+        "scope": "Local checkpoint diagnostic, two batch-size-1 train windows; not proof of training causality or population gradient dominance.",
+        "checkpoint": str(CHECKPOINT),
+        "checkpoint_sha256": checkpoint_sha,
+        "config": str(CONFIG),
+        "seed": SEED,
+        "device": "cpu",
+        "threads": 2,
+        "training_precision": str(config.training.trainer.precision),
+        "diagnostic_precision": "float32",
+        "augmentation": {
+            "dataset_augment": False,
+            "pipeline_augmentation": None,
+            "same_batch_between_modes": True,
+        },
+        "selection": "First eligible dataset index per domain, full 120 frames, positive-weight ball supervision; no random search",
+        "shared_group_definition": "Shared axial entity/time/DINO cross layers and final norm, excludes input embeddings/projections and task heads; see exact names",
+        "versions": {
+            "python": platform.python_version(),
+            "torch": torch.__version__,
+            "numpy": np.__version__,
+        },
+        "command": [sys.executable, *sys.argv],
+        "cwd": str(Path.cwd()),
+        "git_head": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip(),
+        "git_status": subprocess.check_output(["git", "status", "--short"], text=True),
+        "court_coordinate_scale_xyz": list(COURT_COORD_SCALE_XYZ),
+        "input_sha256": {},
+        "domains": {},
+    }
     source_paths = {
         CONFIG,
         CHECKPOINT,
@@ -412,8 +368,7 @@ def run_probe(output_dir: Path, report: dict[str, Any]) -> None:
         camera = manifest.cameras[manifest.camera_index(meta.camera_id)]
         local_frames = batch["frame_idx"][0].tolist()
         np.savez_compressed(
-            output_dir / f"{domain}_inputs.npz",
-            allow_pickle=False,
+            args.output_dir / f"{domain}_inputs.npz",
             **{key: value.numpy() for key, value in batch.items()},
         )
         record: dict[str, Any] = {
@@ -429,20 +384,13 @@ def run_probe(output_dir: Path, report: dict[str, Any]) -> None:
             "input_tensor_sha256": before,
             "modes": {},
         }
-        report["domains"][domain] = record
         for mode in ("eval", "train_dropout"):
-            report["stage"] = f"{domain}/{mode}"
-            publish_results(output_dir, report)
             result, arrays = probe_mode(predictor, batch, mode)
             record["modes"][mode] = result
-            np.savez_compressed(
-                output_dir / f"{domain}_{mode}.npz", allow_pickle=False, **arrays
-            )
+            np.savez_compressed(args.output_dir / f"{domain}_{mode}.npz", **arrays)
             if before != {name: tensor_sha(value) for name, value in batch.items()}:
                 raise ValueError("Input batch mutated")
-            publish_results(output_dir, report)
-    report["stage"] = "verifying_immutability"
-    publish_results(output_dir, report)
+        report["domains"][domain] = record
     if state_before != {
         name: tensor_sha(value) for name, value in predictor.model.state_dict().items()
     }:
@@ -454,13 +402,14 @@ def run_probe(output_dir: Path, report: dict[str, Any]) -> None:
             raise ValueError(f"Input changed during diagnostic: {path}")
     report["status"] = "completed"
     report["state_unchanged"] = True
-    report["stage"] = "finished"
-    publish_results(output_dir, report)
+    (args.output_dir / "results.json").write_text(
+        json.dumps(report, indent=2, allow_nan=False) + "\n"
+    )
     print(
         json.dumps(
             {
                 "status": "completed",
-                "results": str(output_dir / "results.json"),
+                "results": str(args.output_dir / "results.json"),
                 "selected": chosen,
             }
         )
