@@ -1,0 +1,36 @@
+{
+  "execution_commit": "10a8a73edf38348eb6322b901d05329b6b2c7f5d",
+  "command": "bash knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/repro.sh",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "exit_status": 0,
+  "execution_attempts": 1,
+  "predecessor_failed_run": "run-slcs-meiji-baseline-line-audit-v1",
+  "fix": "Normalize OpenCV LSD segment/width/precision arrays using reshape; candidate thresholds unchanged",
+  "patch_verification": {
+    "temporary_index_base": "10a8a73edf38348eb6322b901d05329b6b2c7f5d",
+    "git_apply_cached": true,
+    "restored_bytes_match": [
+      "knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/probe.py",
+      "knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/repro.sh"
+    ],
+    "matches_executed_input_sha": true
+  },
+  "external_inputs": "Video, clip and court data remain external; all paths and dual SHA receipts in results.json",
+  "reproduction": "Checkout execution_commit, apply uncommitted.patch, then bash knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/repro.sh /new/unique/output/path",
+  "checks": {
+    "ruff": "passed",
+    "mypy_follow_imports_silent": "passed",
+    "bash_n": "passed",
+    "input_dual_sha256_before_after": 7,
+    "video_and_manifest_identity": "matched"
+  },
+  "bundle_sha256": {
+    "probe.py": "b8b3a5d22cb776db8c22c101692c5de90e658b7b3ecf9c761cfbf29ff682b0c1",
+    "repro.sh": "9ef2dfa8ede1021af15e2ccd1dcc7a3274ece0e2a0e656eee6b0403ec51f4a25",
+    "uncommitted.patch": "14d638c18a763923f9ace6155370bfccfdb139dff392642097a3fd1bfbcc5b35",
+    "results.json": "5a94d512e68bc300c5588788999cb10d5953ee09935f24dd837c36c15785f067",
+    "run.log": "dca2add79a823df7bdd46a93a57d292b7e5bbb7a0306619d515e4fa537509544"
+  },
+  "human_visual_review": "pending",
+  "confirmed_quantitative_result": null
+}

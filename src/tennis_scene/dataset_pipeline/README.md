@@ -60,6 +60,10 @@ Meijiの `checkpoint_sha256` は採用時に確認した6モデルの期待SHA�
 各stageの必須checkpointを開始前に照合し、結果をrun内の `checkpoint_verification.json` に残す。
 この設定を指定するrecipeは6種類の役割と64桁の小文字hexをすべて明示する。
 期待値は採用記録を固定するためのもので、配布元による署名を意味しない。
+人物観測ではcameraごとにもDINO/ViTPoseのSHAを固定値へ照合し、推論前後の
+checkpointファイルの一致と、raw検出・人物poseのreceipt間のDINO SHA一致を確認する。
+既存cacheの利用時と `stage=infer` による観測の消費時にもreceiptを照合する。
+不一致のreceiptを期待値へ書き換えて採用せず、元ファイルを保存して原因を調べる。
 ファイル照合には共通 `src/utils/checksum.py` を使い、計算間の不一致や読取中の変更を検出した場合は、
 全体生成を直ちに停止する。clip処理中なら当該clipの失敗も保存する。既存receiptの書換や自動retryはしない。
 

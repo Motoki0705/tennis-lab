@@ -54,6 +54,10 @@ members:
 - run-slcs-meiji-canonical-association-check-v1
 - run-slcs-meiji-observation-review-v5
 - run-slcs-meiji-court-visual-qc-v1
+- run-slcs-meiji-baseline-line-audit-v1
+- run-slcs-meiji-baseline-line-audit-v2
+- run-slcs-meiji-v8-observe-v1
+- run-slcs-meiji-v8-feature-reuse-v1
 parents: []
 tags:
 - slcs
@@ -67,7 +71,7 @@ tags:
 
 ## まとめ
 
-Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-18時点ではMeiji全体の生成・品質確認を進行中で、全体版SLCSの頑健性はまだ確認していない。
+Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19時点でMeiji v8の全56clipの観測ファイルは生成されたが、3cameraのproducer SHA不一致を事後検査で検出したため教師生成を止めて修復中である。全体版SLCSの頑健性はまだ確認していない。
 
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 
@@ -82,6 +86,8 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 [低支持3clipの追加確認](run-slcs-meiji-observation-review-v5.md)で合計13clip・348画像となった。clip_009 cam2の71frame欠損を特定し、共通人物軸では他視点を含めた2視点腰肩支持が全frameにあることを確認した。追加3clipの支持率99.708–100%も最終教師coverageとは区別する。
 
 [第2・第3収録のCourt画像確認](run-slcs-meiji-court-visual-qc-v1.md)では、保存数値の再計算は一致したが、第3収録cam0の近側baselineに実白線とのずれが見えた。近側baseline上に採用inlierが無く、外挿誤差の可能性を残す。p95は除外点を含む検出残差で独立GT誤差ではない。最終教師の幾何品質と独立した線対応を確認してから採否を判断する。
+
+[白帯の局所画素診断](run-slcs-meiji-baseline-line-audit-v2.md)では第3収録cam0の右側baselineに22.57–26.69pxの上下差があった。既存手動Court注釈は第1収録だけであり、本数値はAIによる画像確認を伴う局所診断として扱う。同checkpointのcrop比較を準備した。[観測全体の事後監査](run-slcs-meiji-v8-observe-v1.md)で3cameraのpeople checkpoint SHA不一致を検出し、後続buildをcancelした。12個の元観測ファイルを保存し、pin照合と再生成を先に進める。[RGB特徴再利用](run-slcs-meiji-v8-feature-reuse-v1.md)は53clipが完了し、元markerが無い3clipが未生成。
 
 ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
 

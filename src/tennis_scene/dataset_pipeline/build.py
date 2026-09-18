@@ -25,7 +25,10 @@ from src.tennis_scene.dataset_pipeline.configuration import (
     resolved_recipe,
 )
 from src.tennis_scene.dataset_pipeline.court import observe_static_court
-from src.tennis_scene.dataset_pipeline.people import observe_singles_people
+from src.tennis_scene.dataset_pipeline.people import (
+    observe_singles_people,
+    validate_people_receipts,
+)
 from src.tennis_scene.dataset_pipeline.provenance import (
     scene_identity,
     validated_scene_cache,
@@ -314,10 +317,19 @@ def _process_clip(
     paths = ReferenceClipPaths.from_config(local)
     if runtime.stage in {"all", "observe"}:
         observe_singles_people(
-            local, paths, clip.clip_dir, observations, homographies=homographies
+            local,
+            paths,
+            clip.clip_dir,
+            observations,
+            homographies=homographies,
+            checkpoint_sha256=runtime.checkpoint_sha256,
         )
     if runtime.stage == "observe":
         return
+    if runtime.stage == "infer":
+        validate_people_receipts(
+            clip.camera_ids, observations, checkpoint_sha256=runtime.checkpoint_sha256
+        )
     identity = scene_identity(local, paths, clip, observations)
     destination_manifest = load_dataset_manifest(runtime.destination)
     target_clip = ClipManifest.load(
