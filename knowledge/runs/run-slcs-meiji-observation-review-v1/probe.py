@@ -52,7 +52,8 @@ def inspect_camera(
         set(np.linspace(0, frames - 1, 5, dtype=int).tolist())
         | {int(index) for jump in jumps for index in (jump, jump + 1)}
     )
-    # BGR colors: near-side P0 green; far-side P1 magenta.
+    # View-local court halves, before associate_people canonicalizes scene IDs.
+    # BGR colors: local near-side P0 green; local far-side P1 magenta.
     colors = ((70, 230, 70), (230, 70, 230))
     edges = (
         (5, 6),
@@ -88,7 +89,7 @@ def inspect_camera(
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
                 cv2.putText(
                     frame,
-                    f"P{player} support={int(supported[player, frame_index])}",
+                    f"local P{player} support={int(supported[player, frame_index])}",
                     (max(x1, 0), max(y1 - 8, 24)),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.75,
@@ -170,6 +171,7 @@ def main() -> None:
         "command": sys.argv,
         "status": "running",
         "policy": "Five evenly spaced frames plus endpoints of each player's largest adjacent box-center step. Diagnostic only; not a teacher acceptance test.",
+        "player_axis": "View-local court half: P0=near, P1=far. These are not the canonical scene player IDs; associate_people aligns them before teacher inference.",
         "clips": [],
     }
     result = args.output_dir / "results.json"

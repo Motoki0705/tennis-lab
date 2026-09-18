@@ -68,6 +68,10 @@ Meijiの `checkpoint_sha256` は採用時に確認した6モデルの期待SHA�
 `court.py` が複数frameのCourt観測から静的homographyを推定する。
 Meijiは同じ収録・同じcamera/cropであることを確認して校正を共有する。
 `people.py` はCourt半面ごとの人物検出を関連付け、ViTPoseで2D関節を得る。
+人物観測cacheのP0/P1は各視点のnear/farであり、反対側から撮るカメラでは同じ番号が
+別選手を指す。教師入力は `associate_people` が `view_half_turns` に従って共通の
+reference courtの人物軸へ並べ替える。視点間の支持率はこの並べ替え後に集計し、
+raw観測の画像とcanonical軸の教師画像を区別する。
 Meijiの `people.selection_policy=temporal_continuity` は最初の最大boxを起点に、
 直前に選択した実検出のboxと、その移動から予測したboxの両方に対するIoU・中心距離で同じ選手を追う。
 予測は直近5区間の速度中央値を使い、`people.association` に指定したframe数と移動量で
