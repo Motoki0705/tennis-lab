@@ -299,3 +299,7 @@ maximum adjacent displacement, and metric centre bounds. These definitions and
 their schema versions are retained in the manifest together with source owners,
 IDs, mappings, coordinate declarations, resolved semantic config, and bounded
 asset policy.
+
+## CPU court-line calibration baseline
+
+[Independent synthetic camera database, retrieval and distance-image refinement](court_calibration/README.md).
