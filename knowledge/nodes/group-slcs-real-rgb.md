@@ -62,6 +62,11 @@ members:
 - run-slcs-meiji-court-crop-comparison-v1
 - run-slcs-meiji-v8-features-missing-v1
 - run-slcs-meiji-video-alias-audit-v1
+- run-slcs-meiji-v9-court-v1
+- run-slcs-meiji-v9-observation-reuse-v1
+- run-slcs-meiji-v9-feature-reuse-v1
+- run-slcs-meiji-read-stream-capture-v1
+- run-slcs-host-storage-audit-v1
 parents: []
 tags:
 - slcs
@@ -75,7 +80,7 @@ tags:
 
 ## まとめ
 
-Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19時点でMeiji v8の全56clipの観測ファイルを生成し、事後検査で見つかった3cameraのproducer SHA不一致は保存・隔離・再生成により修復した。全168cameraの固定pinsと旧新配列監査は通過したが、Courtの局所白線ずれを確認するため全体教師の生成はまだ再開していない。全体版SLCSの頑健性はまだ確認していない。
+Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19時点でMeiji v8の全56clipの観測ファイルを生成し、事後検査で見つかった3cameraのproducer SHA不一致は保存・隔離・再生成により修復した。全168cameraの固定pinsと旧新配列監査が通過し、Court補正を反映したv9の全56clip生成と校正3clipの150完全一致比較も通過した。RGB特徴は全56clipを新たに照合してv9へ再利用済み。一方、v9人物観測の再利用前照合でViTPose SHA不一致が発生し、公開0で停止した。全体教師と全体版SLCSの頑健性は未完成。
 
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 
@@ -98,6 +103,12 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 [Court crop比較](run-slcs-meiji-court-crop-comparison-v1.md)では元6viewのraw/score/Hが完全再現し、Court extentを含むC候補が全viewのfitを通過した。第3収録cam0の局所白帯差は最大26.69→1.51pxへ減り、第1収録の既存注釈への平均誤差も両viewで減った。2passのproduction同値確認と新Meiji v9への分離を進める。
 
 [残3clipの特徴生成後の全体監査](run-slcs-meiji-v8-features-missing-v1.md)は、56clipの特徴schema/設定検証を通過したが、v8 video_001/clip_005/cam2動画の終了時SHAが原本と異なりfailedとなった。同inodeの原本側は前後一致しており、原因は未確定。[別processのsnapshot対照](run-slcs-meiji-video-alias-audit-v1.md)では6digestが期待値と一致し、2snapshotのbyte差は0だった。この限定対照は前回の失敗を取り消さず、原因解決や全体採用完了とは扱わない。
+
+[v9 Courtの通常生成](run-slcs-meiji-v9-court-v1.md)は全56clipで失敗0。校正3clipのinitial/refinedのraw・score・frame index・ROI・Hとcam2旧結果を150項目で完全照合し、110入力の前後SHAも一致した。旧samples所在地を誤った最初の比較driverと失敗記録は保存し、明示rootを修正した。実データやGPU生成の再実行で比較を合わせたものではない。
+
+[v9 RGB再利用](run-slcs-meiji-v9-feature-reuse-v1.md)は全56clip168cameraを公開し、最終1139入力・出力のhashが一致した。[人物観測の再利用](run-slcs-meiji-v9-observation-reuse-v1.md)は142cameraで選択6配列が一致、26cameraに差があったが、公開前2058入力のうちViTPoseだけSHA不一致で停止した。例外後の一致を採用根拠へ置き換えず、公開0のまま読取byteを保存する切り分けへ進む。
+
+[同一読取streamの保存対照](run-slcs-meiji-read-stream-capture-v1.md)はViTPoseの3読取をその場でsnapshotへ保存し、独立processのhashと全byte比較まで一致した。人物選択の実処理を含まない限定対照であり、原因解決とは扱わない。[Windows側の読取監査](run-slcs-host-storage-audit-v1.md)では、WSLのVHDがあるD:のNVMeに4件のresetと、Windowsに1件のbugcheck 0x154を確認した。SHA不一致との因果関係やSSD故障は未確定。実処理中の読取内容を保存する診断を準備する。
 
 ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
 
