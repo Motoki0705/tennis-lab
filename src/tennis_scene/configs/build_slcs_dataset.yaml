@@ -2,5 +2,13 @@ defaults:
   - build_slcs_dataset_base
   - _self_
 
+people:
+  selection_policy: temporal_continuity
+  association:
+    min_iou: 0.0
+    max_center_distance: 1.0
+    max_prediction_frames: 60
+    max_prediction_distance: 1.0
+
 excluded_clips:
   video_002/clip_001: Only 15 of 476 frames have outsourced ball observations in two cameras (3.15%); insufficient for the fixed 30% ball-label acceptance threshold.

@@ -21,6 +21,11 @@ from src.submodules.models.tracker.common import (
     stitch_single_subject_tracklets,
 )
 from src.tennis_scene.configuration import ReferenceClipPaths
+from src.tennis_scene.dataset_pipeline.person_association import (
+    PersonAssociation,
+    associate_single_person,
+    association_settings,
+)
 from src.tennis_scene.reference_pipeline.observations import read_clip, sha256
 from src.utils.io import save_json_atomic
 from src.utils.video.reader import OpenCVVideoFrameReader
@@ -29,6 +34,9 @@ from src.utils.video.reader import OpenCVVideoFrameReader
 def _people_cache_settings(cfg: DictConfig) -> dict[str, Any]:
     """Normalize explicit/default error to the original schema-2 settings identity."""
     settings = cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True))
+    association_settings(settings)
+    if settings.get("selection_policy") == "largest":
+        del settings["selection_policy"]
     if "long_gap_policy" in settings and settings["long_gap_policy"] == "error":
         del settings["long_gap_policy"]
     return settings
@@ -68,12 +76,13 @@ def select_court_halves(
     max_gap_frames: int,
     long_gap_policy: str = "error",
     camera_id: str = "unknown",
+    association: PersonAssociation | None = None,
 ) -> tuple[TrackResult, np.ndarray]:
     """Choose one subject per end; retain the exact detector/tracklet provenance.
 
-    This policy is for singles clips without an end change. The largest box in
-    each half is selected after the playing-area filter, including fragmented
-    tracklets. Detector-free frames remain marked as interpolation.
+    Singles clips must have no end change. Legacy selection uses largest boxes;
+    explicit association retains a spatially consistent incumbent per half.
+    Detector-free frames remain marked as interpolation.
     """
     if long_gap_policy not in {"error", "mask"}:
         raise ValueError(f"Invalid people.long_gap_policy: {long_gap_policy!r}")
@@ -95,7 +104,11 @@ def select_court_halves(
     tracks, masks = {}, {}
     source_ids: np.ndarray = np.full((2, len(history)), -1, np.int64)
     for end, half in enumerate(halves):
-        stitched = stitch_single_subject_tracklets(half)
+        stitched = (
+            stitch_single_subject_tracklets(half)
+            if association is None
+            else associate_single_person(half, association)
+        )
         observed = np.array([bool(frame) for frame in stitched])
         coverage = float(observed[sample_indices].mean())
         observed_indices = np.flatnonzero(observed)
@@ -226,14 +239,22 @@ def observe_singles_people(
         cache = output / f"{cam}_people.npz"
         receipt = cache.with_suffix(".metadata.json")
         long_gap_policy = str(settings.get("long_gap_policy", "error"))
+        cache_settings = _people_cache_settings(cfg.people)
+        association = association_settings(cache_settings)
         identity = {
-            "schema_version": 3 if long_gap_policy == "mask" else 2,
+            "schema_version": 4
+            if association is not None
+            else (3 if long_gap_policy == "mask" else 2),
             "video_sha256": sha256(video),
             "detector_sha256": sha256(paths.dino_checkpoint),
             "pose_sha256": sha256(paths.vitpose_checkpoint),
-            "settings": _people_cache_settings(cfg.people),
+            "settings": cache_settings,
             "homography": homography.tolist(),
-            "policy": "largest detected person per court half; singles without end changes",
+            "policy": (
+                "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
+                if association is not None
+                else "largest detected person per court half; singles without end changes"
+            ),
         }
         if cache.exists():
             if json.loads(receipt.read_text()) != identity:
@@ -277,6 +298,7 @@ def observe_singles_people(
             max_gap_frames=int(float(settings.max_gap_seconds) * clip["fps"]),
             long_gap_policy=long_gap_policy,
             camera_id=cam,
+            association=association,
         )
         pose = ViTPosePose2D(
             paths.vitpose_checkpoint,

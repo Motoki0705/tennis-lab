@@ -2,7 +2,7 @@ defaults:
   - paths: default
   - _self_
 source_datasets:
-  - slcs/meiji_rgb_v6
+  - slcs/meiji_rgb_v7
   - slcs/broadcast_rgb_v4
 dataset_directory: ${tennis_dataset:slcs,real_rgb_v1}
 dataset_id: real_rgb_v1

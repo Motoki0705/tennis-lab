@@ -192,8 +192,9 @@ def test_cache_settings_normalize_only_backward_compatible_error_policy():
     assert _people_cache_settings(OmegaConf.create(masked)) == masked
 
 
+@pytest.mark.parametrize("temporal", [False, True])
 def test_observe_masks_pose_confidence_and_rejects_old_mask_cache(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, temporal
 ):
     import json
     from types import SimpleNamespace
@@ -218,6 +219,9 @@ def test_observe_masks_pose_confidence_and_rejects_old_mask_cache(
             },
         }
     )
+    if temporal:
+        cfg.people.selection_policy = "temporal_continuity"
+        cfg.people.association = {"min_iou": 0.0, "max_center_distance": 1.0}
     # Only these two fields cross the mocked detector/pose boundary in this test.
     paths = cast(
         ReferenceClipPaths,
@@ -267,7 +271,7 @@ def test_observe_masks_pose_confidence_and_rejects_old_mask_cache(
         assert (saved["keypoints"][..., :2] == 1).all()
     receipt = cache.with_suffix(".metadata.json")
     identity = json.loads(receipt.read_text())
-    assert identity["schema_version"] == 3
+    assert identity["schema_version"] == (4 if temporal else 3)
     assert identity["settings"]["long_gap_policy"] == "mask"
     people.observe_singles_people(
         cfg, paths, tmp_path, tmp_path, homographies=np.eye(3)[None]

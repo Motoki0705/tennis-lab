@@ -1,13 +1,12 @@
 defaults:
   - paths: default
   - _self_
-dataset_directory: slcs/meiji_rgb_v6
+dataset_directory: slcs/meiji_rgb_v7
 expected_dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
 generation_directories:
-  - tennis_scene/generate/meiji_teacher_quality/s42-cpu-001
-  - tennis_scene/generate/meiji_rgb_v6/s42-001
+  - tennis_scene/generate/meiji_rgb_v7/s42-001
 observation_directories:
-  - tennis_scene/precompute/meiji_dino_vitpose/s42-003
+  - tennis_scene/precompute/meiji_dino_vitpose/s42-004
 excluded_clips:
   video_002/clip_001: Explicit exclusion in build_slcs_dataset.yaml (insufficient outsourced multiview ball coverage).
 allow_incomplete: false
@@ -17,7 +16,7 @@ quality:
   min_ball_cameras: 1
   label_weight_power: 1.0
   min_window_label_ratio: 0.5
-output_dir: ${tennis_output:tennis_scene,analyze,meiji_rgb_v6_quality,${tennis_run_id:}}
+output_dir: ${tennis_output:tennis_scene,analyze,meiji_rgb_v7_quality,${tennis_run_id:}}
 hydra:
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${output_dir},hydra}

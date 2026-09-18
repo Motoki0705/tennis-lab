@@ -7,6 +7,7 @@ members:
 - run-slcs-blcs-meiji-baseline-eval
 - run-slcs-blcs-meiji-e60-v1
 - run-slcs-blcs-meiji-finetuned-eval
+- run-slcs-meiji-v6-tracking-qc
 - run-slcs-meiji-observation-mask-probe-v1
 - run-slcs-meiji-rgb-features-v2
 - run-slcs-plcs-broadcast-e60-v2
@@ -47,6 +48,8 @@ Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付�
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 
 SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseline](run-slcs-rgb-pilot-baseline-selected-conditions-v2.md)と[入力欠損augmentation](run-slcs-rgb-pilot-augmented-selected-conditions-v2.md)を各60epoch比較した。testはbroadcast 1収録のみで、Meiji testは含まれない。augmentationは欠損時の選手精度を改善したがfull入力は微悪化し、ballはtrain/testとも大きな誤差と低分散出力が残った。現在の重みを頑健な実世界モデルとして採用しない。
+
+全体生成の途中で[人物対応の切替とcache記録不一致](run-slcs-meiji-v6-tracking-qc.md)を確認した。旧v6の生成を取り消し、人物対応を修正した別版へ進める。
 
 ### 次の判断
 
