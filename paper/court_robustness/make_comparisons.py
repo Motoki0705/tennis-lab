@@ -79,7 +79,7 @@ def external_panels(image: Image.Image, b: dict, o: dict) -> dict[str, Image.Ima
             image,
             b["aligned_kp"] if b["homography_found"] else np.full((14, 2), np.nan),
             (255, 98, 48),
-            b["raw_kp"],
+            b["refined_kp"],
         ),
         "baseline_common": overlay(
             image,

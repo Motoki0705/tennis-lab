@@ -91,3 +91,67 @@ def test_external_panels_reproduce_saved_predictions(record: dict) -> None:
         np.testing.assert_array_equal(
             np.asarray(panels["ours_line_overlay"])[~active], np.asarray(image)[~active]
         )
+
+
+def test_tcd_official_panel_displays_refined_keypoints() -> None:
+    from make_comparisons import overlay
+
+    record = sources()[0]
+    image = Image.open(ROOT / record["paper_path"]).convert("RGB")
+    with (
+        np.load(ROOT / "evidence/predictions/local01_baseline.npz") as b,
+        np.load(ROOT / "evidence/predictions/local01_ours.npz") as o,
+    ):
+        assert not bool(b["homography_found"])
+        no_lines = np.full((14, 2), np.nan)
+        expected = overlay(image, no_lines, (255, 98, 48), b["refined_kp"])
+        unrefined = overlay(image, no_lines, (255, 98, 48), b["raw_kp"])
+        actual = external_panels(image, b, o)["baseline"]
+        np.testing.assert_array_equal(np.asarray(actual), np.asarray(expected))
+        assert not np.array_equal(np.asarray(actual), np.asarray(unrefined))
+
+
+def make_build_fixture(root: Path) -> None:
+    from build_paper import source_digests
+    from common import write_json
+
+    (root / "figures").mkdir()
+    (root / "report.tex").write_text("source fixture")
+    (root / "report.pdf").write_bytes(b"pdf byte fixture")
+    (root / "figures/view.png").write_bytes(b"figure byte fixture")
+    write_json(
+        root / "evidence/build.json",
+        {
+            "schema": "court_paper_build_v1",
+            "source_sha256": source_digests(root),
+            "pdf_sha256": sha256(root / "report.pdf"),
+            "layout_glyph_reference_checks": "passed",
+        },
+    )
+
+
+def test_offline_build_binding_needs_no_temporary_log(tmp_path: Path) -> None:
+    from verify_artifacts import validate_build_receipt
+
+    make_build_fixture(tmp_path)
+    assert not (tmp_path / "report.log").exists()
+    validate_build_receipt(tmp_path)
+
+
+@pytest.mark.parametrize("changed", ["report.pdf", "report.tex", "figures/view.png"])
+def test_build_binding_rejects_modified_artifact(tmp_path: Path, changed: str) -> None:
+    from verify_artifacts import validate_build_receipt
+
+    make_build_fixture(tmp_path)
+    (tmp_path / changed).write_bytes(b"altered bytes")
+    with pytest.raises(ValueError, match="differs|differ"):
+        validate_build_receipt(tmp_path)
+
+
+def test_local_check_rejects_different_checkpoint(tmp_path: Path) -> None:
+    from verify_artifacts import validate_local_weights
+
+    path = tmp_path / "weights.ckpt"
+    path.write_bytes(b"different checkpoint bytes")
+    with pytest.raises(ValueError, match="Checkpoint SHA-256 differs"):
+        validate_local_weights({"checkpoint": str(path), "ours_sha256": "0" * 64})

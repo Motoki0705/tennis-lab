@@ -13,18 +13,19 @@
 | `evidence/dataset_audit.json` | TCD全8,841画像＋B00〜B03全8,415レンダリングとのバイト/RGB/知覚ハッシュ照合 |
 | `evidence/scene_sources/` | 実レンダリングPNG、選択サンプルのカメラ・教師、現存アライメントと分割集計。各sourceのハッシュ付き |
 | `figures/`, `evidence/*figures.json`, `scene_visualization.json` | PDF図版と数値・実画像からの生成結果のハッシュ |
+| `evidence/build.json` | PDF・TeX・図版のハッシュとLuaLaTeXの組版検証記録 |
 | `evidence/validation.json` | PDFと掲載成果物の検証結果。精度評価ではない |
+
+同梱物だけの検証は、git管理されたビルド記録を読み、一時的なLaTeXログを要求しません。通常は読み取り専用で、`--write-report` を付けた場合だけ `validation.json` を更新します。`--check-local-sources` は両モデルの重み、checkpoint内の設定・出力契約・epoch/stepも現物と照合します。
 
 使わないSEG・全KPヒートマップ（本モデル）は保存対象から除き、図版に必要な生出力を保持しています。重み・動画・3DGS全体は大きいため同梱しません。写真の撮影者・原公開URL・ライセンスは提供されていないため、出典を推測せずユーザー指定画像と記録しています。画像の権利を本repoのMITへ変更するものではありません。
 
 ## PDFを再ビルド
 
-LuaLaTeX、luatexja、Noto Serif/Sans CJK JP、DejaVu Serif/Sansを使用します。
+リポジトリrootで実行します。LuaLaTeX、luatexja、Noto Serif/Sans CJK JP、DejaVu Serif/Sansを使用し、2回の組版と欠け・文字・参照の検証後にビルド記録を保存します。
 
 ```bash
-cd paper/court_robustness
-lualatex -interaction=nonstopmode -halt-on-error report.tex
-lualatex -interaction=nonstopmode -halt-on-error report.tex
+.venv/bin/python paper/court_robustness/build_paper.py
 ```
 
 ## 同梱証拠から図版を再生成・検証（GPU・重み不要）
@@ -34,7 +35,7 @@ lualatex -interaction=nonstopmode -halt-on-error report.tex
 ```bash
 .venv/bin/python paper/court_robustness/make_comparisons.py
 .venv/bin/python paper/court_robustness/make_scene_figures.py
-# 図版を変更した場合は上記のTeXビルドを2回実行
+# 図版を変更した場合は build_paper.py でPDFとビルド記録を更新
 .venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py
 .venv/bin/python paper/court_robustness/verify_artifacts.py
 ```
@@ -55,10 +56,11 @@ git -C .cache/court-report/TennisCourtDetector checkout e5cd4f1ce26b15361700d3d8
 .venv/bin/python paper/court_robustness/audit_dataset.py
 .venv/bin/python paper/court_robustness/make_scene_figures.py --collect
 .venv/bin/python paper/court_robustness/make_comparisons.py
-# TeXを2回ビルド後、元データまで照合
-.venv/bin/python paper/court_robustness/verify_artifacts.py --check-local-sources
+.venv/bin/python paper/court_robustness/build_paper.py
+# 元画像・カメラ・アライメント・重み・保存設定まで照合
+.venv/bin/python paper/court_robustness/verify_artifacts.py --check-local-sources --write-report
 ```
 
-互換処理は推論専用です。現行validatorが保存済みの多解像度学習設定を拒否するため、使わない学習用 `train_scales` のみを `[val_short_side]` に置換し、全state dictをstrictに読み込みます。元設定も保存し、推論解像度・architecture・重みは変更しません。TCDはNumPy/SciPy互換のため12候補のH選択を等価に記述し、特異行列・評価点欠落を明示的に棄却します。
+互換処理は推論専用です。現行validatorが保存済みの多解像度学習設定を拒否するため、使わない学習用 `train_scales` のみを `[val_short_side]` に置換し、全state dictをstrictに読み込みます。元設定も保存し、推論解像度・architecture・重みは変更しません。重みはSHA-256を固定し、読み込み前後と推論終了時に一致を要求します。TCDはNumPy/SciPy互換のため12候補のH選択を等価に記述し、特異行列・評価点欠落を明示的に棄却します。
 
 新規学習・GPUレンダリングは不要です。今後GPU処理を追加する場合は、repoのtraining-queue規約に従ってください。

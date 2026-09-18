@@ -1,7 +1,7 @@
 {
   "figures": {
     "local01_input.png": "1076fd0b9e8b994c3605bf8187856701df574636cf7a3db388741ce79ac6e287",
-    "local01_baseline.png": "ee63097853f51e100fc83507510c15ab6ff33b4f0d6292c3b59ebdf6eb4246d4",
+    "local01_baseline.png": "705a826ea78f9d121f6421e733fd466ff55c15c4799581358cf6dea514baae19",
     "local01_baseline_common.png": "5153e9314532998d5452adc97bb52ae8f769fa13332872765a1261cbb3c29ec6",
     "local01_baseline_heat.png": "9dafe4f8a9d4383c1548894a52cbfdd4de648fb05b357275ce54843eedb6e75b",
     "local01_ours.png": "e486723fedcf0f9dc4d4560d6131280cc3e80c5661ba51a646edaa93b4bc3a5d",
@@ -27,7 +27,7 @@
     "local04_baseline_heat.png": "520ff0ac32a13452cd7be15de11abea4ef1af7206a4bd4fe8024d7ee0b07ccb4",
     "local04_ours.png": "cfd6e5573ca448d03d333dfc5e43881697a40e97eeb2b7b83127f2654e49f72e",
     "local04_ours_heat.png": "8961a4422571a2681ff2936e8a654e5e9a8279e1721b8991e89e0290ee2dfbbb",
-    "local04_ours_line_overlay.png": "a65b1c7b520defdca693670e42c803107b43eadeff4a20db2ef38e497e1755a1"
+    "local04_ours_line_overlay.png": "3c8fe788101fddd35ba2b7e33b093439e90650ba1da1289ef6c508261ce46b01"
   },
   "line_threshold": 0.5,
   "heatmap_range": [

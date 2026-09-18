@@ -22,6 +22,8 @@ CHECKPOINT = (
     MAIN
     / "outputs/court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt"
 )
+CHECKPOINT_SHA256 = "e11b494366a2be4266f3f034973ef08c6a91530530d116764689ec35b2843455"
+BASELINE_SHA256 = "09aa8c4338459ba1d643f2dc329f45f464dedec3720fccc1a4abfd1f7b464d04"
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(BASELINE))
 from court_reference import CourtReference  # noqa: E402
@@ -126,11 +128,14 @@ def main() -> None:
     if args.model in {"both", "baseline"}:
         model = BallTrackerNet(out_channels=15).cpu().eval()
         baseline_path = REPO / ".cache/court-report/baseline.pth"
+        if sha256(baseline_path) != BASELINE_SHA256:
+            raise ValueError("TCD checkpoint differs from the pinned paper weights")
         model.load_state_dict(
             torch.load(baseline_path, map_location="cpu", weights_only=True),
             strict=True,
         )
         metadata["baseline_sha256"] = sha256(baseline_path)
+        metadata["baseline_checkpoint"] = str(baseline_path)
         metadata["baseline_code_commit"] = subprocess.check_output(
             ["git", "-C", str(BASELINE), "rev-parse", "HEAD"], text=True
         ).strip()
@@ -182,7 +187,11 @@ def main() -> None:
             CourtDetectionLightningModule,
         )
 
+        if sha256(CHECKPOINT) != CHECKPOINT_SHA256:
+            raise ValueError("Checkpoint differs from the pinned paper weights")
         checkpoint = torch.load(CHECKPOINT, map_location="cpu", weights_only=False)
+        if sha256(CHECKPOINT) != CHECKPOINT_SHA256:
+            raise ValueError("Checkpoint changed while loading")
         config = checkpoint["hyper_parameters"]["config"]
         write_json(
             ROOT / "evidence/checkpoint_config.json",
@@ -214,7 +223,7 @@ def main() -> None:
         module.cpu().eval()
         metadata["epoch"] = checkpoint["epoch"]
         metadata["global_step"] = checkpoint["global_step"]
-        metadata["ours_sha256"] = sha256(CHECKPOINT)
+        metadata["ours_sha256"] = CHECKPOINT_SHA256
         metadata["short_side"] = module.model_io.spec.short_side
         del checkpoint
         for record in records:
@@ -268,6 +277,15 @@ def main() -> None:
     metadata["cuda_initialized"] = torch.cuda.is_initialized()
     if metadata["cuda_initialized"]:
         raise RuntimeError("This comparison must remain CPU-only.")
+    if args.model in {"both", "ours"} and sha256(CHECKPOINT) != CHECKPOINT_SHA256:
+        raise ValueError("Checkpoint changed during inference")
+    if args.model in {"both", "baseline"} and sha256(baseline_path) != BASELINE_SHA256:
+        raise ValueError("TCD checkpoint changed during inference")
+    metadata["configuration_sha256"] = {
+        name: sha256(ROOT / "evidence" / name)
+        for name in ("checkpoint_config.json", "target_bundle.json")
+        if args.model in {"both", "ours"}
+    }
     metadata["input_manifest_sha256"] = sha256(ROOT / "evidence/inputs.json")
     metadata["inputs"] = {r["id"]: r["sha256"] for r in records}
     metadata["prediction_sha256"] = {
