@@ -1,0 +1,44 @@
+{
+  "schema": "court_paper_inputs_v1",
+  "selection": "All files supplied in data/samples/tennis_court, filename order; no prediction-based selection.",
+  "source": "User-supplied images; author, capture date and original publication URL were not supplied.",
+  "preprocessing": "Byte-identical copy; EXIF orientation is applied identically at inference and display time.",
+  "images": [
+    {
+      "id": "local01",
+      "filename": "ennai011_1.jpg",
+      "supplied_path": "data/samples/tennis_court/ennai011_1.jpg",
+      "paper_path": "images/local01.jpg",
+      "sha256": "7d4fc062c2ee1480b04d77c5ed79e79d0983446c80119063aa9436d6e6c2f016",
+      "width": 1000,
+      "height": 667
+    },
+    {
+      "id": "local02",
+      "filename": "images (1).jpg",
+      "supplied_path": "data/samples/tennis_court/images (1).jpg",
+      "paper_path": "images/local02.jpg",
+      "sha256": "e76a1b63ff1e6aef6db63c5ea2f237ce7afd3de4be723131859aace12457e31f",
+      "width": 638,
+      "height": 480
+    },
+    {
+      "id": "local03",
+      "filename": "images (2).jpg",
+      "supplied_path": "data/samples/tennis_court/images (2).jpg",
+      "paper_path": "images/local03.jpg",
+      "sha256": "64aa07abf02b6ae27e1da6f2eb4d195d1cec55469db4d20a6996bf8c8e63c1fa",
+      "width": 547,
+      "height": 365
+    },
+    {
+      "id": "local04",
+      "filename": "images.jpg",
+      "supplied_path": "data/samples/tennis_court/images.jpg",
+      "paper_path": "images/local04.jpg",
+      "sha256": "fff92432ea6e17c83c6c1e7d1dbb8917c9421a6b0408b17b3848122fbf93610b",
+      "width": 678,
+      "height": 452
+    }
+  ]
+}

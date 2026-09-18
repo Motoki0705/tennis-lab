@@ -1,0 +1,10 @@
+{
+  "pytest_command": ".venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py",
+  "pytest_passed": 11,
+  "ruff_check": "passed",
+  "ruff_format": "passed",
+  "knowledge_validate_errors": 0,
+  "pdf_pages_visually_inspected": 5,
+  "additional_training": false,
+  "gpu_used": false
+}

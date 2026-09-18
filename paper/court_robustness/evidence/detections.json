@@ -1,0 +1,38 @@
+[
+  {
+    "id": "local01",
+    "baseline_official_detections": 3,
+    "baseline_official_H": false,
+    "ours_detections": 14,
+    "ours_H": true,
+    "ours_line_max": 1.0,
+    "baseline_argmax_H": true
+  },
+  {
+    "id": "local02",
+    "baseline_official_detections": 1,
+    "baseline_official_H": false,
+    "ours_detections": 14,
+    "ours_H": true,
+    "ours_line_max": 1.0,
+    "baseline_argmax_H": false
+  },
+  {
+    "id": "local03",
+    "baseline_official_detections": 0,
+    "baseline_official_H": false,
+    "ours_detections": 14,
+    "ours_H": true,
+    "ours_line_max": 1.0,
+    "baseline_argmax_H": false
+  },
+  {
+    "id": "local04",
+    "baseline_official_detections": 1,
+    "baseline_official_H": false,
+    "ours_detections": 14,
+    "ours_H": true,
+    "ours_line_max": 0.9999996423721313,
+    "baseline_argmax_H": false
+  }
+]
