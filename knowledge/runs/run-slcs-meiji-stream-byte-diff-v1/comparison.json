@@ -1,0 +1,185 @@
+{
+  "status": "compared",
+  "command": [
+    "knowledge/runs/run-slcs-meiji-stream-byte-diff-v1/compare.py",
+    "--good-metadata",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/audit.json",
+    "--bad-metadata",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/ledger.json",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_stream_byte_diff/s42-001"
+  ],
+  "script_sha256": "ddf71d8e109416bbf93b0f034d08e825181c0d981404a0ea87127a340f2eaac1",
+  "limitations": "One finite CPU comparison of saved streams, never a live checkpoint read.\n\nHash both providers and compare bytes on the same scan. ZIP inspection reads only\ncentral/local headers; it never unpickles, decompresses, or loads a model.\nObserved bit differences identify bytes, not the hardware/software root cause.\n",
+  "metadata_sha256_before": {
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/audit.json": "88dc4f6d20fe038e262cd206a97bfdd1971b34e8cf5f24270e50d452cdb4c4d8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/ledger.json": "62b664af47bea2860d581494358fd756d241093c07b91cbc270f9a459f70c8f9"
+  },
+  "comparison": {
+    "sources": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/pass-001.bin",
+        "stat_before": {
+          "dev": 2096,
+          "ino": 276480,
+          "size": 2549075546,
+          "mtime_ns": 1789759637090350893,
+          "ctime_ns": 1789759637090350893
+        },
+        "descriptor_before": {
+          "dev": 2096,
+          "ino": 276480,
+          "size": 2549075546,
+          "mtime_ns": 1789759637090350893,
+          "ctime_ns": 1789759637090350893
+        },
+        "descriptor_after": {
+          "dev": 2096,
+          "ino": 276480,
+          "size": 2549075546,
+          "mtime_ns": 1789759637090350893,
+          "ctime_ns": 1789759637090350893
+        },
+        "stat_after": {
+          "dev": 2096,
+          "ino": 276480,
+          "size": 2549075546,
+          "mtime_ns": 1789759637090350893,
+          "ctime_ns": 1789759637090350893
+        },
+        "hashlib_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "cpython_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "bytes_read": 2549075546,
+        "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "gates": {
+          "stat_unchanged": true,
+          "length_matches_stat": true,
+          "providers_and_expected_match": true
+        }
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/001-initial_pin.bin",
+        "stat_before": {
+          "dev": 2096,
+          "ino": 275980,
+          "size": 2549075546,
+          "mtime_ns": 1789760463517556611,
+          "ctime_ns": 1789760463517556611
+        },
+        "descriptor_before": {
+          "dev": 2096,
+          "ino": 275980,
+          "size": 2549075546,
+          "mtime_ns": 1789760463517556611,
+          "ctime_ns": 1789760463517556611
+        },
+        "descriptor_after": {
+          "dev": 2096,
+          "ino": 275980,
+          "size": 2549075546,
+          "mtime_ns": 1789760463517556611,
+          "ctime_ns": 1789760463517556611
+        },
+        "stat_after": {
+          "dev": 2096,
+          "ino": 275980,
+          "size": 2549075546,
+          "mtime_ns": 1789760463517556611,
+          "ctime_ns": 1789760463517556611
+        },
+        "hashlib_sha256": "a8e786c151eedd1dca57ea5b108b901b6a6cb8731a3990b213bdffa418751905",
+        "cpython_sha256": "a8e786c151eedd1dca57ea5b108b901b6a6cb8731a3990b213bdffa418751905",
+        "bytes_read": 2549075546,
+        "expected_sha256": "a8e786c151eedd1dca57ea5b108b901b6a6cb8731a3990b213bdffa418751905",
+        "gates": {
+          "stat_unchanged": true,
+          "length_matches_stat": true,
+          "providers_and_expected_match": true
+        }
+      }
+    ],
+    "differing_bytes": 1,
+    "length_only_bytes": 0,
+    "xor_distribution": {
+      "0x20": 1
+    },
+    "bit_flip_counts_lsb0": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    "flipped_bits_total": 1,
+    "first_difference": 1896501665,
+    "last_difference": 1896501665,
+    "details": [
+      {
+        "offset_zero_based": 1896501665,
+        "left_byte": 157,
+        "right_byte": 189,
+        "xor": 32,
+        "chunk_index": 1808,
+        "chunk_offset": 676257,
+        "page_size": 4096,
+        "page_index": 463013,
+        "page_offset": 417
+      }
+    ],
+    "detail_cap": 4096,
+    "difference_ranges_inclusive": [
+      [
+        1896501665,
+        1896501665
+      ]
+    ],
+    "different_chunks": [
+      1808
+    ],
+    "details_truncated": false,
+    "all_offsets_retained_as_inclusive_ranges": true,
+    "gates_passed": true,
+    "byte_equal": false
+  },
+  "archives": [
+    {
+      "is_zipfile": true,
+      "entries": [
+        {
+          "filename": "archive/data/94533706120768",
+          "local_header_offset": 1886831632,
+          "payload_start": 1886831744,
+          "payload_end_exclusive": 1906492544,
+          "compressed_size": 19660800,
+          "uncompressed_size": 19660800,
+          "compression_type": 0,
+          "differing_payload_bytes": 1,
+          "pickle_loaded": false
+        }
+      ]
+    },
+    {
+      "is_zipfile": true,
+      "entries": [
+        {
+          "filename": "archive/data/94533706120768",
+          "local_header_offset": 1886831632,
+          "payload_start": 1886831744,
+          "payload_end_exclusive": 1906492544,
+          "compressed_size": 19660800,
+          "uncompressed_size": 19660800,
+          "compression_type": 0,
+          "differing_payload_bytes": 1,
+          "pickle_loaded": false
+        }
+      ]
+    }
+  ],
+  "metadata_sha256_after": {
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/audit.json": "88dc4f6d20fe038e262cd206a97bfdd1971b34e8cf5f24270e50d452cdb4c4d8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/ledger.json": "62b664af47bea2860d581494358fd756d241093c07b91cbc270f9a459f70c8f9"
+  }
+}
