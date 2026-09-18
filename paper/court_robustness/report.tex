@@ -27,7 +27,7 @@
 \newcommand{\panel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth]{figures/#1}\end{minipage}}
 \newcommand{\epanel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth,height=32mm,keepaspectratio]{figures/#1}\end{minipage}}
 \newcommand{\external}[1]{%
-\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：公式KP（Hなし）}\hfill\epanel{#1_ours_line_overlay.png}{本モデル：LINE $p\geq0.5$}\par\vspace{1mm}
+\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours_line_overlay.png}{本モデル：LINE $p\geq0.5$}\par\vspace{1mm}
 \noindent\epanel{#1_baseline_common.png}{TCD：14点argmax＋H}\hfill\epanel{#1_ours.png}{本モデル：KP14＋H}\hfill\epanel{#1_ours_heat.png}{本モデル：LINE確率 $[0,1]$}\par}
 \newcommand{\scenerow}[7]{\noindent{\sffamily\bfseries #1}\par\vspace{.5mm}\panel{#2}{#3}\hfill\panel{#4}{#5}\hfill\panel{#6}{#7}\par\vspace{.8mm}}
 
@@ -158,7 +158,7 @@ B03 & 1,669 & 226 & 198 & 40 & 0.109\\\midrule
 
 \newpage
 \subsection{指定実画像への推論：低視点・斜視}
-{\small 橙＝TCD、水色＝本モデル。KP＋H欄の点は抽出KP、線はそのKPから求めた規格コート投影。Hなしの場合は点だけを表示する。LINE欄はテンプレートを当てはめていない直接の密予測である。}\par
+{\small 橙＝TCD、水色＝本モデル。KP＋H欄の点は抽出KP、線はそのKPから求めた規格コート投影。TCD公式欄の点は局所補正後。Hなしの場合は点だけを表示する。LINE欄はテンプレートを当てはめていない直接の密予測である。}\par
 \vspace{1mm}
 \noindent\textbf{A：\texttt{ennai011\_1.jpg} / 1,000$\times$667}\par
 \external{local01}

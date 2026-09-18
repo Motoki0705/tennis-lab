@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
+from pathlib import Path
 
 import numpy as np
+from build_paper import source_digests
 from common import REPO, ROOT, sha256, sources, write_json
 from make_scene_figures import SELECTION, render_overlay, validate_projection
 from PIL import Image
@@ -18,13 +21,75 @@ def require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
+def validate_build_receipt(root: Path) -> None:
+    receipt = json.loads((root / "evidence/build.json").read_text())
+    require(receipt["schema"] == "court_paper_build_v1", "Unknown build receipt")
+    require(
+        receipt["source_sha256"] == source_digests(root),
+        "PDF sources differ from the recorded build",
+    )
+    require(
+        receipt["pdf_sha256"] == sha256(root / "report.pdf"),
+        "PDF differs from the recorded build",
+    )
+    require(
+        receipt["layout_glyph_reference_checks"] == "passed",
+        "Build validation did not pass",
+    )
+
+
+def validate_local_weights(metadata: dict) -> None:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    import torch
+    from omegaconf import OmegaConf
+
+    checkpoint_path = Path(metadata["checkpoint"])
+    require(
+        sha256(checkpoint_path) == metadata["ours_sha256"],
+        "Checkpoint SHA-256 differs from inference",
+    )
+    require(
+        sha256(Path(metadata["baseline_checkpoint"])) == metadata["baseline_sha256"],
+        "TCD weight SHA-256 differs from inference",
+    )
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    saved_config = json.loads((ROOT / "evidence/checkpoint_config.json").read_text())
+    saved_bundle = json.loads((ROOT / "evidence/target_bundle.json").read_text())
+    require(
+        OmegaConf.to_container(checkpoint["hyper_parameters"]["config"], resolve=True)
+        == saved_config,
+        "Checkpoint configuration differs from the recorded configuration",
+    )
+    require(
+        checkpoint["hyper_parameters"]["target_bundle_state"] == saved_bundle,
+        "Checkpoint target bundle differs from the recorded contract",
+    )
+    require(
+        checkpoint["epoch"] == metadata["epoch"]
+        and checkpoint["global_step"] == metadata["global_step"],
+        "Checkpoint training step differs",
+    )
+    require(
+        not torch.cuda.is_initialized(),
+        "Source validation unexpectedly initialized CUDA",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check-local-sources", action="store_true")
+    parser.add_argument("--write-report", action="store_true")
     args = parser.parse_args()
     records = sources()
     require(len(records) == 4, "Paper must include all four supplied images")
     metadata = json.loads((ROOT / "evidence/inference_both.json").read_text())
+    for name, digest in metadata["configuration_sha256"].items():
+        require(
+            sha256(ROOT / "evidence" / name) == digest,
+            "Changed inference configuration evidence",
+        )
+    if args.check_local_sources:
+        validate_local_weights(metadata)
     audit = json.loads((ROOT / "evidence/dataset_audit.json").read_text())
     require(
         metadata["device"] == "cpu" and not metadata["cuda_initialized"],
@@ -185,19 +250,7 @@ def main() -> None:
     require(match is not None, "No PDF page count")
     pages = int(match.group(1))
     require(pages == 5, "Unexpected page overflow")
-    log = (ROOT / "report.log").read_text()
-    require(
-        not any(
-            term in log
-            for term in (
-                "Missing character",
-                "Overfull",
-                "undefined references",
-                "undefined on input",
-            )
-        ),
-        "LaTeX rendering/reference error",
-    )
+    validate_build_receipt(ROOT)
     text = subprocess.check_output(
         ["pdftotext", str(ROOT / "report.pdf"), "-"], text=True
     )
@@ -212,6 +265,8 @@ def main() -> None:
         "scene_overlays": len(scene_figures),
         "overlays_per_scene": 3,
         "source_owner_check": args.check_local_sources,
+        "local_weights_and_config_checked": args.check_local_sources,
+        "build_receipt_verified": True,
         "corpus_images_audited": 17256,
         "exact_matches": 0,
         "baseline_official_detections": counts,
@@ -220,7 +275,8 @@ def main() -> None:
         "pdf_sha256": sha256(ROOT / "report.pdf"),
         "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth.",
     }
-    write_json(ROOT / "evidence/validation.json", result)
+    if args.write_report:
+        write_json(ROOT / "evidence/validation.json", result)
     print(json.dumps(result, indent=2))
 
 

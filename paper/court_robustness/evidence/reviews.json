@@ -1,0 +1,29 @@
+{
+  "requested": 2,
+  "attempted": 1,
+  "completed": 1,
+  "rounds": [
+    {
+      "round": 1,
+      "commit": "6e4659af8ddb70675188c0dc6b38f169e551db9f",
+      "verdict": "CHANGES_REQUIRED",
+      "findings": [
+        {
+          "id": "V1",
+          "decision": "accepted",
+          "resolution": "Pinned the actual checkpoint SHA-256, checked it before/after loading and after inference, reran all four photos, and extended local validation to both weight files plus checkpoint config/bundle/step."
+        },
+        {
+          "id": "V2",
+          "decision": "accepted",
+          "resolution": "Displayed refined_kp in the official TCD panel and added a regression test distinguishing it from raw_kp."
+        },
+        {
+          "id": "V3",
+          "decision": "accepted",
+          "resolution": "Added a two-pass PDF builder and committed build receipt; offline verification binds PDF/TeX/figures without report.log. Added no-log and tampering tests."
+        }
+      ]
+    }
+  ]
+}
