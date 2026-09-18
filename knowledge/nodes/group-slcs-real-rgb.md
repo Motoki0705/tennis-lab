@@ -45,6 +45,7 @@ members:
 - run-slcs-meiji-root-support-boundaries-v1
 - run-slcs-meiji-v8-root-replay-v1
 - run-slcs-meiji-v8-root-replay-v2
+- run-slcs-meiji-observation-review-v1
 parents: []
 tags:
 - slcs
