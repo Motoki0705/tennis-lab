@@ -157,7 +157,10 @@ class DatasetBuildConfig:
             },
             optional_keys={"long_gap_policy"},
         )
-        if people.get("long_gap_policy", "error") not in {"error", "mask"}:
+        if "long_gap_policy" in people and people["long_gap_policy"] not in {
+            "error",
+            "mask",
+        }:
             raise ValueError("people.long_gap_policy must be error or mask")
         if people["precision"] not in {"float32", "bfloat16"}:
             raise ValueError("people.precision must be float32 or bfloat16")

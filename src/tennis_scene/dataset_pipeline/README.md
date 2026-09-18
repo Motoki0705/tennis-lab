@@ -77,7 +77,8 @@ scene metadataへ記録し、観測cacheの生ピークは保持する。SLCSの
 単眼ラベルは低い重み、多視点でも支持のない予測は重み0とし、SLCSの教師から除く。
 PLCSのcanonical pose/yawはモデル推論であり、独立した実測ラベルではない。
 
-各clipに `raw_model_quality.json`、`label_evidence.json`、`quality.json` を保存する。
+生成runの `<video_id>/<clip_id>/` に `raw_model_quality.json`、`label_evidence.json`、
+`quality.json`、`quality_arrays.npz` を保存する（dataset側ではscene metadataに品質・ラベル重みを保持）。
 **再投影の改善は観測との整合性であり、実測3D精度を保証しない。**
 同じ観測を補正と評価に使った数値と、別収録のheld-out評価を区別する。
 採用判定に失敗したclipは `failures.json` に残り、成功分のcacheを保持してジョブは失敗する。
@@ -129,3 +130,26 @@ PLCSの `train_meiji_foot_real_rgb.yaml`、BLCSの `train_meiji_real_rgb.yaml`�
 データ分割・subset作成は `scripts/analysis/prepare_plcs_motion_split.py`、
 `prepare_plcs_subset.py`、`prepare_blcs_real_dataset.py` のreceiptを伴う処理を使う。
 BLCS旧/改善重みの同条件比較には `scripts/analysis/evaluate_blcs_real.py` を使う。
+
+## 全clip品質レポート（CPU）
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality
+```
+
+入力dataset、期待集合のsource manifest、複数の生成run・観測root、理由付き除外は
+[`report_slcs_dataset_quality.yaml`](../configs/report_slcs_dataset_quality.yaml)で明示する。
+`tennis_scene/analyze/...` に `quality_report.json` とclip単位の展開済みCSV、実行configを保存する。
+欠落・不正データ・教師/DINO provenance混在は成功扱いしない。欠落を含む進行中のsnapshotは
+`allow_incomplete=true` で明示し、その場合も不正データは失敗する。失敗時もレポートは残る。
+
+raw/refined双方に同じ最終SLCSの正重みframe maskを適用し、全軌道の診断と区別する。
+速度は隣接両端が支持される区間だけを集計し、欠損を跨がない。これはwindow選択前のframe適格性で、
+学習windowの採否・重複によるサンプル頻度は再現しない。全clip集計の平均はサンプル数で重み付けし、
+clip別percentileを全体percentileとして平均しない。Court画像homography fitと近似pinhole fitは別欄にする。
+全関節の再投影誤差に球/hip三角測量用の採用閾値を流用せず、診断値として人手レビューに渡す。
+
+producerのsource manifest SHAとdataset実媒体のSHAを照合し、メタデータ同士が一致しても媒体改変は拒否する。
+除外指定したclipがdataset manifestに残っている場合も失敗する。raw archiveはcheckpoint SHA・
+reference/ball receipt・観測配列を照合するが、完全なproducer identityが保存されていないため
+実行設定すべての同一性までは認証できない。この制限はJSONにも記録する。

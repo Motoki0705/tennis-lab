@@ -29,8 +29,8 @@ from src.utils.video.reader import OpenCVVideoFrameReader
 def _people_cache_settings(cfg: DictConfig) -> dict[str, Any]:
     """Normalize explicit/default error to the original schema-2 settings identity."""
     settings = cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True))
-    if settings.get("long_gap_policy", "error") == "error":
-        settings.pop("long_gap_policy", None)
+    if "long_gap_policy" in settings and settings["long_gap_policy"] == "error":
+        del settings["long_gap_policy"]
     return settings
 
 
