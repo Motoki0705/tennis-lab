@@ -2,6 +2,14 @@ defaults:
   - build_slcs_dataset_base
   - _self_
 
+dataset_output_directory: slcs/meiji_rgb_v9
+output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v9,s42-001}
+observation_directory: ${tennis_output:tennis_scene,precompute,meiji_dino_vitpose,s42-005}
+
+court:
+  # A second crop includes the entire court projected by the initial fit.
+  crop_refinement_padding_px: 20.0
+
 # Fixed accepted checkpoint identities; observations and receipts do not update these.
 checkpoint_sha256:
   court: b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383

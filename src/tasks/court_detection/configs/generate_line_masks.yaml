@@ -13,5 +13,5 @@ generate_line_masks:
   root: court
   image_id: null
   mask_dir_name: line_masks
-  preview_dir: court_detection/line_mask_preview
+  preview_dir: ${tennis_output:court_detection,generate,generate_line_masks,${tennis_run_id:}}/preview
   preview_count_per_split: 8

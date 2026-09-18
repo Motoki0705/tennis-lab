@@ -121,13 +121,18 @@ HydraログはすべてOUTPUT配下の対応する用途・実験・run-idに保
 | PLCS `extract_gvhmr_motions` | DATA / `run.output_dir`（`plcs/motions/gvhmr/<collection-version>`）。抽出元もDATA、外部モデルは別のroot |
 | ball `convert_web_dataset` | DATA / `convert.output_dir`。既存共有dataset `tennis/web/unified` を維持 |
 | ball/court YouTube準備・annotation、ball SSL画像抽出・clip予測 | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
-| court `generate_masks`、`generate_line_masks`、`materialize_targets` | DATA配下の派生教師・target store。`materialize_targets` のログ用途はprecompute |
+| court `generate_masks`、`generate_line_masks`、`materialize_targets` | DATA配下の派生教師・target store。line maskのpreviewはOUTPUT / `generate_line_masks.preview_dir`（同じgenerate run内の `preview/`）。`materialize_targets` のログ用途はprecompute |
 | SLCS `make_splits` | DATA / `data.split_file` |
 | SLCS `precompute_dino_tokens` | DATA / `data.dataset_root` 内のmanifestが示すclipの特徴ファイル。ログはprecompute run |
 | tennis_scene `pipeline` | 最終NPZはOUTPUT / `output_directory` / `<output_name>.npz`。stage JSONはARTIFACT / 各stageの `output_path`。既定では同じrunの相対階層 |
 | tennis_scene `reference_clip` | OUTPUT / `output_dir`。既定はgenerate/reference_clip run |
+| tennis_scene `build_slcs_dataset`（broadcast profileを含む） | DATA / `dataset_output_directory` に版固定の教師・RGB特徴。生成記録はOUTPUT / `output_dir`、再利用する観測cacheはOUTPUT / `observation_directory` |
+| tennis_scene `assemble_slcs_dataset` | DATA / `dataset_directory` に統合dataset・固定split・`assembly.json`。実行configとHydraログはOUTPUT / `output_dir` |
+| tennis_scene `report_slcs_dataset_quality` | OUTPUT / `output_dir` に品質JSON・CSV・実行configとHydraログ（analyze run） |
 | tennis_scene `visualization`、`visualize_tasks` | OUTPUT / `output`・`preview_output`、`output_directory`。入力sceneはARTIFACT |
 | tennis_scene `clip_studio`、`export_clips`、`generate_dataset` | DATAのsource/dataset/clipに付随する編集・生成データ。HydraログだけOUTPUTのgenerate run |
+
+実RGBの生成・統合・品質レポートの手順は[生成ガイド](../tennis_scene/dataset_pipeline/README.md)を参照。
 
 入力checkpointはCHECKPOINT、既存hparamsやsceneなどの実験成果物入力は入口の
 ARTIFACT契約を使う。CHECKPOINTの既定はball/court/PLCSが `outputs`、BLCSが
