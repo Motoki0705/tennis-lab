@@ -61,6 +61,13 @@ test値を重み選択に使わない。DINOv3とViTPoseの配布重みも設定
 `court.py` が複数frameのCourt観測から静的homographyを推定する。
 Meijiは同じ収録・同じcamera/cropであることを確認して校正を共有する。
 `people.py` はCourt半面ごとの人物検出を関連付け、ViTPoseで2D関節を得る。
+Meijiの `people.selection_policy=temporal_continuity` は最初の最大boxを起点に、
+直前に選択した実検出のboxと、その移動から予測したboxの両方に対するIoU・中心距離で同じ選手を追う。
+予測は直近5区間の速度中央値を使い、`people.association` に指定したframe数と移動量で
+制限する。中心距離は直前boxの対角長で正規化し、同設定の固定閾値を使う。候補の大きさで途中から選び直さず、
+欠損後も閾値を広げたり別人で初期化したりしない。初期選択の誤りや人物同士の重なりは
+この規則だけでは判別できないため、映像による対応確認も行う。broadcastは検証済みの
+従来設定（省略時の `largest`）を使い、選択方式・閾値の変更は別の観測cache版へ保存する。
 検出率が基準を満たさない場合は停止する。`people.long_gap_policy=error`（省略時も同じ）では
 最長欠損の超過も停止する。Meijiの明示設定 `mask` では長い欠損と非観測のクリップ端を
 `pose_supported_mask` で除き、関節confidenceを0として残りのカメラから教師を作る。

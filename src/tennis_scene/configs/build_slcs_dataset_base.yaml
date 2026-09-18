@@ -3,14 +3,14 @@ defaults:
   - _self_
 
 dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
-dataset_output_directory: slcs/meiji_rgb_v6
+dataset_output_directory: slcs/meiji_rgb_v7
 clip_ids: null
 dataset_clip_ids: null
 # Each concrete profile owns its exclusion map, avoiding cross-dataset merging.
 excluded_clips: {}
-output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v6,s42-001}
+output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v7,s42-001}
 # Reuse hash-validated 2D observations independently of the PLCS/BLCS teacher.
-observation_directory: ${tennis_output:tennis_scene,precompute,meiji_dino_vitpose,s42-003}
+observation_directory: ${tennis_output:tennis_scene,precompute,meiji_dino_vitpose,s42-004}
 ball_source: outsource
 coordinate_mode: reference
 court_calibration_clips:

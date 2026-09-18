@@ -12,6 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.tasks.base.configuration import exact_config_mapping
 from src.tennis_scene.configuration import ReferenceClipPaths
 from src.tennis_scene.dataset_pipeline.court import StaticCourtSettings
+from src.tennis_scene.dataset_pipeline.person_association import association_settings
 from src.tennis_scene.generate_dataset.manifest import load_dataset_manifest
 from src.utils.configuration import PathResolver, PathRole
 
@@ -155,8 +156,9 @@ class DatasetBuildConfig:
                 "max_gap_seconds",
                 "precision",
             },
-            optional_keys={"long_gap_policy"},
+            optional_keys={"long_gap_policy", "selection_policy", "association"},
         )
+        association_settings(people)
         if "long_gap_policy" in people and people["long_gap_policy"] not in {
             "error",
             "mask",

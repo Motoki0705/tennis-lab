@@ -57,7 +57,7 @@ def test_roots_are_independent_and_validator_does_not_read_inputs(
     ) as report:
         cli.main.__wrapped__(cfg)
     args = report.call_args.args
-    assert args[0] == tmp_path / "inputs/slcs/meiji_rgb_v6"
+    assert args[0] == tmp_path / "inputs" / cfg.dataset_directory
     assert args[1] == tmp_path / "inputs/tennis_multivew/processed/meiji_3cam/dataset"
     assert all(path.is_relative_to(tmp_path / "reports") for path in args[2] + args[3])
     output = tmp_path / "reports/tennis_scene/analyze/quality_smoke/s42-001"
