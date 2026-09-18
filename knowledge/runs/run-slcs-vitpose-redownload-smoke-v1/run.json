@@ -1,0 +1,16 @@
+{
+  "run_id": "1789775189411271550_3174748_slcs-vitpose-redownload-smoke-v1",
+  "name": "slcs-vitpose-redownload-smoke-v1",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 PYTHONPATH=. .venv/bin/python knowledge/runs/run-slcs-vitpose-redownload-smoke-v1/driver.py --video /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4 --observations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam0_people.npz --checkpoint /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth --installation /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload/s42-001/installation.json --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload_smoke/s42-001",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "3bebe44d52f4a2cc2a77f2bc2dba1eea31be306e",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-19T08:46:29+09:00"
+}

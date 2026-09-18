@@ -1,0 +1,375 @@
+diff --git a/knowledge/nodes/group-slcs-real-rgb.md b/knowledge/nodes/group-slcs-real-rgb.md
+index 6513e08f..0f77caed 100644
+--- a/knowledge/nodes/group-slcs-real-rgb.md
++++ b/knowledge/nodes/group-slcs-real-rgb.md
+@@ -71,6 +71,8 @@ members:
+ - run-slcs-meiji-stream-byte-diff-v1
+ - run-slcs-host-storage-audit-v2
+ - run-slcs-meiji-read-modes-v1
++- run-slcs-vitpose-redownload-v1
++- run-slcs-meiji-v9-observation-reuse-v3
+ parents: []
+ tags:
+ - slcs
+@@ -118,8 +120,20 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
+ 
+ [保存snapshotの全byte比較](run-slcs-meiji-stream-byte-diff-v1.md)で、2,549,075,546bytes中ちょうど1byte/1bitの差を確認した。offset1896501665で0x9D→0xBD、XOR0x20。両snapshotの二実装SHA・stat・長さとmetadata前後照合は通過し、ZIP headerだけで重みarchiveのstored payload内と特定した。原因がstorage/cache/memory/softwareのどこかは未確定で、SSD故障等の断定や失敗結果の採用はしない。
+ 
+-[同位置4KiBの通常/direct read比較](run-slcs-meiji-read-modes-v1.md)はstatx alignmentを確認し、live3readがすべてgood保存blockに一致した。これは限定した時点と位置の結果で、全体生成を再開できる安定性の根拠とはしない。[Windows collectorの実行](run-slcs-host-storage-audit-v2.md)はUNC上の未署名scriptとして実行前に拒否され、新規ログは取得できなかった。ポリシーは変更せず、ローカルコピーでの読み取り収集についてユーザーへ確認している。
++[同位置4KiBの通常/direct read比較](run-slcs-meiji-read-modes-v1.md)はstatx alignmentを確認し、live3readがすべてgood保存blockに一致した。これは限定した時点と位置の結果で、環境全体の安定性を保証しない。[Windows collectorの実行](run-slcs-host-storage-audit-v2.md)はUNC上の未署名scriptとして実行前に拒否され、新規ログは取得できなかった。
++
++2026-09-19の追加指示で、ユーザーはViTPose読取問題のような再現性の不安材料では作業を止めず進めることと、重みの再ダウンロードを許可した。以後はハードウェア原因の特定やWindows collectorの実行許可をMeiji生成再開の条件にしない。過去の不一致記録は維持し、モデル実行・教師品質の確認を進める。ViTPoseは外部配布された2D姿勢モデルであり、この問題は学習済みPLCS/BLCSの使用不能を示すものではない。SLCSのball低分散出力は別の精度課題として扱う。
++
++[ViTPoseの再取得](run-slcs-vitpose-redownload-v1.md)はHugging Faceの固定revisionから完了し、2,549,075,546 bytesの全体SHAが既存pinと一致した。ZIP CRC、CPUのweights_only読込、403tensorの構造・有限性を確認し、旧inodeをバックアップして本体をatomic置換した。続く[人物再利用v3](run-slcs-meiji-v9-observation-reuse-v3.md)はDINOの初回SHA不一致で40.002秒・公開0で停止した。ViTPose照合前であり、新しいViTPoseの不良を示す結果ではない。既存driverの例外後監査ではDINOの固定pinと一致したが、失敗を成功へ置き換えない。指定checkpointの不一致を実測値付きで記録し、宣言したモデル識別に基づいて続行する明示policyの実装へ進む。媒体・配列の整合性と教師の品質判定は維持する。
+ 
+ ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
+ 
++### 論文を踏まえた施策候補（未実施）
++
++Courtは[Chen & Little, Sports Camera Calibration via Synthetic Data](https://arxiv.org/html/1810.10658)と[著者のPython実装](https://github.com/lood339/SCCvSD)を参照し、合成カメラから投影した線画像のDB・検索・距離画像の位置合わせを導入候補とする。原論文の学習特徴に先行してHOG比較を行えるが、テニス低視点への有効性は未確認。既存のcourt形状とcamera生成を再利用し、RGBの線を観測証拠にする。検出KPを結線しただけのqueryはKP依存の比較として区別する。同じKPに対するfit誤差だけで改善と判定せず、既存手動注釈と別frameの線対応を比較し、近似pinholeの限界も残す。Court変更を採用する場合は人物選択と教師の版を分ける。
++
++SLCSは予定済みのball平滑化weight=0を先に比較し、その後に[GradNorm](https://proceedings.mlr.press/v80/chen18a.html)を根拠とするplayer/ballの勾配調整を検討する。[Where Is The Ball](https://arxiv.org/html/2506.05763v1)の光線と高さによる表現、[SynthNet](https://stellagrasshof.com/assets/pdf/2024_ertner_mmisport.pdf)のhit/bounce間の飛行モデルは、投影整合性とイベントを跨がない制約の候補とする。これは本repoへの設計上の推論であり、効果は未検証。誤差・平均位置baseline差・予測分散・速度・player精度を同時に比較し、予測分散だけで成功としない。可能なMeiji評価では2視点で教師を作り残る1視点を検証に使うが、独立3D GTとは呼ばない。
++
++RGB欠損対策はball学習成立後に[ModDrop](https://arxiv.org/abs/1501.00102)を参考に枝ごとの学習と段階的dropoutを比較する。Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.03698)等の追加検出器学習は現状の教師作成に不要。PLCSは実clipごとの位置・yawの裾誤差と教師品質の確認を優先する。全施策で収録分離split・教師版・seedを固定し、一度に変更する要因を限定する。
++
+ 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
+diff --git a/src/tennis_scene/configs/build_slcs_dataset.yaml b/src/tennis_scene/configs/build_slcs_dataset.yaml
+index 89d6a420..1d194b0f 100644
+--- a/src/tennis_scene/configs/build_slcs_dataset.yaml
++++ b/src/tennis_scene/configs/build_slcs_dataset.yaml
+@@ -3,7 +3,7 @@ defaults:
+   - _self_
+ 
+ dataset_output_directory: slcs/meiji_rgb_v9
+-output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v9,s42-001}
++output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v9,s42-002}
+ observation_directory: ${tennis_output:tennis_scene,precompute,meiji_dino_vitpose,s42-005}
+ 
+ court:
+@@ -11,6 +11,7 @@ court:
+   crop_refinement_padding_px: 20.0
+ 
+ # Fixed accepted checkpoint identities; observations and receipts do not update these.
++checkpoint_warning_roles: [dino, vitpose]
+ checkpoint_sha256:
+   court: b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383
+   dino: e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5
+diff --git a/src/tennis_scene/configs/report_slcs_dataset_quality.yaml b/src/tennis_scene/configs/report_slcs_dataset_quality.yaml
+index 5ca6faf1..908a9643 100644
+--- a/src/tennis_scene/configs/report_slcs_dataset_quality.yaml
++++ b/src/tennis_scene/configs/report_slcs_dataset_quality.yaml
+@@ -4,7 +4,7 @@ defaults:
+ dataset_directory: slcs/meiji_rgb_v9
+ expected_dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
+ generation_directories:
+-  - tennis_scene/generate/meiji_rgb_v9/s42-001
++  - tennis_scene/generate/meiji_rgb_v9/s42-002
+ observation_directories:
+   - tennis_scene/precompute/meiji_dino_vitpose/s42-005
+ excluded_clips:
+diff --git a/src/tennis_scene/dataset_pipeline/README.md b/src/tennis_scene/dataset_pipeline/README.md
+index e0ab6729..cd46af90 100644
+--- a/src/tennis_scene/dataset_pipeline/README.md
++++ b/src/tennis_scene/dataset_pipeline/README.md
+@@ -62,6 +62,13 @@ PLCS/BLCSの配置先はbuild設定の `plcs_checkpoint` / `blcs_checkpoint`。
+ test値を重み選択に使わない。DINOv3とViTPoseの配布重みも設定されたrootへ配置する。
+ 不足する重みがあれば生成開始時にエラーとなる。
+ 
++配布重みを再取得するときは、取得元のrevisionを固定し、別ファイルへdownloadしてサイズ・
++期待SHA・モデル構造を確認する。元ファイルをバックアップしてからatomicに切り替え、
++取得元と検証結果をknowledgeのrunへ残す。既存の固定SHAと一致する場合は同じモデルなので、
++pinやdataset版を変更せず、入力・設定が一致するcacheを再利用できる。
++異なる重みを採用する場合は新しいpinとデータ版が必要。再取得の成功と、過去の読取不一致の
++原因解決は区別し、実際の推論と生成した教師の品質も確認する。
++
+ Meijiの `checkpoint_sha256` は採用時に確認した6モデルの期待SHAを固定する。
+ 各stageの必須checkpointを開始前に照合し、結果をrun内の `checkpoint_verification.json` に残す。
+ この設定を指定するrecipeは6種類の役割と64桁の小文字hexをすべて明示する。
+diff --git a/src/tennis_scene/dataset_pipeline/build.py b/src/tennis_scene/dataset_pipeline/build.py
+index 4e387978..7dfe3bc9 100644
+--- a/src/tennis_scene/dataset_pipeline/build.py
++++ b/src/tennis_scene/dataset_pipeline/build.py
+@@ -218,6 +218,18 @@ def _observe_court(
+ 
+ 
+ def build_dataset(cfg: DictConfig) -> None:
++    from .checkpoint_warning import checkpoint_warning_policy
++
++    runtime = DatasetBuildConfig.from_config(cfg)
++    with checkpoint_warning_policy(
++        runtime.checkpoint_sha256,
++        cfg.get("checkpoint_warning_roles", []),
++        runtime.output / "checkpoint_warnings.jsonl",
++    ):
++        _build_dataset(cfg)
++
++
++def _build_dataset(cfg: DictConfig) -> None:
+     runtime = DatasetBuildConfig.from_config(cfg)
+     paths = ReferenceClipPaths.from_config(cfg)
+     required_assets: dict[str, Path] = {}
+@@ -255,7 +267,8 @@ def build_dataset(cfg: DictConfig) -> None:
+             {
+                 "stage": runtime.stage,
+                 "expected": runtime.checkpoint_sha256,
+-                "verified": verified_checkpoints,
++                "observed": verified_checkpoints,
++                "warning_roles": list(cfg.get("checkpoint_warning_roles", [])),
+             },
+             runtime.output / "checkpoint_verification.json",
+         )
+diff --git a/src/tennis_scene/dataset_pipeline/checkpoint_integrity.py b/src/tennis_scene/dataset_pipeline/checkpoint_integrity.py
+index e8cf656c..f203a4ab 100644
+--- a/src/tennis_scene/dataset_pipeline/checkpoint_integrity.py
++++ b/src/tennis_scene/dataset_pipeline/checkpoint_integrity.py
+@@ -9,6 +9,8 @@ from pathlib import Path
+ from src.tasks.base.configuration import exact_config_mapping
+ from src.utils.checksum import dual_sha256
+ 
++from .checkpoint_warning import warn_checkpoint_difference
++
+ _CHECKPOINT_ROLES = frozenset({"court", "dino", "vitpose", "plcs", "blcs", "dinov3"})
+ 
+ 
+@@ -44,7 +46,13 @@ def verify_checkpoint_integrity(
+     verified: dict[str, str] = {}
+     for role, path in assets.items():
+         actual = dual_sha256(path)
+-        if actual != pins[role]:
++        if actual != pins[role] and not warn_checkpoint_difference(
++            actual,
++            pins[role],
++            role=role,
++            path=path,
++            context="stage checkpoint verification",
++        ):
+             raise RuntimeError(
+                 f"Checkpoint SHA-256 mismatch for {role} ({path}): "
+                 f"expected {pins[role]}, actual {actual}"
+diff --git a/src/tennis_scene/dataset_pipeline/configuration.py b/src/tennis_scene/dataset_pipeline/configuration.py
+index 4d43c4e6..cc20761d 100644
+--- a/src/tennis_scene/dataset_pipeline/configuration.py
++++ b/src/tennis_scene/dataset_pipeline/configuration.py
+@@ -76,13 +76,18 @@ class DatasetBuildConfig:
+             cfg,
+             path="configuration",
+             required_keys=_KEYS,
+-            optional_keys={"checkpoint_sha256"},
++            optional_keys={"checkpoint_sha256", "checkpoint_warning_roles"},
+         )
+         checkpoint_sha256 = (
+             validate_checkpoint_sha256(cfg.checkpoint_sha256)
+             if "checkpoint_sha256" in cfg
+             else None
+         )
++        from .checkpoint_warning import validate_warning_roles
++
++        roles = validate_warning_roles(cfg.get("checkpoint_warning_roles", []))
++        if roles and checkpoint_sha256 is None:
++            raise ValueError("Checkpoint warning policy requires checkpoint_sha256")
+         from src.tennis_scene.dataset_pipeline.refinement import RefinementSettings
+ 
+         RefinementSettings.from_config(cfg.refinement)
+diff --git a/src/tennis_scene/dataset_pipeline/people.py b/src/tennis_scene/dataset_pipeline/people.py
+index bca95f28..6d499c64 100644
+--- a/src/tennis_scene/dataset_pipeline/people.py
++++ b/src/tennis_scene/dataset_pipeline/people.py
+@@ -35,9 +35,22 @@ from src.utils.checksum import FileIntegrityError
+ from src.utils.io import save_json_atomic
+ from src.utils.video.reader import OpenCVVideoFrameReader
+ 
++from .checkpoint_warning import (
++    declared_checkpoint_identity,
++    normalize_receipt,
++    receipt_digest_role,
++    warn_checkpoint_difference,
++)
++
+ 
+ def _require_digest(actual: object, expected: str, *, path: Path, role: str) -> None:
+-    if actual != expected:
++    if actual != expected and not warn_checkpoint_difference(
++        actual,
++        expected,
++        role=receipt_digest_role(role.split()[0]),
++        path=path,
++        context=role,
++    ):
+         raise FileIntegrityError(
+             f"Checkpoint SHA-256 mismatch for {role}",
+             details={"path": str(path), "expected": expected, "actual": actual},
+@@ -72,6 +85,7 @@ def _read_checkpoint_receipt(receipt: Path) -> dict[str, Any]:
+ 
+ def _validate_receipt_digests(receipt: Path, expected: Mapping[str, str]) -> None:
+     saved = _read_checkpoint_receipt(receipt)
++    normalize_receipt(saved, path=receipt, context="receipt digest validation")
+     for field, digest in expected.items():
+         _require_digest(
+             saved.get(field),
+@@ -96,6 +110,7 @@ def validate_people_receipts(
+     for camera in camera_ids:
+         receipt = observations / f"{camera}_people.metadata.json"
+         saved = _read_checkpoint_receipt(receipt)
++        normalize_receipt(saved, path=receipt, context="infer people receipt")
+         for field, role in (("detector_sha256", "dino"), ("pose_sha256", "vitpose")):
+             digest = saved.get(field)
+             if not isinstance(digest, str) or not digest:
+@@ -123,6 +138,10 @@ def _validate_cache_identity(
+         raise ValueError(
+             f"{prefix}: {cache}; receipt must be a JSON object, got {type(saved).__name__}"
+         )
++    saved = normalize_receipt(saved, path=receipt, context="cache saved identity")
++    expected = normalize_receipt(
++        expected, path=receipt, context="cache requested identity"
++    )
+     if saved == expected:
+         return
+ 
+@@ -340,6 +359,8 @@ def _detections(
+         boxes=box_array,
+         scores=score_array,
+     )
++    if declared_checkpoint_identity():
++        identity["declared_checkpoint_sha256"] = declared_checkpoint_identity()
+     save_json_atomic(identity, receipt)
+     return indices, offset_array, box_array, score_array
+ 
+@@ -510,5 +531,7 @@ def observe_singles_people(
+             source_detection_ids=source_ids,
+             detection_frame_indices=indices,
+         )
++        if declared_checkpoint_identity():
++            identity["declared_checkpoint_sha256"] = declared_checkpoint_identity()
+         save_json_atomic(identity, receipt)
+         print(f"Saved court-half people {cache}", flush=True)
+diff --git a/src/tennis_scene/dataset_pipeline/quality_report.py b/src/tennis_scene/dataset_pipeline/quality_report.py
+index f76acd19..9ac14894 100644
+--- a/src/tennis_scene/dataset_pipeline/quality_report.py
++++ b/src/tennis_scene/dataset_pipeline/quality_report.py
+@@ -31,6 +31,13 @@ from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+ from src.utils.io import save_json_atomic
+ from src.utils.paths import PROJECT_ROOT
+ 
++from .checkpoint_warning import (
++    checkpoint_warning_policy,
++    declared_checkpoint_identity,
++    normalize_receipt,
++)
++from .people import validate_people_receipts
++
+ 
+ def validate_quality_report_config(cfg: DictConfig) -> None:
+     """Validate the CLI contract without opening datasets, media or artifacts."""
+@@ -214,6 +221,7 @@ def observation_producers(
+         if sha256(directory / name) != digest:
+             raise ValueError(f"Observation identity mismatch: {name}")
+     people = []
++    observed_checkpoint_digests = {}
+     for camera in cameras:
+         name = f"{camera}_people.metadata.json"
+         if name not in observation_hashes:
+@@ -227,13 +235,27 @@ def observation_producers(
+             raise ValueError("Invalid people producer settings")
+         for key in ("detector_sha256", "pose_sha256"):
+             _check_digest(receipt[key], key)
++        observed_checkpoint_digests[camera] = {
++            key: receipt[key] for key in ("detector_sha256", "pose_sha256")
++        }
++        receipt = normalize_receipt(
++            receipt, path=directory / name, context="quality report producer comparison"
++        )
+         people.append(
+             {
+                 "schema_version": receipt["schema_version"],
+                 "policy": receipt["policy"],
+                 "settings_sha256": _digest(receipt["settings"]),
+-                "detector_sha256": receipt["detector_sha256"],
+-                "pose_sha256": receipt["pose_sha256"],
++                (
++                    "detector_declared_sha256"
++                    if "dino" in declared_checkpoint_identity()
++                    else "detector_sha256"
++                ): receipt["detector_sha256"],
++                (
++                    "pose_declared_sha256"
++                    if "vitpose" in declared_checkpoint_identity()
++                    else "pose_sha256"
++                ): receipt["pose_sha256"],
+             }
+         )
+     if not people or len({_digest(producer) for producer in people}) != 1:
+@@ -246,6 +268,7 @@ def observation_producers(
+         raise ValueError("Invalid court producer settings")
+     return {
+         "people_producer": people[0],
++        "observed_people_checkpoint_digests": observed_checkpoint_digests,
+         "court_producer": {
+             "checkpoint_sha256": court["checkpoint_sha256"],
+             "settings_sha256": _digest(court["settings"]),
+@@ -253,6 +276,25 @@ def observation_producers(
+     }
+ 
+ 
++def audit_observation_producers(
++    obs: Path, cameras: list[str], hashes: dict[str, str], run_root: Path
++) -> tuple[dict[str, Any], list[str], list[dict[str, Any]], Path]:
++    """Read producer evidence; collect this audit's warnings without changing the run."""
++    recipe_path = run_root / "recipe.json"
++    recipe = _json(recipe_path) if recipe_path.exists() else {}
++    warning_roles = recipe.get("checkpoint_warning_roles", [])
++    warning_path = run_root / "checkpoint_warnings.jsonl"
++    with checkpoint_warning_policy(
++        recipe.get("checkpoint_sha256"), warning_roles, None
++    ) as checkpoint_warnings:
++        if warning_roles:
++            validate_people_receipts(
++                cameras, obs, checkpoint_sha256=recipe.get("checkpoint_sha256")
++            )
++        producers = observation_producers(obs, cameras, hashes)
++    return producers, warning_roles, checkpoint_warnings, warning_path
++
++
+ def audit_clip(
+     clip: ClipManifest,
+     key: str,
+@@ -312,8 +354,11 @@ def audit_clip(
+     ):
+         raise ValueError("Teacher coverage violates recorded refinement contract")
+     obs = _locate(observations, key, "court.npz")
+-    producers = observation_producers(obs, cameras, identity["observations"])
+     run = _locate(runs, key, "raw_model_quality.json")
++    run_root = next(root for root in runs if root / key == run)
++    producers, warning_roles, checkpoint_warnings, warning_path = (
++        audit_observation_producers(obs, cameras, identity["observations"], run_root)
++    )
+     for name in (
+         "raw_model_quality.json",
+         "quality.json",
+@@ -413,6 +458,15 @@ def audit_clip(
+     return {
+         **producers,
+         "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
++        "checkpoint_warning_roles": warning_roles,
++        "checkpoint_warnings": checkpoint_warnings,
++        "generation_checkpoint_warning_source": str(warning_path)
++        if warning_path.exists()
++        else None,
++        "generation_checkpoint_warning_scope": "run-wide evidence reference, not attributed to this clip; checkpoint_warnings above are this clip audit only",
++        "checkpoint_verification_limitation": "Allowlisted checkpoint bytes are not authenticated; declared model identity is assumed"
++        if warning_roles
++        else None,
+         "source_manifest_sha256": source_manifest_sha256,
+         "manifest_sha256": clip.digest(),
+         "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
+@@ -542,6 +596,11 @@ def write_quality_report(
+         ):
+             if len({_digest(row[field]) for row in completed}) > 1:
+                 report["errors"].append(f"Mixed provenance: {field}")
++        if (
++            len({_digest(row.get("checkpoint_warning_roles", [])) for row in completed})
++            > 1
++        ):
++            report["errors"].append("Mixed provenance: checkpoint_warning_roles")
+     except Exception as exc:
+         report["errors"].append(f"{type(exc).__name__}: {exc}")
+     report["counts"] = {

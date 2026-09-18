@@ -1,0 +1,17 @@
+{
+  "provider": "Hugging Face camenduru/GVHMR mirror (not an official GVHMR mirror)",
+  "revision": "d50e513e101f7465d15508dc4c797c328200c78e",
+  "url": "https://huggingface.co/camenduru/GVHMR/resolve/d50e513e101f7465d15508dc4c797c328200c78e/vitpose/vitpose-h-multi-coco.pth",
+  "official_variant_reference": "https://github.com/zju3dv/GVHMR/blob/main/docs/INSTALL.md",
+  "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "expected_size": 2549075546,
+  "http_status_chain": [
+    302,
+    200
+  ],
+  "http_x_repo_commit": "d50e513e101f7465d15508dc4c797c328200c78e",
+  "http_x_linked_size": 2549075546,
+  "raw_http_headers": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload/s42-001/http_headers.txt",
+  "gpu_used": false,
+  "checkpoint_config_changed": false
+}

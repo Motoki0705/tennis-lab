@@ -1,0 +1,8 @@
+{
+  "role": "dino",
+  "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+  "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+  "initial_sha256": "ca51961b69db6e692b2966751ba2a8b20072379d68cc4d85673b33e439430c8a",
+  "exception_audit_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+  "extra_manual_checkpoint_reads": 0
+}

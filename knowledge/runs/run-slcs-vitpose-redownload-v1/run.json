@@ -1,0 +1,28 @@
+{
+  "download_command": "curl --fail --location --retry 2 --connect-timeout 30 --max-time 1200 --silent --show-error --dump-header outputs/tennis_scene/analyze/vitpose_redownload/s42-001/http_headers.txt --output outputs/tennis_scene/analyze/vitpose_redownload/s42-001/vitpose-h-multi-coco.pth.part --write-out '%{http_code}\\n%{size_download}\\n' https://huggingface.co/camenduru/GVHMR/resolve/d50e513e101f7465d15508dc4c797c328200c78e/vitpose/vitpose-h-multi-coco.pth > outputs/tennis_scene/analyze/vitpose_redownload/s42-001/curl_result.txt",
+  "verification_command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python outputs/tennis_scene/analyze/vitpose_redownload/s42-001/verify.py /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload/s42-001/vitpose-h-multi-coco.pth.part > outputs/tennis_scene/analyze/vitpose_redownload/s42-001/verification.log 2>&1",
+  "verification_script": "verify.py (formatting and typed import annotation added after execution; behavior unchanged)",
+  "atomic_installation_sequence": [
+    "fsync downloaded file",
+    "rename .part to verified download filename",
+    "hardlink installed file to .before-redownload-s42-001.bak",
+    "hardlink verified file to target sibling .redownload-s42-001.new",
+    "os.replace staged sibling onto target",
+    "fsync target directory"
+  ],
+  "validation": {
+    "ruff_check": "passed",
+    "ruff_format_check": "passed",
+    "mypy": "passed (CPython _sha256 missing-stub import annotation)",
+    "bash_n": "passed",
+    "kg_validate_errors": 0,
+    "kg_curves": "skipped: no training events"
+  },
+  "limitations": [
+    "No strict model state_dict load",
+    "No GPU model load or forward",
+    "No diagnosis of previous read discrepancy"
+  ],
+  "execution_base_commit": "754c7201ec9540b3176d227b3d00d8e99b90faf2",
+  "execution_driver_state": "untracked at execution; the parent task will commit the reproducibility driver separately and pin repro.commit to that commit"
+}
