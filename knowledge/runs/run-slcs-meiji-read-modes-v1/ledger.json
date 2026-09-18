@@ -1,0 +1,361 @@
+{
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "knowledge/runs/run-slcs-meiji-read-modes-v1/probe.py",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001"
+  ],
+  "git_commit": "f87e0bf95c36554d59eede0b9d8f7f68bb6ddf31",
+  "script_sha256": "24356c8f6d507803faa3e191e111edc4da8d853b9c58a774655e9792ca2996c2",
+  "evidence": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-stream-byte-diff-v1/comparison.json",
+    "hashlib_sha256": "81f7436347ec1c08faee6401847cd6c627ab8f5acfe69b615c801be3fcee2f5c",
+    "cpython_sha256": "81f7436347ec1c08faee6401847cd6c627ab8f5acfe69b615c801be3fcee2f5c"
+  },
+  "source_metadata": {
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/audit.json": {
+      "hashlib_sha256": "88dc4f6d20fe038e262cd206a97bfdd1971b34e8cf5f24270e50d452cdb4c4d8",
+      "cpython_sha256": "88dc4f6d20fe038e262cd206a97bfdd1971b34e8cf5f24270e50d452cdb4c4d8"
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/ledger.json": {
+      "hashlib_sha256": "62b664af47bea2860d581494358fd756d241093c07b91cbc270f9a459f70c8f9",
+      "cpython_sha256": "62b664af47bea2860d581494358fd756d241093c07b91cbc270f9a459f70c8f9"
+    }
+  },
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "filesystem_read_only_query": {
+    "filesystems": [
+      {
+        "target": "/",
+        "source": "/dev/sdd",
+        "fstype": "ext4",
+        "options": "rw,relatime,discard,errors=remount-ro,data=ordered"
+      }
+    ]
+  },
+  "live_preflight_stat": {
+    "dev": 2096,
+    "ino": 71274,
+    "size": 2549075546,
+    "mtime_ns": 1779091833671210124,
+    "ctime_ns": 1788991599915204724
+  },
+  "source_preflight_stats": {
+    "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth": {
+      "dev": 2096,
+      "ino": 71274,
+      "size": 2549075546,
+      "mtime_ns": 1779091833671210124,
+      "ctime_ns": 1788991599915204724
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/pass-001.bin": {
+      "dev": 2096,
+      "ino": 276480,
+      "size": 2549075546,
+      "mtime_ns": 1789759637090350893,
+      "ctime_ns": 1789759637090350893
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/001-initial_pin.bin": {
+      "dev": 2096,
+      "ino": 275980,
+      "size": 2549075546,
+      "mtime_ns": 1789760463517556611,
+      "ctime_ns": 1789760463517556611
+    }
+  },
+  "limitations": "Finite CPU-only buffered/direct read comparison; no retries or cache eviction.\n\nO_DIRECT bypasses Linux page cache, not necessarily WSL host/device caches.\nAgreement cannot identify a hardware/software root cause. No fork occurs while\ndirect I/O is in flight; its anonymous buffer uses MAP_SHARED, not MAP_PRIVATE.\n",
+  "offset": 1896501248,
+  "length": 4096,
+  "difference_offset_zero_based": 1896501665,
+  "cuda_visible_devices": "",
+  "status": "completed",
+  "reads": [
+    {
+      "name": "saved_good",
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/pass-001.bin",
+      "started_at": "2026-09-18T19:57:32.888114+00:00",
+      "stat_before": {
+        "dev": 2096,
+        "ino": 276480,
+        "size": 2549075546,
+        "mtime_ns": 1789759637090350893,
+        "ctime_ns": 1789759637090350893
+      },
+      "direct": false,
+      "fd_before": {
+        "dev": 2096,
+        "ino": 276480,
+        "size": 2549075546,
+        "mtime_ns": 1789759637090350893,
+        "ctime_ns": 1789759637090350893
+      },
+      "accepted_flags": 32768,
+      "bytes_read": 4096,
+      "fd_after": {
+        "dev": 2096,
+        "ino": 276480,
+        "size": 2549075546,
+        "mtime_ns": 1789759637090350893,
+        "ctime_ns": 1789759637090350893
+      },
+      "path_after": {
+        "dev": 2096,
+        "ino": 276480,
+        "size": 2549075546,
+        "mtime_ns": 1789759637090350893,
+        "ctime_ns": 1789759637090350893
+      },
+      "finished_at": "2026-09-18T19:57:32.888173+00:00",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001/saved_good.bin",
+      "hashlib_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "cpython_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "byte_at_offset": 157
+    },
+    {
+      "name": "saved_bad",
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001/001-initial_pin.bin",
+      "started_at": "2026-09-18T19:57:32.895584+00:00",
+      "stat_before": {
+        "dev": 2096,
+        "ino": 275980,
+        "size": 2549075546,
+        "mtime_ns": 1789760463517556611,
+        "ctime_ns": 1789760463517556611
+      },
+      "direct": false,
+      "fd_before": {
+        "dev": 2096,
+        "ino": 275980,
+        "size": 2549075546,
+        "mtime_ns": 1789760463517556611,
+        "ctime_ns": 1789760463517556611
+      },
+      "accepted_flags": 32768,
+      "bytes_read": 4096,
+      "fd_after": {
+        "dev": 2096,
+        "ino": 275980,
+        "size": 2549075546,
+        "mtime_ns": 1789760463517556611,
+        "ctime_ns": 1789760463517556611
+      },
+      "path_after": {
+        "dev": 2096,
+        "ino": 275980,
+        "size": 2549075546,
+        "mtime_ns": 1789760463517556611,
+        "ctime_ns": 1789760463517556611
+      },
+      "finished_at": "2026-09-18T19:57:32.895641+00:00",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001/saved_bad.bin",
+      "hashlib_sha256": "abed82d26674bd712b9fd990300fb0a93aed8817001a00da17a170d3c5f0ea21",
+      "cpython_sha256": "abed82d26674bd712b9fd990300fb0a93aed8817001a00da17a170d3c5f0ea21",
+      "byte_at_offset": 189
+    },
+    {
+      "name": "live_buffered_before",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "started_at": "2026-09-18T19:57:32.903531+00:00",
+      "stat_before": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "direct": false,
+      "fd_before": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "accepted_flags": 32768,
+      "bytes_read": 4096,
+      "fd_after": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "path_after": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "finished_at": "2026-09-18T19:57:32.903591+00:00",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001/live_buffered_before.bin",
+      "hashlib_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "cpython_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "byte_at_offset": 157,
+      "matches": "good"
+    },
+    {
+      "name": "live_direct",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "started_at": "2026-09-18T19:57:32.911529+00:00",
+      "stat_before": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "direct": true,
+      "fd_before": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "accepted_flags": 49152,
+      "statx_dioalign": {
+        "statx_mask": 14335,
+        "memory_bytes": 4,
+        "offset_bytes": 512
+      },
+      "alignment": {
+        "configured_bytes": 4096,
+        "address": 136650147344384,
+        "offset": 1896501248,
+        "length": 4096,
+        "map_shared": true,
+        "statx_dioalign_queried": true
+      },
+      "direct_supported": true,
+      "bytes_read": 4096,
+      "fd_after": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "path_after": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "finished_at": "2026-09-18T19:57:32.912357+00:00",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001/live_direct.bin",
+      "hashlib_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "cpython_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "byte_at_offset": 157,
+      "matches": "good"
+    },
+    {
+      "name": "live_buffered_after",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "started_at": "2026-09-18T19:57:32.920687+00:00",
+      "stat_before": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "direct": false,
+      "fd_before": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "accepted_flags": 32768,
+      "bytes_read": 4096,
+      "fd_after": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "path_after": {
+        "dev": 2096,
+        "ino": 71274,
+        "size": 2549075546,
+        "mtime_ns": 1779091833671210124,
+        "ctime_ns": 1788991599915204724
+      },
+      "finished_at": "2026-09-18T19:57:32.920733+00:00",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001/live_buffered_after.bin",
+      "hashlib_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "cpython_sha256": "93a99071d7e479b7163e85dae0c4ca8f630e237f1fd6b7904c99dbe030654b10",
+      "byte_at_offset": 157,
+      "matches": "good"
+    }
+  ],
+  "pairwise": [
+    {
+      "left": "saved_good",
+      "right": "saved_bad",
+      "equal": false,
+      "differing_bytes": 1
+    },
+    {
+      "left": "saved_good",
+      "right": "live_buffered_before",
+      "equal": true,
+      "differing_bytes": 0
+    },
+    {
+      "left": "saved_good",
+      "right": "live_direct",
+      "equal": true,
+      "differing_bytes": 0
+    },
+    {
+      "left": "saved_good",
+      "right": "live_buffered_after",
+      "equal": true,
+      "differing_bytes": 0
+    },
+    {
+      "left": "saved_bad",
+      "right": "live_buffered_before",
+      "equal": false,
+      "differing_bytes": 1
+    },
+    {
+      "left": "saved_bad",
+      "right": "live_direct",
+      "equal": false,
+      "differing_bytes": 1
+    },
+    {
+      "left": "saved_bad",
+      "right": "live_buffered_after",
+      "equal": false,
+      "differing_bytes": 1
+    },
+    {
+      "left": "live_buffered_before",
+      "right": "live_direct",
+      "equal": true,
+      "differing_bytes": 0
+    },
+    {
+      "left": "live_buffered_before",
+      "right": "live_buffered_after",
+      "equal": true,
+      "differing_bytes": 0
+    },
+    {
+      "left": "live_direct",
+      "right": "live_buffered_after",
+      "equal": true,
+      "differing_bytes": 0
+    }
+  ],
+  "started_at": "2026-09-18T19:57:32.883330+00:00",
+  "direct_supported": true,
+  "finished_at": "2026-09-18T19:57:32.929771+00:00"
+}

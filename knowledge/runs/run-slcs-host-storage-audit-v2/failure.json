@@ -1,0 +1,10 @@
+{
+  "status": "failed_before_collection",
+  "exit_code": 1,
+  "error_id": "UnauthorizedAccess",
+  "reason": "PowerShell refused unsigned script at the WSL UNC path under the current execution policy",
+  "script_executed": false,
+  "storage_events_collected": false,
+  "policy_changed": false,
+  "automatic_elevation": false
+}
