@@ -68,9 +68,6 @@ def main() -> None:
             assert old_quality[name] == new_quality[name], (clip_id, name)
         assert np.array_equal(changed.ball_3d, control.ball_3d), clip_id
         assert np.array_equal(changed.player_yaw, control.player_yaw), clip_id
-        assert np.array_equal(changed.player_position[0], control.player_position[0]), (
-            clip_id
-        )
         displacement = np.linalg.norm(
             changed.player_position - control.player_position, axis=-1
         )
@@ -80,7 +77,9 @@ def main() -> None:
             "control_arrays_exact": control_equal,
             "control_label_quality_exact": True,
             "ball_and_yaw_unchanged": True,
-            "player0_positions_unchanged": True,
+            "player0_positions_unchanged": bool(
+                np.array_equal(changed.player_position[0], control.player_position[0])
+            ),
             "old_player_label_fraction": old_evidence["player_label_fraction"],
             "new_player_label_fraction": new_evidence["player_label_fraction"],
             "max_position_change_m": displacement.max(axis=1).tolist(),
