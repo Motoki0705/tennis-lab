@@ -1,0 +1,37 @@
+{
+  "valid_frames": 15734,
+  "legacy_zero_padding_frames_excluded": 3660,
+  "source_metrics": {
+    "accad": {
+      "scenes": 51,
+      "frames": 8448,
+      "position_error_m": 0.37097696263701696,
+      "angular_error_deg": 53.83843994140625,
+      "canonical_mpjpe_m": 0.2798631489276886
+    },
+    "gvhmr": {
+      "scenes": 49,
+      "frames": 7286,
+      "position_error_m": 0.3936324807731663,
+      "angular_error_deg": 46.613037109375,
+      "canonical_mpjpe_m": 0.1684943288564682
+    }
+  },
+  "examples": [
+    {
+      "scene_id": "scene_000684",
+      "selection": "ACCAD median-ranked",
+      "position_error_m": 0.3292378177384444
+    },
+    {
+      "scene_id": "scene_000654",
+      "selection": "GVHMR median-ranked",
+      "position_error_m": 0.3161247444130698
+    },
+    {
+      "scene_id": "scene_000158",
+      "selection": "Largest mean root error",
+      "position_error_m": 3.4293500593280557
+    }
+  ]
+}

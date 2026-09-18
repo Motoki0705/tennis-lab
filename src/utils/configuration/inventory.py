@@ -174,6 +174,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.plcs.scripts.analysis.analyze_loss_dominance": "plcs.analyze_loss_dominance",
     "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples": "plcs.analyze_rotation_error_samples",
     "src.tasks.plcs.scripts.generate_dataset": "plcs.generate_dataset",
+    "src.tasks.plcs.scripts.extract_gvhmr_motions": "plcs.extract_gvhmr_motions",
     "src.tasks.plcs.scripts.generate_dataset_samples": "plcs.generate_dataset_samples",
     "src.tasks.plcs.scripts.preview_augmentation": "plcs.preview_augmentation",
     "src.tasks.plcs.scripts.train": "plcs.train",
@@ -240,6 +241,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.analysis.analyze_loss_dominance": "src.tasks.plcs.configuration._validate_loss_dominance_boundary",
     "src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples": "src.tasks.plcs.configuration._validate_rotation_error_boundary",
     "src.tasks.plcs.scripts.generate_dataset": "src.tasks.plcs.generate_dataset.config._validate_boundary",
+    "src.tasks.plcs.scripts.extract_gvhmr_motions": "src.tasks.plcs.motion.extraction_config.validate_extraction_boundary",
     "src.tasks.plcs.scripts.generate_dataset_samples": "src.tasks.plcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
@@ -426,6 +428,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "main",
         domain="tennis_scene",
         executable_module=True,
+    ),
+    _runtime_boundary(
+        "plcs",
+        "src.tasks.plcs.scripts.extract_gvhmr_motions",
     ),
     _runtime_boundary(
         "synthetic_data_generation",

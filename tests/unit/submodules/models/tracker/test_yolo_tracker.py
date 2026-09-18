@@ -8,9 +8,37 @@ from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
     build_track_tensor,
+    resolve_track_frame_count,
     select_and_complete_tracks,
     sort_tracks,
+    stitch_single_subject_tracklets,
 )
+
+
+def test_track_frame_limit_is_explicit_and_never_exceeds_video() -> None:
+    request = TrackRequest("video.mp4", num_tracks=1, interactive=False, max_frames=8)
+
+    assert resolve_track_frame_count(744, request) == 8
+    assert resolve_track_frame_count(4, request) == 4
+    assert (
+        resolve_track_frame_count(
+            744, TrackRequest("video.mp4", num_tracks=1, interactive=False)
+        )
+        == 744
+    )
+
+
+@pytest.mark.parametrize("value", [0, -1, True, 1.5])
+def test_track_frame_limit_rejects_invalid_values(value: object) -> None:
+    request = TrackRequest(
+        "video.mp4",
+        num_tracks=1,
+        interactive=False,
+        max_frames=value,  # type: ignore[arg-type]
+    )
+
+    with pytest.raises(ValueError, match="max_frames"):
+        resolve_track_frame_count(10, request)
 
 
 def make_history() -> list[list[dict]]:
@@ -66,6 +94,39 @@ class TestTrackResult:
         torch.testing.assert_close(xys[:, 1], torch.full((3,), 150.0))
         # w=100 < h*192/256=150 -> w:=150; size = max(h, w) * 1.2 = 240
         torch.testing.assert_close(xys[:, 2], torch.full((3,), 240.0))
+
+    def test_observed_mask_distinguishes_interpolated_frames(self):
+        result = select_and_complete_tracks(
+            make_history(),
+            TrackRequest("video.mp4", num_tracks=1, interactive=False),
+            num_frames=4,
+        )
+
+        torch.testing.assert_close(
+            result.observed_mask(1),
+            torch.tensor([True, True, False, True]),
+        )
+
+
+def test_single_subject_stitching_preserves_observations_across_id_switch() -> None:
+    history = [
+        [{"id": 4, "bbx_xyxy": np.asarray([0.0, 0.0, 20.0, 40.0])}],
+        [{"id": 9, "bbx_xyxy": np.asarray([1.0, 0.0, 21.0, 40.0])}],
+        [],
+    ]
+
+    stitched = stitch_single_subject_tracklets(history)
+    result = select_and_complete_tracks(
+        stitched,
+        TrackRequest("video.mp4", num_tracks=1, interactive=False),
+        num_frames=3,
+    )
+
+    assert [frame[0]["source_track_id"] for frame in stitched[:2]] == [4, 9]
+    assert result.track_ids == [0]
+    torch.testing.assert_close(
+        result.observed_mask(0), torch.tensor([True, True, False])
+    )
 
 
 def test_requested_track_count_must_be_available() -> None:

@@ -1,0 +1,16 @@
+{
+  "run_id": "1789480058869335780_984657_plcs_accad_gvhmr_meiji_1000_v1_train",
+  "name": "plcs_accad_gvhmr_meiji_1000_v1_train",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.plcs.scripts.train data.scene_dir=plcs/accad_gvhmr_meiji_1000_v1 paths.project_root=/home/kamimura/projects/tennis-lab run.output_dir=plcs/accad_gvhmr_meiji_1000_v1_train model=multiview_axial_base training.trainer.max_epochs=200 training.compile.enabled=false training.checkpoint.save_top_k=1 run.seed=42",
+  "provider": "codex",
+  "session": "01a09b2a-4049-7231-8076-a15ca05d9c7e",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "b8ccc6bac5beac082b97e94c8b42edd9da8d2f40",
+  "branch": "feat/plcs-gvhmr-motion-source",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-gvhmr-motion-source",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-gvhmr-motion-source",
+  "captured_at": "2026-09-15T22:47:39+09:00"
+}

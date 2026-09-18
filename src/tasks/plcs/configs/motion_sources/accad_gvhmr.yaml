@@ -1,26 +1,35 @@
 running:
+  format: amass_smplh_v1
   paths:
     - ACCAD/Female1Running_c3d
     - ACCAD/Male1Running_c3d
     - ACCAD/Male2Running_c3d
     - ACCAD/s008
     - ACCAD/s009
-  weight: 0.5
+  weight: 0.25
 
 walking:
+  format: amass_smplh_v1
   paths:
     - ACCAD/Female1Walking_c3d
     - ACCAD/Male1Walking_c3d
     - ACCAD/Male2Walking_c3d
     - ACCAD/s007
     - ACCAD/s011
-  weight: 0.4
+  weight: 0.2
 
 general:
+  format: amass_smplh_v1
   paths:
     - ACCAD/Female1General_c3d
     - ACCAD/Female1Gestures_c3d
     - ACCAD/Male1General_c3d
     - ACCAD/Male2General_c3d
     - ACCAD/s001
-  weight: 0.1
+  weight: 0.05
+
+tennis:
+  format: coco17_motion_v1
+  paths:
+    - plcs/motions/gvhmr/meiji_3cam
+  weight: 0.5
