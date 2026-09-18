@@ -39,6 +39,7 @@ if "$execute"; then
     .venv/bin/python -m src.tennis_scene.scripts.build_slcs_dataset "$asset_override" "$@"
   fi
   if [[ "$mode" == all ]]; then
+    .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality
     .venv/bin/python -m src.tennis_scene.scripts.assemble_slcs_dataset
   fi
   exit 0

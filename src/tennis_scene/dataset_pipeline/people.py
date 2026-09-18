@@ -31,6 +31,41 @@ from src.utils.io import save_json_atomic
 from src.utils.video.reader import OpenCVVideoFrameReader
 
 
+def _validate_cache_identity(
+    receipt: Path, expected: dict[str, Any], *, cache: Path, prefix: str
+) -> None:
+    """Keep strict receipt equality and expose the precise reason for a mismatch."""
+    try:
+        saved = json.loads(receipt.read_text())
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{prefix}: {cache}; invalid receipt JSON: {exc}") from exc
+    if not isinstance(saved, dict):
+        raise ValueError(
+            f"{prefix}: {cache}; receipt must be a JSON object, got {type(saved).__name__}"
+        )
+    if saved == expected:
+        return
+
+    changes: list[str] = []
+
+    def compare(old: dict[str, Any], new: dict[str, Any], path: str = "") -> None:
+        for key in sorted(old.keys() | new.keys()):
+            field = f"{path}.{key}" if path else key
+            if key not in old:
+                changes.append(f"{field}: saved=<missing>, expected={new[key]!r}")
+            elif key not in new:
+                changes.append(f"{field}: saved={old[key]!r}, expected=<missing>")
+            elif isinstance(old[key], dict) and isinstance(new[key], dict):
+                compare(old[key], new[key], field)
+            elif old[key] != new[key]:
+                changes.append(f"{field}: saved={old[key]!r}, expected={new[key]!r}")
+
+    compare(saved, expected)
+    raise ValueError(
+        f"{prefix}: {cache}; changed identity fields: {'; '.join(changes)}"
+    )
+
+
 def _people_cache_settings(cfg: DictConfig) -> dict[str, Any]:
     """Normalize explicit/default error to the original schema-2 settings identity."""
     settings = cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True))
@@ -157,8 +192,9 @@ def _detections(
     }
     receipt = cache.with_suffix(".metadata.json")
     if cache.exists():
-        if json.loads(receipt.read_text()) != identity:
-            raise ValueError(f"Stale person detections: {cache}")
+        _validate_cache_identity(
+            receipt, identity, cache=cache, prefix="Stale person detections"
+        )
         try:
             with np.load(cache, allow_pickle=False) as saved:
                 return (
@@ -257,8 +293,9 @@ def observe_singles_people(
             ),
         }
         if cache.exists():
-            if json.loads(receipt.read_text()) != identity:
-                raise ValueError(f"Stale person observations: {cache}")
+            _validate_cache_identity(
+                receipt, identity, cache=cache, prefix="Stale person observations"
+            )
             try:
                 with np.load(cache, allow_pickle=False) as saved:
                     kp = saved["keypoints"]

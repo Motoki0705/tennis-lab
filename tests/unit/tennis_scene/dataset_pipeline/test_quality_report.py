@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import numpy as np
@@ -110,6 +111,8 @@ def test_mixed_provenance_cannot_be_full_success(tmp_path: Path) -> None:
             "teacher_settings_sha256": "x",
             "dino_checkpoint_sha256": "x",
             "dino_spec": {},
+            "people_producer": {},
+            "court_producer": {},
         }
 
     with (
@@ -140,6 +143,8 @@ def test_full_report_requires_every_expected_clip(tmp_path: Path) -> None:
         "teacher_settings_sha256": "x",
         "dino_checkpoint_sha256": "x",
         "dino_spec": {},
+        "people_producer": {},
+        "court_producer": {},
     }
     with patch(
         "src.tennis_scene.dataset_pipeline.quality_report.audit_clip",
@@ -263,3 +268,125 @@ def test_raw_checkpoint_and_observation_changes_are_rejected() -> None:
     raw.ball_uv[0, 0, 0] += 0.1
     with pytest.raises(ValueError, match="observation arrays"):
         validate_raw_identity(raw, scene, identity)
+
+
+@pytest.mark.parametrize(
+    ("change", "scope", "expected_error"),
+    [
+        (None, "clip", None),
+        ("pose_sha256", "camera", "people_producer across cameras"),
+        ("pose_sha256", "clip", "people_producer"),
+        ("policy", "clip", "people_producer"),
+        ("settings", "clip", "people_producer"),
+        ("schema_version", "clip", "people_producer"),
+        ("detector_sha256", "clip", "people_producer"),
+        ("court_checkpoint", "clip", "court_producer"),
+        ("court_settings", "clip", "court_producer"),
+    ],
+)
+def test_bound_observation_receipts_must_have_homogeneous_producers(
+    tmp_path: Path, change: str | None, scope: str, expected_error: str | None
+) -> None:
+    """Fresh, internally matching content hashes cannot hide a foreign producer."""
+    from src.tennis_scene.dataset_pipeline.quality_report import observation_producers
+    from src.tennis_scene.reference_pipeline.observations import sha256
+
+    dataset = tmp_path / "dataset"
+    build_slcs_dataset_fixture(
+        dataset, SLCSFixtureDatasetConfig(videos=("video_000", "video_001"))
+    )
+    bound_hashes = {}
+    for index in range(2):
+        key = f"video_{index:03d}/clip_000"
+        directory = tmp_path / "observations" / key
+        directory.mkdir(parents=True)
+        for camera in range(2):
+            producer = {
+                "schema_version": 3,
+                "policy": "largest detected person per court half; singles without end changes",
+                "settings": {"max_gap_seconds": 1.0, "long_gap_policy": "mask"},
+                "detector_sha256": "a" * 64,
+                "pose_sha256": "b" * 64,
+                # Every view and clip legitimately differs in these fields.
+                "video_sha256": str(index * 2 + camera) * 64,
+                "homography": [[index, camera]],
+            }
+            if index == 1 and (scope == "clip" or camera == 1):
+                if change in ("pose_sha256", "detector_sha256"):
+                    producer[change] = "c" * 64
+                elif change == "schema_version":
+                    producer[change] = 4
+                elif change == "policy":
+                    producer[change] = "temporal association"
+                elif change == "settings":
+                    producer[change] = {
+                        "max_gap_seconds": 2.0,
+                        "long_gap_policy": "mask",
+                    }
+            (directory / f"cam{camera}_people.metadata.json").write_text(
+                json.dumps(producer)
+            )
+        court: dict[str, Any] = {
+            "identity": {
+                "checkpoint_sha256": "d" * 64,
+                "settings": {"samples_per_clip": 9},
+                "clip_sha256": str(index) * 64,
+                "video_sha256": {"cam0": str(index) * 64},
+                "ball_annotation_sha256": {"cam0": str(index) * 64},
+            },
+            "calibration_clip_id": f"video_{index:03d}/clip_002",
+            "target_manifest_sha256": str(index) * 64,
+        }
+        if index == 1 and change == "court_checkpoint":
+            court["identity"]["checkpoint_sha256"] = "e" * 64
+        if index == 1 and change == "court_settings":
+            court["identity"]["settings"] = {"samples_per_clip": 5}
+        (directory / "court.json").write_text(json.dumps(court))
+        bound_hashes[key] = {path.name: sha256(path) for path in directory.iterdir()}
+
+    def audit(*args: object, **kwargs: object) -> dict:
+        key = str(args[1])
+        return {
+            "teacher_checkpoints": {},
+            "teacher_settings_sha256": "same",
+            "dino_checkpoint_sha256": "same",
+            "dino_spec": {},
+            **observation_producers(
+                tmp_path / "observations" / key, ["cam0", "cam1"], bound_hashes[key]
+            ),
+        }
+
+    with patch(
+        "src.tennis_scene.dataset_pipeline.quality_report.audit_clip", side_effect=audit
+    ):
+        if expected_error is None:
+            result = write_quality_report(
+                dataset,
+                dataset,
+                [],
+                [],
+                tmp_path / "report",
+                quality=QualityConfig(0.3, 1, 1, 0.5),
+            )
+            assert result["complete"] and result["counts"]["completed"] == 2
+        else:
+            with pytest.raises(ValueError, match="error"):
+                write_quality_report(
+                    dataset,
+                    dataset,
+                    [],
+                    [],
+                    tmp_path / "report",
+                    quality=QualityConfig(0.3, 1, 1, 0.5),
+                    allow_incomplete=True,
+                )
+            result = json.loads((tmp_path / "report/quality_report.json").read_text())
+            assert not result["complete"]
+            assert expected_error in json.dumps(result)
+    # Independently confirm the retained per-clip content binding still rejects mutation.
+    receipt = tmp_path / "observations/video_000/clip_000/cam0_people.metadata.json"
+    receipt.write_text("{}")
+    with pytest.raises(ValueError, match="Observation identity mismatch"):
+        observation_producers(
+            receipt.parent, ["cam0", "cam1"], bound_hashes["video_000/clip_000"]
+        )
