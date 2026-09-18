@@ -10,8 +10,9 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+from alignment_evidence import BUNDLE, read_bundle, validate_geometry
 from build_paper import source_digests
-from common import REPO, ROOT, sha256, sources, write_json
+from common import PAPER_PAGES, REPO, ROOT, sha256, sources, write_json
 from make_scene_figures import SELECTION, render_overlay, validate_projection
 from PIL import Image
 
@@ -75,11 +76,81 @@ def validate_local_weights(metadata: dict) -> None:
     )
 
 
+def validate_alignment_method(*, check_local_sources: bool = False) -> dict:
+    figures = json.loads((ROOT / "evidence/alignment_figures.json").read_text())
+    require(
+        sha256(BUNDLE / "manifest.json") == figures["bundle_manifest_sha256"],
+        "Changed method evidence manifest",
+    )
+    manifest, arrays = read_bundle()
+    actual = validate_geometry(manifest, arrays)
+    require(actual == figures["verification"], "Method geometry verification differs")
+    require(
+        sha256(ROOT / "evidence/scene_sources/B00.json")
+        == figures["display"]["method_projection"]["alignment_bundle_sha256"],
+        "Changed final B00 alignment for method figure",
+    )
+    for name, digest in figures["figures"].items():
+        require(sha256(ROOT / "figures" / name) == digest, "Changed method figure")
+        require(
+            name in (ROOT / "report.tex").read_text(), "Method figure absent from paper"
+        )
+    if check_local_sources:
+        for path, digest in manifest["source_files"].items():
+            require(
+                sha256(REPO / path) == digest,
+                f"Changed alignment method source: {path}",
+            )
+        scene = REPO / "data/synthetic_data_generation/scenes/B00"
+        require(
+            np.array_equal(
+                arrays["points_xyzrgb"],
+                np.load(scene / "reconstruction/export/points_scene.npy"),
+            ),
+            "Bundled point cloud differs from source",
+        )
+        with np.load(scene / "alignment/line-heatmaps/heatmaps.npz") as original:
+            for key in (
+                "camera_ids",
+                "included_in_aggregate",
+                "projected_offsets",
+                "projected_points_uv",
+                "projected_probabilities",
+                "proximity_weights",
+                "evidence_sum",
+            ):
+                require(
+                    np.array_equal(arrays[key], original[key]),
+                    f"Bundled {key} differs from source",
+                )
+            for camera_id in manifest["selection"]:
+                i = original["camera_ids"].tolist().index(camera_id)
+                start, stop = original["probability_offsets"][i : i + 2]
+                probability = original["probability_values"][start:stop].reshape(
+                    original["probability_shapes"][i]
+                )
+                require(
+                    np.array_equal(arrays[f"probability_{camera_id}"], probability),
+                    "Bundled LINE probability differs from source",
+                )
+                require(
+                    sha256(BUNDLE / f"{camera_id}.png")
+                    == sha256(
+                        scene / "reconstruction/export/images" / f"{camera_id}.png"
+                    ),
+                    "Bundled method RGB differs from source",
+                )
+    return actual
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check-local-sources", action="store_true")
     parser.add_argument("--write-report", action="store_true")
     args = parser.parse_args()
+    method_checks = validate_alignment_method(
+        check_local_sources=args.check_local_sources
+    )
     records = sources()
     require(len(records) == 4, "Paper must include all four supplied images")
     metadata = json.loads((ROOT / "evidence/inference_both.json").read_text())
@@ -249,7 +320,7 @@ def main() -> None:
     match = re.search(r"^Pages:\s+(\d+)", info, re.MULTILINE)
     require(match is not None, "No PDF page count")
     pages = int(match.group(1))
-    require(pages == 5, "Unexpected page overflow")
+    require(pages == PAPER_PAGES, "Unexpected page overflow")
     validate_build_receipt(ROOT)
     text = subprocess.check_output(
         ["pdftotext", str(ROOT / "report.pdf"), "-"], text=True
@@ -267,6 +338,7 @@ def main() -> None:
         "source_owner_check": args.check_local_sources,
         "local_weights_and_config_checked": args.check_local_sources,
         "build_receipt_verified": True,
+        "alignment_method": method_checks,
         "corpus_images_audited": 17256,
         "exact_matches": 0,
         "baseline_official_detections": counts,

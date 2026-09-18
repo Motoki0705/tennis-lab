@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
+PAPER_PAGES = 6
 REPO = ROOT.parents[1]
 MAIN = Path(
     subprocess.check_output(

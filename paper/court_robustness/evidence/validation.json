@@ -1,12 +1,27 @@
 {
   "status": "passed",
-  "pages": 5,
+  "pages": 6,
   "supplied_images": 4,
   "scene_overlays": 12,
   "overlays_per_scene": 3,
   "source_owner_check": true,
   "local_weights_and_config_checked": true,
   "build_receipt_verified": true,
+  "alignment_method": {
+    "point_count": 217407,
+    "candidate_count": 75208,
+    "support_count": 65325,
+    "fit_views": 32,
+    "holdout_views": 16,
+    "shown_views": [
+      "frame_000000",
+      "frame_000183",
+      "frame_000306"
+    ],
+    "max_projection_difference_metres": 0.0,
+    "aggregate_matches_exactly": true,
+    "ransac_matches_saved_plane": true
+  },
   "corpus_images_audited": 17256,
   "exact_matches": 0,
   "baseline_official_detections": [
@@ -17,6 +32,6 @@
   ],
   "baseline_control_error_px": 1.42276633028083,
   "max_scene_label_reprojection_difference_px": 1.7826096154749393e-10,
-  "pdf_sha256": "63aada8988a8b2206930bc09c9ab92cb7a2c067a35ac52e30ecef567427f3df3",
+  "pdf_sha256": "878cf440f4ab9efcc5c549f6ba3cf3177fd2e95a737590d7755a3f90d4d70d8f",
   "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth."
 }

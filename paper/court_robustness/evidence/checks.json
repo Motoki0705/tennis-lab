@@ -1,10 +1,10 @@
 {
   "pytest_command": ".venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py",
-  "pytest_passed": 17,
+  "pytest_passed": 22,
   "ruff_check": "passed",
   "ruff_format": "passed",
   "knowledge_validate_errors": 0,
-  "pdf_pages_visually_inspected": 5,
+  "pdf_pages_visually_inspected": 6,
   "additional_training": false,
   "gpu_used": false,
   "validator_first_round_findings_addressed": [
@@ -20,5 +20,7 @@
     "offline_verification": "passed",
     "pytest_passed": 17,
     "tracked_diff": "empty"
-  }
+  },
+  "alignment_method_geometry": "production RANSAC and selected ray projections match the saved plane and arrays; fit-only 32-view sum exactly matches the original raster",
+  "method_revision_previous_head": "9a3bbc4509640aa14b32f115a1842b7fabc3af8a"
 }

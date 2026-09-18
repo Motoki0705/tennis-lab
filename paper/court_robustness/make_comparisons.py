@@ -104,6 +104,9 @@ def external_panels(image: Image.Image, b: dict, o: dict) -> dict[str, Image.Ima
         line_image[active] * 0.15 + np.array([0, 240, 205]) * 0.85
     ).astype(np.uint8)
     panels["ours_line_overlay"] = Image.fromarray(line_image)
+    panels["ours_line_mask"] = Image.fromarray(
+        np.repeat((active.astype(np.uint8) * 255)[..., None], 3, axis=2)
+    )
     return panels
 
 
@@ -128,9 +131,9 @@ def main() -> None:
             [
                 "input",
                 "baseline",
-                "ours_line_overlay",
-                "baseline_common",
                 "ours",
+                "ours_line_mask",
+                "ours_line_overlay",
                 "ours_heat",
             ]
         ):
