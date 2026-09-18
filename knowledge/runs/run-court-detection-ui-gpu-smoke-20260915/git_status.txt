@@ -1,0 +1,59 @@
+ M pyproject.toml
+ M src/tasks/ball_detection/README.md
+ M src/tasks/blcs/README.md
+ M src/tasks/blcs/model_io/adapters.py
+ M src/tasks/court_detection/README.md
+ M src/tasks/plcs/README.md
+ M src/tasks/plcs/model_io/__init__.py
+ M src/tasks/plcs/model_io/factory.py
+ M src/tasks/plcs/visualization/review/README.md
+ M src/tasks/plcs/visualization/review/__init__.py
+ M src/utils/configuration/inventory.py
+ M tests/unit/tasks/blcs/model_io/test_adapters.py
+?? knowledge/nodes/run-ball-detection-ui-gpu-smoke-20260915.md
+?? knowledge/nodes/run-blcs-web-ui-gpu-smoke-20260914.md
+?? knowledge/nodes/run-plcs-web-ui-gpu-smoke-20260914.md
+?? knowledge/runs/run-ball-detection-ui-gpu-smoke-20260915/
+?? knowledge/runs/run-blcs-web-ui-gpu-smoke-20260914/
+?? knowledge/runs/run-plcs-web-ui-gpu-smoke-20260914/
+?? src/tasks/ball_detection/scripts/inference_ui.py
+?? src/tasks/ball_detection/scripts/review_dataset.py
+?? src/tasks/ball_detection/visualization/inference/
+?? src/tasks/ball_detection/visualization/review/
+?? src/tasks/base/visualization/README.md
+?? src/tasks/base/visualization/detection/
+?? src/tasks/base/visualization/inference_queue.py
+?? src/tasks/base/visualization/review/
+?? src/tasks/base/visualization/shared/
+?? src/tasks/base/visualization/web_assets.py
+?? src/tasks/blcs/scripts/inference_ui.py
+?? src/tasks/blcs/scripts/review_dataset.py
+?? src/tasks/blcs/visualization/inference/
+?? src/tasks/blcs/visualization/review/
+?? src/tasks/court_detection/scripts/inference_ui.py
+?? src/tasks/court_detection/scripts/review_dataset.py
+?? src/tasks/court_detection/visualization/inference/
+?? src/tasks/court_detection/visualization/review/
+?? src/tasks/plcs/scripts/review_dataset.py
+?? src/tasks/plcs/scripts/serve_inference_ui.py
+?? src/tasks/plcs/visualization/inference/
+?? src/tasks/plcs/visualization/review/dataset_service.py
+?? src/tasks/plcs/visualization/review/dataset_web.py
+?? tests/e2e/tasks/blcs/dataset_review_browser.cjs
+?? tests/e2e/tasks/detection/
+?? tests/e2e/tasks/plcs/dataset_review_browser.cjs
+?? tests/e2e/tasks/plcs/inference_controls_browser.cjs
+?? tests/unit/tasks/ball_detection/visualization/conftest.py
+?? tests/unit/tasks/ball_detection/visualization/inference/
+?? tests/unit/tasks/ball_detection/visualization/review/
+?? tests/unit/tasks/base/visualization/detection/
+?? tests/unit/tasks/base/visualization/review/
+?? tests/unit/tasks/base/visualization/shared/
+?? tests/unit/tasks/base/visualization/test_inference_queue.py
+?? tests/unit/tasks/blcs/visualization/inference/
+?? tests/unit/tasks/blcs/visualization/review/
+?? tests/unit/tasks/court_detection/visualization/conftest.py
+?? tests/unit/tasks/court_detection/visualization/inference/
+?? tests/unit/tasks/court_detection/visualization/review/
+?? tests/unit/tasks/plcs/visualization/inference/
+?? tests/unit/tasks/plcs/visualization/review/test_dataset_review.py

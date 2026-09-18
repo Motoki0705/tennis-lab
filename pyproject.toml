@@ -94,6 +94,11 @@ namespaces = false
 "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
+"src.tasks.base.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.base.visualization.detection" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.base.visualization" = ["shared/*.js", "shared/*.mjs", "shared/*.txt"]
+"src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "*" = [
     "README.md",
     "configs/*.yaml",
@@ -274,6 +279,11 @@ module = [
     "src.synthetic_data_generation.alignment.manual.models",
     "src.synthetic_data_generation.alignment.manual.web",
     "src.synthetic_data_generation.dataset.court.review.web",
+    "src.tasks.base.visualization.review.web",
+    "src.tasks.base.visualization.detection.web",
+    "src.tasks.blcs.visualization.review.web",
+    "src.tasks.plcs.visualization.review.dataset_web",
+    "src.tasks.plcs.visualization.inference.web",
     "src.tasks.plcs.visualization.review.web",
 ]
 disallow_untyped_decorators = false

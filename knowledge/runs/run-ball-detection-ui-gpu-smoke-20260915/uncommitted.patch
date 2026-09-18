@@ -1,0 +1,615 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index cd01329a..341bc33a 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -95,6 +95,11 @@ namespaces = false
+ "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+ "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+ "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
++"src.tasks.base.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
++"src.tasks.base.visualization.detection" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
++"src.tasks.base.visualization" = ["shared/*.js", "shared/*.mjs", "shared/*.txt"]
++"src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
++"src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+ "*" = [
+     "README.md",
+     "configs/*.yaml",
+@@ -281,6 +286,11 @@ module = [
+     "src.synthetic_data_generation.alignment.manual.models",
+     "src.synthetic_data_generation.alignment.manual.web",
+     "src.synthetic_data_generation.dataset.court.review.web",
++    "src.tasks.base.visualization.review.web",
++    "src.tasks.base.visualization.detection.web",
++    "src.tasks.blcs.visualization.review.web",
++    "src.tasks.plcs.visualization.review.dataset_web",
++    "src.tasks.plcs.visualization.inference.web",
+     "src.tasks.plcs.visualization.review.web",
+ ]
+ disallow_untyped_decorators = false
+diff --git a/src/tasks/ball_detection/README.md b/src/tasks/ball_detection/README.md
+index 7a322494..12c37529 100644
+--- a/src/tasks/ball_detection/README.md
++++ b/src/tasks/ball_detection/README.md
+@@ -61,6 +61,12 @@
+ - **`api/predict.py`**: `predict_clip()`。重複ウィンドウ推論の集約と `PredictionSequence` 構築。
+ - **`io/clip.py`**: クリップディレクトリから推論/描画用テンソルを構築。
+ - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
++- **`review/datasets.py`**: `BallDatasetCatalog`。TrackNet/YouTube/unified webを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
++- **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
++- **`inference/loader.py`**: `load_ball_model()`。model+adapterを構築し `model.` 重みだけを `strict=True` で復元する推論専用loader。
++- **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをoriginal image pixelへ写す。
++- **`inference/rasters.py`**: 予測probability heatmapのRGBA overlay。
++- **`inference/service.py`**: `DetectionService`。catalog/scenes/preview/image/validate/inferを提供する共有Webバックエンド。
+ 
+ ### generate_dataset/
+ - **`candidate_workflow.py`**: 候補区間の手動選択(`run_candidate_selection`)と疑似ラベル推論(`predict_candidates`)。
+@@ -78,3 +84,88 @@
+ 
+ ### configs/
+ - モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
++
++## データセットレビュー / 推論UI
++
++起動・操作・HTTP API・GPUキューの正本は
++[共有Detection UI](../../base/visualization/detection/README.md)。ここには
++ball_detection固有のsourceと互換契約だけを記す。
++
++```bash
++.venv/bin/python -m src.tasks.ball_detection.scripts.review_dataset   # port 8776
++.venv/bin/python -m src.tasks.ball_detection.scripts.inference_ui    # port 8777
++```
++
++### source
++
++| id | 実体 | mode | 備考 |
++|---|---|---|---|
++| `tracknet` | `data/tennis/tracknet/<game>/<Clip*>/Label.csv` + 連番jpg | temporal | 既定source |
++| `youtube` | `data/tennis/youtube/frames/<video>/<clip_*>/Label.csv` + 連番jpg | temporal | YouTubeアノテーション |
++| `web_static` | `data/tennis/web/unified` の `temporal=0` sample | static | 1 frame = 1 scene |
++| `web_temporal` | 同ストアの `temporal=1` sample(sequence単位) | temporal | frame順は保存 `frame_index` |
++
++`web_static`/`web_temporal` は unified store(`index.npz`)が未生成なら
++catalogに `available=false` と理由を出すだけで、空の一覧を捏造しない。
++scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結果として
++解決する。任意pathを受け取るAPIは提供しない。
++
++### 表示・推論の契約
++
++- GTは保存済み `FrameLabel`(multi-instance、`visibility`付き)を
++  original image pixelの `x,y` で返す。補間・3D化・推定ラベルは行わない。
++  rastersは予測probability heatmapのみで、GT ball Gaussianは捏造しない。
++- アノテーション行が無いframeは「missing」であり、明示的なnegativeとは区別する。
++  previewは `annotated=false` と warningを返し、推論metricsはそのframeを除外する
++  (`metrics.scored_frames` / `excluded_frames`)。窓全体が未アノテーションなら
++  `metrics.available=false` と理由を返し、0埋めのmetricを捏造しない。
++  非finiteな座標・visibilityは読み込み時に拒否し、JSONへNaNを出さない。
++- 推論窓の長さは checkpointの `model.num_frames` を上限とし、下限は
++  アーキテクチャ最小(`stunet`=8、その他=1)にMDD multi-frame時の2 frame要件を
++  加えた値。範囲外はpadせず422で拒否する。
++- static sourceは unified storeの正規static sampling(1 frameを
++  `model.num_frames` 回反復)だけを使い、`metrics.window.mode="static_repeat"`
++  とwarningで明示する。反復した窓の予測は平均heatmapへ明示的に集約して
++  **単一の元frame**としてdecode・採点し、itemsのindexを一意にする
++  (同一GTを反復回数だけ数えない)。集約前の反復回数は `metrics.window.repeat`
++  に残す。temporal sourceは選択frame以降の連続窓のみで、シーン長を超える要求は
++  拒否する。
++- モデル入力は original frameを checkpointの `data.image_size` へ
++  `INTER_LINEAR` でresizeした float32 `[0,1]` RGB(augmentationなし)。
++  MDD変換は `model_io/adapters.py` の境界で行い、UI側では再実装しない。
++- deviceは `resolve_device` で厳密に解決し、明示CUDAが使えない場合はCPUへ
++  落とさず失敗させる。GPU実行は共有キュー(1リクエスト1プロセス)経由。
++- metricsは `BallDetectionMetrics` をそのまま使い、Hungarian matchingと
++  checkpoint保存の `ball_distance_threshold`(original pixel)で採点する。
++
++### 更新と境界
++
++- `catalog()` は呼び出しごとにデータ・checkpoint rootを再走査する。追加された
++  clipや `*.ckpt` は再起動なしで一覧に出て、利用できないsourceの理由は
++  2回目以降の呼び出しでも失われない。checkpointの窓・しきい値などの契約も
++  常に同じ応答内の情報から決まる。
++- `validate` / `infer` は実行直前にcheckpointの `(size, mtime_ns)` を確認し、
++  本体が差し替わっていれば保存configを読み直してから使う。旧metadataで別の
++  checkpointを推論しない。catalogが一度拒否したcheckpointは再読込で復活させず、
++  復旧は `catalog()` の再走査で行う。
++- 読み取りはconfigured root内に限定する。root外へ解決される `*.ckpt`
++  symlinkは `error` 付きで拒否し、root外を指すclipディレクトリやframe
++  symlinkは対象sceneを除外してwarningに残す。unified storeの `paths` が
++  root外を指す場合もstoreを unavailable として理由を返す。
++
++### checkpoint互換
++
++checkpoint本体の保存configだけを根拠にする(ファイル名から推論しない)。
++
++- `model.name` が `stunet`/`conv_next_unet`/`dinov3_rope` 以外、または
++  `num_frames < アーキテクチャ最小` のcheckpointは `error` 付きで一覧に出し、
++  実行時に明示的に失敗させる。
++- `model.input_mode` か入力 `image_size` が欠落したcheckpointも同じく
++  `error` 付きで早期に unusable とする。
++- metricsは**キー欠落**なら `configs/metrics/default.yaml` の既定値を使って
++  warningに残し、**値が不正**(範囲外・`nan`/`inf`・型違い)なら
++  checkpointを unusable にする(黙って別のしきい値へ置き換えない)。
++- dataset互換性は学習時の `data.source` ではなくアーキテクチャ制約で決める。
++  static sourceは正規反復モードがあるため常に実行可能、temporal sourceは
++  最小窓以上の場合だけ互換とする。`scenes(checkpoint=)` はdataset単位の互換性に
++  加えて**sceneごとのframe数**で絞り、短すぎるclipを実行候補に出さない。
+diff --git a/src/tasks/blcs/README.md b/src/tasks/blcs/README.md
+index 84a65d3f..aba03424 100644
+--- a/src/tasks/blcs/README.md
++++ b/src/tasks/blcs/README.md
+@@ -63,6 +63,7 @@ reference frame へ position と court-space velocity を同じ proper rotation
+ - **`tracking_predictor.py`**: `BLCSTrackingPredictor`。track-query bindingによりposition、presence logits/probability/判定を一度だけdecodeする。
+ 
+ ### visualization/
++- **`review/` / `inference/`**: [データセット閲覧](visualization/review/README.md)と[GT・推論比較Web UI](visualization/inference/README.md)。
+ - **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
+ - **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
+ - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+diff --git a/src/tasks/blcs/model_io/adapters.py b/src/tasks/blcs/model_io/adapters.py
+index f1b1d6ae..cf5ddcd1 100644
+--- a/src/tasks/blcs/model_io/adapters.py
++++ b/src/tasks/blcs/model_io/adapters.py
+@@ -4,7 +4,7 @@ from __future__ import annotations
+ 
+ from abc import ABC, abstractmethod
+ from collections.abc import Mapping
+-from typing import Literal, cast
++from typing import Any, Literal, cast
+ 
+ import numpy as np
+ import torch
+@@ -433,6 +433,12 @@ class TrajectoryModelIOAdapter(ABC):
+             if not isinstance(camera, Mapping):
+                 raise ModelInputContractError("Each scene camera must be a mapping.")
+             selected.append(camera)
++        court_kp_arrays = [
++            self._contract_court_array(camera, "court_kp_uv") for camera in selected
++        ]
++        court_vis_arrays = [
++            self._contract_court_array(camera, "court_kp_vis") for camera in selected
++        ]
+         if self.input_profile == "single":
+             if len(selected) != 1:
+                 raise ModelInputContractError(
+@@ -441,32 +447,44 @@ class TrajectoryModelIOAdapter(ABC):
+             camera = selected[0]
+             batch = self.build_inference_batch_from_arrays(
+                 ball_uv=np.asarray(camera["ball_uv"], dtype=np.float32),
+-                court_kp=np.asarray(camera["court_kp_uv"], dtype=np.float32),
++                court_kp=court_kp_arrays[0],
+                 ball_vis=np.asarray(camera["ball_vis"], dtype=np.bool_),
+-                court_vis=np.asarray(camera["court_kp_vis"], dtype=np.bool_),
++                court_vis=court_vis_arrays[0],
+             )
+             return batch
+         return self.build_inference_batch_from_arrays(
+             ball_uv=np.stack(
+                 [np.asarray(camera["ball_uv"], dtype=np.float32) for camera in selected]
+             ),
+-            court_kp=np.stack(
+-                [
+-                    np.asarray(camera["court_kp_uv"], dtype=np.float32)
+-                    for camera in selected
+-                ]
+-            ),
++            court_kp=np.stack(court_kp_arrays),
+             ball_vis=np.stack(
+                 [np.asarray(camera["ball_vis"], dtype=np.bool_) for camera in selected]
+             ),
+-            court_vis=np.stack(
+-                [
+-                    np.asarray(camera["court_kp_vis"], dtype=np.bool_)
+-                    for camera in selected
+-                ]
+-            ),
++            court_vis=np.stack(court_vis_arrays),
+         )
+ 
++    def _contract_court_array(
++        self,
++        camera: Mapping[str, object],
++        key: str,
++    ) -> NDArray[Any]:
++        """Slice one scene camera's court array to the model's token contract.
++
++        The dataset loader aligns a full CourtKP20 array to the reference camera
++        and then truncates it to the first ``num_court_tokens`` ground
++        keypoints. Scene inference must reproduce that truncation after the same
++        alignment, so a 20-keypoint scene camera still yields the model's
++        ``num_court_tokens`` court tokens.
++        """
++        array = np.asarray(camera[key])
++        if array.ndim == 0 or array.shape[0] < self.num_court_tokens:
++            raise ModelInputContractError(
++                f"Scene camera {key!r} has shape {array.shape}, but the model "
++                f"contract requires at least {self.num_court_tokens} court "
++                "keypoints."
++            )
++        return np.asarray(array[: self.num_court_tokens])
++
+     @staticmethod
+     def trajectory_arrays(
+         batch: Mapping[str, object],
+diff --git a/src/tasks/court_detection/README.md b/src/tasks/court_detection/README.md
+index 93bd2870..7167f88b 100644
+--- a/src/tasks/court_detection/README.md
++++ b/src/tasks/court_detection/README.md
+@@ -154,3 +154,72 @@ python -m src.tasks.court_detection.scripts.train_mixed \
+ pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
+ 
+ `run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。
++
++## Dataset review / inference UI
++
++画像座標系のWeb UIで、このタスクのdataset GTとcheckpoint predictionを重ねて確認します。
++起動・CLI引数・画面操作・HTTP API・GPUキュー・テスト方法の正本は
++[共有detection基盤](../base/visualization/detection/README.md)です。この節はCourt固有の
++source契約とcheckpoint互換契約だけを管理します。
++
++```bash
++# dataset review (8774)
++.venv/bin/python -m src.tasks.court_detection.scripts.review_dataset
++# inference (8775)
++.venv/bin/python -m src.tasks.court_detection.scripts.inference_ui
++```
++
++### source契約
++
++左のdataset一覧は、ディレクトリ名から推測せず、次のcanonical input契約で解決します。
++
++- `tennis_court_detector`: `configs/data/source/tennis_court_detector.yaml`を正本とし、
++  `excluded_sample_ids`（既定は`QszoUKyCOHo_600`）を適用した`train`/`val`を列挙します。
++- `synthetic_court`: `data/synthetic_data_generation/scenes/<scene>/datasets/court/dataset.json`が
++  明示した`schema`からtyped config（v1=`all_courts`、v2/v3=`target_court`）を選び、scene×splitを
++  列挙します。schema欠落・未知schema・`status!=completed`のsceneはそのsceneだけを理由付きで
++  無効化します。Synthetic側の座標・semantic契約の正本は
++  [`src/synthetic_data_generation/dataset/court/README.md`](../../synthetic_data_generation/dataset/court/README.md)です。
++
++各行は`build_court_input`の`CourtSampleRecord`をそのまま使い、scene IDはサーバ側で
++`<dataset>::<sample_id>`に解決します。1 sample = 1 still imageなので、UIは`count=1`・
++`start=0`だけを受理します（frame再生はBall側の機能です）。
++
++### GT表示とlayerの扱い
++
++GTは`kp`/`seg`/`line`/`semantic_line`をoriginal image pixelの座標・解像度で返します。
++dense layerは`data/court_detection/derived_targets/`の事前生成物をcanonical builder経由で
++読み、provenance metadataとdigestを検証します。欠落・stale・別sourceのmaskはそのlayerだけを
++理由付きでwarningにし、KP/RGBのreviewは継続します。検証に失敗したmaskを代替表示することは
++ありません。2Dラベルから未観測の3Dコートやcamera poseを構成しません。
++
++### checkpoint互換契約
++
++候補は`outputs/court_detection/**/*.ckpt`と`ckpt/court_detection/**/*.ckpt`を再帰scanし、
++checkpoint本体（`hyper_parameters.config`と`target_bundle_state`）だけを正本として判定します。
++`hparams.yaml`は本体との一致確認にのみ使い、本文が読めないcheckpointは常にunusableです。
++
++- `target_bundle_state`を持たないlegacy single-head checkpoint（`ckpt/court_detection/kp`・`line`）は、
++  現行bundleへ移行せずunsupportedと理由を表示します。
++- 現行contractを満たさない保存config（例: `run.artifact_store`以前のrun）もunsupportedです。
++- 互換datasetは、bundleが宣言したKP channel semanticsとdense target schemaが一致するものだけです。
++  schemaが違うlayerは同じ教師として比較せず、dataset側を明示的に除外します。
++- checkpoint選択後は、そのrunが学習したheadに対応するlayerだけを評価対象にします。
++
++### 推論
++
++CUDA要求は共有GPUキュー（`.training_queue`）に`resource=all`で投入され、CPU指定時だけ
++プロセス内で実行します。1回のforwardで選択checkpointの全headをdecodeし、viewerはそれを
++original pixel・original解像度で重ねます。metricsは教師schemaが一致したlayerだけを対象とし、
++予測gridがGT gridと異なる場合はnearest/bilinearでGT側へ再標本化したことをwarningに残します。
++
++### テスト
++
++```bash
++.venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/visualization
++```
++
++fixtureでcanonical source契約（syntheticのschema解決、除外sample、derived provenanceの
++missing/stale、traversal拒否）、checkpoint互換（bundle無し・不正bundle・古いconfig・stale
++sidecar・root外symlink拒否）、original pixel/mask size、mock inferenceの応答契約を検証します。
++`local_data`マークの2件は実データ（TennisCourtDetectorとSynthetic B00）のGT smokeです。
+diff --git a/src/tasks/plcs/README.md b/src/tasks/plcs/README.md
+index 6485c020..ddf7e19b 100644
+--- a/src/tasks/plcs/README.md
++++ b/src/tasks/plcs/README.md
+@@ -69,6 +69,7 @@ human UV/visibility には適用しません。
+ - **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
+ 
+ ### visualization/
++- **`review/` / `inference/`**: [データセット閲覧](visualization/review/README.md)と[GT・推論比較Web UI](visualization/inference/README.md)。
+ - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+ - **`api/predict.py`**: `predict_scene()`。predictorに固定されたadapterへscene assembly/decodeを委譲する。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
+ - **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
+diff --git a/src/tasks/plcs/model_io/__init__.py b/src/tasks/plcs/model_io/__init__.py
+index 613da822..65ce9447 100644
+--- a/src/tasks/plcs/model_io/__init__.py
++++ b/src/tasks/plcs/model_io/__init__.py
+@@ -23,6 +23,7 @@ from src.tasks.plcs.model_io.court_keypoint_checkpoint import (
+ )
+ from src.tasks.plcs.model_io.factory import (
+     PLCSBoundModelIO,
++    PLCSModelIOConfig,
+     PLCSStandardBoundModelIO,
+     PLCSTrackingBoundModelIO,
+     bind_plcs_model_io,
+@@ -40,6 +41,7 @@ __all__ = [
+     "PLCSDecodedPrediction",
+     "PLCSInputProfile",
+     "PLCSModelIOAdapter",
++    "PLCSModelIOConfig",
+     "PLCSPhysicalPrediction",
+     "PLCSPreparedBatch",
+     "PLCSReprojectionTarget",
+diff --git a/src/tasks/plcs/model_io/factory.py b/src/tasks/plcs/model_io/factory.py
+index 882a6086..57a39bc8 100644
+--- a/src/tasks/plcs/model_io/factory.py
++++ b/src/tasks/plcs/model_io/factory.py
+@@ -7,13 +7,14 @@ from typing import Protocol, TypeAlias, TypeVar, cast
+ 
+ from torch import nn
+ 
++from src.tasks.base.generate_dataset import CourtKeypointContract
+ from src.tasks.base.model_io import (
+     BoundModelIO,
+     ModelAdapterMismatchError,
+     ModelCall,
+     bind_model_io,
+ )
+-from src.tasks.plcs.configuration import PLCSTrainingConfig
++from src.tasks.plcs.configuration import PLCSDataConfig, PLCSModelConfig
+ from src.tasks.plcs.model_io.adapters import (
+     PLCSAdapter,
+     PLCSModelIOAdapter,
+@@ -53,6 +54,25 @@ PLCSBoundModelIO: TypeAlias = PLCSStandardBoundModelIO | PLCSTrackingBoundModelI
+ DecodedPredictionT_co = TypeVar("DecodedPredictionT_co", covariant=True)
+ 
+ 
++class PLCSModelIOConfig(Protocol):
++    """Read-only configuration slice the PLCS model/adapter factory consumes.
++
++    Only the model variant, the resolved data contract, and the CourtKP20
++    contract shape model construction. ``PLCSTrainingConfig`` satisfies this
++    structurally; inference-only boundaries may pass a lighter object without a
++    training/run section instead of fabricating training configuration.
++    """
++
++    @property
++    def model(self) -> PLCSModelConfig: ...
++
++    @property
++    def data(self) -> PLCSDataConfig: ...
++
++    @property
++    def court_keypoint_contract(self) -> CourtKeypointContract: ...
++
++
+ class _PLCSBindingAdapter(Protocol[DecodedPredictionT_co]):
+     """Structural adapter contract preserving the bound decoded type."""
+ 
+@@ -100,7 +120,7 @@ def bind_plcs_model_io(
+ 
+ 
+ def _standard_adapter(
+-    runtime: PLCSTrainingConfig,
++    runtime: PLCSModelIOConfig,
+     *,
+     model_type: type[nn.Module],
+     profile: PLCSInputProfile,
+@@ -139,7 +159,7 @@ def _standard_adapter(
+     )
+ 
+ 
+-def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
++def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSBoundModelIO:
+     """Construct and bind the configured PLCS model and adapter exactly once."""
+     model_cfg = runtime.model
+     model_name = model_cfg.name
+@@ -232,6 +252,7 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+ 
+ __all__ = [
+     "PLCSBoundModelIO",
++    "PLCSModelIOConfig",
+     "PLCSRawOutput",
+     "PLCSStandardBoundModelIO",
+     "PLCSTrackingBoundModelIO",
+diff --git a/src/tasks/plcs/visualization/review/README.md b/src/tasks/plcs/visualization/review/README.md
+index 61c6e4dc..85d73fd9 100644
+--- a/src/tasks/plcs/visualization/review/README.md
++++ b/src/tasks/plcs/visualization/review/README.md
+@@ -1,4 +1,9 @@
+-# ACCAD Motion Review
++# PLCS Review
++
++生成データセットの閲覧は `dataset_service.py` / `dataset_web.py` が提供する。
++起動・操作・API・座標契約は[共有review基盤](../../../base/visualization/review/README.md)を参照。
++
++## ACCAD Motion Review
+ 
+ `data/ACCAD` の生モーション（AMASS / SMPL-H）を、PLCS の世界座標系で目視確認する
+ ローカルWeb UI。読み取り専用で、npzやモデルは変更しない。
+diff --git a/src/tasks/plcs/visualization/review/__init__.py b/src/tasks/plcs/visualization/review/__init__.py
+index da45ccb3..677505fa 100644
+--- a/src/tasks/plcs/visualization/review/__init__.py
++++ b/src/tasks/plcs/visualization/review/__init__.py
+@@ -5,7 +5,14 @@ a searchable directory list on the left and the selected motion reconstructed
+ in the world coordinate system on the right.
+ """
+ 
++from .dataset_service import PLCSDatasetReviewService
++from .dataset_web import create_dataset_app
+ from .service import ReviewService
+ from .web import create_app
+ 
+-__all__ = ["ReviewService", "create_app"]
++__all__ = [
++    "PLCSDatasetReviewService",
++    "ReviewService",
++    "create_app",
++    "create_dataset_app",
++]
+diff --git a/src/utils/configuration/inventory.py b/src/utils/configuration/inventory.py
+index b7ada79b..fcc52bbd 100644
+--- a/src/utils/configuration/inventory.py
++++ b/src/utils/configuration/inventory.py
+@@ -288,6 +288,14 @@ def _runtime_boundary(
+ 
+ 
+ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
++    **{
++        f"src.tasks.{task}.scripts.{script}": (
++            f"{task}.{script}",
++            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++        )
++        for task in ("ball_detection", "court_detection")
++        for script in ("review_dataset", "inference_ui")
++    },
+     "src.automation.chatgpt_mcp.scripts.capabilities": (
+         "automation.chatgpt_mcp.capabilities",
+         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+@@ -312,6 +320,22 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+         "plcs.accad_motion_review",
+         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+     ),
++    "src.tasks.plcs.scripts.review_dataset": (
++        "plcs.dataset_scene_review",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
++    "src.tasks.blcs.scripts.review_dataset": (
++        "blcs.dataset_scene_review",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
++    "src.tasks.plcs.scripts.serve_inference_ui": (
++        "plcs.inference_ui",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
++    "src.tasks.blcs.scripts.inference_ui": (
++        "blcs.inference_ui",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
+     "src.tennis_scene.scripts.migrate_video_clip_layout": (
+         "tennis_scene.video_clip_migration",
+         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+@@ -382,6 +406,30 @@ _RUNTIME_BOUNDARIES = (
+         domain="plcs",
+         executable_module=True,
+     ),
++    _non_hydra_boundary(
++        "src.tasks.plcs.scripts.review_dataset",
++        "main",
++        domain="plcs",
++        executable_module=True,
++    ),
++    _non_hydra_boundary(
++        "src.tasks.blcs.scripts.review_dataset",
++        "main",
++        domain="blcs",
++        executable_module=True,
++    ),
++    _non_hydra_boundary(
++        "src.tasks.plcs.scripts.serve_inference_ui",
++        "main",
++        domain="plcs",
++        executable_module=True,
++    ),
++    _non_hydra_boundary(
++        "src.tasks.blcs.scripts.inference_ui",
++        "main",
++        domain="blcs",
++        executable_module=True,
++    ),
+     _non_hydra_boundary(
+         "src.tennis_scene.scripts.migrate_video_clip_layout",
+         "main",
+@@ -503,6 +551,17 @@ _RUNTIME_BOUNDARIES = (
+ )
+ 
+ 
++_RUNTIME_BOUNDARIES += tuple(
++    _non_hydra_boundary(
++        f"src.tasks.{task}.scripts.{script}",
++        "main",
++        domain=task,
++        executable_module=True,
++    )
++    for task in ("ball_detection", "court_detection")
++    for script in ("review_dataset", "inference_ui")
++)
++
+ EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES
+ 
+ 
+diff --git a/tests/unit/tasks/blcs/model_io/test_adapters.py b/tests/unit/tasks/blcs/model_io/test_adapters.py
+index 8792567c..e977ee22 100644
+--- a/tests/unit/tasks/blcs/model_io/test_adapters.py
++++ b/tests/unit/tasks/blcs/model_io/test_adapters.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import numpy as np
+ import pytest
+ import torch
+ 
+@@ -284,3 +285,64 @@ def test_track_query_config_rejects_removed_fusion_keys(removed_key: str) -> Non
+     model[removed_key] = True if removed_key == "mask_invisible_observations" else {}
+     with pytest.raises(UnknownConfigurationKeyError, match=removed_key):
+         parse_model_config({"model": model})
++
++
++def _multiview_scene_adapter() -> AxialTrajectoryModelIOAdapter:
++    return AxialTrajectoryModelIOAdapter(
++        num_court_tokens=14,
++        max_seq_len=8,
++        predict_velocity=False,
++        input_profile="multiview",
++        max_num_cameras=4,
++    )
++
++
++def _scene_camera(frames: int, court_keypoints: int) -> dict[str, np.ndarray]:
++    return {
++        "ball_uv": np.full((frames, 2), 0.5, dtype=np.float32),
++        "ball_vis": np.ones((frames,), dtype=bool),
++        "court_kp_uv": np.full((court_keypoints, 2), 0.25, dtype=np.float32),
++        "court_kp_vis": np.ones((court_keypoints,), dtype=bool),
++    }
++
++
++def test_scene_batch_slices_court_keypoints_to_the_model_contract() -> None:
++    """A 20-point scene camera is truncated to the model's 14 court tokens."""
++    scene = {
++        "cameras": [_scene_camera(frames=4, court_keypoints=20) for _ in range(3)]
++    }
++    batch = _multiview_scene_adapter().build_inference_batch_from_scene(
++        scene,
++        [0, 1, 2],
++    )
++    assert batch["court_kp"].shape == (1, 3, 14, 2)
++    assert batch["court_vis"].shape == (1, 3, 14)
++
++
++def test_single_profile_scene_batch_slices_court_keypoints() -> None:
++    scene = {"cameras": [_scene_camera(frames=4, court_keypoints=20)]}
++    batch = SingleTrajectoryModelIOAdapter(
++        num_court_tokens=14,
++        max_seq_len=8,
++        predict_velocity=False,
++        input_profile="single",
++        max_num_cameras=None,
++    ).build_inference_batch_from_scene(scene, [0])
++    assert batch["court_kp"].shape == (1, 14, 2)
++    assert batch["court_vis"].shape == (1, 14)
++
++
++def test_scene_batch_rejects_too_few_court_keypoints() -> None:
++    scene = {"cameras": [_scene_camera(frames=4, court_keypoints=10)]}
++    with pytest.raises(ModelInputContractError, match="court_kp_uv"):
++        _multiview_scene_adapter().build_inference_batch_from_scene(scene, [0])
++
++
++def test_scene_batch_rejects_too_few_court_visibility_entries() -> None:
++    camera = _scene_camera(frames=4, court_keypoints=20)
++    camera["court_kp_vis"] = np.ones((10,), dtype=bool)
++    with pytest.raises(ModelInputContractError, match="court_kp_vis"):
++        _multiview_scene_adapter().build_inference_batch_from_scene(
++            {"cameras": [camera]},
++            [0],
++        )
