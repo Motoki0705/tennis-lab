@@ -22,6 +22,7 @@ from src.tasks.court_detection.geometry.pose import CourtDecodedPose
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtConsistencyResult,
+    CourtModelIOError,
     CourtModelOutput,
     CourtModelSpec,
     CourtPoseLossKind,
@@ -196,9 +197,11 @@ def test_v1_v2_v3_checkpoint_bundles_are_pairwise_incompatible(
         )
 
 
+@pytest.mark.parametrize("point_capacity", [1, 2])
 def test_test_prediction_payload_flattens_every_selected_head(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    point_capacity: int,
 ) -> None:
     bundle = _bundle()
     module = object.__new__(CourtDetectionLightningModule)
@@ -211,6 +214,23 @@ def test_test_prediction_payload_flattens_every_selected_head(
     }
     batch = {
         "image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long),
+        "targets": {
+            "kp": {
+                "points_xy": torch.zeros(2, 2, point_capacity, 2),
+                "point_visible": torch.ones(
+                    2,
+                    2,
+                    point_capacity,
+                    dtype=torch.bool,
+                ),
+                "physical_indices": torch.zeros(
+                    2,
+                    2,
+                    point_capacity,
+                    dtype=torch.long,
+                ),
+            }
+        },
     }
 
     payload = module.test_prediction_payload(
@@ -220,9 +240,9 @@ def test_test_prediction_payload_flattens_every_selected_head(
 
     expected_shapes = {
         "image_size": (2, 2),
-        "kp_keypoints_normalized": (2, 2, 4, 2),
-        "kp_scores": (2, 2, 4),
-        "kp_valid": (2, 2, 4),
+        "kp_keypoints_normalized": (2, 2, point_capacity, 2),
+        "kp_scores": (2, 2, point_capacity),
+        "kp_valid": (2, 2, point_capacity),
         "kp_heatmaps": (2, 2, 4, 5),
         "seg_mask": (2, 4, 5),
         "seg_logits": (2, 3, 4, 5),
@@ -250,6 +270,22 @@ def test_test_prediction_payload_flattens_every_selected_head(
             archive["scene_ids"],
             ["sample_000000", "sample_000001"],
         )
+
+
+def test_test_prediction_payload_requires_supervised_kp_targets() -> None:
+    bundle = _bundle()
+    module = object.__new__(CourtDetectionLightningModule)
+    torch.nn.Module.__init__(module)
+    module.model_io = _adapter(bundle)
+    logits = {
+        "kp": torch.zeros(2, 2, 4, 5),
+        "seg": torch.zeros(2, 3, 4, 5),
+        "line": torch.zeros(2, 1, 4, 5),
+    }
+    batch = {"image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)}
+
+    with pytest.raises(CourtModelIOError, match="targets mapping"):
+        module.test_prediction_payload(batch, {"logits": logits})
 
 
 def test_pose_loss_logs_keep_raw_weighted_and_effective_terms_separate(

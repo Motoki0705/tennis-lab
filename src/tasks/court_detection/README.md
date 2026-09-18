@@ -53,6 +53,19 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 - `inference/`: single-head predictorはmulti-head checkpointから対象headを明示選択します。
 - `visualization/`: bundle-awareなprediction/rendering surface。
 
+### KP heatmapのピークcardinality
+
+KP教師は`schema`ごとに`points_xy=[C,P,2]`のP個のGaussianをmax reductionするため、教師契約自体は1 ch→1点に固定しません。一方、現行の主経路（single target court、ordered KP14、camera pose）は`C=14, P=1`で、1つの意味チャネルが1つの物理点を持ちます。inferenceもこの契約に合わせ、既定では各チャネル最大1候補だけを返します。multi-peakは`max_peaks>1`を明示したときだけ有効になります。このpeak抽出契約の正本は `model_io/keypoint_decoder.py` で、predictorとdense test payloadは同じconfigを共有します。
+
+| 状況 | 1 ch→1点（既定） | 理由 |
+|---|---|---|
+| single target court / ordered KP14 (`P=1`) | 適切 | 意味チャネルと物理点が1対1で、主峰がその点 |
+| camera pose / homography / KP–pose consistency | 適切 | 一意なKP14対応が必要 |
+| legacy symmetric KP7 (`P=2`) と all-courts | 不適切 | 1チャネルが複数の物理点を持ち、multi-peak抽出が必須 |
+| 複数court instance | 不適切 | peak抽出だけではinstance帰属を決められず、instance-aware matchingやquery headが別途必要 |
+
+<img src="../../../assets/court_detection/kp-peak-cardinality.svg" width="900" alt="同じ1チャネル二峰heatmapに対する、旧既定K=4・新既定K=1・明示K=2のpeak抽出結果と一様マップ/同値plateauの扱いの比較" />
+
 設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。syntheticの`schema=v1|v2|v3`はtyped configで必須で、directory内容から自動推測しません。v2/v3の`train / validation / test`は学習側`train / val / test`へ一意に変換し、空splitやtrajectory group leakageを拒否します。TennisCourtDetectorにtest splitがない既定設定は`data.source.split_mapping.test: null`であり、validationをtestとして代用しません。
 
 Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoder、dense headを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
