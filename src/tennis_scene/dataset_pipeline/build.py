@@ -17,6 +17,9 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.configuration import ReferenceClipPaths
+from src.tennis_scene.dataset_pipeline.checkpoint_integrity import (
+    verify_checkpoint_integrity,
+)
 from src.tennis_scene.dataset_pipeline.configuration import (
     DatasetBuildConfig,
     resolved_recipe,
@@ -48,6 +51,7 @@ from src.tennis_scene.reference_pipeline.observations import (
 )
 from src.tennis_scene.reference_pipeline.reconstruction import reconstruct
 from src.tennis_scene.schema import SceneResult
+from src.utils.checksum import FileIntegrityError
 from src.utils.io import save_json_atomic
 
 
@@ -213,20 +217,25 @@ def _observe_court(
 def build_dataset(cfg: DictConfig) -> None:
     runtime = DatasetBuildConfig.from_config(cfg)
     paths = ReferenceClipPaths.from_config(cfg)
-    required_assets = []
+    required_assets: dict[str, Path] = {}
     if runtime.stage in {"all", "infer"}:
-        required_assets.extend([paths.plcs_checkpoint, paths.blcs_checkpoint])
+        required_assets.update(plcs=paths.plcs_checkpoint, blcs=paths.blcs_checkpoint)
     if runtime.stage in {"all", "observe"}:
-        required_assets.extend([paths.dino_checkpoint, paths.vitpose_checkpoint])
+        required_assets.update(
+            dino=paths.dino_checkpoint, vitpose=paths.vitpose_checkpoint
+        )
     if runtime.stage in {"all", "court", "observe", "infer"}:
-        required_assets.append(runtime.court.checkpoint)
+        required_assets["court"] = runtime.court.checkpoint
     if runtime.stage in {"all", "features"} and runtime.features_enabled:
-        required_assets.append(runtime.feature_checkpoint)
-    for asset in required_assets:
+        required_assets["dinov3"] = runtime.feature_checkpoint
+    for asset in required_assets.values():
         if not asset.is_file():
             raise FileNotFoundError(
                 f"Required dataset producer checkpoint is missing: {asset}"
             )
+    verified_checkpoints = verify_checkpoint_integrity(
+        required_assets, runtime.checkpoint_sha256
+    )
     cv2.setRNGSeed(runtime.seed)
     np.random.seed(runtime.seed)
     torch.manual_seed(runtime.seed)
@@ -238,6 +247,15 @@ def build_dataset(cfg: DictConfig) -> None:
             "Generation recipe changed; choose a new output_dir and dataset version"
         )
     save_json_atomic(recipe, recipe_file)
+    if runtime.checkpoint_sha256 is not None:
+        save_json_atomic(
+            {
+                "stage": runtime.stage,
+                "expected": runtime.checkpoint_sha256,
+                "verified": verified_checkpoints,
+            },
+            runtime.output / "checkpoint_verification.json",
+        )
     OmegaConf.save(
         OmegaConf.create(recipe), runtime.output / "config.yaml", resolve=True
     )
@@ -256,6 +274,13 @@ def build_dataset(cfg: DictConfig) -> None:
             break
         try:
             _process_clip(cfg, runtime, clip, output)
+        except FileIntegrityError as error:
+            failures[clip_id] = f"{type(error).__name__}: {error}"
+            save_json_atomic(
+                {"stage": runtime.stage, "failures": failures},
+                runtime.output / "failures.json",
+            )
+            raise
         except Exception as error:
             failures[clip_id] = f"{type(error).__name__}: {error}"
             print(f"FAILED {clip_id}: {failures[clip_id]}", flush=True)
@@ -303,7 +328,9 @@ def _process_clip(
         return
     outcomes = generate_pseudo_annotations(
         runtime.destination,
-        _scene_runner(local, paths, clip, output, kp, homographies, observations, identity),
+        _scene_runner(
+            local, paths, clip, output, kp, homographies, observations, identity
+        ),
         pipeline_config_yaml=OmegaConf.to_yaml(local, resolve=True),
         clip_ids=[clip.clip_id],
         overwrite=False,

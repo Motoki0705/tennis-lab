@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import cv2
 import numpy as np
@@ -31,16 +31,26 @@ class RefinementSettings:
     single_view_player_weight: float
     min_player_label_fraction: float
     min_ball_label_fraction: float
+    player_root_view_support: Literal["hips", "hips_and_shoulders"] = "hips"
+
+    def __post_init__(self) -> None:
+        if self.player_root_view_support not in ("hips", "hips_and_shoulders"):
+            raise ValueError(
+                "refinement.player_root_view_support must be hips or hips_and_shoulders"
+            )
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> RefinementSettings:
         raw = exact_config_mapping(
-            cfg, path="refinement", required_keys=set(cls.__dataclass_fields__)
+            cfg,
+            path="refinement",
+            required_keys=set(cls.__dataclass_fields__) - {"player_root_view_support"},
+            optional_keys={"player_root_view_support"},
         )
         if type(raw["enabled"]) is not bool:
             raise TypeError("refinement.enabled must be boolean")
         for name, value in raw.items():
-            if name == "enabled":
+            if name in {"enabled", "player_root_view_support"}:
                 continue
             if (
                 type(value) not in (float, int)
@@ -97,9 +107,16 @@ def refine_scene(
         for player in range(players):
             # Advanced indexing moves the joint axis; explicit take preserves V,T,J.
             hips = np.take(scene.human_kp_2d[player], [11, 12], axis=2).mean(axis=2)
-            visible = (
-                np.take(scene.human_kp_vis[player], [11, 12], axis=2) >= 0.3
-            ).all(axis=2)
+            support_joints = (
+                [11, 12, 5, 6]
+                if settings.player_root_view_support == "hips_and_shoulders"
+                else [11, 12]
+            )
+            visible = np.asarray(
+                (
+                    np.take(scene.human_kp_vis[player], support_joints, axis=2) >= 0.3
+                ).all(axis=2)
+            )
             root = triangulate_ball(
                 hips,
                 visible,

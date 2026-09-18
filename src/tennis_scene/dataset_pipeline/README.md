@@ -56,6 +56,13 @@ PLCS/BLCSの配置先はbuild設定の `plcs_checkpoint` / `blcs_checkpoint`。
 test値を重み選択に使わない。DINOv3とViTPoseの配布重みも設定されたrootへ配置する。
 不足する重みがあれば生成開始時にエラーとなる。
 
+Meijiの `checkpoint_sha256` は採用時に確認した6モデルの期待SHAを固定する。
+各stageの必須checkpointを開始前に照合し、結果をrun内の `checkpoint_verification.json` に残す。
+この設定を指定するrecipeは6種類の役割と64桁の小文字hexをすべて明示する。
+期待値は採用記録を固定するためのもので、配布元による署名を意味しない。
+ファイル照合には共通 `src/utils/checksum.py` を使い、計算間の不一致や読取中の変更を検出した場合は、
+当該clipの失敗を保存して全体生成を直ちに停止する。既存receiptの書換や自動retryはしない。
+
 ## 品質判定と教師の意味
 
 `court.py` が複数frameのCourt観測から静的homographyを推定する。
@@ -79,7 +86,12 @@ ViTPoseの生ヒートマップピークは確率ではなく1を超え得るた
 scene metadataへ記録し、観測cacheの生ピークは保持する。SLCSの読込側は範囲違反を拒否する。
 
 `refinement.py` は多視点で観測されたボールと腰中心を三角測量し、再投影残差・速度・
-高さ・コート範囲で検査する。短い欠損の補間と、モデル予測だけの区間を別source codeで残す。
+高さ・コート範囲で検査する。`refinement.player_root_view_support` は既定の `hips` で
+両hip、Meiji v8の `hips_and_shoulders` で両hipと両shoulderのconfidence ≥ 0.3を
+各カメラの参加条件とする。三角測量する点はどちらも両hip中心であり、肩は支持判定だけに使う。
+部分的に画面外へ出る選手への対策で、全収録への一般化や独立3D精度は未検証。
+速度・再投影・coverage閾値と補間規則は変更しない。broadcast v4は既定の `hips` を維持する。
+短い欠損の補間と、モデル予測だけの区間を別source codeで残す。
 単眼では選手の足元をCourt平面へ写し、BLCSのボール奥行きは推論値を保つ。
 単眼ラベルは低い重み、多視点でも支持のない予測は重み0とし、SLCSの教師から除く。
 PLCSのcanonical pose/yawはモデル推論であり、独立した実測ラベルではない。

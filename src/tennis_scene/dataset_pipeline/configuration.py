@@ -11,6 +11,9 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import exact_config_mapping
 from src.tennis_scene.configuration import ReferenceClipPaths
+from src.tennis_scene.dataset_pipeline.checkpoint_integrity import (
+    validate_checkpoint_sha256,
+)
 from src.tennis_scene.dataset_pipeline.court import StaticCourtSettings
 from src.tennis_scene.dataset_pipeline.person_association import association_settings
 from src.tennis_scene.generate_dataset.manifest import load_dataset_manifest
@@ -65,10 +68,21 @@ class DatasetBuildConfig:
     ball_source: str
     calibration_clips: dict[str, str]
     dataset_clip_ids: tuple[str, ...]
+    checkpoint_sha256: dict[str, str] | None = None
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> DatasetBuildConfig:
-        exact_config_mapping(cfg, path="configuration", required_keys=_KEYS)
+        exact_config_mapping(
+            cfg,
+            path="configuration",
+            required_keys=_KEYS,
+            optional_keys={"checkpoint_sha256"},
+        )
+        checkpoint_sha256 = (
+            validate_checkpoint_sha256(cfg.checkpoint_sha256)
+            if "checkpoint_sha256" in cfg
+            else None
+        )
         from src.tennis_scene.dataset_pipeline.refinement import RefinementSettings
 
         RefinementSettings.from_config(cfg.refinement)
@@ -243,6 +257,7 @@ class DatasetBuildConfig:
             str(cfg.ball_source),
             calibration,
             eligible,
+            checkpoint_sha256,
         )
 
 

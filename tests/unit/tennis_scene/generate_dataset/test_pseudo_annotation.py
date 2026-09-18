@@ -121,3 +121,29 @@ def test_plcs_only_result_does_not_require_disabled_ball_stages(
     assert "ball_uv" not in annotation["arrays"]
     assert "ball_vis" not in annotation["arrays"]
     assert "ball_3d" not in annotation["arrays"]
+
+
+def test_integrity_failure_propagates_without_completion_marker(
+    structured_dataset: Path,
+) -> None:
+    import pytest
+
+    from src.utils.checksum import FileIntegrityError
+
+    error = FileIntegrityError("providers disagree", details={"path": "checkpoint"})
+
+    def runner(_videos: Sequence[Path], _cameras: Sequence[str]) -> SceneResult:
+        raise error
+
+    with pytest.raises(FileIntegrityError) as caught:
+        generate_pseudo_annotations(
+            structured_dataset,
+            runner,
+            pipeline_config_yaml="device: cpu\n",
+            continue_on_error=False,
+        )
+    assert caught.value is error
+    annotations = structured_dataset / "videos/video_000/clips/clip_000/annotations"
+    assert not (annotations / "tennis_scene/annotation.json").exists()
+    failure = load_json(annotations / "tennis_scene.failure.json")
+    assert "FileIntegrityError" in failure["error"]
