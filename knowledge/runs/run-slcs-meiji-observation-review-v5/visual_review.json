@@ -1,0 +1,161 @@
+{
+  "status": "completed",
+  "reviewer": "parent_codex",
+  "date": "2026-09-19",
+  "reviewed_contact_sheets": 9,
+  "reviewed_frame_camera_images": 81,
+  "images": [
+    {
+      "clip_id": "video_002/clip_007",
+      "camera": "cam0",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam0.jpg",
+      "frame_indices": [
+        0,
+        85,
+        89,
+        90,
+        171,
+        256,
+        305,
+        306,
+        342
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_007",
+      "camera": "cam1",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam1.jpg",
+      "frame_indices": [
+        0,
+        85,
+        91,
+        92,
+        171,
+        182,
+        183,
+        256,
+        342
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_007",
+      "camera": "cam2",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam2.jpg",
+      "frame_indices": [
+        0,
+        85,
+        102,
+        103,
+        171,
+        232,
+        233,
+        256,
+        342
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera": "cam0",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam0.jpg",
+      "frame_indices": [
+        0,
+        60,
+        66,
+        67,
+        121,
+        172,
+        173,
+        181,
+        242
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera": "cam1",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam1.jpg",
+      "frame_indices": [
+        0,
+        60,
+        118,
+        119,
+        121,
+        179,
+        180,
+        181,
+        242
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera": "cam2",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam2.jpg",
+      "frame_indices": [
+        0,
+        60,
+        121,
+        128,
+        129,
+        179,
+        180,
+        181,
+        242
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera": "cam0",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam0.jpg",
+      "frame_indices": [
+        0,
+        26,
+        27,
+        164,
+        328,
+        492,
+        611,
+        612,
+        657
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera": "cam1",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam1.jpg",
+      "frame_indices": [
+        0,
+        164,
+        169,
+        170,
+        311,
+        312,
+        328,
+        492,
+        657
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera": "cam2",
+      "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam2.jpg",
+      "frame_indices": [
+        0,
+        164,
+        187,
+        188,
+        328,
+        492,
+        563,
+        564,
+        657
+      ]
+    }
+  ],
+  "findings": [
+    "選定した81画像では、各視点内で明白な隣接コートの人物への切替えは見えなかった。未選定frame全体の正しさは主張しない。",
+    "clip_007/008のcam0遠方選手は画像内で小さく、個々の関節の正確さはこのcontact sheetだけから確定できない。",
+    "cam0/1 local P0は水色の選手、逆側cam2 local P0は濃青の選手で、productionのcam2並べ替えと整合する。",
+    "clip_009 cam2 frame492では遠方のlocal P1がsupport=0と表示され、欠損区間425–495に含まれる。同時刻のcam0/1には対応選手のboxとposeがある。表示されたraw関節を有効教師とはみなさない。",
+    "clip_009の選定画像で隣接コートの人物は選択された2trackとは別に見える。画像確認は時系列全frameや最終3D幾何の証明ではない。"
+  ],
+  "limitations": "2D観測の選定画像のみ。速度・再投影・三角測量・最終教師weightの品質判定は未実施。"
+}
