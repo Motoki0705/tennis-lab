@@ -11,5 +11,14 @@
     "checkpoint_byte_binding",
     "refined_tcd_keypoint_display",
     "verification_without_temporary_log"
-  ]
+  ],
+  "clean_checkout": {
+    "commit": "e472d386997df117571429788b8f00024dfbd14c",
+    "data_and_weights_absent": true,
+    "temporary_latex_log_absent": true,
+    "regenerated_all_figures": true,
+    "offline_verification": "passed",
+    "pytest_passed": 17,
+    "tracked_diff": "empty"
+  }
 }
