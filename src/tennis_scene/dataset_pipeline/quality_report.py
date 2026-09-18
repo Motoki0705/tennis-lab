@@ -18,6 +18,9 @@ from src.tasks.slcs.data.dino_tokens import load_dino_tokens
 from src.tasks.slcs.data.quality import QualityConfig, build_label_masks
 from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.dataset_pipeline.quality import evaluate_reconstruction, summarize
+from src.tennis_scene.dataset_pipeline.reprojection_audit import (
+    audit_reprojection_stages,
+)
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     load_dataset_manifest,
@@ -446,6 +449,7 @@ def audit_clip(
         "sources": sources,
         "observations": observed,
         "stages": stages,
+        "pose_reprojection_diagnostics": audit_reprojection_stages(raw, scene, player),
         "court_image_homography_fit": court["diagnostics"],
         "approximate_pinhole_fit_rmse_px": [
             fit["rmse_px"] for fit in scene.metadata["reference"]["camera_fits"]

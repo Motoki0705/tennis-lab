@@ -160,6 +160,12 @@ raw/refined双方に同じ最終SLCSの正重みframe maskを適用し、全軌�
 学習windowの採否・重複によるサンプル頻度は再現しない。全clip集計の平均はサンプル数で重み付けし、
 clip別percentileを全体percentileとして平均しない。Court画像homography fitと近似pinhole fitは別欄にする。
 全関節の再投影誤差に球/hip三角測量用の採用閾値を流用せず、診断値として人手レビューに渡す。
+clip別 `pose_reprojection_diagnostics` は同じ最終正重みmaskをraw/refinedに適用し、カメラ・選手別に
+confidence ≥ 0.3、カメラ前方かつ有限の全関節残差を、観測と教師投影の両方が画像内の群と
+いずれかが画像外の群に完全分割する（画像内は `[0,width) × [0,height)`）。
+左右hip両方のconfidence ≥ 0.3を満たす観測中心とroot投影の残差も別に集計する。
+画像外の残差は削除せず、画像内外で教師weight・学習mask・既存全clip集計を変更しない。
+これらは擬似教師の観測整合性の診断であり、モデルの正しさや測定GTの精度を表さない。
 
 producerのsource manifest SHAとdataset実媒体のSHAを照合し、メタデータ同士が一致しても媒体改変は拒否する。
 除外指定したclipがdataset manifestに残っている場合も失敗する。raw archiveはcheckpoint SHA・
