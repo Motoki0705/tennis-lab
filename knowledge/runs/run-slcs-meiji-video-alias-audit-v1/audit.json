@@ -1,0 +1,147 @@
+{
+  "status": "passed",
+  "expected_sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+  "pid": 2963841,
+  "python": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+  "python_version": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+  "argv": [
+    "knowledge/runs/run-slcs-meiji-video-alias-audit-v1/audit_alias.py",
+    "--original",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_005/media/cam2.mp4",
+    "--alias",
+    "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_005/media/cam2.mp4",
+    "--output-dir",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_video_alias_audit/s42-001"
+  ],
+  "operations": {
+    "script_sha256_before": "a8cc1db6203b0b459dc19a41741cdf2acd365de80744a477281323b9d5046a73",
+    "checksum_source_sha256": "9f13bfba37316d4d26d7d882f53ec905ee7cc69379c8dcc0db68960a439962a3",
+    "original_stat_before": {
+      "dev": 2096,
+      "ino": 4189208,
+      "size": 12202440,
+      "mtime_ns": 1789017487427768594,
+      "ctime_ns": 1789754129599533438
+    },
+    "alias_stat_before": {
+      "dev": 2096,
+      "ino": 4189208,
+      "size": 12202440,
+      "mtime_ns": 1789017487427768594,
+      "ctime_ns": 1789754129599533438
+    },
+    "original_copy": {
+      "source": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_005/media/cam2.mp4",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_video_alias_audit/s42-001/original.mp4",
+      "bytes_copied": 12202440,
+      "source_before": {
+        "dev": 2096,
+        "ino": 4189208,
+        "size": 12202440,
+        "mtime_ns": 1789017487427768594,
+        "ctime_ns": 1789754129599533438
+      },
+      "source_after": {
+        "dev": 2096,
+        "ino": 4189208,
+        "size": 12202440,
+        "mtime_ns": 1789017487427768594,
+        "ctime_ns": 1789754129599533438
+      },
+      "source_stat_unchanged": true,
+      "descriptor_stat_unchanged": true,
+      "snapshot_stat": {
+        "dev": 2096,
+        "ino": 275396,
+        "size": 12202440,
+        "mtime_ns": 1789757576553399711,
+        "ctime_ns": 1789757576553399711
+      }
+    },
+    "alias_copy": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_005/media/cam2.mp4",
+      "snapshot": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_video_alias_audit/s42-001/alias.mp4",
+      "bytes_copied": 12202440,
+      "source_before": {
+        "dev": 2096,
+        "ino": 4189208,
+        "size": 12202440,
+        "mtime_ns": 1789017487427768594,
+        "ctime_ns": 1789754129599533438
+      },
+      "source_after": {
+        "dev": 2096,
+        "ino": 4189208,
+        "size": 12202440,
+        "mtime_ns": 1789017487427768594,
+        "ctime_ns": 1789754129599533438
+      },
+      "source_stat_unchanged": true,
+      "descriptor_stat_unchanged": true,
+      "snapshot_stat": {
+        "dev": 2096,
+        "ino": 275397,
+        "size": 12202440,
+        "mtime_ns": 1789757576566146522,
+        "ctime_ns": 1789757576566146522
+      }
+    },
+    "original_snapshot_dual_sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+    "original_live_dual_sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+    "original_external_sha256sum": {
+      "sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+      "stdout": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636  /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_005/media/cam2.mp4\n",
+      "stderr": "",
+      "returncode": 0
+    },
+    "alias_snapshot_dual_sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+    "alias_live_dual_sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+    "alias_external_sha256sum": {
+      "sha256": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+      "stdout": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636  /home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_005/media/cam2.mp4\n",
+      "stderr": "",
+      "returncode": 0
+    },
+    "snapshot_byte_comparison": {
+      "equal": true,
+      "different_bytes": 0,
+      "first_difference_offset_zero_based": null,
+      "compared_bytes": 12202440
+    },
+    "original_stat_after": {
+      "dev": 2096,
+      "ino": 4189208,
+      "size": 12202440,
+      "mtime_ns": 1789017487427768594,
+      "ctime_ns": 1789754129599533438
+    },
+    "alias_stat_after": {
+      "dev": 2096,
+      "ino": 4189208,
+      "size": 12202440,
+      "mtime_ns": 1789017487427768594,
+      "ctime_ns": 1789754129599533438
+    },
+    "script_sha256_after": "a8cc1db6203b0b459dc19a41741cdf2acd365de80744a477281323b9d5046a73"
+  },
+  "errors": [],
+  "interpretation": "A separate-process snapshot control of current bytes. Agreement does not invalidate or resolve the prior failed feature audit; no root cause is inferred.",
+  "sources": {
+    "original": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_005/media/cam2.mp4",
+    "alias": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_005/media/cam2.mp4"
+  },
+  "digest_matches_expected": {
+    "original_snapshot_dual_sha256": true,
+    "original_live_dual_sha256": true,
+    "alias_snapshot_dual_sha256": true,
+    "alias_live_dual_sha256": true,
+    "original_external_sha256sum": true,
+    "alias_external_sha256sum": true
+  },
+  "stat_unchanged": {
+    "original": true,
+    "alias": true
+  },
+  "imported_nonstdlib_heavy_modules": [],
+  "elapsed_seconds": 0.3144289999981993
+}

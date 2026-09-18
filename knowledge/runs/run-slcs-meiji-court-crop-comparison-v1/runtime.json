@@ -1,0 +1,48 @@
+{
+  "commit": "41020d13080c5c1765c218924bbbb4d2aee2ef84",
+  "command": [
+    "knowledge/runs/run-slcs-meiji-court-crop-probe-v1/probe.py",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001"
+  ],
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "python": "3.11.15",
+  "torch": "2.13.0+cu130",
+  "opencv": "5.0.0",
+  "numpy": "2.3.5",
+  "cuda": "13.0",
+  "cudnn": 92000,
+  "cudnn_benchmark": false,
+  "cudnn_deterministic": false,
+  "tf32_matmul": false,
+  "tf32_cudnn": true,
+  "deterministic_algorithms": false,
+  "environment": {
+    "TENNIS_RUN_ID": "1789755919086652987_2865735_slcs-meiji-court-crop-probe-v1",
+    "TENNIS_REPRO_DIR": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1789755919086652987_2865735_slcs-meiji-court-crop-probe-v1",
+    "TRAINING_QUEUE_DIR": "/home/kamimura/projects/tennis-lab/.training_queue",
+    "TENNIS_GPU_RESOURCE": "all",
+    "TENNIS_GPU_SLOT": "all",
+    "CUDA_VISIBLE_DEVICES": "0",
+    "OMP_NUM_THREADS": "4",
+    "MKL_NUM_THREADS": "4"
+  },
+  "settings": {
+    "checkpoint": "court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt",
+    "samples_per_clip": 9,
+    "min_score": 0.15,
+    "min_points": 10,
+    "ransac_px": 20.0,
+    "max_fit_error_px": 15.0,
+    "ball_crop_margins": {
+      "cam0": 0.25,
+      "cam1": 0.25,
+      "cam2": null
+    }
+  },
+  "device": "cuda",
+  "subpixel_refine": true,
+  "peak_threshold": 0.15,
+  "status": "diagnostic_complete_pending_image_review",
+  "gpu_name": "NVIDIA GeForce RTX 5060 Ti"
+}
