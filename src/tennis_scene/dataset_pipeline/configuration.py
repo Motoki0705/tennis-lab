@@ -76,13 +76,18 @@ class DatasetBuildConfig:
             cfg,
             path="configuration",
             required_keys=_KEYS,
-            optional_keys={"checkpoint_sha256"},
+            optional_keys={"checkpoint_sha256", "checkpoint_warning_roles"},
         )
         checkpoint_sha256 = (
             validate_checkpoint_sha256(cfg.checkpoint_sha256)
             if "checkpoint_sha256" in cfg
             else None
         )
+        from .checkpoint_warning import validate_warning_roles
+
+        roles = validate_warning_roles(cfg.get("checkpoint_warning_roles", []))
+        if roles and checkpoint_sha256 is None:
+            raise ValueError("Checkpoint warning policy requires checkpoint_sha256")
         from src.tennis_scene.dataset_pipeline.refinement import RefinementSettings
 
         RefinementSettings.from_config(cfg.refinement)

@@ -31,6 +31,13 @@ from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.io import save_json_atomic
 from src.utils.paths import PROJECT_ROOT
 
+from .checkpoint_warning import (
+    checkpoint_warning_policy,
+    declared_checkpoint_identity,
+    normalize_receipt,
+)
+from .people import validate_people_receipts
+
 
 def validate_quality_report_config(cfg: DictConfig) -> None:
     """Validate the CLI contract without opening datasets, media or artifacts."""
@@ -214,6 +221,7 @@ def observation_producers(
         if sha256(directory / name) != digest:
             raise ValueError(f"Observation identity mismatch: {name}")
     people = []
+    observed_checkpoint_digests = {}
     for camera in cameras:
         name = f"{camera}_people.metadata.json"
         if name not in observation_hashes:
@@ -227,13 +235,27 @@ def observation_producers(
             raise ValueError("Invalid people producer settings")
         for key in ("detector_sha256", "pose_sha256"):
             _check_digest(receipt[key], key)
+        observed_checkpoint_digests[camera] = {
+            key: receipt[key] for key in ("detector_sha256", "pose_sha256")
+        }
+        receipt = normalize_receipt(
+            receipt, path=directory / name, context="quality report producer comparison"
+        )
         people.append(
             {
                 "schema_version": receipt["schema_version"],
                 "policy": receipt["policy"],
                 "settings_sha256": _digest(receipt["settings"]),
-                "detector_sha256": receipt["detector_sha256"],
-                "pose_sha256": receipt["pose_sha256"],
+                (
+                    "detector_declared_sha256"
+                    if "dino" in declared_checkpoint_identity()
+                    else "detector_sha256"
+                ): receipt["detector_sha256"],
+                (
+                    "pose_declared_sha256"
+                    if "vitpose" in declared_checkpoint_identity()
+                    else "pose_sha256"
+                ): receipt["pose_sha256"],
             }
         )
     if not people or len({_digest(producer) for producer in people}) != 1:
@@ -246,11 +268,31 @@ def observation_producers(
         raise ValueError("Invalid court producer settings")
     return {
         "people_producer": people[0],
+        "observed_people_checkpoint_digests": observed_checkpoint_digests,
         "court_producer": {
             "checkpoint_sha256": court["checkpoint_sha256"],
             "settings_sha256": _digest(court["settings"]),
         },
     }
+
+
+def audit_observation_producers(
+    obs: Path, cameras: list[str], hashes: dict[str, str], run_root: Path
+) -> tuple[dict[str, Any], list[str], list[dict[str, Any]], Path]:
+    """Read producer evidence; collect this audit's warnings without changing the run."""
+    recipe_path = run_root / "recipe.json"
+    recipe = _json(recipe_path) if recipe_path.exists() else {}
+    warning_roles = recipe.get("checkpoint_warning_roles", [])
+    warning_path = run_root / "checkpoint_warnings.jsonl"
+    with checkpoint_warning_policy(
+        recipe.get("checkpoint_sha256"), warning_roles, None
+    ) as checkpoint_warnings:
+        if warning_roles:
+            validate_people_receipts(
+                cameras, obs, checkpoint_sha256=recipe.get("checkpoint_sha256")
+            )
+        producers = observation_producers(obs, cameras, hashes)
+    return producers, warning_roles, checkpoint_warnings, warning_path
 
 
 def audit_clip(
@@ -312,8 +354,11 @@ def audit_clip(
     ):
         raise ValueError("Teacher coverage violates recorded refinement contract")
     obs = _locate(observations, key, "court.npz")
-    producers = observation_producers(obs, cameras, identity["observations"])
     run = _locate(runs, key, "raw_model_quality.json")
+    run_root = next(root for root in runs if root / key == run)
+    producers, warning_roles, checkpoint_warnings, warning_path = (
+        audit_observation_producers(obs, cameras, identity["observations"], run_root)
+    )
     for name in (
         "raw_model_quality.json",
         "quality.json",
@@ -413,6 +458,15 @@ def audit_clip(
     return {
         **producers,
         "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
+        "checkpoint_warning_roles": warning_roles,
+        "checkpoint_warnings": checkpoint_warnings,
+        "generation_checkpoint_warning_source": str(warning_path)
+        if warning_path.exists()
+        else None,
+        "generation_checkpoint_warning_scope": "run-wide evidence reference, not attributed to this clip; checkpoint_warnings above are this clip audit only",
+        "checkpoint_verification_limitation": "Allowlisted checkpoint bytes are not authenticated; declared model identity is assumed"
+        if warning_roles
+        else None,
         "source_manifest_sha256": source_manifest_sha256,
         "manifest_sha256": clip.digest(),
         "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
@@ -542,6 +596,11 @@ def write_quality_report(
         ):
             if len({_digest(row[field]) for row in completed}) > 1:
                 report["errors"].append(f"Mixed provenance: {field}")
+        if (
+            len({_digest(row.get("checkpoint_warning_roles", [])) for row in completed})
+            > 1
+        ):
+            report["errors"].append("Mixed provenance: checkpoint_warning_roles")
     except Exception as exc:
         report["errors"].append(f"{type(exc).__name__}: {exc}")
     report["counts"] = {

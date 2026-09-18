@@ -218,6 +218,18 @@ def _observe_court(
 
 
 def build_dataset(cfg: DictConfig) -> None:
+    from .checkpoint_warning import checkpoint_warning_policy
+
+    runtime = DatasetBuildConfig.from_config(cfg)
+    with checkpoint_warning_policy(
+        runtime.checkpoint_sha256,
+        cfg.get("checkpoint_warning_roles", []),
+        runtime.output / "checkpoint_warnings.jsonl",
+    ):
+        _build_dataset(cfg)
+
+
+def _build_dataset(cfg: DictConfig) -> None:
     runtime = DatasetBuildConfig.from_config(cfg)
     paths = ReferenceClipPaths.from_config(cfg)
     required_assets: dict[str, Path] = {}
@@ -255,7 +267,8 @@ def build_dataset(cfg: DictConfig) -> None:
             {
                 "stage": runtime.stage,
                 "expected": runtime.checkpoint_sha256,
-                "verified": verified_checkpoints,
+                "observed": verified_checkpoints,
+                "warning_roles": list(cfg.get("checkpoint_warning_roles", [])),
             },
             runtime.output / "checkpoint_verification.json",
         )

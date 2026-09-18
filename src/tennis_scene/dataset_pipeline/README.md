@@ -62,6 +62,13 @@ PLCS/BLCSの配置先はbuild設定の `plcs_checkpoint` / `blcs_checkpoint`。
 test値を重み選択に使わない。DINOv3とViTPoseの配布重みも設定されたrootへ配置する。
 不足する重みがあれば生成開始時にエラーとなる。
 
+配布重みを再取得するときは、取得元のrevisionを固定し、別ファイルへdownloadしてサイズ・
+期待SHA・モデル構造を確認する。元ファイルをバックアップしてからatomicに切り替え、
+取得元と検証結果をknowledgeのrunへ残す。既存の固定SHAと一致する場合は同じモデルなので、
+pinやdataset版を変更せず、入力・設定が一致するcacheを再利用できる。
+異なる重みを採用する場合は新しいpinとデータ版が必要。再取得の成功と、過去の読取不一致の
+原因解決は区別し、実際の推論と生成した教師の品質も確認する。
+
 Meijiの `checkpoint_sha256` は採用時に確認した6モデルの期待SHAを固定する。
 各stageの必須checkpointを開始前に照合し、結果をrun内の `checkpoint_verification.json` に残す。
 この設定を指定するrecipeは6種類の役割と64桁の小文字hexをすべて明示する。
@@ -69,9 +76,21 @@ Meijiの `checkpoint_sha256` は採用時に確認した6モデルの期待SHA�
 人物観測ではcameraごとにもDINO/ViTPoseのSHAを固定値へ照合し、推論前後の
 checkpointファイルの一致と、raw検出・人物poseのreceipt間のDINO SHA一致を確認する。
 既存cacheの利用時と `stage=infer` による観測の消費時にもreceiptを照合する。
-不一致のreceiptを期待値へ書き換えて採用せず、元ファイルを保存して原因を調べる。
-ファイル照合には共通 `src/utils/checksum.py` を使い、計算間の不一致や読取中の変更を検出した場合は、
-全体生成を直ちに停止する。clip処理中なら当該clipの失敗も保存する。既存receiptの書換や自動retryはしない。
+不一致のreceiptを期待値へ書き換えず、元の実測値を保持する。
+ファイル照合には共通 `src/utils/checksum.py` を使う。読取中の変更、short read、二実装間の
+不一致は生成を停止し、clip処理中なら当該clipの失敗も保存する。自動retryはしない。
+
+`checkpoint_warning_roles` は既定では空で、期待SHAや推論前後・receipt間の不一致も停止する。
+Meijiのrecipeだけはユーザーの続行指示に基づき `[dino, vitpose]` を明示する。
+この2役割のdigest差は `checkpoint_warnings.jsonl` へrole・path・比較箇所・実測値・期待値を
+記録し、宣言した固定pinをモデル識別としてcache照合を継続する。新receiptでは
+`declared_checkpoint_sha256` と実測digestを分け、旧receiptの宣言値を仮定する場合も警告する。
+異なる宣言pinや他のidentity項目、動画・観測配列・教師の品質条件はこの例外に含めない。
+これは指定checkpointの内容認証を省略できる運用であり、同一bytesの読み込みや原因解決を
+保証するものではない。品質レポートにも実測digest・宣言値・警告・認証限界を分けて残す。
+監査は生成runへ追記せず、監査時の警告を新レポート内に保存する。
+方針変更後の生成はv9の `s42-002` としてrecipeを分離する。v9はその時点で3D教師未公開であり、
+固定pin・Court・媒体・特徴生成条件が同じ既存Court/RGBを保持して再開する。
 
 ## 品質判定と教師の意味
 
