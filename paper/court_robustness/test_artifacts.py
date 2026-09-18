@@ -88,6 +88,10 @@ def test_external_panels_reproduce_saved_predictions(record: dict) -> None:
         import cv2
 
         active = cv2.resize(original_line, image.size) >= 0.5
+        expected_mask = np.repeat((active.astype(np.uint8) * 255)[..., None], 3, axis=2)
+        np.testing.assert_array_equal(
+            np.asarray(panels["ours_line_mask"]), expected_mask
+        )
         np.testing.assert_array_equal(
             np.asarray(panels["ours_line_overlay"])[~active], np.asarray(image)[~active]
         )
@@ -155,3 +159,53 @@ def test_local_check_rejects_different_checkpoint(tmp_path: Path) -> None:
     path.write_bytes(b"different checkpoint bytes")
     with pytest.raises(ValueError, match="Checkpoint SHA-256 differs"):
         validate_local_weights({"checkpoint": str(path), "ours_sha256": "0" * 64})
+
+
+def test_method_ransac_projection_and_aggregate_match_saved_run() -> None:
+    from alignment_evidence import read_bundle, validate_geometry
+
+    manifest, arrays = read_bundle()
+    result = validate_geometry(manifest, arrays)
+    assert result["point_count"] == 217407
+    assert result["fit_views"] == 32 and result["holdout_views"] == 16
+    assert result["max_projection_difference_metres"] < 1e-9
+    assert result["aggregate_matches_exactly"]
+
+
+def test_method_rejects_camera_intrinsics_not_used_for_inference() -> None:
+    from alignment_evidence import SELECTED, read_bundle, validate_geometry
+
+    manifest, arrays = read_bundle()
+    camera = next(c for c in manifest["cameras"] if c["camera_id"] == SELECTED[0])
+    camera["intrinsics"][2] += 20
+    with pytest.raises(ValueError, match="Ray-plane projection differs"):
+        validate_geometry(manifest, arrays)
+
+
+def test_method_aggregate_rejects_holdout_views() -> None:
+    from alignment_evidence import aggregate, read_bundle
+
+    manifest, arrays = read_bundle()
+    holdout = int(np.flatnonzero(~arrays["included_in_aggregate"])[0])
+    with pytest.raises(ValueError, match="Holdout view"):
+        aggregate(manifest, arrays, [holdout])
+
+
+@pytest.mark.parametrize("name", ["ransac", "projection"])
+def test_method_figures_reproduce_actual_bundled_evidence(
+    tmp_path: Path, name: str
+) -> None:
+    import matplotlib.pyplot as plt
+    from alignment_evidence import read_bundle
+    from make_alignment_figures import projection_figure, ransac_figure
+
+    manifest, arrays = read_bundle()
+    builder = ransac_figure if name == "ransac" else projection_figure
+    figure, _ = builder(manifest, arrays)
+    output = tmp_path / f"{name}.png"
+    figure.savefig(output, dpi=210, facecolor="white")
+    plt.close(figure)
+    np.testing.assert_array_equal(
+        np.asarray(Image.open(output)),
+        np.asarray(Image.open(ROOT / f"figures/method_{name}.png")),
+    )

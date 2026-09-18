@@ -1,6 +1,6 @@
 # 3DGSによる視点拡張と幾何教師を用いたテニスコート検出
 
-[report.pdf](report.pdf) は日本語・A4縦・5ページの技術報告です。手法、実験条件、結果、限界の正本は [report.tex](report.tex)。指定された `data/samples/tennis_court` の**全4枚**で旧資料の外部写真6枚を置き換え、B00〜B03各3視点の実3DGSレンダリング＋アライメントを収録しています。模式図や生成AI画像は使用していません。
+[report.pdf](report.pdf) は日本語・A4縦・6ページの技術報告です。手法、実験条件、結果、限界の正本は [report.tex](report.tex)。指定された `data/samples/tennis_court` の**全4枚**で旧資料の外部写真6枚を置き換え、B00〜B03各3視点の実3DGSレンダリング＋アライメントを収録しています。方法の実例としてB00の点群によるRANSAC地面推定、視点ごとのLINE投影から集約までを追加しています。模式図や生成AI画像は使用していません。
 
 ## 同梱物
 
@@ -12,11 +12,14 @@
 | `evidence/training_run*.{json,yaml}`, `training_provenance.json` | mixed学習の保存設定と既存queue runの出典。checkpointの正規化設定から落ちる混合比を補う |
 | `evidence/dataset_audit.json` | TCD全8,841画像＋B00〜B03全8,415レンダリングとのバイト/RGB/知覚ハッシュ照合 |
 | `evidence/scene_sources/` | 実レンダリングPNG、選択サンプルのカメラ・教師、現存アライメントと分割集計。各sourceのハッシュ付き |
+| `evidence/alignment_method/`, `alignment_figures.json` | 元のSfM点群、保存平面・設定、48視点の投影証拠、掲載3視点のRGBとLINE生出力、32視点の集約。RANSAC・射影の再計算と元データ照合に使用 |
 | `figures/`, `evidence/*figures.json`, `scene_visualization.json` | PDF図版と数値・実画像からの生成結果のハッシュ |
 | `evidence/build.json` | PDF・TeX・図版のハッシュとLuaLaTeXの組版検証記録 |
 | `evidence/validation.json` | PDFと掲載成果物の検証結果。精度評価ではない |
 
 同梱物だけの検証は、git管理されたビルド記録を読み、一時的なLaTeXログを要求しません。通常は読み取り専用で、`--write-report` を付けた場合だけ `validation.json` を更新します。`--check-local-sources` は両モデルの重み、checkpoint内の設定・出力契約・epoch/stepも現物と照合します。
+
+方法図はB00の保存済みv2 heatmap archiveを明示的に読みます。当時の入力は校正済み実画像で、現在のNHTレンダリング入力cacheへの差し替えは行いません。全48視点の確率配列と入力画像ハッシュが当時のcacheと一致することを確認しています。LINE専用のepoch 19重みと、未学習写真に使う多タスクepoch 17重みの出典も分けて保存しています。
 
 使わないSEG・全KPヒートマップ（本モデル）は保存対象から除き、図版に必要な生出力を保持しています。重み・動画・3DGS全体は大きいため同梱しません。写真の撮影者・原公開URL・ライセンスは提供されていないため、出典を推測せずユーザー指定画像と記録しています。画像の権利を本repoのMITへ変更するものではありません。
 
@@ -30,17 +33,20 @@
 
 ## 同梱証拠から図版を再生成・検証（GPU・重み不要）
 
-リポジトリrootで、プロジェクトの `.venv` を使用します。NumPy、OpenCV、Pillow、pytest、およびPDF検証用の `pdfinfo` / `pdftotext` が必要です。
+リポジトリrootで、プロジェクトの `.venv` を使用します。NumPy、OpenCV、Pillow、Matplotlib、PyTorch（CPU）・SciPyを含むプロジェクト依存関係、pytest、およびPDF検証用の `pdfinfo` / `pdftotext` が必要です。
 
 ```bash
 .venv/bin/python paper/court_robustness/make_comparisons.py
 .venv/bin/python paper/court_robustness/make_scene_figures.py
+.venv/bin/python paper/court_robustness/make_alignment_figures.py
 # 図版を変更した場合は build_paper.py でPDFとビルド記録を更新
 .venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py
 .venv/bin/python paper/court_robustness/verify_artifacts.py
 ```
 
 3DGS図は保存レンダリングの原寸RGBに、保存カメラから全コートを再投影します。キャプチャ画像への置換はありません。画像の切り抜き・補修は行わず、線分だけを画面/near planeでclipします。`--collect` なしではデータセットも不要です。テストは、カメラやアライメントを誤って組み合わせた場合の拒否、near planeを跨ぐ線分、全図版の画素一致を確認します。
+
+方法図のRANSACは元の全点群からproduction関数で再計算し、保存平面への一致を要求します。投影もproduction関数で再計算します。共通グリッドへの集約は当時のreducerを数値的に再現し、保留視点の混入を拒否します。元データから方法図の証拠を再収集する場合だけ、`make_alignment_figures.py --collect` を使用してください。未学習写真のLINEは、同一の保存確率から二値マスク・RGB重畳・確率マップを生成します。
 
 ## 指定入力から推論を再実行
 
@@ -55,6 +61,7 @@ git -C .cache/court-report/TennisCourtDetector checkout e5cd4f1ce26b15361700d3d8
 .venv/bin/python paper/court_robustness/infer.py
 .venv/bin/python paper/court_robustness/audit_dataset.py
 .venv/bin/python paper/court_robustness/make_scene_figures.py --collect
+.venv/bin/python paper/court_robustness/make_alignment_figures.py --collect
 .venv/bin/python paper/court_robustness/make_comparisons.py
 .venv/bin/python paper/court_robustness/build_paper.py
 # 元画像・カメラ・アライメント・重み・保存設定まで照合

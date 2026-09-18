@@ -27,8 +27,8 @@
 \newcommand{\panel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth]{figures/#1}\end{minipage}}
 \newcommand{\epanel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth,height=32mm,keepaspectratio]{figures/#1}\end{minipage}}
 \newcommand{\external}[1]{%
-\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours_line_overlay.png}{本モデル：LINE $p\geq0.5$}\par\vspace{1mm}
-\noindent\epanel{#1_baseline_common.png}{TCD：14点argmax＋H}\hfill\epanel{#1_ours.png}{本モデル：KP14＋H}\hfill\epanel{#1_ours_heat.png}{本モデル：LINE確率 $[0,1]$}\par}
+\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours.png}{本モデル：KP14＋H}\par\vspace{1mm}
+\noindent\epanel{#1_ours_line_mask.png}{本モデル：LINE二値マスク}\hfill\epanel{#1_ours_line_overlay.png}{本モデル：LINE重畳 $p\geq0.5$}\hfill\epanel{#1_ours_heat.png}{本モデル：LINE確率 $[0,1]$}\par}
 \newcommand{\scenerow}[7]{\noindent{\sffamily\bfseries #1}\par\vspace{.5mm}\panel{#2}{#3}\hfill\panel{#4}{#5}\hfill\panel{#6}{#7}\par\vspace{.8mm}}
 
 \begin{document}
@@ -66,7 +66,7 @@ TennisCourtDetector（TCD）\cite{tcd}はTrackNetに近い構成で14点のコ�
 \subsection{3DGS再構成と規格コートへのアライメント}
 動画の多視点画像からSfMでカメラの内部・外部パラメータとシーンを推定し、3DGSの学習済み表現を得る。
 再構成座標のスケールは任意なので、規格コートの長さ23.77 m・ダブルス幅10.97 mを尺度とする。
-再構成点のRANSAC平面推定とLINE検出の地面への投影を使い、共通スケールと各コートの平面内位置・向きを求める。
+再構成点のRANSAC平面推定（図\ref{fig:ransac}）とLINE検出の地面への投影（図\ref{fig:projection}）を使い、共通スケールと各コートの平面内位置・向きを求める。
 推定地面 $\mathbf n^\top(\mathbf X-\mathbf o)=0$ に対し、カメラ中心 $\mathbf C$、画素からのレイ $\mathbf d$ の交点は
 \begin{equation}
 \mathbf X=\mathbf C+\lambda\mathbf d,\qquad
@@ -78,6 +78,25 @@ TennisCourtDetector（TCD）\cite{tcd}はTrackNetに近い構成で14点のコ�
 当てはめ用と保留視点を分け、検出線との距離・支持量で整合性を確認する。
 保存結果のB00・B03は自動受理、B01・B02は人手調整・確認を含む。
 したがって、全シーンが自動処理だけで得られたものではない。
+
+\newpage
+\noindent\textbf{地面推定と多視点LINE投影の実例（B00）}\par
+{\small
+カメラの上方向・撮影範囲・高さ分布から点群の地面候補を絞り、3点から作る平面を1,000回試す。
+最大20,000候補点の距離内支持数を最大化し、同数なら残差中央値の小さい仮説を選ぶ。
+その後、支持点のSVDによる平面再推定を3回行う。
+元の217,407点と保存設定（seed 42）から再計算し、保存平面との一致を確認した。
+}\par
+\noindent\includegraphics[width=\linewidth]{figures/method_ransac.png}
+\captionof{figure}{実SfM点群からの地面推定。(a)元のRGBを持つ点群、(b)高さ帯の候補75,208点（橙）、(c)RANSAC＋SVD後の支持65,325点（青緑）と推定平面（赤紫）。距離しきい値は再構成座標でRANSAC 0.006、再推定0.008。軸は確定スケールでmへ換算した。3パネルは同じ地面周辺領域を拡大し、表示のみ3点に1点へ間引き、候補・支持点を前面に描いた。表示の切り出し・間引きは推定に影響しない。}\label{fig:ransac}\par
+\vspace{1mm}
+{\small
+LINE確率$p\geq0.5$の画素をレイと地面の交点へ写し、共通グリッド（約3.58 cm）に配置する。
+距離$r$による重み$w=1/(1+(r/5.01\,\mathrm m)^2)$を用い、各視点・各セルで$e_v(g)=\max_{x\mapsto g}w_v(x)p_v(x)$、
+全当てはめ視点の証拠を$E(g)=\sum_{v\in\mathrm{fit}}e_v(g)$とする。$E$は確率ではなく重み付きの総量である。
+}\par
+\noindent\includegraphics[width=\linewidth]{figures/method_projection.png}
+\captionof{figure}{各視点のLINEから投影・集約への過程。上段は校正済み実画像と実LINE確率の重畳、中段は同じ地面座標への各視点の投影。下段は表示3視点の和、全32当てはめ視点の和、保存コートとの重畳。16保留視点は集約に含めない。地面図は白が支持なし、色域共通。細線を読めるよう表示のみ$3\times3$セルの最大値へ縮約し、$\gamma=1/3$とした。元の集約グリッドは保存値と完全一致した。当時の実画像入力・LINE専用重み（epoch 19）の結果であり、未学習推論用の多タスク重み（epoch 17）とは区別する。}\label{fig:projection}
 
 \newpage
 \subsection{新規視点画像と教師の生成}
@@ -124,10 +143,10 @@ TCDは公開重みとBGR入力640$\times$360、しきい値170/255の公式ピ�
 両者のKPにTCDの12種類の4点組によるホモグラフィ候補選択を適用する。
 候補は残りの観測点への平均誤差で選び、特異行列や評価点のない候補は採用しない。
 TCDの補正・H推定は1280$\times$720座標で行い、原画像へ戻す。
-加えてTCDの14チャネルargmaxも併記し、しきい値による棄却の影響を確認する。
+加えてTCDの14チャネルargmaxでのH生成可否を数表に併記し、しきい値による棄却の影響を確認する。
 
-全推論はCPU、EXIF補正は共通、追加クロップなしとした。
-LINEは確率0.5以上を直接重畳し、ヒートマップは共通の$[0,1]$色域を使う。
+指定写真4枚とTCD動作確認の推論はCPU、EXIF補正は共通、追加クロップなしとした。
+本モデルのLINEは確率0.5以上を白とする二値マスク・原画像への直接重畳・確率マップの3形式で示す。確率マップは共通の$[0,1]$色域を使う。
 \textbf{Hの生成可否や検出点数は正解率ではない。}画像に人手GTはなく、LINEを持たないTCDとの出力差、backbone・解像度・学習データの差も残る。
 TCDの既存val画像1枚では14点を検出し、H補正後の平均誤差1.423 pxを確認した。これは実装の動作確認であり、外部4枚の評価には含めない。
 
@@ -167,7 +186,7 @@ B03 & 1,669 & 226 & 198 & 40 & 0.109\\\midrule
 \noindent\textbf{B：\texttt{images (1).jpg} / 638$\times$480}\par
 \external{local02}
 {\small TCDは公式処理で1点、argmaxでも有効なHを生成できない。本モデルは画面右へ見切れる線を含めてLINEを検出するが、KP＋Hは手前側の輪郭と一致しない。線の抽出と点の意味的対応付けの差が現れている。}
-\captionof{figure}{指定写真A・Bの全比較条件。画像は縦横比を保ち、全領域を表示した。ヒートマップは黒0から黄白1までの固定色域。TCDのargmaxが境界・同一点に集まった場合も、その座標を修正していない。}\label{fig:ab}\par
+\captionof{figure}{指定写真A・Bの実推論。上段でKPと幾何復元、下段で本モデルのLINE出力を示す。二値マスクは白が$p\geq0.5$、黒がそれ未満。確率マップは黒0から黄白1までの固定色域。全パネルは縦横比を保ち、元画像の全領域を表示した。}\label{fig:ab}\par
 \vspace{2mm}
 \begin{center}\small
 \begin{tabular}{@{}lrrrr@{}}\toprule

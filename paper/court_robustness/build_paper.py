@@ -6,7 +6,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from common import ROOT, sha256, write_json
+from common import PAPER_PAGES, ROOT, sha256, write_json
 
 
 def source_digests(root: Path) -> dict[str, str]:
@@ -36,15 +36,15 @@ def main() -> None:
         raise ValueError("Paper sources changed during the PDF build")
     info = subprocess.check_output(["pdfinfo", str(ROOT / "report.pdf")], text=True)
     match = re.search(r"^Pages:\s+(\d+)", info, re.MULTILINE)
-    if match is None or int(match.group(1)) != 5:
-        raise ValueError("The paper must fit five pages without overflow")
+    if match is None or int(match.group(1)) != PAPER_PAGES:
+        raise ValueError(f"The paper must fit {PAPER_PAGES} pages without overflow")
     write_json(
         ROOT / "evidence/build.json",
         {
             "schema": "court_paper_build_v1",
             "source_sha256": before,
             "pdf_sha256": sha256(ROOT / "report.pdf"),
-            "pages": 5,
+            "pages": PAPER_PAGES,
             "latex_runs": 2,
             "layout_glyph_reference_checks": "passed",
             "compiler": subprocess.check_output(
@@ -52,7 +52,9 @@ def main() -> None:
             ).splitlines()[0],
         },
     )
-    print("Built 5-page PDF; source/figure/PDF hashes saved in evidence/build.json")
+    print(
+        f"Built {PAPER_PAGES}-page PDF; source/figure/PDF hashes saved in evidence/build.json"
+    )
 
 
 if __name__ == "__main__":
