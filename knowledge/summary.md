@@ -1,8 +1,8 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-04
+更新日: 2026-09-18（実RGB SLCSを追記。他タスクの横断評価は2026-09-04時点）
 
-調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`
+従来の横断調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`。追加実験の版・差分は各runの再現性bundleを参照。
 
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
@@ -10,9 +10,11 @@
 
 ## 現在の全体像
 
-現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSはend-to-end経路の動作確認までは完了していますが、recording-disjointな汎化baselineはありません。2026-09-04時点でも、knowledgeの研究結果を根拠とするproduction checkpointの更新は確認されていません。
+現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSには小規模な収録分離パイロット比較が追加されましたが、実世界での頑健性は未確立です。実RGB用の教師checkpointは専用生成profileで選択し、以下の従来pipelineのdeployとは区別します。
 
-前回の要約以降、正式な実験知見として追加されたのは、2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/group-i832-blcs-observation-tracking.md)、3 run）です。conservative設定が学習用associationの運用選択となりましたが、単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
+2026-09-18の追加は[実RGB SLCSの実験群](nodes/group-slcs-real-rgb.md)です。Meiji/broadcastの教師学習と先行SLCS比較を記録し、現在はMeiji全体の生成・品質確認を優先しています。
+
+従来の2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/group-i832-blcs-observation-tracking.md)、3 run）では、conservative設定が学習用associationの運用選択となりました。ただし単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
 
 | task | 現在の基準 | 主な固定値 | 現在の判断 |
 |---|---|---|---|
@@ -20,7 +22,7 @@
 | `court_detection` | [`run-i621-court-kp512-resume-r4`](nodes/run-i621-court-kp512-resume-r4.md) | val best `2.23 px`、固定checkpoint再評価 `1.708886 px` | KP14 / 512入力のdeploy。独立held-out testは未確立 |
 | `plcs` | [`run-deploy-multiview-plcs-i590-courtkp14-v2`](nodes/run-deploy-multiview-plcs-i590-courtkp14-v2.md) | position `0.175284 m`、yaw `6.443357°` | 3–6 camera・court KP14の現行single-person deploy |
 | `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
-| `slcs` | [`run-i634-slcs-overfit-dino`](nodes/run-i634-slcs-overfit-dino.md) | player `0.470360 m`、yaw `7.761920°`、ball `1.954024 m` | 同一13 windowのmemorization diagnostic。deploy / 汎化主張は不可 |
+| `slcs` | [実RGBパイロット比較](nodes/group-slcs-real-rgb.md) | 各60epoch・7clip、testはbroadcast 1収録のみ | 欠損時の選手精度は改善。ball低分散・大誤差が残り、Meiji全体評価は未完了 |
 
 [pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpointは次です。前回から変更はありません。
 
@@ -85,7 +87,9 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 
 ### SLCS
 
-SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball側の改善までは確認されています。しかしtrain / val / testが同じ13 windowを共有するmemorization実験であり、モデルの汎化性能は未評価です。最初にrecording_id非重複のsplitを作り、shared DINO、split DINO、DINOなしを同一seed・budgetで比較する必要があります。
+従来のshared/split DINO比較はtrain / val / testが同じ13 windowを共有するmemorization実験でした。追加の[実RGBパイロット](nodes/group-slcs-real-rgb.md)は収録を分け、同じ教師・評価window・60epoch budgetで入力欠損augmentationと4入力条件を比較しています。RGBは選手推定に寄与し、augmentationは欠損時の劣化を減らしましたが、ballはtrainから低分散出力と大誤差が残っています。
+
+このtestにはMeiji収録が含まれず、教師は独立実測3D正解ではありません。Meiji全体の教師生成・品質確認を先に完了し、その後ball未学習の仮説を検証して全体版の収録分離評価を行います。
 
 ## 結果を解釈するための規則
 
@@ -115,7 +119,7 @@ SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball�
 | S | BLCS観測ベースtracking | #832が単一seed・FP augmentation無効、重複track増加 | 許容差・重みを先に固定し、同一条件で3 seed以上を比較。position / presence / ID / duplicate / missedを併記し、FP有効条件と実検出入力でも評価 |
 | A | BLCS track-query architecture | #786が旧runtime・入力契約 | associationとpost-#824 metricを固定し、A/B/Dをcurrent loss・schema、3 seed以上で再実行してposition / ID / lifecycleのParetoを確認 |
 | A | PLCS reprojection | 単一seed・weight 1のみ | weight `0.1/0.3/1.0`を複数seedで比較し、meanだけでなく0.5 m率・軸別誤差・tailを改善 |
-| A | SLCS | 汎化splitがない | recording-disjoint splitで3 seed、欠損率・jerk・calibrationまで報告 |
+| A | SLCS | Meiji全体の生成・評価とball未学習の解消 | 全体版のrecording-disjoint splitで入力条件・欠損率・jerk・calibrationを評価し、複数seedで再現性を確認 |
 | A | Ball 3DGS augmentation | campaign未完了 | 残りseedとgame10 final testを固定protocolで完了 |
 | B | multi-person / multi-ball | deploy互換E2E評価が不足 | single-object契約と分離したまま、lifecycle・presence・identityを長sequenceで評価 |
 
