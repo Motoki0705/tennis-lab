@@ -36,6 +36,7 @@ members:
 - run-slcs-meiji-checkpoint-hash-probe-v1
 - run-slcs-meiji-checkpoint-hash-probe-v2
 - run-slcs-meiji-checkpoint-hash-probe-v2b
+- run-slcs-meiji-checkpoint-hash-probe-v3
 parents: []
 tags:
 - slcs
@@ -53,7 +54,7 @@ Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付�
 
 SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseline](run-slcs-rgb-pilot-baseline-selected-conditions-v2.md)と[入力欠損augmentation](run-slcs-rgb-pilot-augmented-selected-conditions-v2.md)を各60epoch比較した。testはbroadcast 1収録のみで、Meiji testは含まれない。augmentationは欠損時の選手精度を改善したがfull入力は微悪化し、ballはtrain/testとも大きな誤差と低分散出力が残った。現在の重みを頑健な実世界モデルとして採用しない。
 
-全体生成の途中で[人物対応の切替とcache記録不一致](run-slcs-meiji-v6-tracking-qc.md)を確認した。旧v6の生成を取り消し、[時間的な人物対応](run-slcs-meiji-temporal-probe-v1.md)を適用したv7で4clipを生成した。教師の利用率は改善したが、[推論後のchecksum不一致](run-slcs-meiji-checkpoint-hash-probe-v1.md)を再現し、全体生成前に原因を切り分けている。
+全体生成の途中で[人物対応の切替とcache記録不一致](run-slcs-meiji-v6-tracking-qc.md)を確認した。旧v6の生成を取り消し、[時間的な人物対応](run-slcs-meiji-temporal-probe-v1.md)を適用したv7で4clipを生成した。教師の利用率は改善したが、[推論後のchecksum不一致](run-slcs-meiji-checkpoint-hash-probe-v1.md)を再現した。[別processのsha256sumでも不一致](run-slcs-meiji-checkpoint-hash-probe-v3.md)が発生し、全体生成前に実行環境を切り分けている。
 
 ### 次の判断
 
