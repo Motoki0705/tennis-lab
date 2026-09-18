@@ -79,3 +79,7 @@ ball教師有効frameはbroadcast96/120、Meiji118/120。ball誤差はeval5.202/
 
 ### 次に有効な実験
 ユーザー優先順位に従いMeiji全体教師/QCを先に完了する。その後、既存pilot/seed/60epoch/validation選定を固定し、ball_position_smoothness_weight=0だけを変える比較を行う。成功・失敗いずれでも唯一の原因とは断定せず、train誤差・予測分散・教師との対応・定数baselineを併せて確認する。別施策としてdropoutの時間相関やheadへの適用を検討できるが、最初の比較へ混ぜない。
+
+比較設定は [`train_real_rgb_pilot_no_ball_smooth.yaml`](../../src/tasks/slcs/configs/train_real_rgb_pilot_no_ball_smooth.yaml) に分離した。CPUの設定合成・型付きruntimeで、保存済みaugmented runとの変更が平滑化重みと出力先だけであることを確認した（絶対root表記はruntime解決して比較）。この記載時点では追加学習は未実施で、Meiji全体QC後に共有queueへ投入する。
+
+後続の読み取り専用コード監査（`c7728c49`）では、SLCSは基底のoptimizer構築を使い、登録された全パラメータをAdamWへ渡すことを確認した。ball embedding/headは通常のmodule属性で、保存済み両pilot設定にfreeze・resume・init_weightsの指定はなく、learning_rateは0.0003、min_lrは0.000001だった。設定上の更新対象からballを除外する原因は見つからなかった。実checkpointのoptimizer stateや学習中の動的異常を検証したものではない。
