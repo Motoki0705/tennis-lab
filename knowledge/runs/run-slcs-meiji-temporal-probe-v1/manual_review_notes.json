@@ -1,0 +1,32 @@
+{
+  "scope": "Targeted manual review of three frames per clip and three cameras; not an exhaustive or independent 3D accuracy assessment.",
+  "clip000_007": {
+    "frames": [
+      569,
+      611,
+      651
+    ],
+    "finding": "All cameras retain the actual players; foreground bystander is not selected. P0 has positive teacher weight at all inspected frames."
+  },
+  "clip001_001": {
+    "frames": [
+      180,
+      220,
+      280
+    ],
+    "finding": "Near player is outside cam2 at frame220 and not rendered with a skeleton; partial reentry at280. Other cameras retain actual players. Invisible joints remain uncertain."
+  },
+  "clip001_000": {
+    "frames": [
+      448,
+      508,
+      640
+    ],
+    "finding": "Actual players remain selected in all three views; large foreground bystander in cam0 and ladder carrier in cam1 are unselected. All inspected player weights are1.0; projected pseudo3D and 2D skeletons retain local offsets, so positive weight does not imply exact 3D."
+  },
+  "limitations": [
+    "video_000/clip_009 loses one positive player frame compared with v6.",
+    "video_001/clip_001 cam2 pose producer receipt changed, confounding association-only attribution.",
+    "Only4 of5 requested clips completed; source SHA validation failure prevents full success."
+  ]
+}
