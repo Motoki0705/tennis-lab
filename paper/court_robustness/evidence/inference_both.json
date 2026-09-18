@@ -1,0 +1,47 @@
+{
+  "device": "cpu",
+  "torch": "2.13.0+cu130",
+  "opencv": "5.0.0",
+  "seed": 42,
+  "ids": [
+    "local01",
+    "local02",
+    "local03",
+    "local04"
+  ],
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt",
+  "baseline_sha256": "09aa8c4338459ba1d643f2dc329f45f464dedec3720fccc1a4abfd1f7b464d04",
+  "baseline_code_commit": "e5cd4f1ce26b15361700d3d89e068cbf0e82749e",
+  "control_sample": "EF-hx40Q4Mg_700",
+  "control_mean_error_px": 1.42276633028083,
+  "checkpoint_train_scales": [
+    256,
+    320,
+    384,
+    448,
+    512
+  ],
+  "inference_config_compatibility": "Current train-only pose validator requires train_scales=[val_short_side]. Set only this unused training field to instantiate. Model, state_dict, validation resolution, normalization and inference unchanged; no training performed.",
+  "epoch": 17,
+  "global_step": 29844,
+  "ours_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+  "short_side": 512,
+  "cuda_initialized": false,
+  "input_manifest_sha256": "8aaade942ba4b7f3724cd8e70c9b7b5e3f1e2ed28f97184bcfb1fa85fa12c4dc",
+  "inputs": {
+    "local01": "7d4fc062c2ee1480b04d77c5ed79e79d0983446c80119063aa9436d6e6c2f016",
+    "local02": "e76a1b63ff1e6aef6db63c5ea2f237ce7afd3de4be723131859aace12457e31f",
+    "local03": "64aa07abf02b6ae27e1da6f2eb4d195d1cec55469db4d20a6996bf8c8e63c1fa",
+    "local04": "fff92432ea6e17c83c6c1e7d1dbb8917c9421a6b0408b17b3848122fbf93610b"
+  },
+  "prediction_sha256": {
+    "local01_baseline.npz": "750cb20b6b4713d9c59716c08a23db13a1905fcccfb145eb8a92f073da160e72",
+    "local01_ours.npz": "967f523dc5edf8f84e9826e2c97ac527262ef4c10527634519b98cd920195335",
+    "local02_baseline.npz": "0863e58dac70c5ec9ff4796fde74d691457ea8332137e205da23c540112e1871",
+    "local02_ours.npz": "d40c9d2d89a419dc3f4c1403b5852baa16040804da6b5d4d3b9545537f3a7ef6",
+    "local03_baseline.npz": "53c98da3a4ee4d9f24b87d000ad89231264089592cdef4896cfc970eb19d1f82",
+    "local03_ours.npz": "318847a45cc2bc22e6558659818512814550b83d9c89882c4cebd8b14edc8374",
+    "local04_baseline.npz": "27abf34b0e61b76c85ea066b430241e2d65b6af5f184743b5f77322288dfa78f",
+    "local04_ours.npz": "018bbb67aa2be6d6d3610511fe9a646abba805f8eec311f5cf1e91ea92496ffe"
+  }
+}

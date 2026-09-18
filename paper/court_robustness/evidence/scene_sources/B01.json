@@ -1,0 +1,4793 @@
+{
+  "scene": "B01",
+  "dataset_schema": "canonical_court_dataset_v3",
+  "source_dataset": "data/synthetic_data_generation/scenes/B01/datasets/court/dataset.json",
+  "dataset_sha256": "3958aad41e15a43a1a382172b85599ddd04023c152841c688314cc0a2de1236b",
+  "source_alignment": "data/synthetic_data_generation/scenes/B01/alignment/alignment.json",
+  "alignment_sha256": "c3b0da3cfdc8aac390acfcb758395033ced707c05554651e2c67d1edeb24d4a9",
+  "alignment": {
+    "schema": "human_confirmed_multi_court_alignment_v1",
+    "coordinate_convention": "metric_scene_from_court_column_vectors;right_handed_metres:+x_right_sideline,+y_far_baseline,+z_up",
+    "metric_scene_adapter": {
+      "nht_scene_from_metric_scene": [
+        0.04226524189551289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.04226524189551289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.04226524189551289,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "metric_scene_from_nht_scene": [
+        23.660103554409456,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.660103554409456,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        23.660103554409456,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "nht_scene_units_per_metre": 0.04226524189551289
+    },
+    "partitions": {
+      "fit_camera_ids": [
+        "frame_000000",
+        "frame_000132",
+        "frame_000198",
+        "frame_000231",
+        "frame_000033",
+        "frame_000165",
+        "frame_000248",
+        "frame_000049",
+        "frame_000082",
+        "frame_000148",
+        "frame_000181",
+        "frame_000024",
+        "frame_000057",
+        "frame_000123",
+        "frame_000156",
+        "frame_000222",
+        "frame_000239",
+        "frame_000008",
+        "frame_000041",
+        "frame_000107",
+        "frame_000140",
+        "frame_000206",
+        "frame_000028",
+        "frame_000094",
+        "frame_000127",
+        "frame_000193",
+        "frame_000226",
+        "frame_000260",
+        "frame_000004",
+        "frame_000020",
+        "frame_000037",
+        "frame_000053"
+      ],
+      "holdout_camera_ids": [
+        "frame_000266",
+        "frame_000066",
+        "frame_000099",
+        "frame_000016",
+        "frame_000115",
+        "frame_000214",
+        "frame_000090",
+        "frame_000189",
+        "frame_000256",
+        "frame_000074",
+        "frame_000173",
+        "frame_000061",
+        "frame_000160",
+        "frame_000243",
+        "frame_000012",
+        "frame_000045",
+        "frame_000070",
+        "frame_000078",
+        "frame_000086",
+        "frame_000103",
+        "frame_000111",
+        "frame_000119",
+        "frame_000136",
+        "frame_000144",
+        "frame_000152",
+        "frame_000169",
+        "frame_000177",
+        "frame_000185",
+        "frame_000202",
+        "frame_000210",
+        "frame_000218",
+        "frame_000235",
+        "frame_000252",
+        "frame_000030",
+        "frame_000063",
+        "frame_000096",
+        "frame_000129",
+        "frame_000162",
+        "frame_000195",
+        "frame_000228"
+      ]
+    },
+    "policy": {
+      "fit": {
+        "minimum_camera_count": 6,
+        "minimum_correspondence_count": 100,
+        "inlier_distance_m": 0.3,
+        "minimum_inlier_fraction": 0.9,
+        "maximum_rms_error_m": 0.3,
+        "maximum_q95_error_m": 0.3
+      },
+      "holdout": {
+        "minimum_camera_count": 3,
+        "minimum_correspondence_count": 80,
+        "inlier_distance_m": 0.3,
+        "minimum_inlier_fraction": 0.9,
+        "maximum_rms_error_m": 0.3,
+        "maximum_q95_error_m": 0.3
+      }
+    },
+    "candidates": [
+      {
+        "court_instance_id": "court-000",
+        "candidate_id": "manual-court-000",
+        "scene_from_court": [
+          0.004904524219154535,
+          -0.9963341292480706,
+          0.08540637293360073,
+          -0.11821466090837306,
+          0.9944148686131399,
+          -0.004145050291176808,
+          -0.1054603605114123,
+          20.518618475897348,
+          0.10542777017132231,
+          0.08544660001178024,
+          0.9907491427314645,
+          -1.684100421059053,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "court_from_scene": [
+          0.004904524219154535,
+          0.9944148686131399,
+          0.10542777017132231,
+          -20.22588855702828,
+          -0.9963341292480706,
+          -0.004145050291176808,
+          0.08544660001178024,
+          0.11117005930546793,
+          0.08540637293360073,
+          -0.1054603605114123,
+          0.9907491427314645,
+          3.8425182355179746,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fit": {
+          "status": "accepted",
+          "metrics": {
+            "camera_ids": [
+              "frame_000000",
+              "frame_000132",
+              "frame_000198",
+              "frame_000231",
+              "frame_000033",
+              "frame_000165",
+              "frame_000248",
+              "frame_000049",
+              "frame_000082",
+              "frame_000148",
+              "frame_000181",
+              "frame_000024",
+              "frame_000057",
+              "frame_000123",
+              "frame_000156",
+              "frame_000222",
+              "frame_000239",
+              "frame_000008",
+              "frame_000041",
+              "frame_000107",
+              "frame_000140",
+              "frame_000206",
+              "frame_000028",
+              "frame_000094",
+              "frame_000127",
+              "frame_000193",
+              "frame_000226",
+              "frame_000260",
+              "frame_000004",
+              "frame_000020",
+              "frame_000037",
+              "frame_000053"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 570,
+            "inlier_fraction": 0.9895833333333334,
+            "rms_error_m": 0.07728407304564557,
+            "q95_error_m": 0.09641263562049082,
+            "maximum_error_m": 1.0060421796246173
+          },
+          "threshold_checks": {
+            "minimum_camera_count": true,
+            "minimum_correspondence_count": true,
+            "minimum_inlier_fraction": true,
+            "maximum_rms_error_m": true,
+            "maximum_q95_error_m": true
+          }
+        },
+        "holdout": {
+          "status": "accepted",
+          "metrics": {
+            "camera_ids": [
+              "frame_000266",
+              "frame_000066",
+              "frame_000099",
+              "frame_000016",
+              "frame_000115",
+              "frame_000214",
+              "frame_000090",
+              "frame_000189",
+              "frame_000256",
+              "frame_000074",
+              "frame_000173",
+              "frame_000061",
+              "frame_000160",
+              "frame_000243",
+              "frame_000012",
+              "frame_000045",
+              "frame_000070",
+              "frame_000078",
+              "frame_000086",
+              "frame_000103",
+              "frame_000111",
+              "frame_000119",
+              "frame_000136",
+              "frame_000144",
+              "frame_000152",
+              "frame_000169",
+              "frame_000177",
+              "frame_000185",
+              "frame_000202",
+              "frame_000210",
+              "frame_000218",
+              "frame_000235",
+              "frame_000252",
+              "frame_000030",
+              "frame_000063",
+              "frame_000096",
+              "frame_000129",
+              "frame_000162",
+              "frame_000195",
+              "frame_000228"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 576,
+            "inlier_fraction": 1.0,
+            "rms_error_m": 0.0316362932894516,
+            "q95_error_m": 0.06826980817823558,
+            "maximum_error_m": 0.1382151633318072
+          },
+          "threshold_checks": {
+            "minimum_camera_count": true,
+            "minimum_correspondence_count": true,
+            "minimum_inlier_fraction": true,
+            "maximum_rms_error_m": true,
+            "maximum_q95_error_m": true
+          }
+        },
+        "accepted": true,
+        "human_confirmed": true
+      },
+      {
+        "court_instance_id": "court-001",
+        "candidate_id": "manual-court-001",
+        "scene_from_court": [
+          0.004904524219154535,
+          -0.9963341292480706,
+          0.08540637293360073,
+          -0.28197074888723156,
+          0.9944148686131399,
+          -0.004145050291176808,
+          -0.1054603605114123,
+          5.7535198326440815,
+          0.10542777017132231,
+          0.08544660001178024,
+          0.9907491427314645,
+          -3.241655957397522,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "court_from_scene": [
+          0.004904524219154535,
+          0.9944148686131399,
+          0.10542777017132231,
+          -5.378242176823845,
+          -0.9963341292480706,
+          -0.004145050291176808,
+          0.08544660001178024,
+          0.019900028459157202,
+          0.08540637293360073,
+          -0.1054603605114123,
+          0.9907491427314645,
+          3.8425182355179746,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fit": {
+          "status": "rejected",
+          "metrics": {
+            "camera_ids": [
+              "frame_000000",
+              "frame_000132",
+              "frame_000198",
+              "frame_000231",
+              "frame_000033",
+              "frame_000165",
+              "frame_000248",
+              "frame_000049",
+              "frame_000082",
+              "frame_000148",
+              "frame_000181",
+              "frame_000024",
+              "frame_000057",
+              "frame_000123",
+              "frame_000156",
+              "frame_000222",
+              "frame_000239",
+              "frame_000008",
+              "frame_000041",
+              "frame_000107",
+              "frame_000140",
+              "frame_000206",
+              "frame_000028",
+              "frame_000094",
+              "frame_000127",
+              "frame_000193",
+              "frame_000226",
+              "frame_000260",
+              "frame_000004",
+              "frame_000020",
+              "frame_000037",
+              "frame_000053"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 513,
+            "inlier_fraction": 0.890625,
+            "rms_error_m": 0.32310222555237694,
+            "q95_error_m": 0.7625054319318246,
+            "maximum_error_m": 2.0689160948311667
+          },
+          "threshold_checks": {
+            "minimum_camera_count": true,
+            "minimum_correspondence_count": true,
+            "minimum_inlier_fraction": false,
+            "maximum_rms_error_m": false,
+            "maximum_q95_error_m": false
+          }
+        },
+        "holdout": {
+          "status": "rejected",
+          "metrics": {
+            "camera_ids": [
+              "frame_000266",
+              "frame_000066",
+              "frame_000099",
+              "frame_000016",
+              "frame_000115",
+              "frame_000214",
+              "frame_000090",
+              "frame_000189",
+              "frame_000256",
+              "frame_000074",
+              "frame_000173",
+              "frame_000061",
+              "frame_000160",
+              "frame_000243",
+              "frame_000012",
+              "frame_000045",
+              "frame_000070",
+              "frame_000078",
+              "frame_000086",
+              "frame_000103",
+              "frame_000111",
+              "frame_000119",
+              "frame_000136",
+              "frame_000144",
+              "frame_000152",
+              "frame_000169",
+              "frame_000177",
+              "frame_000185",
+              "frame_000202",
+              "frame_000210",
+              "frame_000218",
+              "frame_000235",
+              "frame_000252",
+              "frame_000030",
+              "frame_000063",
+              "frame_000096",
+              "frame_000129",
+              "frame_000162",
+              "frame_000195",
+              "frame_000228"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 541,
+            "inlier_fraction": 0.9392361111111112,
+            "rms_error_m": 0.23313923312207374,
+            "q95_error_m": 0.37336967501760643,
+            "maximum_error_m": 1.953231860984646
+          },
+          "threshold_checks": {
+            "minimum_camera_count": true,
+            "minimum_correspondence_count": true,
+            "minimum_inlier_fraction": true,
+            "maximum_rms_error_m": true,
+            "maximum_q95_error_m": false
+          }
+        },
+        "accepted": true,
+        "human_confirmed": true
+      },
+      {
+        "court_instance_id": "court-002",
+        "candidate_id": "manual-court-002",
+        "scene_from_court": [
+          0.004904524219154535,
+          -0.9963341292480706,
+          0.08540637293360073,
+          -0.2819707488872186,
+          0.9944148686131399,
+          -0.004145050291176808,
+          -0.1054603605114123,
+          -8.955479605388422,
+          0.10542777017132231,
+          0.08544660001178024,
+          0.9907491427314645,
+          -4.807356412328438,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "court_from_scene": [
+          0.004904524219154535,
+          0.9944148686131399,
+          0.10542777017132231,
+          9.413673874497588,
+          -0.9963341292480706,
+          -0.004145050291176808,
+          0.08544660001178024,
+          0.09271426656637831,
+          0.08540637293360073,
+          -0.1054603605114123,
+          0.9907491427314645,
+          3.8425182355179737,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fit": {
+          "status": "accepted",
+          "metrics": {
+            "camera_ids": [
+              "frame_000000",
+              "frame_000132",
+              "frame_000198",
+              "frame_000231",
+              "frame_000033",
+              "frame_000165",
+              "frame_000248",
+              "frame_000049",
+              "frame_000082",
+              "frame_000148",
+              "frame_000181",
+              "frame_000024",
+              "frame_000057",
+              "frame_000123",
+              "frame_000156",
+              "frame_000222",
+              "frame_000239",
+              "frame_000008",
+              "frame_000041",
+              "frame_000107",
+              "frame_000140",
+              "frame_000206",
+              "frame_000028",
+              "frame_000094",
+              "frame_000127",
+              "frame_000193",
+              "frame_000226",
+              "frame_000260",
+              "frame_000004",
+              "frame_000020",
+              "frame_000037",
+              "frame_000053"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 575,
+            "inlier_fraction": 0.9982638888888888,
+            "rms_error_m": 0.05447790126720575,
+            "q95_error_m": 0.11656004505888905,
+            "maximum_error_m": 0.31050915104164767
+          },
+          "threshold_checks": {
+            "minimum_camera_count": true,
+            "minimum_correspondence_count": true,
+            "minimum_inlier_fraction": true,
+            "maximum_rms_error_m": true,
+            "maximum_q95_error_m": true
+          }
+        },
+        "holdout": {
+          "status": "accepted",
+          "metrics": {
+            "camera_ids": [
+              "frame_000266",
+              "frame_000066",
+              "frame_000099",
+              "frame_000016",
+              "frame_000115",
+              "frame_000214",
+              "frame_000090",
+              "frame_000189",
+              "frame_000256",
+              "frame_000074",
+              "frame_000173",
+              "frame_000061",
+              "frame_000160",
+              "frame_000243",
+              "frame_000012",
+              "frame_000045",
+              "frame_000070",
+              "frame_000078",
+              "frame_000086",
+              "frame_000103",
+              "frame_000111",
+              "frame_000119",
+              "frame_000136",
+              "frame_000144",
+              "frame_000152",
+              "frame_000169",
+              "frame_000177",
+              "frame_000185",
+              "frame_000202",
+              "frame_000210",
+              "frame_000218",
+              "frame_000235",
+              "frame_000252",
+              "frame_000030",
+              "frame_000063",
+              "frame_000096",
+              "frame_000129",
+              "frame_000162",
+              "frame_000195",
+              "frame_000228"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 576,
+            "inlier_fraction": 1.0,
+            "rms_error_m": 0.035830071132464635,
+            "q95_error_m": 0.07098620760301638,
+            "maximum_error_m": 0.17361837953880987
+          },
+          "threshold_checks": {
+            "minimum_camera_count": true,
+            "minimum_correspondence_count": true,
+            "minimum_inlier_fraction": true,
+            "maximum_rms_error_m": true,
+            "maximum_q95_error_m": true
+          }
+        },
+        "accepted": true,
+        "human_confirmed": true
+      }
+    ],
+    "layout": {
+      "schema": "multi_court_layout_v1",
+      "courts": [
+        {
+          "court_instance_id": "court-000",
+          "candidate_id": "manual-court-000",
+          "scene_from_court": [
+            0.004904524219154535,
+            -0.9963341292480706,
+            0.08540637293360073,
+            -0.11821466090837306,
+            0.9944148686131399,
+            -0.004145050291176808,
+            -0.1054603605114123,
+            20.518618475897348,
+            0.10542777017132231,
+            0.08544660001178024,
+            0.9907491427314645,
+            -1.684100421059053,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "court_from_scene": [
+            0.004904524219154535,
+            0.9944148686131399,
+            0.10542777017132231,
+            -20.22588855702828,
+            -0.9963341292480706,
+            -0.004145050291176808,
+            0.08544660001178024,
+            0.11117005930546793,
+            0.08540637293360073,
+            -0.1054603605114123,
+            0.9907491427314645,
+            3.8425182355179746,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "fit_status": "human_confirmed",
+          "fit_metrics": {
+            "camera_ids": [
+              "frame_000000",
+              "frame_000132",
+              "frame_000198",
+              "frame_000231",
+              "frame_000033",
+              "frame_000165",
+              "frame_000248",
+              "frame_000049",
+              "frame_000082",
+              "frame_000148",
+              "frame_000181",
+              "frame_000024",
+              "frame_000057",
+              "frame_000123",
+              "frame_000156",
+              "frame_000222",
+              "frame_000239",
+              "frame_000008",
+              "frame_000041",
+              "frame_000107",
+              "frame_000140",
+              "frame_000206",
+              "frame_000028",
+              "frame_000094",
+              "frame_000127",
+              "frame_000193",
+              "frame_000226",
+              "frame_000260",
+              "frame_000004",
+              "frame_000020",
+              "frame_000037",
+              "frame_000053"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 570,
+            "inlier_fraction": 0.9895833333333334,
+            "rms_error_m": 0.07728407304564557,
+            "q95_error_m": 0.09641263562049082,
+            "maximum_error_m": 1.0060421796246173,
+            "threshold_checks": {
+              "minimum_camera_count": true,
+              "minimum_correspondence_count": true,
+              "minimum_inlier_fraction": true,
+              "maximum_rms_error_m": true,
+              "maximum_q95_error_m": true
+            }
+          },
+          "holdout_status": "human_confirmed",
+          "holdout_metrics": {
+            "camera_ids": [
+              "frame_000266",
+              "frame_000066",
+              "frame_000099",
+              "frame_000016",
+              "frame_000115",
+              "frame_000214",
+              "frame_000090",
+              "frame_000189",
+              "frame_000256",
+              "frame_000074",
+              "frame_000173",
+              "frame_000061",
+              "frame_000160",
+              "frame_000243",
+              "frame_000012",
+              "frame_000045",
+              "frame_000070",
+              "frame_000078",
+              "frame_000086",
+              "frame_000103",
+              "frame_000111",
+              "frame_000119",
+              "frame_000136",
+              "frame_000144",
+              "frame_000152",
+              "frame_000169",
+              "frame_000177",
+              "frame_000185",
+              "frame_000202",
+              "frame_000210",
+              "frame_000218",
+              "frame_000235",
+              "frame_000252",
+              "frame_000030",
+              "frame_000063",
+              "frame_000096",
+              "frame_000129",
+              "frame_000162",
+              "frame_000195",
+              "frame_000228"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 576,
+            "inlier_fraction": 1.0,
+            "rms_error_m": 0.0316362932894516,
+            "q95_error_m": 0.06826980817823558,
+            "maximum_error_m": 0.1382151633318072,
+            "threshold_checks": {
+              "minimum_camera_count": true,
+              "minimum_correspondence_count": true,
+              "minimum_inlier_fraction": true,
+              "maximum_rms_error_m": true,
+              "maximum_q95_error_m": true
+            }
+          }
+        },
+        {
+          "court_instance_id": "court-001",
+          "candidate_id": "manual-court-001",
+          "scene_from_court": [
+            0.004904524219154535,
+            -0.9963341292480706,
+            0.08540637293360073,
+            -0.28197074888723156,
+            0.9944148686131399,
+            -0.004145050291176808,
+            -0.1054603605114123,
+            5.7535198326440815,
+            0.10542777017132231,
+            0.08544660001178024,
+            0.9907491427314645,
+            -3.241655957397522,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "court_from_scene": [
+            0.004904524219154535,
+            0.9944148686131399,
+            0.10542777017132231,
+            -5.378242176823845,
+            -0.9963341292480706,
+            -0.004145050291176808,
+            0.08544660001178024,
+            0.019900028459157202,
+            0.08540637293360073,
+            -0.1054603605114123,
+            0.9907491427314645,
+            3.8425182355179746,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "fit_status": "human_confirmed",
+          "fit_metrics": {
+            "camera_ids": [
+              "frame_000000",
+              "frame_000132",
+              "frame_000198",
+              "frame_000231",
+              "frame_000033",
+              "frame_000165",
+              "frame_000248",
+              "frame_000049",
+              "frame_000082",
+              "frame_000148",
+              "frame_000181",
+              "frame_000024",
+              "frame_000057",
+              "frame_000123",
+              "frame_000156",
+              "frame_000222",
+              "frame_000239",
+              "frame_000008",
+              "frame_000041",
+              "frame_000107",
+              "frame_000140",
+              "frame_000206",
+              "frame_000028",
+              "frame_000094",
+              "frame_000127",
+              "frame_000193",
+              "frame_000226",
+              "frame_000260",
+              "frame_000004",
+              "frame_000020",
+              "frame_000037",
+              "frame_000053"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 513,
+            "inlier_fraction": 0.890625,
+            "rms_error_m": 0.32310222555237694,
+            "q95_error_m": 0.7625054319318246,
+            "maximum_error_m": 2.0689160948311667,
+            "threshold_checks": {
+              "minimum_camera_count": true,
+              "minimum_correspondence_count": true,
+              "minimum_inlier_fraction": false,
+              "maximum_rms_error_m": false,
+              "maximum_q95_error_m": false
+            }
+          },
+          "holdout_status": "human_confirmed",
+          "holdout_metrics": {
+            "camera_ids": [
+              "frame_000266",
+              "frame_000066",
+              "frame_000099",
+              "frame_000016",
+              "frame_000115",
+              "frame_000214",
+              "frame_000090",
+              "frame_000189",
+              "frame_000256",
+              "frame_000074",
+              "frame_000173",
+              "frame_000061",
+              "frame_000160",
+              "frame_000243",
+              "frame_000012",
+              "frame_000045",
+              "frame_000070",
+              "frame_000078",
+              "frame_000086",
+              "frame_000103",
+              "frame_000111",
+              "frame_000119",
+              "frame_000136",
+              "frame_000144",
+              "frame_000152",
+              "frame_000169",
+              "frame_000177",
+              "frame_000185",
+              "frame_000202",
+              "frame_000210",
+              "frame_000218",
+              "frame_000235",
+              "frame_000252",
+              "frame_000030",
+              "frame_000063",
+              "frame_000096",
+              "frame_000129",
+              "frame_000162",
+              "frame_000195",
+              "frame_000228"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 541,
+            "inlier_fraction": 0.9392361111111112,
+            "rms_error_m": 0.23313923312207374,
+            "q95_error_m": 0.37336967501760643,
+            "maximum_error_m": 1.953231860984646,
+            "threshold_checks": {
+              "minimum_camera_count": true,
+              "minimum_correspondence_count": true,
+              "minimum_inlier_fraction": true,
+              "maximum_rms_error_m": true,
+              "maximum_q95_error_m": false
+            }
+          }
+        },
+        {
+          "court_instance_id": "court-002",
+          "candidate_id": "manual-court-002",
+          "scene_from_court": [
+            0.004904524219154535,
+            -0.9963341292480706,
+            0.08540637293360073,
+            -0.2819707488872186,
+            0.9944148686131399,
+            -0.004145050291176808,
+            -0.1054603605114123,
+            -8.955479605388422,
+            0.10542777017132231,
+            0.08544660001178024,
+            0.9907491427314645,
+            -4.807356412328438,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "court_from_scene": [
+            0.004904524219154535,
+            0.9944148686131399,
+            0.10542777017132231,
+            9.413673874497588,
+            -0.9963341292480706,
+            -0.004145050291176808,
+            0.08544660001178024,
+            0.09271426656637831,
+            0.08540637293360073,
+            -0.1054603605114123,
+            0.9907491427314645,
+            3.8425182355179737,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "fit_status": "human_confirmed",
+          "fit_metrics": {
+            "camera_ids": [
+              "frame_000000",
+              "frame_000132",
+              "frame_000198",
+              "frame_000231",
+              "frame_000033",
+              "frame_000165",
+              "frame_000248",
+              "frame_000049",
+              "frame_000082",
+              "frame_000148",
+              "frame_000181",
+              "frame_000024",
+              "frame_000057",
+              "frame_000123",
+              "frame_000156",
+              "frame_000222",
+              "frame_000239",
+              "frame_000008",
+              "frame_000041",
+              "frame_000107",
+              "frame_000140",
+              "frame_000206",
+              "frame_000028",
+              "frame_000094",
+              "frame_000127",
+              "frame_000193",
+              "frame_000226",
+              "frame_000260",
+              "frame_000004",
+              "frame_000020",
+              "frame_000037",
+              "frame_000053"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 575,
+            "inlier_fraction": 0.9982638888888888,
+            "rms_error_m": 0.05447790126720575,
+            "q95_error_m": 0.11656004505888905,
+            "maximum_error_m": 0.31050915104164767,
+            "threshold_checks": {
+              "minimum_camera_count": true,
+              "minimum_correspondence_count": true,
+              "minimum_inlier_fraction": true,
+              "maximum_rms_error_m": true,
+              "maximum_q95_error_m": true
+            }
+          },
+          "holdout_status": "human_confirmed",
+          "holdout_metrics": {
+            "camera_ids": [
+              "frame_000266",
+              "frame_000066",
+              "frame_000099",
+              "frame_000016",
+              "frame_000115",
+              "frame_000214",
+              "frame_000090",
+              "frame_000189",
+              "frame_000256",
+              "frame_000074",
+              "frame_000173",
+              "frame_000061",
+              "frame_000160",
+              "frame_000243",
+              "frame_000012",
+              "frame_000045",
+              "frame_000070",
+              "frame_000078",
+              "frame_000086",
+              "frame_000103",
+              "frame_000111",
+              "frame_000119",
+              "frame_000136",
+              "frame_000144",
+              "frame_000152",
+              "frame_000169",
+              "frame_000177",
+              "frame_000185",
+              "frame_000202",
+              "frame_000210",
+              "frame_000218",
+              "frame_000235",
+              "frame_000252",
+              "frame_000030",
+              "frame_000063",
+              "frame_000096",
+              "frame_000129",
+              "frame_000162",
+              "frame_000195",
+              "frame_000228"
+            ],
+            "correspondence_count": 576,
+            "inlier_count": 576,
+            "inlier_fraction": 1.0,
+            "rms_error_m": 0.035830071132464635,
+            "q95_error_m": 0.07098620760301638,
+            "maximum_error_m": 0.17361837953880987,
+            "threshold_checks": {
+              "minimum_camera_count": true,
+              "minimum_correspondence_count": true,
+              "minimum_inlier_fraction": true,
+              "maximum_rms_error_m": true,
+              "maximum_q95_error_m": true
+            }
+          }
+        }
+      ],
+      "complex_bounds_scene": [
+        -42.54393230858975,
+        -61.180551700894036,
+        -7.352935863476895,
+        63.531098924462825,
+        31.9049282074174,
+        19.176005398079262
+      ],
+      "primary_court_instance_id": "court-000"
+    }
+  },
+  "local_keypoints_3d": [
+    [
+      -5.485000133514404,
+      11.885000228881836,
+      0.0
+    ],
+    [
+      5.485000133514404,
+      11.885000228881836,
+      0.0
+    ],
+    [
+      -5.485000133514404,
+      -11.885000228881836,
+      0.0
+    ],
+    [
+      5.485000133514404,
+      -11.885000228881836,
+      0.0
+    ],
+    [
+      -4.114999771118164,
+      11.885000228881836,
+      0.0
+    ],
+    [
+      -4.114999771118164,
+      -11.885000228881836,
+      0.0
+    ],
+    [
+      4.114999771118164,
+      11.885000228881836,
+      0.0
+    ],
+    [
+      4.114999771118164,
+      -11.885000228881836,
+      0.0
+    ],
+    [
+      -4.114999771118164,
+      6.400000095367432,
+      0.0
+    ],
+    [
+      4.114999771118164,
+      6.400000095367432,
+      0.0
+    ],
+    [
+      -4.114999771118164,
+      -6.400000095367432,
+      0.0
+    ],
+    [
+      4.114999771118164,
+      -6.400000095367432,
+      0.0
+    ],
+    [
+      0.0,
+      6.400000095367432,
+      0.0
+    ],
+    [
+      0.0,
+      -6.400000095367432,
+      0.0
+    ]
+  ],
+  "segments": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      4,
+      8
+    ],
+    [
+      6,
+      9
+    ],
+    [
+      8,
+      10
+    ],
+    [
+      9,
+      11
+    ],
+    [
+      10,
+      5
+    ],
+    [
+      11,
+      7
+    ],
+    [
+      8,
+      9
+    ],
+    [
+      10,
+      11
+    ],
+    [
+      12,
+      13
+    ]
+  ],
+  "metrics": {
+    "proposal_count": 2224,
+    "accepted_frame_count": 2052,
+    "rejected_frame_count": 172,
+    "accepted_fraction": 0.9226618705035972,
+    "trajectory_group_count": 26,
+    "maximum_adjacent_step_m": 1.0477480250354205,
+    "split_frame_counts": {
+      "test": 198,
+      "train": 1559,
+      "validation": 295
+    },
+    "split_group_counts": {
+      "test": 2,
+      "train": 21,
+      "validation": 3
+    },
+    "coverage_counts": {
+      "full": 287,
+      "near_full": 1123,
+      "none": 1420,
+      "partial": 2305,
+      "sparse": 1021
+    },
+    "renderer_visible_points_by_class": {
+      "far_doubles_left": 3657,
+      "far_doubles_right": 3639,
+      "near_doubles_left": 516,
+      "near_doubles_right": 495,
+      "far_singles_left": 3674,
+      "near_singles_left": 524,
+      "far_singles_right": 3683,
+      "near_singles_right": 503,
+      "far_service_left": 3564,
+      "far_service_right": 3568,
+      "near_service_left": 1882,
+      "near_service_right": 1876,
+      "far_service_t": 3625,
+      "near_service_t": 1998
+    },
+    "split_leakage_count": 0,
+    "court_sample_counts": {
+      "court-000": 402,
+      "court-001": 1107,
+      "court-002": 543
+    },
+    "split_court_sample_counts": {
+      "test": {
+        "court-001": 198
+      },
+      "train": {
+        "court-000": 387,
+        "court-001": 645,
+        "court-002": 527
+      },
+      "validation": {
+        "court-000": 15,
+        "court-001": 264,
+        "court-002": 16
+      }
+    }
+  },
+  "trajectory_group_count": 26,
+  "selection": "Three distinct trajectory groups chosen for visible line structure and different views; illustrative, not random or an accuracy benchmark.",
+  "rgb_kind": "Saved 3DGS novel-view RGB preview from the canonical court dataset; not captured video or a point-cloud plot.",
+  "overlay_kind": "All persisted courts projected by the sample's metric camera, with near/image clipping and no depth-occlusion mask.",
+  "views": [
+    {
+      "sample": {
+        "sample_index": 1403,
+        "sample_id": "court-sample-001403",
+        "trajectory_group_id": "group-01651",
+        "trajectory_id": "trajectory-01651",
+        "view_id": "view-00004-court_center",
+        "trajectory_frame_index": 83,
+        "split": "train",
+        "shard_id": "shard-003",
+        "width": 959,
+        "height": 539,
+        "camera": {
+          "camera_id": "court-sample-001403",
+          "source_frame_index": 1403,
+          "width": 959,
+          "height": 539,
+          "intrinsics": [
+            717.6224631981021,
+            0.0,
+            479.0,
+            0.0,
+            717.6224631981021,
+            269.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "camera_to_scene": [
+            0.7827927975060125,
+            -0.02828848655314663,
+            -0.6216391217589539,
+            15.167520905115392,
+            0.6222812034419917,
+            0.03359292732393362,
+            0.7820726430943582,
+            -13.71608299750375,
+            -0.001240973608796144,
+            -0.9990351729355386,
+            0.043899695012162836,
+            -4.373960366781037,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "image_path": "generated/court/court-sample-001403.png"
+        },
+        "projection": {
+          "camera_id": "court-sample-001403",
+          "resolution": [
+            959,
+            539
+          ],
+          "coverage_modes": [
+            "full",
+            "full",
+            "partial"
+          ],
+          "visible_class_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "visible_point_count": 35,
+          "courts": [
+            {
+              "court_instance_id": "court-000",
+              "coverage_mode": "full",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        417.5535559915176,
+                        243.72423710756271
+                      ],
+                      "camera_depth_m": 39.48709611998922,
+                      "scene_xyz_m": [
+                        -11.986547331061365,
+                        15.014988865126204,
+                        -1.246838893827699
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        530.5091931770448,
+                        236.41304769932043
+                      ],
+                      "camera_depth_m": 48.03584254808051,
+                      "scene_xyz_m": [
+                        -11.932744699067591,
+                        25.923720239349766,
+                        -0.09029622689604144
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        920.2959008309537,
+                        268.1785977460523
+                      ],
+                      "camera_depth_m": 24.752794913508218,
+                      "scene_xyz_m": [
+                        11.696315377250844,
+                        15.11351671244493,
+                        -3.2779046152220648
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        954.1712811472551,
+                        251.35495388926748
+                      ],
+                      "camera_depth_m": 33.30154134159951,
+                      "scene_xyz_m": [
+                        11.750118009244618,
+                        26.02224808666849,
+                        -2.1213619482904074
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        434.2623846833199,
+                        242.64273808370268
+                      ],
+                      "camera_depth_m": 40.55471557481451,
+                      "scene_xyz_m": [
+                        -11.979828131103742,
+                        16.377337595498417,
+                        -1.10240281048636
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        925.7522147792711,
+                        265.4688102313383
+                      ],
+                      "camera_depth_m": 25.820414368333516,
+                      "scene_xyz_m": [
+                        11.703034577208467,
+                        16.475865442817142,
+                        -3.133468531880726
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        518.6495118285103,
+                        237.1806798319082
+                      ],
+                      "camera_depth_m": 46.96822309325522,
+                      "scene_xyz_m": [
+                        -11.939463899025213,
+                        24.561371508977555,
+                        -0.23473231023738061
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        950.922583319798,
+                        252.96836559821728
+                      ],
+                      "camera_depth_m": 32.23392188677422,
+                      "scene_xyz_m": [
+                        11.743398809286996,
+                        24.65989935629628,
+                        -2.2657980316317463
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        513.0777837691019,
+                        246.3031311899558
+                      ],
+                      "camera_depth_m": 37.15473061358607,
+                      "scene_xyz_m": [
+                        -6.514935299153117,
+                        16.400073196898944,
+                        -1.5710774229593265
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        592.4482244297869,
+                        239.87599203464993
+                      ],
+                      "camera_depth_m": 43.56823813202678,
+                      "scene_xyz_m": [
+                        -6.474571067074588,
+                        24.584107110378085,
+                        -0.7034069227103471
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        768.3476940441872,
+                        258.15853293432565
+                      ],
+                      "camera_depth_m": 29.220399329561957,
+                      "scene_xyz_m": [
+                        6.238141745257841,
+                        16.45312984141661,
+                        -2.6647939194077592
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        819.446631310162,
+                        248.1665374181885
+                      ],
+                      "camera_depth_m": 35.63390684800267,
+                      "scene_xyz_m": [
+                        6.27850597733637,
+                        24.637163754895752,
+                        -1.7971234191587797
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        555.9160281137335,
+                        242.83424081615794
+                      ],
+                      "camera_depth_m": 40.36148437280642,
+                      "scene_xyz_m": [
+                        -6.494753183113852,
+                        20.492090153638514,
+                        -1.1372421728348368
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        796.4237753082803,
+                        252.66847593683266
+                      ],
+                      "camera_depth_m": 32.42715308878231,
+                      "scene_xyz_m": [
+                        6.2583238612971055,
+                        20.545146798156182,
+                        -2.2309586692832695
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "court_instance_id": "court-001",
+              "coverage_mode": "full",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        153.3128712515801,
+                        260.63388262049693
+                      ],
+                      "camera_depth_m": 27.973137376215305,
+                      "scene_xyz_m": [
+                        -12.150303419040222,
+                        0.24989022187293752,
+                        -2.804394430166168
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        363.73043497218003,
+                        247.05968098322955
+                      ],
+                      "camera_depth_m": 36.521883804306604,
+                      "scene_xyz_m": [
+                        -12.096500787046448,
+                        11.158621596096499,
+                        -1.6478517632345102
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        799.2062267211622,
+                        325.176231581753
+                      ],
+                      "camera_depth_m": 13.23883616973431,
+                      "scene_xyz_m": [
+                        11.532559289271987,
+                        0.3484180691916636,
+                        -4.835460151560533
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        898.4952271129005,
+                        277.09785549884566
+                      ],
+                      "camera_depth_m": 21.787582597825605,
+                      "scene_xyz_m": [
+                        11.58636192126576,
+                        11.257149443415226,
+                        -3.678917484628876
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        186.36057371170472,
+                        258.50194948283445
+                      ],
+                      "camera_depth_m": 29.040756831040603,
+                      "scene_xyz_m": [
+                        -12.1435842190826,
+                        1.612238952245149,
+                        -2.659958346824829
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        818.0901477996687,
+                        316.0321344919415
+                      ],
+                      "camera_depth_m": 14.306455624559604,
+                      "scene_xyz_m": [
+                        11.53927848922961,
+                        1.7107667995638751,
+                        -4.691024068219194
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        342.99712066453856,
+                        248.3972033080982
+                      ],
+                      "camera_depth_m": 35.454264349481306,
+                      "scene_xyz_m": [
+                        -12.10321998700407,
+                        9.796272865724287,
+                        -1.7922878465758494
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        890.5724760285472,
+                        280.9342623993274
+                      ],
+                      "camera_depth_m": 20.71996314300031,
+                      "scene_xyz_m": [
+                        11.579642721308138,
+                        9.894800713043015,
+                        -3.823353567970215
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        267.6959758851883,
+                        265.90898079300564
+                      ],
+                      "camera_depth_m": 25.64077186981216,
+                      "scene_xyz_m": [
+                        -6.678691387131975,
+                        1.6349745536456775,
+                        -3.128632959297795
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        424.67309173776647,
+                        253.25040912006634
+                      ],
+                      "camera_depth_m": 32.054279388252866,
+                      "scene_xyz_m": [
+                        -6.638327155053446,
+                        9.819008467124817,
+                        -2.260962459048816
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        579.0034989036769,
+                        294.25905355924704
+                      ],
+                      "camera_depth_m": 17.70644058578805,
+                      "scene_xyz_m": [
+                        6.074385657278983,
+                        1.6880311981633467,
+                        -4.222349455746228
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        704.8418786778982,
+                        269.8981057099342
+                      ],
+                      "camera_depth_m": 24.119948104228754,
+                      "scene_xyz_m": [
+                        6.114749889357512,
+                        9.872065111642485,
+                        -3.3546789554972487
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        354.90949280527764,
+                        258.8761177620728
+                      ],
+                      "camera_depth_m": 28.84752562903251,
+                      "scene_xyz_m": [
+                        -6.6585092710927105,
+                        5.726991510385247,
+                        -2.6947977091733053
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        651.5704903350672,
+                        280.2108697141164
+                      ],
+                      "camera_depth_m": 20.913194345008403,
+                      "scene_xyz_m": [
+                        6.094567773318247,
+                        5.780048154902916,
+                        -3.7885142056217385
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "court_instance_id": "court-002",
+              "coverage_mode": "partial",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        -476.89835247563985,
+                        301.55192444218454
+                      ],
+                      "camera_depth_m": 16.40089753598792,
+                      "scene_xyz_m": [
+                        -12.15030341904021,
+                        -14.459109216159566,
+                        -4.3700948850970835
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        47.051479401353355,
+                        267.66152584501344
+                      ],
+                      "camera_depth_m": 24.949643964079215,
+                      "scene_xyz_m": [
+                        -12.096500787046436,
+                        -3.5503778419360046,
+                        -3.213552218165426
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        -917.8243673178167,
+                        1176.0074306049753
+                      ],
+                      "camera_depth_m": 1.6665963295069197,
+                      "scene_xyz_m": [
+                        11.532559289272,
+                        -14.36058136884084,
+                        -6.401160606491449
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        730.8453694149804,
+                        361.44330279391005
+                      ],
+                      "camera_depth_m": 10.215342757598215,
+                      "scene_xyz_m": [
+                        11.586361921265773,
+                        -3.4518499946172785,
+                        -5.244617939559792
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        -383.44130314923945,
+                        295.5068864238676
+                      ],
+                      "camera_depth_m": 17.468516990813214,
+                      "scene_xyz_m": [
+                        -12.143584219082587,
+                        -13.096760485787355,
+                        -4.225658801755745
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        -148.57372597998128,
+                        795.9410269047349
+                      ],
+                      "camera_depth_m": 2.734215784332214,
+                      "scene_xyz_m": [
+                        11.539278489229622,
+                        -12.998232638468629,
+                        -6.25672452315011
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        2.11487782516233,
+                        270.56813874259507
+                      ],
+                      "camera_depth_m": 23.882024509253917,
+                      "scene_xyz_m": [
+                        -12.103219987004058,
+                        -4.912726572308216,
+                        -3.357988301506765
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        693.3338106611271,
+                        379.9767722076924
+                      ],
+                      "camera_depth_m": 9.147723302772919,
+                      "scene_xyz_m": [
+                        11.57964272130815,
+                        -4.81419872498949,
+                        -5.389054022901131
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        -372.90824401050713,
+                        317.9497559772373
+                      ],
+                      "camera_depth_m": 14.06853202958477,
+                      "scene_xyz_m": [
+                        -6.678691387131962,
+                        -13.074024884386827,
+                        -4.694333414228711
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        73.35143087756883,
+                        281.84371808798505
+                      ],
+                      "camera_depth_m": 20.482039548025472,
+                      "scene_xyz_m": [
+                        -6.638327155053433,
+                        -4.889990970907688,
+                        -3.8266629139797317
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        -302.9101993670898,
+                        467.0951243105844
+                      ],
+                      "camera_depth_m": 6.13420074556066,
+                      "scene_xyz_m": [
+                        6.074385657278996,
+                        -13.020968239869157,
+                        -5.7880499106771435
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        389.7561538254609,
+                        331.92540236361924
+                      ],
+                      "camera_depth_m": 12.547708264001365,
+                      "scene_xyz_m": [
+                        6.114749889357525,
+                        -4.836934326390018,
+                        -4.920379410428164
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        -108.3595580585287,
+                        296.54561525820486
+                      ],
+                      "camera_depth_m": 17.27528578880512,
+                      "scene_xyz_m": [
+                        -6.658509271092697,
+                        -8.982007927647256,
+                        -4.260498164104221
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        162.31930794403758,
+                        376.3083510612021
+                      ],
+                      "camera_depth_m": 9.34095450478101,
+                      "scene_xyz_m": [
+                        6.094567773318261,
+                        -8.928951283129589,
+                        -5.354214660552654
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "directory": "samples/train/group-01651/court-sample-001403",
+        "rgb": "samples/train/group-01651/court-sample-001403/rgb.f32.npz",
+        "rgb_preview": "samples/train/group-01651/court-sample-001403/rgb.png",
+        "alpha": "samples/train/group-01651/court-sample-001403/alpha.f32.npz",
+        "alpha_preview": "samples/train/group-01651/court-sample-001403/alpha.png",
+        "depth": "samples/train/group-01651/court-sample-001403/depth.f32.npz",
+        "depth_coordinate_space": "metric_scene_metres",
+        "labels": "samples/train/group-01651/court-sample-001403/labels.json",
+        "metadata": {
+          "target_court": "court-001",
+          "candidate_id": "manual-court-001",
+          "transform": [
+            0.004904524219154535,
+            -0.9963341292480706,
+            0.08540637293360073,
+            -0.28197074888723156,
+            0.9944148686131399,
+            -0.004145050291176808,
+            -0.1054603605114123,
+            5.7535198326440815,
+            0.10542777017132231,
+            0.08544660001178024,
+            0.9907491427314645,
+            -3.241655957397522,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "camera_profile": "b01-production",
+          "camera_parameters": {
+            "view_id": "view-00004-court_center",
+            "camera_center_scene_m": [
+              15.167520905115392,
+              -13.71608299750375,
+              -4.373960366781037
+            ],
+            "intrinsics": [
+              717.6224631981021,
+              0.0,
+              479.0,
+              0.0,
+              717.6224631981021,
+              269.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "camera_to_scene": [
+              0.7827927975060125,
+              -0.02828848655314663,
+              -0.6216391217589539,
+              15.167520905115392,
+              0.6222812034419917,
+              0.03359292732393362,
+              0.7820726430943582,
+              -13.71608299750375,
+              -0.001240973608796144,
+              -0.9990351729355386,
+              0.043899695012162836,
+              -4.373960366781037,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          "seed": 695
+        },
+        "target_court": {
+          "binding": {
+            "court_instance_id": "court-001",
+            "candidate_id": "manual-court-001",
+            "scene_from_court": [
+              0.004904524219154535,
+              -0.9963341292480706,
+              0.08540637293360073,
+              -0.28197074888723156,
+              0.9944148686131399,
+              -0.004145050291176808,
+              -0.1054603605114123,
+              5.7535198326440815,
+              0.10542777017132231,
+              0.08544660001178024,
+              0.9907491427314645,
+              -3.241655957397522,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "selection_seed": 695
+          },
+          "resolution_policy": "trajectory_center_court",
+          "camera_to_court_center_distance_m": 24.880400720372382
+        }
+      },
+      "source_rgb": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-01651/court-sample-001403/rgb.png",
+      "bundled_rgb": "evidence/scene_sources/B01_001403.png",
+      "rgb_sha256": "618dd63a71b5021dc67cd956c428b2bef022c0789850c77cea29a79a5278300c",
+      "max_label_reprojection_difference_px": 3.069544618483633e-12,
+      "figure": "figures/B01_001403_alignment.png"
+    },
+    {
+      "sample": {
+        "sample_index": 1918,
+        "sample_id": "court-sample-001918",
+        "trajectory_group_id": "group-02287",
+        "trajectory_id": "trajectory-02287",
+        "view_id": "view-00021-court_center",
+        "trajectory_frame_index": 46,
+        "split": "train",
+        "shard_id": "shard-007",
+        "width": 959,
+        "height": 539,
+        "camera": {
+          "camera_id": "court-sample-001918",
+          "source_frame_index": 1918,
+          "width": 959,
+          "height": 539,
+          "intrinsics": [
+            479.50000000000006,
+            0.0,
+            479.0,
+            0.0,
+            479.50000000000006,
+            269.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "camera_to_scene": [
+            -0.9829220270970346,
+            -0.08873979345041277,
+            -0.16121270950466193,
+            1.8887275495386024,
+            0.1537636960534492,
+            0.0852378336983461,
+            -0.9844243178032507,
+            27.006150516151596,
+            0.10109903275224212,
+            -0.9924010080430145,
+            -0.07013718565618313,
+            0.20387635711781726,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "image_path": "generated/court/court-sample-001918.png"
+        },
+        "projection": {
+          "camera_id": "court-sample-001918",
+          "resolution": [
+            959,
+            539
+          ],
+          "coverage_modes": [
+            "partial",
+            "full",
+            "full"
+          ],
+          "visible_class_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "visible_point_count": 34,
+          "courts": [
+            {
+              "court_instance_id": "court-000",
+              "coverage_mode": "partial",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        873.9046156001782,
+                        324.903075023084
+                      ],
+                      "camera_depth_m": 14.143010871492491,
+                      "scene_xyz_m": [
+                        -11.986547331061365,
+                        15.014988865126204,
+                        -1.246838893827699
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        2416.046035964323,
+                        475.32904968259646
+                      ],
+                      "camera_depth_m": 3.3144001144914625,
+                      "scene_xyz_m": [
+                        -11.932744699067591,
+                        25.923720239349766,
+                        -0.09029622689604144
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        -67.55568593916442,
+                        341.65200315573077
+                      ],
+                      "camera_depth_m": 10.37049243015855,
+                      "scene_xyz_m": [
+                        11.696315377250844,
+                        15.11351671244493,
+                        -3.2779046152220648
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        11028.777183689373,
+                        -1142.548586822388
+                      ],
+                      "camera_depth_m": -0.45811832684247733,
+                      "scene_xyz_m": [
+                        11.750118009244618,
+                        26.02224808666849,
+                        -2.1213619482904074
+                      ],
+                      "in_front": false,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        923.8102926399031,
+                        329.7710527653399
+                      ],
+                      "camera_depth_m": 12.790668091162065,
+                      "scene_xyz_m": [
+                        -11.979828131103742,
+                        16.377337595498417,
+                        -1.10240281048636
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        -137.9526205128426,
+                        351.06801230528345
+                      ],
+                      "camera_depth_m": 9.018149649828125,
+                      "scene_xyz_m": [
+                        11.703034577208467,
+                        16.475865442817142,
+                        -3.133468531880726
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        1832.3775484673783,
+                        418.39594358066745
+                      ],
+                      "camera_depth_m": 4.666742894821887,
+                      "scene_xyz_m": [
+                        -11.939463899025213,
+                        24.561371508977555,
+                        -0.23473231023738061
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        -5042.35070534956,
+                        1007.0604574243062
+                      ],
+                      "camera_depth_m": 0.8942244534879471,
+                      "scene_xyz_m": [
+                        11.743398809286996,
+                        24.65989935629628,
+                        -2.2657980316317463
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        738.4525225936325,
+                        333.4889796962852
+                      ],
+                      "camera_depth_m": 11.920147949979496,
+                      "scene_xyz_m": [
+                        -6.514935299153117,
+                        16.400073196898944,
+                        -1.5710774229593265
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        1458.699279600492,
+                        450.39300998897653
+                      ],
+                      "camera_depth_m": 3.796222753639313,
+                      "scene_xyz_m": [
+                        -6.474571067074588,
+                        24.584107110378085,
+                        -0.7034069227103471
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        178.95330413829,
+                        344.71147774219247
+                      ],
+                      "camera_depth_m": 9.888669791010695,
+                      "scene_xyz_m": [
+                        6.238141745257841,
+                        16.45312984141661,
+                        -2.6647939194077592
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        -847.3213627042335,
+                        647.8513632790897
+                      ],
+                      "camera_depth_m": 1.7647445946705176,
+                      "scene_xyz_m": [
+                        6.27850597733637,
+                        24.637163754895752,
+                        -1.7971234191587797
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        912.4250750834254,
+                        361.72665289440266
+                      ],
+                      "camera_depth_m": 7.858185351809404,
+                      "scene_xyz_m": [
+                        -6.494753183113852,
+                        20.492090153638514,
+                        -1.1372421728348368
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        23.53853804338654,
+                        390.61772090193114
+                      ],
+                      "camera_depth_m": 5.826707192840608,
+                      "scene_xyz_m": [
+                        6.2583238612971055,
+                        20.545146798156182,
+                        -2.2309586692832695
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "court_instance_id": "court-001",
+              "coverage_mode": "full",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        635.1124335138026,
+                        301.4603764786181
+                      ],
+                      "camera_depth_m": 28.813775155137733,
+                      "scene_xyz_m": [
+                        -12.150303419040222,
+                        0.24989022187293752,
+                        -2.804394430166168
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        775.5329519300989,
+                        315.06714729176656
+                      ],
+                      "camera_depth_m": 17.985164398136703,
+                      "scene_xyz_m": [
+                        -12.096500787046448,
+                        11.158621596096499,
+                        -1.6478517632345102
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        209.24503544918474,
+                        304.8650226916118
+                      ],
+                      "camera_depth_m": 25.04125671380379,
+                      "scene_xyz_m": [
+                        11.532559289271987,
+                        0.3484180691916636,
+                        -4.835460151560533
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        62.4696788062219,
+                        324.6774910711022
+                      ],
+                      "camera_depth_m": 14.212645956802762,
+                      "scene_xyz_m": [
+                        11.58636192126576,
+                        11.257149443415226,
+                        -3.678917484628876
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        646.5975615701719,
+                        302.57328723400633
+                      ],
+                      "camera_depth_m": 27.46143237480731,
+                      "scene_xyz_m": [
+                        -12.1435842190826,
+                        1.612238952245149,
+                        -2.659958346824829
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        198.24745934897032,
+                        306.34953026645326
+                      ],
+                      "camera_depth_m": 23.688913933473366,
+                      "scene_xyz_m": [
+                        11.53927848922961,
+                        1.7107667995638751,
+                        -4.691024068219194
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        749.4026582442001,
+                        312.5351176320397
+                      ],
+                      "camera_depth_m": 19.337507178467128,
+                      "scene_xyz_m": [
+                        -12.10321998700407,
+                        9.796272865724287,
+                        -1.7922878465758494
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        91.95966015816975,
+                        320.69678656858486
+                      ],
+                      "camera_depth_m": 15.564988737133186,
+                      "scene_xyz_m": [
+                        11.579642721308138,
+                        9.894800713043015,
+                        -3.823353567970215
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        554.4303095825117,
+                        303.3495688527991
+                      ],
+                      "camera_depth_m": 26.590912233624735,
+                      "scene_xyz_m": [
+                        -6.678691387131975,
+                        1.6349745536456775,
+                        -3.128632959297795
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        621.535703208177,
+                        314.1224913784577
+                      ],
+                      "camera_depth_m": 18.466987037284554,
+                      "scene_xyz_m": [
+                        -6.638327155053446,
+                        9.819008467124817,
+                        -2.260962459048816
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        313.9304630397984,
+                        305.37518647909644
+                      ],
+                      "camera_depth_m": 24.55943407465594,
+                      "scene_xyz_m": [
+                        6.074385657278983,
+                        1.6880311981633467,
+                        -4.222349455746228
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        270.4533590378638,
+                        318.480919213154
+                      ],
+                      "camera_depth_m": 16.43550887831576,
+                      "scene_xyz_m": [
+                        6.114749889357512,
+                        9.872065111642485,
+                        -3.3546789554972487
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        581.9334656166218,
+                        307.76485282862023
+                      ],
+                      "camera_depth_m": 22.528949635454648,
+                      "scene_xyz_m": [
+                        -6.6585092710927105,
+                        5.726991510385247,
+                        -2.6947977091733053
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        296.4998172733928,
+                        310.62947813537556
+                      ],
+                      "camera_depth_m": 20.49747147648585,
+                      "scene_xyz_m": [
+                        6.094567773318247,
+                        5.780048154902916,
+                        -3.7885142056217385
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "court_instance_id": "court-002",
+              "coverage_mode": "full",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        555.9016142779748,
+                        293.86378440432935
+                      ],
+                      "camera_depth_m": 43.403485715980736,
+                      "scene_xyz_m": [
+                        -12.15030341904021,
+                        -14.459109216159566,
+                        -4.3700948850970835
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        607.0988324235808,
+                        298.8510474883666
+                      ],
+                      "camera_depth_m": 32.574874958979706,
+                      "scene_xyz_m": [
+                        -12.096500787046436,
+                        -3.5503778419360046,
+                        -3.213552218165426
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        279.27250650675137,
+                        295.29191851358473
+                      ],
+                      "camera_depth_m": 39.63096727464679,
+                      "scene_xyz_m": [
+                        11.532559289272,
+                        -14.36058136884084,
+                        -6.401160606491449
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        233.17329403582434,
+                        301.4693359627079
+                      ],
+                      "camera_depth_m": 28.802356517645766,
+                      "scene_xyz_m": [
+                        11.586361921265773,
+                        -3.4518499946172785,
+                        -5.244617939559792
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        560.8545804372319,
+                        294.3462665816284
+                      ],
+                      "camera_depth_m": 42.05114293565031,
+                      "scene_xyz_m": [
+                        -12.143584219082587,
+                        -13.096760485787355,
+                        -4.225658801755745
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        274.9405982682533,
+                        295.87240577369516
+                      ],
+                      "camera_depth_m": 38.27862449431637,
+                      "scene_xyz_m": [
+                        11.539278489229622,
+                        -12.998232638468629,
+                        -6.25672452315011
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        598.9191438212636,
+                        298.05424132422627
+                      ],
+                      "camera_depth_m": 33.92721773931013,
+                      "scene_xyz_m": [
+                        -12.103219987004058,
+                        -4.912726572308216,
+                        -3.357988301506765
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        240.73965786239359,
+                        300.4554230252984
+                      ],
+                      "camera_depth_m": 30.15469929797619,
+                      "scene_xyz_m": [
+                        11.57964272130815,
+                        -4.81419872498949,
+                        -5.389054022901131
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        499.5283515197133,
+                        294.6736110533562
+                      ],
+                      "camera_depth_m": 41.18062279446774,
+                      "scene_xyz_m": [
+                        -6.678691387131962,
+                        -13.074024884386827,
+                        -4.694333414228711
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        523.5239436815629,
+                        298.5596794691258
+                      ],
+                      "camera_depth_m": 33.056697598127556,
+                      "scene_xyz_m": [
+                        -6.638327155053433,
+                        -4.889990970907688,
+                        -3.8266629139797317
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        345.8066722633325,
+                        295.49413993271975
+                      ],
+                      "camera_depth_m": 39.14914463549894,
+                      "scene_xyz_m": [
+                        6.074385657278996,
+                        -13.020968239869157,
+                        -5.7880499106771435
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        331.12157421121924,
+                        299.8495161764914
+                      ],
+                      "camera_depth_m": 31.02521943915876,
+                      "scene_xyz_m": [
+                        6.114749889357525,
+                        -4.836934326390018,
+                        -4.920379410428164
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        510.21320692111294,
+                        296.40401548856994
+                      ],
+                      "camera_depth_m": 37.11866019629765,
+                      "scene_xyz_m": [
+                        -6.658509271092697,
+                        -8.982007927647256,
+                        -4.260498164104221
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        339.3141532991754,
+                        297.4197220948802
+                      ],
+                      "camera_depth_m": 35.08718203732885,
+                      "scene_xyz_m": [
+                        6.094567773318261,
+                        -8.928951283129589,
+                        -5.354214660552654
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "directory": "samples/train/group-02287/court-sample-001918",
+        "rgb": "samples/train/group-02287/court-sample-001918/rgb.f32.npz",
+        "rgb_preview": "samples/train/group-02287/court-sample-001918/rgb.png",
+        "alpha": "samples/train/group-02287/court-sample-001918/alpha.f32.npz",
+        "alpha_preview": "samples/train/group-02287/court-sample-001918/alpha.png",
+        "depth": "samples/train/group-02287/court-sample-001918/depth.f32.npz",
+        "depth_coordinate_space": "metric_scene_metres",
+        "labels": "samples/train/group-02287/court-sample-001918/labels.json",
+        "metadata": {
+          "target_court": "court-000",
+          "candidate_id": "manual-court-000",
+          "transform": [
+            0.004904524219154535,
+            -0.9963341292480706,
+            0.08540637293360073,
+            -0.11821466090837306,
+            0.9944148686131399,
+            -0.004145050291176808,
+            -0.1054603605114123,
+            20.518618475897348,
+            0.10542777017132231,
+            0.08544660001178024,
+            0.9907491427314645,
+            -1.684100421059053,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "camera_profile": "b01-production",
+          "camera_parameters": {
+            "view_id": "view-00021-court_center",
+            "camera_center_scene_m": [
+              1.8887275495386024,
+              27.006150516151596,
+              0.20387635711781726
+            ],
+            "intrinsics": [
+              479.50000000000006,
+              0.0,
+              479.0,
+              0.0,
+              479.50000000000006,
+              269.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "camera_to_scene": [
+              -0.9829220270970346,
+              -0.08873979345041277,
+              -0.16121270950466193,
+              1.8887275495386024,
+              0.1537636960534492,
+              0.0852378336983461,
+              -0.9844243178032507,
+              27.006150516151596,
+              0.10109903275224212,
+              -0.9924010080430145,
+              -0.07013718565618313,
+              0.20387635711781726,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          "seed": 695
+        },
+        "target_court": {
+          "binding": {
+            "court_instance_id": "court-000",
+            "candidate_id": "manual-court-000",
+            "scene_from_court": [
+              0.004904524219154535,
+              -0.9963341292480706,
+              0.08540637293360073,
+              -0.11821466090837306,
+              0.9944148686131399,
+              -0.004145050291176808,
+              -0.1054603605114123,
+              20.518618475897348,
+              0.10542777017132231,
+              0.08544660001178024,
+              0.9907491427314645,
+              -1.684100421059053,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "selection_seed": 695
+          },
+          "resolution_policy": "trajectory_center_court",
+          "camera_to_court_center_distance_m": 7.0484285712727734
+        }
+      },
+      "source_rgb": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-02287/court-sample-001918/rgb.png",
+      "bundled_rgb": "evidence/scene_sources/B01_001918.png",
+      "rgb_sha256": "60b10710cef155331ff23ffea5f08ff900a690f7d85921ba2e7567483f7fd2cc",
+      "max_label_reprojection_difference_px": 1.8189894035458565e-12,
+      "figure": "figures/B01_001918_alignment.png"
+    },
+    {
+      "sample": {
+        "sample_index": 1601,
+        "sample_id": "court-sample-001601",
+        "trajectory_group_id": "group-01881",
+        "trajectory_id": "trajectory-01881",
+        "view_id": "view-00024-court_center",
+        "trajectory_frame_index": 17,
+        "split": "train",
+        "shard_id": "shard-004",
+        "width": 959,
+        "height": 539,
+        "camera": {
+          "camera_id": "court-sample-001601",
+          "source_frame_index": 1601,
+          "width": 959,
+          "height": 539,
+          "intrinsics": [
+            479.50000000000006,
+            0.0,
+            479.0,
+            0.0,
+            479.50000000000006,
+            269.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "camera_to_scene": [
+            0.8870110509488084,
+            -0.1595701478538011,
+            0.433299853921746,
+            -5.046117115337799,
+            -0.44483854928182276,
+            -0.04368343566669491,
+            0.8945448130312964,
+            -17.52582465358413,
+            -0.12381462178407592,
+            -0.9862196131502708,
+            -0.10973064325974054,
+            -3.794933852942691,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "image_path": "generated/court/court-sample-001601.png"
+        },
+        "projection": {
+          "camera_id": "court-sample-001601",
+          "resolution": [
+            959,
+            539
+          ],
+          "coverage_modes": [
+            "full",
+            "near_full",
+            "partial"
+          ],
+          "visible_class_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "visible_point_count": 34,
+          "courts": [
+            {
+              "court_instance_id": "court-000",
+              "coverage_mode": "full",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        430.26237513083663,
+                        204.09793467700223
+                      ],
+                      "camera_depth_m": 46.04986669158051,
+                      "scene_xyz_m": [
+                        11.750118009244618,
+                        26.02224808666849,
+                        -2.1213619482904074
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        482.5238706910559,
+                        208.29959433333954
+                      ],
+                      "camera_depth_m": 36.3951131222333,
+                      "scene_xyz_m": [
+                        11.696315377250844,
+                        15.11351671244493,
+                        -3.2779046152220648
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        129.00597113585903,
+                        208.8181787959031
+                      ],
+                      "camera_depth_m": 35.47707801675055,
+                      "scene_xyz_m": [
+                        -11.932744699067591,
+                        25.923720239349766,
+                        -0.09029622689604144
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        90.02832987207425,
+                        216.50504186870552
+                      ],
+                      "camera_depth_m": 25.822324447403332,
+                      "scene_xyz_m": [
+                        -11.986547331061365,
+                        15.014988865126204,
+                        -1.246838893827699
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        435.5594172047295,
+                        204.52380017781152
+                      ],
+                      "camera_depth_m": 44.844122337261126,
+                      "scene_xyz_m": [
+                        11.743398809286996,
+                        24.65989935629628,
+                        -2.2657980316317463
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        125.3382701128895,
+                        209.54149387196796
+                      ],
+                      "camera_depth_m": 34.27133366243117,
+                      "scene_xyz_m": [
+                        -11.939463899025213,
+                        24.561371508977555,
+                        -0.23473231023738061
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        474.53056345877485,
+                        207.65695760512182
+                      ],
+                      "camera_depth_m": 37.600857476552676,
+                      "scene_xyz_m": [
+                        11.703034577208467,
+                        16.475865442817142,
+                        -3.133468531880726
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        96.41776441501567,
+                        215.24496796859867
+                      ],
+                      "camera_depth_m": 27.028068801722714,
+                      "scene_xyz_m": [
+                        -11.979828131103742,
+                        16.377337595498417,
+                        -1.10240281048636
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        377.7047048135383,
+                        205.45957527974736
+                      ],
+                      "camera_depth_m": 42.40441909046877,
+                      "scene_xyz_m": [
+                        6.27850597733637,
+                        24.637163754895752,
+                        -1.7971234191587797
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        407.4617345136942,
+                        209.002902440601
+                      ],
+                      "camera_depth_m": 35.161154229760314,
+                      "scene_xyz_m": [
+                        6.238141745257841,
+                        16.45312984141661,
+                        -2.6647939194077592
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        212.78180973058096,
+                        208.12713220949718
+                      ],
+                      "camera_depth_m": 36.71103690922353,
+                      "scene_xyz_m": [
+                        -6.474571067074588,
+                        24.584107110378085,
+                        -0.7034069227103471
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        207.7495765597184,
+                        213.01074858624736
+                      ],
+                      "camera_depth_m": 29.467772048515073,
+                      "scene_xyz_m": [
+                        -6.514935299153117,
+                        16.400073196898944,
+                        -1.5710774229593265
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        391.19382718986793,
+                        207.0657965381775
+                      ],
+                      "camera_depth_m": 38.78278666011454,
+                      "scene_xyz_m": [
+                        6.2583238612971055,
+                        20.545146798156182,
+                        -2.2309586692832695
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        210.5410818856805,
+                        210.30168470490955
+                      ],
+                      "camera_depth_m": 33.0894044788693,
+                      "scene_xyz_m": [
+                        -6.494753183113852,
+                        20.492090153638514,
+                        -1.1372421728348368
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "court_instance_id": "court-001",
+              "coverage_mode": "near_full",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        507.16658061158665,
+                        210.40046547420062
+                      ],
+                      "camera_depth_m": 32.94178036827803,
+                      "scene_xyz_m": [
+                        11.58636192126576,
+                        11.257149443415226,
+                        -3.678917484628876
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        620.7299916064062,
+                        219.58022302974686
+                      ],
+                      "camera_depth_m": 23.28702679893081,
+                      "scene_xyz_m": [
+                        11.532559289271987,
+                        0.3484180691916636,
+                        -4.835460151560533
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        65.72491126203913,
+                        220.86565757171957
+                      ],
+                      "camera_depth_m": 22.36899169344806,
+                      "scene_xyz_m": [
+                        -12.096500787046448,
+                        11.158621596096499,
+                        -1.6478517632345102
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        -61.49123191611649,
+                        245.6259387532065
+                      ],
+                      "camera_depth_m": 12.714238124100847,
+                      "scene_xyz_m": [
+                        -12.150303419040222,
+                        0.24989022187293752,
+                        -2.804394430166168
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        517.5732997816759,
+                        211.24167971823587
+                      ],
+                      "camera_depth_m": 31.736036013958646,
+                      "scene_xyz_m": [
+                        11.579642721308138,
+                        9.894800713043015,
+                        -3.823353567970215
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        56.18016687694856,
+                        222.72336641963915
+                      ],
+                      "camera_depth_m": 21.16324733912868,
+                      "scene_xyz_m": [
+                        -12.10321998700407,
+                        9.796272865724287,
+                        -1.7922878465758494
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        601.6551203674544,
+                        218.03832945819124
+                      ],
+                      "camera_depth_m": 24.492771153250192,
+                      "scene_xyz_m": [
+                        11.53927848922961,
+                        1.7107667995638751,
+                        -4.691024068219194
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        -35.960457493323325,
+                        240.65684334049462
+                      ],
+                      "camera_depth_m": 13.919982478420227,
+                      "scene_xyz_m": [
+                        -12.1435842190826,
+                        1.612238952245149,
+                        -2.659958346824829
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        440.66244705150564,
+                        213.1555927178208
+                      ],
+                      "camera_depth_m": 29.296332767166284,
+                      "scene_xyz_m": [
+                        6.114749889357512,
+                        9.872065111642485,
+                        -3.3546789554972487
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        508.7849921386962,
+                        221.33276635328875
+                      ],
+                      "camera_depth_m": 22.05306790645783,
+                      "scene_xyz_m": [
+                        6.074385657278983,
+                        1.6880311981633467,
+                        -4.222349455746228
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        199.3346528843215,
+                        219.16099229436915
+                      ],
+                      "camera_depth_m": 23.602950585921043,
+                      "scene_xyz_m": [
+                        -6.638327155053446,
+                        9.819008467124817,
+                        -2.260962459048816
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        184.31663708856237,
+                        232.84282389876492
+                      ],
+                      "camera_depth_m": 16.35968572521259,
+                      "scene_xyz_m": [
+                        -6.678691387131975,
+                        1.6349745536456775,
+                        -3.128632959297795
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        469.9190906161932,
+                        216.66744997613736
+                      ],
+                      "camera_depth_m": 25.67470033681206,
+                      "scene_xyz_m": [
+                        6.094567773318247,
+                        5.780048154902916,
+                        -3.7885142056217385
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        193.18665962576736,
+                        224.7619857686369
+                      ],
+                      "camera_depth_m": 19.981318155566814,
+                      "scene_xyz_m": [
+                        -6.6585092710927105,
+                        5.726991510385247,
+                        -2.6947977091733053
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "court_instance_id": "court-002",
+              "coverage_mode": "partial",
+              "classes": [
+                {
+                  "class_id": 0,
+                  "class_name": "far_doubles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 3,
+                      "uv": [
+                        687.3733894993475,
+                        224.80879777458316
+                      ],
+                      "camera_depth_m": 19.95572653417744,
+                      "scene_xyz_m": [
+                        11.586361921265773,
+                        -3.4518499946172785,
+                        -5.244617939559792
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 1,
+                  "class_name": "far_doubles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 2,
+                      "uv": [
+                        1113.0037199073063,
+                        259.0655771209571
+                      ],
+                      "camera_depth_m": 10.300972964830226,
+                      "scene_xyz_m": [
+                        11.532559289272,
+                        -14.36058136884084,
+                        -6.401160606491449
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 2,
+                  "class_name": "near_doubles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 1,
+                      "uv": [
+                        -161.9678985010746,
+                        265.99334503058355
+                      ],
+                      "camera_depth_m": 9.382937859347473,
+                      "scene_xyz_m": [
+                        -12.096500787046436,
+                        -3.5503778419360046,
+                        -3.213552218165426
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 3,
+                  "class_name": "near_doubles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 0,
+                      "uv": [
+                        13876.125430892987,
+                        -2495.086257512187
+                      ],
+                      "camera_depth_m": -0.2718157099997427,
+                      "scene_xyz_m": [
+                        -12.15030341904021,
+                        -14.459109216159566,
+                        -4.3700948850970835
+                      ],
+                      "in_front": false,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 4,
+                  "class_name": "far_singles_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 7,
+                      "uv": [
+                        716.5761562829681,
+                        227.15917712149493
+                      ],
+                      "camera_depth_m": 18.74998217985806,
+                      "scene_xyz_m": [
+                        11.57964272130815,
+                        -4.81419872498949,
+                        -5.389054022901131
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 5,
+                  "class_name": "near_singles_left",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 6,
+                      "uv": [
+                        -220.24426261162242,
+                        277.45542014865333
+                      ],
+                      "camera_depth_m": 8.177193505028093,
+                      "scene_xyz_m": [
+                        -12.103219987004058,
+                        -4.912726572308216,
+                        -3.357988301506765
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 6,
+                  "class_name": "far_singles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 5,
+                      "uv": [
+                        1020.8181994594712,
+                        251.64604235733884
+                      ],
+                      "camera_depth_m": 11.506717319149605,
+                      "scene_xyz_m": [
+                        11.539278489229622,
+                        -12.998232638468629,
+                        -6.25672452315011
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 7,
+                  "class_name": "near_singles_right",
+                  "renderer_visible": false,
+                  "points": [
+                    {
+                      "physical_index": 4,
+                      "uv": [
+                        -3737.441484818887,
+                        969.2346582893748
+                      ],
+                      "camera_depth_m": 0.9339286443196393,
+                      "scene_xyz_m": [
+                        -12.143584219082587,
+                        -13.096760485787355,
+                        -4.225658801755745
+                      ],
+                      "in_front": true,
+                      "in_frame": false,
+                      "renderer_visible": false
+                    }
+                  ]
+                },
+                {
+                  "class_id": 8,
+                  "class_name": "far_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 11,
+                      "uv": [
+                        608.1967700617557,
+                        232.97787602960412
+                      ],
+                      "camera_depth_m": 16.310278933065696,
+                      "scene_xyz_m": [
+                        6.114749889357525,
+                        -4.836934326390018,
+                        -4.920379410428164
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 9,
+                  "class_name": "far_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 10,
+                      "uv": [
+                        907.7227844605859,
+                        268.70185429325625
+                      ],
+                      "camera_depth_m": 9.067014072357244,
+                      "scene_xyz_m": [
+                        6.074385657278996,
+                        -13.020968239869157,
+                        -5.7880499106771435
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 10,
+                  "class_name": "near_service_left",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 9,
+                      "uv": [
+                        161.53036817264513,
+                        256.9586107023066
+                      ],
+                      "camera_depth_m": 10.616896751820455,
+                      "scene_xyz_m": [
+                        -6.638327155053433,
+                        -4.889990970907688,
+                        -3.8266629139797317
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 11,
+                  "class_name": "near_service_right",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 8,
+                      "uv": [
+                        7.537139972527826,
+                        404.4579948932289
+                      ],
+                      "camera_depth_m": 3.373631891112,
+                      "scene_xyz_m": [
+                        -6.678691387131962,
+                        -13.074024884386827,
+                        -4.694333414228711
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 12,
+                  "class_name": "far_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 13,
+                      "uv": [
+                        715.2139600753213,
+                        245.7416413992163
+                      ],
+                      "camera_depth_m": 12.688646502711471,
+                      "scene_xyz_m": [
+                        6.094567773318261,
+                        -8.928951283129589,
+                        -5.354214660552654
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                },
+                {
+                  "class_id": 13,
+                  "class_name": "near_service_t",
+                  "renderer_visible": true,
+                  "points": [
+                    {
+                      "physical_index": 12,
+                      "uv": [
+                        124.39692747641769,
+                        292.5261463634591
+                      ],
+                      "camera_depth_m": 6.9952643214662285,
+                      "scene_xyz_m": [
+                        -6.658509271092697,
+                        -8.982007927647256,
+                        -4.260498164104221
+                      ],
+                      "in_front": true,
+                      "in_frame": true,
+                      "renderer_visible": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "directory": "samples/train/group-01881/court-sample-001601",
+        "rgb": "samples/train/group-01881/court-sample-001601/rgb.f32.npz",
+        "rgb_preview": "samples/train/group-01881/court-sample-001601/rgb.png",
+        "alpha": "samples/train/group-01881/court-sample-001601/alpha.f32.npz",
+        "alpha_preview": "samples/train/group-01881/court-sample-001601/alpha.png",
+        "depth": "samples/train/group-01881/court-sample-001601/depth.f32.npz",
+        "depth_coordinate_space": "metric_scene_metres",
+        "labels": "samples/train/group-01881/court-sample-001601/labels.json",
+        "metadata": {
+          "target_court": "court-002",
+          "candidate_id": "manual-court-002",
+          "transform": [
+            0.004904524219154535,
+            -0.9963341292480706,
+            0.08540637293360073,
+            -0.2819707488872186,
+            0.9944148686131399,
+            -0.004145050291176808,
+            -0.1054603605114123,
+            -8.955479605388422,
+            0.10542777017132231,
+            0.08544660001178024,
+            0.9907491427314645,
+            -4.807356412328438,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "camera_profile": "b01-production",
+          "camera_parameters": {
+            "view_id": "view-00024-court_center",
+            "camera_center_scene_m": [
+              -5.046117115337799,
+              -17.52582465358413,
+              -3.794933852942691
+            ],
+            "intrinsics": [
+              479.50000000000006,
+              0.0,
+              479.0,
+              0.0,
+              479.50000000000006,
+              269.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "camera_to_scene": [
+              0.8870110509488084,
+              -0.1595701478538011,
+              0.433299853921746,
+              -5.046117115337799,
+              -0.44483854928182276,
+              -0.04368343566669491,
+              0.8945448130312964,
+              -17.52582465358413,
+              -0.12381462178407592,
+              -0.9862196131502708,
+              -0.10973064325974054,
+              -3.794933852942691,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          },
+          "seed": 695
+        },
+        "target_court": {
+          "binding": {
+            "court_instance_id": "court-002",
+            "candidate_id": "manual-court-002",
+            "scene_from_court": [
+              0.004904524219154535,
+              -0.9963341292480706,
+              0.08540637293360073,
+              -0.2819707488872186,
+              0.9944148686131399,
+              -0.004145050291176808,
+              -0.1054603605114123,
+              -8.955479605388422,
+              0.10542777017132231,
+              0.08544660001178024,
+              0.9907491427314645,
+              -4.807356412328438,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "selection_seed": 695
+          },
+          "resolution_policy": "trajectory_center_court",
+          "camera_to_court_center_distance_m": 9.857631778721
+        }
+      },
+      "source_rgb": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-01881/court-sample-001601/rgb.png",
+      "bundled_rgb": "evidence/scene_sources/B01_001601.png",
+      "rgb_sha256": "710c721877ec0ad319e560d8809e47561eaea07d6c9dd09ecbdb34f55d50556e",
+      "max_label_reprojection_difference_px": 1.7826096154749393e-10,
+      "figure": "figures/B01_001601_alignment.png"
+    }
+  ],
+  "manual_confirmation": {
+    "schema": "manual_court_confirmation_v1",
+    "human_confirmed": true,
+    "confirmed_at": "2026-09-10T00:15:49.443495+00:00",
+    "source_revision": "765e4edd584159a4f856b45dfe5094acdc74befe15ea8c29a1aaeae1fcea4f87",
+    "layout": {
+      "scale": 0.5851409223924366,
+      "courts": [
+        {
+          "court_id": "court-000",
+          "u": 0.12330724557257966,
+          "v": 11.83453148806567,
+          "angle_degrees": 89.71795980857198
+        },
+        {
+          "court_id": "court-001",
+          "u": 0.027135464811001597,
+          "v": 3.146934140675036,
+          "angle_degrees": 89.71795980857198
+        },
+        {
+          "court_id": "court-002",
+          "u": 0.027135464811008703,
+          "v": -5.508526127867476,
+          "angle_degrees": 89.71795980857198
+        }
+      ],
+      "primary_court_id": "court-000"
+    },
+    "source_archive_sha256": "22840f2fb83910dd3c5a66014372ffab5f699b39a0684aa99082fea19ebe0435",
+    "heatmaps_sha256": "b7862b17a76c42caec7c362fea45f4e7d76e9daf1feff55a700db97f87222d85"
+  }
+}
