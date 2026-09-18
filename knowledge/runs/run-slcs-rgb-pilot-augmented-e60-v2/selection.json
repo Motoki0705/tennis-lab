@@ -1,0 +1,33 @@
+{
+  "selection": "minimum validation monitor among retained top-k; no test selection",
+  "monitor": "val/scene_position_error_m_epoch",
+  "candidates": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+      "epoch_zero_based": 55,
+      "validation_scene_position_error_m": 4.851169109344482,
+      "sha256": "b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+      "epoch_zero_based": 56,
+      "validation_scene_position_error_m": 4.851702690124512,
+      "sha256": "2c7c8907b2b9f72879ca6106187a6ed858111e260115372b345c8c14ef6a5286"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=57.ckpt",
+      "epoch_zero_based": 57,
+      "validation_scene_position_error_m": 4.8632378578186035,
+      "sha256": "019aa5aae8f536aa852d8fc42bdaa5c02277c7a9a1a8a35c3a9ec05570fe0fa1"
+    }
+  ],
+  "selected": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+    "epoch_zero_based": 55,
+    "validation_scene_position_error_m": 4.851169109344482,
+    "sha256": "b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c"
+  },
+  "destination": "/home/kamimura/projects/tennis-lab/ckpt/slcs/real-rgb-pilot-augmented-e60-v2.ckpt",
+  "last_epoch_zero_based": 59,
+  "terminal_test": "Training terminal test uses last model; separate from this selected-checkpoint evaluation"
+}

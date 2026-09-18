@@ -1,0 +1,16 @@
+{
+  "run_id": "1789717410279161759_3608288_slcs-vitpose-precision-v1",
+  "name": "slcs-vitpose-precision-v1",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -m scripts.analysis.benchmark_vitpose_precision --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --observations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_000/clip_000 --checkpoint /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/vitpose_precision/s42-001",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "4348077d8f7a0b35ab58350232cf4ccb607990f1",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T16:43:56+09:00"
+}

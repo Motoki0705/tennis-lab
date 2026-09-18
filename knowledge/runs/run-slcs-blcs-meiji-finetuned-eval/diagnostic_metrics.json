@@ -1,0 +1,17 @@
+{
+  "x_error_m": 0.11797639887097856,
+  "y_error_m": 0.4269820602846817,
+  "z_error_m": 0.08951176757543859,
+  "position_accuracy_0.6m": 0.7651408450704226,
+  "position_accuracy_1.2m": 0.9454225352112676,
+  "endpoint_accuracy_0.5m": 0.5192307692307693,
+  "endpoint_accuracy_1m": 0.8461538461538461,
+  "y_sign_accuracy": 0.9792253478941783,
+  "reference_index_2_position_error_m": 0.45491055107635,
+  "reference_index_1_position_error_m": 0.4448137145776015,
+  "reference_index_0_position_error_m": 0.5241804644465446,
+  "loss_position": 0.0004702408589834634,
+  "loss_reprojection": 3.702418199771693e-05,
+  "loss_smoothness": 0.0,
+  "loss_gravity": 0.0
+}

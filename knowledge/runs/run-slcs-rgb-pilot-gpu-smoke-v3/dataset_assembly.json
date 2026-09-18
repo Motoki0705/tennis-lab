@@ -1,0 +1,135 @@
+{
+  "inputs": {
+    "schema_version": 1,
+    "dataset_id": "real_rgb_pilot_v2",
+    "seed": 42,
+    "video_splits": {
+      "video_000": "train",
+      "video_001": "val",
+      "broadcast_shanghai": "train",
+      "broadcast_washington": "train",
+      "broadcast_indoor_hard": "val",
+      "broadcast_eastbourne": "test"
+    },
+    "clips": {
+      "video_000/clip_000": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_teacher_probe_v3",
+        "path": "videos/video_000/clips/clip_000",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "25343ff58a35487a809febce0b5bd5a468f60a9dd98d7e9c923c19a4d6b4aa99",
+          "annotations/dino_v3/cam0.npz": "b53957eaa327bef2117b752938641ca5a5988265fee35ac020dd388ab04870c2",
+          "annotations/dino_v3/cam1.npz": "2d8431e5eacf86fa7767594ba34fdd23aeee11959cadf2447670b29d2b0a14f4",
+          "annotations/dino_v3/cam2.npz": "acd8ca459cae92116cf1631f37a307d80e2106c3d4ea673e45d269a0fb952e96",
+          "annotations/tennis_scene/annotation.json": "2385910028be32adebaaaf4f294c74efa8c2274afa83811f3349ce0b2b1dfdb3",
+          "annotations/tennis_scene/pipeline_config.yaml": "f609d7fa17677c1af7dd1605ac55e50f849982f471fb48016807c1f78f566440",
+          "annotations/tennis_scene/scene.metadata.json": "6cbc72a03bdb14e3331d0cebcf60653327bbcbb7ca29ad797142489b62805c7a",
+          "annotations/tennis_scene/scene.npz": "b9e8c90cd0664ffe72ffa0acbf3d71cfda367a3db61033a0bb7b18506ffa68fd",
+          "media/cam0.mp4": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+          "media/cam1.mp4": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+          "media/cam2.mp4": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+          "clip.json": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+        }
+      },
+      "video_001/clip_000": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_teacher_probe_v3",
+        "path": "videos/video_001/clips/clip_000",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "560936c39eeef356baacd37008439a48f109e6acce55c7ca2c95c2db0f99d65c",
+          "annotations/dino_v3/cam0.npz": "0ff7320d0e2dde1177e2baaf3d8ad04ac88468762983b0a9e2f43994f4a248b3",
+          "annotations/dino_v3/cam1.npz": "5f4a46708a9bd840afdbca3e5372064cdb60a638c780a6b54d1854b79761fc04",
+          "annotations/dino_v3/cam2.npz": "c75df91ef512ef85d8b5b87378cc98bc596d4c4e33e5b14a4f9ce68a03f02c6d",
+          "annotations/tennis_scene/annotation.json": "922cb59cb22ca4d6316e8fb99ead1b8637c82954d7bf4ef88b62f7dd26d6c328",
+          "annotations/tennis_scene/pipeline_config.yaml": "717995d7a83907e702b1025e121a5371bd1f34e60ad48bcb4f5d488df5adb53e",
+          "annotations/tennis_scene/scene.metadata.json": "a48522086b7bc41e22788d609f412aa7367f81d38744e7dc92250ab11323d98a",
+          "annotations/tennis_scene/scene.npz": "73a185c290491a45e94b7934d923f49d32b960712b564ab14c2945bc93556777",
+          "media/cam0.mp4": "e34f7083db31aa4884fb9cf86267b8c0a946cf09f4f09a7ec6e6737c39d9d24e",
+          "media/cam1.mp4": "6ed83bfbcae8d6ccf2463ee3757dba6f1dc02b0de52d24a173cf00c272f39bdd",
+          "media/cam2.mp4": "b8552d7f4373bfa5aa04c8a670d50108259b944ce635d4e7b4ed76fcd810513c",
+          "clip.json": "c2f417ca07956c53ab2ec87116c0f8c42b6c1884b1f36f2686183f016e7da407"
+        }
+      },
+      "broadcast_eastbourne/clip_002": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_eastbourne/clips/clip_002",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "0ec5c6c36e5db123adc5f41904fe81d5b8e3390e044bbf3ca924331f72fa2804",
+          "annotations/dino_v3/cam0.npz": "731257bde8c685b8c14c33c2f539b10871b5edf4f8db11b7d61430ba58e20f5b",
+          "annotations/tennis_scene/annotation.json": "5805f47fe9b4e39dbddc3229bb6ffd5c1fb1ea60ca60ca8358fe9fb6d1d2dbea",
+          "annotations/tennis_scene/pipeline_config.yaml": "67b8abb243579182008fbe9266ff3227b9eb6f1a94dd7c862d7b964a3d517f4e",
+          "annotations/tennis_scene/scene.metadata.json": "b2f3fde2f039dec6d46f927d60d8b5861059e6713d39fc2b065663bcd4336f76",
+          "annotations/tennis_scene/scene.npz": "84a77816016e30e43265eb1658dccca1029cf8634d25025aa5c6ebaa0926a8b9",
+          "media/cam0.mp4": "00099bb4ff19b02e2c895bcdcf833959447ce3e571ade150f5c3686b05b134c4",
+          "clip.json": "d99b0997e0ad1ed155b262015c7a0295b7724e98e6bda7cd5455d5690f483a74"
+        }
+      },
+      "broadcast_indoor_hard/clip_001": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_indoor_hard/clips/clip_001",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "0387ceed5a69dfde94f7fd0bbca3ede24007eeaa83201a6b539eef3568bee582",
+          "annotations/dino_v3/cam0.npz": "92b31a9c35681ad3b3b442d4c3dd1ef56dec92436975bcec7090c8f4c96c39f5",
+          "annotations/tennis_scene/annotation.json": "0cd411ac973912800605d7ae76e5c79f674b106c86c7a29a4eef4a5d672c3010",
+          "annotations/tennis_scene/pipeline_config.yaml": "ea69fadff6bc41f242d95a4ca779141541ddc698bae64d7779bf0efcaa226c28",
+          "annotations/tennis_scene/scene.metadata.json": "b1d64c1fe826752115ed7bc1548f8ef5dd0c5278544de8ca3e6fadc3e890518f",
+          "annotations/tennis_scene/scene.npz": "a028b2add922a2bb7366ac8c02a9546b8e12aedd82173e93e439616bf552436b",
+          "media/cam0.mp4": "175436ee0f24b24822e4ded4757f749efc9e10ffa8e56ebc6950debc53181d2d",
+          "clip.json": "5b162666bb98bab1df285fdeae13c04737eed6b7ec4fedc45979f6f3f4d19262"
+        }
+      },
+      "broadcast_shanghai/clip_004": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_shanghai/clips/clip_004",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "3c55cf3e6e90c4d9d8af2e455b925a86eade54ad1c860ff4f0d47a282a2adc32",
+          "annotations/dino_v3/cam0.npz": "550932b665c3d3db8ce63a40eabc30d5c6b0e9a3cc7aa727f71b5f1e40e85538",
+          "annotations/tennis_scene/annotation.json": "79f2e17c75b6f91a38d9b73776a9840a63ac099336d1e48f1faf45a34ff97086",
+          "annotations/tennis_scene/pipeline_config.yaml": "690279c07828d9c433141433ab2e3a3fcc7d94d8defa146e86a47a719142810d",
+          "annotations/tennis_scene/scene.metadata.json": "b159889df9c0f8d6e56a044fbbe1790954ed1c9cdc7fcb4ff1f00dccc6e6ef9c",
+          "annotations/tennis_scene/scene.npz": "f36dce8be5a2bf780f1bdf900f38c32491f36d0a386147dba33c2fd003aea482",
+          "media/cam0.mp4": "6c0cba27225148e92e31c9545a20fb05361af1e496a4801526b8209bc2ef6f93",
+          "clip.json": "6a969c4f457e8e04423f17c7bdc2fd8f524b3ecec57805919a6d179c9d30eb54"
+        }
+      },
+      "broadcast_shanghai/clip_006": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_shanghai/clips/clip_006",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "263bf7b378d68ad7b5bfc4c5faf17010211c22cf92df29c570bf3c3610a1964e",
+          "annotations/dino_v3/cam0.npz": "376eaadd9dcef3678890f8efe94cfdf83ae138e1834f6137b3f0e1d39049c5e4",
+          "annotations/tennis_scene/annotation.json": "a9dca018f670d6621bce8eab1347d12dca647210676618f8d6bfb1265c3a78b6",
+          "annotations/tennis_scene/pipeline_config.yaml": "c9d6813a3b685bb71bff16241e14b9ee2573421db5bc4f94ba96330b0041b472",
+          "annotations/tennis_scene/scene.metadata.json": "b9d881dada78f672f995f75febd561b21a10351598bb5049c4288e06a500f7be",
+          "annotations/tennis_scene/scene.npz": "bb977c26521ad569bfcd3e92fc718f196be3f88a2c0a68468c002d3233da8d1c",
+          "media/cam0.mp4": "023ab52875a6d72954593cbc0a880418fedfa1931458d8b233e0ca8109eca54b",
+          "clip.json": "bf3db438247a3229830c75870d915d652a0c965d5ad1fcd4eba051ad7340c115"
+        }
+      },
+      "broadcast_washington/clip_005": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_washington/clips/clip_005",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "ae865d638b815da065fe6b1e713f51ee1409cd5c5d1bbd06ad606e288448df7c",
+          "annotations/dino_v3/cam0.npz": "44d12a0e341954d2116ba10b8f9996ecf14cabc585162dac3dcf9ef9a1706eab",
+          "annotations/tennis_scene/annotation.json": "fd7e51f4b9805ed1ff957d62a91bd8aa8c10fcaed5acde614ae55dcce4b0b93b",
+          "annotations/tennis_scene/pipeline_config.yaml": "77f0483181e3853d481f62ebfe1cd9f5c3245e440622344d722a12ae9ad94f34",
+          "annotations/tennis_scene/scene.metadata.json": "66e785460b229fa9564346a632d177e8b4aebd056f7303e32b580adf71fdddfd",
+          "annotations/tennis_scene/scene.npz": "c592153df2c6ef82b1205e69daf4c9d96c303956e22ce6f43427f849bcbb7463",
+          "media/cam0.mp4": "7839297b382063c7f4c4a44634d0404d00a118a62cc8cb2a1c20320bd28b2aa0",
+          "clip.json": "8eb16cd737897310a305cfb7923a5d2f80a755d9c769a37ef8ab5a6b0f3d7d14"
+        }
+      }
+    }
+  },
+  "derived_manifest_sha256": {
+    "video_000/clip_000": "5f5608d2877818dbd62fa35d440302b8248e860c494586dbcd2174336d810b5b",
+    "video_001/clip_000": "85948a1fc6bb6b869a42631c08da494bec3b570ba74ff0fa7ee93cc60732935e",
+    "broadcast_eastbourne/clip_002": "ad4fc0d3800b80d30dac3379e850293a13b7e403aae5a68c507b090c508c0218",
+    "broadcast_indoor_hard/clip_001": "19d8eec99930ddb0d81ca2892b60f7c62a8f55b4445b4ed6a7fe99406c75a434",
+    "broadcast_shanghai/clip_004": "62bde19bfbb104db41d4f3210068ac45ac0427bbffe52e2f3ec545af7cf2e357",
+    "broadcast_shanghai/clip_006": "56c590cc29eb02b27c6c027883a8d469a89153e0d78acf2c33fe3c42685f0d75",
+    "broadcast_washington/clip_005": "62c56047348397160729acf7da91295fbed420b949a3d355dc8f2abde62b466b"
+  },
+  "split_unit": "source recording / curated broadcast venue",
+  "num_clips": 7,
+  "split_sha256": "1f4085e198812e3cd749b3f4bf838dd1d81c80d1c47dc86c1c1048c61f6c4ec7"
+}
