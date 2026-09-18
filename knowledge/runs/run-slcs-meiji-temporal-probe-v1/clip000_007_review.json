@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "clip_id": "video_000/clip_007",
+  "video_id": "video_000",
+  "interpretation": "Pseudo teacher / approximate learned pinhole calibration; NOT measured 3D ground truth. Reprojection is observable consistency only.",
+  "frame_reference": "zero-based absolute frame in clip camera video, not source recording offset",
+  "layout": "rows follow frames; columns follow camera_ids",
+  "frames": [
+    569,
+    611,
+    651
+  ],
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "fps": 59.94006,
+  "observation_visibility_threshold": 0.3,
+  "unsupported_policy": "teacher weight <= 0 hidden and marked UNSUPPORTED; missing observations hidden",
+  "player_id": "canonical scene player axis; yellow P0, cyan P1, orange P2 (palette repeats)",
+  "scene": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/annotations/tennis_scene/scene.npz",
+  "scene_sha256": "c14843d549d4b4bae6a92f41f2fd5276a6d4e765f6ab9f3758ae025716e79dc1",
+  "metadata_sha256": "7722e213c21060a353154e6c4edc8a638346badecd2ec811d74e4ac7befce1e5",
+  "panels": [
+    {
+      "frame_idx": 569,
+      "camera_id": "cam0",
+      "camera_index": 0,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        16
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam0.mp4"
+    },
+    {
+      "frame_idx": 569,
+      "camera_id": "cam1",
+      "camera_index": 1,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        15
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam1.mp4"
+    },
+    {
+      "frame_idx": 569,
+      "camera_id": "cam2",
+      "camera_index": 2,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        17
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam2.mp4"
+    },
+    {
+      "frame_idx": 611,
+      "camera_id": "cam0",
+      "camera_index": 0,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        17
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam0.mp4"
+    },
+    {
+      "frame_idx": 611,
+      "camera_id": "cam1",
+      "camera_index": 1,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        17
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam1.mp4"
+    },
+    {
+      "frame_idx": 611,
+      "camera_id": "cam2",
+      "camera_index": 2,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        17
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam2.mp4"
+    },
+    {
+      "frame_idx": 651,
+      "camera_id": "cam0",
+      "camera_index": 0,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        15,
+        15
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam0.mp4"
+    },
+    {
+      "frame_idx": 651,
+      "camera_id": "cam1",
+      "camera_index": 1,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        16,
+        17
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam1.mp4"
+    },
+    {
+      "frame_idx": 651,
+      "camera_id": "cam2",
+      "camera_index": 2,
+      "player_weights": [
+        1.0,
+        1.0
+      ],
+      "ball_weight": 1.0,
+      "observed_joints": [
+        17,
+        17
+      ],
+      "observed_ball": true,
+      "projectable_teacher_joints": [
+        17,
+        17
+      ],
+      "projectable_teacher_ball": true,
+      "media": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/media/cam2.mp4"
+    }
+  ]
+}
