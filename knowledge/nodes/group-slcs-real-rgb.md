@@ -37,6 +37,7 @@ members:
 - run-slcs-meiji-checkpoint-hash-probe-v2
 - run-slcs-meiji-checkpoint-hash-probe-v2b
 - run-slcs-meiji-checkpoint-hash-probe-v3
+- run-slcs-meiji-checkpoint-hash-cpu-v1
 parents: []
 tags:
 - slcs
