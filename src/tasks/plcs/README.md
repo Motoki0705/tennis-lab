@@ -70,6 +70,8 @@ human UV/visibility には適用しません。
 - **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
 
 ### visualization/
+- **[Web UI利用ガイド](visualization/README.md)**: 閲覧・GPU推論のコピー可能な起動コマンドと操作手順。
+- **`review/` / `inference/`**: [データセット閲覧](visualization/review/README.md)と[GT・推論比較Web UI](visualization/inference/README.md)。
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
 - **`api/predict.py`**: `predict_scene()`。predictorに固定されたadapterへscene assembly/decodeを委譲する。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
 - **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。

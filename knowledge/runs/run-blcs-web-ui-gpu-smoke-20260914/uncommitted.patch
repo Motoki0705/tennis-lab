@@ -1,0 +1,397 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index cd01329a..eac7955b 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -95,6 +95,10 @@ namespaces = false
+ "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+ "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+ "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
++"src.tasks.base.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
++"src.tasks.base.visualization" = ["shared/*.js", "shared/*.mjs", "shared/*.txt"]
++"src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
++"src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+ "*" = [
+     "README.md",
+     "configs/*.yaml",
+@@ -281,6 +285,10 @@ module = [
+     "src.synthetic_data_generation.alignment.manual.models",
+     "src.synthetic_data_generation.alignment.manual.web",
+     "src.synthetic_data_generation.dataset.court.review.web",
++    "src.tasks.base.visualization.review.web",
++    "src.tasks.blcs.visualization.review.web",
++    "src.tasks.plcs.visualization.review.dataset_web",
++    "src.tasks.plcs.visualization.inference.web",
+     "src.tasks.plcs.visualization.review.web",
+ ]
+ disallow_untyped_decorators = false
+diff --git a/src/tasks/blcs/README.md b/src/tasks/blcs/README.md
+index 84a65d3f..aba03424 100644
+--- a/src/tasks/blcs/README.md
++++ b/src/tasks/blcs/README.md
+@@ -63,6 +63,7 @@ reference frame へ position と court-space velocity を同じ proper rotation
+ - **`tracking_predictor.py`**: `BLCSTrackingPredictor`。track-query bindingによりposition、presence logits/probability/判定を一度だけdecodeする。
+ 
+ ### visualization/
++- **`review/` / `inference/`**: [データセット閲覧](visualization/review/README.md)と[GT・推論比較Web UI](visualization/inference/README.md)。
+ - **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
+ - **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
+ - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+diff --git a/src/tasks/blcs/model_io/adapters.py b/src/tasks/blcs/model_io/adapters.py
+index f1b1d6ae..cf5ddcd1 100644
+--- a/src/tasks/blcs/model_io/adapters.py
++++ b/src/tasks/blcs/model_io/adapters.py
+@@ -4,7 +4,7 @@ from __future__ import annotations
+ 
+ from abc import ABC, abstractmethod
+ from collections.abc import Mapping
+-from typing import Literal, cast
++from typing import Any, Literal, cast
+ 
+ import numpy as np
+ import torch
+@@ -433,6 +433,12 @@ class TrajectoryModelIOAdapter(ABC):
+             if not isinstance(camera, Mapping):
+                 raise ModelInputContractError("Each scene camera must be a mapping.")
+             selected.append(camera)
++        court_kp_arrays = [
++            self._contract_court_array(camera, "court_kp_uv") for camera in selected
++        ]
++        court_vis_arrays = [
++            self._contract_court_array(camera, "court_kp_vis") for camera in selected
++        ]
+         if self.input_profile == "single":
+             if len(selected) != 1:
+                 raise ModelInputContractError(
+@@ -441,32 +447,44 @@ class TrajectoryModelIOAdapter(ABC):
+             camera = selected[0]
+             batch = self.build_inference_batch_from_arrays(
+                 ball_uv=np.asarray(camera["ball_uv"], dtype=np.float32),
+-                court_kp=np.asarray(camera["court_kp_uv"], dtype=np.float32),
++                court_kp=court_kp_arrays[0],
+                 ball_vis=np.asarray(camera["ball_vis"], dtype=np.bool_),
+-                court_vis=np.asarray(camera["court_kp_vis"], dtype=np.bool_),
++                court_vis=court_vis_arrays[0],
+             )
+             return batch
+         return self.build_inference_batch_from_arrays(
+             ball_uv=np.stack(
+                 [np.asarray(camera["ball_uv"], dtype=np.float32) for camera in selected]
+             ),
+-            court_kp=np.stack(
+-                [
+-                    np.asarray(camera["court_kp_uv"], dtype=np.float32)
+-                    for camera in selected
+-                ]
+-            ),
++            court_kp=np.stack(court_kp_arrays),
+             ball_vis=np.stack(
+                 [np.asarray(camera["ball_vis"], dtype=np.bool_) for camera in selected]
+             ),
+-            court_vis=np.stack(
+-                [
+-                    np.asarray(camera["court_kp_vis"], dtype=np.bool_)
+-                    for camera in selected
+-                ]
+-            ),
++            court_vis=np.stack(court_vis_arrays),
+         )
+ 
++    def _contract_court_array(
++        self,
++        camera: Mapping[str, object],
++        key: str,
++    ) -> NDArray[Any]:
++        """Slice one scene camera's court array to the model's token contract.
++
++        The dataset loader aligns a full CourtKP20 array to the reference camera
++        and then truncates it to the first ``num_court_tokens`` ground
++        keypoints. Scene inference must reproduce that truncation after the same
++        alignment, so a 20-keypoint scene camera still yields the model's
++        ``num_court_tokens`` court tokens.
++        """
++        array = np.asarray(camera[key])
++        if array.ndim == 0 or array.shape[0] < self.num_court_tokens:
++            raise ModelInputContractError(
++                f"Scene camera {key!r} has shape {array.shape}, but the model "
++                f"contract requires at least {self.num_court_tokens} court "
++                "keypoints."
++            )
++        return np.asarray(array[: self.num_court_tokens])
++
+     @staticmethod
+     def trajectory_arrays(
+         batch: Mapping[str, object],
+diff --git a/src/tasks/plcs/README.md b/src/tasks/plcs/README.md
+index 6485c020..ddf7e19b 100644
+--- a/src/tasks/plcs/README.md
++++ b/src/tasks/plcs/README.md
+@@ -69,6 +69,7 @@ human UV/visibility には適用しません。
+ - **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
+ 
+ ### visualization/
++- **`review/` / `inference/`**: [データセット閲覧](visualization/review/README.md)と[GT・推論比較Web UI](visualization/inference/README.md)。
+ - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+ - **`api/predict.py`**: `predict_scene()`。predictorに固定されたadapterへscene assembly/decodeを委譲する。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
+ - **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
+diff --git a/src/tasks/plcs/model_io/__init__.py b/src/tasks/plcs/model_io/__init__.py
+index 613da822..65ce9447 100644
+--- a/src/tasks/plcs/model_io/__init__.py
++++ b/src/tasks/plcs/model_io/__init__.py
+@@ -23,6 +23,7 @@ from src.tasks.plcs.model_io.court_keypoint_checkpoint import (
+ )
+ from src.tasks.plcs.model_io.factory import (
+     PLCSBoundModelIO,
++    PLCSModelIOConfig,
+     PLCSStandardBoundModelIO,
+     PLCSTrackingBoundModelIO,
+     bind_plcs_model_io,
+@@ -40,6 +41,7 @@ __all__ = [
+     "PLCSDecodedPrediction",
+     "PLCSInputProfile",
+     "PLCSModelIOAdapter",
++    "PLCSModelIOConfig",
+     "PLCSPhysicalPrediction",
+     "PLCSPreparedBatch",
+     "PLCSReprojectionTarget",
+diff --git a/src/tasks/plcs/model_io/factory.py b/src/tasks/plcs/model_io/factory.py
+index 882a6086..57a39bc8 100644
+--- a/src/tasks/plcs/model_io/factory.py
++++ b/src/tasks/plcs/model_io/factory.py
+@@ -7,13 +7,14 @@ from typing import Protocol, TypeAlias, TypeVar, cast
+ 
+ from torch import nn
+ 
++from src.tasks.base.generate_dataset import CourtKeypointContract
+ from src.tasks.base.model_io import (
+     BoundModelIO,
+     ModelAdapterMismatchError,
+     ModelCall,
+     bind_model_io,
+ )
+-from src.tasks.plcs.configuration import PLCSTrainingConfig
++from src.tasks.plcs.configuration import PLCSDataConfig, PLCSModelConfig
+ from src.tasks.plcs.model_io.adapters import (
+     PLCSAdapter,
+     PLCSModelIOAdapter,
+@@ -53,6 +54,25 @@ PLCSBoundModelIO: TypeAlias = PLCSStandardBoundModelIO | PLCSTrackingBoundModelI
+ DecodedPredictionT_co = TypeVar("DecodedPredictionT_co", covariant=True)
+ 
+ 
++class PLCSModelIOConfig(Protocol):
++    """Read-only configuration slice the PLCS model/adapter factory consumes.
++
++    Only the model variant, the resolved data contract, and the CourtKP20
++    contract shape model construction. ``PLCSTrainingConfig`` satisfies this
++    structurally; inference-only boundaries may pass a lighter object without a
++    training/run section instead of fabricating training configuration.
++    """
++
++    @property
++    def model(self) -> PLCSModelConfig: ...
++
++    @property
++    def data(self) -> PLCSDataConfig: ...
++
++    @property
++    def court_keypoint_contract(self) -> CourtKeypointContract: ...
++
++
+ class _PLCSBindingAdapter(Protocol[DecodedPredictionT_co]):
+     """Structural adapter contract preserving the bound decoded type."""
+ 
+@@ -100,7 +120,7 @@ def bind_plcs_model_io(
+ 
+ 
+ def _standard_adapter(
+-    runtime: PLCSTrainingConfig,
++    runtime: PLCSModelIOConfig,
+     *,
+     model_type: type[nn.Module],
+     profile: PLCSInputProfile,
+@@ -139,7 +159,7 @@ def _standard_adapter(
+     )
+ 
+ 
+-def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
++def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSBoundModelIO:
+     """Construct and bind the configured PLCS model and adapter exactly once."""
+     model_cfg = runtime.model
+     model_name = model_cfg.name
+@@ -232,6 +252,7 @@ def build_plcs_model_io(runtime: PLCSTrainingConfig) -> PLCSBoundModelIO:
+ 
+ __all__ = [
+     "PLCSBoundModelIO",
++    "PLCSModelIOConfig",
+     "PLCSRawOutput",
+     "PLCSStandardBoundModelIO",
+     "PLCSTrackingBoundModelIO",
+diff --git a/src/tasks/plcs/visualization/review/README.md b/src/tasks/plcs/visualization/review/README.md
+index 61c6e4dc..85d73fd9 100644
+--- a/src/tasks/plcs/visualization/review/README.md
++++ b/src/tasks/plcs/visualization/review/README.md
+@@ -1,4 +1,9 @@
+-# ACCAD Motion Review
++# PLCS Review
++
++生成データセットの閲覧は `dataset_service.py` / `dataset_web.py` が提供する。
++起動・操作・API・座標契約は[共有review基盤](../../../base/visualization/review/README.md)を参照。
++
++## ACCAD Motion Review
+ 
+ `data/ACCAD` の生モーション（AMASS / SMPL-H）を、PLCS の世界座標系で目視確認する
+ ローカルWeb UI。読み取り専用で、npzやモデルは変更しない。
+diff --git a/src/tasks/plcs/visualization/review/__init__.py b/src/tasks/plcs/visualization/review/__init__.py
+index da45ccb3..677505fa 100644
+--- a/src/tasks/plcs/visualization/review/__init__.py
++++ b/src/tasks/plcs/visualization/review/__init__.py
+@@ -5,7 +5,14 @@ a searchable directory list on the left and the selected motion reconstructed
+ in the world coordinate system on the right.
+ """
+ 
++from .dataset_service import PLCSDatasetReviewService
++from .dataset_web import create_dataset_app
+ from .service import ReviewService
+ from .web import create_app
+ 
+-__all__ = ["ReviewService", "create_app"]
++__all__ = [
++    "PLCSDatasetReviewService",
++    "ReviewService",
++    "create_app",
++    "create_dataset_app",
++]
+diff --git a/src/utils/configuration/inventory.py b/src/utils/configuration/inventory.py
+index b7ada79b..d954620b 100644
+--- a/src/utils/configuration/inventory.py
++++ b/src/utils/configuration/inventory.py
+@@ -312,6 +312,22 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+         "plcs.accad_motion_review",
+         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+     ),
++    "src.tasks.plcs.scripts.review_dataset": (
++        "plcs.dataset_scene_review",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
++    "src.tasks.blcs.scripts.review_dataset": (
++        "blcs.dataset_scene_review",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
++    "src.tasks.plcs.scripts.serve_inference_ui": (
++        "plcs.inference_ui",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
++    "src.tasks.blcs.scripts.inference_ui": (
++        "blcs.inference_ui",
++        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
++    ),
+     "src.tennis_scene.scripts.migrate_video_clip_layout": (
+         "tennis_scene.video_clip_migration",
+         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+@@ -382,6 +398,30 @@ _RUNTIME_BOUNDARIES = (
+         domain="plcs",
+         executable_module=True,
+     ),
++    _non_hydra_boundary(
++        "src.tasks.plcs.scripts.review_dataset",
++        "main",
++        domain="plcs",
++        executable_module=True,
++    ),
++    _non_hydra_boundary(
++        "src.tasks.blcs.scripts.review_dataset",
++        "main",
++        domain="blcs",
++        executable_module=True,
++    ),
++    _non_hydra_boundary(
++        "src.tasks.plcs.scripts.serve_inference_ui",
++        "main",
++        domain="plcs",
++        executable_module=True,
++    ),
++    _non_hydra_boundary(
++        "src.tasks.blcs.scripts.inference_ui",
++        "main",
++        domain="blcs",
++        executable_module=True,
++    ),
+     _non_hydra_boundary(
+         "src.tennis_scene.scripts.migrate_video_clip_layout",
+         "main",
+diff --git a/tests/unit/tasks/blcs/model_io/test_adapters.py b/tests/unit/tasks/blcs/model_io/test_adapters.py
+index 8792567c..e977ee22 100644
+--- a/tests/unit/tasks/blcs/model_io/test_adapters.py
++++ b/tests/unit/tasks/blcs/model_io/test_adapters.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import numpy as np
+ import pytest
+ import torch
+ 
+@@ -284,3 +285,64 @@ def test_track_query_config_rejects_removed_fusion_keys(removed_key: str) -> Non
+     model[removed_key] = True if removed_key == "mask_invisible_observations" else {}
+     with pytest.raises(UnknownConfigurationKeyError, match=removed_key):
+         parse_model_config({"model": model})
++
++
++def _multiview_scene_adapter() -> AxialTrajectoryModelIOAdapter:
++    return AxialTrajectoryModelIOAdapter(
++        num_court_tokens=14,
++        max_seq_len=8,
++        predict_velocity=False,
++        input_profile="multiview",
++        max_num_cameras=4,
++    )
++
++
++def _scene_camera(frames: int, court_keypoints: int) -> dict[str, np.ndarray]:
++    return {
++        "ball_uv": np.full((frames, 2), 0.5, dtype=np.float32),
++        "ball_vis": np.ones((frames,), dtype=bool),
++        "court_kp_uv": np.full((court_keypoints, 2), 0.25, dtype=np.float32),
++        "court_kp_vis": np.ones((court_keypoints,), dtype=bool),
++    }
++
++
++def test_scene_batch_slices_court_keypoints_to_the_model_contract() -> None:
++    """A 20-point scene camera is truncated to the model's 14 court tokens."""
++    scene = {
++        "cameras": [_scene_camera(frames=4, court_keypoints=20) for _ in range(3)]
++    }
++    batch = _multiview_scene_adapter().build_inference_batch_from_scene(
++        scene,
++        [0, 1, 2],
++    )
++    assert batch["court_kp"].shape == (1, 3, 14, 2)
++    assert batch["court_vis"].shape == (1, 3, 14)
++
++
++def test_single_profile_scene_batch_slices_court_keypoints() -> None:
++    scene = {"cameras": [_scene_camera(frames=4, court_keypoints=20)]}
++    batch = SingleTrajectoryModelIOAdapter(
++        num_court_tokens=14,
++        max_seq_len=8,
++        predict_velocity=False,
++        input_profile="single",
++        max_num_cameras=None,
++    ).build_inference_batch_from_scene(scene, [0])
++    assert batch["court_kp"].shape == (1, 14, 2)
++    assert batch["court_vis"].shape == (1, 14)
++
++
++def test_scene_batch_rejects_too_few_court_keypoints() -> None:
++    scene = {"cameras": [_scene_camera(frames=4, court_keypoints=10)]}
++    with pytest.raises(ModelInputContractError, match="court_kp_uv"):
++        _multiview_scene_adapter().build_inference_batch_from_scene(scene, [0])
++
++
++def test_scene_batch_rejects_too_few_court_visibility_entries() -> None:
++    camera = _scene_camera(frames=4, court_keypoints=20)
++    camera["court_kp_vis"] = np.ones((10,), dtype=bool)
++    with pytest.raises(ModelInputContractError, match="court_kp_vis"):
++        _multiview_scene_adapter().build_inference_batch_from_scene(
++            {"cameras": [camera]},
++            [0],
++        )
