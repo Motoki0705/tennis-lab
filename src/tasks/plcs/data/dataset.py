@@ -43,6 +43,7 @@ from src.tasks.plcs.court_keypoint_contract import (
     world_joints_physical_to_target,
 )
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
+from src.tasks.plcs.data.frame_rate_augmentation import PLCSFrameRateSampler
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
 from src.utils.data.camera_sampling import camera_candidate_indices
@@ -125,6 +126,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         if not isinstance(augmentation_cfg, (dict, DictConfig)):
             raise ValueError("data.augmentation must be a mapping-like config.")
         self.augmentation = PLCSObservationAugmentation(augmentation_cfg)
+        self.frame_rate_sampler = PLCSFrameRateSampler(augmentation_cfg)
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = int(data_cfg["num_court_kp"])
 
@@ -180,7 +182,15 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         rot_len = int(scene.data["rotation"].shape[0])
         primary_len = int(scene.get_camera_array(cams.primary, "human_kp_uv").shape[0])
         full_len = scene.effective_num_frames(primary_len, pos_len, rot_len)
-        window = self.select_window(scene, full_len=full_len)
+        frame_rate_plan = self.frame_rate_sampler.plan(
+            source_fps=scene.meta.get("fps"),
+            full_len=full_len,
+            seq_len_range=self._plcs_seq_len_range,
+            crop_mode=("random" if self.augment else "center"),
+            augment=self.augment,
+            rng=self.rng,
+        )
+        window = frame_rate_plan.source_window
 
         human_kp_list: list[Tensor] = []
         court_kp_list: list[Tensor] = []
@@ -321,6 +331,27 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         sample["human_kp_3d"] = world_joints_physical_to_target(
             torch.from_numpy(human_kp_3d[window.sl].copy()).float(),
             provenance,
+        )
+        sample["human_kp"], sample["human_vis"] = frame_rate_plan.masked_linear(
+            sample["human_kp"], sample["human_vis"], axis=1
+        )
+        sample["court_kp"], sample["court_vis"] = frame_rate_plan.masked_linear(
+            sample["court_kp"], sample["court_vis"], axis=1
+        )
+        sample["human_kp_target"], sample["human_vis_target"] = (
+            frame_rate_plan.masked_linear(
+                sample["human_kp_target"],
+                sample["human_vis_target"],
+                axis=1,
+            )
+        )
+        sample["padding_mask"] = frame_rate_plan.nearest(sample["padding_mask"], axis=1)
+        sample["position"] = frame_rate_plan.linear(sample["position"], axis=0)
+        sample["rotation"] = frame_rate_plan.heading(sample["rotation"], axis=0)
+        sample["human_kp_3d"] = frame_rate_plan.linear(sample["human_kp_3d"], axis=0)
+        sample["frame_rate_hz"] = torch.tensor(
+            frame_rate_plan.output_fps,
+            dtype=torch.float32,
         )
         sample["court_keypoint_metadata"] = court_keypoint_contract_document(
             self.court_keypoint_contract
@@ -662,6 +693,15 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
         "camera_C": torch.stack(camera_C_batch, dim=0),
         "camera_R": torch.stack(camera_R_batch, dim=0),
     }
+    frame_rate_presence = ["frame_rate_hz" in sample for sample in batch]
+    if any(frame_rate_presence) and not all(frame_rate_presence):
+        raise ValueError(
+            "PLCS batch cannot mix samples with and without frame_rate_hz."
+        )
+    if all(frame_rate_presence):
+        collated["frame_rate_hz"] = torch.stack(
+            [cast(Tensor, sample["frame_rate_hz"]) for sample in batch]
+        )
     if human_kp_3d_batch:
         collated["human_kp_3d"] = torch.stack(human_kp_3d_batch, dim=0)
     if has_reprojection:

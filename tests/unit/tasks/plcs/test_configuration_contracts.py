@@ -8,7 +8,7 @@ from copy import deepcopy
 
 import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig, open_dict
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 import src.tasks.plcs.configuration as runtime_configuration
 import src.tasks.plcs.configuration_contracts as configuration_contracts
@@ -28,6 +28,35 @@ def test_generation_config_defaults_to_physical_v1_court_keypoints() -> None:
     config = _generation_config()
 
     assert config.court_keypoints.selector == "physical_v1"
+
+
+def test_generation_motion_sources_declare_registered_formats() -> None:
+    config = _generation_config()
+
+    assert {str(source.format) for source in config.motion_sources.values()} == {
+        "amass_smplh_v1"
+    }
+
+    invalid = deepcopy(config)
+    with open_dict(invalid):
+        invalid.motion_sources.running.format = "unregistered"
+    with pytest.raises(SemanticConfigurationError, match="not registered"):
+        configuration_contracts.PLCSGenerationComponents.from_config(invalid)
+
+
+def test_frame_rate_augmentation_requires_at_least_one_rate() -> None:
+    augmentation = deepcopy(_generation_augmentation_config())
+    with open_dict(augmentation):
+        augmentation.frame_rate.choices_hz = []
+
+    with pytest.raises(SemanticConfigurationError, match="must not be empty"):
+        runtime_configuration.validate_augmentation(augmentation)
+
+
+def _generation_augmentation_config() -> DictConfig:
+    return OmegaConf.load(
+        PROJECT_ROOT / "src/tasks/plcs/configs/data/_augmentation.yaml"
+    ).augmentation
 
 
 @pytest.mark.parametrize(
@@ -78,9 +107,9 @@ def test_shared_plcs_contracts_have_one_canonical_module() -> None:
 
 
 def test_plcs_configuration_consumers_have_no_reverse_import_edge() -> None:
-    runtime_source = (
-        PROJECT_ROOT / "src/tasks/plcs/configuration.py"
-    ).read_text(encoding="utf-8")
+    runtime_source = (PROJECT_ROOT / "src/tasks/plcs/configuration.py").read_text(
+        encoding="utf-8"
+    )
     generation_source = (
         PROJECT_ROOT / "src/tasks/plcs/generate_dataset/config.py"
     ).read_text(encoding="utf-8")
@@ -101,9 +130,7 @@ def test_shared_components_do_not_own_generation_run_validation() -> None:
         config.run.val_ratio = 0.5
         config.run.test_ratio = 0.5
 
-    components = configuration_contracts.PLCSGenerationComponents.from_config(
-        config
-    )
+    components = configuration_contracts.PLCSGenerationComponents.from_config(config)
 
     assert components.mode == "single_object"
     with pytest.raises(SemanticConfigurationError, match="sum to 1"):

@@ -623,6 +623,7 @@ class PLCSModelConfig:
 
 
 _AUGMENTATION_BLOCK_FIELDS: dict[str, frozenset[str]] = {
+    "frame_rate": frozenset({"enabled", "prob", "choices_hz"}),
     "uv_scale": frozenset(
         {"enabled", "prob", "scale_range", "apply_to_human", "apply_to_court"}
     ),
@@ -716,6 +717,25 @@ def validate_augmentation(value: object) -> Mapping[str, object]:
             item_path = f"data.augmentation.{block_name}"
             if key in {"enabled", "apply_to_human", "apply_to_court"}:
                 _boolean(block, key, path=item_path)
+            elif key == "choices_hz":
+                choices = _sequence(
+                    block,
+                    key,
+                    path=item_path,
+                    item_types=(float, int),
+                    non_empty=True,
+                )
+                numeric_choices = tuple(
+                    float(cast("float | int", choice)) for choice in choices
+                )
+                if any(choice <= 0.0 for choice in numeric_choices):
+                    raise SemanticConfigurationError(
+                        f"{item_path}.{key} values must be positive."
+                    )
+                if len(set(numeric_choices)) != len(numeric_choices):
+                    raise SemanticConfigurationError(
+                        f"{item_path}.{key} values must be unique."
+                    )
             elif key in {
                 "min_len",
                 "max_len",
@@ -896,8 +916,12 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     f"data.{key} must be a positive ordered range."
                 )
-        if model.name == "plcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
-            raise SemanticConfigurationError("Axial reference data requires 3 or 4 cameras.")
+        if model.name == "plcs_multiview_axial_reference" and not (
+            3 <= num_views_range[0] <= num_views_range[1] <= 4
+        ):
+            raise SemanticConfigurationError(
+                "Axial reference data requires 3 or 4 cameras."
+            )
         if "max_views" in model.values and num_views_range[1] > model.integer(
             "max_views"
         ):
@@ -1173,16 +1197,28 @@ class PLCSTrainingConfig:
             allowed=run_fields,
         )
         shared = TrainingRuntimeConfig.from_config(value, repository_root=PROJECT_ROOT)
+        external_asset_fields = {"smplh_model_path"}
+        if data.backend == "chunked":
+            external_asset_fields.add("coco17_regressor_path")
         external_assets = _exact(
             require_config_mapping(root, "external_assets", path="configuration"),
             path="external_assets",
-            required={"smplh_model_path"},
-            allowed={"smplh_model_path"},
+            required=external_asset_fields,
+            allowed=external_asset_fields,
         )
         paths.resolver.resolve(
             PathRole.EXTERNAL_ASSET,
             _string(external_assets, "smplh_model_path", path="external_assets"),
         )
+        if data.backend == "chunked":
+            paths.resolver.resolve(
+                PathRole.PROJECT,
+                _string(
+                    external_assets,
+                    "coco17_regressor_path",
+                    path="external_assets",
+                ),
+            )
         if data.backend == "chunked":
             generation_components = (
                 configuration_contracts.PLCSGenerationComponents.from_config(root)

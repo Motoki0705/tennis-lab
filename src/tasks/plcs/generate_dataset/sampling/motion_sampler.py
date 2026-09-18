@@ -1,371 +1,287 @@
-"""Motion sampler for AMASS/ACCAD dataset.
-
-This module provides functionality to sample motion sequences from AMASS
-dataset and compute 3D joint positions using SMPL-H model.
-"""
+"""Weighted sampling across explicitly adapted PLCS motion formats."""
 
 from __future__ import annotations
 
+import math
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
+
+from src.tasks.plcs.generate_dataset.sampling.motion_source import (
+    MotionCategory,
+    load_amass_motion_clip,
+)
+from src.tasks.plcs.motion import Coco17MotionClip, load_motion_clip
+from src.tasks.plcs.motion.sources import AccadCoco17Adapter
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-@dataclass
-class MotionSequence:
-    """Container for a single motion sequence."""
+class MotionFormat(StrEnum):
+    """Registered source adapters accepted at the generation boundary."""
 
-    # Source information
-    source_path: str
-    category: str
-    gender: str
-    fps: float
-
-    # Raw AMASS data
-    poses: np.ndarray  # (T, 156)
-    trans: np.ndarray  # (T, 3)
-    betas: np.ndarray  # (num_betas,)
-
-    # Computed 3D joints (set after SMPL-H forward)
-    joints_3d: np.ndarray | None = None  # (T, J, 3)
-
-    # Frame info
-    num_frames: int = field(init=False)
-
-    def __post_init__(self) -> None:
-        """Compute derived fields."""
-        self.num_frames = self.poses.shape[0]
+    AMASS_SMPLH_V1 = "amass_smplh_v1"
+    COCO17_MOTION_V1 = "coco17_motion_v1"
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class MotionSourceConfig:
-    """Configuration for a motion source category."""
+    """One weighted category backed by exactly one registered format."""
 
-    paths: list[str]
+    format: MotionFormat
+    paths: tuple[Path, ...]
     weight: float
 
 
 class MotionSampler:
-    """Sample motion sequences from AMASS dataset.
+    """Sample source files and adapt them to :class:`Coco17MotionClip`.
 
-    This class handles:
-    - Loading motion sequences from configured paths
-    - Category-based weighted sampling
-    - Computing 3D joints using SMPL-H model
+    Source-specific SMPL logic terminates inside registered adapters. The scene
+    generator consumes only the common COCO-17 contract.
     """
 
     def __init__(
         self,
         config: DictConfig,
         smplh_model_path: Path | str,
+        coco17_regressor_path: Path | str,
         device: str | torch.device = "cpu",
+        *,
+        accad_adapter: AccadCoco17Adapter | None = None,
     ) -> None:
-        """Initialize the motion sampler.
-
-        Args:
-            config: Configuration with motion_sources settings.
-            smplh_model_path: Path to SMPL-H model directory.
-            device: Device for SMPL-H computation.
-
-        """
         self.config = config
-        self.smplh_model_path = Path(smplh_model_path)
         self.device = torch.device(device)
-
-        # Parse motion sources from config
-        self._motion_sources: dict[str, MotionSourceConfig] = {}
-        self._parse_motion_sources()
-
-        # Index available motion files
-        self._motion_files: dict[str, list[Path]] = {}
-        self._index_motion_files()
-
-        # SMPL-H models (loaded on demand)
-        self._smplh_models: dict[str, Any] = {}
-
-    def _parse_motion_sources(self) -> None:
-        """Parse motion source configuration."""
-        sources_cfg = self.config.motion_sources
-
-        for category, cfg in sources_cfg.items():
-            self._motion_sources[category] = MotionSourceConfig(
-                paths=[str(path) for path in cfg.paths],
-                weight=float(cfg.weight),
+        self._motion_sources = self._parse_motion_sources()
+        self._motion_files = self._index_motion_files()
+        self._native_fps_cache: dict[Path, float] = {}
+        needs_accad = any(
+            source.format is MotionFormat.AMASS_SMPLH_V1
+            for source in self._motion_sources.values()
+        )
+        self._accad_adapter = accad_adapter
+        if needs_accad and self._accad_adapter is None:
+            self._accad_adapter = AccadCoco17Adapter(
+                smplh_model_path=smplh_model_path,
+                coco17_regressor_path=coco17_regressor_path,
+                device=self.device,
             )
 
-    def _index_motion_files(self) -> None:
-        """Index all available motion files by category."""
-        for category, source_cfg in self._motion_sources.items():
-            files = []
-            for path_str in source_cfg.paths:
-                path = Path(path_str)
-                if path.is_file() and path.suffix == ".npz":
-                    files.append(path)
-                elif path.is_dir():
-                    # Find all *_poses.npz files recursively
-                    files.extend(path.rglob("*_poses.npz"))
-            self._motion_files[category] = files
+        total_files = sum(len(files) for files in self._motion_files.values())
+        print(f"MotionSampler: indexed {total_files} canonicalizable motion files")
+        for category, files in self._motion_files.items():
+            source = self._motion_sources[category]
+            print(f"  - {category} [{source.format.value}]: {len(files)} files")
 
-        # Log statistics
-        total_files = sum(len(f) for f in self._motion_files.values())
-        print(f"MotionSampler: indexed {total_files} motion files")
-        for cat, files in self._motion_files.items():
-            print(f"  - {cat}: {len(files)} files")
-
-    def _get_smplh_model(self, gender: str) -> Any:
-        """Get or create SMPL-H model for given gender.
-
-        Args:
-            gender: Gender string ('male', 'female', 'neutral').
-
-        Returns:
-            SMPL-H model instance.
-
-        """
-        gender_lower = gender.lower()
-        if gender_lower not in self._smplh_models:
-            try:
-                import smplx  # type: ignore[import-untyped]
-
-                model = smplx.create(
-                    model_path=str(self.smplh_model_path.parent),
-                    model_type="smplh",
-                    gender=gender_lower,
-                    num_betas=16,
-                    use_pca=False,
-                    ext="pkl",
+    def _parse_motion_sources(self) -> dict[str, MotionSourceConfig]:
+        sources: dict[str, MotionSourceConfig] = {}
+        for raw_category, raw in self.config.motion_sources.items():
+            category = str(raw_category)
+            if not category or category != category.strip():
+                raise ValueError("Motion category names must be non-empty and trimmed.")
+            keys = set(raw.keys())
+            if keys != {"format", "paths", "weight"}:
+                raise ValueError(
+                    f"motion_sources.{category} must contain exactly format, paths, "
+                    f"and weight; got {sorted(keys)}."
                 )
-                model = model.to(self.device)
-                model.eval()
-                self._smplh_models[gender_lower] = model
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to load SMPL-H model for gender '{gender}': {e}"
-                ) from e
+            try:
+                source_format = MotionFormat(str(raw.format))
+            except ValueError as error:
+                raise ValueError(
+                    f"motion_sources.{category}.format is not registered: {raw.format!r}."
+                ) from error
+            raw_paths = raw.paths
+            if isinstance(raw_paths, str):
+                raise TypeError(
+                    f"motion_sources.{category}.paths must be a path sequence."
+                )
+            paths = tuple(Path(str(path)) for path in raw_paths)
+            if not paths:
+                raise ValueError(f"motion_sources.{category}.paths must not be empty.")
+            raw_weight = raw.weight
+            if isinstance(raw_weight, bool) or not isinstance(raw_weight, (int, float)):
+                raise TypeError(f"motion_sources.{category}.weight must be numeric.")
+            weight = float(raw_weight)
+            if not math.isfinite(weight) or weight <= 0.0:
+                raise ValueError(
+                    f"motion_sources.{category}.weight must be positive and finite."
+                )
+            if source_format is MotionFormat.AMASS_SMPLH_V1:
+                try:
+                    MotionCategory(category)
+                except ValueError as error:
+                    raise ValueError(
+                        "AMASS/SMPL-H categories must be running, walking, or general; "
+                        f"got {category!r}."
+                    ) from error
+            sources[category] = MotionSourceConfig(
+                format=source_format,
+                paths=paths,
+                weight=weight,
+            )
+        if not sources:
+            raise ValueError("At least one motion source must be configured.")
+        return sources
 
-        return self._smplh_models[gender_lower]
-
-    def _infer_category_from_path(self, path: Path) -> str:
-        """Infer motion category from file path.
-
-        Args:
-            path: Path to motion file.
-
-        Returns:
-            Inferred category string.
-
-        """
-        # Extract category from folder name (e.g., Female1Running_c3d -> Running)
-        parent_name = path.parent.name
-        # Common patterns: Female1Running_c3d, Male2Walking_c3d, etc.
-        for keyword in ["Running", "Walking", "General", "Jump", "Stand"]:
-            if keyword.lower() in parent_name.lower():
-                return keyword.lower()
-        return "general"
+    def _index_motion_files(self) -> dict[str, tuple[Path, ...]]:
+        indexed: dict[str, tuple[Path, ...]] = {}
+        for category, source in self._motion_sources.items():
+            files: list[Path] = []
+            for configured in source.paths:
+                path = configured.resolve()
+                if path.is_file():
+                    candidates = [path]
+                elif path.is_dir():
+                    pattern = (
+                        "*_poses.npz"
+                        if source.format is MotionFormat.AMASS_SMPLH_V1
+                        else "*.motion.npz"
+                    )
+                    candidates = sorted(path.rglob(pattern))
+                else:
+                    raise FileNotFoundError(
+                        f"Configured motion source does not exist: {path}"
+                    )
+                for candidate in candidates:
+                    if source.format is MotionFormat.AMASS_SMPLH_V1:
+                        valid_name = candidate.name.endswith("_poses.npz")
+                    else:
+                        valid_name = candidate.name.endswith(".motion.npz")
+                    if not valid_name:
+                        raise ValueError(
+                            f"{candidate} does not match {source.format.value}."
+                        )
+                    files.append(candidate.resolve())
+            unique = tuple(sorted(set(files)))
+            if len(unique) != len(files):
+                raise ValueError(
+                    f"motion_sources.{category} resolves duplicate motion files."
+                )
+            if not unique:
+                raise FileNotFoundError(
+                    f"motion_sources.{category} contains no {source.format.value} files."
+                )
+            indexed[category] = unique
+        return indexed
 
     def sample_motion(
         self,
         category: str | None = None,
-        max_frames: int | None = None,
-    ) -> MotionSequence:
-        """Sample a random motion sequence.
+        *,
+        required_fps: float | None = None,
+    ) -> Coco17MotionClip:
+        """Sample one compatible file and return the common contract.
 
-        Args:
-            category: Specific category to sample from. If None, uses weighted sampling.
-            max_frames: Maximum number of frames to load. If None, loads all.
-
-        Returns:
-            MotionSequence with loaded data.
-
+        ``required_fps`` is used by multi-person generation, whose persisted scene
+        has one shared time axis. It filters native sources rather than resampling
+        them, so no source motion is silently sped up or slowed down.
         """
-        # Select category
-        if category is not None:
-            if category not in self._motion_files:
-                raise ValueError(f"Unknown category: {category}")
-            selected_category = category
-        else:
-            # Weighted random selection
-            categories = list(self._motion_sources.keys())
-            weights = [self._motion_sources[c].weight for c in categories]
-            # Filter out categories with no files
-            valid = [
-                (c, w)
-                for c, w in zip(categories, weights, strict=True)
-                if self._motion_files.get(c)
-            ]
-            if not valid:
-                raise RuntimeError("No motion files available")
-            valid_categories, valid_weights = zip(*valid, strict=True)
-            selected_category = random.choices(
-                valid_categories, weights=valid_weights, k=1
-            )[0]
-
-        # Select random file from category
-        files = self._motion_files[selected_category]
-        if not files:
-            raise RuntimeError(f"No files in category '{selected_category}'")
-        selected_file = random.choice(files)
-
-        # Load motion data
-        return self.load_motion(selected_file, max_frames=max_frames)
-
-    def load_motion(
-        self,
-        path: Path | str,
-        max_frames: int | None = None,
-    ) -> MotionSequence:
-        """Load a specific motion file.
-
-        Args:
-            path: Path to AMASS npz file.
-            max_frames: Maximum frames to load.
-
-        Returns:
-            MotionSequence with loaded data.
-
-        """
-        path = Path(path)
-        data = np.load(path, allow_pickle=True)
-
-        poses = data["poses"].astype(np.float32)
-        trans = data["trans"].astype(np.float32)
-        betas = data["betas"].astype(np.float32)
-
-        # Handle gender
-        gender_raw = data["gender"]
-        if isinstance(gender_raw, np.ndarray):
-            gender = str(gender_raw.item())
-        else:
-            gender = str(gender_raw)
-        # Clean up gender string (e.g., "b'female'" -> "female")
-        gender = gender.strip("b'\"").lower()
-
-        if "mocap_framerate" not in data:
-            raise ValueError(
-                f"Motion archive {path} is missing required mocap_framerate metadata."
+        if required_fps is not None:
+            if (
+                isinstance(required_fps, bool)
+                or not isinstance(required_fps, (int, float))
+                or not math.isfinite(float(required_fps))
+                or float(required_fps) <= 0.0
+            ):
+                raise ValueError("required_fps must be a positive finite number.")
+            required_fps = float(required_fps)
+        eligible = {
+            name: tuple(
+                path
+                for path in files
+                if required_fps is None
+                or math.isclose(
+                    self._native_fps(path, source=self._motion_sources[name]),
+                    required_fps,
+                    rel_tol=0.0,
+                    abs_tol=1e-6,
+                )
             )
-        fps = float(data["mocap_framerate"].item())
-
-        # Truncate if needed
-        if max_frames is not None and poses.shape[0] > max_frames:
-            poses = poses[:max_frames]
-            trans = trans[:max_frames]
-
-        category = self._infer_category_from_path(path)
-
-        return MotionSequence(
-            source_path=str(path),
-            category=category,
-            gender=gender,
-            fps=fps,
-            poses=poses,
-            trans=trans,
-            betas=betas,
-        )
-
-    def compute_joints_3d(
-        self,
-        motion: MotionSequence,
-        batch_size: int = 64,
-    ) -> np.ndarray:
-        """Compute 3D joints using SMPL-H model.
-
-        Args:
-            motion: Motion sequence with poses and betas.
-            batch_size: Batch size for SMPL-H forward pass.
-
-        Returns:
-            3D joint positions, shape (T, J, 3).
-
-        """
-        model = self._get_smplh_model(motion.gender)
-
-        T = motion.num_frames
-        poses = motion.poses
-        trans = motion.trans
-        betas = motion.betas
-
-        # Split poses into components
-        # poses: (T, 156) = 52 joints * 3 axis-angle
-        aa = poses.reshape(T, 52, 3)
-        global_orient = aa[:, 0]  # (T, 3)
-        body_pose = aa[:, 1:22].reshape(T, -1)  # (T, 63)
-        left_hand_pose = aa[:, 37:52].reshape(T, -1)  # (T, 45)
-        right_hand_pose = aa[:, 22:37].reshape(T, -1)  # (T, 45)
-
-        # Prepare betas (truncate to model's num_betas)
-        model_num_betas = int(model.num_betas)
-        num_betas = min(betas.shape[0], model_num_betas)
-        betas_truncated = betas[:num_betas]
-
-        # Process in batches
-        all_joints = []
-
-        with torch.no_grad():
-            for start in range(0, T, batch_size):
-                end = min(start + batch_size, T)
-                batch_t = end - start
-
-                # Convert to tensors
-                global_orient_t = torch.from_numpy(global_orient[start:end]).to(
-                    self.device
+            for name, files in self._motion_files.items()
+        }
+        if category is None:
+            categories = tuple(name for name, files in eligible.items() if files)
+            if not categories:
+                raise RuntimeError(
+                    f"No configured motion matches required_fps={required_fps}."
                 )
-                body_pose_t = torch.from_numpy(body_pose[start:end]).to(self.device)
-                left_hand_t = torch.from_numpy(left_hand_pose[start:end]).to(
-                    self.device
+            weights = tuple(self._motion_sources[name].weight for name in categories)
+            selected_category = random.choices(categories, weights=weights, k=1)[0]
+        else:
+            if category not in self._motion_sources:
+                raise ValueError(f"Unknown motion category: {category}")
+            selected_category = category
+            if not eligible[category]:
+                raise RuntimeError(
+                    f"Motion category {category!r} has no file matching "
+                    f"required_fps={required_fps}."
                 )
-                right_hand_t = torch.from_numpy(right_hand_pose[start:end]).to(
-                    self.device
+        selected_path = random.choice(eligible[selected_category])
+        return self.load_motion(selected_path, category=selected_category)
+
+    def _native_fps(self, path: Path, *, source: MotionSourceConfig) -> float:
+        cached = self._native_fps_cache.get(path)
+        if cached is not None:
+            return cached
+        if source.format is MotionFormat.COCO17_MOTION_V1:
+            fps = load_motion_clip(path).fps
+        else:
+            with np.load(path, allow_pickle=False) as archive:
+                if "mocap_framerate" not in archive.files:
+                    raise ValueError(
+                        f"{path}: missing required mocap_framerate for FPS matching."
+                    )
+                raw = np.asarray(archive["mocap_framerate"])
+            if raw.size != 1 or not np.issubdtype(raw.dtype, np.number):
+                raise ValueError(f"{path}: mocap_framerate must be one numeric scalar.")
+            fps = float(raw.reshape(()).item())
+        if not math.isfinite(fps) or fps <= 0.0:
+            raise ValueError(f"{path}: native FPS must be positive and finite.")
+        self._native_fps_cache[path] = fps
+        return fps
+
+    def load_motion(self, path: Path | str, *, category: str) -> Coco17MotionClip:
+        """Load one configured file through its explicitly registered adapter."""
+        if category not in self._motion_sources:
+            raise ValueError(f"Unknown motion category: {category}")
+        source = self._motion_sources[category]
+        resolved = Path(path).resolve()
+        if source.format is MotionFormat.COCO17_MOTION_V1:
+            clip = load_motion_clip(resolved)
+            if clip.category != category:
+                raise ValueError(
+                    f"Configured category {category!r} disagrees with artifact "
+                    f"category {clip.category!r}: {resolved}"
                 )
-                transl_t = torch.from_numpy(trans[start:end]).to(self.device)
-                betas_t = (
-                    torch.from_numpy(betas_truncated[None, :])
-                    .to(self.device)
-                    .repeat(batch_t, 1)
-                )
-
-                output = cast(Any, model)(
-                    betas=betas_t,
-                    global_orient=global_orient_t,
-                    body_pose=body_pose_t,
-                    left_hand_pose=left_hand_t,
-                    right_hand_pose=right_hand_t,
-                    transl=transl_t,
-                    return_verts=False,
-                )
-
-                joints = output.joints.cpu().numpy()  # (batch_t, J, 3)
-                all_joints.append(joints)
-
-        joints_3d = np.concatenate(all_joints, axis=0)  # (T, J, 3)
-        motion.joints_3d = joints_3d
-
-        return cast(np.ndarray, joints_3d)
+            return clip
+        if self._accad_adapter is None:
+            raise RuntimeError("AMASS/SMPL-H source has no configured adapter.")
+        raw = load_amass_motion_clip(resolved, category=MotionCategory(category))
+        return self._accad_adapter.convert(raw)
 
     def get_available_categories(self) -> list[str]:
-        """Get list of available motion categories.
-
-        Returns:
-            List of category names with available files.
-
-        """
-        return [c for c, files in self._motion_files.items() if files]
+        """Return configured categories in deterministic config order."""
+        return list(self._motion_sources)
 
     def get_category_file_count(self, category: str) -> int:
-        """Get number of files in a category.
+        """Return the indexed file count for one configured category."""
+        return len(self._motion_files.get(category, ()))
 
-        Args:
-            category: Category name.
 
-        Returns:
-            Number of motion files.
+# Deliberate compatibility alias: callers importing MotionSequence now receive
+# the source-independent representation instead of the removed AMASS container.
+MotionSequence = Coco17MotionClip
 
-        """
-        return len(self._motion_files.get(category, []))
+
+__all__ = [
+    "MotionFormat",
+    "MotionSampler",
+    "MotionSequence",
+    "MotionSourceConfig",
+]

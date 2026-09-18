@@ -1,0 +1,409 @@
+{
+  "scale_xyz_m": [
+    11.885,
+    11.885,
+    11.885
+  ],
+  "scenes": {
+    "scene_000013": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000024": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000032": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000047": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000072": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000084": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000088": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000089": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000094": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000099": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000100": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000110": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000125": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000131": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000157": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000158": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000159": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000160": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000166": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000175": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000180": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000188": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000199": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000200": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000208": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000210": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000215": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000219": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000220": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000229": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000253": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000276": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000280": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000285": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000290": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000327": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000348": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000349": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000369": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000380": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000384": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000403": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000428": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000429": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000431": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000436": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000457": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000459": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000466": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000467": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000468": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000473": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000478": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000487": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000525": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000538": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000579": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000583": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000586": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000588": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000594": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000597": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000599": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000608": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000612": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000614": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000631": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000635": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000640": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000643": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000645": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000650": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000654": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000659": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000665": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000672": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000684": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000703": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000717": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000760": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000768": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000773": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000784": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000798": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000808": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000834": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000839": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000859": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000867": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000869": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000900": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000924": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000931": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000948": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000962": {
+      "source": "accad",
+      "fps": 120.0
+    },
+    "scene_000963": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000967": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000974": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000982": {
+      "source": "gvhmr",
+      "fps": 59.94006
+    },
+    "scene_000998": {
+      "source": "accad",
+      "fps": 120.0
+    }
+  }
+}

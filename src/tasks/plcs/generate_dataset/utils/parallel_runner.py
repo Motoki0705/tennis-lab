@@ -30,6 +30,7 @@ def build_scene_generator(
     motion_sampler = MotionSampler(
         config=config,
         smplh_model_path=config.external_assets.smplh_model_path,
+        coco17_regressor_path=config.external_assets.coco17_regressor_path,
         device=device,
     )
     return SceneGenerator(

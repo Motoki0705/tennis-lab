@@ -3,8 +3,8 @@
 This module generates training scenes by combining motion sequences with
 virtual camera configurations and projecting to 2D.
 
-Supports two motion sources:
-- AMASS/SMPL-H via ``MotionSampler`` (the original pipeline)
+All source-specific representations are adapted to the canonical COCO-17
+motion contract before entering this module.
 """
 
 from __future__ import annotations
@@ -28,22 +28,16 @@ from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
 )
+from src.tasks.plcs.motion import place_motion_on_court
 from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,
 )
 from src.utils.schema.court import (
-    COURT_COORD_SCALE_X,
-    COURT_COORD_SCALE_Y,
-    COURT_COORD_SCALE_Z,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
     STANDARD_COURT_CONFIG,
-)
-from src.utils.schema.player import (
-    FACE_KEYPOINT_OFFSETS,
-    SMPLH_TO_COCO17_MAPPING,
 )
 
 if TYPE_CHECKING:
@@ -97,7 +91,7 @@ class SceneGenerator:
     """Generate PLCS training scenes.
 
     This class:
-    - Samples motion sequences from AMASS
+    - Samples source-independent COCO-17 motion sequences
     - Places players on the court with random initial pose
     - Generates multiple camera views
     - Projects 3D data to 2D UV coordinates
@@ -129,6 +123,7 @@ class SceneGenerator:
             motion_sampler = MotionSampler(
                 config=config,
                 smplh_model_path=str(config.external_assets.smplh_model_path),
+                coco17_regressor_path=str(config.external_assets.coco17_regressor_path),
                 device=device,
             )
         self.motion_sampler = motion_sampler
@@ -220,7 +215,7 @@ class SceneGenerator:
         """Transform motion sequence to court coordinates.
 
         Args:
-            motion: Motion sequence with joints_3d computed.
+            motion: Source-independent COCO-17 motion.
             init_x: Initial X position on court.
             init_y: Initial Y position on court.
             init_yaw: Initial yaw rotation.
@@ -229,165 +224,16 @@ class SceneGenerator:
             Tuple of (positions, rotations, canonical_poses):
             - positions: (T, 3) normalized court coordinates
             - rotations: (T, 2) cos/sin yaw
-            - canonical_poses: (T, J, 3) yaw-canonical local coordinate poses
+            - canonical_poses: (T, 17, 3) yaw-canonical local coordinate poses
 
         """
-        if motion.joints_3d is None:
-            raise ValueError(
-                "Motion joints_3d not computed. Call compute_joints_3d first."
-            )
-
-        T = motion.num_frames
-        joints_3d = motion.joints_3d  # (T, J, 3)
-
-        # Get pelvis (root) position from original motion
-        original_trans = motion.trans  # (T, 3)
-
-        # Compute initial offset (first frame XY only, keep Z from trans)
-        init_offset_xy = original_trans[0, :2].copy()
-
-        # Center motion at origin (XY only)
-        centered_trans = original_trans.copy()
-        centered_trans[:, 0] -= init_offset_xy[0]
-        centered_trans[:, 1] -= init_offset_xy[1]
-        # Keep original Z (pelvis height from ground)
-
-        # Compute motion yaw first so translation and body rotation share the same offset.
-        motion_yaw = self._extract_global_yaw_from_motion(motion)  # (T,)
-        yaw_offset = self._wrap_angle(init_yaw - motion_yaw[0])
-
-        # Rotation matrix for yaw offset (not raw init_yaw)
-        cos_yaw = math.cos(yaw_offset)
-        sin_yaw = math.sin(yaw_offset)
-        rot_mat = np.array(
-            [
-                [cos_yaw, -sin_yaw, 0],
-                [sin_yaw, cos_yaw, 0],
-                [0, 0, 1],
-            ],
-            dtype=np.float32,
+        placed = place_motion_on_court(
+            motion,
+            initial_x_m=init_x,
+            initial_y_m=init_y,
+            initial_yaw_rad=init_yaw,
         )
-
-        # Transform to court coordinates
-        court_trans = centered_trans @ rot_mat.T
-        court_trans[:, 0] += init_x
-        court_trans[:, 1] += init_y
-
-        # Normalize positions
-        positions: np.ndarray = np.zeros((T, 3), dtype=np.float32)
-        positions[:, 0] = court_trans[:, 0] / COURT_COORD_SCALE_X
-        positions[:, 1] = court_trans[:, 1] / COURT_COORD_SCALE_Y
-        positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
-
-        # Compute rotations (yaw): motion-relative yaw with randomized initial yaw.
-        relative_yaw = self._wrap_angle(motion_yaw - motion_yaw[0])  # t=0 -> 0
-        world_yaw = self._wrap_angle(relative_yaw + init_yaw)  # add random initial yaw
-
-        rotations: np.ndarray = np.zeros((T, 2), dtype=np.float32)
-        rotations[:, 0] = np.cos(world_yaw).astype(np.float32)  # cos(yaw)
-        rotations[:, 1] = np.sin(world_yaw).astype(np.float32)  # sin(yaw)
-
-        # Canonical poses: joints relative to pelvis, then remove per-frame global yaw
-        pelvis = joints_3d[:, 0:1, :]  # (T, 1, 3)
-        root_relative = joints_3d - pelvis  # (T, J, 3)
-        cos_m = np.cos(motion_yaw).astype(np.float32)
-        sin_m = np.sin(motion_yaw).astype(np.float32)
-        canonical_poses = np.empty_like(root_relative, dtype=np.float32)
-        canonical_poses[..., 0] = (
-            root_relative[..., 0] * cos_m[:, None]
-            + root_relative[..., 1] * sin_m[:, None]
-        )
-        canonical_poses[..., 1] = (
-            -root_relative[..., 0] * sin_m[:, None]
-            + root_relative[..., 1] * cos_m[:, None]
-        )
-        canonical_poses[..., 2] = root_relative[..., 2]
-
-        return positions, rotations, canonical_poses
-
-    def _extract_global_yaw_from_motion(self, motion: MotionSequence) -> np.ndarray:
-        """Extract per-frame global yaw (Z axis) from AMASS global_orient."""
-        aa = motion.poses.reshape(motion.num_frames, 52, 3)[:, 0, :]  # (T, 3)
-        theta = np.linalg.norm(aa, axis=1)  # (T,)
-
-        axis = np.zeros_like(aa, dtype=np.float32)
-        valid = theta > 1e-8
-        axis[valid] = aa[valid] / theta[valid, None]
-
-        x = axis[:, 0]
-        y = axis[:, 1]
-        z = axis[:, 2]
-        c = np.cos(theta)
-        s = np.sin(theta)
-        one_minus_c = 1.0 - c
-
-        # Rodrigues (need R[0,0], R[1,0] only for yaw = atan2(R10, R00))
-        r00 = c + x * x * one_minus_c
-        r10 = y * x * one_minus_c + z * s
-
-        yaw: np.ndarray = np.arctan2(r10, r00).astype(np.float32)
-        return yaw
-
-    def _wrap_angle(self, angle: np.ndarray) -> np.ndarray:
-        """Wrap angles to [-pi, pi]."""
-        wrapped: np.ndarray = np.arctan2(np.sin(angle), np.cos(angle)).astype(
-            np.float32
-        )
-        return wrapped
-
-    def _smplh_to_coco17(
-        self,
-        joints_3d: np.ndarray,
-        yaw: float | np.ndarray,
-    ) -> np.ndarray:
-        """Convert SMPL-H joints to COCO 17 format.
-
-        Args:
-            joints_3d: SMPL-H joints, shape (T, J, 3) or (J, 3).
-            yaw: Yaw angle for face keypoint orientation, scalar or (T,).
-
-        Returns:
-            COCO 17 keypoints, shape (T, 17, 3) or (17, 3).
-
-        """
-        squeeze = joints_3d.ndim == 2
-        if squeeze:
-            joints_3d = joints_3d[None, ...]  # (1, J, 3)
-
-        T = joints_3d.shape[0]
-        coco17 = np.zeros((T, 17, 3), dtype=np.float32)
-
-        # Map body keypoints
-        for coco_idx, smplh_idx in SMPLH_TO_COCO17_MAPPING.items():
-            if smplh_idx >= 0:
-                coco17[:, coco_idx, :] = joints_3d[:, smplh_idx, :]
-
-        # Compute face keypoints from head
-        head_pos = joints_3d[:, 15, :]  # head joint
-
-        yaw_arr = np.asarray(yaw, dtype=np.float32)
-        if yaw_arr.ndim == 0:
-            yaw_arr = np.full((T,), float(yaw_arr), dtype=np.float32)
-        elif yaw_arr.shape != (T,):
-            raise ValueError(f"yaw must be scalar or shape ({T},), got {yaw_arr.shape}")
-
-        cos_yaw = np.cos(yaw_arr).astype(np.float32)
-        sin_yaw = np.sin(yaw_arr).astype(np.float32)
-
-        for coco_idx, offset in FACE_KEYPOINT_OFFSETS.items():
-            offset_arr = np.array(offset, dtype=np.float32)
-            rotated_offset = np.stack(
-                [
-                    offset_arr[0] * cos_yaw - offset_arr[1] * sin_yaw,
-                    offset_arr[0] * sin_yaw + offset_arr[1] * cos_yaw,
-                    np.full((T,), offset_arr[2], dtype=np.float32),
-                ],
-                axis=1,
-            )
-            coco17[:, coco_idx, :] = head_pos + rotated_offset
-
-        result: np.ndarray = coco17[0] if squeeze else coco17
-        return result
+        return placed.position, placed.rotation, placed.canonical_pose_3d
 
     def _evaluate_camera(
         self,
@@ -417,53 +263,37 @@ class SceneGenerator:
     def generate_scene(
         self,
         scene_id: str | None = None,
+        *,
+        required_fps: float | None = None,
     ) -> SceneData:
         """Generate a complete scene.
 
         Args:
             scene_id: Optional scene identifier.
+            required_fps: Optional native rate required by a shared scene timeline.
 
         Returns:
             SceneData with all generated data.
 
         """
         # Sample motion
-        motion = self.motion_sampler.sample_motion()
-        self.motion_sampler.compute_joints_3d(motion)
+        motion = self.motion_sampler.sample_motion(required_fps=required_fps)
 
         # Sample initial pose
         init_x, init_y, init_yaw = self._sample_initial_pose()
 
         # Transform to court coordinates
-        positions, rotations, canonical_poses = self._transform_motion_to_court(
-            motion, init_x, init_y, init_yaw
+        placed = place_motion_on_court(
+            motion,
+            initial_x_m=init_x,
+            initial_y_m=init_y,
+            initial_yaw_rad=init_yaw,
         )
-
-        # Get world-space joints for projection
-        T = motion.num_frames
-        pelvis_world: np.ndarray = np.zeros((T, 3), dtype=np.float32)
-        pelvis_world[:, 0] = positions[:, 0] * COURT_COORD_SCALE_X
-        pelvis_world[:, 1] = positions[:, 1] * COURT_COORD_SCALE_Y
-        pelvis_world[:, 2] = positions[:, 2] * COURT_COORD_SCALE_Z
-
-        cos_yaw: np.ndarray = rotations[:, 0].astype(np.float32)
-        sin_yaw: np.ndarray = rotations[:, 1].astype(np.float32)
-        world_joints = np.empty_like(canonical_poses, dtype=np.float32)
-        world_joints[..., 0] = (
-            canonical_poses[..., 0] * cos_yaw[:, None]
-            - canonical_poses[..., 1] * sin_yaw[:, None]
-            + pelvis_world[:, None, 0]
-        )
-        world_joints[..., 1] = (
-            canonical_poses[..., 0] * sin_yaw[:, None]
-            + canonical_poses[..., 1] * cos_yaw[:, None]
-            + pelvis_world[:, None, 1]
-        )
-        world_joints[..., 2] = canonical_poses[..., 2] + pelvis_world[:, None, 2]
-
-        # Convert to COCO 17 (face keypoints use per-frame yaw)
-        yaw_world = np.arctan2(rotations[:, 1], rotations[:, 0]).astype(np.float32)
-        coco17_joints = self._smplh_to_coco17(world_joints, yaw_world)  # (T, 17, 3)
+        positions = placed.position
+        rotations = placed.rotation
+        canonical_poses = placed.canonical_pose_3d
+        coco17_joints = placed.world_joints_3d
+        T = motion.frame_count
 
         # Get court keypoints (static)
         if self.court_kp_3d is None:
@@ -545,6 +375,8 @@ class SceneGenerator:
             "initial_position": (init_x, init_y),
             "initial_yaw": init_yaw,
             "num_cameras_sampled": len(cameras_data),
+            "motion_source_kind": motion.source_kind.value,
+            "motion_source_id": motion.source_id,
         }
 
         return SceneData(

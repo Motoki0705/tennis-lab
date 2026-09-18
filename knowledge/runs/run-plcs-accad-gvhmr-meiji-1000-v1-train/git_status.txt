@@ -1,0 +1,54 @@
+A  knowledge/nodes/run-plcs-accad-gvhmr-dino-smoke-v1.md
+ M src/submodules/README.md
+ M src/submodules/models/__init__.py
+ M src/submodules/models/gvhmr/mesh_recovery.py
+ M src/submodules/models/tracker/common.py
+ M src/submodules/models/tracker/dino_tracker.py
+ M src/submodules/models/tracker/yolo_tracker.py
+ M src/tasks/plcs/README.md
+ M src/tasks/plcs/configs/data/_augmentation.yaml
+ M src/tasks/plcs/configs/generate_dataset.yaml
+A  src/tasks/plcs/configs/gvhmr_motion/meiji_3cam.yaml
+A  src/tasks/plcs/configs/motion_sources/accad_gvhmr.yaml
+ M src/tasks/plcs/configs/motion_sources/default.yaml
+ M src/tasks/plcs/configs/train_chunked.yaml
+ M src/tasks/plcs/configs/train_chunked_gan.yaml
+ M src/tasks/plcs/configs/train_tracking_chunked.yaml
+ M src/tasks/plcs/configuration.py
+ M src/tasks/plcs/configuration_contracts.py
+ M src/tasks/plcs/data/dataset.py
+A  src/tasks/plcs/data/frame_rate_augmentation.py
+ M src/tasks/plcs/data/tracking_dataset.py
+ M src/tasks/plcs/data/tracking_types.py
+ M src/tasks/plcs/data/types.py
+ M src/tasks/plcs/generate_dataset/config.py
+ M src/tasks/plcs/generate_dataset/io/dataset_io.py
+ M src/tasks/plcs/generate_dataset/multi_object_scene_generator.py
+ M src/tasks/plcs/generate_dataset/sampling/__init__.py
+ M src/tasks/plcs/generate_dataset/sampling/motion_sampler.py
+ M src/tasks/plcs/generate_dataset/scene_generator.py
+ M src/tasks/plcs/generate_dataset/utils/parallel_runner.py
+A  src/tasks/plcs/motion/__init__.py
+A  src/tasks/plcs/motion/artifact.py
+A  src/tasks/plcs/motion/contracts.py
+A  src/tasks/plcs/motion/geometry.py
+A  src/tasks/plcs/motion/gvhmr_extraction.py
+A  src/tasks/plcs/motion/sources/__init__.py
+A  src/tasks/plcs/motion/sources/accad.py
+A  src/tasks/plcs/motion/sources/gvhmr.py
+A  src/tasks/plcs/scripts/extract_gvhmr_motions.py
+ M src/utils/configuration/inventory.py
+ M tests/unit/submodules/models/test_public_api.py
+ M tests/unit/submodules/models/tracker/test_yolo_tracker.py
+ M tests/unit/tasks/plcs/data/test_court_view_dataset.py
+A  tests/unit/tasks/plcs/data/test_frame_rate_augmentation.py
+ M tests/unit/tasks/plcs/generate_dataset/sampling/test_motion_sampler.py
+ M tests/unit/tasks/plcs/generate_dataset/sampling/test_motion_source.py
+ M tests/unit/tasks/plcs/generate_dataset/test_multi_object_scene_generator.py
+ M tests/unit/tasks/plcs/generate_dataset/test_scene_generator.py
+A  tests/unit/tasks/plcs/motion/test_adapters.py
+A  tests/unit/tasks/plcs/motion/test_contract.py
+A  tests/unit/tasks/plcs/motion/test_gvhmr_extraction.py
+ M tests/unit/tasks/plcs/test_configuration_contracts.py
+ M tests/unit/utils/configuration/test_contracts.py
+?? knowledge/nodes/run-plcs-accad-gvhmr-meiji-1000-v1.md

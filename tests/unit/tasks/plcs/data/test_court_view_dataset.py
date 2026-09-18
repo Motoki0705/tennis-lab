@@ -19,6 +19,7 @@ from src.tasks.base.generate_dataset import (
 )
 from src.tasks.plcs.court_keypoint_contract import choose_reference_selection
 from src.tasks.plcs.data.dataset import SceneDataset
+from src.tasks.plcs.data.frame_rate_augmentation import PLCSFrameRateSampler
 from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
 from src.utils.schema.court_normalization import normalize_court_position
 
@@ -81,7 +82,7 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
     scene = Scene(
         path=Path("/dataset/scenes/scene_000000"),
         data=data,
-        meta={"scene_id": "scene_000000", "num_frames": frames},
+        meta={"scene_id": "scene_000000", "num_frames": frames, "fps": 60.0},
         num_frames=frames,
         num_cameras=2,
     )
@@ -106,6 +107,16 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
     dataset._plcs_seq_len_range = (2, 2)
     dataset.camera_mode_plcs = "random"
     dataset.num_court_kp = 20
+    dataset.frame_rate_sampler = PLCSFrameRateSampler(
+        {
+            "enabled": True,
+            "frame_rate": {
+                "enabled": True,
+                "prob": 1.0,
+                "choices_hz": [28.0, 30.0, 60.0],
+            },
+        }
+    )
     dataset.config = SceneDatasetConfig(
         scene_dir=Path("/dataset"),
         split_file=Path("train.txt"),
@@ -195,6 +206,7 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
             "overflow_policy": "error",
         }
     )
+    dataset.frame_rate_sampler = standard.frame_rate_sampler
     dataset.config = SceneDatasetConfig(
         scene_dir=Path("/dataset"),
         split_file=Path("train.txt"),
