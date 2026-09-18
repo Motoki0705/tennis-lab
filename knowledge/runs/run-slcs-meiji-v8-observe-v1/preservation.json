@@ -1,0 +1,103 @@
+{
+  "status": "preserved_original_observations",
+  "inputs": [
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_005/cam2_people.npz",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_005/cam2_people.npz",
+      "sha256": "f0bd582c033eec4994e671cbaa56e1caa33e4f5df60b0f506912498ded3f2afe",
+      "source_size": 73861,
+      "source_mtime_ns": 1789749276215826577,
+      "source_ctime_ns": 1789749276215826577
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_005/cam2_people.metadata.json",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_005/cam2_people.metadata.json",
+      "sha256": "3507c68fa25dfa8a95ae0bf0b7aa34bb09621557d7dd3ce4518f2b252dfba9f1",
+      "source_size": 1417,
+      "source_mtime_ns": 1789749276215826577,
+      "source_ctime_ns": 1789749276215826577
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_005/cam2_detections.npz",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_005/cam2_detections.npz",
+      "sha256": "7f8e38fd21a3ab7005f8904efd32ac22c312c32d5f7fb34e0dc975b4105c5770",
+      "source_size": 4592,
+      "source_mtime_ns": 1789749258677356038,
+      "source_ctime_ns": 1789749258677356038
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_005/cam2_detections.metadata.json",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_005/cam2_detections.metadata.json",
+      "sha256": "901873aca02c7acb25f1fc2fde1b7c958d611f42fe240c9da684d2b3ab00a71b",
+      "source_size": 308,
+      "source_mtime_ns": 1789749258677356038,
+      "source_ctime_ns": 1789749258677356038
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_006/cam2_people.npz",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_006/cam2_people.npz",
+      "sha256": "214665fcaa7cd426e5c16a8aca492e55c562d78968058c2bf06c10b213695a1a",
+      "source_size": 78625,
+      "source_mtime_ns": 1789749507727705810,
+      "source_ctime_ns": 1789749507727705810
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_006/cam2_people.metadata.json",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_006/cam2_people.metadata.json",
+      "sha256": "50654aaaf03b774a73a12b7a24d2cae27ed67c1e3d1d38785f5794055660a4ca",
+      "source_size": 1417,
+      "source_mtime_ns": 1789749507727705810,
+      "source_ctime_ns": 1789749507727705810
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_006/cam2_detections.npz",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_006/cam2_detections.npz",
+      "sha256": "e14891e151e9684c630296ca49c6d7314a874de7bc2ade7062eecf9c53f02f6d",
+      "source_size": 4515,
+      "source_mtime_ns": 1789749490980537314,
+      "source_ctime_ns": 1789749490980537314
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_006/cam2_detections.metadata.json",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_006/cam2_detections.metadata.json",
+      "sha256": "f86f299826e0fff9b1357428df518d5686c8fbcb8beb652b15bcb69e6a8b9a7f",
+      "source_size": 308,
+      "source_mtime_ns": 1789749490980537314,
+      "source_ctime_ns": 1789749490980537314
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_012/cam2_people.npz",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_012/cam2_people.npz",
+      "sha256": "ea4527308d82f18951a71d702b9a8f7ae18bbec3392addd992859c7329f1420d",
+      "source_size": 99074,
+      "source_mtime_ns": 1789751136767480966,
+      "source_ctime_ns": 1789751136767480966
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_012/cam2_people.metadata.json",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_012/cam2_people.metadata.json",
+      "sha256": "3621cf52f43a9d13185df4c16fe83b500b6b1bc48177a23aec6043a8dc6b8927",
+      "source_size": 1417,
+      "source_mtime_ns": 1789751136767480966,
+      "source_ctime_ns": 1789751136767480966
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_012/cam2_detections.npz",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_012/cam2_detections.npz",
+      "sha256": "da06e097e1ffbb26bec4ec89e08617c91ddce1b7c75bd9973928ee2f3fda147a",
+      "source_size": 5366,
+      "source_mtime_ns": 1789751114660715751,
+      "source_ctime_ns": 1789751114660715751
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_012/cam2_detections.metadata.json",
+      "preserved": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_identity/s42-001/preserved_inputs/video_002/clip_012/cam2_detections.metadata.json",
+      "sha256": "fb29c501c0a0bfa01d78c1a4356c74ca1c6d6932c925cb7a7bf47810dc231c43",
+      "source_size": 308,
+      "source_mtime_ns": 1789751114660715751,
+      "source_ctime_ns": 1789751114664958960
+    }
+  ],
+  "source_files_modified": false,
+  "interpretation": "Copies preserve the exact suspect people observations plus matching raw detection siblings before any regeneration. No receipt field was changed. Root cause remains unknown."
+}

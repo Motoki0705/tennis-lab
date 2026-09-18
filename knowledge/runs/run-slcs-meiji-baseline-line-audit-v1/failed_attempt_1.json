@@ -1,0 +1,15 @@
+{
+  "execution_commit": "10a8a73edf38348eb6322b901d05329b6b2c7f5d",
+  "execution_attempt": 1,
+  "command": "bash knowledge/runs/run-slcs-meiji-baseline-line-audit-v1/repro.sh",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "exit_status": 1,
+  "error": "OpenCV LSD output shape did not match assumed (N,1,4); scalar reshape failed before saving any image",
+  "patch_verified_at_execution_commit": true,
+  "confirmed_quantitative_result": null,
+  "input_pre_post_hash_receipt": "not persisted because program failed before results serialization; cannot claim completed before/after verification",
+  "script_sha256": "deac65242326d3cab10ae49f1ce05080651a15443f81243664dc5d80a02e7403",
+  "repro_sha256": "09b65ce71fe3c0e5bc98fe7805e63f8148a2f46162bd65d043af37738d4fbb02",
+  "log_sha256": "13c398386d521529c2249ebc8e91618fcae5b293a53d81a8b408d9464e744959",
+  "patch_sha256": "4a245d61d39223aedf4442f069180aac549950e07c87272a3e8b02cdee5bca22"
+}

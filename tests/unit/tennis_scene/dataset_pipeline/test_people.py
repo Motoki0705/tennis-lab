@@ -242,7 +242,11 @@ def test_observe_masks_pose_confidence_and_rejects_old_mask_cache(
     monkeypatch.setattr(
         people,
         "_detections",
-        lambda *a: (indices, np.array([0, 2, 4, 6]), boxes, np.ones(6)),
+        lambda *a, **kw: (indices, np.array([0, 2, 4, 6]), boxes, np.ones(6)),
+    )
+
+    (tmp_path / "cam2_detections.metadata.json").write_text(
+        json.dumps({"checkpoint_sha256": "fake-sha"})
     )
 
     class FakePose:

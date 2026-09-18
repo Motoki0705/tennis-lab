@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Literal, cast
@@ -21,14 +22,93 @@ from src.submodules.models.tracker.common import (
     stitch_single_subject_tracklets,
 )
 from src.tennis_scene.configuration import ReferenceClipPaths
+from src.tennis_scene.dataset_pipeline.checkpoint_integrity import (
+    validate_checkpoint_sha256,
+)
 from src.tennis_scene.dataset_pipeline.person_association import (
     PersonAssociation,
     associate_single_person,
     association_settings,
 )
 from src.tennis_scene.reference_pipeline.observations import read_clip, sha256
+from src.utils.checksum import FileIntegrityError
 from src.utils.io import save_json_atomic
 from src.utils.video.reader import OpenCVVideoFrameReader
+
+
+def _require_digest(actual: object, expected: str, *, path: Path, role: str) -> None:
+    if actual != expected:
+        raise FileIntegrityError(
+            f"Checkpoint SHA-256 mismatch for {role}",
+            details={"path": str(path), "expected": expected, "actual": actual},
+        )
+
+
+def _checkpoint_digest(
+    path: Path, role: str, pins: Mapping[str, str] | None, *, before: str | None = None
+) -> str:
+    actual: str = sha256(path)
+    if pins is not None:
+        _require_digest(actual, pins[role], path=path, role=role)
+    if before is not None:
+        _require_digest(actual, before, path=path, role=f"{role} pre/post")
+    return actual
+
+
+def _read_checkpoint_receipt(receipt: Path) -> dict[str, Any]:
+    try:
+        saved = json.loads(receipt.read_text())
+    except (OSError, ValueError) as exc:
+        raise FileIntegrityError(
+            "Cannot verify checkpoint receipt",
+            details={"path": str(receipt), "error": str(exc)},
+        ) from exc
+    if not isinstance(saved, dict):
+        raise FileIntegrityError(
+            "Checkpoint receipt must be a JSON object", details={"path": str(receipt)}
+        )
+    return cast(dict[str, Any], saved)
+
+
+def _validate_receipt_digests(receipt: Path, expected: Mapping[str, str]) -> None:
+    saved = _read_checkpoint_receipt(receipt)
+    for field, digest in expected.items():
+        _require_digest(
+            saved.get(field),
+            digest,
+            path=receipt,
+            role=field,
+        )
+
+
+def validate_people_receipts(
+    camera_ids: Sequence[str],
+    observations: Path,
+    *,
+    checkpoint_sha256: Mapping[str, str] | None = None,
+) -> None:
+    """Authenticate stored producer digests before inference without loading models."""
+    pins = (
+        validate_checkpoint_sha256(checkpoint_sha256)
+        if checkpoint_sha256 is not None
+        else None
+    )
+    for camera in camera_ids:
+        receipt = observations / f"{camera}_people.metadata.json"
+        saved = _read_checkpoint_receipt(receipt)
+        for field, role in (("detector_sha256", "dino"), ("pose_sha256", "vitpose")):
+            digest = saved.get(field)
+            if not isinstance(digest, str) or not digest:
+                raise FileIntegrityError(
+                    "Missing checkpoint digest in people receipt",
+                    details={"path": str(receipt), "field": field, "actual": digest},
+                )
+            if pins is not None:
+                _require_digest(digest, pins[role], path=receipt, role=role)
+        _validate_receipt_digests(
+            observations / f"{camera}_detections.metadata.json",
+            {"checkpoint_sha256": saved["detector_sha256"]},
+        )
 
 
 def _validate_cache_identity(
@@ -174,16 +254,27 @@ def _detections(
     video: Path,
     cache: Path,
     total: int,
+    *,
+    checkpoint_sha256: Mapping[str, str] | None = None,
+    detector_sha256: str | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     from src.submodules.models.dino.person_detector import (
         DinoPersonDetector,
         PersonDetectionRequest,
     )
 
+    pins = (
+        validate_checkpoint_sha256(checkpoint_sha256)
+        if checkpoint_sha256 is not None
+        else None
+    )
+    detector_digest = _checkpoint_digest(
+        paths.dino_checkpoint, "dino", pins, before=detector_sha256
+    )
     identity = {
         "schema_version": 1,
         "video_sha256": sha256(video),
-        "checkpoint_sha256": sha256(paths.dino_checkpoint),
+        "checkpoint_sha256": detector_digest,
         "confidence": float(cfg.confidence),
         "short_side": int(cfg.short_side),
         "max_long_side": int(cfg.max_long_side),
@@ -192,6 +283,7 @@ def _detections(
     }
     receipt = cache.with_suffix(".metadata.json")
     if cache.exists():
+        _validate_receipt_digests(receipt, {"checkpoint_sha256": detector_digest})
         _validate_cache_identity(
             receipt, identity, cache=cache, prefix="Stale person detections"
         )
@@ -240,6 +332,7 @@ def _detections(
         raise ValueError(f"Decoded {decoded}/{total} frames: {video}")
     box_array, score_array = np.concatenate(boxes), np.concatenate(scores)
     offset_array = np.asarray(offsets, np.int64)
+    _checkpoint_digest(paths.dino_checkpoint, "dino", pins, before=detector_digest)
     _save_npz_atomic(
         cache,
         frame_indices=indices,
@@ -258,11 +351,23 @@ def observe_singles_people(
     output: Path,
     *,
     homographies: np.ndarray,
+    checkpoint_sha256: Mapping[str, str] | None = None,
 ) -> None:
-    """Cache raw detections separately so selection changes never rerun DINO."""
+    """Cache raw detections separately so selection changes never rerun DINO.
+
+    Pins authenticate each camera's checkpoint reads. Without pins, matching
+    pre/post reads and sibling receipts still prevent mixed provenance. These
+    boundary checks cannot detect a checkpoint changed and restored between
+    reads; they do not lock files or authenticate the model's in-memory state.
+    """
     from src.submodules.configuration import ViTPoseHeadConfig
     from src.submodules.models import Pose2DRequest, ViTPosePose2D
 
+    pins = (
+        validate_checkpoint_sha256(checkpoint_sha256)
+        if checkpoint_sha256 is not None
+        else None
+    )
     clip = read_clip(clip_dir, minimum_views=1)
     settings = OmegaConf.create(OmegaConf.to_container(cfg.people, resolve=True))
     if not isinstance(settings, DictConfig):
@@ -277,13 +382,17 @@ def observe_singles_people(
         long_gap_policy = str(settings.get("long_gap_policy", "error"))
         cache_settings = _people_cache_settings(cfg.people)
         association = association_settings(cache_settings)
+        detector_digest = _checkpoint_digest(paths.dino_checkpoint, "dino", pins)
+        pose_digest = _checkpoint_digest(paths.vitpose_checkpoint, "vitpose", pins)
+        raw_cache = output / f"{cam}_detections.npz"
+        raw_receipt = raw_cache.with_suffix(".metadata.json")
         identity = {
             "schema_version": 4
             if association is not None
             else (3 if long_gap_policy == "mask" else 2),
             "video_sha256": sha256(video),
-            "detector_sha256": sha256(paths.dino_checkpoint),
-            "pose_sha256": sha256(paths.vitpose_checkpoint),
+            "detector_sha256": detector_digest,
+            "pose_sha256": pose_digest,
             "settings": cache_settings,
             "homography": homography.tolist(),
             "policy": (
@@ -293,6 +402,13 @@ def observe_singles_people(
             ),
         }
         if cache.exists():
+            _validate_receipt_digests(
+                receipt,
+                {"detector_sha256": detector_digest, "pose_sha256": pose_digest},
+            )
+            _validate_receipt_digests(
+                raw_receipt, {"checkpoint_sha256": detector_digest}
+            )
             _validate_cache_identity(
                 receipt, identity, cache=cache, prefix="Stale person observations"
             )
@@ -316,8 +432,15 @@ def observe_singles_people(
             print(f"Using validated people {cache}", flush=True)
             continue
         indices, offsets, boxes, _ = _detections(
-            settings, paths, video, output / f"{cam}_detections.npz", clip["num_frames"]
+            settings,
+            paths,
+            video,
+            raw_cache,
+            clip["num_frames"],
+            checkpoint_sha256=pins,
+            detector_sha256=detector_digest,
         )
+        _validate_receipt_digests(raw_receipt, {"checkpoint_sha256": detector_digest})
         history: list[list[dict[str, Any]]] = [[] for _ in range(clip["num_frames"])]
         for sample, frame_index in enumerate(indices):
             history[frame_index] = [
@@ -336,6 +459,9 @@ def observe_singles_people(
             long_gap_policy=long_gap_policy,
             camera_id=cam,
             association=association,
+        )
+        _checkpoint_digest(
+            paths.vitpose_checkpoint, "vitpose", pins, before=pose_digest
         )
         pose = ViTPosePose2D(
             paths.vitpose_checkpoint,
@@ -369,6 +495,11 @@ def observe_singles_people(
             ]
         )
         keypoints[..., 2] = np.where(supported[..., None], keypoints[..., 2], 0)
+        _checkpoint_digest(paths.dino_checkpoint, "dino", pins, before=detector_digest)
+        _checkpoint_digest(
+            paths.vitpose_checkpoint, "vitpose", pins, before=pose_digest
+        )
+        _validate_receipt_digests(raw_receipt, {"checkpoint_sha256": detector_digest})
         _save_npz_atomic(
             cache,
             boxes=np.stack([tracks.tracks[i].numpy() for i in tracks.track_ids]),
