@@ -203,6 +203,53 @@ def validate_raw_identity(
             raise ValueError(f"Raw observation arrays differ: {name}")
 
 
+def observation_producers(
+    directory: Path, cameras: list[str], observation_hashes: dict[str, str]
+) -> dict[str, Any]:
+    """Compare recorded producers; this does not authenticate checkpoint files."""
+    for name, digest in observation_hashes.items():
+        if sha256(directory / name) != digest:
+            raise ValueError(f"Observation identity mismatch: {name}")
+    people = []
+    for camera in cameras:
+        name = f"{camera}_people.metadata.json"
+        if name not in observation_hashes:
+            raise ValueError(f"Unbound people producer receipt: {name}")
+        receipt = _json(directory / name)
+        if type(receipt["schema_version"]) is not int or receipt["schema_version"] < 1:
+            raise ValueError("Invalid people producer schema_version")
+        if not isinstance(receipt["policy"], str) or not receipt["policy"].strip():
+            raise ValueError("Missing people producer policy")
+        if not isinstance(receipt["settings"], dict):
+            raise ValueError("Invalid people producer settings")
+        for key in ("detector_sha256", "pose_sha256"):
+            _check_digest(receipt[key], key)
+        people.append(
+            {
+                "schema_version": receipt["schema_version"],
+                "policy": receipt["policy"],
+                "settings_sha256": _digest(receipt["settings"]),
+                "detector_sha256": receipt["detector_sha256"],
+                "pose_sha256": receipt["pose_sha256"],
+            }
+        )
+    if not people or len({_digest(producer) for producer in people}) != 1:
+        raise ValueError("Mixed provenance: people_producer across cameras")
+    if "court.json" not in observation_hashes:
+        raise ValueError("Unbound court producer receipt")
+    court = _json(directory / "court.json")["identity"]
+    _check_digest(court["checkpoint_sha256"], "court checkpoint")
+    if not isinstance(court["settings"], dict):
+        raise ValueError("Invalid court producer settings")
+    return {
+        "people_producer": people[0],
+        "court_producer": {
+            "checkpoint_sha256": court["checkpoint_sha256"],
+            "settings_sha256": _digest(court["settings"]),
+        },
+    }
+
+
 def audit_clip(
     clip: ClipManifest,
     key: str,
@@ -262,9 +309,7 @@ def audit_clip(
     ):
         raise ValueError("Teacher coverage violates recorded refinement contract")
     obs = _locate(observations, key, "court.npz")
-    for name, digest in identity["observations"].items():
-        if sha256(obs / name) != digest:
-            raise ValueError(f"Observation identity mismatch: {name}")
+    producers = observation_producers(obs, cameras, identity["observations"])
     run = _locate(runs, key, "raw_model_quality.json")
     for name in (
         "raw_model_quality.json",
@@ -363,6 +408,8 @@ def audit_clip(
             for code in range(4)
         }
     return {
+        **producers,
+        "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
         "source_manifest_sha256": source_manifest_sha256,
         "manifest_sha256": clip.digest(),
         "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
@@ -486,6 +533,8 @@ def write_quality_report(
             "teacher_settings_sha256",
             "dino_checkpoint_sha256",
             "dino_spec",
+            "people_producer",
+            "court_producer",
         ):
             if len({_digest(row[field]) for row in completed}) > 1:
                 report["errors"].append(f"Mixed provenance: {field}")

@@ -324,3 +324,50 @@ def test_heatmap_peak_nonfinite_is_not_saturated(bad):
 
     with pytest.raises(ValueError, match="heatmap peaks.*finite"):
         pose_visibility_from_heatmap_peaks(np.array([0.0, bad]))
+
+
+def test_stale_identity_reports_changed_missing_and_extra_fields(tmp_path):
+    import json
+
+    from src.tennis_scene.dataset_pipeline.people import _validate_cache_identity
+
+    receipt = tmp_path / "detections.metadata.json"
+    receipt.write_text(
+        json.dumps(
+            {"checkpoint_sha256": "saved-sha", "obsolete": 3, "settings": {"stride": 4}}
+        )
+    )
+    with pytest.raises(ValueError, match="Stale person detections") as error:
+        _validate_cache_identity(
+            receipt,
+            {
+                "checkpoint_sha256": "expected-sha",
+                "new_key": 5,
+                "settings": {"stride": 8},
+            },
+            cache=tmp_path / "detections.npz",
+            prefix="Stale person detections",
+        )
+    message = str(error.value)
+    assert "checkpoint_sha256: saved='saved-sha', expected='expected-sha'" in message
+    assert "obsolete: saved=3, expected=<missing>" in message
+    assert "new_key: saved=<missing>, expected=5" in message
+    assert "settings.stride: saved=4, expected=8" in message
+
+
+@pytest.mark.parametrize(
+    "contents,reason",
+    [("[]", "receipt must be a JSON object"), ("{broken", "invalid receipt JSON")],
+)
+def test_invalid_identity_receipt_has_clear_error(tmp_path, contents, reason):
+    from src.tennis_scene.dataset_pipeline.people import _validate_cache_identity
+
+    receipt = tmp_path / "people.metadata.json"
+    receipt.write_text(contents)
+    with pytest.raises(ValueError, match=f"Stale person observations.*{reason}"):
+        _validate_cache_identity(
+            receipt,
+            {},
+            cache=tmp_path / "people.npz",
+            prefix="Stale person observations",
+        )

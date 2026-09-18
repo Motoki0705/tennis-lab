@@ -140,6 +140,8 @@ BLCS旧/改善重みの同条件比較には `scripts/analysis/evaluate_blcs_rea
 
 ## 全clip品質レポート（CPU）
 
+`build_real_rgb.sh all` はMeiji生成後・統合前にこの検査を実行する。単独で再集計する場合:
+
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality
 ```
@@ -147,7 +149,10 @@ BLCS旧/改善重みの同条件比較には `scripts/analysis/evaluate_blcs_rea
 入力dataset、期待集合のsource manifest、複数の生成run・観測root、理由付き除外は
 [`report_slcs_dataset_quality.yaml`](../configs/report_slcs_dataset_quality.yaml)で明示する。
 `tennis_scene/analyze/...` に `quality_report.json` とclip単位の展開済みCSV、実行configを保存する。
-欠落・不正データ・教師/DINO provenance混在は成功扱いしない。欠落を含む進行中のsnapshotは
+欠落・不正データ・教師/DINO provenance混在は成功扱いしない。人物検出・姿勢推定の
+checkpoint記録、人物選択policy・設定、Courtのcheckpoint記録・設定もカメラ間・clip間で
+照合する。これは記録済みproducerと観測bytesの整合検査で、重み実体の再認証ではない。
+欠落を含む進行中のsnapshotは
 `allow_incomplete=true` で明示し、その場合も不正データは失敗する。失敗時もレポートは残る。
 
 raw/refined双方に同じ最終SLCSの正重みframe maskを適用し、全軌道の診断と区別する。
