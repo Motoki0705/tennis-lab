@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/blcs/train/broadcast_real_rgb/s42-001/logs/version_0/checkpoints

@@ -1,0 +1,5 @@
+{
+  "commit": "4348077d8f7a0b35ab58350232cf4ccb607990f1",
+  "branch": "codex/slcs-real-rgb",
+  "command": ".venv/bin/python -m scripts.analysis.evaluate_refinement --scene outputs/tennis_scene/generate/meiji_rgb_v1/s42-002/video_000/clip_000/scene.npz --court outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_000/clip_000/court.npz --output outputs/tennis_scene/evaluate/meiji_geometry/s42-001"
+}

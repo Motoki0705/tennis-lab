@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "interpretation": "observable consistency of pseudo labels; NOT measured 3D accuracy",
+  "calibration": "learned planar court, approximate pinhole, no measured lens distortion",
+  "plcs": {
+    "ground_foot_to_root_xy_m": {
+      "count": 6020,
+      "mean": 5.267794945503394,
+      "median": 4.285474303868562,
+      "p95": 8.819354640612273,
+      "max": 10.677406225573689
+    },
+    "pose_reprojection_px": {
+      "count": 99300,
+      "mean": 119.13881864722639,
+      "median": 60.28365094650789,
+      "p95": 320.18203653260235,
+      "max": 685.8113178380543
+    },
+    "foot_ground_cross_view_distance_m": {
+      "count": 5980,
+      "mean": 2.8822053899015687,
+      "median": 2.8288605013831005,
+      "p95": 5.347148915936386,
+      "max": 7.78787119985361
+    },
+    "speed_mps": {
+      "count": 2018,
+      "mean": 1.2117010354995728,
+      "median": 0.8885066509246826,
+      "p95": 2.880779266357422,
+      "max": 64.23554229736328
+    }
+  },
+  "blcs": {
+    "reprojection_px": {
+      "count": 2882,
+      "mean": 101.02657292433726,
+      "median": 82.2333659627376,
+      "p95": 257.5899983083226,
+      "max": 430.6502449075751
+    },
+    "speed_mps": {
+      "count": 1009,
+      "mean": 11.197660446166992,
+      "median": 10.048077583312988,
+      "p95": 22.45920181274414,
+      "max": 37.482147216796875
+    },
+    "negative_height_fraction": 0.011881188118811881,
+    "height_m": {
+      "count": 1010,
+      "mean": 1.3372520208358765,
+      "median": 1.2995662689208984,
+      "p95": 2.553568124771118,
+      "max": 3.296311378479004
+    },
+    "observed_in_two_views_fraction": 0.995049504950495
+  },
+  "per_camera": {
+    "cam0": {
+      "ball_reprojection_px": {
+        "count": 923,
+        "mean": 82.92128525648278,
+        "median": 73.85410039920751,
+        "p95": 167.49282793745638,
+        "max": 211.6002224162877
+      },
+      "pose_reprojection_px": {
+        "count": 31392,
+        "mean": 118.07645857659072,
+        "median": 100.78613286073838,
+        "p95": 220.89730137867934,
+        "max": 397.1087731532049
+      },
+      "ground_foot_to_root_xy_m": {
+        "count": 1986,
+        "mean": 5.819152018296744,
+        "median": 3.86836478232056,
+        "p95": 9.241810204370353,
+        "max": 10.165802862303874
+      },
+      "ball_coverage": 0.9138613861386139,
+      "pose_coverage_at_0.3": 0.9141525917297613,
+      "court_fit_rmse_px": 2.3140249200911125
+    },
+    "cam1": {
+      "ball_reprojection_px": {
+        "count": 994,
+        "mean": 99.91460522034194,
+        "median": 81.988473081108,
+        "p95": 291.1823005692853,
+        "max": 430.6502449075751
+      },
+      "pose_reprojection_px": {
+        "count": 33723,
+        "mean": 127.72811942155663,
+        "median": 37.93320941193805,
+        "p95": 340.39962158019523,
+        "max": 413.6927401264786
+      },
+      "ground_foot_to_root_xy_m": {
+        "count": 2020,
+        "mean": 4.973029777675215,
+        "median": 4.721806460600266,
+        "p95": 7.304550574884929,
+        "max": 8.284121266949855
+      },
+      "ball_coverage": 0.9841584158415841,
+      "pose_coverage_at_0.3": 0.9820326150262085,
+      "court_fit_rmse_px": 1.1053285828021124
+    },
+    "cam2": {
+      "ball_reprojection_px": {
+        "count": 965,
+        "mean": 119.48924278464916,
+        "median": 88.16416225340781,
+        "p95": 264.98912966243176,
+        "max": 373.5414562741723
+      },
+      "pose_reprojection_px": {
+        "count": 34185,
+        "mean": 111.64116228697057,
+        "median": 61.58767853807223,
+        "p95": 329.2248951498934,
+        "max": 685.8113178380543
+      },
+      "ground_foot_to_root_xy_m": {
+        "count": 2014,
+        "mean": 5.019746530630173,
+        "median": 4.208444265686245,
+        "p95": 7.285607938327669,
+        "max": 10.677406225573689
+      },
+      "ball_coverage": 0.9554455445544554,
+      "pose_coverage_at_0.3": 0.995486313337216,
+      "court_fit_rmse_px": 0.19445953779135
+    }
+  }
+}
