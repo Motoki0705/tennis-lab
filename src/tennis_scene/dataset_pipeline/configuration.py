@@ -68,7 +68,7 @@ class DatasetBuildConfig:
     ball_source: str
     calibration_clips: dict[str, str]
     dataset_clip_ids: tuple[str, ...]
-    checkpoint_sha256: dict[str, str] | None = None
+    checkpoint_sha256: dict[str, str] | None
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> DatasetBuildConfig:
