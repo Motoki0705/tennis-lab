@@ -155,14 +155,14 @@ YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習�
 python -m src.tasks.court_detection.scripts.train_mixed \
   data/processing=all data/augmentation=pose_safe \
   loss=default \
-  run.output_dir=court_detection/mixed-source/dense-only \
+  run.output_dir=court_detection/train/mixed_source_dense_only/s42-001 \
   run.test_after_fit=true
 
 # dense lossは全sample、pose lossはSynthetic Court V3 sampleだけで学習
 python -m src.tasks.court_detection.scripts.train_mixed \
   data/processing=all data/augmentation=pose_safe \
   loss=pose \
-  run.output_dir=court_detection/mixed-source/dense-pose \
+  run.output_dir=court_detection/train/mixed_source_dense_pose/s42-001 \
   run.test_after_fit=true
 ```
 

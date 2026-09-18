@@ -31,15 +31,19 @@ DINO token precompute も同じ境界方針です。`model_io.factory` が backb
 
 ## 学習
 
+以下はデータ版 `slcs/example_v1` の例です。外部のデータrootを使う場合は
+`paths.data_root=/abs/to/data` を追加します。rootと相対パスの契約は
+[タスク出力規約](../OUTPUTS.md#入口ごとのroot契約)を参照してください。
+
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.make_splits \
-  data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json
+  data.dataset_root=slcs/example_v1 data.split_file=slcs/example_v1/splits.json
 
 .venv/bin/python -m src.tasks.slcs.scripts.precompute_dino_tokens \
-  data.dataset_root=/path/to/dataset
+  data.dataset_root=slcs/example_v1
 
 .venv/bin/python -m src.tasks.slcs.scripts.train \
-  data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json
+  data.dataset_root=slcs/example_v1 data.split_file=slcs/example_v1/splits.json
 ```
 
 split 単位は `video_id` で、同じマルチカメラ動画から切り出した clip は同一 split に入ります。seed と比率を split manifest に保存します。既存 split の上書きには `splits.overwrite=true` が必要です。
@@ -48,11 +52,11 @@ split 単位は `video_id` で、同じマルチカメラ動画から切り出�
 
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.make_splits \
-  data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json \
+  data.dataset_root=slcs/example_v1 data.split_file=slcs/example_v1/splits.json \
   splits.overfit=true
 
 .venv/bin/python -m src.tasks.slcs.scripts.train \
-  data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json \
+  data.dataset_root=slcs/example_v1 data.split_file=slcs/example_v1/splits.json \
   data.overfit=true
 ```
 
@@ -70,9 +74,18 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 ## 推論・評価・解析
 
 ```bash
-.venv/bin/python -m src.tasks.slcs.scripts.predict_clip checkpoint_path=/path/to/model.ckpt
-.venv/bin/python -m src.tasks.slcs.scripts.evaluate checkpoint_path=/path/to/model.ckpt
-.venv/bin/python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=/path/to/eval_arrays.npz
+.venv/bin/python -m src.tasks.slcs.scripts.predict_clip \
+  predict.checkpoint=slcs/example.ckpt \
+  data.dataset_root=slcs/example_v1 \
+  predict.clip_id=video_000/clip_000 predict.camera_id=cam0
+
+.venv/bin/python -m src.tasks.slcs.scripts.evaluate \
+  evaluate.checkpoint=slcs/example.ckpt \
+  data.dataset_root=slcs/example_v1 data.split_file=slcs/example_v1/splits.json \
+  evaluate.output_dir=slcs/evaluate/example/s42-001
+
+.venv/bin/python -m src.tasks.slcs.scripts.analyze_predictions \
+  analysis.arrays=slcs/evaluate/example/s42-001/eval_arrays.npz
 ```
 
 評価は player/ball の 3D 誤差、yaw 誤差、速度・加速度・jerk を BLCS/PLCS と比較可能な単位で出力します。解析は誤差分布、時系列誤差、欠損率、uncertainty calibration を保存します。2D overlay は入力観測を描画し、3D prediction の reprojection は calibrated camera が明示された場合だけ行います。

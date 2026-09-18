@@ -1,0 +1,149 @@
+{
+  "definition": "Per player/frame, count cameras with both shoulder joints (5,6) and hip joints (11,12) >= 0.3. Raw 2D confidence diagnostic, without triangulation, visibility geometry, reprojection, speed, or label weighting. Not final teacher coverage.",
+  "threshold": 0.3,
+  "joint_indices": [
+    5,
+    6,
+    11,
+    12
+  ],
+  "clips": [
+    {
+      "clip_id": "video_000/clip_008",
+      "frames": 479,
+      "two_view_support_frames_by_player": [
+        479,
+        476
+      ],
+      "two_view_support_fraction_by_player": [
+        1.0,
+        0.9937369519832986
+      ],
+      "source_sha256": {
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam0_people.npz": "329ad5f875bd35e59b9c7929c2c1a22876e910cf788d84c719fe83cc2950dfb3",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam1_people.npz": "61e90aed50d912906300d092e2e9c380dd4131776059739b7b3fb62458cfee26",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam2_people.npz": "792f876225a72a5364a1c68a84d055ba6511a3caad77a5cb99d97b115bd0f44c"
+      }
+    },
+    {
+      "clip_id": "video_001/clip_004",
+      "frames": 248,
+      "two_view_support_frames_by_player": [
+        248,
+        248
+      ],
+      "two_view_support_fraction_by_player": [
+        1.0,
+        1.0
+      ],
+      "source_sha256": {
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_004/cam0_people.npz": "08a255673c28415d0dc9e7310c877487476244b4474e7d6ccdfacde961340282",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_004/cam1_people.npz": "d21d856dec6c90e24838731f16d691372d8052aa2cb3e0e24f954b2d87b59489",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_004/cam2_people.npz": "2bd7b2519cb8f784ad2af479fc302ffe5a2b6df5fd7c2e07f68fe35d34024fdc"
+      }
+    },
+    {
+      "clip_id": "video_001/clip_008",
+      "frames": 187,
+      "two_view_support_frames_by_player": [
+        187,
+        171
+      ],
+      "two_view_support_fraction_by_player": [
+        1.0,
+        0.9144385026737968
+      ],
+      "source_sha256": {
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_008/cam0_people.npz": "550ce38ed604c815a1319e531129ff304cd751098703e18f4d8ed314c6ee4216",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_008/cam1_people.npz": "459afeee29d5d78461dc19ef892e9dc726450141beabf89ae1cdc91fe1567854",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_008/cam2_people.npz": "2f8de1ad109ab0e0c367ee30a534dc09c74eb40e994109ca9d52b831ae2b4dde"
+      }
+    }
+  ],
+  "selected_cam2_p0_frames": [
+    {
+      "clip_id": "video_001/clip_004",
+      "camera": "cam2",
+      "player": 0,
+      "frame": 0,
+      "pose_supported": false,
+      "shoulder_hip_confidence": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "torso_gate": false
+    },
+    {
+      "clip_id": "video_001/clip_004",
+      "camera": "cam2",
+      "player": 0,
+      "frame": 61,
+      "pose_supported": true,
+      "shoulder_hip_confidence": [
+        0.17578125,
+        0.232421875,
+        0.061279296875,
+        0.037109375
+      ],
+      "torso_gate": false
+    },
+    {
+      "clip_id": "video_001/clip_004",
+      "camera": "cam2",
+      "player": 0,
+      "frame": 64,
+      "pose_supported": true,
+      "shoulder_hip_confidence": [
+        0.1337890625,
+        0.173828125,
+        0.060302734375,
+        0.06396484375
+      ],
+      "torso_gate": false
+    },
+    {
+      "clip_id": "video_001/clip_004",
+      "camera": "cam2",
+      "player": 0,
+      "frame": 65,
+      "pose_supported": true,
+      "shoulder_hip_confidence": [
+        0.1640625,
+        0.150390625,
+        0.0712890625,
+        0.0703125
+      ],
+      "torso_gate": false
+    },
+    {
+      "clip_id": "video_001/clip_004",
+      "camera": "cam2",
+      "player": 0,
+      "frame": 84,
+      "pose_supported": true,
+      "shoulder_hip_confidence": [
+        0.6171875,
+        0.87109375,
+        0.6953125,
+        0.765625
+      ],
+      "torso_gate": true
+    },
+    {
+      "clip_id": "video_001/clip_004",
+      "camera": "cam2",
+      "player": 0,
+      "frame": 85,
+      "pose_supported": true,
+      "shoulder_hip_confidence": [
+        0.6171875,
+        0.890625,
+        0.703125,
+        0.78125
+      ],
+      "torso_gate": true
+    }
+  ]
+}
