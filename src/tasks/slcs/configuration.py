@@ -5,12 +5,16 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import torch
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.slcs.data.augmentation import (
+    INPUT_CONDITIONS,
+    ObservationAugmentationConfig,
+)
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
 from src.tasks.slcs.data.quality import QualityConfig
@@ -82,6 +86,19 @@ SLCS_QUALITY_SCHEMA = _schema(
         "min_window_label_ratio": _number(),
     },
 )
+SLCS_AUGMENTATION_SCHEMA = _schema(
+    "data.augmentation",
+    {
+        "enabled": ConfigField.of(bool),
+        "joint_dropout": _number(),
+        "ball_dropout": _number(),
+        "uv_std": _number(),
+        "burst_probability": _number(),
+        "burst_max_frames": ConfigField.of(int),
+        "rgb_only_probability": _number(),
+        "rgb_dropout_probability": _number(),
+    },
+)
 SLCS_DATA_SCHEMA = _schema(
     "data",
     {
@@ -101,6 +118,7 @@ SLCS_DATA_SCHEMA = _schema(
         "on_incomplete": ConfigField.of(str),
         "dino": _mapping(SLCS_DINO_SCHEMA),
         "quality": _mapping(SLCS_QUALITY_SCHEMA),
+        "augmentation": ConfigField.mapping(SLCS_AUGMENTATION_SCHEMA, required=False),
     },
 )
 SLCS_MODEL_SCHEMA = _schema(
@@ -289,6 +307,7 @@ SLCS_EVALUATION_SCHEMA = _schema(
         "checkpoint_strict": ConfigField.of(bool),
         "checkpoint_weights_only": ConfigField.of(bool),
         "output_dir": ConfigField.of(str),
+        "input_mode": ConfigField.of(str),
     },
 )
 SLCS_PREDICTION_SCHEMA = _schema(
@@ -495,6 +514,7 @@ class SLCSDataRuntimeConfig:
     ) -> SLCSDataRuntimeConfig:
         dino = cast(dict[str, object], raw["dino"])
         quality = cast(dict[str, object], raw["quality"])
+        augmentation = cast(dict[str, Any] | None, raw.get("augmentation"))
         try:
             pipeline = SLCSDataConfig(
                 window_size=cast(int, raw["window_size"]),
@@ -505,6 +525,9 @@ class SLCSDataRuntimeConfig:
                 require_dino=cast(bool, raw["require_dino"]),
                 cache_dino_tokens=cast(bool, raw["cache_dino_tokens"]),
                 on_incomplete=cast(Literal["error", "skip"], raw["on_incomplete"]),
+                augmentation=ObservationAugmentationConfig(**augmentation)
+                if augmentation is not None
+                else None,
                 dino_spec=DinoTokenSpec(
                     backbone=_nonempty_string(
                         dino["backbone"], path="data.dino.backbone"
@@ -800,12 +823,18 @@ class SLCSEvaluationConfig:
     checkpoint_strict: bool
     checkpoint_weights_only: bool
     output_dir: Path
+    input_mode: str
 
     @classmethod
     def from_config(cls, config: DictConfig) -> SLCSEvaluationConfig:
         raw = _validate_boundary(config, SLCS_EVALUATION_BOUNDARY_SCHEMA)
         resolver = _resolver(raw)
         values = cast(dict[str, object], raw["evaluate"])
+        input_mode = cast(str, values["input_mode"])
+        if input_mode not in INPUT_CONDITIONS:
+            raise SemanticConfigurationError(
+                f"Unknown evaluate.input_mode={input_mode!r}"
+            )
         split = cast(str, values["split"])
         if split not in {"train", "val", "test"}:
             raise SemanticConfigurationError(f"evaluate.split is invalid: {split!r}.")
@@ -834,6 +863,7 @@ class SLCSEvaluationConfig:
                 values["output_dir"],
                 path="evaluate.output_dir",
             ),
+            input_mode,
         )
 
 

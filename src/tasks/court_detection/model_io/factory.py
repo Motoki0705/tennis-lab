@@ -7,6 +7,7 @@ from typing import TypeAlias, cast
 
 from src.tasks.base.model_io import BoundModelIO, bind_model_io
 from src.tasks.court_detection.configuration import (
+    CourtInferenceConfig,
     CourtModelConfig,
     CourtTrainingConfig,
 )
@@ -24,6 +25,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelSpec,
 )
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.utils.configuration import PathResolver
 
 CourtDetectionRawOutput: TypeAlias = CourtLogits | CourtModelOutput
 CourtDetectionBoundModelIO: TypeAlias = BoundModelIO[
@@ -46,6 +48,8 @@ def build_court_detection_pair(
         target_bundle=target_bundle,
         in_channels=runtime.model.in_channels,
         short_side=runtime.data.augmentation.val_short_side,
+        pose_long_side=runtime.loss.pose.enabled,
+        patch_size=runtime.data.augmentation.patch_size,
         encoder_kind=cast(CourtEncoderKind, runtime.model.encoder.name),
     )
     model = CourtHierarchicalModel.from_config(runtime.model, target_bundle)
@@ -57,7 +61,7 @@ def build_court_detection_pair(
 def build_court_model_io(
     spec: CourtModelSpec,
     *,
-    runtime: CourtTrainingConfig,
+    runtime: CourtTrainingConfig | CourtInferenceConfig,
 ) -> CourtModelIOAdapter | CourtPoseModelIOAdapter:
     """Build the one bundle-aware adapter from a validated runtime contract."""
     if not isinstance(runtime.model, CourtModelConfig):
@@ -85,6 +89,23 @@ def build_court_model_io(
         loss_config=runtime.loss,
         execution_boundary=execution_boundary,
     )
+
+
+def build_court_inference_pair(
+    config: object, *, resolver: PathResolver, target_bundle: CourtTargetBundleSpec
+) -> CourtDetectionBoundModelIO:
+    """Build the exact checkpoint model without constructing training services."""
+    runtime = CourtInferenceConfig.from_config(config, resolver=resolver)
+    spec = CourtModelSpec(
+        target_bundle=target_bundle,
+        in_channels=runtime.model.in_channels,
+        short_side=runtime.short_side,
+        pose_long_side=runtime.pose_long_side,
+        patch_size=runtime.patch_size,
+        encoder_kind=cast(CourtEncoderKind, runtime.model.encoder.name),
+    )
+    model = CourtHierarchicalModel.from_config(runtime.model, target_bundle)
+    return cast(CourtDetectionBoundModelIO, bind_model_io(model, build_court_model_io(spec, runtime=runtime)))
 
 
 __all__ = [

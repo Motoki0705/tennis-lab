@@ -14,7 +14,7 @@ from src.tasks.base.model_io import (
     ModelCall,
     bind_model_io,
 )
-from src.tasks.plcs.configuration import PLCSDataConfig, PLCSModelConfig
+from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.model_io.adapters import (
     PLCSAdapter,
     PLCSModelIOAdapter,
@@ -57,6 +57,17 @@ PLCSBoundModelIO: TypeAlias = PLCSStandardBoundModelIO | PLCSTrackingBoundModelI
 DecodedPredictionT_co = TypeVar("DecodedPredictionT_co", covariant=True)
 
 
+class PLCSModelIODataConfig(Protocol):
+    @property
+    def num_court_tokens(self) -> int | None: ...
+
+    @property
+    def adapter_camera_index(self) -> int: ...
+
+    @property
+    def values(self) -> Mapping[str, object]: ...
+
+
 class PLCSModelIOConfig(Protocol):
     """Read-only configuration slice the PLCS model/adapter factory consumes.
 
@@ -70,7 +81,7 @@ class PLCSModelIOConfig(Protocol):
     def model(self) -> PLCSModelConfig: ...
 
     @property
-    def data(self) -> PLCSDataConfig: ...
+    def data(self) -> PLCSModelIODataConfig: ...
 
     @property
     def court_keypoint_contract(self) -> CourtKeypointContract: ...

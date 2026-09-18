@@ -1,0 +1,6 @@
+defaults:
+  - build_slcs_dataset_base
+  - _self_
+
+excluded_clips:
+  video_002/clip_001: Only 15 of 476 frames have outsourced ball observations in two cameras (3.15%); insufficient for the fixed 30% ball-label acceptance threshold.

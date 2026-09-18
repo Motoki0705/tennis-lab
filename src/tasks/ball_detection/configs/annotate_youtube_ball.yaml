@@ -1,6 +1,6 @@
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/annotate_youtube_ball,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,annotate_youtube_ball,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

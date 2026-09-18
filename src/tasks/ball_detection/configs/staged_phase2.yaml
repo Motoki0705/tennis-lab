@@ -17,5 +17,5 @@ training:
     max_epochs: 5
 
 run:
-  output_dir: ball_detection/staged/phase2
-  init_weights: ball_detection/staged/phase1/logs/run/checkpoints/last.ckpt
+  output_dir: ${tennis_output:ball_detection,train,staged,phase2}
+  init_weights: ball_detection/train/staged/phase1/logs/run/checkpoints/last.ckpt

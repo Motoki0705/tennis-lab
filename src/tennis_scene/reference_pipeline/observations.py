@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 
 from src.tennis_scene.configuration import ReferenceClipPaths
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionResult
+from src.utils.io import save_json_atomic
 from src.utils.schema.court import CourtConfig, court_keypoints_3d
 
 
@@ -21,14 +22,14 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
-def read_clip(path: Path) -> dict[str, Any]:
+def read_clip(path: Path, *, minimum_views: int = 3) -> dict[str, Any]:
     clip = json.loads((path / "clip.json").read_text())
     if not isinstance(clip, dict):
         raise ValueError("clip.json must be an object")
-    if not 3 <= len(clip["camera_ids"]) <= 4 or len(set(clip["camera_ids"])) != len(
-        clip["camera_ids"]
-    ):
-        raise ValueError("Reference reconstruction requires 3-4 unique camera IDs")
+    if not minimum_views <= len(clip["camera_ids"]) <= 4 or len(
+        set(clip["camera_ids"])
+    ) != len(clip["camera_ids"]):
+        raise ValueError(f"Reconstruction requires {minimum_views}-4 unique camera IDs")
     if len(clip["video_paths"]) != len(clip["camera_ids"]):
         raise ValueError("Each camera must have exactly one video path")
     return cast(dict[str, Any], clip)
@@ -48,8 +49,11 @@ def import_ball(clip_dir: Path, output: Path) -> None:
         if data["schema_version"] != "video_ball_annotation.v2":
             raise ValueError("Unsupported outsourced ball schema")
         video = clip_dir / clip["video_paths"][i]
-        if sha256(video) != data["source"]["sha256"]:
-            raise ValueError(f"Ball source video mismatch: {cam}")
+        video_digest = sha256(video)
+        if video_digest != data["source"]["sha256"]:
+            raise ValueError(
+                f"Ball source video mismatch: {video}; actual={video_digest}, expected={data['source']['sha256']}"
+            )
         if (
             data["source"]["width"],
             data["source"]["height"],
@@ -89,24 +93,30 @@ def import_ball(clip_dir: Path, output: Path) -> None:
     ok, errors = result.validate()
     if not ok:
         raise ValueError(errors)
-    result.save(output / "ball_detection_result.json")
-    (output / "ball_import.metadata.json").write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "camera_ids": clip["camera_ids"],
-                "sources": sources,
-                "status": states,
-                "score_semantics": "binary coordinate availability; not detector confidence",
-                "included_statuses": [
-                    "observed",
-                    "interpolated",
-                    "occlusion_estimated",
-                ],
-            },
-            indent=2,
-        )
-    )
+    metadata = {
+        "schema_version": 1,
+        "camera_ids": clip["camera_ids"],
+        "sources": sources,
+        "status": states,
+        "score_semantics": "binary coordinate availability; not detector confidence",
+        "included_statuses": [
+            "observed",
+            "interpolated",
+            "occlusion_estimated",
+        ],
+    }
+    receipt = output / "ball_import.metadata.json"
+    destination = output / "ball_detection_result.json"
+    if receipt.exists():
+        if json.loads(receipt.read_text()) != metadata:
+            raise ValueError(
+                f"Outsource ball input changed at {output}; use new observations"
+            )
+        if BallDetectionResult.load(destination).to_dict() != result.to_dict():
+            raise ValueError(f"Ball cache differs from its source at {output}")
+        return
+    result.save(destination)
+    save_json_atomic(metadata, receipt)
 
 
 def court_homographies(clip_dir: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -143,7 +153,12 @@ def court_homographies(clip_dir: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def observe_people(
-    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path
+    cfg: DictConfig,
+    paths: ReferenceClipPaths,
+    clip_dir: Path,
+    output: Path,
+    *,
+    homographies: np.ndarray | None = None,
 ) -> None:
     """Run DINO/BoT-SORT within the playing area, then ViTPose; cache each camera."""
     import torch
@@ -157,7 +172,10 @@ def observe_people(
     )
 
     clip = read_clip(clip_dir)
-    _, hs = court_homographies(clip_dir)
+    if homographies is None:
+        _, hs = court_homographies(clip_dir)
+    else:
+        hs = homographies
     head = ViTPoseHeadConfig(1280, 17, 2, (256, 256), (4, 4), 1, 0, ())
     for camera, video_name, h in zip(
         clip["camera_ids"], clip["video_paths"], hs, strict=True
@@ -169,6 +187,9 @@ def observe_people(
             "tracker": "DINO+BoT-SORT",
             "pose": "ViTPose-H",
             "settings": str(cfg.people),
+            "court_homography": h.tolist(),
+            "detector_sha256": sha256(paths.dino_checkpoint),
+            "pose_sha256": sha256(paths.vitpose_checkpoint),
         }
         if cache.exists():
             if json.loads(cache.with_suffix(".metadata.json").read_text()) != signature:

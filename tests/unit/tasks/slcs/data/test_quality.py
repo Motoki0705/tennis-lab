@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 import pytest
 from numpy.typing import NDArray
@@ -30,9 +32,17 @@ def _quality(
     )
 
 
+class LabelInputs(TypedDict):
+    human_kp_vis: np.ndarray
+    ball_vis: np.ndarray
+    player_position: np.ndarray
+    player_yaw: np.ndarray
+    ball_3d: np.ndarray
+
+
 def _inputs(
     num_players: int = 2, num_cameras: int = 2, num_frames: int = 6
-) -> dict[str, np.ndarray]:
+) -> LabelInputs:
     return {
         "human_kp_vis": np.ones((num_players, num_cameras, num_frames, 17), np.float32),
         "ball_vis": np.ones((num_cameras, num_frames), bool),
@@ -62,9 +72,7 @@ def test_masks_all_valid_when_fully_observed() -> None:
 def test_low_confidence_player_frames_masked() -> None:
     inputs = _inputs()
     inputs["human_kp_vis"][0, :, 2, :] = 0.1  # frame 2 of player 0 barely observed
-    masks = build_label_masks(
-        config=_quality(min_player_confidence=0.3), **inputs
-    )
+    masks = build_label_masks(config=_quality(min_player_confidence=0.3), **inputs)
     assert not masks["player_label_valid"][0, 2]
     assert masks["player_label_weight"][0, 2] == 0.0
     assert masks["player_label_valid"][1].all()
@@ -117,3 +125,20 @@ def test_quality_config_validation() -> None:
         _quality(min_ball_cameras=0)
     with pytest.raises(ValueError):
         _quality(min_window_label_ratio=-0.1)
+
+
+def test_teacher_evidence_masks_unsupported_predictions_and_scales_weights() -> None:
+    evidence = {
+        "schema_version": 1,
+        "is_ground_truth": False,
+        "player_weight": [[0, 0.4, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]],
+        "ball_weight": [0, 0.15, 1, 1, 1, 1],
+    }
+    masks = build_label_masks(config=_quality(), teacher_quality=evidence, **_inputs())
+    assert not masks["player_label_valid"][0, 0]
+    assert not masks["ball_label_valid"][0]
+    assert masks["player_label_weight"][0, 1] == pytest.approx(0.4)
+    assert masks["ball_label_weight"][1] == pytest.approx(0.15)
+    evidence["ball_weight"] = [1, 2]
+    with pytest.raises(ValueError, match="teacher-quality"):
+        build_label_masks(config=_quality(), teacher_quality=evidence, **_inputs())

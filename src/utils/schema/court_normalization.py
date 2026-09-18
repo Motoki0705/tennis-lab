@@ -156,9 +156,9 @@ def add_court_coordinate_normalization(
     )
 
 
-def load_and_validate_checkpoint(path: str | Path) -> Mapping[str, Any]:
+def load_and_validate_checkpoint(path: str | Path, *, weights_only: bool = False) -> Mapping[str, Any]:
     """Load a raw checkpoint on CPU and validate its contract before composition."""
-    checkpoint = torch.load(Path(path), map_location="cpu", weights_only=False)
+    checkpoint = torch.load(Path(path), map_location="cpu", weights_only=weights_only)
     if not isinstance(checkpoint, Mapping):
         raise CourtCoordinateContractError(
             f"Checkpoint {path} is incompatible: root must be a mapping."

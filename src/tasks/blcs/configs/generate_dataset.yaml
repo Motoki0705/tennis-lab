@@ -12,7 +12,7 @@ defaults:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/generate_dataset}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:blcs,generate,generate_dataset,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

@@ -49,6 +49,7 @@ class SLCSDataModule(pl.LightningDataModule):
             dataset_root=self.dataset_root,
             split_file=self.split_file,
             split=source_split,
+            augment=split == "train",
             config=self.data_config,
             stride=(
                 self.data_config.train_stride

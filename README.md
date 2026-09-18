@@ -104,6 +104,8 @@ Video
 
 ### ディレクトリの役割
 
+学習・データ生成・可視化と実験ごとのパス設定は [タスク出力規約](src/tasks/OUTPUTS.md) を参照。
+
 - `src/`: タスク実装（各タスクは `configs/` + `scripts/` + `training/` などを持つ）
 - `third_party/`: 外部モジュール（例: GVHMR）。vendor codeは隔離
 - `data/`: データセット/入力（大きなデータやモデルはコミットしない）

@@ -30,14 +30,14 @@ training:
     enabled: false
 
 run:
-  output_dir: ball_detection/3dgs_blcs_paired_v1/treatment/seed_${run.seed}
+  output_dir: ${tennis_output:ball_detection,train,3dgs_blcs_paired_v1,seed_${run.seed}-${tennis_run_id:}}
   seed: 731
   init_weights: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   test_after_fit: false
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

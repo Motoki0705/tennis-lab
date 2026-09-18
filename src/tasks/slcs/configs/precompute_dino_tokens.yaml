@@ -13,7 +13,7 @@ precompute:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},slcs/precompute_dino_tokens,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:slcs,precompute,precompute_dino_tokens,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

@@ -94,8 +94,8 @@ class BLCSSceneData:
     cameras: list[CameraData]
     num_cameras_sampled: int  # Total cameras tried (before filtering)
 
-    fps_out: int
-    sim_fps: int
+    fps_out: float
+    sim_fps: float
 
     # Per-scene variation metadata
     physics_config_dict: dict  # serialized PhysicsConfig (sampled values)

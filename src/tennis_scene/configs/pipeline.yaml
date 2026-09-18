@@ -4,6 +4,7 @@ defaults:
 
 video_paths: [samples/tennis_clip.mp4]
 camera_ids: [cam0]
+output_directory: ${tennis_output:tennis_scene,generate,pipeline,${tennis_run_id:}}
 output_name: tennis_clip
 device: cuda
 
@@ -28,7 +29,7 @@ court_kp:
     ransac_reproj_threshold: 30.0
     temporal_median_window: 9
   save_result: true
-  output_path: tennis_scene/court_kp_result.json
+  output_path: ${output_directory}/court_kp_result.json
   load_path: null
 
 gvhmr:
@@ -79,7 +80,7 @@ gvhmr:
     sideline_margin_m: 1.0
     baseline_margin_m: 5.0
   save_result: true
-  output_path: tennis_scene/gvhmr_result.json
+  output_path: ${output_directory}/gvhmr_result.json
   load_path: null
 
 player_association:
@@ -88,7 +89,7 @@ player_association:
   frame_index: 0
   reference_camera: cam0
   save_result: true
-  output_path: tennis_scene/player_association_result.json
+  output_path: ${output_directory}/player_association_result.json
   load_path: null
 
 player_motion:
@@ -127,7 +128,7 @@ ball_detection:
     max_support_gap: 5
     max_passes: 2
   save_result: true
-  output_path: tennis_scene/ball_detection_result.json
+  output_path: ${output_directory}/ball_detection_result.json
   load_path: null
 
 plcs:
@@ -135,7 +136,7 @@ plcs:
   source: execute
   checkpoint: plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt
   save_result: true
-  output_path: tennis_scene/plcs_result.json
+  output_path: ${output_directory}/plcs_result.json
   load_path: null
   window_size: 1024
   window_overlap: 64
@@ -147,7 +148,7 @@ blcs:
   source: execute
   checkpoint: blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt
   save_result: true
-  output_path: tennis_scene/blcs_result.json
+  output_path: ${output_directory}/blcs_result.json
   load_path: null
   window_size: 1024
   window_overlap: 64
@@ -157,7 +158,7 @@ max_frames: null
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},tennis_scene/hydra,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${output_directory},hydra}
   output_subdir: null
   job:
     chdir: false

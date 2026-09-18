@@ -57,7 +57,7 @@ def test_analysis_output_is_explicitly_output_root_relative() -> None:
     )
 
     assert runtime.OUTPUT_ROLE is PathRole.OUTPUT
-    assert runtime.output_dir == PROJECT_ROOT / "outputs/plcs/analysis/angle_velocity"
+    assert runtime.output_dir.parent == (PROJECT_ROOT / "outputs/plcs/analyze/angle_velocity").resolve()
     assert runtime.result_path is not None
     assert runtime.result_path.parent == runtime.output_dir
 

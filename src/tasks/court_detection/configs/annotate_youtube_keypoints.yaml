@@ -4,7 +4,7 @@ defaults:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/annotate_youtube_keypoints,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:court_detection,generate,annotate_youtube_keypoints,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

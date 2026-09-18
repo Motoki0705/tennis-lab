@@ -5,7 +5,7 @@ defaults:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false
@@ -17,7 +17,7 @@ preview:
   max_samples: 4
   num_augmented: 3
   seed: 42
-  output_dir: court_detection/augmentation_preview
+  output_dir: ${tennis_output:court_detection,visualize,augmentation,${tennis_run_id:}}
   draw:
     mask_alpha: 0.45
     heatmap_alpha: 0.55

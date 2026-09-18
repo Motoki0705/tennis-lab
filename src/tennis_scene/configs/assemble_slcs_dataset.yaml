@@ -1,0 +1,25 @@
+defaults:
+  - paths: default
+  - _self_
+source_datasets:
+  - slcs/meiji_rgb_v6
+  - slcs/broadcast_rgb_v4
+dataset_directory: ${tennis_dataset:slcs,real_rgb_v1}
+dataset_id: real_rgb_v1
+clip_ids: null
+seed: 42
+video_splits:
+  video_000: train
+  video_001: val
+  video_002: test
+  broadcast_shanghai: train
+  broadcast_washington: train
+  broadcast_indoor_hard: val
+  broadcast_eastbourne: test
+output_dir: ${tennis_output:tennis_scene,generate,assemble_real_rgb,${tennis_run_id:}}
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

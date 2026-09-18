@@ -41,6 +41,8 @@ class CourtModelSpec:
     in_channels: int
     short_side: int
     encoder_kind: CourtEncoderKind = "default"
+    pose_long_side: bool = False
+    patch_size: int = 16
 
 
 @dataclass(frozen=True, slots=True)

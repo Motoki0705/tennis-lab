@@ -1,5 +1,5 @@
 schema: ball_detection_evaluation_manifest_v1
-output_dir: ball_detection/3dgs_blcs/evaluation_real_v1
+output_dir: ${tennis_output:ball_detection,evaluate,3dgs_blcs_real_v1,${tennis_run_id:}}
 device: auto
 resume: true
 fail_fast: true

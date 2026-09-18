@@ -35,3 +35,14 @@ quality:
   min_ball_cameras: 1
   label_weight_power: 1.0
   min_window_label_ratio: 0.1
+
+# Input corruption never changes pseudo-label targets or validation/test inputs.
+augmentation:
+  enabled: false
+  joint_dropout: 0.1
+  ball_dropout: 0.15
+  uv_std: 0.003
+  burst_probability: 0.5
+  burst_max_frames: 24
+  rgb_only_probability: 0.15
+  rgb_dropout_probability: 0.1

@@ -2,4 +2,4 @@ defaults:
   - train_base
   - _self_
 
-output_dir: ???
+output_dir: ${tennis_output:court_detection,train,mixed_source,${tennis_run_id:}}

@@ -1,5 +1,7 @@
 # Court Detection
 
+出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
+
 テニス映像から `kp / seg / line / semantic_line` を推定します。データsourceとtarget集合は独立に選択し、単一の `CourtDetectionDataset` / `CourtDetectionDataModule` が任意の非空target subsetを処理します。
 
 ## Data composition

@@ -10,10 +10,10 @@ fps: null
 kp_conf_threshold: 0.3
 trail_length: 30
 dpi: 100
-output_directory: tennis_scene/task_visualizations
+output_directory: ${tennis_output:tennis_scene,visualize,visualize_tasks,${tennis_run_id:}}
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},visualization/hydra,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${output_directory},hydra}
   output_subdir: null
   job:
     chdir: false
