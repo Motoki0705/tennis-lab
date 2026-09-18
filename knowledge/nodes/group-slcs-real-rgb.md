@@ -46,6 +46,7 @@ members:
 - run-slcs-meiji-v8-root-replay-v1
 - run-slcs-meiji-v8-root-replay-v2
 - run-slcs-meiji-observation-review-v1
+- run-slcs-ball-gradient-probe-v1
 parents: []
 tags:
 - slcs
@@ -69,6 +70,6 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 
 ### 次の判断
 
-ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。現時点の損失平滑化過剰説は仮説であり、施策比較による検証は未実施。
+ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
 
 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
