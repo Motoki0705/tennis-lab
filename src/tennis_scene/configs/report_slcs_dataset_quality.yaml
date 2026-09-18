@@ -4,7 +4,7 @@ defaults:
 dataset_directory: slcs/meiji_rgb_v9
 expected_dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
 generation_directories:
-  - tennis_scene/generate/meiji_rgb_v9/s42-001
+  - tennis_scene/generate/meiji_rgb_v9/s42-002
 observation_directories:
   - tennis_scene/precompute/meiji_dino_vitpose/s42-005
 excluded_clips:

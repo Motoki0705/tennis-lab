@@ -9,6 +9,8 @@ from pathlib import Path
 from src.tasks.base.configuration import exact_config_mapping
 from src.utils.checksum import dual_sha256
 
+from .checkpoint_warning import warn_checkpoint_difference
+
 _CHECKPOINT_ROLES = frozenset({"court", "dino", "vitpose", "plcs", "blcs", "dinov3"})
 
 
@@ -33,7 +35,9 @@ def verify_checkpoint_integrity(
     """Verify only supplied stage assets; never derive or repair expected values.
 
     None preserves profiles without pins. Provider/stability failures from
-    dual_sha256 propagate, and a trusted-digest mismatch stops generation.
+    dual_sha256 propagate. A pin mismatch stops generation unless the explicit
+    run-scoped role warning policy records and permits it. Returned values
+    are observations, including permitted mismatches, never replacement pins.
     """
     if expected is None:
         return {}
@@ -44,7 +48,13 @@ def verify_checkpoint_integrity(
     verified: dict[str, str] = {}
     for role, path in assets.items():
         actual = dual_sha256(path)
-        if actual != pins[role]:
+        if actual != pins[role] and not warn_checkpoint_difference(
+            actual,
+            pins[role],
+            role=role,
+            path=path,
+            context="stage checkpoint verification",
+        ):
             raise RuntimeError(
                 f"Checkpoint SHA-256 mismatch for {role} ({path}): "
                 f"expected {pins[role]}, actual {actual}"

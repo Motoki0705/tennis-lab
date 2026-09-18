@@ -35,9 +35,22 @@ from src.utils.checksum import FileIntegrityError
 from src.utils.io import save_json_atomic
 from src.utils.video.reader import OpenCVVideoFrameReader
 
+from .checkpoint_warning import (
+    declared_checkpoint_identity,
+    normalize_receipt,
+    receipt_digest_role,
+    warn_checkpoint_difference,
+)
+
 
 def _require_digest(actual: object, expected: str, *, path: Path, role: str) -> None:
-    if actual != expected:
+    if actual != expected and not warn_checkpoint_difference(
+        actual,
+        expected,
+        role=receipt_digest_role(role.split()[0]),
+        path=path,
+        context=role,
+    ):
         raise FileIntegrityError(
             f"Checkpoint SHA-256 mismatch for {role}",
             details={"path": str(path), "expected": expected, "actual": actual},
@@ -72,6 +85,7 @@ def _read_checkpoint_receipt(receipt: Path) -> dict[str, Any]:
 
 def _validate_receipt_digests(receipt: Path, expected: Mapping[str, str]) -> None:
     saved = _read_checkpoint_receipt(receipt)
+    normalize_receipt(saved, path=receipt, context="receipt digest validation")
     for field, digest in expected.items():
         _require_digest(
             saved.get(field),
@@ -96,6 +110,7 @@ def validate_people_receipts(
     for camera in camera_ids:
         receipt = observations / f"{camera}_people.metadata.json"
         saved = _read_checkpoint_receipt(receipt)
+        normalize_receipt(saved, path=receipt, context="infer people receipt")
         for field, role in (("detector_sha256", "dino"), ("pose_sha256", "vitpose")):
             digest = saved.get(field)
             if not isinstance(digest, str) or not digest:
@@ -123,6 +138,10 @@ def _validate_cache_identity(
         raise ValueError(
             f"{prefix}: {cache}; receipt must be a JSON object, got {type(saved).__name__}"
         )
+    saved = normalize_receipt(saved, path=receipt, context="cache saved identity")
+    expected = normalize_receipt(
+        expected, path=receipt, context="cache requested identity"
+    )
     if saved == expected:
         return
 
@@ -340,6 +359,8 @@ def _detections(
         boxes=box_array,
         scores=score_array,
     )
+    if declared_checkpoint_identity():
+        identity["declared_checkpoint_sha256"] = declared_checkpoint_identity()
     save_json_atomic(identity, receipt)
     return indices, offset_array, box_array, score_array
 
@@ -357,6 +378,8 @@ def observe_singles_people(
 
     Pins authenticate each camera's checkpoint reads. Without pins, matching
     pre/post reads and sibling receipts still prevent mixed provenance. These
+    An explicit run warning policy may waive checkpoint digest equality,
+    recording the unauthenticated declared identity assumption. These
     boundary checks cannot detect a checkpoint changed and restored between
     reads; they do not lock files or authenticate the model's in-memory state.
     """
@@ -510,5 +533,7 @@ def observe_singles_people(
             source_detection_ids=source_ids,
             detection_frame_indices=indices,
         )
+        if declared_checkpoint_identity():
+            identity["declared_checkpoint_sha256"] = declared_checkpoint_identity()
         save_json_atomic(identity, receipt)
         print(f"Saved court-half people {cache}", flush=True)
