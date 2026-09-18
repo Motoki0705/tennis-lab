@@ -1,0 +1,124 @@
+{
+  "query_days": 7,
+  "event_query_utc": "2026-09-18T19:19:47.5168531Z",
+  "stornvme_resets": [
+    {
+      "time_utc": "2026-09-18T09:46:14.5826062Z",
+      "id": 129,
+      "device": "RaidPort2"
+    },
+    {
+      "time_utc": "2026-09-18T08:39:45.4555451Z",
+      "id": 129,
+      "device": "RaidPort2"
+    },
+    {
+      "time_utc": "2026-09-18T08:31:20.8877308Z",
+      "id": 129,
+      "device": "RaidPort2"
+    },
+    {
+      "time_utc": "2026-09-18T08:15:52.6743698Z",
+      "id": 129,
+      "device": "RaidPort2"
+    }
+  ],
+  "crashes": [
+    {
+      "time_utc": "2026-09-18T08:54:23.9356316Z",
+      "provider": "Microsoft-Windows-Kernel-Power",
+      "id": 41,
+      "bugcheck_decimal": 340,
+      "bugcheck_hex": "0x154"
+    }
+  ],
+  "whea_query_result": [
+    {
+      "Provider": "Microsoft-Windows-WHEA-Logger",
+      "ErrorId": "NoMatchingEventsFound,Microsoft.PowerShell.Commands.GetWinEventCommand",
+      "Message": "指定した選択条件に一致するイベントが見つかりませんでした。"
+    }
+  ],
+  "disk_mapping": [
+    {
+      "Index": 1,
+      "Model": "CT1000P310SSD8",
+      "FirmwareRevision": "V8CR000",
+      "InterfaceType": "SCSI",
+      "SCSIPort": 2,
+      "Size": 1000202273280,
+      "Status": "OK"
+    },
+    {
+      "Index": 0,
+      "Model": "WDC WDS500G2B0C-00PXH0",
+      "FirmwareRevision": "211210WD",
+      "InterfaceType": "SCSI",
+      "SCSIPort": 1,
+      "Size": 500105249280,
+      "Status": "OK"
+    }
+  ],
+  "partitions": [
+    {
+      "DiskNumber": 1,
+      "PartitionNumber": 2,
+      "DriveLetter": "D",
+      "Size": 1000186314752
+    },
+    {
+      "DiskNumber": 0,
+      "PartitionNumber": 3,
+      "DriveLetter": "C",
+      "Size": 499038289920
+    }
+  ],
+  "wsl": [
+    {
+      "DistributionName": "Ubuntu",
+      "BasePath": "D:\\WSL\\Ubuntu",
+      "VhdFileName": "ext4.vhdx"
+    }
+  ],
+  "port2_registry": [
+    {
+      "PSChildName": "Scsi Port 2",
+      "Driver": "stornvme",
+      "Identifier": null,
+      "DeviceName": null,
+      "Type": null
+    },
+    {
+      "PSChildName": "Logical Unit Id 0",
+      "Driver": null,
+      "Identifier": "NVMe    CT1000P310SSD8  R000",
+      "DeviceName": null,
+      "Type": null
+    }
+  ],
+  "reliability": [
+    {
+      "DeviceId": "1",
+      "FriendlyName": "CT1000P310SSD8",
+      "HealthStatus": "Healthy",
+      "OperationalStatus": "OK",
+      "Error": "Access to a CIM resource was not available to the client."
+    },
+    {
+      "DeviceId": "0",
+      "FriendlyName": "WDC WDS500G2B0C-00PXH0",
+      "HealthStatus": "Healthy",
+      "OperationalStatus": "OK",
+      "Error": "Access to a CIM resource was not available to the client."
+    }
+  ],
+  "raw_records_local_only": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_host_storage/s42-001",
+  "official_bugcheck_reference": "https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/bug-check-0x154--unexpected-store-exception",
+  "limitations": [
+    "No causal link to checkpoint SHA mismatch established",
+    "No SSD failure diagnosis",
+    "Healthy summary does not substitute for unavailable detailed counters",
+    "No BIOS, driver, firmware, registry, power, or storage settings changed",
+    "No crash dump contents collected; raw kernel pointers/report IDs are kept out of this tracked summary"
+  ]
+}
