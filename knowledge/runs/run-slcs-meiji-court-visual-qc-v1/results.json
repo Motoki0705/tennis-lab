@@ -1,0 +1,1882 @@
+{
+  "execution_commit": "4d24a2144680cace5af825659b8909aecd19e15e",
+  "project_root": "/home/kamimura/projects/tennis-lab",
+  "source_worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001",
+  "observation_root": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004",
+  "sample_root": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001",
+  "sample_source_reason": "s42-004 does not retain raw court samples; s42-001 court.json and court.npz must be byte-identical to s42-004 before use.",
+  "is_measured_calibration": false,
+  "coordinate_system": "view-local court geometry",
+  "human_visual_review": "pending; probe does not inspect images",
+  "display_roi_only": true,
+  "model_loads": 0,
+  "forward_calls": 0,
+  "calibration_refits": 0,
+  "numerical_tolerance_px": 0.0002,
+  "rounding_note": "Projection uses stored float64 H and original float32 physical points; temporal medians cast to float32 exactly as producer. Cached normalized keypoints incur float32 divide/multiply rounding; atol=2e-4 px, rtol=0.",
+  "inlier_note": "Original RANSAC mask is recorded only in court.json. No RANSAC rerun. Independently compare saved mask to supported points whose residual to saved H is <= original ransac_px; mask comparison is diagnostic only, never an acceptance condition; final refit residuals need not reconstruct the original RANSAC mask.",
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "OMP_NUM_THREADS": "2",
+    "MKL_NUM_THREADS": "2"
+  },
+  "opencv_threads": 1,
+  "views": [
+    {
+      "clip": "video_001/clip_003",
+      "camera": "cam0",
+      "frame_indices": [
+        0,
+        803,
+        1606
+      ],
+      "sample_frame_indices": [
+        0,
+        201,
+        402,
+        602,
+        803,
+        1004,
+        1204,
+        1405,
+        1606
+      ],
+      "display_roi_xyxy": [
+        530,
+        276,
+        1286,
+        604
+      ],
+      "producer_roi_xyxy": [
+        359,
+        55,
+        1278,
+        604
+      ],
+      "supported_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "inlier_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_inlier_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_mask_matches_recorded": true,
+      "fit_error_px_median": 6.293097496032715,
+      "fit_error_px_p95": 15.838016510009766,
+      "median_delta_px": 0.0,
+      "p95_delta_px": 0.0,
+      "points": [
+        {
+          "point": 0,
+          "fit_uv_px": [
+            990.2406616210938,
+            370.71990966796875
+          ],
+          "median_uv_px": [
+            993.3812255859375,
+            366.00982666015625
+          ],
+          "error_px": 5.661097526550293,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 1,
+          "fit_uv_px": [
+            1215.49755859375,
+            346.9898681640625
+          ],
+          "median_uv_px": [
+            1209.18505859375,
+            353.5484619140625
+          ],
+          "error_px": 9.102901458740234,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 2,
+          "fit_uv_px": [
+            600.9544067382812,
+            508.19915771484375
+          ],
+          "median_uv_px": [
+            605.5108642578125,
+            518.9609375
+          ],
+          "error_px": 11.686625480651855,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 3,
+          "fit_uv_px": [
+            1029.2587890625,
+            533.5125732421875
+          ],
+          "median_uv_px": [
+            1028.90625,
+            532.992919921875
+          ],
+          "error_px": 0.6279516816139221,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 4,
+          "fit_uv_px": [
+            1013.6446533203125,
+            368.25439453125
+          ],
+          "median_uv_px": [
+            1014.9987182617188,
+            372.1227722167969
+          ],
+          "error_px": 4.098516464233398,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 5,
+          "fit_uv_px": [
+            633.5910034179688,
+            510.1280212402344
+          ],
+          "median_uv_px": [
+            612.2194213867188,
+            518.78857421875
+          ],
+          "error_px": 23.0596981048584,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": false
+        },
+        {
+          "point": 6,
+          "fit_uv_px": [
+            1181.8428955078125,
+            350.5352783203125
+          ],
+          "median_uv_px": [
+            1186.509765625,
+            353.0471496582031
+          ],
+          "error_px": 5.299921989440918,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 7,
+          "fit_uv_px": [
+            944.4491577148438,
+            528.5001831054688
+          ],
+          "median_uv_px": [
+            941.784912109375,
+            530.8089599609375
+          ],
+          "error_px": 3.5254299640655518,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 8,
+          "fit_uv_px": [
+            970.1284790039062,
+            384.49896240234375
+          ],
+          "median_uv_px": [
+            959.1310424804688,
+            379.8250732421875
+          ],
+          "error_px": 11.94942855834961,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 9,
+          "fit_uv_px": [
+            1160.14794921875,
+            366.7991943359375
+          ],
+          "median_uv_px": [
+            1165.9609375,
+            372.8227844238281
+          ],
+          "error_px": 8.371049880981445,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 10,
+          "fit_uv_px": [
+            789.5429077148438,
+            451.9113464355469
+          ],
+          "median_uv_px": [
+            784.5262451171875,
+            447.137451171875
+          ],
+          "error_px": 6.925097465515137,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 11,
+          "fit_uv_px": [
+            1056.5457763671875,
+            444.4657287597656
+          ],
+          "median_uv_px": [
+            1058.6025390625,
+            439.54071044921875
+          ],
+          "error_px": 5.337234973907471,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 12,
+          "fit_uv_px": [
+            1056.5478515625,
+            376.4492492675781
+          ],
+          "median_uv_px": [
+            1057.432861328125,
+            372.7796325683594
+          ],
+          "error_px": 3.7748281955718994,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 13,
+          "fit_uv_px": [
+            903.4313354492188,
+            448.7354736328125
+          ],
+          "median_uv_px": [
+            906.3017578125,
+            439.9745788574219
+          ],
+          "error_px": 9.219143867492676,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        }
+      ],
+      "original_frames": [
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_frame00000.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_frame00803.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_frame01606.png"
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_contact.png"
+    },
+    {
+      "clip": "video_001/clip_003",
+      "camera": "cam1",
+      "frame_indices": [
+        0,
+        803,
+        1606
+      ],
+      "sample_frame_indices": [
+        0,
+        201,
+        402,
+        602,
+        803,
+        1004,
+        1204,
+        1405,
+        1606
+      ],
+      "display_roi_xyxy": [
+        274,
+        429,
+        1567,
+        940
+      ],
+      "producer_roi_xyxy": [
+        153,
+        0,
+        1920,
+        801
+      ],
+      "supported_channels": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "inlier_channels": [
+        1,
+        3,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_inlier_channels": [
+        1,
+        3,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_mask_matches_recorded": true,
+      "fit_error_px_median": 3.238513946533203,
+      "fit_error_px_p95": 38.761329650878906,
+      "median_delta_px": 0.0,
+      "p95_delta_px": 0.0,
+      "points": [
+        {
+          "point": 0,
+          "fit_uv_px": [
+            344.1507873535156,
+            536.8634033203125
+          ],
+          "median_uv_px": [
+            403.4140625,
+            529.0172729492188
+          ],
+          "error_px": 59.78041076660156,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": false
+        },
+        {
+          "point": 1,
+          "fit_uv_px": [
+            757.9187622070312,
+            499.48773193359375
+          ],
+          "median_uv_px": [
+            753.1529541015625,
+            500.47393798828125
+          ],
+          "error_px": 4.866778373718262,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 2,
+          "fit_uv_px": [
+            605.13330078125,
+            869.4865112304688
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 0,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 3,
+          "fit_uv_px": [
+            1496.396728515625,
+            617.8226318359375
+          ],
+          "median_uv_px": [
+            1496.872802734375,
+            615.59130859375
+          ],
+          "error_px": 2.281545639038086,
+          "confidence_support_count": 8,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 4,
+          "fit_uv_px": [
+            406.49383544921875,
+            531.23193359375
+          ],
+          "median_uv_px": [
+            406.19171142578125,
+            531.0587158203125
+          ],
+          "error_px": 0.34825754165649414,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 5,
+          "fit_uv_px": [
+            797.2064208984375,
+            815.2512817382812
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 0,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 6,
+          "fit_uv_px": [
+            715.3095703125,
+            503.3366394042969
+          ],
+          "median_uv_px": [
+            712.653564453125,
+            502.0016784667969
+          ],
+          "error_px": 2.972623109817505,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 7,
+          "fit_uv_px": [
+            1434.882568359375,
+            635.1921997070312
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 0,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 8,
+          "fit_uv_px": [
+            437.22052001953125,
+            553.5679931640625
+          ],
+          "median_uv_px": [
+            434.94329833984375,
+            554.9450073242188
+          ],
+          "error_px": 2.6611850261688232,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 9,
+          "fit_uv_px": [
+            791.0447998046875,
+            517.2144775390625
+          ],
+          "median_uv_px": [
+            794.25634765625,
+            516.7974243164062
+          ],
+          "error_px": 3.238513946533203,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 10,
+          "fit_uv_px": [
+            596.6934204101562,
+            669.4930419921875
+          ],
+          "median_uv_px": [
+            583.93310546875,
+            657.165771484375
+          ],
+          "error_px": 17.742244720458984,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 11,
+          "fit_uv_px": [
+            1123.0076904296875,
+            578.0438232421875
+          ],
+          "median_uv_px": [
+            1123.024169921875,
+            583.0506591796875
+          ],
+          "error_px": 5.006863117218018,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 12,
+          "fit_uv_px": [
+            631.088623046875,
+            533.6491088867188
+          ],
+          "median_uv_px": [
+            639.6463012695312,
+            531.35498046875
+          ],
+          "error_px": 8.859846115112305,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 13,
+          "fit_uv_px": [
+            903.1296997070312,
+            616.2484741210938
+          ],
+          "median_uv_px": [
+            900.8690795898438,
+            615.3291015625
+          ],
+          "error_px": 2.440419912338257,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        }
+      ],
+      "original_frames": [
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_frame00000.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_frame00803.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_frame01606.png"
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_contact.png"
+    },
+    {
+      "clip": "video_001/clip_003",
+      "camera": "cam2",
+      "frame_indices": [
+        0,
+        803,
+        1606
+      ],
+      "sample_frame_indices": [
+        0,
+        201,
+        402,
+        602,
+        803,
+        1004,
+        1204,
+        1405,
+        1606
+      ],
+      "display_roi_xyxy": [
+        12,
+        328,
+        1715,
+        797
+      ],
+      "producer_roi_xyxy": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "supported_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "inlier_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_inlier_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_mask_matches_recorded": true,
+      "fit_error_px_median": 3.261505603790283,
+      "fit_error_px_p95": 7.1923112869262695,
+      "median_delta_px": 0.0,
+      "p95_delta_px": 0.0,
+      "points": [
+        {
+          "point": 0,
+          "fit_uv_px": [
+            722.2688598632812,
+            403.9403076171875
+          ],
+          "median_uv_px": [
+            724.9718017578125,
+            407.1768798828125
+          ],
+          "error_px": 4.216787338256836,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 1,
+          "fit_uv_px": [
+            1099.285400390625,
+            401.4360046386719
+          ],
+          "median_uv_px": [
+            1098.10205078125,
+            398.0904541015625
+          ],
+          "error_px": 3.5486650466918945,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 2,
+          "fit_uv_px": [
+            83.94951629638672,
+            726.6332397460938
+          ],
+          "median_uv_px": [
+            82.68596649169922,
+            723.8213500976562
+          ],
+          "error_px": 3.0827393531799316,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 3,
+          "fit_uv_px": [
+            1644.716796875,
+            694.8779296875
+          ],
+          "median_uv_px": [
+            1643.5113525390625,
+            695.1036987304688
+          ],
+          "error_px": 1.2264043092727661,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 4,
+          "fit_uv_px": [
+            770.050537109375,
+            403.6229248046875
+          ],
+          "median_uv_px": [
+            768.9063110351562,
+            407.3544616699219
+          ],
+          "error_px": 3.903027057647705,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 5,
+          "fit_uv_px": [
+            291.0392761230469,
+            722.4197998046875
+          ],
+          "median_uv_px": [
+            291.3168029785156,
+            722.3383178710938
+          ],
+          "error_px": 0.28924116492271423,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 6,
+          "fit_uv_px": [
+            1052.8900146484375,
+            401.7441711425781
+          ],
+          "median_uv_px": [
+            1052.1573486328125,
+            398.4397888183594
+          ],
+          "error_px": 3.3846333026885986,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 7,
+          "fit_uv_px": [
+            1461.351806640625,
+            698.6087036132812
+          ],
+          "median_uv_px": [
+            1462.8314208984375,
+            697.4229125976562
+          ],
+          "error_px": 1.8961430788040161,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 8,
+          "fit_uv_px": [
+            738.2255249023438,
+            424.8034362792969
+          ],
+          "median_uv_px": [
+            738.6513061523438,
+            425.6641845703125
+          ],
+          "error_px": 0.960300624370575,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 9,
+          "fit_uv_px": [
+            1081.046630859375,
+            422.2080078125
+          ],
+          "median_uv_px": [
+            1083.311279296875,
+            414.1212463378906
+          ],
+          "error_px": 8.39787769317627,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 10,
+          "fit_uv_px": [
+            558.5101318359375,
+            544.4096069335938
+          ],
+          "median_uv_px": [
+            559.181884765625,
+            545.0759887695312
+          ],
+          "error_px": 0.9462117552757263,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 11,
+          "fit_uv_px": [
+            1237.2646484375,
+            535.7451782226562
+          ],
+          "median_uv_px": [
+            1236.6859130859375,
+            542.2626953125
+          ],
+          "error_px": 6.543161392211914,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 12,
+          "fit_uv_px": [
+            910.9469604492188,
+            423.49578857421875
+          ],
+          "median_uv_px": [
+            907.56494140625,
+            424.41448974609375
+          ],
+          "error_px": 3.504577875137329,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 13,
+          "fit_uv_px": [
+            903.0234985351562,
+            540.0118408203125
+          ],
+          "median_uv_px": [
+            904.691162109375,
+            542.6704711914062
+          ],
+          "error_px": 3.138378143310547,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        }
+      ],
+      "original_frames": [
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_frame00000.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_frame00803.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_frame01606.png"
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_contact.png"
+    },
+    {
+      "clip": "video_002/clip_017",
+      "camera": "cam0",
+      "frame_indices": [
+        0,
+        453,
+        907
+      ],
+      "sample_frame_indices": [
+        0,
+        113,
+        227,
+        340,
+        454,
+        567,
+        680,
+        794,
+        907
+      ],
+      "display_roi_xyxy": [
+        472,
+        279,
+        1280,
+        632
+      ],
+      "producer_roi_xyxy": [
+        626,
+        223,
+        1230,
+        530
+      ],
+      "supported_channels": [
+        0,
+        1,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "inlier_channels": [
+        0,
+        1,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_inlier_channels": [
+        0,
+        1,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_mask_matches_recorded": true,
+      "fit_error_px_median": 4.343952655792236,
+      "fit_error_px_p95": 63.6152458190918,
+      "median_delta_px": 0.0,
+      "p95_delta_px": 0.0,
+      "points": [
+        {
+          "point": 0,
+          "fit_uv_px": [
+            1012.169189453125,
+            361.4173583984375
+          ],
+          "median_uv_px": [
+            1013.599853515625,
+            360.9266357421875
+          ],
+          "error_px": 1.5124841928482056,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 1,
+          "fit_uv_px": [
+            1209.2508544921875,
+            349.0491638183594
+          ],
+          "median_uv_px": [
+            1208.818115234375,
+            352.72247314453125
+          ],
+          "error_px": 3.6987111568450928,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 2,
+          "fit_uv_px": [
+            542.4835205078125,
+            507.6022033691406
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 2,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 3,
+          "fit_uv_px": [
+            1013.179931640625,
+            561.1707763671875
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 3,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 4,
+          "fit_uv_px": [
+            1033.5245361328125,
+            360.0771789550781
+          ],
+          "median_uv_px": [
+            1028.8526611328125,
+            357.92608642578125
+          ],
+          "error_px": 5.143307685852051,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 5,
+          "fit_uv_px": [
+            578.6988525390625,
+            511.7237548828125
+          ],
+          "median_uv_px": [
+            699.603759765625,
+            521.7156982421875
+          ],
+          "error_px": 121.31708526611328,
+          "confidence_support_count": 6,
+          "supported": true,
+          "inlier": false
+        },
+        {
+          "point": 6,
+          "fit_uv_px": [
+            1180.9637451171875,
+            350.8243713378906
+          ],
+          "median_uv_px": [
+            1184.7584228515625,
+            352.9386901855469
+          ],
+          "error_px": 4.343952655792236,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 7,
+          "fit_uv_px": [
+            920.7564086914062,
+            550.6522827148438
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 0,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 8,
+          "fit_uv_px": [
+            990.8994750976562,
+            374.2890625
+          ],
+          "median_uv_px": [
+            995.528564453125,
+            370.6094055175781
+          ],
+          "error_px": 5.9134039878845215,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 9,
+          "fit_uv_px": [
+            1162.0797119140625,
+            365.32647705078125
+          ],
+          "median_uv_px": [
+            1161.3726806640625,
+            366.9327697753906
+          ],
+          "error_px": 1.7550126314163208,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 10,
+          "fit_uv_px": [
+            790.3252563476562,
+            441.1639404296875
+          ],
+          "median_uv_px": [
+            791.748046875,
+            445.9415283203125
+          ],
+          "error_px": 4.984945297241211,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 11,
+          "fit_uv_px": [
+            1059.9326171875,
+            443.77099609375
+          ],
+          "median_uv_px": [
+            1061.02978515625,
+            440.8231506347656
+          ],
+          "error_px": 3.145404577255249,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 12,
+          "fit_uv_px": [
+            1070.359375,
+            370.12872314453125
+          ],
+          "median_uv_px": [
+            1066.2198486328125,
+            367.3223876953125
+          ],
+          "error_px": 5.001119613647461,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 13,
+          "fit_uv_px": [
+            907.7169189453125,
+            442.299072265625
+          ],
+          "median_uv_px": [
+            905.293701171875,
+            442.20318603515625
+          ],
+          "error_px": 2.425114154815674,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        }
+      ],
+      "original_frames": [
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_frame00000.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_frame00453.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_frame00907.png"
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_contact.png"
+    },
+    {
+      "clip": "video_002/clip_017",
+      "camera": "cam1",
+      "frame_indices": [
+        0,
+        453,
+        907
+      ],
+      "sample_frame_indices": [
+        0,
+        113,
+        227,
+        340,
+        454,
+        567,
+        680,
+        794,
+        907
+      ],
+      "display_roi_xyxy": [
+        276,
+        427,
+        1571,
+        903
+      ],
+      "producer_roi_xyxy": [
+        280,
+        266,
+        1554,
+        699
+      ],
+      "supported_channels": [
+        0,
+        1,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "inlier_channels": [
+        1,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_inlier_channels": [
+        1,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_mask_matches_recorded": true,
+      "fit_error_px_median": 3.9279894828796387,
+      "fit_error_px_p95": 65.11891174316406,
+      "median_delta_px": 0.0,
+      "p95_delta_px": 0.0,
+      "points": [
+        {
+          "point": 0,
+          "fit_uv_px": [
+            346.6705627441406,
+            531.344482421875
+          ],
+          "median_uv_px": [
+            403.71759033203125,
+            526.03955078125
+          ],
+          "error_px": 57.293155670166016,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": false
+        },
+        {
+          "point": 1,
+          "fit_uv_px": [
+            747.9637451171875,
+            497.1709289550781
+          ],
+          "median_uv_px": [
+            741.4395141601562,
+            497.83892822265625
+          ],
+          "error_px": 6.5583391189575195,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 2,
+          "fit_uv_px": [
+            586.6470947265625,
+            832.2683715820312
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 0,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 3,
+          "fit_uv_px": [
+            1500.486328125,
+            624.006103515625
+          ],
+          "median_uv_px": [
+            1427.387939453125,
+            639.3124389648438
+          ],
+          "error_px": 74.68372344970703,
+          "confidence_support_count": 6,
+          "supported": true,
+          "inlier": false
+        },
+        {
+          "point": 4,
+          "fit_uv_px": [
+            405.00994873046875,
+            526.3764038085938
+          ],
+          "median_uv_px": [
+            411.0854187011719,
+            526.8380737304688
+          ],
+          "error_px": 6.0929856300354,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 5,
+          "fit_uv_px": [
+            763.6443481445312,
+            791.9310302734375
+          ],
+          "median_uv_px": null,
+          "error_px": null,
+          "confidence_support_count": 0,
+          "supported": false,
+          "inlier": false
+        },
+        {
+          "point": 6,
+          "fit_uv_px": [
+            705.05712890625,
+            500.8247985839844
+          ],
+          "median_uv_px": [
+            702.5845947265625,
+            500.663330078125
+          ],
+          "error_px": 2.4778008460998535,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 7,
+          "fit_uv_px": [
+            1429.06396484375,
+            640.2831420898438
+          ],
+          "median_uv_px": [
+            1426.3780517578125,
+            638.8033447265625
+          ],
+          "error_px": 3.066582679748535,
+          "confidence_support_count": 7,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 8,
+          "fit_uv_px": [
+            434.4253234863281,
+            548.1573486328125
+          ],
+          "median_uv_px": [
+            430.69696044921875,
+            547.0947875976562
+          ],
+          "error_px": 3.876819133758545,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 9,
+          "fit_uv_px": [
+            779.9190063476562,
+            515.2446899414062
+          ],
+          "median_uv_px": [
+            780.5699462890625,
+            516.2872314453125
+          ],
+          "error_px": 1.229071021080017,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 10,
+          "fit_uv_px": [
+            583.6925659179688,
+            658.683837890625
+          ],
+          "median_uv_px": [
+            581.598876953125,
+            658.510498046875
+          ],
+          "error_px": 2.1008522510528564,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 11,
+          "fit_uv_px": [
+            1111.7410888671875,
+            579.1603393554688
+          ],
+          "median_uv_px": [
+            1119.0506591796875,
+            579.462158203125
+          ],
+          "error_px": 7.315798759460449,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 12,
+          "fit_uv_px": [
+            620.5488891601562,
+            530.4266967773438
+          ],
+          "median_uv_px": [
+            623.8035888671875,
+            528.137451171875
+          ],
+          "error_px": 3.9791600704193115,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 13,
+          "fit_uv_px": [
+            882.7410888671875,
+            613.6475219726562
+          ],
+          "median_uv_px": [
+            882.9552612304688,
+            616.3399047851562
+          ],
+          "error_px": 2.70088791847229,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        }
+      ],
+      "original_frames": [
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_frame00000.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_frame00453.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_frame00907.png"
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_contact.png"
+    },
+    {
+      "clip": "video_002/clip_017",
+      "camera": "cam2",
+      "frame_indices": [
+        0,
+        453,
+        907
+      ],
+      "sample_frame_indices": [
+        0,
+        113,
+        227,
+        340,
+        454,
+        567,
+        680,
+        794,
+        907
+      ],
+      "display_roi_xyxy": [
+        13,
+        328,
+        1714,
+        795
+      ],
+      "producer_roi_xyxy": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "supported_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "inlier_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_inlier_channels": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "residual_mask_matches_recorded": true,
+      "fit_error_px_median": 3.0576882362365723,
+      "fit_error_px_p95": 6.3535919189453125,
+      "median_delta_px": 0.0,
+      "p95_delta_px": 0.0,
+      "points": [
+        {
+          "point": 0,
+          "fit_uv_px": [
+            722.6602172851562,
+            404.1162109375
+          ],
+          "median_uv_px": [
+            726.5241088867188,
+            398.60858154296875
+          ],
+          "error_px": 6.727826118469238,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 1,
+          "fit_uv_px": [
+            1098.826904296875,
+            403.48492431640625
+          ],
+          "median_uv_px": [
+            1098.207763671875,
+            398.88165283203125
+          ],
+          "error_px": 4.644721984863281,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 2,
+          "fit_uv_px": [
+            83.05850982666016,
+            724.0888061523438
+          ],
+          "median_uv_px": [
+            83.015380859375,
+            723.4701538085938
+          ],
+          "error_px": 0.6201539039611816,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 3,
+          "fit_uv_px": [
+            1643.1868896484375,
+            696.9310302734375
+          ],
+          "median_uv_px": [
+            1643.047119140625,
+            694.9791870117188
+          ],
+          "error_px": 1.9568413496017456,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 4,
+          "fit_uv_px": [
+            770.4392700195312,
+            404.0360107421875
+          ],
+          "median_uv_px": [
+            770.17529296875,
+            407.1138610839844
+          ],
+          "error_px": 3.0891497135162354,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 5,
+          "fit_uv_px": [
+            291.9647216796875,
+            720.4522705078125
+          ],
+          "median_uv_px": [
+            292.0733337402344,
+            714.3011474609375
+          ],
+          "error_px": 6.1520819664001465,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 6,
+          "fit_uv_px": [
+            1052.638427734375,
+            403.56243896484375
+          ],
+          "median_uv_px": [
+            1052.53369140625,
+            407.1862487792969
+          ],
+          "error_px": 3.6253230571746826,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 7,
+          "fit_uv_px": [
+            1461.596435546875,
+            700.092041015625
+          ],
+          "median_uv_px": [
+            1462.3758544921875,
+            697.1679077148438
+          ],
+          "error_px": 3.026226758956909,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 8,
+          "fit_uv_px": [
+            738.7857055664062,
+            424.9685974121094
+          ],
+          "median_uv_px": [
+            739.2662963867188,
+            424.9150695800781
+          ],
+          "error_px": 0.48356255888938904,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 9,
+          "fit_uv_px": [
+            1080.866943359375,
+            424.03045654296875
+          ],
+          "median_uv_px": [
+            1082.1353759765625,
+            422.9079284667969
+          ],
+          "error_px": 1.6938093900680542,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 10,
+          "fit_uv_px": [
+            559.6766357421875,
+            543.413818359375
+          ],
+          "median_uv_px": [
+            558.5946044921875,
+            544.8966674804688
+          ],
+          "error_px": 1.8356560468673706,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 11,
+          "fit_uv_px": [
+            1237.3822021484375,
+            537.5174560546875
+          ],
+          "median_uv_px": [
+            1236.9151611328125,
+            542.29248046875
+          ],
+          "error_px": 4.7978105545043945,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 12,
+          "fit_uv_px": [
+            911.33056640625,
+            424.4953918457031
+          ],
+          "median_uv_px": [
+            907.1898803710938,
+            424.600830078125
+          ],
+          "error_px": 4.142028331756592,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        },
+        {
+          "point": 13,
+          "fit_uv_px": [
+            904.4301147460938,
+            540.414306640625
+          ],
+          "median_uv_px": [
+            904.7584838867188,
+            542.1790771484375
+          ],
+          "error_px": 1.795060157775879,
+          "confidence_support_count": 9,
+          "supported": true,
+          "inlier": true
+        }
+      ],
+      "original_frames": [
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_frame00000.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_frame00453.png",
+        "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_frame00907.png"
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_contact.png"
+    }
+  ],
+  "input_hashes_before": {
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/dataset.json": "df6f3b354fcec99216e52a844eaa46223d3a53d97ec022b857d782ea396b6264",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-court-visual-qc-v1/probe.py": "c2c8a402eaa1d982376a905c14b5d6874d00b04b149282329b6b293ecbdcbbe9",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-court-visual-qc-v1/repro.sh": "70767819ea08fdbee04f8e904d9cc46965097d90a5979ca9f6c10832dac8069e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/checksum.py": "9f13bfba37316d4d26d7d882f53ec905ee7cc69379c8dcc0db68960a439962a3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/schema/court.py": "04e63de5dde6459a847f74a1e9221c69a6ee53f3b42bf24a20fe199fa7fb75ba",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/dataset_pipeline/court.py": "55b11ed40b086b9d3fa328787a2ad7547141fb92a55e96e8ecad2b254ebda9ae",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/configs/build_slcs_dataset.yaml": "5ab31f5cc3ceec74c5c0214ad2b3b569a8bd1297d5e0e25eead92367194ec9bb",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/configs/build_slcs_dataset_base.yaml": "fa524a62bb03edd45f0435c2e093c4fc0a42be0321c6934f5b52d94ae5c974b1",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/clip.json": "e0d2d5cf08ae13bc90fe90cbee8f553c2cc70758afe0f77bfb598e1be18cee33",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/court.json": "e2d45a3ba3ac91caa3076c9e8dbaf1be7a8db9161d45bf40a3c598603240d6f1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/court.npz": "e197060eeac42225872fadd99c61ff62bfd5021d12492116475bf5192e35f59d",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/court.json": "e2d45a3ba3ac91caa3076c9e8dbaf1be7a8db9161d45bf40a3c598603240d6f1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/court.npz": "e197060eeac42225872fadd99c61ff62bfd5021d12492116475bf5192e35f59d",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam0.mp4": "b0b39721ddafc8d8f213248ab4ed8b760a6b045c362a64a248000059b1ed3347",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/cam0_court_samples.npz": "24408f5c6c74954c147821b5bda8ae5d316353375564165ff330eb660e2e0de5",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam1.mp4": "62fde482261753e703f70b6a99890dea04c667ca533c818975bf1f115bd49039",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/cam1_court_samples.npz": "9582b03b98e202e5baed655337789ee3b5f6d645114420a67eb203ffc8078b0e",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam2.mp4": "e153e8b1346c76bf840d6eb0ed5a5fc18852c5f0018b3c47a0f8632f55ac489b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/cam2_court_samples.npz": "64f6dd9549cfc0435da52cb6afaf278aea5a9acbd5b00eef1c2a4a7e350fbe06",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/clip.json": "8e512609371a04f7a965e59c3c5b4234dfd2035a7af97267bfd2f249a1475bd9",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_017/court.json": "826c8226463be0bdf90b7754c5ea80374d91e49af77b47665e7708cfbd719586",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_017/court.npz": "df76e9c4c76bafa5bc38ed747f014524b2dcd63971a2977b4dd95cb81693414d",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/court.json": "826c8226463be0bdf90b7754c5ea80374d91e49af77b47665e7708cfbd719586",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/court.npz": "df76e9c4c76bafa5bc38ed747f014524b2dcd63971a2977b4dd95cb81693414d",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam0.mp4": "273951307f6499abb8a1168746b407a84b8db6d056492f9b7249768de827f7a1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/cam0_court_samples.npz": "fa69880cc5207b5bcf74302dc98c84320c99d14c54e6d20702c595b8116bf4d7",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam1.mp4": "918024125f31410c4fab3452512b881584dc470bf460d36f60414f16ae209fd4",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/cam1_court_samples.npz": "5dbc291bdf030ced6185e0764d98d13181d569eac5dee35391ecc5178a2e27ac",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam2.mp4": "a3c0e779c3fcd8ae4f3ebbeea70f4714c3b15e833b3643009aa753fe6a01e105",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/cam2_court_samples.npz": "faaa885ce37ff89becf416d53094ad3960240994a6d45f56ea5ff070e12bc57e"
+  },
+  "input_hashes_after": {
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/dataset.json": "df6f3b354fcec99216e52a844eaa46223d3a53d97ec022b857d782ea396b6264",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-court-visual-qc-v1/probe.py": "c2c8a402eaa1d982376a905c14b5d6874d00b04b149282329b6b293ecbdcbbe9",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-court-visual-qc-v1/repro.sh": "70767819ea08fdbee04f8e904d9cc46965097d90a5979ca9f6c10832dac8069e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/checksum.py": "9f13bfba37316d4d26d7d882f53ec905ee7cc69379c8dcc0db68960a439962a3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/schema/court.py": "04e63de5dde6459a847f74a1e9221c69a6ee53f3b42bf24a20fe199fa7fb75ba",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/dataset_pipeline/court.py": "55b11ed40b086b9d3fa328787a2ad7547141fb92a55e96e8ecad2b254ebda9ae",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/configs/build_slcs_dataset.yaml": "5ab31f5cc3ceec74c5c0214ad2b3b569a8bd1297d5e0e25eead92367194ec9bb",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/configs/build_slcs_dataset_base.yaml": "fa524a62bb03edd45f0435c2e093c4fc0a42be0321c6934f5b52d94ae5c974b1",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/clip.json": "e0d2d5cf08ae13bc90fe90cbee8f553c2cc70758afe0f77bfb598e1be18cee33",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/court.json": "e2d45a3ba3ac91caa3076c9e8dbaf1be7a8db9161d45bf40a3c598603240d6f1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/court.npz": "e197060eeac42225872fadd99c61ff62bfd5021d12492116475bf5192e35f59d",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/court.json": "e2d45a3ba3ac91caa3076c9e8dbaf1be7a8db9161d45bf40a3c598603240d6f1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/court.npz": "e197060eeac42225872fadd99c61ff62bfd5021d12492116475bf5192e35f59d",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam0.mp4": "b0b39721ddafc8d8f213248ab4ed8b760a6b045c362a64a248000059b1ed3347",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/cam0_court_samples.npz": "24408f5c6c74954c147821b5bda8ae5d316353375564165ff330eb660e2e0de5",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam1.mp4": "62fde482261753e703f70b6a99890dea04c667ca533c818975bf1f115bd49039",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/cam1_court_samples.npz": "9582b03b98e202e5baed655337789ee3b5f6d645114420a67eb203ffc8078b0e",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam2.mp4": "e153e8b1346c76bf840d6eb0ed5a5fc18852c5f0018b3c47a0f8632f55ac489b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_001/clip_003/cam2_court_samples.npz": "64f6dd9549cfc0435da52cb6afaf278aea5a9acbd5b00eef1c2a4a7e350fbe06",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/clip.json": "8e512609371a04f7a965e59c3c5b4234dfd2035a7af97267bfd2f249a1475bd9",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_017/court.json": "826c8226463be0bdf90b7754c5ea80374d91e49af77b47665e7708cfbd719586",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_017/court.npz": "df76e9c4c76bafa5bc38ed747f014524b2dcd63971a2977b4dd95cb81693414d",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/court.json": "826c8226463be0bdf90b7754c5ea80374d91e49af77b47665e7708cfbd719586",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/court.npz": "df76e9c4c76bafa5bc38ed747f014524b2dcd63971a2977b4dd95cb81693414d",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam0.mp4": "273951307f6499abb8a1168746b407a84b8db6d056492f9b7249768de827f7a1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/cam0_court_samples.npz": "fa69880cc5207b5bcf74302dc98c84320c99d14c54e6d20702c595b8116bf4d7",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam1.mp4": "918024125f31410c4fab3452512b881584dc470bf460d36f60414f16ae209fd4",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/cam1_court_samples.npz": "5dbc291bdf030ced6185e0764d98d13181d569eac5dee35391ecc5178a2e27ac",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam2.mp4": "a3c0e779c3fcd8ae4f3ebbeea70f4714c3b15e833b3643009aa753fe6a01e105",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001/video_002/clip_017/cam2_court_samples.npz": "faaa885ce37ff89becf416d53094ad3960240994a6d45f56ea5ff070e12bc57e"
+  },
+  "inputs_unchanged": true,
+  "image_sha256": {
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_contact.png": "dbd004e550c527240a697c0753af6319fe0030689628879bd517161ca72243d6",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_frame00000.png": "5d78c3ab2d7f0e4f4d53c17ec7837ef20954902090ee58b57f17e48034033076",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_frame00803.png": "007ec2352609508c1a7ffd806a184eff601b0299778e77d315f4ea32db69cba3",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_frame01606.png": "269a676400f3a9566ba4d945c0f77510ff50bccc7499be0255336851c5a7f513",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_contact.png": "b2902ab8cff213a974c625f6861941a4f13cba8b9b1dbe78990140fc6b97ef98",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_frame00000.png": "b2e3311eff385d448ac9e2d7f87a775eb41b2c492446d7a5bcd43e08d94e81dc",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_frame00803.png": "cbdb833b75e1eed07e842a647494dc6bb9df9eaaa3f37f99a0d968a09a792247",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_frame01606.png": "c6b73f81ce9e1ebee7394ac0e9d6a1d5cc77ce9a2726a0fca7ee052f4228a8b9",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_contact.png": "c99e49857d403418e025d01eae32958e7ed6890a02bfe9dd2c7406aab41789aa",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_frame00000.png": "24c21892195ebaacb43bb6686101e7256f4be1e76d28a43e1d9c82dd433e2377",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_frame00803.png": "01137c38950e02533dcdb1b8ceb933a27ec55f65d22e0592feb256f013742c92",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_frame01606.png": "3b998e9f5845aeda41c5f2172899db215e8c3bda899dfc53f7c74ea419903bde",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_contact.png": "a7ca8c69249406a8d0c4279394ca762b42aa04e06b6509c123a960b66a52eb87",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_frame00000.png": "327e804e87c77a64d967c6dfd7d4fe6190f576b707c54c28a1b571f866e050f7",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_frame00453.png": "a6e0722a4d1302bf9b6a30f2fe866e62ed706e2bbaf612815615f0a65b1c8aa3",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_frame00907.png": "6aabd73982f5cbe3770df9edd59d5a27c2a34cef89d4f62ff18a8ebcac55fa4f",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_contact.png": "9cd4826a4fc9008261c355f9d4a2f7039ade6eb6dfff8a4fb7e64da2ae2babaf",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_frame00000.png": "67b04a48ff5e9c0110a6a17b45d058ab50867f0d4df0a4884ef9b754beaef8e3",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_frame00453.png": "bf0a99de6602aa84650626ed021783c0b0d745cb50119dc6de34c1994440ff4b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_frame00907.png": "f1499793d1060a0b8dcbf4d1c8dbf1da2daa8b48e5d6cf93208f01e17cdc0934",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_contact.png": "448e25daa2e636ed858582b8719a99b70ab4d12e55f1b7dc0adedffb3cf7d8f9",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_frame00000.png": "b7b4e11d63e5d708abec3a2ccdec86f9fd103e9c50c0f164194730cce2324505",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_frame00453.png": "0371744db9f8b6b2bbb6de45706ce1ca8b75245aaaf676eaa6549d56780b221f",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_frame00907.png": "a34e49d7222b8f6e01c151147f6ea22abf7c830ff03e623497431e37ccc65a31"
+  },
+  "original_frame_count": 18,
+  "contact_sheet_count": 6,
+  "numerical_contract_passed": true,
+  "exit_status": 0
+}

@@ -53,6 +53,7 @@ members:
 - run-slcs-meiji-observation-review-v4
 - run-slcs-meiji-canonical-association-check-v1
 - run-slcs-meiji-observation-review-v5
+- run-slcs-meiji-court-visual-qc-v1
 parents: []
 tags:
 - slcs
@@ -79,6 +80,8 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 第3収録の[画像確認](run-slcs-meiji-observation-review-v4.md)までで10clip・267画像・3収録を確認した。観測画像のP0/P1は各視点のnear/farで、教師入力は `associate_people` で共通人物軸へ並べ替える。[productionのCPU照合](run-slcs-meiji-canonical-association-check-v1.md)で全10clipのcam2反転と配列一致を確認した。旧raw-index集計のうちvideo_000/clip_008 P1の2視点腰肩支持は476/479からcanonical軸の447/479へ訂正した。教師生成後の幾何・再投影・速度条件を通す前の診断であり、最終教師coverageではない。
 
 [低支持3clipの追加確認](run-slcs-meiji-observation-review-v5.md)で合計13clip・348画像となった。clip_009 cam2の71frame欠損を特定し、共通人物軸では他視点を含めた2視点腰肩支持が全frameにあることを確認した。追加3clipの支持率99.708–100%も最終教師coverageとは区別する。
+
+[第2・第3収録のCourt画像確認](run-slcs-meiji-court-visual-qc-v1.md)では、保存数値の再計算は一致したが、第3収録cam0の近側baselineに実白線とのずれが見えた。近側baseline上に採用inlierが無く、外挿誤差の可能性を残す。p95は除外点を含む検出残差で独立GT誤差ではない。最終教師の幾何品質と独立した線対応を確認してから採否を判断する。
 
 ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
 
