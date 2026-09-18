@@ -1,0 +1,6 @@
+{
+  "scope": "Windows System WHEA-Logger events during preceding24hours; no OS settings changed",
+  "returncode": 0,
+  "stdout": "[\n\n]\n",
+  "stderr": ""
+}

@@ -28,5 +28,20 @@
     "video_000/clip_009 loses one positive player frame compared with v6.",
     "video_001/clip_001 cam2 pose producer receipt changed, confounding association-only attribution.",
     "Only4 of5 requested clips completed; source SHA validation failure prevents full success."
-  ]
+  ],
+  "initial_frame_review": {
+    "frame": 0,
+    "clips": [
+      "video_000/clip_007",
+      "video_000/clip_009",
+      "video_001/clip_000",
+      "video_001/clip_001"
+    ],
+    "cameras": [
+      "cam0",
+      "cam1",
+      "cam2"
+    ],
+    "finding": "At the first frame all4 clips select the actual two players in each view; background court users are unselected. cam2 player near the frame edge in001/001 is partially visible. Ball has no supported3D label at these first frames and is hidden. Local 2D/pseudo3D offsets remain."
+  }
 }
