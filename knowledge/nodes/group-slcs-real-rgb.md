@@ -67,6 +67,8 @@ members:
 - run-slcs-meiji-v9-feature-reuse-v1
 - run-slcs-meiji-read-stream-capture-v1
 - run-slcs-host-storage-audit-v1
+- run-slcs-meiji-v9-observation-reuse-v2
+- run-slcs-meiji-stream-byte-diff-v1
 parents: []
 tags:
 - slcs
@@ -109,6 +111,10 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 [v9 RGB再利用](run-slcs-meiji-v9-feature-reuse-v1.md)は全56clip168cameraを公開し、最終1139入力・出力のhashが一致した。[人物観測の再利用](run-slcs-meiji-v9-observation-reuse-v1.md)は142cameraで選択6配列が一致、26cameraに差があったが、公開前2058入力のうちViTPoseだけSHA不一致で停止した。例外後の一致を採用根拠へ置き換えず、公開0のまま読取byteを保存する切り分けへ進む。
 
 [同一読取streamの保存対照](run-slcs-meiji-read-stream-capture-v1.md)はViTPoseの3読取をその場でsnapshotへ保存し、独立processのhashと全byte比較まで一致した。人物選択の実処理を含まない限定対照であり、原因解決とは扱わない。[Windows側の読取監査](run-slcs-host-storage-audit-v1.md)では、WSLのVHDがあるD:のNVMeに4件のresetと、Windowsに1件のbugcheck 0x154を確認した。SHA不一致との因果関係やSSD故障は未確定。実処理中の読取内容を保存する診断を準備する。
+
+[人物観測の読取stream付き再利用](run-slcs-meiji-v9-observation-reuse-v2.md)は初回ViTPose pin照合で停止し、不一致byte列の保存に成功した。2実装の同stream hash、保存snapshotの独立Python2実装と外部sha256sumが全て同じ不一致値となり、長さ・stat・保存chunk照合は一致した。人物選択前で公開0。正常snapshotとは1MiB chunk index1808だけhashが異なり、live fileを再読せず保存内容同士のbyte差分を調べる。
+
+[保存snapshotの全byte比較](run-slcs-meiji-stream-byte-diff-v1.md)で、2,549,075,546bytes中ちょうど1byte/1bitの差を確認した。offset1896501665で0x9D→0xBD、XOR0x20。両snapshotの二実装SHA・stat・長さとmetadata前後照合は通過し、ZIP headerだけで重みarchiveのstored payload内と特定した。原因がstorage/cache/memory/softwareのどこかは未確定で、SSD故障等の断定や失敗結果の採用はしない。
 
 ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
 
