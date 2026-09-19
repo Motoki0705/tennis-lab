@@ -1,0 +1,10 @@
+{
+  "source_report": "outputs/tennis_scene/analyze/meiji_rgb_v9_quality/s42-takeover-002/quality_report.json",
+  "counts": {"completed": 26, "missing": 28, "error": 2, "excluded": 1},
+  "errors": [],
+  "repaired_clip_status": "completed",
+  "problem_clips": [
+    {"clip": "video_001/clip_010", "reason": "ValueError: Raw teacher checkpoint mismatch: plcs; expected 78ef9815c8752c8d262cb2340a72c3c46ef53723ae2252d3c9d17bf20ce9f9ca, actual e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a"},
+    {"clip": "video_001/clip_011", "reason": "ValueError: Raw teacher checkpoint mismatch: plcs; expected e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a, actual 78ef9815c8752c8d262cb2340a72c3c46ef53723ae2252d3c9d17bf20ce9f9ca"}
+  ]
+}

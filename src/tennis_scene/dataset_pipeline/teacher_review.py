@@ -169,7 +169,9 @@ def contact_sheet(
                     ax.imshow(cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB))
                     if refined.ball_vis[view, frame]:
                         uv = refined.ball_uv[view, frame] * scale
-                        ax.scatter(*uv, c="lime", marker="o", s=90, facecolors="none")
+                        ax.scatter(
+                            *uv, edgecolors="lime", marker="o", s=90, facecolors="none"
+                        )
                     for p in range(refined.player_position.shape[0]):
                         if (
                             refined.human_kp_vis[p, view, frame, [11, 12]] >= 0.3

@@ -104,6 +104,7 @@ def test_validation_and_zero_weight(tmp_path: Path) -> None:
         validate_scene(scene, clip)
 
 
+@pytest.mark.filterwarnings("error:You passed both c and facecolor.*:UserWarning")
 def test_cpu_fixture_images(tmp_path: Path) -> None:
     scene, clip = fixture(tmp_path)
     for camera in clip.camera_ids:
