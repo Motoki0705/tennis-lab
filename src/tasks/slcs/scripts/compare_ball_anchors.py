@@ -47,10 +47,11 @@ def main() -> None:
     parser.add_argument("--candidate", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    resolver = cli_resolver(args.output.parent, (args.baseline, args.candidate))
+    resolver = cli_resolver(args.output.parent)
     PATH_BOUNDARY.validate(
         {"baseline": args.baseline, "candidate": args.candidate, "output": args.output},
         resolver=resolver,
+        independent_artifact_inputs=True,
     )
     print(save_ball_anchor_comparison(**vars(args)))
 

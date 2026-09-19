@@ -101,6 +101,8 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 
 CLIは `src.tasks.slcs.scripts` に集約し、評価計算は `evaluation/`、train-only校正は `training/`、動画合成は `visualization/` が担当します。明示root・保存済み入力ファイルは絶対パスを渡し、評価・解析runの指定はOUTPUT相対fragmentを使います。
 
+`report_validation`・ball比較・`render_pr_clip` の明示入力は個別の読取境界として検証し、出力rootと共通の祖先を要求しません。入力同士や出力を `/home`・`/mnt`・`/tmp` の別rootに分けられます。入力の指定によって出力権限が広がることはなく、出力root内の子symlinkによる逸脱は拒否します。
+
 保存済み4条件を再集計する場合は `python -m src.tasks.slcs.scripts.compare_conditions --output-root /abs/outputs --full slcs/evaluate/exp/run/val/full --no-rgb slcs/evaluate/exp/run/val/no_rgb --detector-gap slcs/evaluate/exp/run/val/detector_gap --rgb-only slcs/evaluate/exp/run/val/rgb_only --domain-prefix video_=meiji --default-domain broadcast --output slcs/analyze/exp/comparison` を使います。domainは明示prefix規則で決め、重複規則を拒否します。
 
 保存済み学習runからvalidation最良checkpointを選んで4入力条件を比較する場合は、

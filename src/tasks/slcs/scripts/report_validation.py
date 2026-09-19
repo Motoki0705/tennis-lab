@@ -84,7 +84,7 @@ def main() -> None:
     inputs = tuple(evaluations.values()) + (
         () if training is None else tuple(training.values())
     )
-    resolver = cli_resolver(args.output_root, inputs)
+    resolver = cli_resolver(args.output_root)
     PATH_BOUNDARY.validate(
         {
             "evaluations": tuple(dict.fromkeys(inputs)),
@@ -92,6 +92,7 @@ def main() -> None:
             "output": resolver.resolve(PathRole.OUTPUT, args.output),
         },
         resolver=resolver,
+        independent_artifact_inputs=True,
     )
     print(
         generate_report(

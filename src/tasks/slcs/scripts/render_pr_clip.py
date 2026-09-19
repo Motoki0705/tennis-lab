@@ -82,7 +82,8 @@ def main() -> None:
             "output_root": args.output_root,
             "output": output_directory(request),
         },
-        resolver=cli_resolver(args.output_root, (args.overlay, args.scene)),
+        resolver=cli_resolver(args.output_root),
+        independent_artifact_inputs=True,
     )
     print(render(request, command_line=tuple(sys.argv)))
 
