@@ -68,6 +68,8 @@ split 単位は `video_id` で、同じマルチカメラ動画から切り出�
 
 `python -m scripts.analysis.calibrate_slcs_ball_velocity --output-root /abs/outputs --training-run slcs/train/<experiment>/<run-id> --output slcs/analyze/<experiment>/<run-id> --device cpu --batch-size 16 --seed 42 --velocity-scale-mps <train-only-scale> --gradient-ratio 0.1` は保存model構成をfresh初期化し、trainから一様非復元抽出した固定batchで、velocityのball位置出力勾配normが既存ball supervised項の指定比率になる重みを `calibration.json` に保存します。保存augmentationとtraining modeを維持し、選択window・RNG手順・元config・両normを記録します。val/testやcheckpointは使わず、overfit・skip-incomplete・既存出力先は拒否します。CUDA実行はtraining queue経由で行います。このCLIは学習設定を変更しません。
 
+比較用の [`train_real_rgb_velocity.yaml`](configs/train_real_rgb_velocity.yaml) はno-ball-smooth・burst24を維持し、[train-only較正](../../../knowledge/nodes/run-slcs-ball-velocity-gradient-calibration-v1.md)のweight/scaleを固定した60epoch profileです。探索中の自動終端testは無効です。係数の決定と、学習後のvalidationによる採否判断は分けて記録します。
+
 axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`、`model.num_rotation_layers` で指定します。position branchはplayer/ball位置、rotation branchはplayer yawを担当します。既定の `shared=2, position=0, rotation=0` は従来と同一の全共有構成です。small modelを完全分離する場合は次を指定します。
 
 ```bash

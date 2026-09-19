@@ -45,11 +45,30 @@ def test_gap48_changes_only_burst_length_not_labels_model_or_training_budget() -
     )
 
 
+def test_velocity_changes_only_loss_and_disables_automatic_test() -> None:
+    output = "run.output_dir=slcs/train/config_fixture/fixed"
+    baseline = _compose_profile("train_real_rgb_no_ball_smooth", output)
+    candidate = _compose_profile("train_real_rgb_velocity", output)
+    assert candidate.data.augmentation.burst_max_frames == 24
+    assert candidate.loss.ball_position_smoothness_weight == 0.0
+    assert candidate.loss.ball_velocity_weight == 0.0011117380640846516
+    assert candidate.loss.ball_velocity_scale_mps == 11.259468485469933
+    assert candidate.training.trainer.max_epochs == 60
+    assert candidate.run.test_after_fit is False
+    baseline.loss.ball_velocity_weight = candidate.loss.ball_velocity_weight
+    baseline.loss.ball_velocity_scale_mps = candidate.loss.ball_velocity_scale_mps
+    baseline.run.test_after_fit = False
+    assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(
+        baseline, resolve=True
+    )
+
+
 @pytest.mark.parametrize(
     "profile,experiment",
     [
         ("train_real_rgb_no_ball_smooth", "real_rgb_no_ball_smooth"),
         ("train_real_rgb_gap48", "real_rgb_gap48"),
+        ("train_real_rgb_velocity", "real_rgb_velocity"),
     ],
 )
 def test_ablation_output_identity_is_separate_and_stable(
