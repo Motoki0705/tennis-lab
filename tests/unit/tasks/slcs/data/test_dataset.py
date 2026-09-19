@@ -5,8 +5,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.tasks.slcs.data.dataset import collate_slcs
+from src.tasks.slcs.data.annotation import SLCSDataIndex
+from src.tasks.slcs.data.dataset import SLCSDataConfig, collate_slcs
 from src.tasks.slcs.data.types import SLCSSample
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 
 
 def _sample(*, dino_samples: int, padding_mask: torch.Tensor) -> SLCSSample:
@@ -78,10 +80,12 @@ def test_collate_uses_one_explicit_padding_slot_when_every_dino_axis_is_empty() 
 @pytest.mark.parametrize("name", ["human_kp_vis", "court_vis"])
 @pytest.mark.parametrize("value", [1.03125, -0.01, float("nan"), float("inf")])
 def test_load_rejects_invalid_visibility_before_sampling(
-    monkeypatch, data_config, name, value
-):
-    from types import SimpleNamespace
-
+    monkeypatch: pytest.MonkeyPatch,
+    data_config: SLCSDataConfig,
+    synthetic_dataset: SLCSDataIndex,
+    name: str,
+    value: float,
+) -> None:
     import numpy as np
 
     from src.tasks.slcs.data import dataset
@@ -97,8 +101,9 @@ def test_load_rejects_invalid_visibility_before_sampling(
     with pytest.raises(
         DatasetManifestError, match=rf"{name} must contain finite values in \[0, 1\]"
     ):
-        dataset.load_clip_arrays(
-            SimpleNamespace(clip_id="bad-visibility"), config=data_config
+        manifest = ClipManifest.load(
+            synthetic_dataset.clip_dir(synthetic_dataset.clips[0])
         )
+        dataset.load_clip_arrays(manifest, config=data_config)
     actual = getattr(scene, name).flat[0]
     assert actual == value or (np.isnan(actual) and np.isnan(value))

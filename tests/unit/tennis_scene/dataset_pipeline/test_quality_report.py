@@ -61,17 +61,12 @@ def test_missing_clip_is_snapshot_not_completed_and_report_survives_failure(
         index.clip_dir(index.clips[0]) / "annotations/tennis_scene/annotation.json"
     ).unlink()
     output = tmp_path / "report"
-    arguments = dict(
-        dataset=dataset,
-        expected_dataset=dataset,
-        runs=[],
-        observations=[],
-        output=output,
-        quality=QualityConfig(0.3, 1, 1, 0.5),
-    )
+    quality = QualityConfig(0.3, 1, 1, 0.5)
     with pytest.raises(ValueError, match="incomplete"):
-        write_quality_report(**arguments)
-    report = write_quality_report(**arguments, allow_incomplete=True)
+        write_quality_report(dataset, dataset, [], [], output, quality=quality)
+    report = write_quality_report(
+        dataset, dataset, [], [], output, quality=quality, allow_incomplete=True
+    )
     assert report["counts"]["missing"] == 1 and not report["complete"]
     assert (output / "quality_report.csv").is_file()
 
