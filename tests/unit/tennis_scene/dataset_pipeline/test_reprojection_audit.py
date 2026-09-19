@@ -13,19 +13,19 @@ from src.tennis_scene.schema import SceneResult
 
 
 def make_scene() -> SceneResult:
-    positions = np.broadcast_to([50.0, 40.0, 1.0], (2, 3, 3)).copy()
+    positions = np.broadcast_to(np.array([50.0, 40.0, 1.0], dtype=np.float32), (2, 3, 3)).copy()
     joints = np.repeat(positions[:, :, None], 17, axis=2)
     return SceneResult(
         3,
         30.0,
         100,
         80,
-        np.zeros((2, 3, 14, 2)),
-        np.ones((2, 3, 14)),
+        np.zeros((2, 3, 14, 2), dtype=np.float32),
+        np.ones((2, 3, 14), dtype=np.float32),
         positions,
-        np.zeros((2, 3)),
-        human_kp_2d=np.broadcast_to([0.5, 0.5], (2, 2, 3, 17, 2)).copy(),
-        human_kp_vis=np.ones((2, 2, 3, 17)),
+        np.zeros((2, 3), dtype=np.float32),
+        human_kp_2d=np.broadcast_to(np.array([0.5, 0.5], dtype=np.float32), (2, 2, 3, 17, 2)).copy(),
+        human_kp_vis=np.ones((2, 2, 3, 17), dtype=np.float32),
         player_kp_3d=joints,
         metadata={
             "reference": {
@@ -57,7 +57,9 @@ def test_exact_image_boundaries_partition_without_hiding_outliers() -> None:
     assert row["all_confident"]["count"] == 51
     assert row["both_inside_image"]["count"] == 46
     assert row["either_outside_image"]["count"] == 5
-    assert row["either_outside_image"]["max"] == 990
+    assert row["either_outside_image"]["max"] == pytest.approx(
+        990, rel=0, abs=float(np.finfo(np.float32).eps) * scene.width
+    )
     assert row["root_to_observed_hip_center_px"]["max"] == 0
 
 
@@ -121,7 +123,7 @@ def test_malformed_boundaries_fail_explicitly(kind: str) -> None:
     if kind == "mask":
         mask = np.ones((3, 2))
     elif kind == "confidence":
-        scene.human_kp_vis = np.ones((2, 3, 2, 17))
+        scene.human_kp_vis = np.ones((2, 3, 2, 17), dtype=np.float32)
     elif kind == "fits":
         scene.metadata["reference"]["camera_fits"].pop()
     elif kind == "duplicates":

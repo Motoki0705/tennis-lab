@@ -164,7 +164,7 @@ def test_all_task_cli_output_contracts(
     original = PathResolver.resolve
 
     def record(resolver: PathResolver, role: PathRole, *parts: str | Path) -> Path:
-        result = cast(Path, original(resolver, role, *parts))
+        result: Path = original(resolver, role, *parts)
         resolved.append((role, parts, result))
         return result
 

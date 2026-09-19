@@ -31,9 +31,12 @@ def test_inference_loads_exact_weights_without_training_config():
     runtime = PLCSTrainingConfig.from_config(cfg)
     original = build_plcs_model_io(runtime)
     raw = OmegaConf.to_container(cfg, resolve=True)
+    assert isinstance(raw, dict)
     raw.pop("run")
     raw.pop("training")
-    raw["data"].pop("augmentation")
+    data = raw["data"]
+    assert isinstance(data, dict)
+    data.pop("augmentation")
     checkpoint = {
         "state_dict": {f"model.{k}": v for k, v in original.model.state_dict().items()}
     }

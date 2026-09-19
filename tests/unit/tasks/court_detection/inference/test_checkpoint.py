@@ -26,9 +26,14 @@ def test_inference_loads_exact_weights_without_training_schema(tmp_path, monkeyp
         cfg = compose(config_name='train', overrides=[])
     resolver = CourtTrainingConfig.from_config(cfg).shared.resolver
     raw = OmegaConf.to_container(cfg, resolve=True)
+    assert isinstance(raw, dict)
     raw.pop('run')
     raw.pop('training')
-    raw['data']['augmentation']['train_scales'] = [256, 384, 512]
+    data = raw['data']
+    assert isinstance(data, dict)
+    augmentation = data['augmentation']
+    assert isinstance(augmentation, dict)
+    augmentation['train_scales'] = [256, 384, 512]
 
     def make_model(config, target_bundle):
         assert target_bundle == bundle
@@ -43,15 +48,16 @@ def test_inference_loads_exact_weights_without_training_schema(tmp_path, monkeyp
         return model
 
     monkeypatch.setattr(CourtHierarchicalModel, 'from_config', staticmethod(make_model))
+    state_dict = {'model.weight': torch.tensor([1., 3.]), 'criterion.training_only': torch.ones(1)}
     checkpoint = {'hyper_parameters': {'config': raw, 'target_bundle_state': serialize_target_bundle(bundle)},
-                  'state_dict': {'model.weight': torch.tensor([1., 3.]), 'criterion.training_only': torch.ones(1)}}
+                  'state_dict': state_dict}
     path = tmp_path / 'court.ckpt'
     torch.save(checkpoint, path)
     pair = load_court_pair(path, resolver=resolver)
     torch.testing.assert_close(pair.model.weight, torch.tensor([1., 3.]))
     with pytest.raises(ValueError, match='strict'):
         load_court_pair(path, resolver=resolver, strict=False)
-    checkpoint['state_dict']['model.unexpected'] = torch.ones(1)
+    state_dict['model.unexpected'] = torch.ones(1)
     torch.save(checkpoint, path)
     with pytest.raises(RuntimeError, match='Unexpected key'):
         load_court_pair(path, resolver=resolver)

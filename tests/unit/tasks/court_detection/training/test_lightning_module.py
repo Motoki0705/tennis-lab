@@ -300,7 +300,7 @@ def test_test_prediction_payload_requires_supervised_kp_targets() -> None:
         "seg": torch.zeros(2, 3, 4, 5),
         "line": torch.zeros(2, 1, 4, 5),
     }
-    batch = {"image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)}
+    batch: dict[str, object] = {"image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)}
 
     with pytest.raises(CourtModelIOError, match="targets mapping"):
         module.test_prediction_payload(batch, {"logits": logits})
