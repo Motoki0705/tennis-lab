@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from zipfile import BadZipFile
+from zlib import error as ZlibError
 
 import numpy as np
 from numpy.typing import NDArray
@@ -284,13 +286,19 @@ def load_dino_tokens(
         raise DatasetManifestError(
             f"{manifest.clip_id}: dino token archive missing for camera {camera_id!r}: {npz_path}"
         )
-    data = np.load(npz_path, allow_pickle=False)
-    if "tokens" not in data or "frame_idx" not in data:
+    try:
+        with np.load(npz_path, allow_pickle=False) as data:
+            if "tokens" not in data or "frame_idx" not in data:
+                raise DatasetManifestError(
+                    f"{npz_path}: archive must contain 'tokens' and 'frame_idx' arrays."
+                )
+            tokens = np.asarray(data["tokens"], dtype=np.float16)
+            frame_idx = np.asarray(data["frame_idx"], dtype=np.int64)
+    except (OSError, EOFError, BadZipFile, ZlibError) as error:
         raise DatasetManifestError(
-            f"{npz_path}: archive must contain 'tokens' and 'frame_idx' arrays."
-        )
-    tokens = np.asarray(data["tokens"], dtype=np.float16)
-    frame_idx = np.asarray(data["frame_idx"], dtype=np.int64)
+            f"Failed to read DINO token archive: clip_id={manifest.clip_id!r}, "
+            f"camera_id={camera_id!r}, npz_path={str(npz_path)!r}: {error}"
+        ) from error
     _validate_token_arrays(
         tokens,
         frame_idx,
