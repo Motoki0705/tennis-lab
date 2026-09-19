@@ -240,3 +240,13 @@ validation sceneでcheckpointを選定し、両visibility境界、full/gapのbal
 [観測ballの時間的feature context](run-slcs-full-real-rgb-ball-temporal-context-e60-v1.md)は60epoch・1800更新を完走し、全16384射影重みの更新とvalidation最良epoch49を確認した。monitorは基準1.9568→1.9492mだが、5条件・欠損境界の固定評価前に採用とは判断しない。
 
 [5条件の時間的context評価](run-slcs-full-real-rgb-ball-temporal-context-val-v1.md)で、full/gap ball平均は2.5210→2.4899m / 3.0973→2.8936m、fullの両欠損境界は61.9056→35.0919m/s / 60.7835→35.6178m/sへ改善した。しかしbroadcast full/gapは2.4293→2.9542m / 3.6010→3.9365m、playerも退行し基準の全面置換は見送る。狙った欠損境界への部分効果を保持し、観測/欠損の内訳とtrain domain別の露出・品質weightを追加監査する。testは開かない。
+
+### 次の単独変更：trainのdomain別sampling
+
+trainのみのCPU監査では、production 466窓のうちMeijiは426、broadcastは40（Shanghai25、Washington15）だった。現状の一様shuffleではbroadcastの提示比率は8.6%。品質weightのwindow内総和を単純合計するとballはMeiji約43698/broadcast約574で、broadcastは約1.3%だった。ただしこれはweight量の診断であり、正規化されたlossや実際の勾配寄与率そのものではない。教師信頼度を示すbroadcast ball weight 0.15は変更しない。
+
+[Gulrajani & Lopez-Paz, In Search of Lost Domain Generalization（arXiv v1）](https://arxiv.org/pdf/2007.01434v1) Appendix Eと[著者実装](https://github.com/facebookresearch/DomainBed/blob/7df6f06a6f9062284812a3f174c306218932c5e4/domainbed/scripts/train.py#L107)では、train domainごとに同数のminibatchを集めて更新する。これを提示頻度の設計上の参考とし、trainのdomain頻度逆数による復元抽出を次候補とする。今回の設計は期待値でdomainを均衡化するもので、各batchの厳密均衡やDomainBedの手法再現ではない。分類の未知domain評価から、疑似教師を使う本3D回帰での改善は保証されない。
+
+直接の対照は直前のTemporalContext 60epochであり、元のno-smooth基準に対してはarchitectureとsamplingの2変更となる。動画ID→domainはprofileへ`video_000: meiji`、`broadcast_shanghai: broadcast`、`broadcast_washington: broadcast`と明示し、未分類をdefault domainへ流さない。1epochの総提示466窓・30batch、60epoch・1800更新、seed42、loss・quality・augmentation・validation選定を維持する。期待提示は両domain各233窓で、少数broadcast clipの繰返しは新データを増やさず、過学習と疑似教師誤差の増幅リスクを伴う。quality値を保っても、露出頻度を変えることで累積勾配の寄与は変わる。
+
+samplerのepochごとの再現可能性と実抽出数・unique窓数を監査し、val/test loader・教師・splitには変更を加えない。固定validationの5条件・domain・欠損境界・高速教師・playerで比較し、testを開く前に採否を決める。片側anchor区間の不連続がsamplingだけで解決すると仮定しない。
