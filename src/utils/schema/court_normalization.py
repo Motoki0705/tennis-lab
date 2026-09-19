@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 import numpy as np
 import torch
@@ -43,8 +43,8 @@ def _validate_coordinates(value: np.ndarray | Tensor, *, name: str) -> None:
 def _normalize(value: ArrayT, *, name: str) -> ArrayT:
     _validate_coordinates(value, name=name)
     if isinstance(value, Tensor):
-        tensor_result: Tensor = value / value.new_tensor(COURT_COORD_SCALE_XYZ)
-        return cast(ArrayT, tensor_result)
+        tensor_result: ArrayT = value / value.new_tensor(COURT_COORD_SCALE_XYZ)
+        return tensor_result
     array_result: np.ndarray = np.divide(
         value,
         np.asarray(COURT_COORD_SCALE_XYZ, dtype=value.dtype),
@@ -55,8 +55,8 @@ def _normalize(value: ArrayT, *, name: str) -> ArrayT:
 def _denormalize(value: ArrayT, *, name: str) -> ArrayT:
     _validate_coordinates(value, name=name)
     if isinstance(value, Tensor):
-        tensor_result: Tensor = value * value.new_tensor(COURT_COORD_SCALE_XYZ)
-        return cast(ArrayT, tensor_result)
+        tensor_result: ArrayT = value * value.new_tensor(COURT_COORD_SCALE_XYZ)
+        return tensor_result
     array_result: np.ndarray = np.multiply(
         value,
         np.asarray(COURT_COORD_SCALE_XYZ, dtype=value.dtype),

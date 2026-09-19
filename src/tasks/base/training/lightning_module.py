@@ -323,7 +323,8 @@ class BaseLightningModule(pl.LightningModule):
         root = as_config_mapping(self.config, path="configuration")
         run = require_config_mapping(root, "run", path="configuration")
         output = cast(str, require_config_value(run, "output_dir", str, path="run"))
-        return cast(Path, self.path_resolver.resolve(PathRole.OUTPUT, output, "predictions"))
+        predictions_dir: Path = self.path_resolver.resolve(PathRole.OUTPUT, output, "predictions")
+        return predictions_dir
 
     def save_test_predictions(
         self,

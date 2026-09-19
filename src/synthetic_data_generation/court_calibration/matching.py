@@ -95,7 +95,8 @@ def refine(
             np.eye(3, dtype=np.float32),
             cv2.MOTION_HOMOGRAPHY,
             (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, iterations, epsilon),
-            None,
+            # All input pixels participate, as with an omitted input mask.
+            np.full(t_dist.shape, 255, dtype=np.uint8),
             5,
         )
     except cv2.error as error:
