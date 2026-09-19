@@ -5,7 +5,6 @@ Used by ``scripts.analysis.render_reconstruction_review``.
 
 from __future__ import annotations
 
-import argparse
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -285,10 +284,6 @@ def review(
     dataset: Path, run: Path, output: Path, clips: list[str], quality: QualityConfig
 ) -> None:
     output = output.resolve()
-    if output.parts[-5:-2] != ("outputs", "tennis_scene", "visualize"):
-        raise ValueError(
-            "output-dir must be outputs/tennis_scene/visualize/<experiment>/<runid>"
-        )
     if output.exists():
         raise FileExistsError(f"Choose a new output directory: {output}")
     if not clips or len(set(clips)) != len(clips):
@@ -310,7 +305,9 @@ def review(
             validate_scene(scene, clip)
         if raw.player_position.shape != refined.player_position.shape:
             raise ValueError("Raw/refined player axes differ")
-        validate_raw_identity(raw, refined, refined.metadata["dataset_producer_identity"])
+        validate_raw_identity(
+            raw, refined, refined.metadata["dataset_producer_identity"]
+        )
         masks = label_masks(refined, quality)
         selected = select_frames(raw, refined, masks)
         destination = output / key
@@ -336,30 +333,3 @@ def review(
             .tolist(),
         }
         save_json_atomic(receipt, output / "receipt.json")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("dataset-root", "run-root", "output-dir"):
-        parser.add_argument(f"--{name}", type=Path, required=True)
-    parser.add_argument("--clip", action="append", required=True)
-    parser.add_argument("--min-player-confidence", type=float, default=0.3)
-    parser.add_argument("--min-ball-cameras", type=int, default=1)
-    parser.add_argument("--label-weight-power", type=float, default=1.0)
-    args = parser.parse_args()
-    review(
-        args.dataset_root,
-        args.run_root,
-        args.output_dir,
-        args.clip,
-        QualityConfig(
-            args.min_player_confidence,
-            args.min_ball_cameras,
-            args.label_weight_power,
-            0.5,
-        ),
-    )
-
-
-if __name__ == "__main__":
-    main()
