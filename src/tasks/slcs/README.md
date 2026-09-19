@@ -123,6 +123,24 @@ checkpoint SHA256、教師・mask・weight・window対応の完全一致を検�
 
 保存済みの同じ入力条件をモデル間で比較する追加CPU診断は `scripts.analysis.compare_slcs_ball_transitions` を使います。`--baseline` / `--candidate` はそれぞれ `eval_arrays.npz`・`motion.json`・`evaluation_config.yaml` を含む条件ディレクトリ、`--output` は対象評価run内の新規JSONの絶対パスです。教師・mask・confidence・window対応・観測mask・条件・split・物理単位/FPSの一致を検査し、全体とvideo別に4種類のvisibility遷移・教師の高速区間の速度ベクトル誤差と速度biasを保存します。高速区間の閾値 `--fast-speed-mps` はtrain-only統計などから明示し、この評価データにfitしません。window重複は別々に数え、予測速度の低下だけで成功としません。
 
+## PR用可視化
+
+PR用の学習曲線・条件別mean/p95・誤差の経験分布は、完了済み評価をCPUで読み取って生成できます。
+評価は5条件（`detector_gap_no_rgb`を含む）が必須です。比較するrun間でwindow・教師・mask・domainを厳密に照合し、数値・入力SHA256・選定receiptを`manifest.json`へ保存します。
+
+```bash
+.venv/bin/python -m scripts.analysis.report_slcs_validation \
+  --evaluation Baseline=/absolute/outputs/slcs/evaluate/baseline/run-id \
+  --evaluation Candidate=/absolute/outputs/slcs/evaluate/candidate/run-id \
+  --training Baseline=/absolute/outputs/slcs/train/baseline/run-id \
+  --training Candidate=/absolute/outputs/slcs/train/candidate/run-id \
+  --output-root /absolute/outputs --output slcs/visualize/comparison/run-id
+```
+
+`--training`を省略すると学習曲線だけを省きます。指定時は全labelが必要で、TensorBoardのepochと選定scoreを照合します。
+既存出力・欠損・非有限値・対応不一致は拒否し、完了時だけmanifestを保存します。meanは既存SLCSMetrics、p95は同じmasked L2誤差の線形補間percentileです。
+重複windowの出現は別々に数え、平滑化・外れ値除外はしません。図は疑似教師との一致度であり、実測3D精度ではありません。個別clipのRGB/3D動画はこのCLIには含みません。
+
 ## 検証
 
 ```bash
