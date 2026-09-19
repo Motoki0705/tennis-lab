@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-temporal-domain-balanced-val-v1
 - run-slcs-full-real-rgb-temporal-domain-balanced-e60-v1
 - run-slcs-temporal-context-meiji-visual-v1
 - run-slcs-temporal-context-broadcast-visual-v1
@@ -255,3 +256,15 @@ trainのみのCPU監査では、production 466窓のうちMeijiは426、broadcas
 samplerのepochごとの再現可能性と実抽出数・unique窓数を監査し、val/test loader・教師・splitには変更を加えない。固定validationの5条件・domain・欠損境界・高速教師・playerで比較し、testを開く前に採否を決める。片側anchor区間の不連続がsamplingだけで解決すると仮定しない。
 
 [domain抽出均衡の60epoch学習](run-slcs-full-real-rgb-temporal-domain-balanced-e60-v1.md)が1800更新を完走した。保存configの差はtrain samplingと出力先だけで、epoch56のval scene monitorは直接対照1.94919→1.86463m。各domainの固定5条件評価を終えるまで採用とは判断しない。
+
+[固定5条件の評価](run-slcs-full-real-rgb-temporal-domain-balanced-val-v1.md)ではfull player1.4058→1.2432mに改善した一方、gap ball p95 8.7473→9.1721m、full両欠損境界35.0919/35.6178→47.9500/48.1747m/s、最大速度493.14→935.38m/sへ悪化し、全面置換は不採用とした。broadcastではfull2.8193>no_rgb2.2292m、gap3.7448>gap_no_rgb3.1818mとなりRGB寄与が逆転する。全体平均の改善だけでは頑健性を満たさない。固定splitを守ったsource追加可能性と、片側anchor・人工欠損の重なりを別々に調査する。
+
+### 次の単独変更：片側観測のfeature context
+
+上記評価の保存配列では、fullの最大速度上位10件はすべてMeiji `video_001`の片側観測しかない欠損境界だった。ただし両側に観測がある欠損でも破綻例があり、入力経路だけを原因と断定しない。具体例と反例は同評価nodeに記録する。
+
+指定broadcast sourceのread-only在庫監査では、元datasetと`curated_ball_v1`はともに9clipで、品質基準通過後の`broadcast_rgb_v4`が5clipだった。4件の除外理由の正本は[生成config](../../src/tennis_scene/configs/build_broadcast_slcs_dataset.yaml)にある。9件のballは保存済みscene由来の疑似観測であり、Meijiのoutsource注釈とは異なる。即時追加できる未使用・品質確認済みclipはなかった。約59分のraw動画に約52分の未切出し区間はあるが、ラリー・注釈・会場重複を未確認で、そのままtrainへ追加できるデータとは数えない。除外閾値や固定val/test収録は変更しない。
+
+[GRU-D](https://arxiv.org/html/1606.01865) §2.1–2.2の観測mask・最終観測からの時間と、[BRITS](https://papers.nips.cc/paper_files/paper/2018/file/734e6bfcd358e25ac1db0a4241b95651-Paper.pdf) §4の双方向の欠損補完を参考に、片側の実観測featureへ方向・frame距離を添える転用仮説を試す。医療時系列の平均へ減衰する仮定をballへ移植せず、今回はlearnable decayを追加しない。実装契約とoffline・長gapの限界は[SLCS README](../../src/tasks/slcs/README.md#学習)を正本とする。物理的な外挿・連続性・改善を保証する手法ではない。
+
+新profile `train_real_rgb_one_sided_context`の直接対照は**非均衡samplingのTemporalContext**とし、DomainBalancedではない。変更は片側context flagと出力先だけ。seed42、60epoch・1800更新、burst24、loss・quality・dataset/split、validation checkpoint選定を固定し、旧重みからのfine-tuneはしない。事前にゼロ初期出力・共有初期値・RNG・旧checkpoint互換と実データの適用範囲を確認する。固定5条件の全体/player/domain・位置平均/p95・両欠損境界・高速区間を直接対照と元基準へ比較し、片側の左右・距離別も確認する。既知の1区間だけの改善や最大速度低下だけでは採用せず、testは選定が閉じるまで開かない。
