@@ -1,0 +1,18 @@
+dataset_root= /home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1
+split_file= /home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/splits.json
+batch_size= 16 num_workers= 2 overfit= False
+window= 120 train_stride= 60 eval_stride= 120
+cache_dino= True require_dino= True min_window_label_ratio= 0.5
+SPLIT train len= 466 report= {'clips_in_split': 15, 'clips_loaded': 15, 'clips_skipped_incomplete': 0, 'windows_total': 466, 'windows_dropped_low_label': 0}
+SPLIT train videos= ['broadcast_shanghai', 'broadcast_washington', 'video_000']
+SPLIT train n_clips= 15 n_clip_cameras= 39
+SPLIT train batches= 30
+SPLIT val len= 343 report= {'clips_in_split': 22, 'clips_loaded': 22, 'clips_skipped_incomplete': 0, 'windows_total': 343, 'windows_dropped_low_label': 0}
+SPLIT val videos= ['broadcast_indoor_hard', 'video_001']
+SPLIT val n_clips= 22 n_clip_cameras= 64
+SPLIT val batches= 22
+SPLIT test len= 239 report= {'clips_in_split': 24, 'clips_loaded': 24, 'clips_skipped_incomplete': 0, 'windows_total': 239, 'windows_dropped_low_label': 0}
+SPLIT test videos= ['broadcast_eastbourne', 'video_002']
+SPLIT test n_clips= 24 n_clip_cameras= 70
+SPLIT test batches= 15
+disjoint_train_val= True disjoint_train_test= True disjoint_val_test= True

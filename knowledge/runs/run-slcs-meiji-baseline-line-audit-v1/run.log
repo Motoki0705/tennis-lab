@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-baseline-line-audit-v1/probe.py", line 354, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-baseline-line-audit-v1/probe.py", line 189, in main
+    points = np.asarray(local, dtype=float).reshape(2, 2) + [x0, y0]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 1 into shape (2,2)

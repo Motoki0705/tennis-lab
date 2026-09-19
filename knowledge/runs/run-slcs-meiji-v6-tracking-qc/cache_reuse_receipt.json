@@ -1,0 +1,2593 @@
+{
+  "purpose": "reuse immutable raw DINO/court/RGB caches; regenerate all person observations and 3D teachers",
+  "source_dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6",
+  "destination_dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7",
+  "source_observations": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003",
+  "destination_observations": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004",
+  "script_sha256": "a8ed78ca0842a2b27716292fe5f497062dd6fd40c797cf0b15015f707f0eb1b8",
+  "clip_count": 56,
+  "records": [
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "sha256": "67f2fe18b8ac413b80e77d166e8223d0379fe7b5e0505db552d35188e48e7b07",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "sha256": "a8f530cd917cb44d52e565628ef5448e1367346f265fe3d23e39e134b5a7d443",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "sha256": "5ff0573225be56732c864d7098e59406cba4da628970017b2fec66545efc830e",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_000/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_000/annotations/dino_v3/annotation.json",
+      "sha256": "66f7dc2f9d983d59c2bd73e9e3eac7ccb41facd893e09e392e636ffe710137a3",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/court.npz",
+      "sha256": "ab74bfca6bb9ec404c97806ebf54178008ee80706fbc78ad36970b98304ad0e8",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/court.json",
+      "sha256": "91d32e732232fd04300f8b81f6aff0b1955aad8aff362ea28e868ccfb90e9b8e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam0_detections.npz",
+      "sha256": "c4b120f389ba6fcb9a3cb8fff2390052d1b3322d60186af25562bc2b353b2864",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam0_detections.metadata.json",
+      "sha256": "09b143ba0085f0250091e2053dbc21635fd1ba4403edb1d9c2541412b973f1e8",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam1_detections.npz",
+      "sha256": "50ca6c799c158bdc3cb2d1cc303572301e28fc8e0c08048c81d7018d8e978e0c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam1_detections.metadata.json",
+      "sha256": "d452aa9a601a700c8ec7d6b155392153e54b5db02f91b925a65aebd3a7e8714d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam2_detections.npz",
+      "sha256": "1132aa90985ab587c9fcaaeeef47904908ab8bbc87a2407c2fd0471cda6c2a0a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_000/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam2_detections.metadata.json",
+      "sha256": "3812d057301cd7a716a5ebc29d889d4c61785746ac53b058be2b84124e5e6eb1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "sha256": "0ad0f46802e2e4c7114fe35977d08d58b8bb1dc9c8be86284a00d107f692cd11",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_001/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_001/annotations/dino_v3/cam1.npz",
+      "sha256": "f56d5c32d2adfeea4f43c5e9503e4586fcd7b2056f0bdef40c5b6ccb128ae1ce",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_001/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_001/annotations/dino_v3/cam2.npz",
+      "sha256": "430f25bd6783a9d50234cf61f6ae1f1dbe0631725dca7eba75d112289d436a5b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_001/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_001/annotations/dino_v3/annotation.json",
+      "sha256": "43a6aba194ffcdaa4369f63313a04aac610fd59f4b6149983a2f4b8e8c8a7254",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/court.npz",
+      "sha256": "22c62e306ff0ca7313887c1bb4340f03df8531e95802cf9453957bb79ce65501",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/court.json",
+      "sha256": "f7cbb980e0dc36e868126b3b0a8f6766749f864fd3ca72e18b1269bd0bde8813",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam0_detections.npz",
+      "sha256": "e4a8a986a45a8efa9909f3a903070b89241825d0d5165aad6f58475d82b8ef55",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam0_detections.metadata.json",
+      "sha256": "0a80983aaa524bc3b44e0478b921ba4639b2de8848e00a1e30b60e23dd3026e7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam1_detections.npz",
+      "sha256": "5b53ab8a05c6c3527257aea74099d9d0b917382addf1be1c46e8f9dd92e2f86b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam1_detections.metadata.json",
+      "sha256": "82169850adeffa691e0e685ddadb8369019f08a9ba51774831549691bd222991",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam2_detections.npz",
+      "sha256": "becfc40d65bb6842b3a5758c0a40206f5d62a9df2ddc8a22f6ec5bffe0b3955d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_001/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam2_detections.metadata.json",
+      "sha256": "e6c045783fea86df069e5e432b4dda29efa50e73346a3e03f95deb1e4587d1e1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "sha256": "652b8ea3732cb409a424326651b67914b5153906a30e0324112848e3ae5e567a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "sha256": "59fc64d82fed3a705517c8dfab032a1316081d74fef1cc89ee37a740d4dd9713",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "sha256": "5359eb04c2dffa30813723bce31b5690208b54ff6c8c3568a6ac2f3dc7c91217",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_002/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_002/annotations/dino_v3/annotation.json",
+      "sha256": "affae27b0225f67aff89ac0d3c2d34a70b7ceb214fdc8afb0781ab13cdbd59a7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/court.npz",
+      "sha256": "2ba755dec1edfe4f7c1deb41188021db0c231212e4c6dc5b65cc75de6ee9f90b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/court.json",
+      "sha256": "a837bd59a611c5529885e9e83262e4dcdecd66393cd36860768b3969f308e064",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/cam0_detections.npz",
+      "sha256": "4843bddd101580e71da31284b6a5d8053ff3d06c4880fcafacab2df83911c498",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/cam0_detections.metadata.json",
+      "sha256": "933f8965ae1ae973faeaffa92dc13769e7066c2e8cee3ea8d603e8a476c55bef",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/cam1_detections.npz",
+      "sha256": "3ef00dfa0408398071e8da2ec184d8e4ac9b3e26c96e4f7cc30100dd21938181",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/cam1_detections.metadata.json",
+      "sha256": "7b101db2602b0e72d5f37b923f9a8c0c5ee9ad2392a5dec00a137037993851f2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/cam2_detections.npz",
+      "sha256": "2aab38a3ca5934cc4fed080ab7a87fb0c0455d613849ae195f5d9414501c7888",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_002/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_002/cam2_detections.metadata.json",
+      "sha256": "f3ea4323660466c16cca5c557552b49dced6728e5360bdd8f306bb21dcafccad",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "sha256": "00f5fdd58f35aa00c034a7d2b935b288f71d3b19ac63f638e9a1ffadf37cab29",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "sha256": "c6b9091588fe758d5eb3ac9770590b1a3d15c5293d3a6d154440a24728fd7aae",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "sha256": "351077c16d0e8fee80bc2533be1a5804b3b752888df740ae2aaa8308a201da6e",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_003/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_003/annotations/dino_v3/annotation.json",
+      "sha256": "fbcb44afd79b707ef4e25b33df694f92570da4b134549bff75d0c8230db447e5",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/court.npz",
+      "sha256": "c20f8d3c0e490d132740ad07dc8824aff8c16ad5f636fc6dda9f8cddba0e6309",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/court.json",
+      "sha256": "a9a590cf65c48fb1f895301448e11d0e94958cbb4cf0def6199981ebb2c3e1dc",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/cam0_detections.npz",
+      "sha256": "294102853c68bce2386fd6bbc138debd3ef410e2f3a8838d0f5644882a9f8e3c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/cam0_detections.metadata.json",
+      "sha256": "5c7da8507eb3a0b3e9432a95a171fd3d5edd543d4f6b5a13621990a79f0d453b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/cam1_detections.npz",
+      "sha256": "bfeab1318ee6c42878bac456104e4a237a5585c2a9b44b21af8c32da2a97e9c4",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/cam1_detections.metadata.json",
+      "sha256": "90ccc4a8b10f7b8c8eee9bebac99bbaa19495d6cecb7ecb8043fed8516e2039d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/cam2_detections.npz",
+      "sha256": "d02738b91da943cf109e1c0cf7643561ad5c6f16bf497d6ae6b3cbb7ff8047f0",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_003/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_003/cam2_detections.metadata.json",
+      "sha256": "9e63f1029c85617bebdbe5d9274f6b1b7769cb8316ea754489c8d042a459592c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "sha256": "7dd309eb841706839d430dfb580993339aef3e0ede1cf626226ad35badb00a0b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "sha256": "df3587bad9c30b117975ea4eae905ed5f693b98957a10ae67cc09e7e742fb1f3",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "sha256": "737feba2f0dbac9260cc48a7d314eb4a40f962e1a67d5855f83b6f12a7500726",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_004/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_004/annotations/dino_v3/annotation.json",
+      "sha256": "ad214126a6617f2f521dfcadecc5fa63bef660247e952205667d80f6e1ed3d3b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/court.npz",
+      "sha256": "581eb4d80c7dd9b03025ed764eeb862521f299678aed8dba4238782725f706b6",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/court.json",
+      "sha256": "90b6d536e0674e6dad8328080963d3259e3cebf5bb6d41e3ba0712db11d8a989",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/cam0_detections.npz",
+      "sha256": "7ab53882d6c011ff3aba10b8ac99af560e443afb619b57886c43bb20d762d433",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/cam0_detections.metadata.json",
+      "sha256": "413877034e3364fd40b088f16c400393e40f48c61dc90d23bba8c8ca8196a923",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/cam1_detections.npz",
+      "sha256": "ca0353084501361f0b38692bb8c27af8f999c1537271a701bc4d0952aabcbf04",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/cam1_detections.metadata.json",
+      "sha256": "918d654b98585bfda3e96091f09a1f84e88580c6df637ad0726d92d9e448c671",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/cam2_detections.npz",
+      "sha256": "7ebeedb19d20aace2ed73758bc2c2fe49999bb7d536bc7cd6796f45d6c54810c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_004/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_004/cam2_detections.metadata.json",
+      "sha256": "8a9cd8f8de993955ec15d15ddd269cc4b53f8d91b4830b2f261f00e4ac7bc00c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "sha256": "f1acdce49b3aa8c57936d4e2bfddcb5beccbbc2c1642e3d2662f6407c43ef102",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "sha256": "d8fefbd1124dace6297baaf309d0bdd85c891736f2a43f7ffd8ea6cdce31945b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "sha256": "44a7d0980ed9fd2679d5ad53cbf703447566240a27e432988da94675dd3acf2f",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_005/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_005/annotations/dino_v3/annotation.json",
+      "sha256": "525e942a6e75ae97c575ee74092e9efe995999d25e46aa034ea279d45486cd96",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/court.npz",
+      "sha256": "e696c31d08880ef87aace737956c4274a868cf15bfc555a8f6a063f0307abdbb",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/court.json",
+      "sha256": "df4331ec75e1c225ffd41df4e690a817eb4aac225f90fdd7c0d9977243b199db",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/cam0_detections.npz",
+      "sha256": "78ead1c6f5994eefee279c6f1950d604bd396147cfd94d5d7e466734d472506f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/cam0_detections.metadata.json",
+      "sha256": "68b24215c84b694884533e52038c2e289c53873be4a8d3e673c69cb26e056fe9",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/cam1_detections.npz",
+      "sha256": "fc8c339bbe8098a4f5fe29e32fa2f999063e93f532b19a9c99e679ab51f57601",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/cam1_detections.metadata.json",
+      "sha256": "2c69acd4a8ea3fce7faf6e11425fca66b1146acd438c2697e5aa6f24ea02152f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/cam2_detections.npz",
+      "sha256": "7a9549be6c7cec439d19a87723a2069a63a1f4f8a60d6a504800f9620d246df9",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_005/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_005/cam2_detections.metadata.json",
+      "sha256": "c84006b16a6db3aa49366e1d9642d87ddefa6a386fe496de38e54fd608428fee",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "sha256": "2a32f1b6aa600348f3f2f1172c641a26b2fc733606881b97d33c9d428f854d3d",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "sha256": "3c2e84682036fa9ebbf9ca106ff2a77cf27f358fc6d3976456246654d2662967",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "sha256": "133174a3aff6f015d03f0ef56cb58a3b5bc6d59be078988da604618ef332c200",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_006/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_006/annotations/dino_v3/annotation.json",
+      "sha256": "155c65fa81984d08ff2bbb8bed3aaeef6e887eff0a5dc8242ea625b2eb238347",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/court.npz",
+      "sha256": "992c9afd4db4845aa2e8313731fe3fcc8cd5b6125810dc707b1353b3ae2d6e5f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/court.json",
+      "sha256": "32484afd1a2d36a052cf1f8cac9c6c9c352053cab40856f0ba7df6754f1abb07",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/cam0_detections.npz",
+      "sha256": "c73b329c692244396b0d779d115086727407e0acccc2fb3696b43f3a5c1f4aae",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/cam0_detections.metadata.json",
+      "sha256": "f47207cfe99e1c33a35d60e590f65b9023fb2ce4b3b5fdd3f10d33b6c612922a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/cam1_detections.npz",
+      "sha256": "e7063e45de574ae5b907a2a4080af1beb578efe1c4595b52fc07d3392cea967f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/cam1_detections.metadata.json",
+      "sha256": "494f22f579ea11d9c3d7355422f04d1ecc6f0d55bf6a5aad07fd156f0274aa72",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/cam2_detections.npz",
+      "sha256": "0ff3e09dbd848eda3b35940b71a3adc0848295c3a63870944ad9ba8e5b5d4644",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_006/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_006/cam2_detections.metadata.json",
+      "sha256": "95c8e7a3f4cdb75a478e72f299c49c58bd66b3282c6287eb5d716af485c35cb7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "sha256": "7614bb3d027f62748998997f60a40de0caa125f121c024b9930318becc2a4664",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "sha256": "e327a51d0c881feb49ca9d50d5cb98911c8725f11147a68f569b5b583fb49a0a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "sha256": "d75efee2c14b14ca0ca88c772938500417cef505594f74f7c933fd6061b63360",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_007/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007/annotations/dino_v3/annotation.json",
+      "sha256": "56876a6e76a77e2bdcb971f6f2041f419d360a6f703f6b9312d04e4913d8678d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/court.npz",
+      "sha256": "c66ac740d5c33687cb3b2b3c072dc8c47fc13812b1baedc00344e4392e9f71bf",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/court.json",
+      "sha256": "5d3516b3b9785ca62aac2ac44c6e87e8b00430b9689a3d718542b2afc6d52b4e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam0_detections.npz",
+      "sha256": "f939bb84317f81a605ee663b4dcdfaaf8418249804b64ab05b0ef2ae011e8331",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam0_detections.metadata.json",
+      "sha256": "ed3f3c265bcca15cabb9e029ab2daa5a742937da2065ee9aa0e1ad0eb6a646f1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam1_detections.npz",
+      "sha256": "c7083bbdac8e11cafe1090383c7a0d51a698e626a4260f5106f96e748c44cb85",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam1_detections.metadata.json",
+      "sha256": "f622450e0d4ba202b7ace1658641e54fd57e1b3a8b45eae302454c16e73946eb",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam2_detections.npz",
+      "sha256": "34a4b7a27ede63b732f0f7d141f8a78a3c0c91005710342039c63e07c7c8aba7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_007/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/cam2_detections.metadata.json",
+      "sha256": "d38ffd126a029d657f2b113995cc8c22b2897785fbce084a90b8bb54e36432d0",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "sha256": "36fd8b7091e080d8d71ddce3aac667a7e16ef4cacad6f38a07849bd53709e2b9",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "sha256": "3f4b867be430a6f64011409d0758b6cf14ffd77787a7079351311be3ac71545e",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "sha256": "7ed9ace44b585d29605bd4a11a2cd51b2d8cff23399457c34ccf9ccac4813d80",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_008/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_008/annotations/dino_v3/annotation.json",
+      "sha256": "f306dc728ad5be24934f5505c62d61325a6bfa209c3a45b0ecd9b008d9980bec",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/court.npz",
+      "sha256": "af82835f2b09467973d118c1443c2176a76339d1d427f72169c3e598c5122110",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/court.json",
+      "sha256": "a9748d02e702204cbc25f50667affd1bd034808c5f765bd14ed5af55b94addb2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam0_detections.npz",
+      "sha256": "5822ed8b5ecea7f503ed0218a77668e1eec40e6eabdcc11ec2ed191f71d0df3c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam0_detections.metadata.json",
+      "sha256": "b73a7778cf577a7482a0a6ace473297fe893fd0e40739e3a03ddad2a8d219562",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam1_detections.npz",
+      "sha256": "6cca5900877a448645ac1585acf205761d9ecd511428a93eb73356cf5a6db431",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam1_detections.metadata.json",
+      "sha256": "ecb4890ea50b9294ee057d6ed7b3d37f1f9b35d6a382d64cf58b6976cc79a133",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam2_detections.npz",
+      "sha256": "66821fe77f6a4133b9f642bef1eaaee611f6ba3baecdf6a152d82550b76be98f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_008/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_008/cam2_detections.metadata.json",
+      "sha256": "d8caedf054b2192784e86ca71ac7a30df9c328a0c1fc62d89f409d9a58b90159",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "sha256": "a2302d818c56b6267e1734c12b5086b694e8fa045eeca81a67de2c534f5dfc39",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "sha256": "67949c92aff570325c3a3622512220e22fa69d454054044110d6b8b01606bb80",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "sha256": "aae860588005f64a4e4b3facedd7da6272c76786ddaae948018092e9802f4196",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_009/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_009/annotations/dino_v3/annotation.json",
+      "sha256": "e9b754e25c6bfe5457cddca1b1b001b95a741201d92ba0fce711f273ea0ad547",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/court.npz",
+      "sha256": "9d4da81fd849b643b7bec036011ce7ca28dbaa54fa0ae1cb71abddea7f45a988",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/court.json",
+      "sha256": "d0cdd703c011d14e9c3bcb888435031b72facf4ccb8083a79f702582d237411b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/cam0_detections.npz",
+      "sha256": "5f2300b3fc4026f6c2ec79a653588012a8e9e43bb0c08d8a865f2fd1a534f528",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/cam0_detections.metadata.json",
+      "sha256": "7571d6f1017b2fba02836b5d315f331a73e5aa261b414eef2d2faed890f79999",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/cam1_detections.npz",
+      "sha256": "c3fb3c63d5c8a285169db859b2d3b8d281bbda4e286f5b75e00d245c16200c11",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/cam1_detections.metadata.json",
+      "sha256": "e0bcfdef622768866a1de53cb739ff00e47226c3ee39caedb2d3eddafd533a4b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/cam2_detections.npz",
+      "sha256": "d1fca607d30b06c7b92791d06991165c8213661f360b0f33ee1e3b2a5228c77d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_009/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/cam2_detections.metadata.json",
+      "sha256": "e70c4cbb0cb9eb0ca171ce400f463b93052f36146d3fd9cc91a0020213ec4a04",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "sha256": "e1a03e558bc67a16cb49c13ac2809e7d7f6eaeb4c8de9c613ca3b0d51e023176",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "sha256": "6a83fd552a616114fd89b4cb52f7d3d372a9153404a4fab34597041dd0dc38f4",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "sha256": "f15c7b4c83de5e7bab1f152ccb77e2afd21c8660c22b2cc117250ce35e6ba3c1",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_010/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_010/annotations/dino_v3/annotation.json",
+      "sha256": "da93abd9b1a23fc78b5aae7bbc7d8af2b29cea18ed615c402650df4548efca21",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/court.npz",
+      "sha256": "d10c5e54f8dbb4f88941e7d40bcdfcce710be5bfe4ef3dc81275fbd97e149fc7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/court.json",
+      "sha256": "f544c00a59645bbf84caa3c60b349d70e21e6a2cae0ae793a1ca0298c23ad38f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/cam0_detections.npz",
+      "sha256": "df7d7c8814f06a3b10538b10044d5da1591548816a3d5242ecaca23528d7190a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/cam0_detections.metadata.json",
+      "sha256": "ad7b6156880eb1b35d4e4d56839e18a26a2005fb9f6e9e884d0513d84974f12c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/cam1_detections.npz",
+      "sha256": "cfbd5575423c8a7232ac296db2a30e0f8f05d452a61fb4fe87bf202d61165cd4",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/cam1_detections.metadata.json",
+      "sha256": "e794bc9083bcd8c2ce450ecf49cb989d5dbd3bc9d56cab942195ff9f081fd4b3",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/cam2_detections.npz",
+      "sha256": "b6938178aae3338ecec0c73f570608eacf2ce337f0c06cb2af8210e90b683b4b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_010/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_010/cam2_detections.metadata.json",
+      "sha256": "be40c9b505c65f6c1e1c3ef05ad7aa21cbf1d22a59752dafef4b38c2e2abb847",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "sha256": "1d8559be76a7aee7889743a6c32f081f0973fc8efcfbf7bad4762849e4d499e8",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "sha256": "4f436c9c0befb3d41b53d3ca3ecd65bf6c2aa7605d098142fab3ead9c3238442",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "sha256": "356f177d8dd117af9b488bff48ca48425192825c2f45182a86fe4b47d53af493",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_000/clips/clip_011/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_011/annotations/dino_v3/annotation.json",
+      "sha256": "bd9178e001440b959df484aa0a69f32d1a183d09f3f65d13a45341321f48d694",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/court.npz",
+      "sha256": "91d556f1146f92e4445de7857825d65e4e79f21e52edeee69917cb99e06d0fca",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/court.json",
+      "sha256": "2aee547ee93c259d9a9f7e79de5fdf2a0b68a4c85c91edb633f74ed630f313c9",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/cam0_detections.npz",
+      "sha256": "e75de8cc3749ab80c364273ecbf72b7e97574ac9b5e85a64e749e98ec7ed1f7f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/cam0_detections.metadata.json",
+      "sha256": "78c4e3349efe61deead0b9353eb304fa086b912bf2b58dda3e3efd794943288c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/cam1_detections.npz",
+      "sha256": "c17507456ce185a195268b9da2ea64b1410180babc3bead2252da083eed987ee",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/cam1_detections.metadata.json",
+      "sha256": "78833c1ceca55e6aaa61b931ac4b351fca0d2586a782098bac99ac99191c0b09",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/cam2_detections.npz",
+      "sha256": "fad260d4dd4d1096be7100d1a0a0e101fd82cdc153128e6e055b8f99462c2914",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_000/clip_011/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_011/cam2_detections.metadata.json",
+      "sha256": "5da211da18d5a8002f0451111f9e3fae39a73122cab97eaffc098153f0fa78ac",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "sha256": "2948d437771bd726c0eb0b275c2ee063a1ee4d6be2a150ce9568484b15a36e80",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "sha256": "0b98e675817ae20a38549943335cd4490bcff25eab0b6a159969344d5c48cf83",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "sha256": "10c50363c5d5633f0f18da108bb1f1881052aac2986a8046f69d208d20fe35c3",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_000/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_000/annotations/dino_v3/annotation.json",
+      "sha256": "c7412acfcec928facf399905574351ef03eb80e590d9b9f9eb1ece263b063676",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/court.npz",
+      "sha256": "2b484a81a0fff1841cee94c65825293707dc41f22bfe36a280a9ae060f35a629",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/court.json",
+      "sha256": "579f80c4fe0e6f04b79ad899ca092adaf2c919a949d8ffd8c89229aa98afead2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/cam0_detections.npz",
+      "sha256": "96e1f0087f811503dfe9f8569a3d2cbaef63edd2d519460e7547875c0a25a70e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/cam0_detections.metadata.json",
+      "sha256": "a7e48b7b193856663a5253431cda1fd0e1c71924c0e62ec32a2d0ad4156be763",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/cam1_detections.npz",
+      "sha256": "9ff6ce30945a4c6056a3533a12d1e872dc1bdea2a1a84992cb4eabda4ec5be38",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/cam1_detections.metadata.json",
+      "sha256": "fde80c63cfcf72b71bd3a2617827192c601406789a812d4afb555d59c0bb082e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/cam2_detections.npz",
+      "sha256": "640a3aff38e1984bf37419fc143b3d7dda8c17104f6f8cc382d24f9fc42e91fb",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_000/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000/cam2_detections.metadata.json",
+      "sha256": "b393865ee41514255e2c7f5d1e6444992ddc3dada34526fa823990628dc171ab",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "sha256": "6a09b423e9fba58c343d8eb109c61656be08142532916f1c53280c0957461c2a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_001/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_001/annotations/dino_v3/cam1.npz",
+      "sha256": "2f2b520821bf06812b12fde0eaacd6c1d69911e10820b45ed608ba9cb280ae4b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_001/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_001/annotations/dino_v3/cam2.npz",
+      "sha256": "0c1e73c9633281b3c3c2b25f62cf8335cccdebcf3d6a8785ba83653e3bc549a9",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_001/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_001/annotations/dino_v3/annotation.json",
+      "sha256": "d12197f48976ab997c83596741d67a5c570e5a1097831a996d311d7789d77444",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/court.npz",
+      "sha256": "d9f207c53ad83eb1589fc8935aaad09a4261856a2374b20622764df9c22a180b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/court.json",
+      "sha256": "735c4046e9b9a4b3c8e784d5d845e0f1db4786ffd872e28c5f46a856276202f6",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/cam0_detections.npz",
+      "sha256": "cb0236e0bf46e23952b74a501f5414ad2f18294160fd19f91e215ff3bbc8276b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/cam0_detections.metadata.json",
+      "sha256": "92a97d7efaa5b8a6db46c70b92fc67ad6f62bd4611fc7cff1cd0fae5c78c433f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/cam1_detections.npz",
+      "sha256": "62b217308946a3ce6e3e2c8e2cf2e7f3b47e0688c3de98904c9475bdc636c1b2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/cam1_detections.metadata.json",
+      "sha256": "1f1f9f779aafb01e7898c44ba51aa8c8169683aecc612ea0061960ad431b0caf",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/cam2_detections.npz",
+      "sha256": "ba9e6d9d23c8ea64d2899e01320963e8c9fc21cf5406f7f8232a0d794b92b182",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_001/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001/cam2_detections.metadata.json",
+      "sha256": "623fb36a652cc408e978d99aeb34abfb7c8cfaf2c309a5710143ee8ace4cba6b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "sha256": "c0238af83a6ef2e097e30fde97c91473223a83a8c139a490dec1fbb9a19cebf8",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "sha256": "fbafd1780fc5f96370e7c7b9d25a03a23b86902c09e5d5be714b28ee39c79aad",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "sha256": "431112278855476edcad46ebbc42de7bac2889e70e89b7bc6f7310aa829ac5f5",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_002/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_002/annotations/dino_v3/annotation.json",
+      "sha256": "2bad1d47a8c548f8630983562cf0364b36f214bf9363e18625e28e96a696be82",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/court.npz",
+      "sha256": "630b79c8ad6c097b15ce9a74c552b5a275308ededcfa8b888ab8256f20ec71e5",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/court.json",
+      "sha256": "89790b10b8adb36a3ac38a8b91c8ed77b4b6eee28ae73ebfcbf4aa7948b0fabf",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/cam0_detections.npz",
+      "sha256": "6896178f0358fe759544a7cc107a57e575340310d3079744084b9cdd236f3f26",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/cam0_detections.metadata.json",
+      "sha256": "948ecfd05ccbd749ed68d52cdb2cd25d32e4f1b25f5c8b311ecce2d7da82bb5f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/cam1_detections.npz",
+      "sha256": "5bf3759680187564b1cafbfadf72e2107ee3ba8ac45cc06b7a2a47eb3d2e5b07",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/cam1_detections.metadata.json",
+      "sha256": "a82bb59dede78512fedfe22bf3cd18fee7786645bcc4e047f1f92231baa0df95",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/cam2_detections.npz",
+      "sha256": "c5c5c8c676de8807b2760b6055590b508eaebc35043bc45d04ca9c7da5d73673",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_002/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_002/cam2_detections.metadata.json",
+      "sha256": "92413b75ca03359c5f8b06d476849e74ea99abae2ae31f50d69d0c20f9cc9a26",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "sha256": "8e0b46dee438f0f4b9a3d46c17343a0cb5fa07ec178c1a5176fa6d2c62dac0e8",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "sha256": "39f9e5be3471167edaade595345d21e0430c53eca3ae566d0dee384bba60258c",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "sha256": "74abaa2313c4b96f95b88394a4a342ac69a8bcf0371a406112692fc90b80cbd5",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_003/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_003/annotations/dino_v3/annotation.json",
+      "sha256": "928c93411bdef068a49d881cf104e21d77eb2f8f33b380c913a6a229c93bcad0",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_003/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/court.npz",
+      "sha256": "e197060eeac42225872fadd99c61ff62bfd5021d12492116475bf5192e35f59d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_003/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/court.json",
+      "sha256": "e2d45a3ba3ac91caa3076c9e8dbaf1be7a8db9161d45bf40a3c598603240d6f1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_003/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/cam0_detections.npz",
+      "sha256": "e11973a5789812e49c979362924f1a4bdb15a6030bde7d4b4bc24981dcddec6e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_003/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/cam0_detections.metadata.json",
+      "sha256": "cd026278385d29739196cc0e5516ab349eb117ef9bba15bbbfd11e7fdd062506",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_003/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/cam1_detections.npz",
+      "sha256": "7624482eaeb6e89b2d92d59c14d94b19188a1c5f9e36a4d506e4917022122344",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_003/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_003/cam1_detections.metadata.json",
+      "sha256": "015ae2c1749901206a4dacef82f6287f931427ff80d70cc3315f9a85ace6254b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "sha256": "73678b762a16a041844eef51b6454af91780309e7ffb2ec5b161b1e0b61849aa",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "sha256": "e8e1d00fe49e6ce56157271b06b20f46b92baa05b1fa68fc5d1a13790f66f2a5",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "sha256": "4f0cd91c0a5086cbd91c4ff4dd191b706b95e4bf25a68ce882aee540893e4673",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_004/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_004/annotations/dino_v3/annotation.json",
+      "sha256": "d3bf303275f6a541971e5ae0efa9d6f176e8dc25084c69ba7c918d3b257ae4da",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_004/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_004/court.npz",
+      "sha256": "dd44423b06765da4cb7b8fe1b351703ca38a982c6cb07d983501017edc28e6ca",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_004/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_004/court.json",
+      "sha256": "416b2c53e573d9501c61f5d3f6b58c039e32619c9dd72edaa7c76abb1346a46d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "sha256": "7110fa74bb5f378e127128fca020f7689776bfc3e2648415c6e57f42d1e60008",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "sha256": "3e330ad199c7f3c172ee81886894ce7ba1a8d8a43c3e1773de7380b6c50bf981",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "sha256": "ed7012875daf8f8d12c9cc76a1cb925529769a251884ecab5c916f65b89b604e",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_005/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_005/annotations/dino_v3/annotation.json",
+      "sha256": "81b17b28aa20d2487e611b3533497fa38c649e4f2a22a1d63ce1e81d978bf0df",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_005/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_005/court.npz",
+      "sha256": "aa03ba062c9b3e3070442c1ae32e69e63da5df5fd955135ed105b5f96682ba31",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_005/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_005/court.json",
+      "sha256": "de0fe258727bda1f02513d7005983f1e286f0f85b6d3428768fb8a1e9c6cd988",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "sha256": "58045a79dca22faac0d78dc2e08800323c5c3ad084c213f546c58b480b62436b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "sha256": "b6fc1471aeb7283e7f2da90dcb392c2180ee4a1e57c3fc102394f9f15b5e7bbd",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "sha256": "d6400c718b5af80584ce55b5632ac5758d63b2a3f7f0624bf17e4129c44a2782",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_006/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_006/annotations/dino_v3/annotation.json",
+      "sha256": "b16d27ba544208c4c3fbdb7d0edd8becdf4cdcac0b2c66f1302aad91d73d156c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_006/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_006/court.npz",
+      "sha256": "a7b304dda31d52afd1ad4bc511cd9eda2ac6bf52c277878779df4cd0f711aaaf",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_006/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_006/court.json",
+      "sha256": "a3c41b538f17c8ab63229dee9e4b71092c9a38774fdd893346181ca044cfff2c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_007/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_007/court.npz",
+      "sha256": "1ac862632dec49c41a209136d210f3f067abc95b4f4acfb1edb8429d65b1f065",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_007/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_007/court.json",
+      "sha256": "3c978fb6f0322d608bae39ed4d4e486faff97d96f16899097cbfe038625f6a50",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "sha256": "5b0ed2791a38b413085900eb85fde4fb6d2d90735874371384dd0e337b142ae4",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "sha256": "ea0d4f79581e4798d16b2ae77c9eafe9ecee951c1c94040c393a686e1b7302ed",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "sha256": "a7364b8901620d35666127f687f6b62b46cd71f65a3c19226b990344ff4f5df0",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_008/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_008/annotations/dino_v3/annotation.json",
+      "sha256": "78b9a496430834fea0c52ee6738ad67abda613135600562e9b404a383a990108",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_008/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_008/court.npz",
+      "sha256": "57daa677c3a3fa128ed0c2a657bb4c96d6114cb520db6db59670bdb9ac4f8b01",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_008/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_008/court.json",
+      "sha256": "cf90e45fccf387b86561b4ff21622f8496e421eca38409afd089b0ac29e5e002",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "sha256": "792b8c9be816e1cfce16269676a0c30304090d9191f3443932c9c9b33ac95cd4",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "sha256": "4db12961dfcf35689c0ab9106d681c55f239a25804568b5b542261ce39d99651",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "sha256": "b866921192e287367960fe22271bd06fdee6d43776b158eb330bc371071d5460",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_009/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_009/annotations/dino_v3/annotation.json",
+      "sha256": "61d804345ef4d59ac52870990d706a1f66f56634e0d120c0da7b448bc69ffc62",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_009/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_009/court.npz",
+      "sha256": "ac3b6197938ef870ff46d12258feb683e1263d1b9c3bf7164df0655e2a9f5c9a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_009/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_009/court.json",
+      "sha256": "7d76222479b16ae31af580fabd6cdc8072db4c5e67aff0cacf8fe621714c4604",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "sha256": "7fb6351576e097188369f2ec744b5f60686c2dd5df332c25a1a24b8282d10dc9",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "sha256": "8ba77ad58845fcf592129785e1bd0aed0ee3cbcbc509a0324a92ab923e520ed0",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "sha256": "7f7012f1c8b9f8475779509af1fc9728c9b4b0781defdcfadcf79b29bb1d4e0a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_010/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_010/annotations/dino_v3/annotation.json",
+      "sha256": "eb2e34997b7f098f1bcca79df7d62673566a8d35cddb3d21f6e804897ba9fa0b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_010/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_010/court.npz",
+      "sha256": "dd108a67dd7494adce0a46007ccac74d5042cd5a8a245088035a296c7dbfdc60",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_010/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_010/court.json",
+      "sha256": "f0bc447dc43aae693b5911d46f028d0d3c426a9d0a2234858212f380b6ca6680",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "sha256": "c05a4487822752d27ac5ea84fe91801334f8047eab28d472be03e83d6473d001",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "sha256": "64fe6c0e9a23f5ebe9c5d9996edf29f258f844d75785e673b8535ca87e252f12",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "sha256": "1c125606c0fd6f22e3ac0f7e4950855fdce8c5ac489b688f2cf811df8297d6bf",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_011/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_011/annotations/dino_v3/annotation.json",
+      "sha256": "63eaf1b24b6cd90752680c810077c4805470b8bcfb5ccdd678057fc548374da1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_011/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_011/court.npz",
+      "sha256": "96b15a10a3d956fa1c5ab838c27e226747869685e9fe440d942a33b4d5931128",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_011/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_011/court.json",
+      "sha256": "e9a8f2b515ef55ea113d25b9b44c9f6fd6a05e8bfadc7fd1c44347c517e26f12",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_012/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_012/annotations/dino_v3/cam0.npz",
+      "sha256": "fbca2f2a88ac73a9ca30d0309ff4f55c31328fb5c6a7aa4d938510004dfc5eed",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_012/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_012/annotations/dino_v3/cam1.npz",
+      "sha256": "ac5f595cf018dafac6a3a3f8dcb71c5761fb5426b2b980948b03922afe6b11e2",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_012/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_012/annotations/dino_v3/cam2.npz",
+      "sha256": "971971fd01cffc3438b5b640e34b43300192663cfce742b53677583cc3b1bdeb",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_012/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_012/annotations/dino_v3/annotation.json",
+      "sha256": "63362f6ca9c7ed76a3226b993721bedd88deee90681bb19dee2bef4ddbe24afd",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_012/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_012/court.npz",
+      "sha256": "77fb1c6e39281effdce0f37ecf8ee943e3e4b75e3a21f3069063ac7a15d136b0",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_012/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_012/court.json",
+      "sha256": "5bccdb5112d8ba5f03b06ef41fa18dd236c2623c42f6e030902376558e6522fe",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_013/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_013/annotations/dino_v3/cam0.npz",
+      "sha256": "243795a1fee0828191703d1dfb677087440537ddc458ddf20bb908a45ba28f4f",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_013/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_013/annotations/dino_v3/cam1.npz",
+      "sha256": "651469a3323b35ee0185558d4565fa4e1c0b07b7ed69e9bfeed021ff6569d7e3",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_013/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_013/annotations/dino_v3/cam2.npz",
+      "sha256": "0312daba382723e4c7b3ca73da081ec4e22536c7bdc0accecdfb22951969ee4e",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_013/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_013/annotations/dino_v3/annotation.json",
+      "sha256": "6623618dff1a528d3f4ad143a7eba620a6ec4d19e1fe05fa41f9aee3430b4116",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_013/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_013/court.npz",
+      "sha256": "a15daff53b66eed0db60135b135da01a5441c9baa3b0e066b4c726cd4e2b1285",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_013/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_013/court.json",
+      "sha256": "812a3a4545f00747e3ccaa3c40c7d431e6bac34a7a174af15ef23d00252a6826",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_014/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_014/annotations/dino_v3/cam0.npz",
+      "sha256": "d586e5fe45b5bc55ac6818cad38d14f679f796bfcbd4b2ec46430f31cda4a491",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_014/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_014/annotations/dino_v3/cam1.npz",
+      "sha256": "b0fbee26d7b0f72be0795e6160ed0731903fa8188790a928be66f9ffc39c5217",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_014/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_014/annotations/dino_v3/cam2.npz",
+      "sha256": "f9f43e456808de990f09d209aa652bf2d13afdbaab625666c68034ea337e6e94",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_014/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_014/annotations/dino_v3/annotation.json",
+      "sha256": "f932a53b02acd5165641b17b9a706c3494dface441f9cbd56524f948b19b62c9",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_014/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_014/court.npz",
+      "sha256": "e5ba80b1596bc094d3a5fffada80b32264c840f80c26898f8e143472da785d8e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_014/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_014/court.json",
+      "sha256": "0cab1671a8801c8fae5efba5e593c15090d89e8695f3d1bb9cbd097f02bd275f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_015/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_015/annotations/dino_v3/cam0.npz",
+      "sha256": "6e720b1d936d2701c8a2df038ad56b5d334d21b5d6f5df5d93847de5af8c8065",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_015/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_015/annotations/dino_v3/cam1.npz",
+      "sha256": "1423e21667ffb22460803b3d2113b31559db0d0c2cf204911072f7af468c1b3c",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_015/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_015/annotations/dino_v3/cam2.npz",
+      "sha256": "fc2c2335657260df1839992075f1be079f0f6f11c2eebd92c064619f6a281d60",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_015/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_015/annotations/dino_v3/annotation.json",
+      "sha256": "3312968a8ae6117c62f69e301e4894ee307e0c4a5bdcb70c750cfdbd4aa7c61d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_015/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_015/court.npz",
+      "sha256": "523ecf8c5e41889950f050bc719acd3e45172d5a3acbfd26ba293404e98b247e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_015/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_015/court.json",
+      "sha256": "48caa2657402e7fe95ea8a97386fba0c0e040f5701c2153b3dd0858afcc4c3c0",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_016/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_016/annotations/dino_v3/cam0.npz",
+      "sha256": "4dcfef6c4020bd103a5fcfc3dbaf538094f07ca77452926e8e0b94af95912698",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_016/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_016/annotations/dino_v3/cam1.npz",
+      "sha256": "517ff8cebf446c688557cbf744e0ff25d8a8426d2ec983659f84b0c7518ced87",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_016/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_016/annotations/dino_v3/cam2.npz",
+      "sha256": "8c5db1145b3cf2c8d76dd65071690ae632067debc49e77e0ea7abf904ff46aaa",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_016/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_016/annotations/dino_v3/annotation.json",
+      "sha256": "125b04d55c8f1e6b46ef6f6aff32821cde4441d9f8608bf4c36e8fbf35b98343",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_016/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_016/court.npz",
+      "sha256": "32088474ddf4b8ed189908adbea10817928e7e134dec301ff22cdfe9483e014d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_016/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_016/court.json",
+      "sha256": "59397c0cfb2c089e40c2c2f85114b190c5a49548e3c1f6e132a0687066f7fc65",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_017/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_017/annotations/dino_v3/cam0.npz",
+      "sha256": "3025e9f2b1b70b2a52e7009eecdf790edcd93d5c58cb0a6664fbff99ba027343",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_017/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_017/annotations/dino_v3/cam1.npz",
+      "sha256": "d8efb0afb4c0a1530dad93533859e9be53ab5762fb967fb747c12680f7084db2",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_017/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_017/annotations/dino_v3/cam2.npz",
+      "sha256": "2517799d0ab208a4941c0ddeffbc55a921007fc5a33032e41171e937a82ff197",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_017/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_017/annotations/dino_v3/annotation.json",
+      "sha256": "7a4a280329f09ab8acd9a86d7e9ad61a40dc751e35c01a518e2ef5ec47da2aa8",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_017/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_017/court.npz",
+      "sha256": "df913e0c39b45e5405139899e2e8de793df594298889853d2b2bfa9d526fc62c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_017/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_017/court.json",
+      "sha256": "ca6516450ec4b7820b1142f04f41ef7e0715c1dfbdff53aa4edf8f1652adc0f1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_018/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_018/annotations/dino_v3/cam0.npz",
+      "sha256": "7610795b6e958c514280625ab3c1782eec58b0903bd91904fbe47adeb561efb3",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_018/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_018/annotations/dino_v3/cam1.npz",
+      "sha256": "978d954358cd753416a7a75a8016d156600a696ff01058881c6271ab768e92e8",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_018/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_018/annotations/dino_v3/cam2.npz",
+      "sha256": "38eaed871aa8d07fe8752dbbb2c9ccea41bae440622ffd5f6ef2fee9979c4d4b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_018/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_018/annotations/dino_v3/annotation.json",
+      "sha256": "fb3c72122a9ea8f8084fadcec3a7742d5c7e3f30e7af1c512719e67f9aa125ae",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_018/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_018/court.npz",
+      "sha256": "b8d7030f55b2502435166c74208b4e3b672876171c4e355d9535c29fff5db67d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_018/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_018/court.json",
+      "sha256": "d169d48eea635cf408195086cdb996ee3d196946d96b45a203871771c9942a93",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_019/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_019/annotations/dino_v3/cam0.npz",
+      "sha256": "1a198d04a9fc55376365af2092fbb73d06f345e0c5ba126f531be8bbfd7e9203",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_019/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_019/annotations/dino_v3/cam1.npz",
+      "sha256": "15be063a43a4ec4bb1608e02049d4b3d723068fac783d3ab0d19235619095f9d",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_019/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_019/annotations/dino_v3/cam2.npz",
+      "sha256": "b136cfb366c7f74b729e410bd70a120607857dd8d658ce9763b05195e6ded942",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_019/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_019/annotations/dino_v3/annotation.json",
+      "sha256": "5ed207d122ef99957a8111a85d2262d647a84403e4875ea119f3dd7ec2ae613b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_019/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_019/court.npz",
+      "sha256": "a7b03551485081a890d86ec7d24ecbfa8141b4de5a28f51410c1fa072de4c27e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_019/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_019/court.json",
+      "sha256": "52187362094579649b251749ca55f6bb7d67d693d001a1a5b29b300e1454c0d3",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_020/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_020/annotations/dino_v3/cam0.npz",
+      "sha256": "be53c16ec459a1c98136e0388217dccbf3b773c296619db91fa3cd5171f923f0",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_020/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_020/annotations/dino_v3/cam1.npz",
+      "sha256": "6c55752cfc849bb6e9a8fc5a599156f957c202899722eb641a7fd1301b27235f",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_020/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_020/annotations/dino_v3/cam2.npz",
+      "sha256": "98d7abd364154309a3df3d973c37f7e8c7a854dac1389ed0c376a5a0ddb3aedd",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_020/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_020/annotations/dino_v3/annotation.json",
+      "sha256": "16ffc54e094942e32d91dd7aa25f2b652561bb15548d6c7626a8492a621af448",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_020/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_020/court.npz",
+      "sha256": "0b397175c5b47e52830e5f2e90e6cda1d7e5e19076d2ee98a26b49b3bc5e4836",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_001/clip_020/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_020/court.json",
+      "sha256": "f218cb713e05ded71ce2713ebe22869993bbbc6312f17430f0520088ce7a5581",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "sha256": "38cb39114c1140c41fdac3e97ed2b57546fdcd9064965cff3c70b43c1a43cfd9",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "sha256": "1398542b8f3f206136cd9bd5fd8f1e597d16474d341d3f4caced817dab2b97bf",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "sha256": "37327828e58d56b534d0cdd65c98d1f7ac78dec0ce78eb3f628beb39d197fbc4",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_000/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_000/annotations/dino_v3/annotation.json",
+      "sha256": "655ee38efc2524c527e7c621f9f2d988c13e7aeeb5ad711f73b45904407b3b1c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_000/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/court.npz",
+      "sha256": "bc0890fd86bace18a06f0001cd40c21d0a9748e576f55227faad843cf1584a25",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_000/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/court.json",
+      "sha256": "604ffbd88235d1cd6e522c9c7e106a2356f9e8a10341c486d6f23c613031dd53",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_000/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam0_detections.npz",
+      "sha256": "cef445e47d8bc23e56aa7c165956a56577592caa72a50ec4580e2cee39646162",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_000/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam0_detections.metadata.json",
+      "sha256": "cd3b38039b473fadf407cf31442244f485d6ed4cd91e4654733dc72ecfd11f2d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "sha256": "6d6d9d50a764a862feb503556f7e873566730825095939499ecf7c78d897327c",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "sha256": "60e7c992c73b1aade82dea567a0d21eadc8dc94e6898d6cd26e31fcc5e66204f",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "sha256": "9efb6cad77f48aaee17b874e54763e0973425b080f2078b0b5c18b570aad43ca",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_002/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_002/annotations/dino_v3/annotation.json",
+      "sha256": "d9a4224e3b0a9fe73ff796ea21fe4858ed1881b165fe07531882a3e96c741e50",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/court.npz",
+      "sha256": "a5c1011f0bd3004bc97e5bcef7f8c1e468c9e9d893f2f991540ab94a844593ee",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/court.json",
+      "sha256": "722348b696c3c27fe689b2516aeeb0024c0eb013d4f298e30b0eaf455ca1b0d2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/cam0_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam0_detections.npz",
+      "sha256": "48ea3cd0d20b4145fa0f55a5a4ea92b25e69c0ab4b25f0126c3ea8889bf9d71e",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/cam0_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam0_detections.metadata.json",
+      "sha256": "2deea9ec30feb6906943df452af2bfd62bfe23410d769f74a2187164a6c1ed85",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/cam1_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam1_detections.npz",
+      "sha256": "92edcafd5dcec082b9ae9a253fa63742efa04709312db558a4de8c3254c1945f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/cam1_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam1_detections.metadata.json",
+      "sha256": "c6760b99906078bea6d8b0d83543268c686d12d7a41c62a7deb32805175b32b3",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/cam2_detections.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam2_detections.npz",
+      "sha256": "8b6b6dec120ef03c48e60ca356c0e7e23b6ae47e5f8d75829fb5442cd47daba7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_002/cam2_detections.metadata.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam2_detections.metadata.json",
+      "sha256": "aa78df5332a893e0253edb7d4cc20485d052821b9eff07253566f80c8eb3e6c2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "sha256": "2d81686699073397a687616a877525fea52396bfe80be96a54691c2f13e59641",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "sha256": "d8a8cec5e8d811eb849f96e1bceb38a53ab5885aa3bf7a3e7811ff73c45442cd",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "sha256": "2cca9b52fae6dd7d236e3a5988aa60404ae25b895f0b4890e9c5d1fd31b9b2e2",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_003/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_003/annotations/dino_v3/annotation.json",
+      "sha256": "fad282db3c856d2daf5f8820fd39f4da9b9d82b6c097c5b2160c47887a3faf41",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_003/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_003/court.npz",
+      "sha256": "d10307453f783a4082f6a6ad8cd5de55c0ff0be935b78d93556eccfe9a7a2579",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_003/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_003/court.json",
+      "sha256": "2ed828bef44c6e56ff7f1e7822b8672bd8b24d652b93205a7dce26b47f57e479",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "sha256": "107c700efb378b95b9aeff5ac6f00e4ac84a13f665c7815c285914884b607056",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "sha256": "5151d6b85cec8ca58444257d8e70ab28a01b372b62ec450be5edfd4055bef0f3",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "sha256": "4ed53f966a1057b724208d5bae9e3a164d9ca6326bed595a8a8ff7adb311351b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_004/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_004/annotations/dino_v3/annotation.json",
+      "sha256": "a215be6bf32de8f017096c1e29fed22e3caa7784385ae0f54cdacfda4a7d68c1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_004/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_004/court.npz",
+      "sha256": "2fdca8788bac96ef07ec811da5627849bfd9160acfeed0f1c276d4c1877071a9",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_004/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_004/court.json",
+      "sha256": "99e810f01c6e1cfc394f696c7d5475a4fb6128e98a778e1922a1a8cdbf706bf4",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "sha256": "8eeb902887034e02f5655eff9ff95c6552ccf3972172513d7dd4d8a6000265f2",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "sha256": "cdbcdf675627e143ec1edbbfd0d356e64ecfd888f993b816b69629509fedfb04",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "sha256": "f47bee8b58ec7363057f2e699dbdb4a8ba0b32fa2a03c9884b2102528714b257",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_005/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_005/annotations/dino_v3/annotation.json",
+      "sha256": "e2a3e417853789ce6431c0d2a6fecc95fab8aac357cded71d11dd62e002e0263",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_005/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_005/court.npz",
+      "sha256": "21efd5e55d419b99e94d64c993460142a7582a8ccdf4397238855791476d369f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_005/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_005/court.json",
+      "sha256": "e611dc1908f730fb990f110aef4ba19caadbca253c25ca139affc08410832773",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "sha256": "0e41f4ea0ae39b561eff1fec272d27a138369718131e36f43f545129f9a1b85f",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "sha256": "347c19cba8c6d69551bfda6bb671a92309e2f90db76e6f60c61e497ed91c28af",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "sha256": "e70342cca04777db6b1a8dc72f997a9355874198b35bf7181fd6f5993999bffb",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_006/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_006/annotations/dino_v3/annotation.json",
+      "sha256": "19fc3563871f44f49f98a9c0620be757ed0e1b4b90dff76bb91694890c0dda92",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_006/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_006/court.npz",
+      "sha256": "caf75b08513eda6ca917d8a6ac2c182b2f0fa9b195ad24c3f070c26dfaadac65",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_006/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_006/court.json",
+      "sha256": "074fe0f61d710f9207a8c58c0f2c035271fcd6ccf01e68b0bf68afdc36746af4",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "sha256": "3577d951937b2b07cf516f7a8a284bad565514815fa1bd937c00d40bfabb5070",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "sha256": "49ba20ca68bdf1e711e4a83c7d59dfc739b46b06162b98a3d20513790c3fd30c",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "sha256": "c3a44d84e53f54de1d4c99fe855371e3ed2678874044a4d51b41948b42a15f12",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_007/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_007/annotations/dino_v3/annotation.json",
+      "sha256": "b112fbd840de068854d9b580b0d94a7f69ffba8b8d83eea7dba7fe39bf8d79a5",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_007/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/court.npz",
+      "sha256": "047ecfafa9efa989db8e7eb27a0826966027392df72dac5e8d6c3195fbd895f7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_007/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/court.json",
+      "sha256": "a68d231eca8494919a55334fd5771477ca4c6dacc28b1cc438bf465cd8a90087",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "sha256": "a215f87cded93a289b07909178cab0bb60f8e2f7f2657f1e9eee435ae4662c8f",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "sha256": "ee8c4102d3f9cebe72c4a6162274a84b9d780c53681f2751eb78ab637e643422",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "sha256": "051f0bb2b45ba4d328243c8eb89a20ef88a9ae57dfb5a158762899e260a5c1a7",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_008/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_008/annotations/dino_v3/annotation.json",
+      "sha256": "48446994fc54407ff21df2059d9b10cf4597093ec6c95db133640d0460607395",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_008/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/court.npz",
+      "sha256": "f8971e1b6ac231647f891145979f8dd1b2cf9da4422dfbb1d5f6c175d49f70d8",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_008/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/court.json",
+      "sha256": "b292e01651af6f99056ad954d1f51263acb569e53c91037abc879e04452f7bcb",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "sha256": "7d1e48c5845c98ee89616234945a8b116ee022557355250c3e7f9982ef1e780b",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "sha256": "a24cc03f3d21c77807c47425cf29063b71522bde7cdda677e0604c33f3b69354",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "sha256": "9b53408a1d6a541d2a89a26c65e7772a6848310e25bf736d04757a3084ba3064",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_009/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_009/annotations/dino_v3/annotation.json",
+      "sha256": "66aa5030a1f1c0c03e74c8ab1f39e5bf2ce9adf13e517ad08f0b6b0a201bedb2",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_009/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/court.npz",
+      "sha256": "3a6c8bd74054a4bfb08849f3bb98c48a6f55fb7ed0ad15d8f58627a386cd7a9d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_009/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/court.json",
+      "sha256": "fc14a196b9c1521e1baeb5b85d58d845e26dcd862b891010a9cfa74f4c6a4a70",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "sha256": "3806e42f726b996b7a52d3bd327a1bddbfef15dcf078711df616d82efa1c9984",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "sha256": "10f6602307d761853c4a00adf75104b429b698ba83549fc9de1d75165041bda0",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "sha256": "d359b55465f0b557618403c11435ae9ecc69b234691c98e61f549cad85048f23",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_010/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_010/annotations/dino_v3/annotation.json",
+      "sha256": "4a9c291490db01c8d74750fe3a7cbfa76d9764fb88887b611fea1b3a3f23ebbf",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_010/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_010/court.npz",
+      "sha256": "477f81b4a981b45c0dd00a0805d2867788ca74056b6ab5f08e8f170bee7f8f40",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_010/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_010/court.json",
+      "sha256": "9142e0da438c66fe17ccff94416837e01a7305a377bf15cc2ad0906670809dca",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "sha256": "c26330c756fc619ec6b5e71d2054e3b45eea658be7b31c81414b2de6add6bca5",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "sha256": "6bf613a099653c52b9f36681a148dedc6e4b403cdff104a424c766fcf85cb7e7",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "sha256": "1d21feea881e7a90bcdc76840a5ee65e9f6c1a8e3de8b5ec5bc64601f8a2426e",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_011/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_011/annotations/dino_v3/annotation.json",
+      "sha256": "6a095785215a0b63ba07f8d1fae24aa01222d2d8c2c8ccff217b0837237b5205",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_011/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_011/court.npz",
+      "sha256": "3b375a592194beec02a5770ea5f02ddc046e895a9971d3725c35a5bf4e16e259",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_011/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_011/court.json",
+      "sha256": "74bd662665c540ccb39cb0f3df783b8410a72272b16d1526870e305e335c1551",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_012/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_012/annotations/dino_v3/cam0.npz",
+      "sha256": "ebc8b3f6f7107bf5373edc4f7140fbd29c5441051cf2289025d23d7e89fade0c",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_012/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_012/annotations/dino_v3/cam1.npz",
+      "sha256": "d42d0c67b034809b9c75434259c837fb2dc2e50aa8b0f9a36331fefaa2cd30cb",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_012/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_012/annotations/dino_v3/cam2.npz",
+      "sha256": "2174aa6960a2a584641b5391005d9f11fefa603878e8309eb0dcbf7ee8c0bb55",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_012/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_012/annotations/dino_v3/annotation.json",
+      "sha256": "4e4e3a95a8721344c0049eed26cdc172bd2b3df67f4b91a6040517e2dc1c9c70",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_012/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_012/court.npz",
+      "sha256": "4856790aef127c7b2b5291b0f0eff83da62a29d8aefa2b0cd489ec1ac88e4e65",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_012/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_012/court.json",
+      "sha256": "e0417edb7dc96b80f9eec4f1b7631db3df09cd07ce906acd602302051688eda8",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_013/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_013/annotations/dino_v3/cam0.npz",
+      "sha256": "6d1982aff8792f54fd6ad678ebc881e1c3b6f8ceab7b9a1419c63a193db7daa4",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_013/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_013/annotations/dino_v3/cam1.npz",
+      "sha256": "4a05ce1e5feab23258161f260c1fe69dc03665b78319f7de250d182610f5716d",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_013/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_013/annotations/dino_v3/cam2.npz",
+      "sha256": "65557da025733d65a2d3aa36638fc632940b35811f6b102fa21931415584b990",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_013/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_013/annotations/dino_v3/annotation.json",
+      "sha256": "9582781e8f25860f9fe02d1d0bdb1cf64a868dc15686925d8e8e3602e997468d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_013/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_013/court.npz",
+      "sha256": "31c23dbdab9ad6276cc14855af64cba36e3cdc3e96565146f932ab0d10ba3cfe",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_013/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_013/court.json",
+      "sha256": "6cface827f143f96920ebd60cf9eb54843098c9b4129d88ee5fcbffa014cfee7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_014/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_014/court.npz",
+      "sha256": "f5690fc0e98aff821fd59f537795bc08590eb5c8dddbd6c466788f7b3118ced7",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_014/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_014/court.json",
+      "sha256": "1a65467788bb660e950544517d2d8d80ee8320cf6a2edc6cc168f0569343102a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_015/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_015/annotations/dino_v3/cam0.npz",
+      "sha256": "7c89f32763f26a7b4a1318733b6b3e41b8b3ba64e244bfcae5012e6f43f16d20",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_015/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_015/annotations/dino_v3/cam1.npz",
+      "sha256": "cc5840f5cd156e2a39a8ff713616eeeba0dc3dbd7eed22b0db2a7ad87d3655fa",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_015/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_015/annotations/dino_v3/cam2.npz",
+      "sha256": "2cdce53bf6f7f8c7d3c6f84b05a12c800c29a3672791c73aa9e215faf4c02b6a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_015/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_015/annotations/dino_v3/annotation.json",
+      "sha256": "15c6b59ac9de1c9e1f92f3a6cf01596e1ac496927fbb69c5a812ae82ab84cd1a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_015/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_015/court.npz",
+      "sha256": "7c130f8688b6e592c71c2a4595d80c8d65036bd16a2be5d78f06ef910eb5dee3",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_015/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_015/court.json",
+      "sha256": "5e365c52bbc33a49d49aaaf57c69b108b99ec680b84334729c0a5a856d94bf83",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_016/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_016/court.npz",
+      "sha256": "557b72fad4281953d1407200fed5014add8742f6cbf229d67b564812cf75ab8f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_016/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_016/court.json",
+      "sha256": "36dd9bd734719ee6189aaf20b52f1afcf0379c8f342e766ee34b8e9c0d0d09ec",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_017/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_017/annotations/dino_v3/cam0.npz",
+      "sha256": "14ef5ac14902057d0aa07639a7e69748508a60c130c688049a8f8676e829d8d1",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_017/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_017/annotations/dino_v3/cam1.npz",
+      "sha256": "2fe7034ccda3725297d6ed54abf54ec7daa8b5c019e607f259c70759f491c862",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_017/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_017/annotations/dino_v3/cam2.npz",
+      "sha256": "4cdd383438e396bbe23df7870a3b9a8b855595e4d131ea42d85759be04530664",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_017/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_017/annotations/dino_v3/annotation.json",
+      "sha256": "69f7935c9239ad6db18b3bcb8f0a0edb7093854f26ff161eae7a60ef49469e28",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_017/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_017/court.npz",
+      "sha256": "df76e9c4c76bafa5bc38ed747f014524b2dcd63971a2977b4dd95cb81693414d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_017/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_017/court.json",
+      "sha256": "826c8226463be0bdf90b7754c5ea80374d91e49af77b47665e7708cfbd719586",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_018/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_018/annotations/dino_v3/cam0.npz",
+      "sha256": "b1674ba167da8127f99f96a961fdd723067001078a5b5fcbadc84a063b7abf38",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_018/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_018/annotations/dino_v3/cam1.npz",
+      "sha256": "c542f39f192de3cca9ddf85da9e75fb3c20c5485a9ea873380835558ae2bfbc4",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_018/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_018/annotations/dino_v3/cam2.npz",
+      "sha256": "ce47723ff3d816b1e548a7506bfc491e0090b9cc4caff1c374b7bb3c7269559c",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_018/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_018/annotations/dino_v3/annotation.json",
+      "sha256": "372b6a4920798a677a9ffd4b8bc86cfef34061f071da6fe9490f62769b0daa2f",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_018/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_018/court.npz",
+      "sha256": "149cbe874e0e476fd2401b257a39a4049c22a1e71e589531dcb420c64e09750b",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_018/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_018/court.json",
+      "sha256": "589e7ab25d45d9867873720ff4a4473464198d8db7258ea85c034b29daf006ee",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_019/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_019/annotations/dino_v3/cam0.npz",
+      "sha256": "ca2d9642a80c821b2be4f111f3cc9fd88a472ee6af7d535cc0ef3b680d933719",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_019/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_019/annotations/dino_v3/cam1.npz",
+      "sha256": "23df1c4cd2d8a78a9f1fbf9449af4fd68478a5d95f5138c8c355a028f657711d",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_019/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_019/annotations/dino_v3/cam2.npz",
+      "sha256": "b14792e32466e12a5f1acb74c3ed53704867f683e1babb3ebce062dd8f35e093",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_019/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_019/annotations/dino_v3/annotation.json",
+      "sha256": "e5ff02a69daffc2852ec0da03908e76dbb0224aa916132101c80ff4777e4e3b1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_019/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_019/court.npz",
+      "sha256": "14de259a3b1cb3d8461b229bc5c0fa20505c36dcc908c7711f1bbef3b644eef1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_019/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_019/court.json",
+      "sha256": "1887f2d1adb57cb7bbe1cf783df4579ae942caeb310791ae8a88c8f4c255d3d6",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_020/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_020/annotations/dino_v3/cam0.npz",
+      "sha256": "030dc05f786751cf713e9f6de5cb00e0807d508262aaf3524af2df56c268185a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_020/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_020/annotations/dino_v3/cam1.npz",
+      "sha256": "6d7acd70839fd022da865fc9e09809c89204aef10a8dcc6e047464ff3878f5b6",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_020/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_020/annotations/dino_v3/cam2.npz",
+      "sha256": "0aeb98e117e1b77c906615381eb6449a6fa62515853f2241ee4709a3a38bb2be",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_020/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_020/annotations/dino_v3/annotation.json",
+      "sha256": "ab416352ad586bed3129571f6df6176c4804700b705aed736e93383fab2ae2c9",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_020/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_020/court.npz",
+      "sha256": "4fe3865185b7d5444e1fc64497497785e515779f07d7241dc2f6dc5c76958e5d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_020/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_020/court.json",
+      "sha256": "a2e1e7c5440df165464db1ec9ac2d3d75e93afc7afebe968bf5397db6f98c96d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_021/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_021/annotations/dino_v3/cam0.npz",
+      "sha256": "ec647d8f645ffaf97be819bcf956a2f291f55edfbca3878ef679acf05d812e38",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_021/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_021/annotations/dino_v3/cam1.npz",
+      "sha256": "55771fa6efc374c3191ba9bc8fc07e4ddfa9b7eb4e97a4af1413accbd98a2f12",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_021/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_021/annotations/dino_v3/cam2.npz",
+      "sha256": "34e7efa03a10d2efbb2cd47c11985b9a4c5b87821fea58470d1acf23df583898",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_021/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_021/annotations/dino_v3/annotation.json",
+      "sha256": "13469cb0ec93b1cbce3028ac6de8c3035401c81a53dd80dcf95364ad117118e1",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_021/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_021/court.npz",
+      "sha256": "d85390f0547617cd54b0f3c08d2cd586a194de3b826eeb0e95b6dff1e137126d",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_021/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_021/court.json",
+      "sha256": "3223fa2b3c163878ec49548ddf27397901b35686c6886005ee41353dc456a07a",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_022/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_022/annotations/dino_v3/cam0.npz",
+      "sha256": "b4123039781edce757fd80cf3bef64d019c3334f137dbb1b0e2907a798d89fe1",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_022/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_022/annotations/dino_v3/cam1.npz",
+      "sha256": "b9b16553d0a9a8b92ce9eca6b04b34e5eb9a7197ed2215ac788ce503af854eeb",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_022/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_022/annotations/dino_v3/cam2.npz",
+      "sha256": "500df01b1cefc39d0962b681152dadcc00e3ce4ef58350b4389649dea31fde83",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_022/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_022/annotations/dino_v3/annotation.json",
+      "sha256": "981d9b883185d57b14c9bbee22b53ede15cf7b47c8519c21fda8d7e713a7f856",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_022/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_022/court.npz",
+      "sha256": "f3ed151f722d67d62ba1ebcf82bea7a80d9a1c0bb41edaf95a3d031cef10e82c",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_022/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_022/court.json",
+      "sha256": "cbf89849842e906eb8535fa45af1948969441db2e9098e350828febf38823dd3",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_023/annotations/dino_v3/cam0.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_023/annotations/dino_v3/cam0.npz",
+      "sha256": "c872a804a016d943ca57792416f49ddcf7dc2510ffa4389f2beffc388a900f62",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_023/annotations/dino_v3/cam1.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_023/annotations/dino_v3/cam1.npz",
+      "sha256": "023271896b8d01b27aa04a950502281d7fac607224c97bd58fd61219fc45e40a",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_023/annotations/dino_v3/cam2.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_023/annotations/dino_v3/cam2.npz",
+      "sha256": "8c3d5644f19e588249ef13273429c3d46ffa3c26c466b53ab1b34e3090e0cc9d",
+      "method": "hardlink"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_023/annotations/dino_v3/annotation.json",
+      "destination": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_023/annotations/dino_v3/annotation.json",
+      "sha256": "516e2127d5da761e0c337357321ce1088c5695ba1bd8bed05bb96f0098a770c6",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_023/court.npz",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_023/court.npz",
+      "sha256": "b8e1865de493104bb370a49d6095b19d5aa7c10bca1faaf72af734b2bc7a1363",
+      "method": "copy"
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-003/video_002/clip_023/court.json",
+      "destination": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_023/court.json",
+      "sha256": "6f0aa150ab8271d0a7fddce5eee85ca9f6b3e5206bcf681c0e1b48eee2033a52",
+      "method": "copy"
+    }
+  ],
+  "rejected_features": [
+    {
+      "clip_id": "video_001/clip_007",
+      "receipt": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_001/clips/clip_007/annotations/dino_v3/annotation.json",
+      "receipt_sha256": "aefb0ab0aa79d992e2059827eb7abb52fc8e8f3be8324e468788deec738a9021",
+      "saved_checkpoint_sha256": "afc808ab2c7609e825883ec69125c7af08cd842bda5c132018896e563d4677ef",
+      "expected_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "action": "not migrated; regenerate through normal build"
+    },
+    {
+      "clip_id": "video_002/clip_014",
+      "receipt": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_014/annotations/dino_v3/annotation.json",
+      "receipt_sha256": "2f830187eb1d35e95a54d6a9dff689008978c7b40e7b616710075137833fd271",
+      "saved_checkpoint_sha256": "70ebeabfb40b372489a6580ef85c8c15a1bb710b0a60140d35edea6ee9d6307d",
+      "expected_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "action": "not migrated; regenerate through normal build"
+    },
+    {
+      "clip_id": "video_002/clip_016",
+      "receipt": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v6/videos/video_002/clips/clip_016/annotations/dino_v3/annotation.json",
+      "receipt_sha256": "977ea4fdf32ee9a889d2b5420d379d8504143d148e7e7c71277de580dc1675c7",
+      "saved_checkpoint_sha256": "afc808ab2c7609e825883ec69125c7af08cd842bda5c132018896e563d4677ef",
+      "expected_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "action": "not migrated; regenerate through normal build"
+    }
+  ]
+}

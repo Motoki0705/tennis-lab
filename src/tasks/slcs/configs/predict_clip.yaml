@@ -14,7 +14,7 @@ predict:
   frame_step: 1
   render_3d: true
   render_overlay: true
-  output_dir: slcs/predict_clip/${now:%Y-%m-%d_%H-%M-%S}
+  output_dir: ${tennis_output:slcs,visualize,clip,${tennis_run_id:}}
 
 visualization:
   figure_width: 12.0
@@ -26,7 +26,7 @@ visualization:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${predict.output_dir}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${predict.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

@@ -1,0 +1,7 @@
+video_001/clip_003 cam0: support=14 inlier=13 median=6.29309750 p95=15.83801651
+video_001/clip_003 cam1: support=11 inlier=10 median=3.23851395 p95=38.76132965
+video_001/clip_003 cam2: support=14 inlier=14 median=3.26150560 p95=7.19231129
+video_002/clip_017 cam0: support=11 inlier=10 median=4.34395266 p95=63.61524582
+video_002/clip_017 cam1: support=12 inlier=10 median=3.92798948 p95=65.11891174
+video_002/clip_017 cam2: support=14 inlier=14 median=3.05768824 p95=6.35359192
+Completed: 18 original frames, 6 contact sheets; 30 inputs dual-hashed before/after

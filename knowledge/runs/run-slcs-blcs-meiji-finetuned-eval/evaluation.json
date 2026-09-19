@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "test/loss": 0.0005072650383226573,
+    "test/position_error_m": 0.4789881706237793,
+    "test/position_accuracy_0.3m": 0.38943663239479065,
+    "test/endpoint_error_m": 0.5972864031791687
+  },
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/blcs/real-rgb-meiji-e60-v1.ckpt",
+  "checkpoint_sha256": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32",
+  "dataset_provenance_sha256": "ed36440db35a0eae4d79c65a540ad44c6c5968658918c5cb578a58c06092367e",
+  "interpretation": "held-out recording; geometric pseudo-3D, not measured ground truth"
+}

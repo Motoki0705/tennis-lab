@@ -1,0 +1,31 @@
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb && CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -c "
+import gc, math
+from pathlib import Path
+from hydra import compose, initialize_config_dir
+from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
+from src.tasks.slcs.data.datamodule import SLCSDataModule
+cfg_dir = str(Path('src/tasks/slcs/configs').resolve())
+with initialize_config_dir(config_dir=cfg_dir, version_base='1.3'):
+    cfg = compose(config_name='train_real_rgb')
+rt = SLCSTrainingRuntimeConfig.from_config(cfg)
+d = rt.data
+print('dataset_root=', d.dataset_root)
+print('split_file=', d.split_file)
+print('batch_size=', d.batch_size, 'num_workers=', d.num_workers, 'overfit=', d.overfit)
+print('window=', d.pipeline.window_size, 'train_stride=', d.pipeline.train_stride, 'eval_stride=', d.pipeline.eval_stride)
+print('cache_dino=', d.pipeline.cache_dino_tokens, 'require_dino=', d.pipeline.require_dino, 'min_window_label_ratio=', d.pipeline.quality.min_window_label_ratio)
+dm = SLCSDataModule(d)
+seen = {}
+for split in ['train', 'val', 'test']:
+    ds = dm._build_dataset(split)
+    print('SPLIT', split, 'len=', len(ds), 'report=', ds.build_report)
+    vids = sorted({m.video_id for m in ds.metas})
+    clips = sorted({m.clip_id for m in ds.metas})
+    cams = sorted({(m.clip_id, m.camera_id) for m in ds.metas})
+    print('SPLIT', split, 'videos=', vids)
+    print('SPLIT', split, 'n_clips=', len(clips), 'n_clip_cameras=', len(cams))
+    print('SPLIT', split, 'batches=', math.ceil(len(ds) / d.batch_size))
+    seen[split] = set(vids)
+    del ds; gc.collect()
+print('disjoint_train_val=', seen['train'].isdisjoint(seen['val']), 'disjoint_train_test=', seen['train'].isdisjoint(seen['test']), 'disjoint_val_test=', seen['val'].isdisjoint(seen['test']))
+"

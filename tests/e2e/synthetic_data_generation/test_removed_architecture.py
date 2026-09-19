@@ -59,6 +59,11 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
 # The digests validate/reuse the exact measured source; they do not restore the
 # removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
+    # Calibration cache compatibility binds geometry/source implementation only;
+    # it creates neither scene identity nor content-addressed publication.
+    Path("src/synthetic_data_generation/court_calibration/database.py"): frozenset(
+        {"sha256"}
+    ),
     # Migration resume binds only this attempt to its unchanged source manifest;
     # this does not introduce scene identity or content-addressed publication.
     Path("src/synthetic_data_generation/dataset/court/storage.py"): frozenset(
@@ -116,6 +121,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     assert scripts == {
         "__init__.py",
         "compact_court_storage.py",
+        "court_line_database.py",
         "edit_alignment.py",
         "generate_publication_visualizations.py",
         "review_court_dataset.py",

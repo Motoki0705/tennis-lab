@@ -1,0 +1,941 @@
+diff --git a/knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py b/knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py
+new file mode 100644
+index 00000000..13b8cc70
+--- /dev/null
++++ b/knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py
+@@ -0,0 +1,210 @@
++"""CPU-only audit of production singles association; never loads a model."""
++
++from __future__ import annotations
++
++import argparse
++import json
++import os
++import subprocess
++import sys
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import yaml
++
++from src.tennis_scene.reference_pipeline import reconstruction
++from src.utils.checksum import dual_sha256
++
++
++def git(*args: str) -> str:
++    return subprocess.check_output(["git", *args], text=True).strip()
++
++
++def counts(keypoints: np.ndarray) -> list[int]:
++    gates = (keypoints[..., [5, 6, 11, 12], 2] >= 0.3).all(axis=-1)
++    return [int(x) for x in (gates.sum(axis=1) >= 2).sum(axis=1)]
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--project-root", type=Path, required=True)
++    parser.add_argument("--output-dir", type=Path, required=True)
++    args = parser.parse_args()
++    if os.environ.get("CUDA_VISIBLE_DEVICES") != "":
++        raise RuntimeError("CUDA_VISIBLE_DEVICES must be empty")
++    output: Path = args.output_dir
++    output.mkdir(parents=True, exist_ok=False)
++    root = Path.cwd().resolve()
++    source = Path(reconstruction.__file__).resolve()
++    report: dict[str, Any] = {
++        "status": "running",
++        "cwd": str(root),
++        "git_root": git("rev-parse", "--show-toplevel"),
++        "commit": git("rev-parse", "HEAD"),
++        "production_source": str(source),
++        "command": sys.argv,
++        "device": "cpu",
++        "clips": [],
++        "definition": "After production fixed singles association, cameras with all shoulders 5,6 and hips 11,12 >= 0.3; at least two cameras per frame. Not final teacher coverage: excludes geometry, reprojection, speed and quality weights.",
++    }
++    files: set[Path] = {
++        source,
++        Path(__file__).resolve(),
++        root / "src/utils/checksum.py",
++        root / "src/tennis_scene/reference_pipeline/observations.py",
++    }
++    before: dict[str, str] = {}
++    try:
++        if source != root / "src/tennis_scene/reference_pipeline/reconstruction.py":
++            raise RuntimeError("Wrong production source")
++        config_path = (
++            args.project_root
++            / "outputs/tennis_scene/generate/meiji_rgb_v8/s42-001/config.yaml"
++        )
++        files.add(config_path)
++        config = yaml.safe_load(config_path.read_text())
++        if (
++            config["view_half_turns"] != [False, False, True]
++            or config["reference_camera"] != "cam0"
++        ):
++            raise ValueError("Unexpected reference declarations")
++        report["view_half_turns"] = config["view_half_turns"]
++        report["reference_camera"] = config["reference_camera"]
++        clip_ids: list[str] = []
++        for version in range(1, 5):
++            path = (
++                root
++                / f"knowledge/runs/run-slcs-meiji-observation-review-v{version}/results.json"
++            )
++            files.add(path)
++            clip_ids.extend(c["clip_id"] for c in json.loads(path.read_text())["clips"])
++        if len(clip_ids) != 10 or len(set(clip_ids)) != 10:
++            raise ValueError("Expected ten distinct reviewed clips")
++        previous_path = (
++            root
++            / "knowledge/runs/run-slcs-meiji-observation-review-v3/support_checks.json"
++        )
++        files.add(previous_path)
++        previous = {
++            c["clip_id"]: c for c in json.loads(previous_path.read_text())["clips"]
++        }
++        observed = args.project_root / "outputs" / config["observation_directory"]
++        dataset = args.project_root / "data" / config["dataset_directory"] / "videos"
++        manifests: dict[str, Path] = {}
++        for clip_id in clip_ids:
++            video, clip = clip_id.split("/")
++            manifests[clip_id] = dataset / video / "clips" / clip / "clip.json"
++            files.add(manifests[clip_id])
++            files.add(observed / clip_id / "court.npz")
++            files.update(observed / clip_id / f"cam{i}_people.npz" for i in range(3))
++        before = {str(p): dual_sha256(p) for p in sorted(files)}
++        for clip_id in clip_ids:
++            clip = json.loads(manifests[clip_id].read_text())
++            if clip["camera_ids"] != ["cam0", "cam1", "cam2"]:
++                raise ValueError(f"{clip_id}: camera order mismatch")
++            directory = observed / clip_id
++            with np.load(directory / "court.npz") as court:
++                court_shapes = {k: list(court[k].shape) for k in court.files}
++                hs = court["homographies"]
++                if hs.shape != (3, 3, 3) or not all(
++                    np.isfinite(court[k]).all() for k in court.files
++                ):
++                    raise ValueError("Invalid court arrays")
++            canonical, assignments = reconstruction.associate_people(
++                clip, directory, hs, config["view_half_turns"]
++            )
++            expected, raw, orders, ids_by_camera = [], [], {}, {}
++            for camera in clip["camera_ids"]:
++                with np.load(directory / f"{camera}_people.npz") as data:
++                    kp, ids, supported = (
++                        data["keypoints"],
++                        data["track_ids"],
++                        data["pose_supported_mask"],
++                    )
++                if (
++                    kp.shape != (2, clip["num_frames"], 17, 3)
++                    or not np.isfinite(kp).all()
++                ):
++                    raise ValueError("Invalid keypoint shape/values")
++                if (
++                    supported.shape != kp.shape[:2]
++                    or supported.dtype != np.bool_
++                    or ids.shape != (2,)
++                    or len(set(ids.tolist())) != 2
++                ):
++                    raise ValueError("Invalid support mask/track IDs")
++                kp[..., 2] = np.where(supported[..., None], kp[..., 2], 0)
++                selected_ids = assignments[camera]["track_ids_near_far_cam0"]
++                order = [ids.tolist().index(track_id) for track_id in selected_ids]
++                wanted = [1, 0] if camera == "cam2" else [0, 1]
++                if order != wanted:
++                    raise ValueError(
++                        f"{clip_id}/{camera}: unexpected assignment {order}, expected {wanted}"
++                    )
++                orders[camera], ids_by_camera[camera] = order, ids.tolist()
++                raw.append(kp)
++                expected.append(kp[order])
++            np.testing.assert_array_equal(canonical, np.stack(expected, axis=1))
++            raw_counts, canonical_counts = (
++                counts(np.stack(raw, axis=1)),
++                counts(canonical),
++            )
++            old = previous.get(clip_id)
++            if old is not None:
++                if raw_counts != old["two_view_support_frames_by_player"]:
++                    raise ValueError("Historical raw support count mismatch")
++                if any(
++                    before[path] != digest
++                    for path, digest in old["source_sha256"].items()
++                ):
++                    raise ValueError("Historical input hash mismatch")
++            report["clips"].append(
++                {
++                    "clip_id": clip_id,
++                    "camera_ids": clip["camera_ids"],
++                    "frames": clip["num_frames"],
++                    "court_keys_shapes": court_shapes,
++                    "raw_track_ids": ids_by_camera,
++                    "canonical_raw_indices": orders,
++                    "assignments": assignments,
++                    "array_equal_after_support_mask_and_reorder": True,
++                    "shape_finite_checks_passed": True,
++                    "raw_two_view_support_frames": raw_counts,
++                    "canonical_two_view_support_frames": canonical_counts,
++                    "canonical_two_view_support_fraction": [
++                        n / clip["num_frames"] for n in canonical_counts
++                    ],
++                    "delta_frames_canonical_minus_raw": [
++                        c - r for c, r in zip(canonical_counts, raw_counts, strict=True)
++                    ],
++                    "changed_players": [
++                        i
++                        for i, (c, r) in enumerate(
++                            zip(canonical_counts, raw_counts, strict=True)
++                        )
++                        if c != r
++                    ],
++                    "historical_v3_counts_and_source_hashes_match": old is not None,
++                }
++            )
++        report["status"] = "done"
++    except Exception as exc:
++        report["status"], report["error"] = "failed", repr(exc)
++        raise
++    finally:
++        after = {str(p): dual_sha256(p) for p in sorted(files)}
++        report["pre_dual_sha256"], report["post_dual_sha256"] = before, after
++        report["input_and_source_hashes_unchanged"] = before == after
++        if before != after:
++            report["status"] = "failed"
++            report["hash_error"] = (
++                "Input/source changed or incomplete pre-hash inventory"
++            )
++        (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
++    if report["status"] != "done":
++        raise RuntimeError("Audit failed")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/knowledge/runs/run-slcs-meiji-observation-review-v4/results.json b/knowledge/runs/run-slcs-meiji-observation-review-v4/results.json
+new file mode 100644
+index 00000000..6d3cd60f
+--- /dev/null
++++ b/knowledge/runs/run-slcs-meiji-observation-review-v4/results.json
+@@ -0,0 +1,719 @@
++{
++  "command": [
++    "knowledge/runs/run-slcs-meiji-observation-review-v1/probe.py",
++    "--project-root",
++    "/home/kamimura/projects/tennis-lab",
++    "--observation-root",
++    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004",
++    "--clip",
++    "video_002/clip_000",
++    "--clip",
++    "video_002/clip_002",
++    "--output-dir",
++    "outputs/tennis_scene/analyze/meiji_observation_review/s42-004"
++  ],
++  "status": "done",
++  "policy": "Five evenly spaced frames plus endpoints of each player's largest adjacent box-center step. Diagnostic only; not a teacher acceptance test.",
++  "clips": [
++    {
++      "clip_id": "video_002/clip_000",
++      "manifest_sha256": "04e62272def35c1edfe3104d535713628f0e49bae43c1dc57eb597b747a35b5a",
++      "cameras": [
++        {
++          "camera": "cam0",
++          "frame_indices": [
++            0,
++            77,
++            155,
++            221,
++            222,
++            233,
++            249,
++            250,
++            311
++          ],
++          "players": [
++            {
++              "player": 0,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 0.3081357479095459,
++                "p50": 0.28920266032218933,
++                "p95": 0.7322772741317749,
++                "max": 0.881491482257843
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.0035071847960352898,
++                "p50": 0.003284175880253315,
++                "p95": 0.008093605749309063,
++                "max": 0.009758702479302883
++              },
++              "max_step_segment": [
++                221,
++                222
++              ]
++            },
++            {
++              "player": 1,
++              "detection_sample_coverage": 0.9746835443037974,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 0.9519230769230769,
++              "hips_and_shoulders_confident_fraction": 0.8269230769230769,
++              "box_center_step_px": {
++                "mean": 0.46992531418800354,
++                "p50": 0.3792208433151245,
++                "p95": 1.0433902740478516,
++                "max": 1.1517539024353027
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.012204029597342014,
++                "p50": 0.009246149100363255,
++                "p95": 0.02679358795285225,
++                "max": 0.028582101687788963
++              },
++              "max_step_segment": [
++                249,
++                250
++              ]
++            }
++          ],
++          "input_sha256": {
++            "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_000/media/cam0.mp4": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam0_people.npz": "3acf5ffb5ce103d4504fcab0c004a72faad2ce6a7e5d1de9dac94c2f91a33dfb",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam0_people.metadata.json": "0014dcbc846154fa6ff21c4d1a78dd34ada8bd2811b6e613c912e1ff4390b093"
++          },
++          "producer": {
++            "schema_version": 4,
++            "video_sha256": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
++            "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
++            "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
++            "settings": {
++              "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
++              "dino_repository": "DINO",
++              "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
++              "confidence": 0.3,
++              "short_side": 800,
++              "max_long_side": 1333,
++              "batch_size": 8,
++              "precision": "bfloat16",
++              "detection_stride": 4,
++              "court_half_width_m": 6.5,
++              "court_half_length_m": 18.0,
++              "min_sample_coverage": 0.7,
++              "max_gap_seconds": 1.0,
++              "long_gap_policy": "mask",
++              "selection_policy": "temporal_continuity",
++              "association": {
++                "min_iou": 0.0,
++                "max_center_distance": 1.0,
++                "max_prediction_frames": 60,
++                "max_prediction_distance": 1.0
++              }
++            },
++            "homography": [
++              [
++                2.6540317542301755,
++                56.99432325950245,
++                1012.3435063832948
++              ],
++              [
++                -9.682386590743624,
++                12.551436877256885,
++                395.87247824410986
++              ],
++              [
++                -0.02239346270245989,
++                0.04477873648787021,
++                0.9999999999999999
++              ]
++            ],
++            "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
++          },
++          "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-004/video_002/clip_000/cam0.jpg"
++        },
++        {
++          "camera": "cam1",
++          "frame_indices": [
++            0,
++            77,
++            155,
++            202,
++            203,
++            232,
++            233,
++            311
++          ],
++          "players": [
++            {
++              "player": 0,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 2.853992223739624,
++                "p50": 2.4000797271728516,
++                "p95": 8.648443222045898,
++                "max": 12.618130683898926
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.008175935596227646,
++                "p50": 0.006866046693176031,
++                "p95": 0.02489284798502922,
++                "max": 0.03471110016107559
++              },
++              "max_step_segment": [
++                202,
++                203
++              ]
++            },
++            {
++              "player": 1,
++              "detection_sample_coverage": 0.9746835443037974,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 0.9935897435897436,
++              "box_center_step_px": {
++                "mean": 0.592065155506134,
++                "p50": 0.36495473980903625,
++                "p95": 1.6095941066741943,
++                "max": 1.8918862342834473
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.007814262062311172,
++                "p50": 0.005254925228655338,
++                "p95": 0.02031749114394188,
++                "max": 0.02304728701710701
++              },
++              "max_step_segment": [
++                232,
++                233
++              ]
++            }
++          ],
++          "input_sha256": {
++            "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_000/media/cam1.mp4": "864409b986146f10fa0ee16f49ae9d287716f56cec472fa154e4b3919770e1d5",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam1_people.npz": "37c2d594e2ab383987759cc813c3f824185ed19cb152a25fd04b8e8c764bc105",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam1_people.metadata.json": "d4fafb8b83ebe04e768cdffcb971bd5d7170e545f2deb3dfaa677707781586fc"
++          },
++          "producer": {
++            "schema_version": 4,
++            "video_sha256": "864409b986146f10fa0ee16f49ae9d287716f56cec472fa154e4b3919770e1d5",
++            "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
++            "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
++            "settings": {
++              "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
++              "dino_repository": "DINO",
++              "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
++              "confidence": 0.3,
++              "short_side": 800,
++              "max_long_side": 1333,
++              "batch_size": 8,
++              "precision": "bfloat16",
++              "detection_stride": 4,
++              "court_half_width_m": 6.5,
++              "court_half_length_m": 18.0,
++              "min_sample_coverage": 0.7,
++              "max_gap_seconds": 1.0,
++              "long_gap_policy": "mask",
++              "selection_policy": "temporal_continuity",
++              "association": {
++                "min_iou": 0.0,
++                "max_center_distance": 1.0,
++                "max_prediction_frames": 60,
++                "max_prediction_distance": 1.0
++              }
++            },
++            "homography": [
++              [
++                67.44245436804836,
++                10.385092030870757,
++                717.1879959327683
++              ],
++              [
++                7.585077960267072,
++                16.99102406188084,
++                561.1003249334498
++              ],
++              [
++                0.02376391249325927,
++                0.04106839818148079,
++                1.0
++              ]
++            ],
++            "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
++          },
++          "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-004/video_002/clip_000/cam1.jpg"
++        },
++        {
++          "camera": "cam2",
++          "frame_indices": [
++            0,
++            77,
++            155,
++            204,
++            205,
++            231,
++            232,
++            233,
++            311
++          ],
++          "players": [
++            {
++              "player": 0,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 2.1188912391662598,
++                "p50": 2.1950724124908447,
++                "p95": 3.8069851398468018,
++                "max": 4.816596031188965
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.009969358332455158,
++                "p50": 0.009712742641568184,
++                "p95": 0.020190667361021042,
++                "max": 0.02751665934920311
++              },
++              "max_step_segment": [
++                231,
++                232
++              ]
++            },
++            {
++              "player": 1,
++              "detection_sample_coverage": 0.9746835443037974,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 0.4411676526069641,
++                "p50": 0.33723050355911255,
++                "p95": 1.2887144088745117,
++                "max": 1.8105101585388184
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.007035057060420513,
++                "p50": 0.005443615838885307,
++                "p95": 0.020754067227244377,
++                "max": 0.028903231024742126
++              },
++              "max_step_segment": [
++                204,
++                205
++              ]
++            }
++          ],
++          "input_sha256": {
++            "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_000/media/cam2.mp4": "bf6c06a5d51a725a8dd26cf6078c068415e6ca11b1d1b209bf49dafabcfcf74a",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam2_people.npz": "565a9037fc26664dd96c224d396868f21fc8f11b6b56ca42f55c94f51c26282a",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_000/cam2_people.metadata.json": "987af606d792dba8fbaeda948a1d041c0a2396892f6eb09af56a526fab49ded7"
++          },
++          "producer": {
++            "schema_version": 4,
++            "video_sha256": "bf6c06a5d51a725a8dd26cf6078c068415e6ca11b1d1b209bf49dafabcfcf74a",
++            "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
++            "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
++            "settings": {
++              "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
++              "dino_repository": "DINO",
++              "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
++              "confidence": 0.3,
++              "short_side": 800,
++              "max_long_side": 1333,
++              "batch_size": 8,
++              "precision": "bfloat16",
++              "detection_stride": 4,
++              "court_half_width_m": 6.5,
++              "court_half_length_m": 18.0,
++              "min_sample_coverage": 0.7,
++              "max_gap_seconds": 1.0,
++              "long_gap_policy": "mask",
++              "selection_policy": "temporal_continuity",
++              "association": {
++                "min_iou": 0.0,
++                "max_center_distance": 1.0,
++                "max_prediction_frames": 60,
++                "max_prediction_distance": 1.0
++              }
++            },
++            "homography": [
++              [
++                57.81803146828868,
++                47.18902083659671,
++                909.014961210676
++              ],
++              [
++                1.054161042997262,
++                15.733976271921602,
++                463.3946943828823
++              ],
++              [
++                0.002840142855015187,
++                0.05138333716683591,
++                1.0
++              ]
++            ],
++            "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
++          },
++          "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-004/video_002/clip_000/cam2.jpg"
++        }
++      ]
++    },
++    {
++      "clip_id": "video_002/clip_002",
++      "manifest_sha256": "aa71cefd7d5f02bba6e1cd48332ac397754a50c36b1b4bc2caa2cc6c796ab173",
++      "cameras": [
++        {
++          "camera": "cam0",
++          "frame_indices": [
++            0,
++            62,
++            89,
++            90,
++            117,
++            118,
++            124,
++            186,
++            249
++          ],
++          "players": [
++            {
++              "player": 0,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 0.25778910517692566,
++                "p50": 0.1806822419166565,
++                "p95": 0.673129677772522,
++                "max": 0.9811816215515137
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.002573931124061346,
++                "p50": 0.0017976711969822645,
++                "p95": 0.006635652389377356,
++                "max": 0.00998792052268982
++              },
++              "max_step_segment": [
++                117,
++                118
++              ]
++            },
++            {
++              "player": 1,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 0.936,
++              "box_center_step_px": {
++                "mean": 0.2935653030872345,
++                "p50": 0.24898330867290497,
++                "p95": 0.6436816453933716,
++                "max": 0.8598150610923767
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.007401872426271439,
++                "p50": 0.006315465550869703,
++                "p95": 0.015932364389300346,
++                "max": 0.021348915994167328
++              },
++              "max_step_segment": [
++                89,
++                90
++              ]
++            }
++          ],
++          "input_sha256": {
++            "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_002/media/cam0.mp4": "4f91ade097c4c13a5398b843d6ce0dc7796f7431c3ea46df43d59f153e57f93d",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam0_people.npz": "35ca229c9276a25ae27b534055142dd1188804ddd2a3ffdd90d56a12e062f73e",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam0_people.metadata.json": "972a31f009107a2fa4ee66e844df9bee876edd26b03cbec29d2f88992d103734"
++          },
++          "producer": {
++            "schema_version": 4,
++            "video_sha256": "4f91ade097c4c13a5398b843d6ce0dc7796f7431c3ea46df43d59f153e57f93d",
++            "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
++            "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
++            "settings": {
++              "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
++              "dino_repository": "DINO",
++              "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
++              "confidence": 0.3,
++              "short_side": 800,
++              "max_long_side": 1333,
++              "batch_size": 8,
++              "precision": "bfloat16",
++              "detection_stride": 4,
++              "court_half_width_m": 6.5,
++              "court_half_length_m": 18.0,
++              "min_sample_coverage": 0.7,
++              "max_gap_seconds": 1.0,
++              "long_gap_policy": "mask",
++              "selection_policy": "temporal_continuity",
++              "association": {
++                "min_iou": 0.0,
++                "max_center_distance": 1.0,
++                "max_prediction_frames": 60,
++                "max_prediction_distance": 1.0
++              }
++            },
++            "homography": [
++              [
++                2.6540317542301755,
++                56.99432325950245,
++                1012.3435063832948
++              ],
++              [
++                -9.682386590743624,
++                12.551436877256885,
++                395.87247824410986
++              ],
++              [
++                -0.02239346270245989,
++                0.04477873648787021,
++                0.9999999999999999
++              ]
++            ],
++            "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
++          },
++          "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-004/video_002/clip_002/cam0.jpg"
++        },
++        {
++          "camera": "cam1",
++          "frame_indices": [
++            0,
++            62,
++            93,
++            94,
++            124,
++            182,
++            183,
++            186,
++            249
++          ],
++          "players": [
++            {
++              "player": 0,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 1.0636910200119019,
++                "p50": 0.8054739832878113,
++                "p95": 2.461761474609375,
++                "max": 6.333308219909668
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.0036075394600629807,
++                "p50": 0.0027510831132531166,
++                "p95": 0.008630537427961826,
++                "max": 0.02100318856537342
++              },
++              "max_step_segment": [
++                182,
++                183
++              ]
++            },
++            {
++              "player": 1,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 0.996,
++              "box_center_step_px": {
++                "mean": 0.4352378249168396,
++                "p50": 0.3767355978488922,
++                "p95": 0.9931163787841797,
++                "max": 1.5198239088058472
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.006196725182235241,
++                "p50": 0.00546943349763751,
++                "p95": 0.013754675164818764,
++                "max": 0.022236429154872894
++              },
++              "max_step_segment": [
++                93,
++                94
++              ]
++            }
++          ],
++          "input_sha256": {
++            "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_002/media/cam1.mp4": "8ac1a75da8bfa870f7b4d9c8a92bffe60d45ea93289ae455a66a608720fecc53",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam1_people.npz": "15178be04e47a51a6779be503cb362c79a4bfe4727ebd9edfb95b24ca3a57aa8",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam1_people.metadata.json": "180c376487f7783af2d81f4ee6b5b547d7c41bb428fd607dd6ffda136f81058f"
++          },
++          "producer": {
++            "schema_version": 4,
++            "video_sha256": "8ac1a75da8bfa870f7b4d9c8a92bffe60d45ea93289ae455a66a608720fecc53",
++            "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
++            "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
++            "settings": {
++              "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
++              "dino_repository": "DINO",
++              "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
++              "confidence": 0.3,
++              "short_side": 800,
++              "max_long_side": 1333,
++              "batch_size": 8,
++              "precision": "bfloat16",
++              "detection_stride": 4,
++              "court_half_width_m": 6.5,
++              "court_half_length_m": 18.0,
++              "min_sample_coverage": 0.7,
++              "max_gap_seconds": 1.0,
++              "long_gap_policy": "mask",
++              "selection_policy": "temporal_continuity",
++              "association": {
++                "min_iou": 0.0,
++                "max_center_distance": 1.0,
++                "max_prediction_frames": 60,
++                "max_prediction_distance": 1.0
++              }
++            },
++            "homography": [
++              [
++                67.44245436804836,
++                10.385092030870757,
++                717.1879959327683
++              ],
++              [
++                7.585077960267072,
++                16.99102406188084,
++                561.1003249334498
++              ],
++              [
++                0.02376391249325927,
++                0.04106839818148079,
++                1.0
++              ]
++            ],
++            "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
++          },
++          "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-004/video_002/clip_002/cam1.jpg"
++        },
++        {
++          "camera": "cam2",
++          "frame_indices": [
++            0,
++            62,
++            113,
++            114,
++            124,
++            186,
++            187,
++            249
++          ],
++          "players": [
++            {
++              "player": 0,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 1.761989951133728,
++                "p50": 1.5667942762374878,
++                "p95": 3.1273770332336426,
++                "max": 7.792965888977051
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.0065012602135539055,
++                "p50": 0.005878932774066925,
++                "p95": 0.0142023004591465,
++                "max": 0.02571658045053482
++              },
++              "max_step_segment": [
++                113,
++                114
++              ]
++            },
++            {
++              "player": 1,
++              "detection_sample_coverage": 1.0,
++              "pose_supported_fraction": 1.0,
++              "hips_confident_fraction": 1.0,
++              "hips_and_shoulders_confident_fraction": 1.0,
++              "box_center_step_px": {
++                "mean": 0.21501855552196503,
++                "p50": 0.1091693639755249,
++                "p95": 0.699077844619751,
++                "max": 0.993579089641571
++              },
++              "box_center_step_previous_diagonal": {
++                "mean": 0.0035318525042384863,
++                "p50": 0.0017985349986702204,
++                "p95": 0.011684272438287735,
++                "max": 0.015990225598216057
++              },
++              "max_step_segment": [
++                186,
++                187
++              ]
++            }
++          ],
++          "input_sha256": {
++            "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_002/media/cam2.mp4": "c857aa8b5cb1848b4b0d1c312489a082e8068854d2d515d5e77a8727aafc3d88",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam2_people.npz": "2329cc7777168e27281b4b252a3ed65fa7c8c8b87c27ddc24852f669bfa8cc98",
++            "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_002/cam2_people.metadata.json": "4536346bb458c4f8b527633dca9a567e81bf9f1d4bb1b4183a94ce5b38ca830a"
++          },
++          "producer": {
++            "schema_version": 4,
++            "video_sha256": "c857aa8b5cb1848b4b0d1c312489a082e8068854d2d515d5e77a8727aafc3d88",
++            "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
++            "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
++            "settings": {
++              "dino_checkpoint": "dino/checkpoint0029_4scale_swin.pth",
++              "dino_repository": "DINO",
++              "vitpose_checkpoint": "GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
++              "confidence": 0.3,
++              "short_side": 800,
++              "max_long_side": 1333,
++              "batch_size": 8,
++              "precision": "bfloat16",
++              "detection_stride": 4,
++              "court_half_width_m": 6.5,
++              "court_half_length_m": 18.0,
++              "min_sample_coverage": 0.7,
++              "max_gap_seconds": 1.0,
++              "long_gap_policy": "mask",
++              "selection_policy": "temporal_continuity",
++              "association": {
++                "min_iou": 0.0,
++                "max_center_distance": 1.0,
++                "max_prediction_frames": 60,
++                "max_prediction_distance": 1.0
++              }
++            },
++            "homography": [
++              [
++                57.81803146828868,
++                47.18902083659671,
++                909.014961210676
++              ],
++              [
++                1.054161042997262,
++                15.733976271921602,
++                463.3946943828823
++              ],
++              [
++                0.002840142855015187,
++                0.05138333716683591,
++                1.0
++              ]
++            ],
++            "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset"
++          },
++          "contact_sheet": "outputs/tennis_scene/analyze/meiji_observation_review/s42-004/video_002/clip_002/cam2.jpg"
++        }
++      ]
++    }
++  ]
++}

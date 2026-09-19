@@ -32,6 +32,7 @@ from src.utils.configuration.operations import (
     OperationEnvironmentConfig,
     operation_environment,
 )
+from src.utils.configuration.output_layout import register_output_resolvers
 from src.utils.configuration.paths import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -54,6 +55,8 @@ from src.utils.configuration.schema import (
     inspect_schema,
     mutually_exclusive,
 )
+
+register_output_resolvers()
 
 __all__ = [
     "AuditInventory",

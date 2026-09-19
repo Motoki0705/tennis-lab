@@ -1,0 +1,22 @@
+{
+  "views": 9,
+  "ecc_estimates_returned": 45,
+  "ecc_attempts": 45,
+  "manual_independent_layouts": 3,
+  "manual_points": 42,
+  "manual_mean_px": {
+    "baseline": 7.312831695399613,
+    "initial": 17.388358848990723,
+    "refined": 58.72466436582349
+  },
+  "query_mean": {
+    "baseline": 3.7397923933135138,
+    "initial": 4.020097884866926,
+    "refined": 3.2288459870550366
+  },
+  "temporal_mean": {
+    "baseline": 4.049048953586155,
+    "initial": 4.293611698680454,
+    "refined": 3.578174418873257
+  }
+}

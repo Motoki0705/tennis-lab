@@ -7,12 +7,12 @@ parallel on-disk schema.
 
 from __future__ import annotations
 
-import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.utils.checksum import dual_sha256
 from src.utils.io import load_json, save_json_atomic, utc_now_iso
 
 DATASET_MANIFEST_FILENAME = "dataset.json"
@@ -66,11 +66,7 @@ def split_clip_id(clip_id: str) -> tuple[str, str]:
 
 def file_sha256(path: str | Path) -> str:
     """Return the raw hexadecimal SHA-256 used by annotation markers."""
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return dual_sha256(path)
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,8 @@
+{
+  "source_commit": "777d339101e162739c12e37cf52dbb4fe75cce6a",
+  "script_sha256": "639dde4f5469cf3f1f083ba4f16e59b550d7d495e4f0ca9a345efb9b9a5584df",
+  "script_was_untracked_at_run": true,
+  "source_reconstruction": "checkout source_commit and apply bundled uncommitted.patch",
+  "original_command": ".venv/bin/python outputs/tennis_scene/analyze/meiji_root_support_probe/s42-002/01_speed_reject_audit_cpu.py",
+  "interpretation": "view switch diagnosis only; no independent 3D ground truth"
+}

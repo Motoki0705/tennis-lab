@@ -312,11 +312,15 @@ def _non_hydra_boundary_fixture(
             BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT),
         ),
     )
-    return boundary, resolver, {
-        "source": str(source),
-        "assets": assets,
-        "output": output,
-    }
+    return (
+        boundary,
+        resolver,
+        {
+            "source": str(source),
+            "assets": assets,
+            "output": output,
+        },
+    )
 
 
 def test_non_hydra_boundary_returns_typed_role_aware_paths(tmp_path: Path) -> None:
@@ -414,3 +418,102 @@ def test_non_hydra_boundary_checks_input_existence_and_kind(tmp_path: Path) -> N
     arguments["source"] = directory
     with pytest.raises(PathContractError, match="existing file"):
         boundary.validate(arguments, resolver=resolver)
+
+
+def test_independent_artifact_inputs_are_opt_in_and_keep_output_contained(
+    tmp_path: Path,
+) -> None:
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(_root_mapping(), repository_root=tmp_path)
+    )
+    roots = resolver.roots
+    sources = (tmp_path / "external_a.json", tmp_path / "external_b.json")
+    for source in sources:
+        source.write_text("{}", encoding="utf-8")
+    boundary = NonHydraPathBoundary(
+        "tests.independent_artifacts",
+        (
+            BoundaryPathField(
+                "inputs",
+                PathRole.ARTIFACT,
+                PathDirection.INPUT,
+                PathKind.FILE,
+                must_exist=True,
+                allow_role_root=True,
+                many=True,
+            ),
+            BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT),
+        ),
+    )
+    arguments: dict[str, object] = {
+        "inputs": tuple(str(source) for source in sources),
+        "output": resolver.resolve(PathRole.OUTPUT, "run/report.json"),
+    }
+    with pytest.raises(PathContractError, match="outside its root"):
+        boundary.validate(arguments, resolver=resolver)
+    resolved = boundary.validate(
+        arguments, resolver=resolver, independent_artifact_inputs=True
+    )
+    assert resolved["inputs"] == sources
+    assert resolver.roots == roots
+    assert not resolver.roots.output_root.exists()
+    for source, message in (
+        (tmp_path / "missing.json", "does not exist"),
+        (tmp_path, "existing file"),
+    ):
+        with pytest.raises(PathContractError, match=message):
+            boundary.validate(
+                {**arguments, "inputs": (source,)},
+                resolver=resolver,
+                independent_artifact_inputs=True,
+            )
+    with pytest.raises(PathContractError, match="outside its root"):
+        boundary.validate(
+            {**arguments, "output": sources[0]},
+            resolver=resolver,
+            independent_artifact_inputs=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("role", "direction"),
+    [
+        (PathRole.OUTPUT, PathDirection.OUTPUT),
+        (PathRole.ARTIFACT, PathDirection.OUTPUT),
+        (PathRole.DATA, PathDirection.INPUT),
+    ],
+)
+def test_independent_artifact_inputs_cannot_expand_other_authorities(
+    tmp_path: Path, role: PathRole, direction: PathDirection
+) -> None:
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(_root_mapping(), repository_root=tmp_path)
+    )
+    boundary = NonHydraPathBoundary(
+        "tests.fixed_authority",
+        (BoundaryPathField("path", role, direction, allow_role_root=True),),
+    )
+    with pytest.raises(PathContractError, match="outside its root"):
+        boundary.validate(
+            {"path": tmp_path / "external"},
+            resolver=resolver,
+            independent_artifact_inputs=True,
+        )
+
+
+def test_independent_artifact_input_requires_explicit_role_root_permission(
+    tmp_path: Path,
+) -> None:
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(_root_mapping(), repository_root=tmp_path)
+    )
+    boundary = NonHydraPathBoundary(
+        "tests.no_input_root_permission",
+        (BoundaryPathField("input", PathRole.ARTIFACT, PathDirection.INPUT),),
+    )
+    with pytest.raises(PathContractError, match="not the role root itself"):
+        boundary.validate(
+            {"input": tmp_path / "external"},
+            resolver=resolver,
+            independent_artifact_inputs=True,
+        )

@@ -21,6 +21,10 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
         if boundary.domain == "synthetic_data_generation"
     }
     expected = {
+        "src.synthetic_data_generation.scripts.court_line_database": (
+            "synthetic.court_line_database",
+            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+        ),
         "src.synthetic_data_generation.scripts.compact_court_storage": (
             "synthetic.court_storage_compaction",
             "src.utils.configuration.paths.NonHydraPathBoundary.validate",

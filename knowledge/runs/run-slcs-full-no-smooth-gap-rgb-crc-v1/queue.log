@@ -1,0 +1,49 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789793040741422871_41290_slcs-full-real-rgb-no-ball-smooth-val-gap-rgb-v1 (commit=d6f29c8081f7 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dino_tokens.py", line 295, in load_dino_tokens
+    tokens = np.asarray(data["tokens"], dtype=np.float16)
+                        ~~~~^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/numpy/lib/_npyio_impl.py", line 257, in __getitem__
+    return format.read_array(
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/numpy/lib/_format_impl.py", line 869, in read_array
+    data = _read_bytes(fp, read_size, "array data")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/numpy/lib/_format_impl.py", line 1013, in _read_bytes
+    r = fp.read(size - len(data))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/zipfile.py", line 982, in read
+    data = self._read1(n)
+           ^^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/zipfile.py", line 1072, in _read1
+    self._update_crc(data)
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/zipfile.py", line 1000, in _update_crc
+    raise BadZipFile("Bad CRC-32 for file %r" % self.name)
+zipfile.BadZipFile: Bad CRC-32 for file 'tokens.npy'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/scripts/analysis/evaluate_slcs_run.py", line 85, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/scripts/analysis/evaluate_slcs_run.py", line 68, in main
+    evaluate_training_run(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/evaluation/run_evaluation.py", line 299, in evaluate_training_run
+    report, arrays = evaluate_split(
+                     ^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/evaluation/evaluate.py", line 48, in evaluate_split
+    dataset = SLCSWindowDataset(
+              ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dataset.py", line 405, in __init__
+    self._plan_clip_windows(clip)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dataset.py", line 444, in _plan_clip_windows
+    self._dino_arrays(clip.manifest, camera_id)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dataset.py", line 472, in _dino_arrays
+    tokens, frame_idx, _spec = load_dino_tokens(
+                               ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dino_tokens.py", line 298, in load_dino_tokens
+    raise DatasetManifestError(
+src.tennis_scene.generate_dataset.manifest.DatasetManifestError: Failed to read DINO token archive: clip_id='video_001/clip_002', camera_id='cam1', npz_path='/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_002/annotations/dino_v3/cam1.npz': Bad CRC-32 for file 'tokens.npy'
+exit_code=1

@@ -189,6 +189,9 @@ experiments_mcmc/
 # them despite the generic runs/ and *.json/*.npz ignores above.
 !knowledge/runs/
 !knowledge/runs/**
+# Interpreter caches are not reproducibility artifacts.
+knowledge/runs/**/__pycache__/
+knowledge/runs/**/*.py[cod]
 
 paper/reference/
 

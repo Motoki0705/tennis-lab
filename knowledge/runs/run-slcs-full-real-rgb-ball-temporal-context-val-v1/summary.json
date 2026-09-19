@@ -1,0 +1,679 @@
+{
+  "schema_version": 1,
+  "split": "val",
+  "interpretation": "Pseudo-3D teacher agreement, not measured 3D accuracy. No test-based selection. Overlapping window occurrences counted separately.",
+  "decision": "not_adopted_broadcast_and_player_regression_despite_missing_ball_improvement",
+  "fast_teacher_threshold_mps": 26.425038598234046,
+  "runs": {
+    "baseline": {
+      "output_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002",
+      "epoch_zero_based": 56,
+      "checkpoint_sha256": "870407e89ca0ff31d07a33395acf3a3538f49146274f3566bd36ff969b6733a2",
+      "conditions": {
+        "full": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.521042585372925,
+          "player_position_error_m": 1.3826085329055786,
+          "player_angular_error_deg": 38.44415283203125,
+          "ball_position_p95_m": 7.693350160280706,
+          "ball_speed_max_mps": 481.7659207194563,
+          "ball_velocity_error_mean_mps": 8.75650502498033,
+          "ball_velocity_error_p95_mps": 25.843335014666263
+        },
+        "no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.6812899112701416,
+          "player_position_error_m": 1.5169597864151,
+          "player_angular_error_deg": 37.93250274658203,
+          "ball_position_p95_m": 7.560076756121893,
+          "ball_speed_max_mps": 393.6833572896142,
+          "ball_velocity_error_mean_mps": 8.857448301816365,
+          "ball_velocity_error_p95_mps": 26.677573263266353
+        },
+        "detector_gap": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.0972740650177,
+          "player_position_error_m": 1.463090181350708,
+          "player_angular_error_deg": 39.842010498046875,
+          "ball_position_p95_m": 8.864665308299816,
+          "ball_speed_max_mps": 418.7850070127804,
+          "ball_velocity_error_mean_mps": 11.486853891538294,
+          "ball_velocity_error_p95_mps": 32.85762942118503
+        },
+        "rgb_only": {
+          "num_windows": 343,
+          "ball_position_error_m": 7.753563404083252,
+          "player_position_error_m": 1.8890348672866821,
+          "player_angular_error_deg": 46.74005889892578,
+          "ball_position_p95_m": 14.527175497709502,
+          "ball_speed_max_mps": 37.67134944458146,
+          "ball_velocity_error_mean_mps": 13.060396243655862,
+          "ball_velocity_error_p95_mps": 30.759367144234428
+        },
+        "detector_gap_no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.2916150093078613,
+          "player_position_error_m": 1.6152840852737427,
+          "player_angular_error_deg": 39.797481536865234,
+          "ball_position_p95_m": 9.338017532105773,
+          "ball_speed_max_mps": 529.6238696185197,
+          "ball_velocity_error_mean_mps": 11.93511217747627,
+          "ball_velocity_error_p95_mps": 33.76127861891133
+        }
+      },
+      "domains": [
+        {
+          "group": "broadcast",
+          "condition": "full",
+          "ball_position_error_m": 2.4293246269226074,
+          "player_position_error_m": 2.3162410259246826
+        },
+        {
+          "group": "broadcast",
+          "condition": "no_rgb",
+          "ball_position_error_m": 3.974977970123291,
+          "player_position_error_m": 2.5183937549591064
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.6010141372680664,
+          "player_position_error_m": 2.535979986190796
+        },
+        {
+          "group": "broadcast",
+          "condition": "rgb_only",
+          "ball_position_error_m": 6.114800453186035,
+          "player_position_error_m": 3.2491793632507324
+        },
+        {
+          "group": "meiji",
+          "condition": "full",
+          "ball_position_error_m": 2.52386474609375,
+          "player_position_error_m": 1.3549517393112183
+        },
+        {
+          "group": "meiji",
+          "condition": "no_rgb",
+          "ball_position_error_m": 2.6414854526519775,
+          "player_position_error_m": 1.4872945547103882
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.0817747116088867,
+          "player_position_error_m": 1.4313081502914429
+        },
+        {
+          "group": "meiji",
+          "condition": "rgb_only",
+          "ball_position_error_m": 7.803985595703125,
+          "player_position_error_m": 1.8487434387207031
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 4.812433242797852,
+          "player_position_error_m": 2.596634864807129
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 3.244821548461914,
+          "player_position_error_m": 1.5862137079238892
+        }
+      ]
+    },
+    "candidate": {
+      "output_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001",
+      "epoch_zero_based": 49,
+      "checkpoint_sha256": "94793e761d22a1f163d8089ae0210b6cb45f7c37144deb498c31b4d85fd6f961",
+      "conditions": {
+        "full": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.4899425506591797,
+          "player_position_error_m": 1.4058221578598022,
+          "player_angular_error_deg": 37.63483428955078,
+          "ball_position_p95_m": 7.602191219661746,
+          "ball_speed_max_mps": 493.14132757684314,
+          "ball_velocity_error_mean_mps": 8.400363738559632,
+          "ball_velocity_error_p95_mps": 25.142855149319495
+        },
+        "no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.6752243041992188,
+          "player_position_error_m": 1.49371337890625,
+          "player_angular_error_deg": 38.248924255371094,
+          "ball_position_p95_m": 7.811275548541552,
+          "ball_speed_max_mps": 427.6404833733471,
+          "ball_velocity_error_mean_mps": 8.623435913025604,
+          "ball_velocity_error_p95_mps": 25.88205976128919
+        },
+        "detector_gap": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.8936479091644287,
+          "player_position_error_m": 1.5187575817108154,
+          "player_angular_error_deg": 38.9387321472168,
+          "ball_position_p95_m": 8.747262406061106,
+          "ball_speed_max_mps": 462.29203141837723,
+          "ball_velocity_error_mean_mps": 9.966229880662743,
+          "ball_velocity_error_p95_mps": 28.237073245218497
+        },
+        "rgb_only": {
+          "num_windows": 343,
+          "ball_position_error_m": 7.597579002380371,
+          "player_position_error_m": 1.9843676090240479,
+          "player_angular_error_deg": 45.745052337646484,
+          "ball_position_p95_m": 13.966672340831055,
+          "ball_speed_max_mps": 13.456570851909046,
+          "ball_velocity_error_mean_mps": 12.878270979807112,
+          "ball_velocity_error_p95_mps": 30.502636531411635
+        },
+        "detector_gap_no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.169968605041504,
+          "player_position_error_m": 1.6205272674560547,
+          "player_angular_error_deg": 39.164955139160156,
+          "ball_position_p95_m": 9.348092516720905,
+          "ball_speed_max_mps": 489.0551434192627,
+          "ball_velocity_error_mean_mps": 10.522360694545213,
+          "ball_velocity_error_p95_mps": 29.22390679467978
+        }
+      },
+      "domains": [
+        {
+          "group": "broadcast",
+          "condition": "full",
+          "ball_position_error_m": 2.9541547298431396,
+          "player_position_error_m": 2.3544974327087402
+        },
+        {
+          "group": "broadcast",
+          "condition": "no_rgb",
+          "ball_position_error_m": 4.133142471313477,
+          "player_position_error_m": 2.5961341857910156
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.936464786529541,
+          "player_position_error_m": 2.6056737899780273
+        },
+        {
+          "group": "broadcast",
+          "condition": "rgb_only",
+          "ball_position_error_m": 6.18996000289917,
+          "player_position_error_m": 3.4019901752471924
+        },
+        {
+          "group": "meiji",
+          "condition": "full",
+          "ball_position_error_m": 2.4756598472595215,
+          "player_position_error_m": 1.377719521522522
+        },
+        {
+          "group": "meiji",
+          "condition": "no_rgb",
+          "ball_position_error_m": 2.630366325378418,
+          "player_position_error_m": 1.4610569477081299
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap",
+          "ball_position_error_m": 2.8615622520446777,
+          "player_position_error_m": 1.4865601062774658
+        },
+        {
+          "group": "meiji",
+          "condition": "rgb_only",
+          "ball_position_error_m": 7.6408891677856445,
+          "player_position_error_m": 1.9423737525939941
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 4.933196544647217,
+          "player_position_error_m": 2.6752166748046875
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 3.1157169342041016,
+          "player_position_error_m": 1.5892843008041382
+        }
+      ]
+    }
+  },
+  "transitions": {
+    "full": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.75650502498033,
+          "velocity_vector_error_p95_mps": 25.843335014666263
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.400363738559632,
+          "velocity_vector_error_p95_mps": 25.142855149319495
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 21.26801180903848,
+          "velocity_vector_error_p95_mps": 46.65183264355726
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 20.60957796780827,
+          "velocity_vector_error_p95_mps": 44.97324990757419
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 61.90560217906855,
+          "velocity_vector_error_p95_mps": 152.4179871091404
+        },
+        "candidate": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 35.09188841909416,
+          "velocity_vector_error_p95_mps": 71.58366314242446
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 60.783547154664014,
+          "velocity_vector_error_p95_mps": 149.25874433123565
+        },
+        "candidate": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 35.61779466065401,
+          "velocity_vector_error_p95_mps": 86.04425634144586
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.469410457451295,
+          "velocity_vector_error_p95_mps": 21.71732929741905
+        },
+        "candidate": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.708801942464147,
+          "velocity_vector_error_p95_mps": 22.776073313506913
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 11.450156494219588,
+          "velocity_vector_error_p95_mps": 29.173945814154045
+        },
+        "candidate": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 10.30887712282255,
+          "velocity_vector_error_p95_mps": 26.88465404239065
+        }
+      }
+    ],
+    "no_rgb": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.857448301816365,
+          "velocity_vector_error_p95_mps": 26.677573263266353
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.623435913025604,
+          "velocity_vector_error_p95_mps": 25.88205976128919
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 21.42207603656857,
+          "velocity_vector_error_p95_mps": 49.01643163297513
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 21.51984183018768,
+          "velocity_vector_error_p95_mps": 48.49700850145626
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 64.4129199179977,
+          "velocity_vector_error_p95_mps": 148.43523915414553
+        },
+        "candidate": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 40.37027055366808,
+          "velocity_vector_error_p95_mps": 99.242043831248
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 63.97383758751688,
+          "velocity_vector_error_p95_mps": 155.57983542216752
+        },
+        "candidate": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 42.77235483609798,
+          "velocity_vector_error_p95_mps": 118.27266812322573
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.482814110330388,
+          "velocity_vector_error_p95_mps": 21.949883093177966
+        },
+        "candidate": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.800323332483022,
+          "velocity_vector_error_p95_mps": 23.08246810867805
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 12.027950815540896,
+          "velocity_vector_error_p95_mps": 30.012499846242452
+        },
+        "candidate": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 10.581980684409471,
+          "velocity_vector_error_p95_mps": 27.2879524305119
+        }
+      }
+    ],
+    "detector_gap": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 11.486853891538294,
+          "velocity_vector_error_p95_mps": 32.85762942118503
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 9.966229880662743,
+          "velocity_vector_error_p95_mps": 28.237073245218497
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 23.092771567547018,
+          "velocity_vector_error_p95_mps": 50.87722309919898
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 22.116062948037516,
+          "velocity_vector_error_p95_mps": 49.56916353485114
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 67.94264115387666,
+          "velocity_vector_error_p95_mps": 164.80662317225264
+        },
+        "candidate": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 46.11215731116045,
+          "velocity_vector_error_p95_mps": 142.0173351120251
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 65.27361326556627,
+          "velocity_vector_error_p95_mps": 144.38471196789337
+        },
+        "candidate": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 44.050535218823526,
+          "velocity_vector_error_p95_mps": 104.21372417129798
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.124204519152254,
+          "velocity_vector_error_p95_mps": 24.611649404360772
+        },
+        "candidate": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.179421660283785,
+          "velocity_vector_error_p95_mps": 24.674088061060637
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 12.498189888205262,
+          "velocity_vector_error_p95_mps": 31.996206685739903
+        },
+        "candidate": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 10.040652528654675,
+          "velocity_vector_error_p95_mps": 25.41862262881047
+        }
+      }
+    ],
+    "rgb_only": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 13.060396243655862,
+          "velocity_vector_error_p95_mps": 30.759367144234428
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 12.878270979807112,
+          "velocity_vector_error_p95_mps": 30.502636531411635
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 32.7617245664259,
+          "velocity_vector_error_p95_mps": 46.26635405140396
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 32.68177291474704,
+          "velocity_vector_error_p95_mps": 45.35249772701822
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null
+        },
+        "candidate": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null
+        },
+        "candidate": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null
+        },
+        "candidate": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 13.060396243655862,
+          "velocity_vector_error_p95_mps": 30.759367144234428
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 12.878270979807112,
+          "velocity_vector_error_p95_mps": 30.502636531411635
+        }
+      }
+    ],
+    "detector_gap_no_rgb": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 11.93511217747627,
+          "velocity_vector_error_p95_mps": 33.76127861891133
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 10.522360694545213,
+          "velocity_vector_error_p95_mps": 29.22390679467978
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 23.661065912186213,
+          "velocity_vector_error_p95_mps": 52.10941591072428
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 23.10152476437995,
+          "velocity_vector_error_p95_mps": 52.5662315218008
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 71.94185423361738,
+          "velocity_vector_error_p95_mps": 169.73197905548344
+        },
+        "candidate": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 52.127530265943314,
+          "velocity_vector_error_p95_mps": 149.26740734769206
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 74.61515177657566,
+          "velocity_vector_error_p95_mps": 168.68727445083732
+        },
+        "candidate": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 53.68427021577133,
+          "velocity_vector_error_p95_mps": 134.03528652585305
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.291316860117124,
+          "velocity_vector_error_p95_mps": 24.761723762321722
+        },
+        "candidate": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.34801237167191,
+          "velocity_vector_error_p95_mps": 25.243070444954046
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 12.904599611300787,
+          "velocity_vector_error_p95_mps": 32.561985585782686
+        },
+        "candidate": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 10.641838849728769,
+          "velocity_vector_error_p95_mps": 26.47691793437107
+        }
+      }
+    ]
+  }
+}

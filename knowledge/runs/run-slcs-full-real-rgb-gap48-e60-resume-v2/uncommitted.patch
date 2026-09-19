@@ -1,0 +1,12 @@
+diff --git a/knowledge/nodes/group-slcs-real-rgb.md b/knowledge/nodes/group-slcs-real-rgb.md
+index 27bb4091..240f801d 100644
+--- a/knowledge/nodes/group-slcs-real-rgb.md
++++ b/knowledge/nodes/group-slcs-real-rgb.md
+@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
+ type: group
+ title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
+ members:
++- run-slcs-meiji-streaming-visual-v1
+ - run-slcs-full-no-smooth-gap-rgb-crc-v1
+ - run-slcs-full-no-smooth-broadcast-visual-v1
+ - run-slcs-full-no-smooth-meiji-visual-interrupted-v1

@@ -1,4 +1,4 @@
-output_dir: plcs/${model.name}
+output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
 seed: 42
 gpus: 1
 resume: null

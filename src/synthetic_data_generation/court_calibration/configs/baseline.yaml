@@ -1,0 +1,33 @@
+# Research prior only: near-baseline camera, metres, horizontal field of view.
+mode: generate
+paths:
+  project_root: .
+  data_root: data
+  output_root: outputs
+  artifact_root: outputs
+  checkpoint_root: checkpoints
+  external_asset_root: third_party
+  cache_root: .cache
+output_dir: ${tennis_output:court_detection,generate,court_line_database,${tennis_run_id:}}
+database_path: court_detection/calibration_baseline_v1/database.npz
+query_path: court_detection/calibration_baseline_v1/query.png
+database:
+  count: 32
+  seed: 42
+  width: 256
+  height: 144
+  line_width: 1
+  camera:
+    slot_id: near_baseline_baseline
+    position_x_m: [-4.0, 4.0]
+    position_y_m: [-35.0, -25.0]
+    height_m: [8.0, 15.0]
+    look_at_x_m: [-1.0, 1.0]
+    look_at_y_m: [-2.0, 2.0]
+    look_at_height_m: [0.0, 0.0]
+    hfov_degrees: [40.0, 55.0]
+matching:
+  top_k: 5
+  truncation: 12.0
+  iterations: 100
+  epsilon: 0.000001

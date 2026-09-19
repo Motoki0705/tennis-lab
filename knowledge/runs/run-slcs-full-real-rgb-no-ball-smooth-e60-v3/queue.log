@@ -1,0 +1,68 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789789142744513490_22692_slcs-full-real-rgb-no-ball-smooth-e60-takeover-v3 (commit=61d94edb5c39 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type            ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ SLCSFusionModel │  2.7 M │ train │     0 │
+│ 1 │ loss_fn │ SLCSLoss        │      0 │ train │     0 │
+└───┴─────────┴─────────────────┴────────┴───────┴───────┘
+Trainable params: 2.7 M                                                         
+Non-trainable params: 0                                                         
+Total params: 2.7 M                                                             
+Total estimated model params size (MB): 10.932                                  
+Modules in train mode: 230                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+`Trainer.fit` stopped: `max_epochs=60` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃             Test metric              ┃             DataLoader 0              ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ test/ball_position_accuracy_0.3m_ep… │          0.02806846983730793          │
+│ test/ball_position_accuracy_0.5m_ep… │          0.08984900265932083          │
+│ test/ball_position_accuracy_1.0m_ep… │           0.288122296333313           │
+│ test/ball_position_accuracy_2.0m_ep… │          0.5352444052696228           │
+│ test/ball_position_conf_error_corr_… │          0.29483312368392944          │
+│      test/ball_position_error_m      │          2.7274811267852783           │
+│   test/ball_position_error_m_epoch   │          2.7241714000701904           │
+│ test/ball_position_error_median_m_e… │          1.8234940767288208           │
+│  test/ball_position_pred_b_m_epoch   │          0.8124337196350098           │
+│              test/loss               │          -1.2082629203796387          │
+│       test/loss_ball_position        │         0.016872772946953773          │
+│     test/loss_ball_position_nll      │          -1.2947862148284912          │
+│  test/loss_ball_position_smoothness  │         0.008769211359322071          │
+│     test/loss_ground_penetration     │         0.0001049515267368406         │
+│        test/loss_player_angle        │          0.2913972735404968           │
+│      test/loss_player_position       │         0.0030264449305832386         │
+│    test/loss_player_position_nll     │          -2.165761709213257           │
+│ test/loss_player_position_smoothness │         0.0027271979488432407         │
+│      test/loss_player_rotation       │          0.2674224078655243           │
+│    test/loss_player_rotation_nll     │          0.34463441371917725          │
+│ test/player_angle_accuracy_10deg_ep… │          0.33534082770347595          │
+│ test/player_angle_accuracy_15deg_ep… │          0.4426264464855194           │
+│ test/player_angle_accuracy_30deg_ep… │          0.6421858668327332           │
+│    test/player_angular_error_deg     │          33.341331481933594           │
+│ test/player_angular_error_deg_epoch  │          33.348358154296875           │
+│ test/player_angular_error_median_de… │           18.22386360168457           │
+│ test/player_position_accuracy_0.3m_… │         0.052745651453733444          │
+│ test/player_position_accuracy_0.5m_… │          0.17683739960193634          │
+│ test/player_position_accuracy_1.0m_… │           0.540229856967926           │
+│ test/player_position_accuracy_2.0m_… │          0.8619090914726257           │
+│ test/player_position_conf_error_cor… │          0.37618839740753174          │
+│     test/player_position_error_m     │          1.2159500122070312           │
+│  test/player_position_error_m_epoch  │          1.2157765626907349           │
+│ test/player_position_error_median_m… │          0.9344395995140076           │
+│ test/player_position_pred_b_m_epoch  │          0.5191696882247925           │
+│ test/player_rotation_conf_error_cor… │          0.4843541383743286           │
+│ test/player_rotation_pred_b_deg_epo… │          20.855762481689453           │
+│  test/scene_position_error_m_epoch   │          1.9699740409851074           │
+└──────────────────────────────────────┴───────────────────────────────────────┘
+Training complete. Outputs saved to /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003

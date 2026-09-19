@@ -1,0 +1,77 @@
+paths:
+  project_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.cache
+  external_asset_root: /home/kamimura/projects/tennis-lab/third_party
+output_dir: tennis_scene/generate/meiji_teacher_probe/s42-003
+device: cpu
+reference_camera: cam0
+view_half_turns:
+- false
+- false
+- true
+people:
+  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  dino_repository: DINO
+  vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+  confidence: 0.3
+  short_side: 800
+  max_long_side: 1333
+  batch_size: 8
+  precision: bfloat16
+  detection_stride: 4
+  court_half_width_m: 5.8
+  court_half_length_m: 18.0
+  min_sample_coverage: 0.7
+  max_gap_seconds: 1.0
+  long_gap_policy: error
+plcs_checkpoint: plcs/real-rgb-meiji-foot-e28-diagnostic.ckpt
+blcs_checkpoint: blcs/real-rgb-meiji-e60-v1.ckpt
+window_size: 128
+window_overlap: 64
+sample_stride: 2
+pose_visibility_threshold: 0.15
+dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
+dataset_output_directory: slcs/meiji_teacher_probe_v3
+dataset_clip_ids:
+- video_000/clip_000
+- video_001/clip_000
+excluded_clips:
+  video_002/clip_001: Only 15 of 476 frames have outsourced ball observations in two
+    cameras (3.15%); insufficient for the fixed 30% ball-label acceptance threshold.
+observation_directory: tennis_scene/precompute/meiji_dino_vitpose/s42-002
+ball_source: outsource
+coordinate_mode: reference
+court_calibration_clips:
+  video_000: video_000/clip_000
+  video_001: video_001/clip_003
+  video_002: video_002/clip_017
+seed: 42
+court:
+  checkpoint: court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
+  samples_per_clip: 9
+  min_score: 0.15
+  min_points: 10
+  ransac_px: 20.0
+  max_fit_error_px: 15.0
+  ball_crop_margins:
+    cam0: 0.25
+    cam1: 0.25
+    cam2: null
+features:
+  enabled: false
+  checkpoint: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+refinement:
+  enabled: true
+  ball_max_reprojection_px: 20.0
+  ball_max_speed_mps: 65.0
+  player_max_reprojection_px: 40.0
+  player_max_speed_mps: 12.0
+  max_gap_seconds: 0.1
+  single_view_ball_weight: 0.15
+  single_view_player_weight: 0.5
+  min_player_label_fraction: 0.5
+  min_ball_label_fraction: 0.3
