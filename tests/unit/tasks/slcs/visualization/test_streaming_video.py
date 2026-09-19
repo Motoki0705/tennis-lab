@@ -8,6 +8,7 @@ from typing import Any, cast
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from src.tasks.slcs.data.dataset import ClipArrays
 from src.tasks.slcs.visualization import _video, overlay_2d
@@ -59,7 +60,7 @@ def _clip(path: Path, n: int = 3) -> ClipArrays:
 
 def _overlay(clip: ClipArrays, output: Path, n: int | None = None) -> tuple[Path, int]:
     scene = _scene(clip.num_frames if n is None else n)
-    return overlay_2d.render_overlay_video(
+    result: tuple[Path, int] = overlay_2d.render_overlay_video(
         clip,
         0,
         player_position_m=scene.player_position_m,
@@ -70,10 +71,11 @@ def _overlay(clip: ClipArrays, output: Path, n: int | None = None) -> tuple[Path
         min_homography_points=4,
         court_visibility_threshold=0.5,
     )
+    return result
 
 
-def _frames(n: int = 3) -> np.ndarray:
-    frames: np.ndarray = np.zeros((n, 64, 96, 3), np.uint8)
+def _frames(n: int = 3) -> NDArray[np.uint8]:
+    frames: NDArray[np.uint8] = np.zeros((n, 64, 96, 3), np.uint8)
     frames[..., 0] = np.arange(n)[:, None, None] * 35 + 60
     frames[..., 1] = 110
     return frames
@@ -119,7 +121,9 @@ def test_scene_frame_step_streaming_and_successful_overwrite(
 
     def render(inputs: SceneRenderInputs, t: int) -> np.ndarray:
         events.append(("render", t))
-        return frames[t]
+        frame = frames[t]
+        assert isinstance(frame, np.ndarray)
+        return frame
 
     def write(self: VideoWriter, frame: np.ndarray) -> None:
         events.append(("write", int((int(frame[0, 0, 0]) - 60) // 35)))

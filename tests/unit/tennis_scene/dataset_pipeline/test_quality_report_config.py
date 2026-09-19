@@ -1,5 +1,6 @@
 """Quality CLI boundary registration, strict config and independent root routing."""
 
+from inspect import unwrap
 from pathlib import Path
 from unittest.mock import patch
 
@@ -55,7 +56,7 @@ def test_roots_are_independent_and_validator_does_not_read_inputs(
     with patch.object(
         cli, "write_quality_report", return_value={"status": "incomplete", "counts": {}}
     ) as report:
-        cli.main.__wrapped__(cfg)
+        unwrap(cli.main)(cfg)
     args = report.call_args.args
     assert args[0] == tmp_path / "inputs" / cfg.dataset_directory
     assert args[1] == tmp_path / "inputs/tennis_multivew/processed/meiji_3cam/dataset"

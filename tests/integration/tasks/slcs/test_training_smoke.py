@@ -290,7 +290,7 @@ def test_real_rgb_profile_normal_fit_saves_monitored_checkpoint(
     # Do not override the monitor: this must test the real profile's configured key.
     assert checkpoint.monitor == runtime.training.checkpoint.monitor
     trainer = runner.build_trainer(config, callbacks, logger)
-    assert not trainer.fast_dev_run
+    assert getattr(trainer, "fast_dev_run", None) is False
     old_threads = torch.get_num_threads()
     try:
         torch.set_num_threads(1)

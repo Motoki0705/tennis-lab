@@ -481,8 +481,8 @@ def test_save_test_predictions_none_when_empty(tmp_path: Path) -> None:
 
 def test_saved_padding_excludes_short_batch_tail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     class PredModule(_TinyModule):
-        def test_prediction_payload(self, batch: Any, result: dict[str, Any]) -> dict[str, torch.Tensor]:
-            return result
+        def test_prediction_payload(self, batch: Any, result: dict[str, Any]) -> dict[str, np.ndarray]:
+            return {key: self._to_numpy(value) for key, value in result.items()}
 
     monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
     module = PredModule(_config(artifact_root=tmp_path))

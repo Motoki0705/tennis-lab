@@ -130,7 +130,8 @@ def test_bad_valid_time_difference_fails(dt: float) -> None:
 @pytest.mark.parametrize("problem", ["missing", "dtype", "shape"])
 def test_time_metadata_contract(key: str, problem: str) -> None:
     inputs = _inputs()
-    original = getattr(inputs, key)
+    original = inputs.frame_idx if key == "frame_idx" else inputs.timestamp
+    assert original is not None
     invalid = (
         None
         if problem == "missing"
@@ -139,7 +140,12 @@ def test_time_metadata_contract(key: str, problem: str) -> None:
         else original[:, :1]
     )
     with pytest.raises(ValueError, match="metadata|shape"):
-        make_ball_velocity_term(1.0)(replace(inputs, **{key: invalid}))
+        invalid_inputs = (
+            replace(inputs, frame_idx=invalid)
+            if key == "frame_idx"
+            else replace(inputs, timestamp=invalid)
+        )
+        make_ball_velocity_term(1.0)(invalid_inputs)
 
 
 def test_disabled_loss_preserves_all_legacy_values_without_metadata() -> None:

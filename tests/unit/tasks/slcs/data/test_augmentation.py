@@ -37,9 +37,10 @@ def test_rgb_only_preserves_targets_rgb_and_source_cache(
     assert not result["ball_vis"].any()
     assert not result["court_vis"].any()
     assert not result["dino_padding_mask"].all()
+    result_values = dict(result)
     for key in sample:
         if key.startswith("target_"):
-            torch.testing.assert_close(result[key], sample[key])
+            torch.testing.assert_close(result_values[key], sample[key])
     torch.testing.assert_close(sample["player_kp"], source_pose)
     torch.testing.assert_close(dataset[0]["player_kp"], source_pose)
 
