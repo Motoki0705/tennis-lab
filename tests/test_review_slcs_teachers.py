@@ -6,7 +6,6 @@ import cv2
 import numpy as np
 import pytest
 
-from scripts.analysis import render_reconstruction_review as cli
 from src.tasks.slcs.data.quality import QualityConfig
 from src.tennis_scene.dataset_pipeline import teacher_review
 from src.tennis_scene.dataset_pipeline.teacher_review import (
@@ -18,6 +17,7 @@ from src.tennis_scene.dataset_pipeline.teacher_review import (
 )
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.scripts import render_reconstruction_review as cli
 from src.utils.configuration.paths import PathResolver, RuntimePathRoots
 
 
