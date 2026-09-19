@@ -1,0 +1,52 @@
+env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python - <<'PY'
+from pathlib import Path
+import csv,hashlib,json,math,os,subprocess
+import numpy as np
+from omegaconf import OmegaConf
+root=Path('/home/kamimura/projects/tennis-lab')
+q=root/'.training_queue';job='1789810674175860469_746238_slcs-full-real-rgb-one-sided-context-val-v1'
+out=root/'outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001'
+assert 'state=done' in (q/'state'/f'{job}.state').read_text()
+assert (q/'done'/f'{job}.job').is_file()
+assert 746347 not in {int(x) for x in subprocess.check_output(['ps','-eo','pgid='],text=True).split()}
+assert (q/'repro'/job/'uncommitted.patch').stat().st_size==0 and (q/'repro'/job/'git_status.txt').stat().st_size==0
+conditions=['full','no_rgb','rgb_only','detector_gap','detector_gap_no_rgb']
+expected=['selection.json','evaluation_config.yaml','ball_train_mean_fit.json']+[f'val/{c}/{f}' for c in conditions for f in ['eval_arrays.npz','metrics.json','motion.json','evaluation_config.yaml','ball_train_mean_comparison.json']]+[f'val/{c}/comparison.{s}' for c in ['comparison','gap_rgb_comparison'] for s in ['json','csv']]
+assert len(expected)==32 and all((out/f).is_file() for f in expected)
+assert not (out/'test').exists()
+def finite(v):
+ if isinstance(v,dict):
+  for x in v.values():finite(x)
+ elif isinstance(v,list):
+  for x in v:finite(x)
+ elif isinstance(v,float):assert math.isfinite(v),v
+hashes={};numeric_arrays=0
+for name in expected:
+ p=out/name
+ with p.open('rb') as f:
+  hashes[name]=hashlib.file_digest(f,'sha256').hexdigest();os.fsync(f.fileno())
+ if p.suffix=='.json':finite(json.loads(p.read_text()))
+ elif p.suffix=='.yaml':finite(OmegaConf.to_container(OmegaConf.load(p),resolve=True))
+ elif p.suffix=='.csv':assert len(list(csv.DictReader(p.open())))>0
+ elif p.suffix=='.npz':
+  with np.load(p,allow_pickle=False) as a:
+   assert len(a['scene_ids'])==343
+   for k in a.files:
+    v=a[k]
+    if np.issubdtype(v.dtype,np.number):assert np.isfinite(v).all(),(name,k);numeric_arrays+=1
+selection=json.loads((out/'selection.json').read_text())
+expected_sha='55b8795d3d2003acd04c9b09faed99453454f8d64298d95d3b42f90a0afd4120'
+with Path(selection['selected']['path']).open('rb') as f:assert hashlib.file_digest(f,'sha256').hexdigest()==expected_sha
+assert selection['checkpoint_sha256']==expected_sha
+results={}
+for c in conditions:
+ d=out/'val'/c
+ m=json.loads((d/'metrics.json').read_text());motion=json.loads((d/'motion.json').read_text())
+ assert m['num_windows']==343 and m['context']['checkpoint_sha256']==expected_sha and m['context']['input_mode']==c and m['context']['split']=='val'
+ conf=OmegaConf.load(d/'evaluation_config.yaml');assert conf.evaluate.input_mode==c and conf.evaluate.split=='val' and not conf.data.augmentation.enabled
+ results[c]={'metrics':{k:v for k,v in m.items() if k!='context'},'ball_motion':next(r['entities']['ball'] for r in motion['rows'] if r['group_type']=='all')}
+comparison=json.loads((out/'val/comparison/comparison.json').read_text());gap=json.loads((out/'val/gap_rgb_comparison/comparison.json').read_text())
+assert comparison['checkpoint_sha256']==gap['checkpoint_sha256']==expected_sha
+summary={'schema_version':1,'job_id':job,'source_commit':json.loads((q/'repro'/job/'run.json').read_text())['commit'],'output':str(out),'terminal_state':'done','pgid_absent':746347,'required_file_count':len(expected),'numeric_arrays_finite':numeric_arrays,'sha256':hashes,'selection':selection,'conditions':results,'comparison':comparison,'gap_rgb_comparison':gap,'test_evaluated':False}
+print(json.dumps(summary,allow_nan=False))
+PY

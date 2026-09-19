@@ -1,0 +1,24 @@
+env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python - <<'PY'
+from pathlib import Path
+import hashlib,json
+from src.tasks.slcs.evaluation.ball_anchor_comparison import save_ball_anchor_comparison
+from src.tasks.slcs.evaluation.ball_transition_comparison import save_ball_transition_comparison
+root=Path('/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate')
+candidate=root/'real_rgb_one_sided_context/s42-001/val'
+controls={'baseline':root/'real_rgb_no_ball_smooth/s42-gap-diagnostic-002/val','temporal':root/'real_rgb_ball_temporal_context/s42-001/val'}
+conditions=['full','no_rgb','rgb_only','detector_gap','detector_gap_no_rgb']
+reports={}
+for label,control in controls.items():
+ reports[label]={}
+ for condition in conditions:
+  current=candidate/condition
+  reports[label][condition]={}
+  for kind in ['transitions','anchors']:
+   output=current/f'ball_{kind}_vs_{label}.json'
+   if kind=='transitions':save_ball_transition_comparison(control/condition,current,fast_speed_mps=26.425038598234046,output=output)
+   else:save_ball_anchor_comparison(control/condition,current,output=output)
+   report=json.loads(output.read_text())
+   with output.open('rb') as f:digest=hashlib.file_digest(f,'sha256').hexdigest()
+   reports[label][condition][kind]={'output':str(output),'sha256':digest,'report':report}
+print('Saved 20 strict paired comparison reports; paths and SHA256 are in the evaluation bundle.')
+PY
