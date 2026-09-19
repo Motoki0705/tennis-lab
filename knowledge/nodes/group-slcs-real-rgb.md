@@ -83,6 +83,16 @@ members:
 - run-slcs-pilot-augmented-portable-eval-v1
 - run-slcs-meiji-v9-repair-batch-v1
 - run-slcs-meiji-v9-test-teacher-review-v1
+- run-slcs-meiji-v9-partial-qc-v3
+- run-slcs-meiji-v9-repair-start-failure-v1
+- run-slcs-meiji-v9-repair-batch-v2
+- run-slcs-meiji-v9-repair-clip004-v1
+- run-slcs-input-sensitivity-v1
+- run-slcs-meiji-v9-full-build-v1
+- run-slcs-meiji-v9-full-qc-v1
+- run-slcs-meiji-v9-repair-batch-v3
+- run-slcs-meiji-v9-full-qc-v2
+- run-slcs-real-rgb-full-assembly-v1
 parents: []
 tags:
 - slcs
@@ -96,7 +106,7 @@ tags:
 
 ## まとめ
 
-Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19時点でCourt補正を反映したv9の全56clipのCourt・outsourceボールとRGB特徴が準備できた。ViTPoseを再取得し実RGBの単独GPU推論を確認後、v9へ全168cameraのraw検出と142cameraの人物観測を再利用した。残り26cameraの人物再計算と全体3D教師・全体版SLCSの頑健性評価は未完成。旧観測の不整合・再生成・間欠的なSHA差の記録は以下に保持する。
+Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19に[全56clipの生成](run-slcs-meiji-v9-full-build-v1.md)と[欠落・不正0の全件監査](run-slcs-meiji-v9-full-qc-v2.md)を完了し、[broadcast 5clipとの全体版統合](run-slcs-real-rgb-full-assembly-v1.md)へ進んだ。全体版SLCSの学習・頑健性評価はまだ未完了。9clipの退避付き修復を含む不整合・再生成の経緯は各runへ保持する。
 
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 
@@ -142,9 +152,9 @@ SLCSの先行試験はMeiji 2クリップとbroadcast 5クリップで、[baseli
 
 [人物再利用v4](run-slcs-meiji-v9-observation-reuse-v4.md)は134.966秒の1回実行で成功した。全56clipの168cameraのraw検出を公開し、人物選択6配列が完全一致した142cameraのposeを再利用した。差がある26camera・20clipは再計算対象として残す。2064入力の初回・公開前・公開後digestは全て一致し、DINO/ViTPoseも全段階で固定pinと一致した。このrunでは許可したchecksum例外を適用する必要はなく、警告0だった。
 
-[引継ぎ時の部分教師監査](run-slcs-meiji-v9-partial-qc-v1.md)で検出した`video_000/clip_009`の不整合は、[CPU再生成](run-slcs-meiji-v9-clip009-repair-v1.md)により解消した。旧データは保全し、公開前照合も補った。[2回目の部分監査](run-slcs-meiji-v9-partial-qc-v2.md)では差し替え先を含む26clipが通過し、後続2clipの記録不整合は[追加CPU再生成](run-slcs-meiji-v9-repair-batch-v1.md)で先行修復した。[3clipのRGB重畳確認](run-slcs-meiji-v9-teacher-review-v1.md)では補正後rootの観測との一致を確認した一方、unsupported端点の飛びを明示している。残clipの生成完了後に全体監査を行う。全体教師の採用とSLCS追加学習は全体監査後とする。
+[引継ぎ時の部分教師監査](run-slcs-meiji-v9-partial-qc-v1.md)で検出した`video_000/clip_009`の不整合は、[CPU再生成](run-slcs-meiji-v9-clip009-repair-v1.md)により解消した。旧データは保全し、公開前照合も補った。[2回目の部分監査](run-slcs-meiji-v9-partial-qc-v2.md)では差し替え先を含む26clipが通過し、後続2clipの記録不整合は[追加CPU再生成](run-slcs-meiji-v9-repair-batch-v1.md)で先行修復した。[3clipのRGB重畳確認](run-slcs-meiji-v9-teacher-review-v1.md)では補正後rootの観測との一致を確認した一方、unsupported端点の飛びを明示している。その後の追加修復・全件監査の最終状態は冒頭のrunを参照する。
 
-ユーザー指定に従い、まずMeiji全体の教師生成・品質確認を完了する。欠落・低支持区間・除外理由を固定し、重みとsource codeを維持する。その後、ball未学習の仮説を1施策ずつ50–70epochで比較し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へ進む。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)でmodeによる平滑化項の差と局所勾配を確認したが、損失平滑化過剰説は仮説であり、再学習による施策比較は未実施。
+ユーザー指定の全体教師/QCを完了し、ball未学習の仮説を1施策ずつ50–70epochで比較する段階へ進んだ。欠落・低支持区間・除外理由は維持する。[固定train窓の項別勾配診断](run-slcs-ball-gradient-probe-v1.md)と[入力時系列感度](run-slcs-input-sensitivity-v1.md)は弱い時間依存を示したが、原因の確定ではない。予定したball平滑化weight=0の60epoch比較を共有queueへ投入し、収録分離した全体版のfull/no_rgb/detector_gap/rgb_only評価へつなげる。
 
 ### 論文を踏まえた施策候補（未実施）
 

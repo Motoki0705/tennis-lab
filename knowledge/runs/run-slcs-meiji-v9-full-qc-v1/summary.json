@@ -1,0 +1,11 @@
+{
+  "source_report": "outputs/tennis_scene/analyze/meiji_rgb_v9_quality/s42-full-001/quality_report.json",
+  "counts": {"completed": 53, "missing": 0, "error": 3, "excluded": 1},
+  "errors": [],
+  "six_previously_repaired_clips_completed": true,
+  "problem_clips": [
+    {"clip": "video_002/clip_017", "reason": "ValueError: Raw teacher checkpoint mismatch: blcs; expected dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32, actual 57619c2781acbd13187dfa844bdeefec502e7b708ccbff269774ea97f38afbc9"},
+    {"clip": "video_002/clip_018", "reason": "ValueError: Raw teacher checkpoint mismatch: plcs; expected d09130f14b061fab8352a61a8555a02d60872487698eb3776a966fb46ac5b735, actual e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a"},
+    {"clip": "video_002/clip_020", "reason": "ValueError: Raw teacher checkpoint mismatch: plcs; expected e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a, actual 78ef9815c8752c8d262cb2340a72c3c46ef53723ae2252d3c9d17bf20ce9f9ca"}
+  ]
+}
