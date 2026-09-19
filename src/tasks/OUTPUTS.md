@@ -140,6 +140,33 @@ ARTIFACT契約を使う。CHECKPOINTの既定はball/court/PLCSが `outputs`、B
 保存rootではない。実RGB学習設定がcheckpoint_rootを明示する場合はその設定が優先する。
 学習出力を移した後で再開・評価するときは、入力checkpoint_rootも対応する場所へ設定する。
 
-CPU出力スモークはcompose・validator・path解決を確認し、本学習・モデル精度・
-外部動画取得の成功を保証しない。抽出モーションのスモークのみ、外部モデルの存在確認を
-mockして実データ・モデルなしでも出力契約を検証する。
+## 非Hydraの閲覧・推論UI
+
+非Hydra入口は引数のrootを `NonHydraPathBoundary` で検証する。Hydraのrunや
+`config.yaml` は生成しない。`--outputs-root` 等の名前だけで出力先と判断せず、
+checkpoint探索の入力rootとして扱う。
+
+| 入口 | ディスクへの保存と設定 |
+|---|---|
+| ball/court/BLCS/PLCS `review_dataset`、PLCS `review_accad_motion` | dataset・モーションを読み取り、JSON・画像・バイナリをHTTP応答として返す。永続的な編集・可視化ファイルは作らない。入力rootは各CLIのdata/ACCAD/SMPL引数 |
+| ball/court/BLCS `inference_ui`、PLCS `serve_inference_ui` | 推論要求と応答は共有repoの `.training_queue/ui_requests/<task>-<unique>/` に保持。入力は `request.json`、成功はatomicに公開する `result.bin`、失敗は `error.json`。queue実行ログは同じ共有queueの `logs/`。推論結果はHTTP応答としても返す |
+| base `inference_worker` | 上記requestディレクトリ内に結果を保存。CLIのrequest引数はその境界内の既存ファイルに限定 |
+
+UIの推論要求ファイルは障害調査用の永続IPCであり、学習runの成果物ではない。
+保存場所は `inference_queue.shared_repository_root()` がgit共通ディレクトリから決め、
+worktreeやUIのcheckpoint探索rootを変えても共有queueを使う。
+この入口には任意の成果物保存先を選ぶ設定はなく、UI終了時にも要求・結果を削除しない。
+BLCS/PLCS tracking推論のsplit補助ファイルだけは `TemporaryDirectory` 内で作成して破棄する。
+UI表示を再利用可能なGIF等へ保存する場合は、上表の可視化CLIの保存設定を使う。
+
+## CPUスモークの検証範囲
+
+`tests/unit/utils/test_output_layout.py` は全Hydra入口のcompose・validator・path解決を確認する。
+抽出モーションでは外部モデルの存在確認だけをmockする。
+`tests/integration/tasks/base/test_output_artifacts_smoke.py` は全5タスクのtrain設定を合成し、
+データ・モデルhookを小さなCPU fixtureに置き換えて共通runnerを1 step実行する。
+実際に保存したconfig、TensorBoard、checkpoint、qualitative GIF、予測NPZとmetric JSONを
+読み直し、root分離と同じrunへの新規上書き拒否も確認する。task固有モデルの本学習や
+生成品質の検証ではない。非Hydraのqueue入出力は
+`tests/unit/tasks/base/visualization/test_inference_queue.py` が一時ディレクトリとfixture応答で検証する。
+これらは本学習・モデル精度・外部動画取得・GPU推論の成功を保証しない。
