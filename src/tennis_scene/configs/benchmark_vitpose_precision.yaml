@@ -1,0 +1,33 @@
+defaults:
+  - paths: default
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+clip: ???
+observations: ???
+checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+output: ${tennis_output:tennis_scene,evaluate,vitpose_precision,${tennis_run_id:}}
+device: cuda:0
+cameras: [cam0, cam1]
+people: [0, 1]
+frames: 128
+warmup_frames: 8
+batch_size: 8
+flip_test: true
+crop_enlarge: 1.2
+head:
+  in_channels: 1280
+  out_channels: 17
+  num_deconv_layers: 2
+  num_deconv_filters: [256, 256]
+  num_deconv_kernels: [4, 4]
+  final_conv_kernel: 1
+  num_conv_layers: 0
+  num_conv_kernels: []
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

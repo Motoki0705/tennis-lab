@@ -1,6 +1,6 @@
 """CPU RGB/trajectory review of published SLCS pseudo teachers (not 3D GT).
 
-Used by ``scripts.analysis.render_reconstruction_review``.
+Used by ``src.tennis_scene.scripts.render_reconstruction_review``.
 """
 
 from __future__ import annotations

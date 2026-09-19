@@ -73,6 +73,7 @@ reference frame へ position と court-space velocity を同じ proper rotation 
 - **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。single/multi-ballの3D/2D/カメラ視点アニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示は明示的なscene eventのみを使用し、軌道から意味を推測するfallbackは持たない。style/視点は `visualization.style` / `visualization.view_3d` で設定。
 
 ### scripts/
+- **`evaluate_real.py`**: 固定Meiji test splitで指定checkpointを評価。下記の評価手順を参照。
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。
 - **`generate_dataset_samples.py`**: 生成済み各datasetへ層化されたcamera-view GIFとmanifestを作成。
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
@@ -132,6 +133,19 @@ Single-object camera-view data can be generated with
 `--config-name generate_dataset_camera_view_v2`. The shared contract described
 above defines the four-corner preset and `data.camera_candidates` for standard
 scene sampling.
+
+## 実RGBの固定test評価
+
+`.venv/bin/python -m src.tasks.blcs.scripts.evaluate_real evaluation.checkpoint=blcs/selected.ckpt`
+で [`evaluate_real.yaml`](configs/evaluate_real.yaml) を実行する。
+checkpointは `paths.checkpoint_root` 相対、出力は `paths.output_root` 配下の
+`blcs/evaluate/<experiment>/<run-id>`。既存出力は拒否する。
+`train_meiji_real_rgb` と同じデータ条件・固定seedで、checkpoint契約とstate dictを
+strictに検証してtestのみ実行し、config・metrics・checkpoint/データprovenanceのSHAを保存する。
+比較するrun間ではcheckpointと出力先以外の設定を固定する。
+checkpoint選択にはvalidationを使い、test値を選定に使わない。
+幾何由来の擬似3Dに対する評価であり、実測ground truth精度ではない。
+既定はCPU。`evaluation.device=cuda` はtraining queue経由で実行する。
 
 ## Axial reference training
 
