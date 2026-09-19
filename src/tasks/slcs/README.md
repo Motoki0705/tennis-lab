@@ -121,6 +121,8 @@ checkpoint SHA256、教師・mask・weight・window対応の完全一致を検�
 
 `scripts.analysis.evaluate_slcs_run --ball-train-mean` は保存済み学習設定のtrain splitだけからconfidence-weighted arithmetic meanのball定数を推定し、`ball_train_mean_fit.json` と各split/input conditionの `ball_train_mean_comparison.json` を保存します。fitはproductionのwindow/quality設定を保持し、augmentationなしで `(video, clip, camera, frame)` の重複教師・mask・weightの一致を確認して集約します（cameraは別観測）。比較は既存headlineと同じ非加重valid window occurrencesで、overall/domain/video別のEuclidean誤差をm単位で出力します。この平均は二乗距離を最小化する定数で、平均Euclidean距離の最適定数ではありません。train評価はin-sample、overfit設定と不完全annotationのskip設定は拒否します。教師を読むCPU処理だけは `require_dino=False` とし、DINO cacheを読まず検証もしません。モデルの各入力条件と通常のDINO検証は変更せず、評価教師・window metadataをproduction splitと照合します。
 
+保存済みの同じ入力条件をモデル間で比較する追加CPU診断は `scripts.analysis.compare_slcs_ball_transitions` を使います。`--baseline` / `--candidate` はそれぞれ `eval_arrays.npz`・`motion.json`・`evaluation_config.yaml` を含む条件ディレクトリ、`--output` は対象評価run内の新規JSONの絶対パスです。教師・mask・confidence・window対応・観測mask・条件・split・物理単位/FPSの一致を検査し、全体とvideo別に4種類のvisibility遷移・教師の高速区間の速度ベクトル誤差と速度biasを保存します。高速区間の閾値 `--fast-speed-mps` はtrain-only統計などから明示し、この評価データにfitしません。window重複は別々に数え、予測速度の低下だけで成功としません。
+
 ## 検証
 
 ```bash
