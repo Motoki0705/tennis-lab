@@ -9,7 +9,7 @@ Meijiの同期3カメラと放送映像を、検出観測・品質重み付き3D
 repoまたは専用worktreeのrootから実行する。
 
 ```bash
-bash scripts/datasets/build_real_rgb.sh all
+.venv/bin/python -m src.tennis_scene.scripts.build_real_rgb all
 ```
 
 共有training queueへ投入し、broadcastの保存済み2Dボールを取り込み、両データの観測・
@@ -20,13 +20,15 @@ AI実行時は `TENNIS_QUEUE_PROVIDER` と `TENNIS_QUEUE_SESSION` を明示す�
 生成の正本設定は [`build_slcs_dataset.yaml`](../configs/build_slcs_dataset.yaml)、
 [`build_broadcast_slcs_dataset.yaml`](../configs/build_broadcast_slcs_dataset.yaml)、
 [`assemble_slcs_dataset.yaml`](../configs/assemble_slcs_dataset.yaml)。
+放送の9クリップの会場対応・取り込み元・保存先・UVフィルタは
+[`import_broadcast_ball.yaml`](../configs/import_broadcast_ball.yaml)で明示する。
 保存先・除外理由・固定カメラの校正クリップ・採用閾値・教師重みはここで指定する。
 既存の入力データへアノテーションを上書きしない。
 
 1クリップだけを独立したデータ版として生成する例:
 
 ```bash
-bash scripts/datasets/build_real_rgb.sh meiji \
+.venv/bin/python -m src.tennis_scene.scripts.build_real_rgb meiji \
   'dataset_clip_ids=[video_000/clip_000]' \
   dataset_output_directory=slcs/meiji_one_clip_v1 \
   output_dir=tennis_scene/generate/meiji_one_clip_v1/s42-001
@@ -183,7 +185,7 @@ SLCSの実RGB学習profileは [`train_real_rgb.yaml`](../../tasks/slcs/configs/t
 次の `/abs/to/outputs` は学習時のoutput rootの絶対パスへ置き換える。CUDA評価も共有queueへ投入する。
 
 ```bash
-.venv/bin/python -m scripts.analysis.evaluate_slcs_run \
+.venv/bin/python -m src.tasks.slcs.scripts.evaluate_run \
   --output-root /abs/to/outputs \
   --training-run slcs/train/real_rgb_no_ball_smooth/s42-001 \
   --output slcs/evaluate/real_rgb_no_ball_smooth/s42-001 \
@@ -201,13 +203,23 @@ SLCSの実RGB学習profileは [`train_real_rgb.yaml`](../../tasks/slcs/configs/t
 Meijiのtest収録を含まない。最終評価には全体版と収録単位の固定test splitを使う。
 教師の再学習profileは各タスクの `train_broadcast_real_rgb.yaml`、
 PLCSの `train_meiji_foot_real_rgb.yaml`、BLCSの `train_meiji_real_rgb.yaml`。
-データ分割・subset作成は `scripts/analysis/prepare_plcs_motion_split.py`、
-`prepare_plcs_subset.py`、`prepare_blcs_real_dataset.py` のreceiptを伴う処理を使う。
-BLCS旧/改善重みの同条件比較には `scripts/analysis/evaluate_blcs_real.py` を使う。
+PLCSの分割・subset作成は[PLCSの準備手順](../../tasks/plcs/README.md#固定データ版の準備)を参照する。
+BLCSの準備は [`prepare_blcs_real_dataset.yaml`](../configs/prepare_blcs_real_dataset.yaml)で
+source recipe・収録単位のsplit・幾何閾値を明示し、次の入口で実行する。
+出力には入力設定・観測hash・採用frame・synthetic replay IDを保存する。GPUを使うため共有queue経由で実行する。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.prepare_blcs_real_dataset \
+  destination=blcs/real_version synthetic_source=blcs/synthetic_version \
+  paths.external_asset_root=/absolute/shared/third_party
+```
+
+BLCS旧/改善重みの同条件比較には `src.tasks.blcs.scripts.evaluate_real` を使う。
+教師のRGB/3Dレビュー入口は `src.tennis_scene.scripts.render_reconstruction_review`。
 
 ## 全clip品質レポート（Meiji、CPU）
 
-`build_real_rgb.sh all` はMeiji生成後・統合前にこの検査を実行する。単独で再集計する場合:
+`src.tennis_scene.scripts.build_real_rgb all` はMeiji生成後・統合前にこの検査を実行する。単独で再集計する場合:
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality

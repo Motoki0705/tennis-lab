@@ -94,8 +94,14 @@ def copy_legacy_broadcast(
         raise ValueError(
             "Explicit legacy import requires the recording-based v1 dataset"
         )
-    if set(video_groups) != {record["clip_id"] for record in root["clips"]}:
+    clip_ids = [record["clip_id"] for record in root["clips"]]
+    if len(clip_ids) != len(set(clip_ids)):
+        raise ValueError("Legacy clip inventory must not contain duplicate IDs")
+    if set(video_groups) != set(clip_ids):
         raise ValueError("Curated video_groups must cover every legacy clip exactly")
+    target_ids = [f"{video_groups[clip_id]}/{clip_id.rsplit('/', 1)[-1]}" for clip_id in clip_ids]
+    if len(target_ids) != len(set(target_ids)):
+        raise ValueError("Curated video_groups would produce duplicate destination clips")
     input_hashes = {}
     for record in root["clips"]:
         if (
