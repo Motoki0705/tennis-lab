@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-19",
+  "clip_id": "video_000/clip_009",
+  "reason": "Original raw and producer checkpoint digests disagreed; regenerated inference on CPU with pinned weights and unchanged observations, then passed read-only quality audit.",
+  "repair_run": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_clip009/s42-001",
+  "repair_dataset": "data/slcs/meiji_rgb_v9_repair_clip009_v1",
+  "target_run": "outputs/tennis_scene/generate/meiji_rgb_v9/s42-002",
+  "target_dataset": "data/slcs/meiji_rgb_v9",
+  "backup": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_clip009/s42-001/quarantine/video_000/clip_009",
+  "procedure": [
+    "Copy the original immutable DINO cache to the repair dataset and audit its manifest, media provenance and feature specification.",
+    "Copy replacement annotation and raw/refined generation artifacts to fresh target sibling staging directories.",
+    "Copy the CPU repair recipe to repair_generation_recipe.json in the staged generation directory.",
+    "Move original annotation to backup/published_annotation and original generation directory to backup/generation; delete nothing.",
+    "Rename staged generation directory into place, then publish the staged annotation directory.",
+    "Compare published annotation directory byte-for-byte with the repair source. All files match."
+  ],
+  "original_published": {
+    "scene.npz": "73c668224969651e567a9d408bbeddf5ca0f26b755db8d650efde0565eeeeeb5",
+    "scene.metadata.json": "e72aea044c7f3fdc98820c39582772ef333431cec49a3fa40a2472a065d5bad1"
+  },
+  "replacement_published": {
+    "scene.npz": "f5b2a322475c3c3140e4531886079eb0bbde49fb3579c5e3d575627cbddd3e9e",
+    "scene.metadata.json": "205ac1b9265a76a5d0ac0f6aa65ebeec9f949ef7529036a2681e97fb251aaa2b"
+  },
+  "metadata_edited": false,
+  "old_artifacts_deleted": false,
+  "qc_command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality dataset_directory=slcs/meiji_rgb_v9_repair_clip009_v1 generation_directories=[tennis_scene/generate/meiji_rgb_v9_repair_clip009/s42-001] allow_incomplete=true output_dir=tennis_scene/analyze/meiji_rgb_v9_repair_clip009_quality/s42-001",
+  "qc_scope": "Only video_000/clip_009. Other 55 eligible clips absent from this explicit repair subset."
+}

@@ -73,6 +73,11 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 
 ## 推論・評価・解析
 
+保存済み学習runからvalidation最良checkpointを選んで4入力条件を比較する場合は、
+[`scripts.analysis.evaluate_slcs_run`](../../../scripts/analysis/evaluate_slcs_run.py)を使う。
+`--help`で明示的な入力・出力rootとsplitの指定を確認できる。既定はvalのみでtestは明示指定とし、
+各条件の配列・設定・checkpoint選定記録と実FPSのmotion診断を同じ評価runへ保存する。
+
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip \
   predict.checkpoint=slcs/example.ckpt \
