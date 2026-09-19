@@ -141,6 +141,10 @@ checkpoint SHA256、教師・mask・weight・window対応の完全一致を検�
 
 保存済みの同じ入力条件をモデル間で比較する追加CPU診断は `scripts.analysis.compare_slcs_ball_transitions` を使います。`--baseline` / `--candidate` はそれぞれ `eval_arrays.npz`・`motion.json`・`evaluation_config.yaml` を含む条件ディレクトリ、`--output` は対象評価run内の新規JSONの絶対パスです。教師・mask・confidence・window対応・観測mask・条件・split・物理単位/FPSの一致を検査し、全体とvideo別に4種類のvisibility遷移・教師の高速区間の速度ベクトル誤差と速度biasを保存します。高速区間の閾値 `--fast-speed-mps` はtrain-only統計などから明示し、この評価データにfitしません。window重複は別々に数え、予測速度の低下だけで成功としません。
 
+`scripts.analysis.compare_slcs_ball_anchors --baseline /abs/baseline/val/full --candidate /abs/candidate/val/full --output /abs/candidate/val/full/ball_anchor_comparison.json` は同じ保存配列からwindow内の元のball観測だけでanchorを分類するCPU診断です。入力は上記transition比較と同じ3ファイルで、その共通readerによる厳密な照合を使い、validation splitのみを受け付けます。model/checkpoint自体の一致は要求せず、3入力ファイルのSHA256をそれぞれ保存します。非padding部分に不連続frameがあるwindowは拒否します。
+
+位置誤差(m)を `observed` / `missing_left_only` / `missing_right_only` / `missing_both_sides` / `missing_no_anchor` と、事前固定の最近傍anchor距離 `all` / `1` / `2-8` / `9-24` / `>=25` frame別に全体・video別で集計します。両側ありは近い側との距離、観測frameとanchorなしは距離未定義で `all` のみです。bucketはburst最大24と事前のtrain-only観測分布に基づき、評価配列にはfitしません。`all` は各距離subsetを含みます。両端teacher validな `observed_to_missing` / `missing_to_observed` 境界では、欠損端点のanchor分類・距離ごとに速度ベクトル誤差、予測/教師の速度norm、signed speed bias（予測norm−教師norm）をm/sで比較します。境界の欠損端点には隣接観測があるため距離は必ず1であり、他距離やanchorなしの境界行は空になります。各統計は非加重window occurrenceのcount/mean/p95/maxとcandidate−baseline差で、重複windowは別々に数えます。空集合はcount 0・統計nullです。出力を平滑化・clip・filterせず、疑似教師との一致度を測ります。保存先の契約は冒頭のタスク出力規約を参照してください。
+
 ## PR用可視化
 
 PR用の学習曲線・条件別mean/p95・誤差の経験分布は、完了済み評価をCPUで読み取って生成できます。

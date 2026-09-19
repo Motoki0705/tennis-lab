@@ -9,11 +9,11 @@ import pytest
 from omegaconf import OmegaConf
 
 from src.tasks.slcs.evaluation.ball_transition_comparison import (
-    _PAIRED_KEYS,
     compare_ball_transitions,
     save_ball_transition_comparison,
 )
 from src.tasks.slcs.evaluation.motion import summarize_motion
+from src.tasks.slcs.evaluation.paired_ball_arrays import PAIRED_BALL_KEYS
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -167,7 +167,7 @@ def test_only_consecutive_valid_nonpadding_pairs_count(
     assert _row(report)["baseline"]["count"] == count
 
 
-@pytest.mark.parametrize("key", _PAIRED_KEYS)
+@pytest.mark.parametrize("key", PAIRED_BALL_KEYS)
 def test_mismatched_teachers_inputs_and_metadata_rejected(
     tmp_path: Path, key: str
 ) -> None:
