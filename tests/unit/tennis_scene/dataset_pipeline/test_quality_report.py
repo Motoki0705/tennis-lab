@@ -253,11 +253,11 @@ def test_raw_checkpoint_and_observation_changes_are_rejected() -> None:
         SLCSFixtureDatasetConfig(num_frames=3), np.random.default_rng(0)
     )
     scene.metadata = {
-        "checkpoints": {"plcs": {"sha256": "a" * 64}},
+        "checkpoints": {"plcs": {"sha256": "a" * 64}, "blcs": {"sha256": "c" * 64}},
         "reference": {},
         "ball_input_provenance": {},
     }
-    identity = {"checkpoints": {"plcs": "a" * 64}}
+    identity = {"checkpoints": {"plcs": "a" * 64, "blcs": "c" * 64}}
     raw = copy.deepcopy(scene)
     validate_raw_identity(raw, scene, identity)
     raw.metadata["checkpoints"]["plcs"]["sha256"] = "b" * 64

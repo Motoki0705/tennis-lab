@@ -17,11 +17,18 @@ def test_completed_scene_rejects_another_teacher_or_unidentified_cache(
 ) -> None:
     index = build_slcs_dataset_fixture(tmp_path, SLCSFixtureDatasetConfig())
     clip = ClipManifest.load(index.clip_dir(index.clips[0]))
-    identity = {"checkpoints": {"plcs": "first"}, "observations": {"ball": "same"}}
+    identity = {
+        "checkpoints": {"plcs": "first", "blcs": "ball"},
+        "observations": {"ball": "same"},
+    }
     with pytest.raises(ValueError, match="Stale reconstruction"):
         validated_scene_cache(clip, identity)
     scene = load_slcs_annotation(clip)
     scene.metadata["dataset_producer_identity"] = identity
+    scene.metadata["checkpoints"] = {
+        "plcs": {"sha256": "first"},
+        "blcs": {"sha256": "ball"},
+    }
     save_scene_result(scene, clip.clip_dir / "annotations/tennis_scene/scene.npz")
     assert validated_scene_cache(clip, identity)
     with pytest.raises(ValueError, match="Stale reconstruction"):
@@ -37,9 +44,13 @@ def test_cached_scene_rejects_invalid_visibility(tmp_path, name, value):
         tmp_path, SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip = ClipManifest.load(index.clip_dir(index.clips[0]))
-    identity = {"teacher": "unchanged"}
+    identity = {"checkpoints": {"plcs": "first", "blcs": "ball"}}
     scene = load_slcs_annotation(clip)
     scene.metadata["dataset_producer_identity"] = identity
+    scene.metadata["checkpoints"] = {
+        "plcs": {"sha256": "first"},
+        "blcs": {"sha256": "ball"},
+    }
     getattr(scene, name).flat[0] = value
     save_scene_result(scene, clip.clip_dir / "annotations/tennis_scene/scene.npz")
     with pytest.raises(

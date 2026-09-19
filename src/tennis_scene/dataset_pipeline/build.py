@@ -18,6 +18,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.configuration import ReferenceClipPaths
 from src.tennis_scene.dataset_pipeline.checkpoint_integrity import (
+    validate_checkpoint_sha256,
     verify_checkpoint_integrity,
 )
 from src.tennis_scene.dataset_pipeline.configuration import (
@@ -31,6 +32,8 @@ from src.tennis_scene.dataset_pipeline.people import (
 )
 from src.tennis_scene.dataset_pipeline.provenance import (
     scene_identity,
+    validate_teacher_checkpoint_identity,
+    validate_teacher_checkpoint_metadata,
     validated_scene_cache,
 )
 from src.tennis_scene.dataset_pipeline.quality import evaluate_reconstruction
@@ -374,6 +377,13 @@ def _scene_runner(
     observations: Path,
     identity: dict[str, object],
 ) -> SceneRunner:
+    pins = (
+        validate_checkpoint_sha256(cfg.checkpoint_sha256)
+        if "checkpoint_sha256" in cfg
+        else None
+    )
+    validate_teacher_checkpoint_identity(identity, pins)
+
     def runner(videos: Sequence[Path], cameras: Sequence[str]) -> SceneResult:
         if tuple(cameras) != clip.camera_ids or len(videos) != len(clip.camera_ids):
             raise ValueError("Publication inputs differ from the reconstructed clip")
@@ -386,6 +396,7 @@ def _scene_runner(
             observation_directory=observations,
             coordinate_mode=cast(Literal["reference", "physical"], cfg.coordinate_mode),
         )
+        validate_teacher_checkpoint_metadata(scene, identity)
         scene.metadata["court_model"] = json.loads(
             (observations / "court.json").read_text()
         )
