@@ -143,6 +143,7 @@ SLCS_MODEL_SCHEMA = _schema(
         "log_b_min": _number(),
         "log_b_max": _number(),
         "missing_ball_court_context": ConfigField.of(bool, required=False),
+        "missing_ball_temporal_context": ConfigField.of(bool, required=False),
     },
 )
 _LOSS_FIELDS = {
@@ -605,6 +606,7 @@ class SLCSModelConfig:
     log_b_min: float
     log_b_max: float
     missing_ball_court_context: bool
+    missing_ball_temporal_context: bool
 
     @classmethod
     def from_mapping(cls, raw: dict[str, object]) -> SLCSModelConfig:
@@ -652,6 +654,9 @@ class SLCSModelConfig:
             log_b_max=_finite_number(raw["log_b_max"], path="model.log_b_max"),
             missing_ball_court_context=cast(
                 bool, raw.get("missing_ball_court_context", False)
+            ),
+            missing_ball_temporal_context=cast(
+                bool, raw.get("missing_ball_temporal_context", False)
             ),
         )
         if result.hidden_dim <= 0 or result.num_heads <= 0:

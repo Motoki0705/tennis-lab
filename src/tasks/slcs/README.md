@@ -81,6 +81,8 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
   model.num_rotation_layers=2
 ```
 
+[`train_real_rgb_ball_temporal_context.yaml`](configs/train_real_rgb_ball_temporal_context.yaml) は `model.missing_ball_temporal_context=true` の単独入力feature-context仮説を検証する60epoch profileです。no-ball-smooth・burst24を維持し、court residual・velocity loss・自動終端testは無効、resume/initも追加しません。各カメラの連続・等間隔なoffline window内で、欠損実フレームの直前・直後の観測ball tokenをwindow相対indexで線形補間し、ゼロ初期化・biasなし射影を既存invisible tokenに加算します。両側anchorがないedge gap、観測0/1個、padding、rgb_onlyでは追加contextは0です。sourceはcourt+ballの非線形embedding直後で、court residual・entity/time embeddingの前です。両context有効時もsourceは共有せず、court、temporalの順に独立加算します。観測mask・UV・教師は変更せず、他window/cameraの状態、FPS/教師metadata、隠されたball UV、出力平滑化は使用しません。feature補間は物理UV/3D軌道補間とは異なります。既定falseは追加stateを持たず旧checkpointをstrict loadでき、有効時もゼロ初期化は乱数・共有parameter・初期出力を維持します。[TrackNetV3](https://people.cs.nycu.edu.tw/~yushuen/data/TrackNetV3.pdf) §3.3の時系列欠損修復を参考にした転用仮説であり、同手法の再現や改善の実証ではありません（§4.5は単純な出力線形補間の限界を指摘）。
+
 ## 推論・評価・解析
 
 保存済み学習runからvalidation最良checkpointを選んで4入力条件を比較する場合は、
