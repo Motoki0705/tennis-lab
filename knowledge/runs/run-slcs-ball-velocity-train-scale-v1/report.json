@@ -1,0 +1,80 @@
+{
+  "source_config": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/config.yaml",
+  "split": "train",
+  "train_videos": [
+    "broadcast_shanghai",
+    "broadcast_washington",
+    "video_000"
+  ],
+  "windows": 466,
+  "unique_positive_weight_camera_frame_pairs": 25694,
+  "selected_scale_mps": 11.259468485469933,
+  "selection": "Unweighted median teacher speed among unique train camera-frame pairs with min endpoint confidence >= 0.5; no val/test data or DINO read.",
+  "distributions": [
+    {
+      "min_pair_confidence": 0.0,
+      "pairs": 25694,
+      "speed_quantiles_mps": {
+        "min": 0.002987986007387425,
+        "p25": 5.610017344312418,
+        "median": 11.134874216616904,
+        "p75": 17.718718312910855,
+        "p95": 26.31361129712345,
+        "p99": 34.74679853024348,
+        "max": 63.862420299756614
+      }
+    },
+    {
+      "min_pair_confidence": 0.25,
+      "pairs": 23544,
+      "speed_quantiles_mps": {
+        "min": 0.002987986007387425,
+        "p25": 5.554424429672305,
+        "median": 11.262132567898814,
+        "p75": 18.008778410203558,
+        "p95": 26.55412043967273,
+        "p99": 35.37607360681939,
+        "max": 63.862420299756614
+      }
+    },
+    {
+      "min_pair_confidence": 0.5,
+      "pairs": 23493,
+      "speed_quantiles_mps": {
+        "min": 0.002987986007387425,
+        "p25": 5.5493504419960304,
+        "median": 11.259468485469933,
+        "p75": 18.00361353448735,
+        "p95": 26.425038598234046,
+        "p99": 35.37607360681939,
+        "max": 63.862420299756614
+      }
+    },
+    {
+      "min_pair_confidence": 0.75,
+      "pairs": 19767,
+      "speed_quantiles_mps": {
+        "min": 0.006551469420927203,
+        "p25": 5.007112874621636,
+        "median": 11.13576980097959,
+        "p75": 17.86646052382373,
+        "p95": 25.82784323085835,
+        "p99": 33.12911016124102,
+        "max": 62.50052770734932
+      }
+    },
+    {
+      "min_pair_confidence": 1.0,
+      "pairs": 19767,
+      "speed_quantiles_mps": {
+        "min": 0.006551469420927203,
+        "p25": 5.007112874621636,
+        "median": 11.13576980097959,
+        "p75": 17.86646052382373,
+        "p95": 25.82784323085835,
+        "p99": 33.12911016124102,
+        "max": 62.50052770734932
+      }
+    }
+  ]
+}

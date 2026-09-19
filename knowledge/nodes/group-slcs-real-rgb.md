@@ -3,6 +3,9 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-gap48-val-v1
+- run-slcs-ball-velocity-train-scale-v1
+- run-slcs-full-real-rgb-gap48-e60-resume-v2
 - run-slcs-full-no-smooth-gap-rgb-val-v2
 - run-slcs-meiji-streaming-visual-v1
 - run-slcs-full-no-smooth-gap-rgb-crc-v1
@@ -193,7 +196,7 @@ RGB欠損対策は[ModDrop](https://arxiv.org/abs/1501.00102)の欠損モダリ�
 
 Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.03698)等の追加検出器学習は現状の教師作成に不要。PLCSは実clipごとの位置・yawの裾誤差と教師品質の確認を優先する。全施策で収録分離split・教師版・seedを固定し、一度に変更する要因を限定する。
 
-[gap48の初回](run-slcs-full-real-rgb-gap48-interrupted-v1.md)は12epoch・360更新でsignal停止した。60epoch施策の採否は未判定。optimizer/schedulerを含むcheckpointが残るため、再開可能性を確認しつつ環境方針をユーザーへ相談した。
+[gap48の初回](run-slcs-full-real-rgb-gap48-interrupted-v1.md)は12epoch・360更新でsignal停止した。ユーザーのローカル継続の判断を受け、[全状態再開で60epochを完走](run-slcs-full-real-rgb-gap48-e60-resume-v2.md)した。[固定valの比較](run-slcs-full-real-rgb-gap48-val-v1.md)では全体のfull/gapが改善した一方、broadcastのfull/gapが悪化したため基準を置換しない。速度整合の次実験はburst24に戻す。
 
 [追加5条件評価](run-slcs-full-no-smooth-gap-rgb-val-v2.md)では欠損40frameに限定してもRGBありのball平均誤差が小さかったが、broadcastのp95は悪化した。[逐次動画保存](run-slcs-meiji-streaming-visual-v1.md)は旧版と予測配列・全decoded frameを維持し、最大RSS約1.58GiBで完走した。
 
