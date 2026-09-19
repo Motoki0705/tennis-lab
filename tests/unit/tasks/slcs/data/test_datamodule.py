@@ -148,6 +148,7 @@ def test_setup_reuses_datasets_and_token_caches_across_stages(
         pin_memory=False,
         overfit=False,
         pipeline=data_config,
+        domain_sampling=None,
     )
     datamodule = SLCSDataModule(config)
     original_build = datamodule._build_dataset

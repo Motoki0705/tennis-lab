@@ -71,6 +71,10 @@ def test_velocity_changes_only_loss_and_disables_automatic_test() -> None:
         ("train_real_rgb_velocity", "real_rgb_velocity"),
         ("train_real_rgb_missing_ball_court", "real_rgb_missing_ball_court"),
         ("train_real_rgb_ball_temporal_context", "real_rgb_ball_temporal_context"),
+        (
+            "train_real_rgb_temporal_domain_balanced",
+            "real_rgb_temporal_domain_balanced",
+        ),
     ],
 )
 def test_ablation_output_identity_is_separate_and_stable(
@@ -111,4 +115,27 @@ def test_temporal_context_changes_only_architecture_and_automatic_test() -> None
     assert candidate.training.trainer.max_epochs == 60
     baseline.model.missing_ball_temporal_context = True
     baseline.run.test_after_fit = False
-    assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(baseline, resolve=True)
+    assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(
+        baseline, resolve=True
+    )
+
+
+def test_domain_balancing_changes_only_train_sampling() -> None:
+    output = "run.output_dir=slcs/train/config_fixture/fixed"
+    baseline = _compose_profile("train_real_rgb_ball_temporal_context", output)
+    candidate = _compose_profile("train_real_rgb_temporal_domain_balanced", output)
+    assert baseline.data.domain_sampling.enabled is False
+    assert candidate.data.domain_sampling.enabled is True
+    assert dict(candidate.data.domain_sampling.video_domains) == {
+        "video_000": "meiji",
+        "broadcast_shanghai": "broadcast",
+        "broadcast_washington": "broadcast",
+    }
+    assert candidate.run.seed == 42
+    assert candidate.run.resume is None
+    assert candidate.run.test_after_fit is False
+    assert candidate.training.trainer.max_epochs == 60
+    baseline.data.domain_sampling = candidate.data.domain_sampling
+    assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(
+        baseline, resolve=True
+    )

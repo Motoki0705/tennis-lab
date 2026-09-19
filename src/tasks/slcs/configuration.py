@@ -18,6 +18,7 @@ from src.tasks.slcs.data.augmentation import (
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
 from src.tasks.slcs.data.quality import QualityConfig
+from src.tasks.slcs.data.sampling import DomainSamplingConfig
 from src.tasks.slcs.training.losses import SLCSLossConfig
 from src.tennis_scene.generate_dataset.manifest import (
     DatasetManifestError,
@@ -119,6 +120,16 @@ SLCS_DATA_SCHEMA = _schema(
         "dino": _mapping(SLCS_DINO_SCHEMA),
         "quality": _mapping(SLCS_QUALITY_SCHEMA),
         "augmentation": ConfigField.mapping(SLCS_AUGMENTATION_SCHEMA, required=False),
+        "domain_sampling": ConfigField.mapping(
+            _schema(
+                "data.domain_sampling",
+                {
+                    "enabled": ConfigField.of(bool),
+                    "video_domains": ConfigField.of(dict),
+                },
+            ),
+            required=False,
+        ),
     },
 )
 SLCS_MODEL_SCHEMA = _schema(
@@ -511,6 +522,7 @@ class SLCSDataRuntimeConfig:
     pin_memory: bool
     overfit: bool
     pipeline: SLCSDataConfig
+    domain_sampling: DomainSamplingConfig | None
 
     @classmethod
     def from_mapping(
@@ -519,7 +531,12 @@ class SLCSDataRuntimeConfig:
         dino = cast(dict[str, object], raw["dino"])
         quality = cast(dict[str, object], raw["quality"])
         augmentation = cast(dict[str, Any] | None, raw.get("augmentation"))
+        # Explicit legacy migration: absent sampling remains disabled (None).
+        sampling = cast(dict[str, Any] | None, raw.get("domain_sampling"))
         try:
+            domain_sampling = (
+                DomainSamplingConfig(**sampling) if sampling is not None else None
+            )
             pipeline = SLCSDataConfig(
                 window_size=cast(int, raw["window_size"]),
                 train_stride=cast(int, raw["train_stride"]),
@@ -582,6 +599,7 @@ class SLCSDataRuntimeConfig:
             pin_memory=cast(bool, raw["pin_memory"]),
             overfit=cast(bool, raw["overfit"]),
             pipeline=pipeline,
+            domain_sampling=domain_sampling,
         )
 
 

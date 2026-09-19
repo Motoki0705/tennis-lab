@@ -48,6 +48,16 @@ DINO token precompute も同じ境界方針です。`model_io.factory` が backb
 
 split 単位は `video_id` で、同じマルチカメラ動画から切り出した clip は同一 split に入ります。seed と比率を split manifest に保存します。既存 split の上書きには `splits.overwrite=true` が必要です。
 
+`train_real_rgb_temporal_domain_balanced` は `train_real_rgb_ball_temporal_context` を継承し、train samplingだけを変更します。
+`data.domain_sampling.video_domains` でvideo→domainを明示し、品質filter後のtrain window数の逆数を各windowの抽出重みにします。
+復元抽出を1epochあたり元のtrain window数だけ行うため、epochのbatch数は維持し、domainは期待値で均衡します（各batch・epochの厳密な50:50ではありません）。
+少数domainは重複露出し、多数domainには未抽出windowが生じます。quality値・教師・mask・augmentationは変更しませんが、露出回数に伴う累積gradient寄与は変わります。val/testは従来の逐次走査です。
+既定は無効で旧shuffle経路を保持します。旧保存設定でsectionがない場合も明示的に無効へ移行します。
+有効時は全train videoのmappingが必須です。train外videoのmappingは許容しますが、設定したdomainに品質filter後のtrain windowが1つもなければ失敗します。空文字・前後空白のdomainは拒否します。
+`DomainBalancedSampler` の公開 `domains`・`weights` と `set_epoch(epoch)` で抽出履歴を再計算できます。唯一のseedは `run.seed` で、各epochは `seed + epoch` の独立generatorを使います。
+Lightningのepoch通知によりloader再構築・epoch境界resumeでも同じepochの抽出順序を復元します。同じPyTorch実装と同じ順序のtrain metadataが前提で、epoch途中のcursorやaugmentation・worker RNGを含む完全なbit一致resumeは保証しません。
+分散学習は未対応でworld size > 1を明示拒否します。このprofileによる精度改善は未検証です。
+
 1つの小規模データセットを意図的に記憶できるか確認するときだけ、全videoをtrainへ割り当て、同じwindowをvalidation/testにも使う明示的overfit modeを使用できます。これは汎化性能の評価には使用しません。
 
 ```bash

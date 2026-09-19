@@ -111,6 +111,7 @@ def runtime(
         pin_memory=False,
         overfit=False,
         pipeline=data_config,
+        domain_sampling=None,
     )
 
 
@@ -130,7 +131,8 @@ def test_fit_reads_only_train_without_dino_and_retains_quality(
         calls.append(split)
         assert config.pipeline.quality == runtime.pipeline.quality
         assert split == "train", "Fitting must never inspect val/test labels"
-        return _label_windows(config, split)
+        result: dict[str, np.ndarray] = _label_windows(config, split)
+        return result
 
     monkeypatch.setattr(ball_baseline, "_label_windows", labels)
     baseline = TrainBallMean.fit(runtime)
@@ -213,7 +215,7 @@ def test_changed_validation_labels_never_change_train_constant(
     original_loader = ball_baseline._label_windows
 
     def changed(config: SLCSDataRuntimeConfig, split: str) -> dict[str, np.ndarray]:
-        result = original_loader(config, split)
+        result: dict[str, np.ndarray] = original_loader(config, split)
         if split == "val":
             result["target_ball_position"] += 100
         return result
