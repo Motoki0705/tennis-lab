@@ -210,7 +210,9 @@ def test_cuda_requires_queue_before_any_model_work(
         )
 
 
-@pytest.mark.parametrize("requested", [[], ["--splits", "val", "test"]])
+@pytest.mark.parametrize(
+    "requested", [[], ["--splits", "val", "test", "--ball-train-mean"]]
+)
 def test_cli_test_evaluation_is_explicit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, requested: list[str]
 ) -> None:
@@ -243,6 +245,7 @@ def test_cli_test_evaluation_is_explicit(
     evaluate_slcs_run.main()
     assert calls[0]["splits"] == (["val", "test"] if requested else ["val"])
     assert calls[0]["domain_prefixes"] == [("video_", "meiji")]
+    assert calls[0]["ball_train_mean"] == bool(requested)
 
 
 @pytest.mark.parametrize("symlink_roots", [False, True])
@@ -269,9 +272,15 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
         build_slcs_dataset_fixture(
             dataset, SLCSFixtureDatasetConfig(videos=(video,), num_frames=8, fps=fps)
         )
+    assignments = {"video_000": "val", "broadcast": "val"}
+    if symlink_roots:
+        build_slcs_dataset_fixture(
+            dataset, SLCSFixtureDatasetConfig(videos=("training",), num_frames=8)
+        )
+        assignments["training"] = "train"
     save_split_file(
         dataset / "splits.json",
-        {"video_000": "val", "broadcast": "val"},
+        assignments,
         seed=0,
         val_ratio=1.0,
         test_ratio=0.0,
@@ -298,10 +307,15 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
         domain_prefixes=[("video_", "meiji")],
         default_domain="broadcast",
         batch_size=2,
+        ball_train_mean=symlink_roots,
     )
     receipt = json.loads((out / "selection.json").read_text())
     assert receipt["selected"]["path"] == str(best)
     assert not (out / "test").exists()
+    assert (out / "ball_train_mean_fit.json").exists() == symlink_roots
+    if symlink_roots:
+        fit = json.loads((out / "ball_train_mean_fit.json").read_text())
+        assert fit["train_video_ids"] == ["training"]
     comparison = json.loads((out / "val/comparison/comparison.json").read_text())
     assert comparison["domain_mapping"] == {
         "video_000": "meiji",
@@ -311,6 +325,19 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
         folder = out / "val" / mode
         metrics = json.loads((folder / "metrics.json").read_text())
         assert metrics["num_windows"] == 2
+        if symlink_roots:
+            baseline = json.loads(
+                (folder / "ball_train_mean_comparison.json").read_text()
+            )
+            assert not baseline["in_sample"]
+            assert baseline["rows"][0]["model_error_m"] == pytest.approx(
+                metrics["ball_position_error_m"]
+            )
+            assert {row["group_type"] for row in baseline["rows"]} == {
+                "all",
+                "domain",
+                "video",
+            }
         assert metrics["context"]["selection"]["selected"]["epoch_zero_based"] == 2
         assert (
             metrics["context"]["evaluation_config"]["data"]["quality"][

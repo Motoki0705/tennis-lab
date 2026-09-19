@@ -95,6 +95,8 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 
 標準評価は player/ball の 3D 位置誤差と yaw 誤差を出力します。追加のCPU診断は `evaluation.motion.summarize_motion(arrays, fps_by_clip, position_representation="normalized_court")` を使用します。`fps_by_clip` は評価対象と完全一致する `(video_id, full clip_id) -> FPS` の明示mappingです。有効な連続フレームの組だけから速度・加速度・jerk（m/s、m/s²、m/s³）の予測値・教師値・誤差を計算し、位置のXYZ標準偏差と標準偏差ノルム比も全体・video・camera別に返します。重複windowは別々に数え、playerは追跡IDではなくnear/far slot別です。分散比は成功指標ではなく、教師分散が0の場合は未定義です。解析は誤差分布、時系列誤差、欠損率、uncertainty calibration を保存します。2D overlay は入力観測を描画し、3D prediction の reprojection は calibrated camera が明示された場合だけ行います。
 
+`scripts.analysis.evaluate_slcs_run --ball-train-mean` は保存済み学習設定のtrain splitだけからconfidence-weighted arithmetic meanのball定数を推定し、`ball_train_mean_fit.json` と各split/input conditionの `ball_train_mean_comparison.json` を保存します。fitはproductionのwindow/quality設定を保持し、augmentationなしで `(video, clip, camera, frame)` の重複教師・mask・weightの一致を確認して集約します（cameraは別観測）。比較は既存headlineと同じ非加重valid window occurrencesで、overall/domain/video別のEuclidean誤差をm単位で出力します。この平均は二乗距離を最小化する定数で、平均Euclidean距離の最適定数ではありません。train評価はin-sample、overfit設定と不完全annotationのskip設定は拒否します。教師を読むCPU処理だけは `require_dino=False` とし、DINO cacheを読まず検証もしません。モデルの各入力条件と通常のDINO検証は変更せず、評価教師・window metadataをproduction splitと照合します。
+
 ## 検証
 
 ```bash

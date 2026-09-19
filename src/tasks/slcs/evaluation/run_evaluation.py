@@ -19,6 +19,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.slcs.configuration import SLCSEvaluationConfig
 from src.tasks.slcs.data.annotation import SLCSDataIndex
+from src.tasks.slcs.evaluation.ball_baseline import TrainBallMean
 from src.tasks.slcs.evaluation.comparison import (
     CONDITIONS,
     compare_conditions,
@@ -130,7 +131,7 @@ def evaluation_config(
             },
         }
     )
-    return cast(DictConfig, result)
+    return result
 
 
 def clip_fps(
@@ -183,6 +184,7 @@ def evaluate_training_run(
     batch_size: int = 4,
     domain_prefixes: Sequence[tuple[str, str]],
     default_domain: str,
+    ball_train_mean: bool = False,
 ) -> Path:
     """Create a fresh evaluation bundle with configs, selection, metrics and FPS."""
     if (
@@ -247,12 +249,15 @@ def evaluate_training_run(
         batch_size=batch_size,
     )
     runtime = SLCSEvaluationConfig.from_config(config)
+    baseline = TrainBallMean.fit(runtime.data) if ball_train_mean else None
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.mkdir()  # Exclusive: a failed/partial previous run is never overwritten.
     base_context = evaluation_context(checkpoint, input_mode="full")
     receipt["checkpoint_sha256"] = base_context["checkpoint_sha256"]
     save_json(receipt, destination / "selection.json")
     OmegaConf.save(config, destination / "evaluation_config.yaml", resolve=True)
+    if baseline is not None:
+        save_json(baseline.fit_report, destination / "ball_train_mean_fit.json")
     predictor = SLCSPredictor.load_from_checkpoint(
         checkpoint,
         resolver=runtime.resolver,
@@ -263,6 +268,9 @@ def evaluate_training_run(
     predictor.model.float()
     for split in splits:
         bundles = {}
+        expected_labels = (
+            baseline.expected_labels(split) if baseline is not None else None
+        )
         for condition in CONDITIONS:
             config.evaluate.split = split
             config.evaluate.input_mode = condition
@@ -293,6 +301,19 @@ def evaluate_training_run(
                 ],
             }
             save_evaluation(directory, report, arrays, context=context)
+            if baseline is not None and expected_labels is not None:
+                save_json(
+                    baseline.compare(
+                        arrays,
+                        expected=expected_labels,
+                        split=split,
+                        domains=_domains(
+                            arrays["video_ids"], domain_prefixes, default_domain
+                        ),
+                        headline_error_m=report.get("ball_position_error_m"),
+                    ),
+                    directory / "ball_train_mean_comparison.json",
+                )
             OmegaConf.save(config, directory / "evaluation_config.yaml", resolve=True)
             save_json(
                 summarize_motion(
