@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-ball-velocity-gradient-calibration-v1
 - run-slcs-full-real-rgb-gap48-val-v1
 - run-slcs-ball-velocity-train-scale-v1
 - run-slcs-full-real-rgb-gap48-e60-resume-v2

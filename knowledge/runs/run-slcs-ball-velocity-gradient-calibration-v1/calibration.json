@@ -1,0 +1,368 @@
+{
+  "supervised_loss": 0.28767937421798706,
+  "velocity_loss": 13.338584899902344,
+  "supervised_gradient_norm": 0.017141269257452938,
+  "velocity_gradient_norm": 1.5418442357252726,
+  "gradient_ratio": 0.1,
+  "ball_velocity_weight": 0.0011117380640846516,
+  "weighted_velocity_gradient_norm": 0.0017141269257452939,
+  "velocity_scale_mps": 11.259468485469933,
+  "seed": 42,
+  "rng_order": [
+    "seed all; fresh CPU model init; transfer device",
+    "independent CPU Generator(seed): randperm train windows without replacement",
+    "reseed all; load selected windows with saved training augmentation",
+    "reseed all; single training-mode forward (dropout enabled)"
+  ],
+  "checkpoint_loaded": false,
+  "model_training": true,
+  "split": "train",
+  "device": "cuda",
+  "torch_version": "2.13.0+cu130",
+  "numpy_version": "2.3.5",
+  "batch_size": 16,
+  "train_window_count": 466,
+  "selected_indices": [
+    416,
+    168,
+    110,
+    61,
+    358,
+    6,
+    326,
+    273,
+    196,
+    267,
+    164,
+    65,
+    124,
+    25,
+    41,
+    411
+  ],
+  "selected_windows": [
+    {
+      "index": 416,
+      "scene_id": "video_000/clip_011@cam0@000780",
+      "clip_id": "video_000/clip_011",
+      "video_id": "video_000",
+      "camera_id": "cam0",
+      "window_start": 780,
+      "window_length": 120
+    },
+    {
+      "index": 168,
+      "scene_id": "video_000/clip_002@cam1@000600",
+      "clip_id": "video_000/clip_002",
+      "video_id": "video_000",
+      "camera_id": "cam1",
+      "window_start": 600,
+      "window_length": 120
+    },
+    {
+      "index": 110,
+      "scene_id": "video_000/clip_001@cam1@000360",
+      "clip_id": "video_000/clip_001",
+      "video_id": "video_000",
+      "camera_id": "cam1",
+      "window_start": 360,
+      "window_length": 120
+    },
+    {
+      "index": 61,
+      "scene_id": "video_000/clip_000@cam1@000300",
+      "clip_id": "video_000/clip_000",
+      "video_id": "video_000",
+      "camera_id": "cam1",
+      "window_start": 300,
+      "window_length": 120
+    },
+    {
+      "index": 358,
+      "scene_id": "video_000/clip_009@cam0@000180",
+      "clip_id": "video_000/clip_009",
+      "video_id": "video_000",
+      "camera_id": "cam0",
+      "window_start": 180,
+      "window_length": 120
+    },
+    {
+      "index": 6,
+      "scene_id": "broadcast_shanghai/clip_004@cam0@000360",
+      "clip_id": "broadcast_shanghai/clip_004",
+      "video_id": "broadcast_shanghai",
+      "camera_id": "cam0",
+      "window_start": 360,
+      "window_length": 120
+    },
+    {
+      "index": 326,
+      "scene_id": "video_000/clip_007@cam2@000120",
+      "clip_id": "video_000/clip_007",
+      "video_id": "video_000",
+      "camera_id": "cam2",
+      "window_start": 120,
+      "window_length": 120
+    },
+    {
+      "index": 273,
+      "scene_id": "video_000/clip_005@cam1@000000",
+      "clip_id": "video_000/clip_005",
+      "video_id": "video_000",
+      "camera_id": "cam1",
+      "window_start": 0,
+      "window_length": 120
+    },
+    {
+      "index": 196,
+      "scene_id": "video_000/clip_002@cam2@000960",
+      "clip_id": "video_000/clip_002",
+      "video_id": "video_000",
+      "camera_id": "cam2",
+      "window_start": 960,
+      "window_length": 120
+    },
+    {
+      "index": 267,
+      "scene_id": "video_000/clip_004@cam2@000227",
+      "clip_id": "video_000/clip_004",
+      "video_id": "video_000",
+      "camera_id": "cam2",
+      "window_start": 227,
+      "window_length": 120
+    },
+    {
+      "index": 164,
+      "scene_id": "video_000/clip_002@cam1@000360",
+      "clip_id": "video_000/clip_002",
+      "video_id": "video_000",
+      "camera_id": "cam1",
+      "window_start": 360,
+      "window_length": 120
+    },
+    {
+      "index": 65,
+      "scene_id": "video_000/clip_000@cam1@000540",
+      "clip_id": "video_000/clip_000",
+      "video_id": "video_000",
+      "camera_id": "cam1",
+      "window_start": 540,
+      "window_length": 120
+    },
+    {
+      "index": 124,
+      "scene_id": "video_000/clip_001@cam2@000240",
+      "clip_id": "video_000/clip_001",
+      "video_id": "video_000",
+      "camera_id": "cam2",
+      "window_start": 240,
+      "window_length": 120
+    },
+    {
+      "index": 25,
+      "scene_id": "broadcast_washington/clip_005@cam0@000000",
+      "clip_id": "broadcast_washington/clip_005",
+      "video_id": "broadcast_washington",
+      "camera_id": "cam0",
+      "window_start": 0,
+      "window_length": 120
+    },
+    {
+      "index": 41,
+      "scene_id": "video_000/clip_000@cam0@000060",
+      "clip_id": "video_000/clip_000",
+      "video_id": "video_000",
+      "camera_id": "cam0",
+      "window_start": 60,
+      "window_length": 120
+    },
+    {
+      "index": 411,
+      "scene_id": "video_000/clip_011@cam0@000480",
+      "clip_id": "video_000/clip_011",
+      "video_id": "video_000",
+      "camera_id": "cam0",
+      "window_start": 480,
+      "window_length": 120
+    }
+  ],
+  "valid_pair_count": 1579,
+  "positive_weight_pair_count": 1579,
+  "pair_confidence_sum": 1318.949951171875,
+  "training_run": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003",
+  "config_sha256": "07aaad1cb8cedfe2d7066801c7786eda5b7f69a556d7f5c04349240ca240a853",
+  "training_config": {
+    "paths": {
+      "project_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+      "data_root": "/home/kamimura/projects/tennis-lab/data",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/checkpoints",
+      "artifact_root": "/home/kamimura/projects/tennis-lab/outputs",
+      "output_root": "/home/kamimura/projects/tennis-lab/outputs",
+      "cache_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.cache",
+      "external_asset_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/third_party"
+    },
+    "model": {
+      "name": "slcs_fusion",
+      "hidden_dim": 128,
+      "num_shared_layers": 4,
+      "num_position_layers": 0,
+      "num_rotation_layers": 0,
+      "num_heads": 4,
+      "ffn_dim": 384,
+      "dropout": 0.1,
+      "rope_dim": 32,
+      "rope_theta_time": 10000.0,
+      "rope_theta_entity": 10000.0,
+      "attention_type": "mha",
+      "ffn_type": "swiglu",
+      "invisible_init_std": 0.02,
+      "dino_patch_downsample_factor": 2,
+      "dino_cross_attn_every": 1,
+      "log_b_min": -6.0,
+      "log_b_max": 3.0
+    },
+    "data": {
+      "dataset_root": "slcs/real_rgb_v1",
+      "split_file": "slcs/real_rgb_v1/splits.json",
+      "batch_size": 16,
+      "num_workers": 2,
+      "pin_memory": true,
+      "overfit": false,
+      "window_size": 120,
+      "train_stride": 60,
+      "eval_stride": 120,
+      "num_players": 2,
+      "num_court_kp": 14,
+      "require_dino": true,
+      "cache_dino_tokens": true,
+      "on_incomplete": "error",
+      "dino": {
+        "backbone": "dinov3_vitb16",
+        "patch_size": 16,
+        "image_height": 256,
+        "image_width": 448,
+        "embed_dim": 768,
+        "frame_stride": 10
+      },
+      "quality": {
+        "min_player_confidence": 0.3,
+        "min_ball_cameras": 1,
+        "label_weight_power": 1.0,
+        "min_window_label_ratio": 0.5
+      },
+      "augmentation": {
+        "enabled": true,
+        "joint_dropout": 0.1,
+        "ball_dropout": 0.15,
+        "uv_std": 0.003,
+        "burst_probability": 0.5,
+        "burst_max_frames": 24,
+        "rgb_only_probability": 0.15,
+        "rgb_dropout_probability": 0.1
+      }
+    },
+    "training": {
+      "trainer": {
+        "max_epochs": 60,
+        "gradient_clip_val": 1.0,
+        "deterministic": true,
+        "precision": "bf16-mixed",
+        "log_every_n_steps": 20,
+        "check_val_every_n_epoch": 1,
+        "accumulate_grad_batches": 1,
+        "reload_dataloaders_every_n_epochs": 0,
+        "enable_progress_bar": false,
+        "enable_model_summary": true,
+        "benchmark": false
+      },
+      "learning_rate": 0.0003,
+      "weight_decay": 1e-05,
+      "warmup_steps": 200,
+      "warmup_epochs": null,
+      "min_lr": 1e-06,
+      "steps_per_epoch": null,
+      "optimizer": {
+        "betas": [
+          0.9,
+          0.999
+        ]
+      },
+      "compile": {
+        "enabled": false,
+        "backend": "inductor",
+        "mode": "default",
+        "fullgraph": false,
+        "dynamic": false
+      },
+      "checkpoint": {
+        "enabled": true,
+        "filename": "slcs-{epoch:02d}",
+        "monitor": "val/scene_position_error_m_epoch",
+        "mode": "min",
+        "save_top_k": 3,
+        "save_last": true
+      },
+      "early_stopping": {
+        "enabled": false,
+        "monitor": "val/loss",
+        "mode": "min",
+        "patience": 15,
+        "min_delta": 1e-05,
+        "check_on_train_epoch_end": false
+      },
+      "lr_monitor": {
+        "enabled": true,
+        "interval": "step"
+      },
+      "qualitative_logging": {
+        "enabled": false,
+        "every_n_epochs": 1,
+        "num_samples": 4,
+        "selection_mode": "random",
+        "selected_indices": null
+      },
+      "gan": {
+        "enabled": false,
+        "target_weight": 0.0,
+        "warmup_epochs": 1,
+        "generator_gradient_clip_val": null,
+        "discriminator_gradient_clip_val": null,
+        "transition": {
+          "start_epoch": 0
+        }
+      },
+      "matmul_precision": "high",
+      "allow_tf32": true
+    },
+    "loss": {
+      "player_position_weight": 1.0,
+      "player_rotation_weight": 1.0,
+      "player_angle_weight": 0.5,
+      "ball_position_weight": 1.0,
+      "player_position_nll_weight": 0.5,
+      "player_rotation_nll_weight": 0.25,
+      "ball_position_nll_weight": 0.5,
+      "player_position_smoothness_weight": 1.0,
+      "ball_position_smoothness_weight": 0.0,
+      "ground_penetration_weight": 1.0,
+      "smoothness_order": 3
+    },
+    "run": {
+      "output_dir": "slcs/train/real_rgb_no_ball_smooth/s42-takeover-003",
+      "seed": 42,
+      "gpus": 1,
+      "resume": null,
+      "init_weights": null,
+      "fast_dev_run": false,
+      "dry_run": false,
+      "test_after_fit": true,
+      "artifact_store": {
+        "mode": "local",
+        "remote": null,
+        "remote_root": null,
+        "sync_interval_seconds": null
+      }
+    }
+  },
+  "gradient_target": "pred_ball_position (normalized court XYZ), L2 over entire minibatch"
+}

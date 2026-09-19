@@ -1,0 +1,11 @@
+# Train-only calibration: run-slcs-ball-velocity-gradient-calibration-v1.
+# Single training intervention versus no-ball-smooth: supervised ball velocity.
+defaults:
+  - train_real_rgb_no_ball_smooth
+  - _self_
+loss:
+  ball_velocity_weight: 0.0011117380640846516
+  ball_velocity_scale_mps: 11.259468485469933
+run:
+  test_after_fit: false
+  output_dir: ${tennis_output:slcs,train,real_rgb_velocity,${tennis_run_id:}}
