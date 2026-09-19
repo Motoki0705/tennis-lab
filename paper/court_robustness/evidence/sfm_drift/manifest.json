@@ -1,0 +1,56 @@
+{
+  "schema": "court_sfm_temporal_ground_audit_v1",
+  "scene_id": "B00",
+  "frame_count": 491,
+  "point_count": 217407,
+  "period_edges": [
+    0,
+    122,
+    245,
+    368,
+    491
+  ],
+  "photos": [
+    "frame_000000.png",
+    "frame_000122.png",
+    "frame_000245.png",
+    "frame_000368.png"
+  ],
+  "photo_selection": "First captured/exported RGB of each equal chronological quarter, full field of view.",
+  "selection": {
+    "region": "Union of interiors of the two saved doubles courts",
+    "track_rule": "All observations in one quarter; boundary-crossing tracks excluded",
+    "maximum_absolute_height_m": 0.3,
+    "maximum_reprojection_error_px": 1.0,
+    "cell_size_m": 0.5,
+    "sensitivity_cell_size_m": 1.0,
+    "minimum_points_per_cell": 5
+  },
+  "comparison": "Median height per cell and quarter; intersect cells across all four quarters; subtract first-quarter median in each cell, then summarize across cells. Distinct points, not repeat estimates of the same point.",
+  "limitations": "No survey truth or causal isolation. Surface relief within cells, feature/triangulation errors and reconstruction distortion can all contribute. Metric scale comes from the saved court alignment. B00 only, not a four-scene drift estimate.",
+  "source_export_max_distance_native": 2.791502904267355e-06,
+  "source_export_rgb_exact": true,
+  "source_format": "https://colmap.github.io/format.html",
+  "dependencies": {
+    "evidence/alignment_method/manifest.json": "b193bfba29971b361fac4d08ab11a0a4b29de57827761ba353a7161254179e30",
+    "evidence/alignment_method/arrays.npz": "84f29cd11f1b4970d1338b558d1df7abe9c390cb5cac28675202d3c1355b0a7d",
+    "evidence/scene_sources/B00.json": "036ca2ac8a49db0241e10306757671a5e1e606f28db654b50f93d7a7366495d0"
+  },
+  "files": {
+    "tracks.npz": "9d9879e45283ca40e07e25609c62228136a505cf50b86598fc96aee162791d74",
+    "frame_000000.png": "4b56d4bc858a3de4efb84d6744678341bae01d80815ca87d8eb3006831dbb199",
+    "frame_000122.png": "ccc1a22b928d81e9b9a9e0d7918d93bc319fa964a58b72553528bae111311f62",
+    "frame_000245.png": "e42cb187e792382f8853a65de71229ae1653316ac4bbc48eacf89c5f5400333a",
+    "frame_000368.png": "bc2f5c7b7f833f4f51d1c1b067f7ebc71cec487d1d553a64924f66e7229419ae"
+  },
+  "source_files": {
+    "data/synthetic_data_generation/scenes/B00/reconstruction/sfm/model/images.bin": "0a9156a6c771f8772a858c4a54b1cc3987205fc2799d3cc3dd96e7fd150e99eb",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/sfm/model/points3D.bin": "390d5dd3ccb338f9d4072e1d9ae5f2701ac83abf4774db2aa0b370d67f810fb5",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/export/scene.json": "18251128c91985103ef2bcfb5c5e6019a452a6be07f8b59ca4c82028485f1743",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/export/points_scene.npy": "9178c177e99700ab36918c7455ce84916e3bebcfe3f094659588317588437e7e",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/export/images/frame_000000.png": "4b56d4bc858a3de4efb84d6744678341bae01d80815ca87d8eb3006831dbb199",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/export/images/frame_000122.png": "ccc1a22b928d81e9b9a9e0d7918d93bc319fa964a58b72553528bae111311f62",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/export/images/frame_000245.png": "e42cb187e792382f8853a65de71229ae1653316ac4bbc48eacf89c5f5400333a",
+    "data/synthetic_data_generation/scenes/B00/reconstruction/export/images/frame_000368.png": "bc2f5c7b7f833f4f51d1c1b067f7ebc71cec487d1d553a64924f66e7229419ae"
+  }
+}

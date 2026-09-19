@@ -21,7 +21,7 @@
 \renewcommand{\tablename}{表}
 \renewcommand{\refname}{参考文献}
 \pagestyle{fancy}\fancyhf{}\renewcommand{\headrulewidth}{0pt}
-\fancyfoot[L]{\sffamily\fontsize{7}{9}\selectfont\color{muted}TENNIS-LAB / Court detection / 2026-09-18}
+\fancyfoot[L]{\sffamily\fontsize{7}{9}\selectfont\color{muted}TENNIS-LAB / Court detection / 2026-09-19}
 \fancyfoot[R]{\sffamily\fontsize{8}{10}\selectfont\thepage}
 \newcommand{\sect}[1]{\section{#1}\vspace{-1mm}}
 \newcommand{\panel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth]{figures/#1}\end{minipage}}
@@ -35,7 +35,7 @@
 \begin{center}
 {\sffamily\bfseries\fontsize{17}{23}\selectfont\color{ink}3DGSによる視点拡張と幾何教師を用いた\\テニスコート検出}\par\vspace{2mm}
 {\fontsize{10}{14}\selectfont データ生成・多タスク学習・未学習画像での定性評価}\par\vspace{2mm}
-{\sffamily\fontsize{8}{11}\selectfont tennis-lab\quad 技術報告\quad 2026年9月18日}
+{\sffamily\fontsize{8}{11}\selectfont tennis-lab\quad 技術報告\quad 2026年9月19日}
 \end{center}\par
 \vspace{-1mm}
 \begin{abstract}
@@ -209,22 +209,48 @@ TCD argmax：H生成 & 可 & 不可 & 不可 & 不可\\
 \external{local04}
 {\small 本モデルは俯瞰の線構造を捉える一方、画面下にも小さなLINE反応がある。KP＋Hは特に奥側・左側の線で実コートとずれる。TCDは公式処理で1点、argmaxでもHを生成できない。}
 \captionof{figure}{指定写真C・Dの実推論。表示条件は図\ref{fig:ab}と共通。4例とも、本モデルのLINEとKP由来の幾何復元は同じ品質にはなっていない。}\label{fig:cd}\par
-\vspace{-1mm}
-\section{考察と結論}\par
-\vspace{-1mm}
-{\small
-今回の観測は、見慣れない視点でも密な線構造を抽出できる可能性を示す一方、\textbf{規格コートへの正しい対応付けは未解決}である。
-LINEとKPは別ヘッドで、幾何整合損失も無効なため両者の一致は保証されない。ただし、これが失敗の原因であるという因果検証は行っていない。
-3DGS由来のぼけと位置合わせの誤差は教師へ伝播し、人手確認を含むため完全自動化も評価できていない。
-4枚・GTなしの比較から母集団の性能や合成データの寄与を結論づけることはできない。
-次の検証は、会場を分離した人手GT付き集合と、同一モデル・同一解像度での実写のみ／合成混合の比較である。
-本報告はその前段として、データ生成から推論までの方法と、再現可能な観測・失敗例を提示した。
-}\par
+\section{課題点}
+\subsection{SfMのドリフトと幾何教師への影響}
+SfMには、長い撮影区間で位置・姿勢・スケールの誤差が累積するドリフトの問題がある\cite{drift}。
+再構成の変形は3DGSの外観と幾何教師の整合を損なうため、保存教師との再投影一致だけでは十分でない。
+そこでB00の実SfM点217,407点と観測トラックを読み、491フレームを時系列で4等分して、地面の再構成高さを比較した（図\ref{fig:drift}）。
+
+対象は保存コート2面の内側、推定地面から$\pm30$ cm以内、SfM再投影誤差1 px以下の点とした。
+全観測が一つの区間に収まるトラックだけを使い、区間をまたぐ点は除く。
+地面を0.5 m格子に分け、\textbf{全4区間で各5点以上を持つ共通33セル}に限定した。
+各セル・各区間の高さ中央値から第1区間の値を引き、同じ領域同士の差を集計する。
+これは同一特徴点の再推定比較ではなく、同一セル内の異なる点群による診断である。
+
+\newpage
+\noindent\includegraphics[width=\linewidth]{figures/sfm_temporal_drift.png}
+\captionof{figure}{B00の実データによるドリフトの兆候。上段は各撮影区間の先頭の実画像。(a)元RGBを持つ地面点群と保存コート、共通33セルの位置・第3区間と第1区間の高さ差。(b)同じ33セルの区間別の差。灰点は全セル、青緑は中央値と四分位範囲であり、信頼区間ではない。点群の表示のみ3点に1点へ間引いた。m・cmへの換算には保存アライメントのスケールを使う。}\label{fig:drift}
+
+第1区間に対する高さ差の中央値は、第2--4区間でそれぞれ\textbf{+1.3、+3.2、+1.5 cm}だった。
+第3区間の四分位範囲は+2.1--+3.9 cmで、地面の高さが撮影区間に応じて偏る。
+格子を1 mへ広げた感度確認でも、共通101セルにおける第3区間の中央値は+3.0 cmだった。
+この時間依存の不整合はドリフトと整合する兆候だが、測量正解はなく、セル内の実際の凹凸や特徴点・三角測量の誤差とも分離できない。
+したがって、\emph{絶対的なドリフト量の測定や、B00以外への一般化は行わない}。
+
+一つの相似変換でコートをアライメントしても、区間ごとに異なる変形は取り除けない。
+今後はSfM段階で地面の平面性や長距離の構造対応\cite{drift}を制約し、再訪時の対応と独立な地面基準で確認する必要がある。
+これは、レンダリング枚数を増やす前に幾何教師の品質を確保する課題である。
+
+\subsection{4シーンに限られる多様性と汎化性能の不足}
+合成側はB00--B03の\textbf{4シーンのみ}で、8,415枚への視点拡張も、新しい会場・路面・照明・背景を追加するものではない。
+TCD実画像8,841枚も混合しているが、合成側の分割は同一シーン内の軌道群単位であり、未知シーンへの汎化を測れていない。
+また、4シーンを4つの独立した会場とみなすこともできない。
+
+指定写真ではLINEが反応してもKP由来の規格コートはずれており、未知画像に対する幾何復元の汎化性能は十分でない。
+ただし4枚・人手GTなしの観測から性能全体を定量化したり、シーン数だけを失敗原因と断定したりはできない。
+会場・路面・照明の異なるシーンを追加し、会場を完全に分離した人手GT付き集合でLINEとKPを別々に評価する必要がある。
+同一モデル・解像度で実写のみと合成混合を比較し、シーン数の増加が汎化へ与える効果も検証する。
+\par
 \vspace{-2mm}
-\begin{thebibliography}{4}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
+\begin{thebibliography}{5}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
 \bibitem{tcd} yastrebksv. \href{https://github.com/yastrebksv/TennisCourtDetector}{TennisCourtDetector}. 公開コード・重み、コード版 e5cd4f1（2026-09-18参照）.
 \bibitem{gs} B. Kerbl, G. Kopanas, T. Leimkühler, G. Drettakis. \href{https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}{3D Gaussian Splatting for Real-Time Radiance Field Rendering}. ACM TOG 42(4), 2023.
 \bibitem{dino} O. Siméoni et al. \href{https://arxiv.org/abs/2508.10104}{DINOv3}. arXiv:2508.10104, 2025.
 \bibitem{dpt} R. Ranftl, A. Bochkovskiy, V. Koltun. \href{https://openaccess.thecvf.com/content/ICCV2021/html/Ranftl_Vision_Transformers_for_Dense_Prediction_ICCV_2021_paper.html}{Vision Transformers for Dense Prediction}. ICCV, 2021.
+\bibitem{drift} A. Holynski, D. Geraghty, J.-M. Frahm, C. Sweeney, R. Szeliski. \href{https://arxiv.org/abs/2008.12295}{Reducing Drift in Structure From Motion Using Extended Features}. 3DV, pp. 51--60, 2020.
 \end{thebibliography}
 \end{document}

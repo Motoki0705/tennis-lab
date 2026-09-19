@@ -13,6 +13,8 @@ import numpy as np
 from alignment_evidence import BUNDLE, read_bundle, validate_geometry
 from build_paper import source_digests
 from common import PAPER_PAGES, REPO, ROOT, sha256, sources, write_json
+from drift_evidence import BUNDLE as DRIFT_BUNDLE
+from drift_evidence import validate as validate_drift_geometry
 from make_scene_figures import SELECTION, render_overlay, validate_projection
 from PIL import Image
 
@@ -151,6 +153,20 @@ def main() -> None:
     method_checks = validate_alignment_method(
         check_local_sources=args.check_local_sources
     )
+    drift_checks = validate_drift_geometry(check_local_sources=args.check_local_sources)
+    drift = json.loads((ROOT / "evidence/drift_figures.json").read_text())
+    require(
+        sha256(DRIFT_BUNDLE / "manifest.json") == drift["bundle_manifest_sha256"]
+        and sha256(DRIFT_BUNDLE / "measurements.json") == drift["measurements_sha256"],
+        "Changed SfM drift source bundle or measurements",
+    )
+    require(drift_checks == drift["verification"], "SfM drift verification differs")
+    for name, digest in drift["figures"].items():
+        require(sha256(ROOT / "figures" / name) == digest, "Changed SfM drift figure")
+        require(
+            name in (ROOT / "report.tex").read_text(),
+            "SfM drift figure absent from paper",
+        )
     records = sources()
     require(len(records) == 4, "Paper must include all four supplied images")
     metadata = json.loads((ROOT / "evidence/inference_both.json").read_text())
@@ -339,6 +355,7 @@ def main() -> None:
         "local_weights_and_config_checked": args.check_local_sources,
         "build_receipt_verified": True,
         "alignment_method": method_checks,
+        "sfm_temporal_ground_audit": drift_checks,
         "corpus_images_audited": 17256,
         "exact_matches": 0,
         "baseline_official_detections": counts,

@@ -1,10 +1,10 @@
 {
   "pytest_command": ".venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py",
-  "pytest_passed": 22,
+  "pytest_passed": 27,
   "ruff_check": "passed",
   "ruff_format": "passed",
   "knowledge_validate_errors": 0,
-  "pdf_pages_visually_inspected": 6,
+  "pdf_pages_visually_inspected": 7,
   "additional_training": false,
   "gpu_used": false,
   "validator_first_round_findings_addressed": [
@@ -22,5 +22,23 @@
     "tracked_diff": "empty"
   },
   "alignment_method_geometry": "production RANSAC and selected ray projections match the saved plane and arrays; fit-only 32-view sum exactly matches the original raster",
-  "method_revision_previous_head": "9a3bbc4509640aa14b32f115a1842b7fabc3af8a"
+  "method_revision_previous_head": "9a3bbc4509640aa14b32f115a1842b7fabc3af8a",
+  "sfm_drift_geometry": "Full COLMAP point/track source check passed; bijective export mapping and RGB agreement; all shared-cell measurements and figure pixels reproduce.",
+  "local_source_validation": {
+    "date": "2026-09-19",
+    "full_command": ".venv/bin/python paper/court_robustness/verify_artifacts.py --check-local-sources --write-report",
+    "full_command_status": "failed",
+    "reason": "Checkpoint SHA-256 differs from inference",
+    "expected_ours_sha256": "e11b494366a2be4266f3f034973ef08c6a91530530d116764689ec35b2843455",
+    "actual_ours_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "current_checkpoint_config_contract_epoch_step_match": true,
+    "matching_original_checkpoint_copy_found": false,
+    "baseline_checkpoint_sha256_matches": true,
+    "alignment_method_source_validation": "passed before the checkpoint rejection",
+    "sfm_drift_source_validation": "passed, including full binary model reread and per-point track comparison",
+    "bundled_artifact_validation": "passed; see validation.json (source_owner_check=false)",
+    "existing_inference_outputs_and_weight_hash_records_changed": false,
+    "interpretation": "Equal configuration/epoch does not establish identical model weights. Do not substitute current checkpoint or relax the byte check."
+  },
+  "sfm_revision_previous_head": "906e6875f2402d8ef0540420d31251607f4f0362"
 }

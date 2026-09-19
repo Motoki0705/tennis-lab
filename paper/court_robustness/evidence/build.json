@@ -1,7 +1,7 @@
 {
   "schema": "court_paper_build_v1",
   "source_sha256": {
-    "report.tex": "42edbbaa5d48c8ed1de36dd4c7f761af57155c54bb020c6557930895dd3e2975",
+    "report.tex": "6e135b1e6eb8fb9eca2104a243d1ff56935f756e71db8cb411640c7cdda4522e",
     "figures/B00_000423_alignment.png": "c5bda24fbbe0148f4fb1de510ddb90864bcc7ee31e73e60c2414d2ba2cd434e0",
     "figures/B00_000720_alignment.png": "58896c57a96f73144926c5dcc992875a2691ade637d1b1039f5e5c94013b4117",
     "figures/B00_001493_alignment.png": "93ae4c9441567b1cd5c8d2c9f24e4a258f0d2df71fdacc20d8dceb08a9fb6c8a",
@@ -47,10 +47,11 @@
     "figures/local04_ours_line_mask.png": "4498cab4733dc86ccd671a9aeb588c854152b8520214def30a1f3e44838cfbb1",
     "figures/local04_ours_line_overlay.png": "3c8fe788101fddd35ba2b7e33b093439e90650ba1da1289ef6c508261ce46b01",
     "figures/method_projection.png": "b1bb9b29c756b7736572244c8b976e2cc020d4b797d53f96ff96b05623d2f5dc",
-    "figures/method_ransac.png": "6db91889d3969b9c3765073bb8759c34a23ab441e948a772a006b403325576f2"
+    "figures/method_ransac.png": "6db91889d3969b9c3765073bb8759c34a23ab441e948a772a006b403325576f2",
+    "figures/sfm_temporal_drift.png": "35e02c36405226721499e0091e7ff4d4b7174bcd979da6f15eb92eabf28cabf1"
   },
-  "pdf_sha256": "878cf440f4ab9efcc5c549f6ba3cf3177fd2e95a737590d7755a3f90d4d70d8f",
-  "pages": 6,
+  "pdf_sha256": "0fe305dc1e8bb4a0f6a5eae521a164927a246a35b1378f8074d770a322c4d4f0",
+  "pages": 7,
   "latex_runs": 2,
   "layout_glyph_reference_checks": "passed",
   "compiler": "This is LuaHBTeX, Version 1.17.0 (TeX Live 2023/Debian)"
