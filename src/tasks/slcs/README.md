@@ -78,6 +78,13 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 `--help`で明示的な入力・出力rootとsplitの指定を確認できる。既定はvalのみでtestは明示指定とし、
 各条件の配列・設定・checkpoint選定記録と実FPSのmotion診断を同じ評価runへ保存する。
 
+同じ学習runをresumeして複数の `last.ckpt` が残る場合は、
+`--last-checkpoint logs/version_1/checkpoints/last.ckpt` のように学習run相対で選定元を明示する。
+指定したcheckpointのretained validation callbackから最良checkpointを選び、指定fragmentを
+`selection.json` に記録する。未指定時は `last.ckpt` が正確に1個の場合だけ評価できる。
+更新時刻やversion番号では選ばず、test成績も選定には使わない。
+絶対パス、`..`、run外へのsymlink、存在しないfile、`last.ckpt` 以外の指定は拒否する。
+
 `--gap-no-rgb` を指定すると、第5条件 `detector_gap_no_rgb` を追加する。
 既存 `detector_gap` と同じ有効窓中央1/3のball・全player観測欠損に `no_rgb` を重ね、court観測は維持する。
 通常の4条件比較に加え、各splitの `gap_rgb_comparison/comparison.json` と `comparison.csv` に

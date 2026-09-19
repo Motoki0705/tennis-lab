@@ -29,6 +29,10 @@ def main() -> None:
     )
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument(
+        "--last-checkpoint",
+        help="Training-run-relative last.ckpt selecting the retained validation callback (required when multiple exist)",
+    )
+    parser.add_argument(
         "--output", required=True, help="slcs/evaluate/<experiment>/<run-id>"
     )
     parser.add_argument(
@@ -72,6 +76,7 @@ def main() -> None:
             default_domain=args.default_domain,
             ball_train_mean=args.ball_train_mean,
             gap_no_rgb=args.gap_no_rgb,
+            last_checkpoint=args.last_checkpoint,
         )
     )
 

@@ -42,17 +42,31 @@ from src.utils.paths import PROJECT_ROOT
 MONITOR = "val/scene_position_error_m_epoch"
 
 
-def select_checkpoint(training_run: Path) -> tuple[Path, dict[str, Any]]:
+def select_checkpoint(
+    training_run: Path, *, last_checkpoint: str | None = None
+) -> tuple[Path, dict[str, Any]]:
     """Use one last checkpoint's retained validation scores, never file times."""
     root = training_run.resolve(strict=True)
-    last_paths = list(root.rglob("last.ckpt"))
-    if len(last_paths) != 1:
-        raise ValueError(
-            f"Expected exactly one last.ckpt in {root}, found {len(last_paths)}"
-        )
-    last_path = last_paths[0].resolve(strict=True)
-    if not last_path.is_relative_to(root):
-        raise ValueError("last checkpoint must belong to the training run")
+    if last_checkpoint is None:
+        last_paths = list(root.rglob("last.ckpt"))
+        if len(last_paths) != 1:
+            raise ValueError(
+                f"Expected exactly one last.ckpt in {root}, found {len(last_paths)}; "
+                "select a training-run-relative source with --last-checkpoint"
+            )
+        last_path = last_paths[0].resolve(strict=True)
+    else:
+        segments = last_checkpoint.split("/")
+        if (
+            Path(last_checkpoint).is_absolute()
+            or any(segment in {"", ".", ".."} or ":" in segment for segment in segments)
+            or "\\" in last_checkpoint
+            or segments[-1] != "last.ckpt"
+        ):
+            raise ValueError("last_checkpoint must be a training-run-relative fragment ending in last.ckpt")
+        last_path = (root / last_checkpoint).resolve(strict=True)
+    if not last_path.is_relative_to(root) or not last_path.is_file():
+        raise ValueError("last checkpoint must be a file within the training run")
     last = torch.load(last_path, map_location="cpu", weights_only=False)
     callbacks = [
         value
@@ -92,6 +106,7 @@ def select_checkpoint(training_run: Path) -> tuple[Path, dict[str, Any]]:
         "selected": {**selected, "epoch_zero_based": int(state["epoch"])},
         "last_checkpoint": str(last_path),
         "last_epoch_zero_based": int(last["epoch"]),
+        **({"requested_last_checkpoint": last_checkpoint} if last_checkpoint is not None else {}),
     }
 
 
@@ -188,6 +203,7 @@ def evaluate_training_run(
     default_domain: str,
     ball_train_mean: bool = False,
     gap_no_rgb: bool = False,
+    last_checkpoint: str | None = None,
 ) -> Path:
     """Create a fresh evaluation bundle with configs, selection, metrics and FPS."""
     if (
@@ -240,7 +256,7 @@ def evaluate_training_run(
     training = OmegaConf.load(training_run / "config.yaml")
     if not isinstance(training, DictConfig):
         raise ValueError("Training config must be a mapping")
-    checkpoint, receipt = select_checkpoint(training_run)
+    checkpoint, receipt = select_checkpoint(training_run, last_checkpoint=last_checkpoint)
     config = evaluation_config(
         training,
         training_run=training_run,
