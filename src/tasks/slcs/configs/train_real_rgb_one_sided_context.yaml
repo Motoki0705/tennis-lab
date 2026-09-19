@@ -1,0 +1,8 @@
+# Single edge-context intervention against the unbalanced temporal control.
+defaults:
+  - train_real_rgb_ball_temporal_context
+  - _self_
+model:
+  missing_ball_one_sided_context: true
+run:
+  output_dir: ${tennis_output:slcs,train,real_rgb_one_sided_context,${tennis_run_id:}}

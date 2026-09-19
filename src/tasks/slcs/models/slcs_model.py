@@ -60,6 +60,9 @@ from src.tasks.slcs.models.components.heads import (
 from src.tasks.slcs.models.components.missing_ball_context import (
     MissingBallCourtContext,
 )
+from src.tasks.slcs.models.components.missing_ball_one_sided_context import (
+    MissingBallOneSidedContext,
+)
 from src.tasks.slcs.models.components.missing_ball_temporal_context import (
     MissingBallTemporalContext,
 )
@@ -162,8 +165,15 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         log_b_max: float,
         missing_ball_court_context: bool = False,
         missing_ball_temporal_context: bool = False,
+        missing_ball_one_sided_context: bool = False,
     ) -> None:
         super().__init__()
+        if not isinstance(missing_ball_one_sided_context, bool):
+            raise ValueError("missing_ball_one_sided_context must be a bool.")
+        if missing_ball_one_sided_context and not missing_ball_temporal_context:
+            raise ValueError(
+                "missing_ball_one_sided_context requires missing_ball_temporal_context."
+            )
         if not isinstance(missing_ball_temporal_context, bool):
             raise ValueError("missing_ball_temporal_context must be a bool.")
         if not isinstance(missing_ball_court_context, bool):
@@ -240,6 +250,11 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         self.missing_ball_context = (
             MissingBallCourtContext(num_court_kp=self.num_court_kp, dim=self.hidden_dim)
             if missing_ball_court_context
+            else None
+        )
+        self.missing_ball_one_sided_context = (
+            MissingBallOneSidedContext(dim=self.hidden_dim)
+            if missing_ball_one_sided_context
             else None
         )
 
@@ -447,6 +462,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             log_b_max=model.log_b_max,
             missing_ball_court_context=model.missing_ball_court_context,
             missing_ball_temporal_context=model.missing_ball_temporal_context,
+            missing_ball_one_sided_context=model.missing_ball_one_sided_context,
         )
 
     # ------------------------------------------------------------------
@@ -511,13 +527,19 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             ball_token_valid.reshape(batch_size * seq_len),
         ).reshape(batch_size, 1, seq_len, self.hidden_dim)
 
-        # Capture sources before either optional residual. Add court, then
-        # temporal context; neither intervention becomes the other's source.
+        # Capture original sources before all optional residual additions.
         temporal_context = (
             self.missing_ball_temporal_context(
                 ball_tokens.squeeze(1), ball_token_valid, padding_mask
             ).unsqueeze(1)
             if self.missing_ball_temporal_context is not None
+            else None
+        )
+        one_sided_context = (
+            self.missing_ball_one_sided_context(
+                ball_tokens.squeeze(1), ball_token_valid, padding_mask
+            ).unsqueeze(1)
+            if self.missing_ball_one_sided_context is not None
             else None
         )
         if self.missing_ball_context is not None:
@@ -527,6 +549,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
 
         if temporal_context is not None:
             ball_tokens = ball_tokens + temporal_context
+        if one_sided_context is not None:
+            ball_tokens = ball_tokens + one_sided_context
 
         x = torch.cat([player_tokens, ball_tokens], dim=1)  # (B, E, T, D)
         entity_ids = torch.arange(num_entities, device=x.device)
