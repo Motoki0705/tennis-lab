@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-ball-temporal-context-val-v1
 - run-slcs-full-real-rgb-missing-ball-court-e60-v1
 - run-slcs-full-real-rgb-velocity-val-v2
 - run-slcs-full-real-rgb-velocity-val-interrupted-v1
@@ -237,3 +238,5 @@ validation sceneでcheckpointを選定し、両visibility境界、full/gapのbal
 最大速度低下単独や1clipの見た目では採用せず、testはvalidation選定を閉じるまで実行しない。
 
 [観測ballの時間的feature context](run-slcs-full-real-rgb-ball-temporal-context-e60-v1.md)は60epoch・1800更新を完走し、全16384射影重みの更新とvalidation最良epoch49を確認した。monitorは基準1.9568→1.9492mだが、5条件・欠損境界の固定評価前に採用とは判断しない。
+
+[5条件の時間的context評価](run-slcs-full-real-rgb-ball-temporal-context-val-v1.md)で、full/gap ball平均は2.5210→2.4899m / 3.0973→2.8936m、fullの両欠損境界は61.9056→35.0919m/s / 60.7835→35.6178m/sへ改善した。しかしbroadcast full/gapは2.4293→2.9542m / 3.6010→3.9365m、playerも退行し基準の全面置換は見送る。狙った欠損境界への部分効果を保持し、観測/欠損の内訳とtrain domain別の露出・品質weightを追加監査する。testは開かない。
