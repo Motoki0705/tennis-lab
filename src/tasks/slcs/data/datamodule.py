@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytorch_lightning as pl
+import torch.distributed as distributed
 from torch.utils.data import DataLoader
 
 from src.tasks.slcs.configuration import SLCSDataRuntimeConfig
 from src.tasks.slcs.data.dataset import SLCSWindowDataset, collate_slcs
+from src.tasks.slcs.data.sampling import DomainBalancedSampler
 
 
 class SLCSDataModule(pl.LightningDataModule):
@@ -19,9 +21,12 @@ class SLCSDataModule(pl.LightningDataModule):
     ``dino`` section, ...).
     """
 
-    def __init__(self, config: SLCSDataRuntimeConfig) -> None:
+    def __init__(
+        self, config: SLCSDataRuntimeConfig, *, seed: int | None = None
+    ) -> None:
         super().__init__()
         self.config = config
+        self.seed = seed
         self.dataset_root = config.dataset_root
         self.split_file = config.split_file
         self.batch_size = config.batch_size
@@ -61,10 +66,29 @@ class SLCSDataModule(pl.LightningDataModule):
         )
 
     def _loader(self, dataset: SLCSWindowDataset, *, shuffle: bool) -> DataLoader[Any]:
+        sampler = None
+        sampling = self.config.domain_sampling
+        if shuffle and sampling is not None and sampling.enabled:
+            if (self.trainer is not None and self.trainer.world_size > 1) or (
+                distributed.is_initialized() and distributed.get_world_size() > 1
+            ):
+                raise RuntimeError(
+                    "Domain-balanced sampling does not support distributed training."
+                )
+            if self.seed is None:
+                raise ValueError("Domain-balanced sampling requires run.seed.")
+            sampler = DomainBalancedSampler(
+                [meta.video_id for meta in dataset.metas],
+                sampling.video_domains,
+                seed=self.seed,
+            )
+            if self.trainer is not None:
+                sampler.set_epoch(self.trainer.current_epoch)
         return DataLoader(
             dataset,
             batch_size=self.batch_size,
-            shuffle=shuffle,
+            shuffle=shuffle if sampler is None else False,
+            sampler=sampler,
             num_workers=self.num_workers,
             collate_fn=collate_slcs,
             drop_last=False,

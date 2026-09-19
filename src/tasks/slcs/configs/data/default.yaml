@@ -7,6 +7,9 @@ num_workers: 4
 pin_memory: true
 # Explicit memorization mode: reuse train-assigned videos for val/test.
 overfit: false
+domain_sampling:
+  enabled: false
+  video_domains: {}
 
 # Temporal windows
 window_size: 120
