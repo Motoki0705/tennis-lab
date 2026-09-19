@@ -1,0 +1,24 @@
+defaults:
+  - paths: default
+  - _self_
+source: tennis_multivew/processed/tennis_clip_source/dataset
+destination: tennis_multivew/processed/tennis_clip_source/curated_ball_v1
+dataset_id: broadcast_curated_v1
+video_groups:
+  tennis_clip_source/clip_000: broadcast_hamburg
+  tennis_clip_source/clip_001: broadcast_indoor_hard
+  tennis_clip_source/clip_002: broadcast_eastbourne
+  tennis_clip_source/clip_003: broadcast_monte_carlo
+  tennis_clip_source/clip_004: broadcast_shanghai
+  tennis_clip_source/clip_005: broadcast_washington
+  tennis_clip_source/clip_006: broadcast_shanghai
+  tennis_clip_source/clip_007: broadcast_hamburg
+  tennis_clip_source/clip_008: broadcast_outdoor_hard
+isolated_jump: 0.12
+neighbor_distance: 0.06
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

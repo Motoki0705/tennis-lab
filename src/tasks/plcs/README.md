@@ -83,6 +83,23 @@ worktreeで共有モデルを使う場合は`paths.data_root`、`paths.checkpoin
 data-root相対パスを指定してください。既存の混合profileは既に生成済みの
 `plcs/motions/gvhmr/meiji_3cam`を参照しています。
 
+## 固定データ版の準備
+
+既存sceneからmotion source単位でtrain/val/testを分け、親splitを保ったseed固定subsetを作る。
+入力と出力は独立した絶対パスで指定する。元datasetを変更せず新しい版へ公開し、
+`dataset_version.json`に入力metadata・seed・サイズと出力metadata/splitのhashを保存する。
+同じrecipeの再実行は完成版を照合する。別recipe、改変された出力、未完の`.building`は停止する。
+出力hashを持たない旧receiptは再利用判定に使わず、新しい出力版を指定する。
+全親splitの重複・未知scene・motion source漏洩を検査してからsubsetを選ぶ。
+
+```bash
+.venv/bin/python -m src.tasks.plcs.scripts.prepare_motion_split \
+  --source /absolute/data/plcs/original --destination /absolute/data/plcs/motion_split --seed 42
+.venv/bin/python -m src.tasks.plcs.scripts.prepare_subset \
+  --source /absolute/data/plcs/motion_split --destination /absolute/data/plcs/subset \
+  --seed 42 --train 1000 --evaluation 200
+```
+
 ## Modules
 
 ### configuration
