@@ -34,6 +34,7 @@ artifacts:
   log: knowledge/runs/run-slcs-meiji-streaming-visual-v1/run.log
   predictions: knowledge/runs/run-slcs-meiji-streaming-visual-v1/predictions.npz
   output_dir: outputs/slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-streaming-001
+  pr_preview: knowledge/runs/run-slcs-meiji-streaming-visual-v1/pr_preview
 parents:
 - run-slcs-full-no-smooth-meiji-visual-v2
 relations: []
@@ -85,3 +86,9 @@ CLI終了コード0、経過151.10秒。ffprobeの全decode計数でoverlayは19
 
 以後のモデル比較ではこの逐次描画経路を使用し、定量評価と固定clipの目視を併用する。
 省メモリ化そのものは位置精度・欠損時の頑健性を改善しないため、モデル学習の採否とは分ける。
+
+PR向けには既存動画の3.0–11.0秒を10fpsで同期合成した。元の異なるFPSに対し同じwall-timeの直前frameを使い、補間はしない。
+推論はやり直さず、全画角・未加工の軌道を維持する。GIFは表示用の縮小・色量子化のみ。1440px MP4・3時点PNG・生成コマンドとSHAはpr_preview/へ保存した。
+この区間は定性的な例であり、全体の性能を代表する統計的な抽出ではない。ball影はz=0の投影で、画像ballとの一致には用いない。
+
+![MeijiのRGB観測とSLCSの3D予測・疑似教師](../runs/run-slcs-meiji-streaming-visual-v1/pr_preview/comparison.gif)

@@ -1,0 +1,35 @@
+{
+  "renderer_commit": "b3807bb1",
+  "source_interval_seconds": [
+    3,
+    11
+  ],
+  "gif": {
+    "frames": 80,
+    "duration_ms": 8000,
+    "size": [
+      1200,
+      508
+    ]
+  },
+  "files": {
+    "comparison.gif": {
+      "bytes": 1968710,
+      "sha256": "92085ba32d3110c78bb1c0af36aaa3c23dde803b8edbf73c2b647bdad31f26b5"
+    },
+    "comparison.mp4": {
+      "bytes": 485583,
+      "sha256": "54e2f640631383560f705d79e67d706b772b77fdea2eaff1f2e9e7cf4a0114a8"
+    },
+    "contact_sheet.png": {
+      "bytes": 1490677,
+      "sha256": "66eec8180aa962e6997ebaa1991c1c69fc6a8dd3a8b654545b75907772232047"
+    },
+    "provenance.json": {
+      "bytes": 3683,
+      "sha256": "6bae60badf06ac03895340e54c6aefe113bd6719595cf46caf5aa9aa564423c2"
+    }
+  },
+  "gif_derivation": "ffmpeg -v error -n -threads 1 -i comparison.mp4 -filter_complex 'fps=10,scale=1200:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3' -filter_complex_threads 1 -loop 0 comparison.gif",
+  "interpretation": "Presentation derivative only. 3D held at its source sampling rate; not re-inferred, smoothed or trajectory-filtered. GIF color quantization is display compression. Supplied checkpoint identity traces to parent node."
+}

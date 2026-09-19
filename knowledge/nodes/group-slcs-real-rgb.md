@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-velocity-val-v2
 - run-slcs-full-real-rgb-velocity-val-interrupted-v1
 - run-slcs-full-real-rgb-velocity-e60-v1
 - run-slcs-ball-velocity-gradient-calibration-v1
@@ -207,6 +208,13 @@ Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.0
 
 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
 
-[速度整合の60epoch学習](run-slcs-full-real-rgb-velocity-e60-v1.md)は完了したが、[後続val評価の成果物は不完全](run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)で、基準置換は保留。
-その後のユーザーのWindows原因特定・再発防止の依頼を優先し、新規GPU実験を停止している。
-これは以前の「軽微な再現性不安を理由に学習を止めない」運用より後の指示であり、現在はホスト診断の管理者確認待ち。
+[速度整合の60epoch学習](run-slcs-full-real-rgb-velocity-e60-v1.md)後、[初回val評価は空出力](run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)が見つかり不採用とした。
+Windows原因特定の依頼で一時GPU実験を停止したが、ユーザーの後続「goal達成を優先」指示を受け再開した。
+Codex Windowsアプリ開始との相関はユーザーの体感として記録し、原因確定とはしない。ホスト診断・管理者操作は学習再開の条件にしない。
+[新しい出力先でのval5条件再評価](run-slcs-full-real-rgb-velocity-val-v2.md)は完走した。full最大速度は改善しても位置平均と欠損境界の速度誤差が悪化し、速度候補は基準を置換しない。
+
+次の単独仮説は、ball不可視時にも観測済みcourt文脈をball tokenに残す処理である。
+[BRITS](https://papers.neurips.cc/paper/7911-brits-bidirectional-recurrent-imputation-for-time-series.pdf) §4.1・4.3の観測変数保持と他変数からの補完を設計上の根拠とするが、tennisの3D精度改善を示す論文ではない。
+[GRU-D](https://arxiv.org/html/1606.01865#S2)のmask・時間差も参照したが、nearest-gap-distanceの加算embeddingを検証した手法ではないため今回は導入しない。
+可視ball経路は維持し、不可視・非paddingのballだけにゼロ初期化したcourt-only projectionを加える。court自身の欠損もmaskし、教師や隠されたball座標は使わない。
+baselineと同じseed・60epoch・burst24・lossで単独比較し、validation選定と既存のfull/gap・domain・遷移・高速区間診断を維持する。

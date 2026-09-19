@@ -98,4 +98,5 @@ gap48はbroadcastの退行から採用せず、本runでは元のburst24へ戻�
 
 後続の[初回val評価](run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)は再起動後に空出力が見つかり、採用不可となった。
 本学習のTensorBoard各epoch系列60点・末尾step1799は再確認でき、0バイトになっていた曲線画像はその記録から再生成した。
-ホスト診断を優先し、新規GPU実験とモデルの採用判断を保留している。
+当時はホスト診断を優先してGPU実験を保留したが、後続のgoal優先指示で再開した。
+採否は別runの[新しいval5条件評価](run-slcs-full-real-rgb-velocity-val-v2.md)に記録する。
