@@ -60,7 +60,7 @@ def test_blcs_recipe_explicit_geometry_and_split() -> None:
     assert runtime.source_recipe == "build_slcs_dataset"
     assert runtime.geometry.max_abs_xy_m == (15.0, 28.0)
     assert runtime.geometry.height_range_m == (-0.1, 12.0)
-    assert runtime.destination == PROJECT_ROOT / "data/blcs/prepared"
+    assert runtime.destination == (PROJECT_ROOT / "data/blcs/prepared").resolve()
     cfg.video_splits.video_002 = "train"
     with pytest.raises(ValueError, match="assignments"):
         BLCSPreparationConfig.from_config(cfg)

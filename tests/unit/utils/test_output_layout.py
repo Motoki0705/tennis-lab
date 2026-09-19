@@ -108,7 +108,7 @@ def _expected_kind(module: str) -> str:
         return "precompute"
     if name.startswith("train"):
         return "train"
-    if name in {"eval", "evaluate", "evaluate_manifest"}:
+    if name == "eval" or name.startswith("evaluate"):
         return "evaluate"
     if name.startswith("analyze") or name == "visualize_rotation_error_samples":
         return "analyze"
@@ -147,16 +147,31 @@ def test_all_task_cli_output_contracts(
         ]
     if "clip_and_predict_youtube_dataset" in boundary.module:
         overrides += ["workflow.video_id=smoke-video"]
+    if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
+        overrides += ["evaluation.checkpoint=smoke/model.ckpt"]
     cfg = _compose_boundary(boundary, overrides)
     roots = RuntimePathRoots.from_mapping(
         cast(dict[str, object], OmegaConf.to_container(cfg.paths, resolve=True)),
         repository_root=PROJECT_ROOT,
     )
-    log = Path(cfg.hydra.run.dir).relative_to(roots.output_root)
-    assert len(log.parts) == 5
-    assert log.parts[:2] == (boundary.domain, _expected_kind(boundary.module))
-    assert log.name == "hydra"
-    assert re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z-[a-f0-9]{8}", log.parts[3])
+    if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
+        # This migrated offline evaluator owns its immutable run directory and
+        # saves config/metrics itself. Hydra must not pre-create it or leak logs
+        # into CWD before the runtime's existing-run guard executes.
+        assert cfg.hydra.run.dir == "."
+        assert cfg.hydra.output_subdir is None
+        assert cfg.hydra.job.chdir is False
+        for logging_cfg in (cfg.hydra.job_logging, cfg.hydra.hydra_logging):
+            assert "handlers" not in logging_cfg
+            assert logging_cfg.disable_existing_loggers is True
+        run = Path(cfg.run.output_dir)
+    else:
+        log = Path(cfg.hydra.run.dir).relative_to(roots.output_root)
+        assert log.name == "hydra"
+        run = log.parent
+    assert len(run.parts) == 4
+    assert run.parts[:2] == (boundary.domain, _expected_kind(boundary.module))
+    assert re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z-[a-f0-9]{8}", run.parts[3])
     job = deepcopy(cfg)
     with open_dict(job):
         del job["hydra"]
@@ -215,7 +230,7 @@ def test_all_task_cli_output_contracts(
             for role, parts, _ in resolved
         ), (key, fragment, expected_role)
         if expected_role != PathRole.DATA:
-            assert Path(str(fragment)).parts[:4] == log.parts[:4]
+            assert Path(str(fragment)).parts[:4] == run.parts
 
 
 @pytest.mark.parametrize("task", ["blcs", "plcs"])

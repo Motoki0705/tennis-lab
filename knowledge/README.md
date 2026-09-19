@@ -9,6 +9,7 @@ Claude / Codex / Gemini など各プロバイダのセッションが回す「�
 - すべて **git 管理**。1 ノード = 1 Markdown ファイルなので diff・レビューが容易。
 - 各プロバイダ AI からの読み書きは [`knowledge-control` SKILL](../.agents/skills/knowledge-control/SKILL.md) 経由。
 - 現在の到達点と未解決課題は [`summary.md`](./summary.md)。
+- 実RGB SLCSの教師・学習結果・採否の総括は [`reports/slcs-real-rgb.md`](./reports/slcs-real-rgb.md)。
 - 閲覧は [`webui/`](./webui)（Next.js + React Flow）。
 
 関連 issue: #529。

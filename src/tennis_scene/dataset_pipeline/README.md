@@ -216,6 +216,7 @@ source recipe・収録単位のsplit・幾何閾値を明示し、次の入口�
 
 BLCS旧/改善重みの同条件比較には `src.tasks.blcs.scripts.evaluate_real` を使う。
 教師のRGB/3Dレビュー入口は `src.tennis_scene.scripts.render_reconstruction_review`。
+Court・ViTPose・補正前後の診断とレビュー引数は[診断ガイド](diagnostics/README.md)を参照する。
 
 ## 全clip品質レポート（Meiji、CPU）
 
