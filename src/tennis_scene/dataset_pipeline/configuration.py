@@ -15,6 +15,7 @@ from src.tennis_scene.dataset_pipeline.checkpoint_integrity import (
     validate_checkpoint_sha256,
 )
 from src.tennis_scene.dataset_pipeline.court import StaticCourtSettings
+from src.tennis_scene.dataset_pipeline.detector_ball import DetectorBallSettings
 from src.tennis_scene.dataset_pipeline.person_association import association_settings
 from src.tennis_scene.generate_dataset.manifest import load_dataset_manifest
 from src.utils.configuration import PathResolver, PathRole
@@ -70,6 +71,7 @@ class DatasetBuildConfig:
     dataset_clip_ids: tuple[str, ...]
     checkpoint_sha256: dict[str, str] | None
     checkpoint_warning_roles: tuple[str, ...]
+    ball_detector: DetectorBallSettings | None
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> DatasetBuildConfig:
@@ -77,7 +79,9 @@ class DatasetBuildConfig:
             cfg,
             path="configuration",
             required_keys=_KEYS,
-            optional_keys={"checkpoint_sha256", "checkpoint_warning_roles"},
+            optional_keys={
+                "checkpoint_sha256", "checkpoint_warning_roles", "ball_detector"
+            },
         )
         checkpoint_sha256 = (
             validate_checkpoint_sha256(cfg.checkpoint_sha256)
@@ -113,10 +117,19 @@ class DatasetBuildConfig:
         ):
             raise ValueError("Use a separate versioned output dataset directory")
         manifest = load_dataset_manifest(source)
-        if cfg.ball_source not in {"outsource", "saved_scene"}:
+        if cfg.ball_source not in {"outsource", "saved_scene", "detector"}:
             raise ValueError(
-                "ball_source must explicitly select outsource or saved_scene"
+                "ball_source must explicitly select outsource, saved_scene or detector"
             )
+        if (cfg.ball_source == "detector") != ("ball_detector" in cfg):
+            raise ValueError("ball_detector is required only for ball_source=detector")
+        detector = (
+            DetectorBallSettings.from_config(
+                cfg.ball_detector, resolver, device=str(cfg.device)
+            )
+            if cfg.ball_source == "detector"
+            else None
+        )
         calibration = (
             {}
             if cfg.court_calibration_clips is None
@@ -238,6 +251,13 @@ class DatasetBuildConfig:
         if cfg.court.ransac_px <= 0 or cfg.court.max_fit_error_px <= 0:
             raise ValueError("Court fit tolerances must be positive")
         margins = dict(cfg.court.ball_crop_margins)
+        if detector is not None and any(
+            margin is not None for margin in margins.values()
+        ):
+            raise ValueError(
+                "detector ball_source requires null court.ball_crop_margins; "
+                "cropping uses outsourced annotations"
+            )
         for camera, margin in margins.items():
             if not isinstance(camera, str) or (
                 margin is not None
@@ -278,6 +298,7 @@ class DatasetBuildConfig:
             eligible,
             checkpoint_sha256,
             roles,
+            detector,
         )
 
 

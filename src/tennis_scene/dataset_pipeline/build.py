@@ -26,6 +26,7 @@ from src.tennis_scene.dataset_pipeline.configuration import (
     resolved_recipe,
 )
 from src.tennis_scene.dataset_pipeline.court import observe_static_court
+from src.tennis_scene.dataset_pipeline.detector_ball import observe_detector_ball
 from src.tennis_scene.dataset_pipeline.people import (
     observe_singles_people,
     validate_people_receipts,
@@ -120,6 +121,8 @@ def _court(
             for cam in clip.camera_ids
         }
         if runtime.ball_source == "outsource"
+        else {"detector": sha256(output / "ball_import.metadata.json")}
+        if runtime.ball_source == "detector"
         else {
             "saved_scene": sha256(
                 clip.clip_dir / "observations/ball_import.metadata.json"
@@ -152,6 +155,11 @@ def _court(
 
 
 def _import_ball(runtime: DatasetBuildConfig, clip: ClipManifest, output: Path) -> None:
+    if runtime.ball_source == "detector":
+        if runtime.ball_detector is None:
+            raise ValueError("ball_source=detector requires ball_detector settings")
+        observe_detector_ball(clip, output, runtime.ball_detector)
+        return
     if runtime.ball_source == "outsource":
         import_ball(clip.clip_dir, output)
         return
