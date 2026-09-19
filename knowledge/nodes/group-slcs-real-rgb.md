@@ -3,6 +3,8 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-velocity-val-interrupted-v1
+- run-slcs-full-real-rgb-velocity-e60-v1
 - run-slcs-ball-velocity-gradient-calibration-v1
 - run-slcs-full-real-rgb-gap48-val-v1
 - run-slcs-ball-velocity-train-scale-v1
@@ -204,3 +206,7 @@ Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.0
 時間的スパイク対策の次候補は、[MotionBERTの公式一次差分loss](https://github.com/Walter0807/MotionBERT/blob/main/lib/model/loss.py#L119)を参考にした教師との速度整合である。poseからballへの一般化は仮説。予測速度をゼロへ抑える旧jerk項とは分け、実timestamp・連続frame・両端valid・confidenceを明示し、入力欠損側の教師も保持する。重みは論文値を流用せずtrain-only統計と勾配確認から定める。位置平均/裾・速度誤差・高速教師区間・playerを同時に比較し、最大速度の低下だけで採用しない。
 
 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
+
+[速度整合の60epoch学習](run-slcs-full-real-rgb-velocity-e60-v1.md)は完了したが、[後続val評価の成果物は不完全](run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)で、基準置換は保留。
+その後のユーザーのWindows原因特定・再発防止の依頼を優先し、新規GPU実験を停止している。
+これは以前の「軽微な再現性不安を理由に学習を止めない」運用より後の指示であり、現在はホスト診断の管理者確認待ち。

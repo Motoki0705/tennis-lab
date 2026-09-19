@@ -1,0 +1,2 @@
+?? knowledge/nodes/run-slcs-full-real-rgb-velocity-e60-v1.md
+?? knowledge/runs/run-slcs-full-real-rgb-velocity-e60-v1/

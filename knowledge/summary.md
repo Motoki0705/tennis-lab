@@ -91,6 +91,9 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 
 [Meiji全件監査](nodes/run-slcs-meiji-v9-full-qc-v2.md)と[broadcastとの統合](nodes/run-slcs-real-rgb-full-assembly-v1.md)は完了し、全体版testにはMeijiの別収録もあります。既存基準runの自動testは終端last重みの記録であり、候補選定根拠ではありません。追加探索では自動testを無効にし、validationで採否を決めます。[gap48比較](nodes/run-slcs-full-real-rgb-gap48-val-v1.md)は全体平均を改善してもbroadcast full/gapが悪化したため基準置換を見送りました。教師は独立実測3D正解ではなく、欠損区間の大誤差と時間的スパイクは未解決です。最新の施策・選定・限界は[実験群](nodes/group-slcs-real-rgb.md)を参照してください。
 
+なお、[速度整合候補の初回val評価](nodes/run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)は再起動後に空出力が見つかり採用不可。
+現在はユーザー依頼のWindows原因特定・再発防止を優先し、新規GPU実験と候補採用を保留しています。
+
 ## 結果を解釈するための規則
 
 | 区分 | 用途 |
