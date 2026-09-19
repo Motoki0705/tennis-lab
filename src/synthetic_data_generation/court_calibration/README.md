@@ -22,8 +22,8 @@ zero roll and no lens distortion are assumptions of this baseline.
 From the repository root, using the existing project environment:
 
 ```bash
-.venv/bin/python -m src.synthetic_data_generation.court_calibration
-.venv/bin/python -m src.synthetic_data_generation.court_calibration \
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_line_database
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_line_database \
   mode=query output_dir='${tennis_output:court_detection,analyze,court_line_database,${tennis_run_id:}}'
 ```
 

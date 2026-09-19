@@ -308,6 +308,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         for task in ("ball_detection", "court_detection")
         for script in ("review_dataset", "inference_ui")
     },
+    "src.synthetic_data_generation.scripts.court_line_database": (
+        "synthetic.court_line_database",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.synthetic_data_generation.scripts.edit_alignment": (
         "synthetic.manual_court_alignment",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -375,6 +379,11 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.court_line_database",
+        "main",
+        executable_module=True,
+    ),
     _non_hydra_boundary(
         "src.tasks.base.scripts.inference_worker",
         "main",

@@ -232,6 +232,7 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
     }
     assert synthetic_boundaries == {
         "src.synthetic_data_generation.scripts.compact_court_storage:main",
+        "src.synthetic_data_generation.scripts.court_line_database:main",
         "src.synthetic_data_generation.scripts.edit_alignment:main",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
         "src.synthetic_data_generation.scripts.review_court_dataset:main",

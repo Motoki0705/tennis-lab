@@ -69,6 +69,7 @@ class DatasetBuildConfig:
     calibration_clips: dict[str, str]
     dataset_clip_ids: tuple[str, ...]
     checkpoint_sha256: dict[str, str] | None
+    checkpoint_warning_roles: tuple[str, ...]
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> DatasetBuildConfig:
@@ -85,7 +86,9 @@ class DatasetBuildConfig:
         )
         from .checkpoint_warning import validate_warning_roles
 
-        roles = validate_warning_roles(cfg.get("checkpoint_warning_roles", []))
+        roles = validate_warning_roles(
+            cfg.checkpoint_warning_roles if "checkpoint_warning_roles" in cfg else []
+        )
         if roles and checkpoint_sha256 is None:
             raise ValueError("Checkpoint warning policy requires checkpoint_sha256")
         from src.tennis_scene.dataset_pipeline.refinement import RefinementSettings
@@ -274,6 +277,7 @@ class DatasetBuildConfig:
             calibration,
             eligible,
             checkpoint_sha256,
+            roles,
         )
 
 

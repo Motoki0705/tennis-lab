@@ -69,3 +69,24 @@ def test_unknown_court_refinement_key_is_rejected(court_config: DictConfig) -> N
         court_config.court.crop_refinement_padding = 20
     with pytest.raises(ValueError, match="crop_refinement_padding"):
         DatasetBuildConfig.from_config(court_config)
+
+
+def test_absent_checkpoint_warning_roles_are_explicitly_strict(
+    court_config: DictConfig,
+) -> None:
+    assert "checkpoint_warning_roles" not in court_config
+    assert DatasetBuildConfig.from_config(court_config).checkpoint_warning_roles == ()
+
+
+def test_checkpoint_warning_roles_are_retained_by_typed_runtime(
+    court_config: DictConfig,
+) -> None:
+    with open_dict(court_config):
+        court_config.checkpoint_sha256 = dict.fromkeys(
+            ("court", "dino", "vitpose", "plcs", "blcs", "dinov3"), "a" * 64
+        )
+        court_config.checkpoint_warning_roles = ["dino", "vitpose"]
+    assert DatasetBuildConfig.from_config(court_config).checkpoint_warning_roles == (
+        "dino",
+        "vitpose",
+    )

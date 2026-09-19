@@ -169,7 +169,11 @@ def test_cli_generate_query_and_path_contract(tmp_path: Path) -> None:
         "database.count=3",
         "matching.top_k=1",
     ]
-    cli = [sys.executable, "-m", "src.synthetic_data_generation.court_calibration"]
+    cli = [
+        sys.executable,
+        "-m",
+        "src.synthetic_data_generation.scripts.court_line_database",
+    ]
     subprocess.run(
         cli + common + ["output_dir=court_detection/generate/cli/test"],
         cwd=PROJECT_ROOT,
@@ -198,6 +202,19 @@ def test_cli_generate_query_and_path_contract(tmp_path: Path) -> None:
     )
     assert invalid.returncode != 0
     assert not (tmp_path / "escape.npz").exists()
+    missing_query = subprocess.run(
+        cli
+        + common
+        + [
+            "mode=query",
+            "query_path=missing.png",
+            "output_dir=court_detection/analyze/missing/test",
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+    )
+    assert missing_query.returncode != 0
+    assert not (tmp_path / "output_root/court_detection/analyze/missing/test").exists()
 
 
 @pytest.mark.parametrize("field", ["K", "R", "t", "H", "descriptors"])
@@ -220,3 +237,28 @@ def test_reflected_ecc_mapping_rejected(
     result = query_database(db, db.masks[0], top_k=1)[0]
     assert not result.success and result.world_to_query is None
     assert "invalid_refinement" in result.reason
+
+
+@pytest.mark.parametrize(
+    "field", ["geometry_sha256", "implementation_sha256", "opencv"]
+)
+def test_archive_provenance_mismatch_rejected_before_validation(
+    config: DatabaseConfig, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, field: str
+) -> None:
+    import json
+
+    path = tmp_path / "database.npz"
+    generate(config).save(path)
+    with np.load(path, allow_pickle=False) as archive:
+        payload = {name: archive[name] for name in archive.files}
+    metadata = json.loads(str(payload["metadata"].item()))
+    metadata[field] = "incompatible"
+    payload["metadata"] = np.array(json.dumps(metadata, sort_keys=True))
+    np.savez_compressed(path, **payload)
+
+    def unexpected_validation(self: LineDatabase) -> None:
+        pytest.fail("incompatible archive reached numerical validation")
+
+    monkeypatch.setattr(LineDatabase, "validate", unexpected_validation)
+    with pytest.raises(ValueError, match="config/source identity mismatch"):
+        LineDatabase.load(path, expected_config=config)
