@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-19",
+  "repair_runs": ["outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-003", "outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-004"],
+  "repair_dataset": "data/slcs/meiji_rgb_v9_repair_batch_v2",
+  "target_run": "outputs/tennis_scene/generate/meiji_rgb_v9/s42-002",
+  "target_dataset": "data/slcs/meiji_rgb_v9",
+  "backup_root": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-004/quarantine",
+  "procedure": "Audited annotation and generation directories were copied to fresh sibling staging directories. Original annotation and generation directories were moved to backup_root/<clip>/{published_annotation,generation}. Staged generation and annotation were renamed into place. diff -qr confirmed all annotation files match the repair source. repair_generation_recipe.json preserves the CPU recipe and explicit restored checkpoint locations.",
+  "metadata_edited": false,
+  "old_artifacts_deleted": false,
+  "clips": {
+    "video_001/clip_020": {
+      "source_run": "s42-003",
+      "old_scene_sha256": "e2fd8ff30ffb781e380f8e71f193b519893d6930fdda7f6b0cee6b05c65e73b8",
+      "replacement_scene_sha256": "4598b3890523df36f0c315f5d7fd33cbb7d514e221a1e91b9d2c69cdba0c4bc1"
+    },
+    "video_002/clip_004": {
+      "source_run": "s42-004",
+      "old_scene_sha256": "7883f02567eccdac0462989d0d1f1a748e3ef2146e50afd323d4e7f0da90daca",
+      "replacement_scene_sha256": "0111b9cd303ce4df4a1c5bd04387ff4add0791961b2e7e93e34b6a4d9b0bb04e"
+    },
+    "video_002/clip_015": {
+      "source_run": "s42-003",
+      "old_scene_sha256": "dea83487fe23768e0bd3d0d2e526ca0837ce6a72fc3f816f676e26b91fd8abe0",
+      "replacement_scene_sha256": "6776d841b8b661286dfa7034786f8a2c2888e0f1aac6f46a2e32f9cf2379549c"
+    }
+  },
+  "qc_command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality dataset_directory=slcs/meiji_rgb_v9_repair_batch_v2 generation_directories=[tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-003,tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-004] allow_incomplete=true output_dir=tennis_scene/analyze/meiji_rgb_v9_repair_batch_quality/s42-002",
+  "qc_counts": {"completed": 3, "missing": 53, "error": 0, "excluded": 1}
+}
