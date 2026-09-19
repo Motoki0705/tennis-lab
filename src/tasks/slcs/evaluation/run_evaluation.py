@@ -34,6 +34,7 @@ from src.tasks.slcs.inference.predictor import SLCSPredictor
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.utils.configuration.paths import PathResolver, PathRole, RuntimePathRoots
 from src.utils.io import save_json
+from src.utils.paths import PROJECT_ROOT
 
 MONITOR = "val/scene_position_error_m_epoch"
 
@@ -202,8 +203,12 @@ def evaluate_training_run(
             "CUDA evaluation must run through training queue (TENNIS_RUN_ID/TENNIS_REPRO_DIR)"
         )
     _domains(np.array([], dtype=str), domain_prefixes, default_domain)
+    if not output_root.is_absolute():
+        raise ValueError("output_root must be an explicit absolute path")
     root = output_root.resolve()
-    project = Path.cwd().resolve()
+    # Repository location is owned by the shared bootstrap authority, never CWD.
+    # The saved config supplies the actual dataset roots at the typed boundary below.
+    project = PROJECT_ROOT
     resolver = PathResolver(
         RuntimePathRoots(
             project_root=project,

@@ -158,6 +158,17 @@ def test_existing_output_rejected_before_checkpoint_or_model_loading(
         )
 
 
+def test_relative_output_root_is_rejected_without_cwd_resolution() -> None:
+    with pytest.raises(ValueError, match="explicit absolute path"):
+        evaluate_training_run(
+            training_run=Path("slcs/train/example/run-001"),
+            output_root=Path("relative-output"),
+            output="slcs/evaluate/example/run-001",
+            domain_prefixes=[],
+            default_domain="all",
+        )
+
+
 @pytest.mark.parametrize(
     "output",
     [
@@ -247,7 +258,12 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
             target = tmp_path / name
             target.mkdir()
             (project / name).symlink_to(target, target_is_directory=True)
-        monkeypatch.chdir(project)
+        monkeypatch.setattr(
+            "src.tasks.slcs.evaluation.run_evaluation.PROJECT_ROOT", project
+        )
+        unrelated_cwd = tmp_path / "unrelated-cwd"
+        unrelated_cwd.mkdir()
+        monkeypatch.chdir(unrelated_cwd)
     dataset = tmp_path / "data/scene"
     for video, fps in (("video_000", 25.0), ("broadcast", 50.0)):
         build_slcs_dataset_fixture(
