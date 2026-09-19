@@ -1,0 +1,160 @@
+{
+  "job_id": "1789809294678939765_618256_slcs-full-real-rgb-one-sided-context-e60-v1",
+  "training_run": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001",
+  "source_commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+  "terminal_state": "state=done\nresource=all\nslot=all\npid=618368\npgid=618368\nwait=none\n",
+  "pgid_absent": 618368,
+  "epochs_completed": 60,
+  "optimizer_steps": 1800,
+  "selection": {
+    "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+    "monitor": "val/scene_position_error_m_epoch",
+    "mode": "min",
+    "candidates": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+        "validation_score": 1.963842749595642
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=54.ckpt",
+        "validation_score": 1.9651449918746948
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=53.ckpt",
+        "validation_score": 1.9674806594848633
+      }
+    ],
+    "selected": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+      "validation_score": 1.963842749595642,
+      "epoch_zero_based": 56
+    },
+    "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/last.ckpt",
+    "last_epoch_zero_based": 59
+  },
+  "selected_sha256": "55b8795d3d2003acd04c9b09faed99453454f8d64298d95d3b42f90a0afd4120",
+  "last_sha256": "ad304619da69c8f60de8d44186012cb3287ed675f0f002f07768c0b2ad59c1cd",
+  "saved_config_sha256": "15be4ff9243a275f24842cd7230135961a37242cd2fbb74013678fef6374df0e",
+  "last_checkpoint_audit": {
+    "floating_tensors": 665,
+    "floating_values": 8298700,
+    "only_nonfinite": {
+      "path": "/callbacks/ModelCheckpoint{'monitor': None, 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}/kth_value",
+      "value": "positive infinity",
+      "reason": "unmonitored last-checkpoint saver kth_value sentinel"
+    }
+  },
+  "selected_checkpoint_audit": {
+    "floating_tensors": 665,
+    "floating_values": 8298700,
+    "only_nonfinite": {
+      "path": "/callbacks/ModelCheckpoint{'monitor': None, 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}/kth_value",
+      "value": "positive infinity",
+      "reason": "unmonitored last-checkpoint saver kth_value sentinel"
+    }
+  },
+  "projection_weights": {
+    "model.missing_ball_temporal_context.weight": {
+      "shape": [
+        128,
+        128
+      ],
+      "nonzero": 16384,
+      "l1": 216.12661743164062,
+      "l2": 2.2775661945343018,
+      "max_abs": 0.09381656348705292
+    },
+    "model.missing_ball_one_sided_context.weight": {
+      "shape": [
+        128,
+        131
+      ],
+      "nonzero": 16768,
+      "l1": 232.3450164794922,
+      "l2": 2.349501132965088,
+      "max_abs": 0.078608937561512
+    }
+  },
+  "curves": {
+    "train/ball_position_error_m_epoch": {
+      "points": 60,
+      "last_step": 1799,
+      "last": 2.409202814102173,
+      "selected_epoch_value": 2.3033623695373535,
+      "minimum": 2.1799683570861816,
+      "minimum_epoch": 53
+    },
+    "train/player_position_error_m_epoch": {
+      "points": 60,
+      "last_step": 1799,
+      "last": 1.3112317323684692,
+      "selected_epoch_value": 1.3149863481521606,
+      "minimum": 1.2729085683822632,
+      "minimum_epoch": 55
+    },
+    "val/ball_position_error_m_epoch": {
+      "points": 60,
+      "last_step": 1799,
+      "last": 2.5437731742858887,
+      "selected_epoch_value": 2.5395989418029785,
+      "minimum": 2.537665843963623,
+      "minimum_epoch": 55
+    },
+    "val/player_position_error_m_epoch": {
+      "points": 60,
+      "last_step": 1799,
+      "last": 1.4007446765899658,
+      "selected_epoch_value": 1.3880865573883057,
+      "minimum": 1.3799389600753784,
+      "minimum_epoch": 49
+    },
+    "val/scene_position_error_m_epoch": {
+      "points": 60,
+      "last_step": 1799,
+      "last": 1.9722589254379272,
+      "selected_epoch_value": 1.963842749595642,
+      "minimum": 1.963842749595642,
+      "minimum_epoch": 56
+    },
+    "train/loss_epoch": {
+      "points": 60,
+      "last_step": 1799,
+      "last": -1.4475526809692383,
+      "selected_epoch_value": -1.4550800323486328,
+      "minimum": -1.4908860921859741,
+      "minimum_epoch": 55
+    },
+    "val/loss": {
+      "points": 60,
+      "last_step": 1799,
+      "last": -1.0435090065002441,
+      "selected_epoch_value": -1.0509183406829834,
+      "minimum": -1.0729378461837769,
+      "minimum_epoch": 49
+    }
+  },
+  "test_evaluated": false,
+  "schema_version": 1,
+  "config_comparison": {
+    "explicit_legacy_migrations": [
+      "model.missing_ball_one_sided_context=false",
+      "data.domain_sampling.enabled=false,video_domains={}"
+    ],
+    "saved_config_differences": [
+      {
+        "path": "model.missing_ball_one_sided_context",
+        "control": false,
+        "candidate": true
+      },
+      {
+        "path": "run.output_dir",
+        "control": "slcs/train/real_rgb_ball_temporal_context/s42-001",
+        "candidate": "slcs/train/real_rgb_one_sided_context/s42-001"
+      }
+    ]
+  },
+  "audit_initial_probe": {
+    "error": "Ad-hoc audit initially addressed training.max_epochs; saved configuration uses training.trainer.max_epochs.",
+    "resolution": "Read the actual saved configuration, corrected the audit accessor, and reran all checks. No model, training configuration, or output was changed."
+  }
+}

@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-one-sided-context-e60-v1
 - run-slcs-broadcast-unused-source-inventory-v1
 - run-slcs-full-real-rgb-temporal-domain-balanced-val-v1
 - run-slcs-full-real-rgb-temporal-domain-balanced-e60-v1
