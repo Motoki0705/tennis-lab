@@ -80,6 +80,7 @@ members:
 - run-slcs-meiji-v9-clip009-repair-v1
 - run-slcs-meiji-v9-partial-qc-v2
 - run-slcs-meiji-v9-teacher-review-v1
+- run-slcs-pilot-augmented-portable-eval-v1
 parents: []
 tags:
 - slcs
