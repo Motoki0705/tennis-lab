@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-one-sided-context-val-v1
 - run-slcs-full-real-rgb-one-sided-context-e60-v1
 - run-slcs-broadcast-unused-source-inventory-v1
 - run-slcs-full-real-rgb-temporal-domain-balanced-val-v1
@@ -272,3 +273,5 @@ samplerのepochごとの再現可能性と実抽出数・unique窓数を監査�
 新profile `train_real_rgb_one_sided_context`の直接対照は**非均衡samplingのTemporalContext**とし、DomainBalancedではない。変更は片側context flagと出力先だけ。seed42、60epoch・1800更新、burst24、loss・quality・dataset/split、validation checkpoint選定を固定し、旧重みからのfine-tuneはしない。事前にゼロ初期出力・共有初期値・RNG・旧checkpoint互換と実データの適用範囲を確認する。固定5条件の全体/player/domain・位置平均/p95・両欠損境界・高速区間を直接対照と元基準へ比較し、片側の左右・距離別も確認する。既知の1区間だけの改善や最大速度低下だけでは採用せず、testは選定が閉じるまで開かない。
 
 [未使用broadcast sourceの疎な目視監査](run-slcs-broadcast-unused-source-inventory-v1.md)で別会場のラリー候補を得たが、ball注釈・カット境界・静止性・教師QCは未確認で追加採用は0。既存val/test会場と衝突する区間も発見した。現在の単独比較へは混ぜず、新dataset版の候補として取込経路を調べる。
+
+[片側観測contextの60epoch学習](run-slcs-full-real-rgb-one-sided-context-e60-v1.md)と[固定validationの5条件・anchor別比較](run-slcs-full-real-rgb-one-sided-context-val-v1.md)を完了した。片側欠損の位置平均と境界速度平均には局所的な改善があるが、直接対照TemporalContextより全体full/gap ball平均が退行し、観測なし区間・一部の裾誤差も悪化したため全面置換は不採用。最大予測速度も依然370.54m/sで、頑健性達成とは判断しない。実測train/val全8系列を含む学習曲線と比較図を保存し、testは未評価のまま維持する。

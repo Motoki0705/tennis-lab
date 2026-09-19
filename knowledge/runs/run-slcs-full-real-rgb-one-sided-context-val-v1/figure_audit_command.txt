@@ -1,0 +1,22 @@
+env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python - <<'PY'
+import hashlib,json,subprocess
+from pathlib import Path
+root=Path('/home/kamimura/projects/tennis-lab')
+bundle=Path('knowledge/runs/run-slcs-full-real-rgb-one-sided-context-val-v1')
+receipt={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'device':'cpu','panels':['player_position','ball_position','scene_position','loss'],'train_and_val':'Eight real TensorBoard scalar tags, all 60 epochs, no smoothing/interpolation','visual_review':'All six PNGs reviewed by parent; axes/captions/legends/readability checked','comparisons':{}}
+for label,directory,destination in [('Baseline','real_rgb_one_sided_vs_baseline','figures'),('TemporalContext','real_rgb_one_sided_vs_temporal','direct_control_figures')]:
+    source=root/'outputs/slcs/visualize'/directory/'s42-v2'
+    files={}
+    for name in ('learning_curves.png','conditions.png','distribution.png','manifest.json'):
+        a=(source/name).read_bytes(); b=(bundle/destination/name).read_bytes()
+        assert a==b and a,(source,name)
+        files[name]={'sha256':hashlib.sha256(a).hexdigest(),'bytes':len(a)}
+    manifest=json.loads((source/'manifest.json').read_text())
+    for run in manifest['runs'].values():
+        assert len(run['curves'])==8
+        assert all(len(points)==60 for points in run['curves'].values())
+    for path,digest in manifest['source_sha256'].items():
+        assert hashlib.file_digest(Path(path).open('rb'),'sha256').hexdigest()==digest,path
+    receipt['comparisons'][label]={'output':str(source),'promoted_directory':destination,'files':files,'validated_source_files':len(manifest['source_sha256'])}
+print(json.dumps(receipt,indent=2))
+PY
