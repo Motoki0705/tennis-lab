@@ -153,7 +153,7 @@ def test_empty_entity_and_explicit_domain_mapping(tmp_path: Path) -> None:
 
 
 def test_cli_uses_explicit_domain_prefix_and_output_role(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from scripts.analysis.compare_slcs_conditions import main
+    from src.tasks.slcs.scripts.compare_conditions import main
 
     _bundles(tmp_path)
     monkeypatch.setattr("sys.argv", [

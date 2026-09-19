@@ -7,10 +7,11 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from scripts.visualization.slcs_pr_clip import (
+from src.tasks.slcs.scripts.render_pr_clip import parser
+from src.tasks.slcs.visualization.pr_clip import (
     Reader,
+    RenderRequest,
     Stream,
-    parser,
     probe,
     render,
     sample_times,
@@ -40,6 +41,42 @@ def test_missing_and_invalid_video(tmp_path: Path) -> None:
     invalid.write_bytes(b"not video")
     with pytest.raises(subprocess.CalledProcessError):
         probe(invalid)
+
+
+@pytest.mark.parametrize(
+    ("nominal", "start", "message"),
+    [("24/1", "0", "constant-rate"), ("30/1", "0.5", "time zero")],
+)
+def test_probe_rejects_unsynchronized_or_variable_rate_sources(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    nominal: str,
+    start: str,
+    message: str,
+) -> None:
+    source = tmp_path / "source.mp4"
+    source.touch()
+    result = subprocess.CompletedProcess(
+        args=["ffprobe"],
+        returncode=0,
+        stdout=json.dumps(
+            {
+                "streams": [
+                    {
+                        "avg_frame_rate": "30/1",
+                        "r_frame_rate": nominal,
+                        "nb_frames": "30",
+                        "start_time": start,
+                        "width": 64,
+                        "height": 32,
+                    }
+                ]
+            }
+        ),
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: result)
+    with pytest.raises(ValueError, match=message):
+        probe(source)
 
 
 def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
@@ -104,7 +141,7 @@ def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
             str(tmp_path / "outputs"),
         ]
     )
-    output = render(args)
+    output = render(RenderRequest(**vars(args)))
     video = probe(output / "comparison.mp4")
     assert (video.frames, video.fps) == (3, 4)
     provenance = json.loads((output / "provenance.json").read_text())
@@ -122,4 +159,4 @@ def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
         assert isinstance(left, tuple) and left[0] > 240
         assert isinstance(right, tuple) and right[2] > 240
     with pytest.raises(FileExistsError):
-        render(args)
+        render(RenderRequest(**vars(args)))

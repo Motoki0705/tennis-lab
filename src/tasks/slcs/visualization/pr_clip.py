@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import math
 import subprocess
-import sys
 import tempfile
 from dataclasses import asdict, dataclass
 from fractions import Fraction
@@ -15,9 +13,31 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from src.utils.paths import PROJECT_ROOT
+
 WIDTH, HEIGHT = 1440, 610
 PANEL_WIDTH, PANEL_HEIGHT = 696, 392
 FONT = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+
+
+@dataclass(frozen=True)
+class RenderRequest:
+    """Explicit composition inputs; output_root is the visualization task root."""
+
+    overlay: Path
+    scene: Path
+    experiment: str
+    run_id: str
+    label: str
+    model: str
+    clip_id: str
+    camera_id: str
+    checkpoint_sha256: str
+    epoch: int
+    start: float
+    end: float
+    fps: float = 10
+    output_root: Path = PROJECT_ROOT / "outputs" / "slcs" / "visualize"
 
 
 @dataclass(frozen=True)
@@ -176,7 +196,7 @@ def compose(
     return canvas
 
 
-def render(args: argparse.Namespace) -> Path:
+def render(args: RenderRequest, *, command_line: tuple[str, ...] = ()) -> Path:
     rgb, scene = probe(args.overlay), probe(args.scene)
     times = sample_times(rgb, scene, args.start, args.end, args.fps)
     for value in (args.experiment, args.run_id):
@@ -278,37 +298,9 @@ def render(args: argparse.Namespace) -> Path:
         "sampling": "floor(source_time * source_fps); zero-origin CFR; no interpolation; full-frame letterbox",
         "teacher": "pseudo-3D, not measured ground truth",
         "overlay_ball_shadow": "z=0 ground projection, not true 3D reprojection",
-        "command": sys.argv,
+        "command": list(command_line),
         "encoder_command": command,
         "decoder_commands": [reader.command for reader in readers],
     }
     (output / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     return output
-
-
-def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description=__doc__)
-    for name in ("overlay", "scene"):
-        result.add_argument(f"--{name}", type=Path, required=True)
-    for name in (
-        "experiment",
-        "run-id",
-        "label",
-        "model",
-        "clip-id",
-        "camera-id",
-        "checkpoint-sha256",
-    ):
-        result.add_argument(f"--{name}", required=True)
-    result.add_argument("--epoch", type=int, required=True)
-    result.add_argument("--start", type=float, required=True)
-    result.add_argument("--end", type=float, required=True)
-    result.add_argument("--fps", type=float, default=10)
-    result.add_argument(
-        "--output-root", type=Path, default=Path("outputs/slcs/visualize")
-    )
-    return result
-
-
-if __name__ == "__main__":
-    print(render(parser().parse_args()))

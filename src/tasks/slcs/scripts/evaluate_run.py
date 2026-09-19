@@ -1,7 +1,7 @@
 """Evaluate a training run's validation-selected checkpoint under paired inputs.
 
 Example (from repository root):
-    .venv/bin/python -m scripts.analysis.evaluate_slcs_run \
+    .venv/bin/python -m src.tasks.slcs.scripts.evaluate_run \
         --output-root /absolute/outputs --training-run slcs/train/experiment/run-id \
         --output slcs/evaluate/experiment/run-id --domain-prefix video_=meiji \
         --default-domain broadcast
@@ -17,6 +17,42 @@ import argparse
 from pathlib import Path
 
 from src.tasks.slcs.evaluation.run_evaluation import evaluate_training_run
+from src.tasks.slcs.scripts._paths import cli_resolver
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="slcs.evaluate_run",
+    fields=(
+        BoundaryPathField(
+            "output_root",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.ANY,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "output",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.ANY,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "training_inputs",
+            PathRole.OUTPUT,
+            PathDirection.INPUT,
+            PathKind.ANY,
+            allow_role_root=True,
+            many=True,
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -58,6 +94,21 @@ def main() -> None:
     )
     parser.add_argument("--default-domain", required=True)
     args = parser.parse_args()
+    resolver = cli_resolver(args.output_root)
+    training_run = resolver.resolve(PathRole.OUTPUT, args.training_run)
+    training_inputs: tuple[Path, ...] = (training_run,)
+    if args.last_checkpoint is not None:
+        training_inputs += (
+            resolver.resolve_beneath(PathRole.OUTPUT, training_run, args.last_checkpoint),
+        )
+    PATH_BOUNDARY.validate(
+        {
+            "output_root": args.output_root,
+            "output": resolver.resolve(PathRole.OUTPUT, args.output),
+            "training_inputs": training_inputs,
+        },
+        resolver=resolver,
+    )
     prefixes = []
     for rule in args.domain_prefix:
         prefix, separator, domain = rule.partition("=")
