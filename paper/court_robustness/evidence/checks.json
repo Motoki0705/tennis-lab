@@ -13,12 +13,17 @@
     "verification_without_temporary_log"
   ],
   "clean_checkout": {
-    "commit": "b373e3a45230548ac4068596b7df785562595401",
+    "commit": "de4c34d33b611e3fac3472c3a36a6fa41553edc8",
     "data_and_weights_absent": true,
     "temporary_latex_log_absent": true,
-    "regenerated_method_and_external_figures": true,
+    "regenerated_figures": [
+      "external_predictions",
+      "3dgs_alignment",
+      "ransac_and_projection",
+      "sfm_temporal_drift"
+    ],
     "offline_verification": "passed",
-    "pytest_passed": 22,
+    "pytest_passed": 27,
     "tracked_diff": "empty"
   },
   "alignment_method_geometry": "production RANSAC and selected ray projections match the saved plane and arrays; fit-only 32-view sum exactly matches the original raster",
