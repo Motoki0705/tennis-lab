@@ -74,16 +74,38 @@ def test_no_bracket_means_zero(observed: list[int]) -> None:
     )
 
 
-def test_invalid_shapes_fail_clearly() -> None:
-    module = MissingBallTemporalContext(dim=2)
-    mask = torch.zeros(1, 3, dtype=torch.bool)
-    for tokens, valid, padding in [
-        (torch.zeros(1, 3), mask, mask),
-        (torch.zeros(1, 3, 2), mask.float(), mask),
-        (torch.zeros(1, 3, 2), mask, mask[:, :2]),
-    ]:
-        with pytest.raises(ValueError):
-            module(tokens, valid, padding)
+@pytest.mark.parametrize("dim", [0, -1])
+def test_invalid_projection_dimension_fails_at_construction(dim: int) -> None:
+    with pytest.raises(ValueError, match="dim must be positive"):
+        MissingBallTemporalContext(dim=dim)
+
+
+@pytest.mark.parametrize("key", ["ball_vis", "padding_mask"])
+@pytest.mark.parametrize("problem", ["shape", "dtype"])
+def test_temporal_masks_are_validated_before_model_forward(key: str, problem: str) -> None:
+    from src.tasks.base.model_io import ModelInputContractError, bind_model_io
+    from tests.unit.tasks.slcs.model_io.test_adapter import _adapter
+
+    model = _model(num_shared_layers=1, missing_ball_temporal_context=True)
+    calls: list[object] = []
+    model.register_forward_pre_hook(lambda *_: calls.append(object()))
+    inputs = _inputs()
+    inputs[key] = inputs[key][:, :1] if problem == "shape" else inputs[key].float()
+    with pytest.raises(ModelInputContractError, match=key):
+        bind_model_io(model, _adapter()).run(inputs)
+    assert not calls
+
+
+def test_empty_window_is_validated_before_model_forward() -> None:
+    from src.tasks.base.model_io import ModelInputContractError, bind_model_io
+    from tests.unit.tasks.slcs.model_io.test_adapter import _adapter, _batch
+
+    model = _model(num_shared_layers=1, missing_ball_temporal_context=True)
+    calls: list[object] = []
+    model.register_forward_pre_hook(lambda *_: calls.append(object()))
+    with pytest.raises(ModelInputContractError, match="0<T"):
+        bind_model_io(model, _adapter()).run(_batch(frames=0))
+    assert not calls
 
 
 @pytest.mark.parametrize("court", [False, True])

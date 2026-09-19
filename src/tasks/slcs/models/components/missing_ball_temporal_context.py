@@ -25,17 +25,12 @@ class MissingBallTemporalContext(nn.Module):
     def forward(
         self, ball_tokens: Tensor, source_valid: Tensor, padding_mask: Tensor
     ) -> Tensor:
-        """Return a residual only for bracketed missing, nonpadding frames."""
-        if ball_tokens.ndim != 3 or ball_tokens.shape[-1] != self.weight.shape[1]:
-            raise ValueError("ball_tokens must have shape (B,T,D) with configured D.")
-        if ball_tokens.shape[1] == 0:
-            raise ValueError("ball_tokens must contain at least one frame.")
-        for name, mask in (
-            ("source_valid", source_valid),
-            ("padding_mask", padding_mask),
-        ):
-            if mask.shape != ball_tokens.shape[:2] or mask.dtype != torch.bool:
-                raise ValueError(f"{name} must be a bool tensor of shape (B,T).")
+        """Compute residuals from model-owned (B,T,D) tokens and bool (B,T) masks.
+
+        The public model-I/O adapter validates nonempty B/T and observation
+        shapes/dtypes before forward. The owning model constructs token width D
+        from the same hidden dimension as this projection.
+        """
         valid = source_valid & ~padding_mask
         length = ball_tokens.shape[1]
         index = torch.arange(length, device=ball_tokens.device).expand_as(valid)
