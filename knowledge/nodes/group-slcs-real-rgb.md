@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-temporal-domain-balanced-e60-v1
 - run-slcs-temporal-context-meiji-visual-v1
 - run-slcs-temporal-context-broadcast-visual-v1
 - run-slcs-full-real-rgb-ball-temporal-context-val-v1
@@ -252,3 +253,5 @@ trainのみのCPU監査では、production 466窓のうちMeijiは426、broadcas
 直接の対照は直前のTemporalContext 60epochであり、元のno-smooth基準に対してはarchitectureとsamplingの2変更となる。動画ID→domainはprofileへ`video_000: meiji`、`broadcast_shanghai: broadcast`、`broadcast_washington: broadcast`と明示し、未分類をdefault domainへ流さない。1epochの総提示466窓・30batch、60epoch・1800更新、seed42、loss・quality・augmentation・validation選定を維持する。期待提示は両domain各233窓で、少数broadcast clipの繰返しは新データを増やさず、過学習と疑似教師誤差の増幅リスクを伴う。quality値を保っても、露出頻度を変えることで累積勾配の寄与は変わる。
 
 samplerのepochごとの再現可能性と実抽出数・unique窓数を監査し、val/test loader・教師・splitには変更を加えない。固定validationの5条件・domain・欠損境界・高速教師・playerで比較し、testを開く前に採否を決める。片側anchor区間の不連続がsamplingだけで解決すると仮定しない。
+
+[domain抽出均衡の60epoch学習](run-slcs-full-real-rgb-temporal-domain-balanced-e60-v1.md)が1800更新を完走した。保存configの差はtrain samplingと出力先だけで、epoch56のval scene monitorは直接対照1.94919→1.86463m。各domainの固定5条件評価を終えるまで採用とは判断しない。

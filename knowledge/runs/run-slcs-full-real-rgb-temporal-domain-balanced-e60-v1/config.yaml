@@ -1,0 +1,161 @@
+paths:
+  project_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/outputs
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.cache
+  external_asset_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/third_party
+model:
+  name: slcs_fusion
+  hidden_dim: 128
+  num_shared_layers: 4
+  num_position_layers: 0
+  num_rotation_layers: 0
+  num_heads: 4
+  ffn_dim: 384
+  dropout: 0.1
+  rope_dim: 32
+  rope_theta_time: 10000.0
+  rope_theta_entity: 10000.0
+  attention_type: mha
+  ffn_type: swiglu
+  invisible_init_std: 0.02
+  dino_patch_downsample_factor: 2
+  dino_cross_attn_every: 1
+  log_b_min: -6.0
+  log_b_max: 3.0
+  missing_ball_court_context: false
+  missing_ball_temporal_context: true
+data:
+  dataset_root: slcs/real_rgb_v1
+  split_file: slcs/real_rgb_v1/splits.json
+  batch_size: 16
+  num_workers: 2
+  pin_memory: true
+  overfit: false
+  domain_sampling:
+    enabled: true
+    video_domains:
+      video_000: meiji
+      broadcast_shanghai: broadcast
+      broadcast_washington: broadcast
+  window_size: 120
+  train_stride: 60
+  eval_stride: 120
+  num_players: 2
+  num_court_kp: 14
+  require_dino: true
+  cache_dino_tokens: true
+  on_incomplete: error
+  dino:
+    backbone: dinov3_vitb16
+    patch_size: 16
+    image_height: 256
+    image_width: 448
+    embed_dim: 768
+    frame_stride: 10
+  quality:
+    min_player_confidence: 0.3
+    min_ball_cameras: 1
+    label_weight_power: 1.0
+    min_window_label_ratio: 0.5
+  augmentation:
+    enabled: true
+    joint_dropout: 0.1
+    ball_dropout: 0.15
+    uv_std: 0.003
+    burst_probability: 0.5
+    burst_max_frames: 24
+    rgb_only_probability: 0.15
+    rgb_dropout_probability: 0.1
+training:
+  trainer:
+    max_epochs: 60
+    gradient_clip_val: 1.0
+    deterministic: true
+    precision: bf16-mixed
+    log_every_n_steps: 20
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 1
+    reload_dataloaders_every_n_epochs: 0
+    enable_progress_bar: false
+    enable_model_summary: true
+    benchmark: false
+  learning_rate: 0.0003
+  weight_decay: 1.0e-05
+  warmup_steps: 200
+  warmup_epochs: null
+  min_lr: 1.0e-06
+  steps_per_epoch: null
+  optimizer:
+    betas:
+    - 0.9
+    - 0.999
+  compile:
+    enabled: false
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+  checkpoint:
+    enabled: true
+    filename: slcs-{epoch:02d}
+    monitor: val/scene_position_error_m_epoch
+    mode: min
+    save_top_k: 3
+    save_last: true
+  early_stopping:
+    enabled: false
+    monitor: val/loss
+    mode: min
+    patience: 15
+    min_delta: 1.0e-05
+    check_on_train_epoch_end: false
+  lr_monitor:
+    enabled: true
+    interval: step
+  qualitative_logging:
+    enabled: false
+    every_n_epochs: 1
+    num_samples: 4
+    selection_mode: random
+    selected_indices: null
+  gan:
+    enabled: false
+    target_weight: 0.0
+    warmup_epochs: 1
+    generator_gradient_clip_val: null
+    discriminator_gradient_clip_val: null
+    transition:
+      start_epoch: 0
+  matmul_precision: high
+  allow_tf32: true
+loss:
+  player_position_weight: 1.0
+  player_rotation_weight: 1.0
+  player_angle_weight: 0.5
+  ball_position_weight: 1.0
+  player_position_nll_weight: 0.5
+  player_rotation_nll_weight: 0.25
+  ball_position_nll_weight: 0.5
+  player_position_smoothness_weight: 1.0
+  ball_position_smoothness_weight: 0.0
+  ground_penetration_weight: 1.0
+  smoothness_order: 3
+  ball_velocity_weight: 0.0
+  ball_velocity_scale_mps: 1.0
+run:
+  output_dir: slcs/train/real_rgb_temporal_domain_balanced/s42-001
+  seed: 42
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: false
+  artifact_store:
+    mode: local
+    remote: null
+    remote_root: null
+    sync_interval_seconds: null
