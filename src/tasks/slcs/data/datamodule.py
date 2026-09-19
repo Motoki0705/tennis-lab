@@ -36,8 +36,10 @@ class SLCSDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         if stage in (None, "fit"):
-            self.train_dataset = self._build_dataset("train")
-            self.val_dataset = self._build_dataset("val")
+            if self.train_dataset is None:
+                self.train_dataset = self._build_dataset("train")
+            if self.val_dataset is None:
+                self.val_dataset = self._build_dataset("val")
         if stage == "validate" and self.val_dataset is None:
             self.val_dataset = self._build_dataset("val")
         if stage in (None, "test") and self.test_dataset is None:
