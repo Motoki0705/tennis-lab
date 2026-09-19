@@ -160,6 +160,7 @@ PR用の学習曲線・条件別mean/p95・誤差の経験分布は、完了済�
 ```
 
 `--training`を省略すると学習曲線だけを省きます。指定時は全labelが必要で、TensorBoardのepochと選定scoreを照合します。
+位置3指標とlossの全panelに実測train（破線）・val（実線）を描き、必須tagやepochの欠損はlabel/tag付きで失敗します。trainはaugmentationありのraw系列なので、valと同じ入力分布での性能比較ではありません。
 既存出力・欠損・非有限値・対応不一致は拒否し、完了時だけmanifestを保存します。meanは既存SLCSMetrics、p95は同じmasked L2誤差の線形補間percentileです。
 重複windowの出現は別々に数え、平滑化・外れ値除外はしません。図は疑似教師との一致度であり、実測3D精度ではありません。個別clipのRGB/3D動画はこのCLIには含みません。
 

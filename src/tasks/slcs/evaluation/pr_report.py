@@ -29,12 +29,18 @@ REPORT_CONDITIONS = (*CONDITIONS, "detector_gap_no_rgb")
 COLORS = ("#0072B2", "#D55E00")
 CAPTION = "Pseudo-3D teacher agreement, not measured 3D accuracy. Checkpoint selection: validation only."
 AGGREGATION = "Unweighted valid window occurrences; overlapping frames counted separately. No smoothing or clipping."
+TRAIN_TAGS = (
+    "train/player_position_error_m_epoch",
+    "train/ball_position_error_m_epoch",
+    "train/scene_position_error_m_epoch",
+    "train/loss_epoch",
+)
 TAGS = (
     "val/player_position_error_m_epoch",
     "val/ball_position_error_m_epoch",
     "val/scene_position_error_m_epoch",
     "val/loss",
-    "train/loss_epoch",
+    *TRAIN_TAGS,
 )
 
 
@@ -88,6 +94,11 @@ def read_curves(training: Path, selected_epoch: int) -> dict[str, list[list[floa
     for tag, values in series.items():
         if not values or selected_epoch not in values:
             raise ValueError(f"Missing data at selected epoch {selected_epoch}: {tag}")
+    logged_epochs = set().union(*(values.keys() for values in series.values()))
+    for tag, values in series.items():
+        missing = sorted(logged_epochs - values.keys())
+        if missing:
+            raise ValueError(f"Missing TensorBoard epochs {missing}: {tag}")
     return {
         tag: [[float(epoch), value] for epoch, value in sorted(values.items())]
         for tag, values in series.items()
@@ -324,9 +335,9 @@ def _distribution_plot(
 
 
 def _curves_plot(runs: dict[str, dict[str, Any]], output: Path) -> None:
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 11))
     fig.subplots_adjust(
-        left=0.08, right=0.97, bottom=0.14, top=0.82, hspace=0.38, wspace=0.22
+        left=0.08, right=0.97, bottom=0.18, top=0.82, hspace=0.42, wspace=0.25
     )
     fig.suptitle(
         "Learning curves · validation-selected checkpoints",
@@ -342,8 +353,8 @@ def _curves_plot(runs: dict[str, dict[str, Any]], output: Path) -> None:
     )
     for index, (label, run) in enumerate(runs.items()):
         epoch = run["selection"]["selected"]["epoch_zero_based"]
-        for panel, (ax, tag, title) in enumerate(
-            zip(axes.flat, TAGS[:4], titles, strict=True)
+        for ax, tag, train_tag, title in zip(
+            axes.flat, TAGS[:4], TRAIN_TAGS, titles, strict=True
         ):
             points = np.array(run["curves"][tag])
             ax.plot(
@@ -351,24 +362,29 @@ def _curves_plot(runs: dict[str, dict[str, Any]], output: Path) -> None:
                 points[:, 1],
                 color=COLORS[index],
                 linewidth=2,
+                linestyle="-",
                 label=f"{label} · val",
             )
             selected = points[points[:, 0] == epoch][0]
             ax.scatter(*selected, color=COLORS[index], s=100, marker="*", zorder=4)
             ax.axvline(epoch, color=COLORS[index], linestyle=":", alpha=0.65)
-            if panel == 3:
-                train = np.array(run["curves"]["train/loss_epoch"])
-                ax.plot(
-                    train[:, 0],
-                    train[:, 1],
-                    color=COLORS[index],
-                    linestyle="--",
-                    alpha=0.75,
-                    label=f"{label} · train",
-                )
+            train = np.array(run["curves"][train_tag])
+            ax.plot(
+                train[:, 0],
+                train[:, 1],
+                color=COLORS[index],
+                linestyle="--",
+                alpha=0.75,
+                label=f"{label} · train",
+            )
             ax.set(title=title, xlabel="Epoch (zero-based)")
-            ax.set_ylim(bottom=min(0, ax.get_ylim()[0]))
             ax.grid(alpha=0.2)
+    # Set limits only after every run/series is present, so a later run with a
+    # larger range cannot be clipped by limits frozen for the first run.
+    for ax in axes.flat:
+        ax.margins(x=0.04, y=0.12)
+        ax.set_ylim(bottom=min(0, ax.get_ylim()[0]))
+        ax.ticklabel_format(axis="y", style="sci", scilimits=(-3, 4), useOffset=False)
     handles, labels = axes[1, 1].get_legend_handles_labels()
     fig.legend(
         handles,
@@ -381,6 +397,14 @@ def _curves_plot(runs: dict[str, dict[str, Any]], output: Path) -> None:
     epochs = "; ".join(
         f"{label}: epoch {run['selection']['selected']['epoch_zero_based']}"
         for label, run in runs.items()
+    )
+    fig.text(
+        0.5,
+        0.080,
+        "Dashed: train with augmentation; solid: validation. Input distributions differ; not a like-for-like performance comparison.",
+        ha="center",
+        fontsize=10,
+        color="#475569",
     )
     _save(
         fig,
@@ -448,7 +472,10 @@ def generate_report(
                 }
             )
             epoch = run["selection"]["selected"]["epoch_zero_based"]
-            run["curves"] = read_curves(train_path, epoch)
+            try:
+                run["curves"] = read_curves(train_path, epoch)
+            except ValueError as exc:
+                raise ValueError(f"Training curves for {label}: {exc}") from exc
             score = next(
                 value for at_epoch, value in run["curves"][TAGS[2]] if at_epoch == epoch
             )
