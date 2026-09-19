@@ -62,6 +62,10 @@ split 単位は `video_id` で、同じマルチカメラ動画から切り出�
 
 損失は confidence-weighted Smooth L1、yaw cosine/wrapped-angle、heteroscedastic Laplace NLL、player/ball jerk、ground penetration を組み合わせます。低品質疑似ラベルは threshold mask と confidence weight で扱います。Issue #634 の契約に calibrated camera がないため、reprojection loss は有効化せず、未校正値も生成しません。
 
+`loss.ball_velocity_weight` を正にすると、ballの予測と教師の一次差分の差を物理速度（m/s）で監督します。`COURT_COORD_SCALE_XYZ` とdatasetの実FPS由来の `timestamp` 差分で換算し、正の `loss.ball_velocity_scale_mps` で割ったXYZ残差にSmooth L1（beta=1、XYZ平均）を適用します。両端の教師がvalid・非paddingで `frame_idx` 差が1のpairだけを、両端confidenceの最小値で加重平均します（分母はconfidence総和）。入力ball visibilityで除外せず、教師の高速運動やbounce自体をゼロに近づけるpriorではありません。有効pairの時間差が非正・非有限の場合や、必要な時間metadataがない場合は明示的に失敗します。
+
+既定のweightは `0.0`（無効）、scaleは単位基準の `1.0` m/sです。weight/scaleの実験値はtrainデータだけで決めます。新設定を含まない旧config/checkpointはこの無効既定で読み込め、従来のlossと推論を維持します。無効時にはvelocity項の計算・logging・時間metadataの要求を追加しません。
+
 axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`、`model.num_rotation_layers` で指定します。position branchはplayer/ball位置、rotation branchはplayer yawを担当します。既定の `shared=2, position=0, rotation=0` は従来と同一の全共有構成です。small modelを完全分離する場合は次を指定します。
 
 ```bash

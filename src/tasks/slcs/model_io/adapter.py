@@ -97,7 +97,7 @@ class SLCSModelIOAdapter:
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return SLCSFusionModel
+        return cast(type[nn.Module], SLCSFusionModel)
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         """Validate observations and create an immutable model invocation."""
@@ -354,6 +354,27 @@ class SLCSModelIOAdapter:
 
         player_mask = target_player_valid & ~padding_mask.unsqueeze(1)
         ball_mask = target_ball_valid & ~padding_mask
+        # Optional for legacy callers; an enabled velocity loss requires both.
+        frame_idx = (
+            require_tensor(
+                batch,
+                "frame_idx",
+                spec=TensorSpec(
+                    shape=(batch_size, seq_len), dtypes=_INT64
+                ),
+            )
+            if "frame_idx" in batch
+            else None
+        )
+        timestamp = (
+            require_tensor(
+                batch,
+                "timestamp",
+                spec=TensorSpec(shape=(batch_size, seq_len), dtypes=_FLOAT32),
+            )
+            if "timestamp" in batch
+            else None
+        )
         return SLCSTrainingTargets(
             target_player_position=target_player_position,
             target_player_rotation=target_player_rotation,
@@ -363,6 +384,8 @@ class SLCSModelIOAdapter:
             ball_mask=ball_mask,
             ball_weight=target_ball_weight,
             padding_mask=padding_mask,
+            frame_idx=frame_idx,
+            timestamp=timestamp,
         )
 
     def decode_output(self, output: SLCSRawOutput) -> SLCSDecodedOutput:
