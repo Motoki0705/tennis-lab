@@ -37,6 +37,7 @@ from .checkpoint_warning import (
     normalize_receipt,
 )
 from .people import validate_people_receipts
+from .provenance import validate_teacher_checkpoint_metadata
 
 
 def validate_quality_report_config(cfg: DictConfig) -> None:
@@ -195,9 +196,7 @@ def validate_raw_identity(
     raw: SceneResult, refined: SceneResult, identity: dict[str, Any]
 ) -> None:
     """Validate available raw provenance and exact observed inputs, not invented receipts."""
-    for task, digest in identity["checkpoints"].items():
-        if raw.metadata["checkpoints"][task]["sha256"] != digest:
-            raise ValueError(f"Raw teacher checkpoint mismatch: {task}")
+    validate_teacher_checkpoint_metadata(raw, identity)
     for key in ("reference", "ball_input_provenance"):
         if raw.metadata[key] != refined.metadata[key]:
             raise ValueError(f"Raw observation provenance mismatch: {key}")
