@@ -19,6 +19,7 @@ def test_model_config_has_composition_owned_defaults() -> None:
     assert any(
         field.path.endswith(".missing_ball_court_context") for field in contract.fields
     )
+    assert any(field.path.endswith(".missing_ball_temporal_context") for field in contract.fields)
 
 
 def test_lightning_schedule_uses_trainer_max_epochs() -> None:
@@ -54,6 +55,7 @@ def test_legacy_config_checkpoint_loads_with_ablations_disabled(tmp_path: Path) 
         del config.loss.ball_velocity_scale_mps
     with open_dict(config.model):
         del config.model.missing_ball_court_context
+        del config.model.missing_ball_temporal_context
     module = SLCSLightningModule(config)
     path = tmp_path / "legacy.ckpt"
     torch.save(
@@ -68,6 +70,7 @@ def test_legacy_config_checkpoint_loads_with_ablations_disabled(tmp_path: Path) 
     assert restored.loss_fn.config.ball_velocity_weight == 0.0
     assert restored.loss_fn.config.ball_velocity_scale_mps == 1.0
     assert restored.model.missing_ball_context is None
+    assert restored.model.missing_ball_temporal_context is None
     restored.eval()
     module.eval()
     for name, value in module.state_dict().items():
@@ -108,6 +111,8 @@ def test_legacy_config_checkpoint_loads_with_ablations_disabled(tmp_path: Path) 
         "loss.ball_velocity_scale_mps=.nan",
         "model.missing_ball_court_context=1",
         "model.missing_ball_court_context=invalid",
+        "model.missing_ball_temporal_context=1",
+        "model.missing_ball_temporal_context=invalid",
     ],
 )
 def test_ablation_config_rejects_bad_values(override: str) -> None:
@@ -123,3 +128,12 @@ def test_court_context_profile_reaches_runtime_model() -> None:
     module = SLCSLightningModule(config)
     assert module.model.missing_ball_context is not None
     assert torch.count_nonzero(module.model.missing_ball_context.weight) == 0
+
+
+def test_temporal_context_profile_reaches_runtime_model() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train_real_rgb_ball_temporal_context")
+    module = SLCSLightningModule(config)
+    assert module.model.missing_ball_context is None
+    assert module.model.missing_ball_temporal_context is not None
+    assert torch.count_nonzero(module.model.missing_ball_temporal_context.weight) == 0

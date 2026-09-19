@@ -60,6 +60,9 @@ from src.tasks.slcs.models.components.heads import (
 from src.tasks.slcs.models.components.missing_ball_context import (
     MissingBallCourtContext,
 )
+from src.tasks.slcs.models.components.missing_ball_temporal_context import (
+    MissingBallTemporalContext,
+)
 from src.tasks.slcs.models.components.padding import build_slcs_padding_masks
 from src.utils.models import (
     CrossAttnBlock,
@@ -158,8 +161,11 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         log_b_min: float,
         log_b_max: float,
         missing_ball_court_context: bool = False,
+        missing_ball_temporal_context: bool = False,
     ) -> None:
         super().__init__()
+        if not isinstance(missing_ball_temporal_context, bool):
+            raise ValueError("missing_ball_temporal_context must be a bool.")
         if not isinstance(missing_ball_court_context, bool):
             raise ValueError("missing_ball_court_context must be a bool.")
 
@@ -226,6 +232,11 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_court_tokens=self.num_court_kp,
         )
         self.entity_embed = nn.Embedding(self.num_entities, self.hidden_dim)
+        self.missing_ball_temporal_context = (
+            MissingBallTemporalContext(dim=self.hidden_dim)
+            if missing_ball_temporal_context
+            else None
+        )
         self.missing_ball_context = (
             MissingBallCourtContext(num_court_kp=self.num_court_kp, dim=self.hidden_dim)
             if missing_ball_court_context
@@ -435,6 +446,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             log_b_min=model.log_b_min,
             log_b_max=model.log_b_max,
             missing_ball_court_context=model.missing_ball_court_context,
+            missing_ball_temporal_context=model.missing_ball_temporal_context,
         )
 
     # ------------------------------------------------------------------
@@ -499,10 +511,22 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             ball_token_valid.reshape(batch_size * seq_len),
         ).reshape(batch_size, 1, seq_len, self.hidden_dim)
 
+        # Capture sources before either optional residual. Add court, then
+        # temporal context; neither intervention becomes the other's source.
+        temporal_context = (
+            self.missing_ball_temporal_context(
+                ball_tokens.squeeze(1), ball_token_valid, padding_mask
+            ).unsqueeze(1)
+            if self.missing_ball_temporal_context is not None
+            else None
+        )
         if self.missing_ball_context is not None:
             ball_tokens = ball_tokens + self.missing_ball_context(
                 court_kp, court_vis, ball_vis, padding_mask
             ).unsqueeze(1)
+
+        if temporal_context is not None:
+            ball_tokens = ball_tokens + temporal_context
 
         x = torch.cat([player_tokens, ball_tokens], dim=1)  # (B, E, T, D)
         entity_ids = torch.arange(num_entities, device=x.device)
