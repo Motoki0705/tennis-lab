@@ -97,6 +97,56 @@ def test_selection_ignores_test_scores_mtime_and_stale_best_path(
     assert chosen == best
     assert receipt["selected"]["epoch_zero_based"] == 2
     assert receipt["selected"]["validation_score"] == 2
+    assert "requested_last_checkpoint" not in receipt
+
+
+def test_multiple_last_requires_explicit_callback_source(tmp_path: Path) -> None:
+    best = _checkpoints(tmp_path)
+    original = best.parent / "last.ckpt"
+    resumed = tmp_path / "logs/version_1/checkpoints/last.ckpt"
+    resumed.parent.mkdir(parents=True)
+    state = torch.load(original, weights_only=False)
+    other = best.parent / "epoch=9.ckpt"
+    state["callbacks"]["validation"]["best_k_models"] = {str(other): 0.5}
+    torch.save(state, resumed)
+    # The explicitly selected resumed source can be older than the original.
+    os.utime(resumed, (1, 1))
+    with pytest.raises(ValueError, match="--last-checkpoint"):
+        select_checkpoint(tmp_path)
+    fragment = str(resumed.relative_to(tmp_path))
+    chosen, receipt = select_checkpoint(tmp_path, last_checkpoint=fragment)
+    assert chosen == other
+    assert receipt["last_checkpoint"] == str(resumed)
+    assert receipt["requested_last_checkpoint"] == fragment
+    assert receipt["selected"]["validation_score"] == 0.5
+    chosen, _ = select_checkpoint(tmp_path, last_checkpoint=str(original.relative_to(tmp_path)))
+    assert chosen == best
+
+
+@pytest.mark.parametrize("fragment", [
+    "../last.ckpt", "logs/../last.ckpt", "./last.ckpt", "logs//last.ckpt",
+    "/tmp/last.ckpt", "C:/last.ckpt", "logs\\last.ckpt", "logs/version_0/checkpoints/epoch=2.ckpt", "",
+])
+def test_explicit_last_rejects_invalid_fragments(tmp_path: Path, fragment: str) -> None:
+    _checkpoints(tmp_path)
+    with pytest.raises(ValueError, match="training-run-relative"):
+        select_checkpoint(tmp_path, last_checkpoint=fragment)
+
+
+def test_explicit_last_rejects_missing_directory_and_symlink_escape(tmp_path: Path) -> None:
+    run = tmp_path / "run"
+    _checkpoints(run)
+    with pytest.raises(FileNotFoundError):
+        select_checkpoint(run, last_checkpoint="missing/last.ckpt")
+    directory = run / "directory/last.ckpt"
+    directory.mkdir(parents=True)
+    with pytest.raises(ValueError, match="file within"):
+        select_checkpoint(run, last_checkpoint="directory/last.ckpt")
+    outside = tmp_path / "last.ckpt"
+    outside.write_bytes(b"not loaded")
+    (run / "last.ckpt").symlink_to(outside)
+    with pytest.raises(ValueError, match="file within"):
+        select_checkpoint(run, last_checkpoint="last.ckpt")
 
 
 @pytest.mark.parametrize("failure", ["outside", "nan", "missing", "ambiguous"])
@@ -211,7 +261,7 @@ def test_cuda_requires_queue_before_any_model_work(
 
 
 @pytest.mark.parametrize(
-    "requested", [[], ["--splits", "val", "test", "--ball-train-mean", "--gap-no-rgb"]]
+    "requested", [[], ["--splits", "val", "test", "--ball-train-mean", "--gap-no-rgb", "--last-checkpoint", "logs/version_1/checkpoints/last.ckpt"]]
 )
 def test_cli_test_evaluation_is_explicit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, requested: list[str]
@@ -247,6 +297,7 @@ def test_cli_test_evaluation_is_explicit(
     assert calls[0]["domain_prefixes"] == [("video_", "meiji")]
     assert calls[0]["ball_train_mean"] == bool(requested)
     assert calls[0]["gap_no_rgb"] == bool(requested)
+    assert calls[0]["last_checkpoint"] == ("logs/version_1/checkpoints/last.ckpt" if requested else None)
 
 
 @pytest.mark.parametrize("symlink_roots", [False, True])
@@ -312,9 +363,11 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
         batch_size=2,
         ball_train_mean=symlink_roots,
         gap_no_rgb=gap_no_rgb,
+        last_checkpoint="logs/version_0/checkpoints/last.ckpt" if gap_no_rgb else None,
     )
     receipt = json.loads((out / "selection.json").read_text())
     assert receipt["selected"]["path"] == str(best)
+    assert receipt.get("requested_last_checkpoint") == ("logs/version_0/checkpoints/last.ckpt" if gap_no_rgb else None)
     assert not (out / "test").exists()
     assert (out / "ball_train_mean_fit.json").exists() == symlink_roots
     if symlink_roots:
