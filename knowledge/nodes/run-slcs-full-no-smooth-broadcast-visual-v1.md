@@ -28,6 +28,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-full-no-smooth-broadcast-visual-v1
   predictions: knowledge/runs/run-slcs-full-no-smooth-broadcast-visual-v1/predictions.npz
   output_dir: outputs/slcs/visualize/real_rgb_no_ball_smooth_broadcast/s42-takeover-003
+  pr_preview: knowledge/runs/run-slcs-full-no-smooth-broadcast-visual-v1/pr_preview
 parents: [run-slcs-full-real-rgb-no-ball-smooth-val-v3]
 tags: [slcs, real-rgb, visualization, cpu]
 ---
@@ -65,3 +66,9 @@ window occurrencesの定量評価をこの動画から再計算したとは扱�
 ### 次に有効な実験
 
 全体版gap48の学習完了後も同じclipを比較する。full/gapの位置・motion・裾誤差を主な採否根拠とする。
+
+PR向けにはMeijiと同じ3.0–11.0秒を10fpsで同期合成した。既存の予測動画を使い、時間補間・軌道の外れ値除去はしない。
+1440px MP4・3時点PNG・生成コマンドとSHAはpr_preview/へ保存した。GIFは表示用の縮小・色量子化のみ。
+これは定性的な例で、遠側選手の地面投影ずれなどの失敗も残している。teacherは実測3D正解ではない。
+
+![broadcastのRGB観測とSLCSの3D予測・疑似教師](../runs/run-slcs-full-no-smooth-broadcast-visual-v1/pr_preview/comparison.gif)
