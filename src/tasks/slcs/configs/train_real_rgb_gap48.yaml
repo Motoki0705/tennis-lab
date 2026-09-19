@@ -1,0 +1,9 @@
+# Single intervention: cover longer detector outages; all other settings stay fixed.
+defaults:
+  - train_real_rgb_no_ball_smooth
+  - _self_
+data:
+  augmentation:
+    burst_max_frames: 48
+run:
+  output_dir: ${tennis_output:slcs,train,real_rgb_gap48,${tennis_run_id:}}

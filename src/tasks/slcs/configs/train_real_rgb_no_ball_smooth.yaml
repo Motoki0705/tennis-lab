@@ -1,0 +1,8 @@
+# Full-dataset counterpart of the no-smooth pilot, with the full training budget.
+defaults:
+  - train_real_rgb
+  - _self_
+loss:
+  ball_position_smoothness_weight: 0.0
+run:
+  output_dir: ${tennis_output:slcs,train,real_rgb_no_ball_smooth,${tennis_run_id:}}
