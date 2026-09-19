@@ -152,27 +152,35 @@ raw detector、人物観測、Court、3D教師、RGB特徴は入力・設定・c
 ## 学習と比較
 
 SLCSの実RGB学習profileは [`train_real_rgb.yaml`](../../tasks/slcs/configs/train_real_rgb.yaml)。
-探索学習は60epoch。共有queueへ次を投入する（queueへの投入方法はtraining-queue skill参照）。
+全体版の対照にはball jerkだけを無効にした [`train_real_rgb_no_ball_smooth.yaml`](../../tasks/slcs/configs/train_real_rgb_no_ball_smooth.yaml) を使う。
+探索学習は60epochで自動終端testを無効にする。以下は新規runの例で、既存run-idは再使用しない。
+共有queueへ次を投入する（queueへの投入方法はtraining-queue skill参照）。
 
 ```bash
-.venv/bin/python -m src.tasks.slcs.scripts.train --config-name train_real_rgb \
-  run.output_dir=slcs/train/real_rgb_augmented/s42-001
+.venv/bin/python -m src.tasks.slcs.scripts.train --config-name train_real_rgb_no_ball_smooth \
+  run.test_after_fit=false \
+  run.output_dir=slcs/train/real_rgb_no_ball_smooth/s42-001
 ```
 
 入力のみの座標ノイズ、関節・ボール欠損、連続検出欠損、RGB/2Dモダリティ欠損を学習時に付加する。
-教師配列とvalidation/testの入力は変更しない。対照は同じprofileに
+教師配列とvalidation/testの入力は変更しない。augmentation自体の対照は同じprofileに
 `data.augmentation.enabled=false` と別run-idを指定する。
-評価は `evaluate.input_mode=full|no_rgb|detector_gap|rgb_only` を切り替え、
-同一checkpoint・split・教師maskを使う。実RGBを使う効果と検出欠損時の劣化を測る。
+保存済みconfigからvalidation最良checkpointを選び、同じsplit・教師maskで5入力条件を比較する。
+次の `/abs/to/outputs` は学習時のoutput rootの絶対パスへ置き換える。CUDA評価も共有queueへ投入する。
 
 ```bash
-.venv/bin/python -m src.tasks.slcs.scripts.evaluate \
-  paths.checkpoint_root=outputs \
-  evaluate.checkpoint=slcs/train/real_rgb_augmented/s42-001/logs/version_0/checkpoints/SELECTED.ckpt \
-  data.dataset_root=slcs/real_rgb_v1 data.split_file=slcs/real_rgb_v1/splits.json \
-  evaluate.input_mode=detector_gap \
-  evaluate.output_dir=slcs/evaluate/real_rgb_detector_gap/s42-001
+.venv/bin/python -m scripts.analysis.evaluate_slcs_run \
+  --output-root /abs/to/outputs \
+  --training-run slcs/train/real_rgb_no_ball_smooth/s42-001 \
+  --output slcs/evaluate/real_rgb_no_ball_smooth/s42-001 \
+  --splits val --device cuda --batch-size 4 \
+  --domain-prefix video_=meiji --default-domain broadcast \
+  --ball-train-mean --gap-no-rgb
 ```
+
+再開で複数のlast.ckptが残る場合の明示選択、各入力条件、定数baseline・motion診断の契約は
+[SLCSの評価ガイド](../../tasks/slcs/README.md#推論評価解析)を正本とする。
+候補をvalidationで固定した後だけ、新しい評価runへ `--splits test` を指定する。testで再選定しない。
 
 各試行の固定コマンド・config・予測・考察はknowledge graphに保存する。
 `train_real_rgb_pilot.yaml` は採用済み7クリップで入力欠損施策を比較する先行試験用で、
@@ -183,13 +191,18 @@ PLCSの `train_meiji_foot_real_rgb.yaml`、BLCSの `train_meiji_real_rgb.yaml`�
 `prepare_plcs_subset.py`、`prepare_blcs_real_dataset.py` のreceiptを伴う処理を使う。
 BLCS旧/改善重みの同条件比較には `scripts/analysis/evaluate_blcs_real.py` を使う。
 
-## 全clip品質レポート（CPU）
+## 全clip品質レポート（Meiji、CPU）
 
 `build_real_rgb.sh all` はMeiji生成後・統合前にこの検査を実行する。単独で再集計する場合:
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality
 ```
+
+既定の集約レポートはMeiji全clipが対象で、broadcastを含む集約値ではない。
+broadcastは生成時のclip別coverage判定と理由付き除外、scene metadataの `quality` / `label_quality` / `refinement`、
+RGBでの人物対応確認を根拠とする。統合時には両sourceのannotation・DINO特徴の完成と整合性を検査する。
+broadcastの単眼教師の信頼性をMeijiの多視点集約指標で代用しない。
 
 入力dataset、期待集合のsource manifest、複数の生成run・観測root、理由付き除外は
 [`report_slcs_dataset_quality.yaml`](../configs/report_slcs_dataset_quality.yaml)で明示する。
