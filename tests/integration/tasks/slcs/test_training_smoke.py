@@ -38,7 +38,10 @@ from tests.support.tasks.slcs.dataset import (
 
 
 @pytest.mark.parametrize("num_frames", [6, 18])
-def test_dataset_model_loss_backward_smoke(tmp_path: Path, num_frames: int) -> None:
+@pytest.mark.parametrize("court_context", [False, True])
+def test_dataset_model_loss_backward_smoke(
+    tmp_path: Path, num_frames: int, court_context: bool
+) -> None:
     index = build_slcs_dataset_fixture(
         tmp_path / "dataset",
         SLCSFixtureDatasetConfig(videos=("video_000", "video_001"), num_frames=num_frames),
@@ -70,6 +73,8 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path, num_frames: int) -> N
         ),
     )
     batch = collate_slcs([dataset[0]])
+    if court_context:
+        batch["ball_vis"][:, 1:3] = False
     model = SLCSFusionModel(
         hidden_dim=32,
         num_shared_layers=1,
@@ -94,6 +99,7 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path, num_frames: int) -> N
         dino_cross_attn_every=1,
         log_b_min=-6.0,
         log_b_max=3.0,
+        missing_ball_court_context=court_context,
     )
     adapter = SLCSModelIOAdapter(
         SLCSModelIOSpec(
@@ -134,6 +140,10 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path, num_frames: int) -> N
     assert terms
     assert terms["ball_velocity"] > 0
     loss.backward()
+    if court_context:
+        assert model.missing_ball_context is not None
+        grad = model.missing_ball_context.weight.grad
+        assert grad is not None and torch.isfinite(grad).all() and grad.abs().sum() > 0
     assert any(parameter.grad is not None for parameter in model.parameters())
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)

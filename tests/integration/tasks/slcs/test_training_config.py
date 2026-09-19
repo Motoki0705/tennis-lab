@@ -36,7 +36,7 @@ def test_small_model_defaults_to_original_all_shared_trunk() -> None:
     assert model.num_rotation_layers == 0
 
 
-def test_legacy_config_checkpoint_loads_with_velocity_disabled(tmp_path: Path) -> None:
+def test_legacy_config_checkpoint_loads_with_ablations_disabled(tmp_path: Path) -> None:
     from pytorch_lightning import __version__ as lightning_version
 
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
@@ -44,6 +44,8 @@ def test_legacy_config_checkpoint_loads_with_velocity_disabled(tmp_path: Path) -
     with open_dict(config.loss):
         del config.loss.ball_velocity_weight
         del config.loss.ball_velocity_scale_mps
+    with open_dict(config.model):
+        del config.model.missing_ball_court_context
     module = SLCSLightningModule(config)
     path = tmp_path / "legacy.ckpt"
     torch.save(
@@ -57,6 +59,7 @@ def test_legacy_config_checkpoint_loads_with_velocity_disabled(tmp_path: Path) -
     restored = SLCSLightningModule.load_from_checkpoint(path, weights_only=False)
     assert restored.loss_fn.config.ball_velocity_weight == 0.0
     assert restored.loss_fn.config.ball_velocity_scale_mps == 1.0
+    assert restored.model.missing_ball_context is None
     restored.eval()
     module.eval()
     for name, value in module.state_dict().items():
@@ -95,10 +98,20 @@ def test_legacy_config_checkpoint_loads_with_velocity_disabled(tmp_path: Path) -
         "loss.ball_velocity_weight=-1",
         "loss.ball_velocity_scale_mps=0",
         "loss.ball_velocity_scale_mps=.nan",
+        "model.missing_ball_court_context=1",
+        "model.missing_ball_court_context=invalid",
     ],
 )
-def test_velocity_config_rejects_bad_values(override: str) -> None:
+def test_ablation_config_rejects_bad_values(override: str) -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(config_name="train", overrides=[override])
     with pytest.raises(ValueError):
         SLCSTrainingRuntimeConfig.from_config(config)
+
+
+def test_court_context_profile_reaches_runtime_model() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train_real_rgb_missing_ball_court")
+    module = SLCSLightningModule(config)
+    assert module.model.missing_ball_context is not None
+    assert torch.count_nonzero(module.model.missing_ball_context.weight) == 0
