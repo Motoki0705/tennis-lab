@@ -647,74 +647,7 @@ class PipelineRuntimeConfig:
         )
 
         ball = _mapping(value["ball_detection"], name="ball_detection")
-        gate = _mapping(ball["trajectory_gate"], name="ball_detection.trajectory_gate")
-        ball_load, ball_output = _stage_path(ball, resolver, name="ball_detection")
-        image_size = parse_hw(ball["image_size"], name="ball_detection.image_size")
-        batch_size = cast(int, ball["batch_size"])
-        _positive(batch_size, name="ball_detection.batch_size")
-        prefetch_batches = cast(int, ball["prefetch_batches"])
-        if prefetch_batches < 0:
-            raise SemanticConfigurationError(
-                "ball_detection.prefetch_batches must be >= 0."
-            )
-        score_threshold = cast(float, ball["score_threshold"])
-        _unit_interval(score_threshold, name="ball_detection.score_threshold")
-        window_stride = cast(int | None, ball["window_stride"])
-        if window_stride is not None:
-            _positive(window_stride, name="ball_detection.window_stride")
-        tail_policy = cast(str, ball["tail_policy"])
-        if tail_policy not in {"drop", "backfill"}:
-            raise SemanticConfigurationError(
-                "ball_detection.tail_policy must be 'drop' or 'backfill'."
-            )
-        overlap_aggregation = cast(str, ball["overlap_aggregation"])
-        if overlap_aggregation not in {"last_window_wins", "max_score"}:
-            raise SemanticConfigurationError(
-                "ball_detection.overlap_aggregation must be 'last_window_wins' "
-                "or 'max_score'."
-            )
-        gate_residual = float(cast(float | int, gate["max_residual_px"]))
-        gate_support = cast(int, gate["k_support"])
-        gate_gap = cast(int, gate["max_support_gap"])
-        gate_passes = cast(int, gate["max_passes"])
-        _positive(gate_residual, name="ball_detection.trajectory_gate.max_residual_px")
-        _positive(gate_support, name="ball_detection.trajectory_gate.k_support")
-        if gate_gap < 0:
-            raise SemanticConfigurationError(
-                "ball_detection.trajectory_gate.max_support_gap must be >= 0."
-            )
-        _positive(gate_passes, name="ball_detection.trajectory_gate.max_passes")
-        ball_config = BallDetectionConfig(
-            checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
-            ),
-            source=cast(Literal["execute", "load"], ball["source"]),
-            batch_size=batch_size,
-            device=device,
-            image_size=image_size,
-            normalize_imagenet=cast(bool, ball["normalize_imagenet"]),
-            score_threshold=score_threshold,
-            subpixel_refine=cast(bool, ball["subpixel_refine"]),
-            checkpoint_strict=cast(bool, ball["checkpoint_strict"]),
-            checkpoint_weights_only=cast(bool, ball["checkpoint_weights_only"]),
-            prefetch_batches=prefetch_batches,
-            window_stride=window_stride,
-            tail_policy=tail_policy,
-            overlap_aggregation=overlap_aggregation,
-            pin_memory=cast(bool, ball["pin_memory"]),
-            trajectory_gate=TrajectoryGateConfig(
-                enabled=cast(bool, gate["enabled"]),
-                max_residual_px=gate_residual,
-                k_support=gate_support,
-                max_support_gap=gate_gap,
-                max_passes=gate_passes,
-            ),
-            save_result=cast(bool, ball["save_result"]),
-            output_path=ball_output,
-            load_path=ball_load,
-            resolver=resolver,
-        )
-
+        ball_config = build_ball_detection_config(ball, resolver, device=device)
         plcs = _mapping(value["plcs"], name="plcs")
         plcs_load, plcs_output = _stage_path(plcs, resolver, name="plcs")
         plcs_window_size = cast(int, plcs["window_size"])
@@ -1395,6 +1328,80 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
         overwrite=cast(bool, value["overwrite"]),
         continue_on_error=cast(bool, value["continue_on_error"]),
         pipeline_overrides=overrides,
+    )
+
+
+def build_ball_detection_config(
+    settings: Mapping[str, object], resolver: PathResolver, *, device: str
+) -> BallDetectionConfig:
+    """Compose the shared, strictly validated scene ball detector contract."""
+    ball = _BALL_SCHEMA.validate(settings)
+    gate = _mapping(ball["trajectory_gate"], name="ball_detection.trajectory_gate")
+    ball_load, ball_output = _stage_path(ball, resolver, name="ball_detection")
+    image_size = parse_hw(ball["image_size"], name="ball_detection.image_size")
+    batch_size = cast(int, ball["batch_size"])
+    _positive(batch_size, name="ball_detection.batch_size")
+    prefetch_batches = cast(int, ball["prefetch_batches"])
+    if prefetch_batches < 0:
+        raise SemanticConfigurationError(
+            "ball_detection.prefetch_batches must be >= 0."
+        )
+    score_threshold = cast(float, ball["score_threshold"])
+    _unit_interval(score_threshold, name="ball_detection.score_threshold")
+    window_stride = cast(int | None, ball["window_stride"])
+    if window_stride is not None:
+        _positive(window_stride, name="ball_detection.window_stride")
+    tail_policy = cast(str, ball["tail_policy"])
+    if tail_policy not in {"drop", "backfill"}:
+        raise SemanticConfigurationError(
+            "ball_detection.tail_policy must be 'drop' or 'backfill'."
+        )
+    overlap_aggregation = cast(str, ball["overlap_aggregation"])
+    if overlap_aggregation not in {"last_window_wins", "max_score"}:
+        raise SemanticConfigurationError(
+            "ball_detection.overlap_aggregation must be 'last_window_wins' "
+            "or 'max_score'."
+        )
+    gate_residual = float(cast(float | int, gate["max_residual_px"]))
+    gate_support = cast(int, gate["k_support"])
+    gate_gap = cast(int, gate["max_support_gap"])
+    gate_passes = cast(int, gate["max_passes"])
+    _positive(gate_residual, name="ball_detection.trajectory_gate.max_residual_px")
+    _positive(gate_support, name="ball_detection.trajectory_gate.k_support")
+    if gate_gap < 0:
+        raise SemanticConfigurationError(
+            "ball_detection.trajectory_gate.max_support_gap must be >= 0."
+        )
+    _positive(gate_passes, name="ball_detection.trajectory_gate.max_passes")
+    return BallDetectionConfig(
+        checkpoint=resolver.resolve(
+            PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
+        ),
+        source=cast(Literal["execute", "load"], ball["source"]),
+        batch_size=batch_size,
+        device=device,
+        image_size=image_size,
+        normalize_imagenet=cast(bool, ball["normalize_imagenet"]),
+        score_threshold=score_threshold,
+        subpixel_refine=cast(bool, ball["subpixel_refine"]),
+        checkpoint_strict=cast(bool, ball["checkpoint_strict"]),
+        checkpoint_weights_only=cast(bool, ball["checkpoint_weights_only"]),
+        prefetch_batches=prefetch_batches,
+        window_stride=window_stride,
+        tail_policy=tail_policy,
+        overlap_aggregation=overlap_aggregation,
+        pin_memory=cast(bool, ball["pin_memory"]),
+        trajectory_gate=TrajectoryGateConfig(
+            enabled=cast(bool, gate["enabled"]),
+            max_residual_px=gate_residual,
+            k_support=gate_support,
+            max_support_gap=gate_gap,
+            max_passes=gate_passes,
+        ),
+        save_result=cast(bool, ball["save_result"]),
+        output_path=ball_output,
+        load_path=ball_load,
+        resolver=resolver,
     )
 
 

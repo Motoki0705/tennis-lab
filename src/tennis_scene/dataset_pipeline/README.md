@@ -56,6 +56,20 @@ Meijiのボールは各clipの `outsource/cam*_annotations.json` のみを取り
 放送側は承認済みの保存 `scene.npz` から2Dボールだけを取り出し、孤立したUV spikeを除く。
 保存された古い人物・Court・3D値は新しい教師へ引き継がない。
 
+未注釈clipは新しいrecipeで `ball_source: detector` と `ball_detector` を明示する。
+`ball_detector` は `pipeline.yaml` の `ball_detection` と同じ推論フィールドを全て持ち、
+`checkpoint_sha256` に採用した重みの64桁小文字SHA-256を追加する。`enabled`・`source`・
+`save_result`・`output_path`・`load_path` は指定禁止で、builderがexecuteとstaging保存を管理する。
+checkpointは `paths.checkpoint_root` 相対。ほかのball_sourceでは `ball_detector` 自体を指定しない。
+Courtのball cropは外注注釈専用なので、この入口では `court.ball_crop_margins` の値を全てnullにする。
+全cameraをmanifest順に処理し、媒体のframe数・サイズ・FPSを照合する。結果は
+`observation_directory/<clip_id>/ball_detection_result.json` と `ball_import.metadata.json` に保存し、
+原本へ書き込まない。receiptは非GTであること、展開済み設定、固定pinと実測checkpoint SHA、
+動画SHA、manifest SHA、camera順、結果SHAを保持する。推論前後にも媒体・重みを照合する。
+同一identityの完成cacheだけを再利用し、変更・欠落・不整合は停止する。pin不一致を警告へ
+格下げせず、自動retryもしない。trajectory gateは指定設定どおり適用し、保存scene用の
+spike filterは追加適用しない。既存の3D教師品質weight・採用閾値は維持する。
+
 PLCS/BLCSの配置先はbuild設定の `plcs_checkpoint` / `blcs_checkpoint`。
 60epoch学習から**validation位置誤差最小**の重みを選び、`ckpt/` にコピーする。
 隣の `*.metadata.json` に元のrun、epoch、SHA-256、選定指標を記録する。
