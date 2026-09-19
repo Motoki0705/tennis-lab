@@ -37,6 +37,11 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument(
+        "--ball-train-mean",
+        action="store_true",
+        help="Compare ball errors to a confidence-weighted train-only constant (CPU label view)",
+    )
+    parser.add_argument(
         "--domain-prefix",
         action="append",
         required=True,
@@ -60,6 +65,7 @@ def main() -> None:
             batch_size=args.batch_size,
             domain_prefixes=prefixes,
             default_domain=args.default_domain,
+            ball_train_mean=args.ball_train_mean,
         )
     )
 
