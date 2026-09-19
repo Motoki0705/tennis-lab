@@ -10,17 +10,63 @@ from pathlib import Path
 import cv2
 from omegaconf import OmegaConf
 
-from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+from src.synthetic_data_generation.court_calibration.database import (
+    DatabaseConfig,
+    LineDatabase,
+    generate,
+)
+from src.synthetic_data_generation.court_calibration.matching import query_database
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from src.utils.paths import PROJECT_ROOT
 
-from .database import DatabaseConfig, LineDatabase, generate
-from .matching import query_database
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court_line_database",
+    fields=(
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
+GENERATE_PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court_line_database",
+    fields=(
+        BoundaryPathField(
+            "database", PathRole.DATA, PathDirection.OUTPUT, PathKind.FILE
+        ),
+    ),
+)
+QUERY_PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court_line_database",
+    fields=(
+        BoundaryPathField(
+            "database",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "query", PathRole.DATA, PathDirection.INPUT, PathKind.FILE, must_exist=True
+        ),
+    ),
+)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--config", type=Path, default=Path(__file__).parent / "configs/baseline.yaml"
+        "--config",
+        type=Path,
+        default=PROJECT_ROOT
+        / "src/synthetic_data_generation/court_calibration/configs/baseline.yaml",
     )
     parser.add_argument("overrides", nargs="*", help="OmegaConf key=value overrides")
     args = parser.parse_args()
@@ -43,10 +89,12 @@ def main() -> None:
         RuntimePathRoots.from_mapping(dict(config.paths), repository_root=PROJECT_ROOT)
     )
     output = resolver.resolve(PathRole.OUTPUT, config.output_dir)
+    PATH_BOUNDARY.validate({"output": output}, resolver=resolver)
     if output.exists():
         raise FileExistsError(output)
     db_path = resolver.resolve(PathRole.DATA, config.database_path)
     if config.mode == "generate":
+        GENERATE_PATH_BOUNDARY.validate({"database": db_path}, resolver=resolver)
         database = generate(db_config)
         # Exclusive DB publication rejects accidental reuse/overwrite.
         database.save(db_path)
@@ -56,8 +104,11 @@ def main() -> None:
             "metadata": db_config.metadata(),
         }
     elif config.mode == "query":
-        database = LineDatabase.load(db_path, expected_config=db_config)
         query_path = resolver.resolve(PathRole.DATA, config.query_path)
+        QUERY_PATH_BOUNDARY.validate(
+            {"database": db_path, "query": query_path}, resolver=resolver
+        )
+        database = LineDatabase.load(db_path, expected_config=db_config)
         mask = cv2.imread(str(query_path), cv2.IMREAD_UNCHANGED)
         if mask is None:
             raise ValueError(f"cannot read query mask: {query_path}")

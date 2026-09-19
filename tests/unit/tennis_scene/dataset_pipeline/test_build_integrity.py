@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,6 +34,7 @@ def test_build_records_failure_and_stops_only_for_integrity(
         features_enabled=True,
         feature_checkpoint=checkpoint,
         court=SimpleNamespace(checkpoint=checkpoint),
+        checkpoint_warning_roles=(),
         checkpoint_sha256={
             name: "0" * 64
             for name in ("plcs", "blcs", "dino", "vitpose", "court", "dinov3")
@@ -114,7 +116,12 @@ def test_observe_stage_passes_runtime_pins_and_propagates_integrity(
     observe = MagicMock(side_effect=error)
     monkeypatch.setattr(build, "observe_singles_people", observe)
     with pytest.raises(FileIntegrityError) as caught:
-        build._process_clip(OmegaConf.create({}), runtime, clip, tmp_path / "output")
+        build._process_clip(
+            OmegaConf.create({}),
+            cast(build.DatasetBuildConfig, runtime),
+            clip,
+            tmp_path / "output",
+        )
     assert caught.value is error
     assert observe.call_args.kwargs["checkpoint_sha256"] is pins
     assert observe.call_args.kwargs["homographies"] == "homographies"
@@ -186,13 +193,21 @@ def test_infer_validates_receipts_before_scene_consumption(
     if invalid:
         with pytest.raises(FileIntegrityError):
             build._process_clip(
-                OmegaConf.create({}), runtime, clip, tmp_path / "output"
+                OmegaConf.create({}),
+                cast(build.DatasetBuildConfig, runtime),
+                clip,
+                tmp_path / "output",
             )
         identity.assert_not_called()
         cached.assert_not_called()
         runner.assert_not_called()
         publish.assert_not_called()
     else:
-        build._process_clip(OmegaConf.create({}), runtime, clip, tmp_path / "output")
+        build._process_clip(
+            OmegaConf.create({}),
+            cast(build.DatasetBuildConfig, runtime),
+            clip,
+            tmp_path / "output",
+        )
         publish.assert_called_once()
     observe.assert_not_called()

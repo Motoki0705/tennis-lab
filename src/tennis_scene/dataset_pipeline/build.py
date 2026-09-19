@@ -223,7 +223,7 @@ def build_dataset(cfg: DictConfig) -> None:
     runtime = DatasetBuildConfig.from_config(cfg)
     with checkpoint_warning_policy(
         runtime.checkpoint_sha256,
-        cfg.get("checkpoint_warning_roles", []),
+        runtime.checkpoint_warning_roles,
         runtime.output / "checkpoint_warnings.jsonl",
     ):
         _build_dataset(cfg)
@@ -268,7 +268,7 @@ def _build_dataset(cfg: DictConfig) -> None:
                 "stage": runtime.stage,
                 "expected": runtime.checkpoint_sha256,
                 "observed": verified_checkpoints,
-                "warning_roles": list(cfg.get("checkpoint_warning_roles", [])),
+                "warning_roles": list(runtime.checkpoint_warning_roles),
             },
             runtime.output / "checkpoint_verification.json",
         )
