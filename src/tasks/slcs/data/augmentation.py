@@ -10,7 +10,7 @@ import torch
 
 from src.tasks.slcs.data.types import SLCSSample
 
-INPUT_CONDITIONS = frozenset({"full", "no_rgb", "rgb_only", "detector_gap"})
+INPUT_CONDITIONS = frozenset({"full", "no_rgb", "rgb_only", "detector_gap", "detector_gap_no_rgb"})
 
 
 @dataclass(frozen=True)

@@ -37,6 +37,11 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument(
+        "--gap-no-rgb",
+        action="store_true",
+        help="Add detector_gap_no_rgb and a paired RGB comparison within detector gaps",
+    )
+    parser.add_argument(
         "--ball-train-mean",
         action="store_true",
         help="Compare ball errors to a confidence-weighted train-only constant (CPU label view)",
@@ -66,6 +71,7 @@ def main() -> None:
             domain_prefixes=prefixes,
             default_domain=args.default_domain,
             ball_train_mean=args.ball_train_mean,
+            gap_no_rgb=args.gap_no_rgb,
         )
     )
 

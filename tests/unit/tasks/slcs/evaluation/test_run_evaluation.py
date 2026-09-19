@@ -211,7 +211,7 @@ def test_cuda_requires_queue_before_any_model_work(
 
 
 @pytest.mark.parametrize(
-    "requested", [[], ["--splits", "val", "test", "--ball-train-mean"]]
+    "requested", [[], ["--splits", "val", "test", "--ball-train-mean", "--gap-no-rgb"]]
 )
 def test_cli_test_evaluation_is_explicit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, requested: list[str]
@@ -246,13 +246,16 @@ def test_cli_test_evaluation_is_explicit(
     assert calls[0]["splits"] == (["val", "test"] if requested else ["val"])
     assert calls[0]["domain_prefixes"] == [("video_", "meiji")]
     assert calls[0]["ball_train_mean"] == bool(requested)
+    assert calls[0]["gap_no_rgb"] == bool(requested)
 
 
 @pytest.mark.parametrize("symlink_roots", [False, True])
+@pytest.mark.parametrize("gap_no_rgb", [False, True])
 def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     symlink_roots: bool,
+    gap_no_rgb: bool,
 ) -> None:
     if symlink_roots:
         project = tmp_path / "project"
@@ -308,6 +311,7 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
         default_domain="broadcast",
         batch_size=2,
         ball_train_mean=symlink_roots,
+        gap_no_rgb=gap_no_rgb,
     )
     receipt = json.loads((out / "selection.json").read_text())
     assert receipt["selected"]["path"] == str(best)
@@ -321,10 +325,23 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
         "video_000": "meiji",
         "broadcast": "broadcast",
     }
-    for mode in ("full", "no_rgb", "rgb_only", "detector_gap"):
+    conditions: tuple[str, ...] = ("full", "no_rgb", "rgb_only", "detector_gap")
+    assert {row["condition"] for row in comparison["rows"]} == set(conditions)
+    assert (out / "val/gap_rgb_comparison").exists() == gap_no_rgb
+    assert (out / "val/detector_gap_no_rgb").exists() == gap_no_rgb
+    if gap_no_rgb:
+        conditions += ("detector_gap_no_rgb",)
+        gap = json.loads((out / "val/gap_rgb_comparison/comparison.json").read_text())
+        assert {row["condition"] for row in gap["rows"]} == {"detector_gap", "detector_gap_no_rgb"}
+        assert (out / "val/gap_rgb_comparison/comparison.csv").is_file()
+    for mode in conditions:
         folder = out / "val" / mode
         metrics = json.loads((folder / "metrics.json").read_text())
         assert metrics["num_windows"] == 2
+        assert metrics["context"]["input_mode"] == mode
+        saved_config = OmegaConf.load(folder / "evaluation_config.yaml")
+        assert saved_config.evaluate.input_mode == mode
+        assert (folder / "ball_train_mean_comparison.json").exists() == symlink_roots
         if symlink_roots:
             baseline = json.loads(
                 (folder / "ball_train_mean_comparison.json").read_text()

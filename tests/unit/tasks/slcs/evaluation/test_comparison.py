@@ -11,8 +11,10 @@ import torch
 
 from src.tasks.slcs.evaluation.comparison import (
     CONDITIONS,
+    GAP_CONDITIONS,
     METRICS,
     compare_conditions,
+    compare_gap_conditions,
     save_comparison,
 )
 from src.tasks.slcs.evaluation.evaluate import evaluation_context, save_evaluation
@@ -43,13 +45,13 @@ def _arrays() -> dict[str, np.ndarray]:
     }
 
 
-def _bundles(tmp_path: Path) -> dict[str, Path]:
+def _bundles(tmp_path: Path, conditions: tuple[str, ...] = CONDITIONS) -> dict[str, Path]:
     checkpoint = tmp_path / "model.ckpt"
     checkpoint.write_bytes(b"same checkpoint")
-    bundles = {mode: tmp_path / mode for mode in CONDITIONS}
+    bundles = {mode: tmp_path / mode for mode in conditions}
     for mode, directory in bundles.items():
         arrays = _arrays()
-        if mode != "full":
+        if mode != conditions[0]:
             arrays["pred_player_position"] *= 2
             arrays["pred_ball_position"] *= 2
         save_evaluation(directory, {}, arrays, context=evaluation_context(checkpoint, input_mode=mode))
@@ -89,10 +91,12 @@ def test_domain_scores_use_existing_unweighted_metric_contract(tmp_path: Path) -
     assert len(csv_path.read_text().splitlines()) == len(report["rows"]) + 1
 
 
-@pytest.mark.parametrize("change", ["order", "weight", "sha", "target"])
-def test_unmatched_conditions_are_rejected(tmp_path: Path, change: str) -> None:
-    bundles = _bundles(tmp_path)
-    directory = bundles["rgb_only"]
+@pytest.mark.parametrize("change", ["order", "weight", "sha", "target", "mask"])
+@pytest.mark.parametrize("gap", [False, True])
+def test_unmatched_conditions_are_rejected(tmp_path: Path, change: str, gap: bool) -> None:
+    conditions = GAP_CONDITIONS if gap else CONDITIONS
+    bundles = _bundles(tmp_path, conditions)
+    directory = bundles[conditions[-1]]
     if change == "sha":
         path = directory / "metrics.json"
         payload = json.loads(path.read_text())
@@ -105,11 +109,33 @@ def test_unmatched_conditions_are_rejected(tmp_path: Path, change: str) -> None:
             arrays = {key: value[::-1] for key, value in arrays.items()}
         elif change == "weight":
             arrays["player_weight"][0, 0, 0] = .2
+        elif change == "mask":
+            arrays["player_mask"][0, 0, 0] = False
+            arrays["player_weight"][0, 0, 0] = 0
         else:
             arrays["target_ball_position"][0, 0, 0] = .2
         np.savez_compressed(directory / "eval_arrays.npz", **arrays)
     with pytest.raises(ValueError, match="Unmatched|SHA256"):
+        (compare_gap_conditions if gap else compare_conditions)(bundles, DOMAINS)
+
+
+def test_gap_comparison_reports_paired_errors_and_sign(tmp_path: Path) -> None:
+    bundles = _bundles(tmp_path, GAP_CONDITIONS)
+    report = compare_gap_conditions(bundles, DOMAINS)
+    assert "Negative detector_gap-minus-condition error favors detector_gap" in report["interpretation"]
+    assert {row["group_type"] for row in report["rows"]} == {"all", "domain", "video"}
+    ablated = next(row for row in report["rows"] if row["group"] == "all" and row["condition"] == "detector_gap_no_rgb")
+    assert ablated["detector_gap_minus_condition_ball_position_error_m"] == pytest.approx(-5)
+    assert ablated["detector_gap_minus_condition_player_position_error_m"] == pytest.approx(-16 / 3)
+    assert ablated["player_angular_error_deg"] == pytest.approx(60)
+    assert ablated["detector_gap_minus_condition_player_angular_error_deg"] == 0
+    json_path, csv_path = save_comparison(report, tmp_path / "gap_rgb_comparison")
+    assert json.loads(json_path.read_text()) == report
+    assert len(csv_path.read_text().splitlines()) == len(report["rows"]) + 1
+    with pytest.raises(ValueError, match="four conditions"):
         compare_conditions(bundles, DOMAINS)
+    with pytest.raises(ValueError, match="gap conditions"):
+        compare_gap_conditions({"detector_gap": bundles["detector_gap"]}, DOMAINS)
 
 
 def test_empty_entity_and_explicit_domain_mapping(tmp_path: Path) -> None:
