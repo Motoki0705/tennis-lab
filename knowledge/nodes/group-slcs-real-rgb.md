@@ -3,6 +3,8 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-no-smooth-gap-rgb-val-v2
+- run-slcs-meiji-streaming-visual-v1
 - run-slcs-full-no-smooth-gap-rgb-crc-v1
 - run-slcs-full-no-smooth-broadcast-visual-v1
 - run-slcs-full-no-smooth-meiji-visual-interrupted-v1
@@ -192,5 +194,9 @@ RGB欠損対策は[ModDrop](https://arxiv.org/abs/1501.00102)の欠損モダリ�
 Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.03698)等の追加検出器学習は現状の教師作成に不要。PLCSは実clipごとの位置・yawの裾誤差と教師品質の確認を優先する。全施策で収録分離split・教師版・seedを固定し、一度に変更する要因を限定する。
 
 [gap48の初回](run-slcs-full-real-rgb-gap48-interrupted-v1.md)は12epoch・360更新でsignal停止した。60epoch施策の採否は未判定。optimizer/schedulerを含むcheckpointが残るため、再開可能性を確認しつつ環境方針をユーザーへ相談した。
+
+[追加5条件評価](run-slcs-full-no-smooth-gap-rgb-val-v2.md)では欠損40frameに限定してもRGBありのball平均誤差が小さかったが、broadcastのp95は悪化した。[逐次動画保存](run-slcs-meiji-streaming-visual-v1.md)は旧版と予測配列・全decoded frameを維持し、最大RSS約1.58GiBで完走した。
+
+時間的スパイク対策の次候補は、[MotionBERTの公式一次差分loss](https://github.com/Walter0807/MotionBERT/blob/main/lib/model/loss.py#L119)を参考にした教師との速度整合である。poseからballへの一般化は仮説。予測速度をゼロへ抑える旧jerk項とは分け、実timestamp・連続frame・両端valid・confidenceを明示し、入力欠損側の教師も保持する。重みは論文値を流用せずtrain-only統計と勾配確認から定める。位置平均/裾・速度誤差・高速教師区間・playerを同時に比較し、最大速度の低下だけで採用しない。
 
 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
