@@ -1,0 +1,1046 @@
+{
+  "dataset_root": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1",
+  "archives": 173,
+  "failed": 0,
+  "rows": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/broadcast_eastbourne/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "bytes": 12727947,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/broadcast_indoor_hard/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "bytes": 75725218,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/broadcast_shanghai/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "bytes": 71266790,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/broadcast_shanghai/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "bytes": 29911246,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/broadcast_washington/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "bytes": 58560521,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "bytes": 64887121,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "bytes": 64891031,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "bytes": 64877715,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "bytes": 65529291,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_001/annotations/dino_v3/cam1.npz",
+      "bytes": 65537667,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_001/annotations/dino_v3/cam2.npz",
+      "bytes": 65518704,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "bytes": 87154895,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "bytes": 87167022,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "bytes": 87148889,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "bytes": 68071121,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "bytes": 68076041,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "bytes": 68062799,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "bytes": 22903274,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "bytes": 22905191,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "bytes": 22901849,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "bytes": 20359731,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "bytes": 20360224,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "bytes": 20358750,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "bytes": 29904804,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "bytes": 29902967,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "bytes": 29897073,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "bytes": 42622651,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "bytes": 42628406,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "bytes": 42623758,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "bytes": 31173261,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "bytes": 31175390,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "bytes": 31171485,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "bytes": 48349899,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "bytes": 48351158,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "bytes": 48348843,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "bytes": 17812809,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "bytes": 17813236,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "bytes": 17813294,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "bytes": 83332851,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "bytes": 83342229,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_000/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "bytes": 83333079,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "bytes": 84589141,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "bytes": 84597111,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "bytes": 84610302,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_001/annotations/dino_v3/cam0.npz",
+      "bytes": 83327172,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_001/annotations/dino_v3/cam1.npz",
+      "bytes": 83330850,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_001/annotations/dino_v3/cam2.npz",
+      "bytes": 83335888,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "bytes": 29260102,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "bytes": 29260985,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "bytes": 29265633,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "bytes": 103044849,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "bytes": 103040867,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "bytes": 103067130,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "bytes": 16539826,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "bytes": 16539540,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "bytes": 16542026,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "bytes": 29262638,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "bytes": 29260950,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "bytes": 29266786,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "bytes": 12722152,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "bytes": 12721543,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "bytes": 12724895,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "bytes": 33714078,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "bytes": 33711599,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "bytes": 33715826,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "bytes": 12723080,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "bytes": 12721366,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "bytes": 12725133,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "bytes": 40075514,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "bytes": 40076497,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "bytes": 40079607,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "bytes": 17175348,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "bytes": 17175704,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "bytes": 17177472,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "bytes": 12087072,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "bytes": 12086517,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "bytes": 12087984,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_012/annotations/dino_v3/cam0.npz",
+      "bytes": 41351073,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_012/annotations/dino_v3/cam1.npz",
+      "bytes": 41348799,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_012/annotations/dino_v3/cam2.npz",
+      "bytes": 41350876,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_013/annotations/dino_v3/cam0.npz",
+      "bytes": 16541073,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_013/annotations/dino_v3/cam1.npz",
+      "bytes": 16537485,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_013/annotations/dino_v3/cam2.npz",
+      "bytes": 16541631,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_014/annotations/dino_v3/cam0.npz",
+      "bytes": 15268204,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_014/annotations/dino_v3/cam1.npz",
+      "bytes": 15266163,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_014/annotations/dino_v3/cam2.npz",
+      "bytes": 15268842,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_015/annotations/dino_v3/cam0.npz",
+      "bytes": 18449767,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_015/annotations/dino_v3/cam1.npz",
+      "bytes": 18447225,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_015/annotations/dino_v3/cam2.npz",
+      "bytes": 18449047,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_016/annotations/dino_v3/cam0.npz",
+      "bytes": 12087577,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_016/annotations/dino_v3/cam1.npz",
+      "bytes": 12083872,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_016/annotations/dino_v3/cam2.npz",
+      "bytes": 12086934,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_017/annotations/dino_v3/cam0.npz",
+      "bytes": 12088003,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_017/annotations/dino_v3/cam1.npz",
+      "bytes": 12086103,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_017/annotations/dino_v3/cam2.npz",
+      "bytes": 12087702,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_018/annotations/dino_v3/cam0.npz",
+      "bytes": 101782412,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_018/annotations/dino_v3/cam1.npz",
+      "bytes": 101766749,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_018/annotations/dino_v3/cam2.npz",
+      "bytes": 101780534,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_019/annotations/dino_v3/cam0.npz",
+      "bytes": 19720176,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_019/annotations/dino_v3/cam1.npz",
+      "bytes": 19718424,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_019/annotations/dino_v3/cam2.npz",
+      "bytes": 19719075,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_020/annotations/dino_v3/cam0.npz",
+      "bytes": 69342301,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_020/annotations/dino_v3/cam1.npz",
+      "bytes": 69329884,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_001/clips/clip_020/annotations/dino_v3/cam2.npz",
+      "bytes": 69342545,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_000/annotations/dino_v3/cam0.npz",
+      "bytes": 20993297,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_000/annotations/dino_v3/cam1.npz",
+      "bytes": 20994627,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_000/annotations/dino_v3/cam2.npz",
+      "bytes": 20992659,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_002/annotations/dino_v3/cam0.npz",
+      "bytes": 16541025,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_002/annotations/dino_v3/cam1.npz",
+      "bytes": 16540716,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_002/annotations/dino_v3/cam2.npz",
+      "bytes": 16539486,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_003/annotations/dino_v3/cam0.npz",
+      "bytes": 48351608,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_003/annotations/dino_v3/cam1.npz",
+      "bytes": 48348359,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_003/annotations/dino_v3/cam2.npz",
+      "bytes": 48346283,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_004/annotations/dino_v3/cam0.npz",
+      "bytes": 15908342,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_004/annotations/dino_v3/cam1.npz",
+      "bytes": 15904295,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_004/annotations/dino_v3/cam2.npz",
+      "bytes": 15904078,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_005/annotations/dino_v3/cam0.npz",
+      "bytes": 15908599,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_005/annotations/dino_v3/cam1.npz",
+      "bytes": 15903887,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_005/annotations/dino_v3/cam2.npz",
+      "bytes": 15905419,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_006/annotations/dino_v3/cam0.npz",
+      "bytes": 17180327,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_006/annotations/dino_v3/cam1.npz",
+      "bytes": 17176215,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_006/annotations/dino_v3/cam2.npz",
+      "bytes": 17178660,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_007/annotations/dino_v3/cam0.npz",
+      "bytes": 22905734,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_007/annotations/dino_v3/cam1.npz",
+      "bytes": 22901604,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_007/annotations/dino_v3/cam2.npz",
+      "bytes": 22900605,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_008/annotations/dino_v3/cam0.npz",
+      "bytes": 16542806,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_008/annotations/dino_v3/cam1.npz",
+      "bytes": 16539317,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_008/annotations/dino_v3/cam2.npz",
+      "bytes": 16540195,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_009/annotations/dino_v3/cam0.npz",
+      "bytes": 42628228,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_009/annotations/dino_v3/cam1.npz",
+      "bytes": 42621421,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_009/annotations/dino_v3/cam2.npz",
+      "bytes": 42623376,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_010/annotations/dino_v3/cam0.npz",
+      "bytes": 29263655,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_010/annotations/dino_v3/cam1.npz",
+      "bytes": 29265254,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_010/annotations/dino_v3/cam2.npz",
+      "bytes": 29263377,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_011/annotations/dino_v3/cam0.npz",
+      "bytes": 10181328,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_011/annotations/dino_v3/cam1.npz",
+      "bytes": 10178909,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_011/annotations/dino_v3/cam2.npz",
+      "bytes": 10178323,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_012/annotations/dino_v3/cam0.npz",
+      "bytes": 20997084,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_012/annotations/dino_v3/cam1.npz",
+      "bytes": 20993735,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_012/annotations/dino_v3/cam2.npz",
+      "bytes": 20992241,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_013/annotations/dino_v3/cam0.npz",
+      "bytes": 34991376,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_013/annotations/dino_v3/cam1.npz",
+      "bytes": 34992100,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_013/annotations/dino_v3/cam2.npz",
+      "bytes": 34989555,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_014/annotations/dino_v3/cam0.npz",
+      "bytes": 15906169,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_014/annotations/dino_v3/cam1.npz",
+      "bytes": 15904951,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_014/annotations/dino_v3/cam2.npz",
+      "bytes": 15903941,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_015/annotations/dino_v3/cam0.npz",
+      "bytes": 15904479,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_015/annotations/dino_v3/cam1.npz",
+      "bytes": 15903233,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_015/annotations/dino_v3/cam2.npz",
+      "bytes": 15904687,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_016/annotations/dino_v3/cam0.npz",
+      "bytes": 11451939,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_016/annotations/dino_v3/cam1.npz",
+      "bytes": 11450818,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_016/annotations/dino_v3/cam2.npz",
+      "bytes": 11451771,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_017/annotations/dino_v3/cam0.npz",
+      "bytes": 58530966,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_017/annotations/dino_v3/cam1.npz",
+      "bytes": 58537181,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_017/annotations/dino_v3/cam2.npz",
+      "bytes": 58525986,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_018/annotations/dino_v3/cam0.npz",
+      "bytes": 16541277,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_018/annotations/dino_v3/cam1.npz",
+      "bytes": 16540887,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_018/annotations/dino_v3/cam2.npz",
+      "bytes": 16539145,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_019/annotations/dino_v3/cam0.npz",
+      "bytes": 34993767,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_019/annotations/dino_v3/cam1.npz",
+      "bytes": 34992473,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_019/annotations/dino_v3/cam2.npz",
+      "bytes": 34985439,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_020/annotations/dino_v3/cam0.npz",
+      "bytes": 24813856,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_020/annotations/dino_v3/cam1.npz",
+      "bytes": 24815373,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_020/annotations/dino_v3/cam2.npz",
+      "bytes": 24810061,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_021/annotations/dino_v3/cam0.npz",
+      "bytes": 15268407,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_021/annotations/dino_v3/cam1.npz",
+      "bytes": 15269482,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_021/annotations/dino_v3/cam2.npz",
+      "bytes": 15267611,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_022/annotations/dino_v3/cam0.npz",
+      "bytes": 19084498,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_022/annotations/dino_v3/cam1.npz",
+      "bytes": 19088359,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_022/annotations/dino_v3/cam2.npz",
+      "bytes": 19084146,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_023/annotations/dino_v3/cam0.npz",
+      "bytes": 15268359,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_023/annotations/dino_v3/cam1.npz",
+      "bytes": 15270351,
+      "bad_member": null,
+      "passed": true
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/videos/video_002/clips/clip_023/annotations/dino_v3/cam2.npz",
+      "bytes": 15267659,
+      "bad_member": null,
+      "passed": true
+    }
+  ],
+  "interpretation": "One later read only; a pass does not erase an earlier read failure or establish environmental stability."
+}

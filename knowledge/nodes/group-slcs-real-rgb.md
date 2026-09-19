@@ -3,6 +3,13 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-no-ball-smooth-interrupted-v2
+- run-slcs-pilot-no-ball-smooth-ball8-e60-v1
+- run-slcs-pilot-no-ball-smooth-ball8-eval-v1
+- run-slcs-pilot-no-ball-smooth-train-mean-v2
+- run-slcs-pilot-no-ball-smooth-ball8-train-mean-v1
+- run-slcs-full-real-rgb-no-ball-smooth-start-failure-v1
+- run-slcs-real-rgb-dino-crc-v1
 - run-slcs-pilot-no-ball-smooth-e60-takeover-v1
 - run-slcs-pilot-no-ball-smooth-eval-v1
 - run-slcs-pilot-no-ball-smooth-legacy-mean-failure-v1
@@ -113,7 +120,9 @@ tags:
 
 Meijiのoutsourceボール注釈と指定Court checkpointから品質重み付き教師を作り、収録ごとのsplitで実RGB SLCSを評価する実験群。2026-09-19に[全56clipの生成](run-slcs-meiji-v9-full-build-v1.md)と[欠落・不正0の全件監査](run-slcs-meiji-v9-full-qc-v2.md)を完了し、[broadcast 5clipとの全体版統合](run-slcs-real-rgb-full-assembly-v1.md)へ進んだ。全体版SLCSの学習・頑健性評価はまだ未完了。9clipの退避付き修復を含む不整合・再生成の経緯は各runへ保持する。
 
-[1クリップcold/warm/cold](run-slcs-meiji-one-clip-repro-takeover-v1.md)は3回の生成と必須成果物検証が完了し、warmのdataset/observationはbyte不変だった。独立cold間ではball・RGB特徴は完全一致したが人物系の微小差が残り、bit-exact比較はfailedとして保持した。許容された軽微な再現性の限界を記録して学習を進める。[ball平滑化だけを外す60epoch](run-slcs-pilot-no-ball-smooth-e60-takeover-v1.md)も完了したが、[validation誤差](run-slcs-pilot-no-ball-smooth-eval-v1.md)は7.0308→7.0030mの小幅改善に留まった。次は同条件からball位置weightだけ8倍の比較を行う。
+[1クリップcold/warm/cold](run-slcs-meiji-one-clip-repro-takeover-v1.md)は3回の生成と必須成果物検証が完了し、warmのdataset/observationはbyte不変だった。独立cold間ではball・RGB特徴は完全一致したが人物系の微小差が残り、bit-exact比較はfailedとして保持した。許容された軽微な再現性の限界を記録して学習を進める。[ball平滑化だけを外す60epoch](run-slcs-pilot-no-ball-smooth-e60-takeover-v1.md)は[validation誤差](run-slcs-pilot-no-ball-smooth-eval-v1.md)7.0308→7.0030mの小幅改善に留まった。同条件から[position weightだけ8倍](run-slcs-pilot-no-ball-smooth-ball8-e60-v1.md)にした60epochはball改善なし・player悪化で不採用。[公開train平均baseline](run-slcs-pilot-no-ball-smooth-train-mean-v2.md)とも差が小さく、全体版の学習成立確認が必要である。
+
+全体版no-smooth/weight1の初回は[RGB archive CRCエラー](run-slcs-full-real-rgb-no-ball-smooth-start-failure-v1.md)で0更新停止した。[後続の1回の点検](run-slcs-real-rgb-dino-crc-v1.md)では173/173通過し、readerに対象path付きerrorを追加して別runへ進んだ。検証無効化・配列差し替え・失敗の取り消しは行っていない。[2回目は環境再起動後のprocess消失](run-slcs-full-real-rgb-no-ball-smooth-interrupted-v2.md)で中断し、checkpointがない。再起動原因の追跡は条件にせず、重複dataset構築を確認して次へ進む。
 
 教師の主な根拠は[BLCS同条件評価](run-slcs-blcs-meiji-finetuned-eval.md)、[PLCS validation選定重みのtest](run-slcs-plcs-meiji-foot-e60-selected-test.md)、[同一2D観測での実クリップ比較](run-slcs-plcs-meiji-real-final-eval.md)。合成test、観測から作った擬似3Dとの一致度、実画像への再投影を区別する。独立実測3D正解はなく、再投影改善を絶対3D精度と呼ばない。
 

@@ -1,0 +1,12 @@
+{
+  "observation_time_utc": "2026-09-19 03:31:30",
+  "job_added_jst": "2026-09-19 11:57:13",
+  "environment_boot_time_jst": "2026-09-19 12:24:44",
+  "observed_absent_pids": [434335, 434154],
+  "ps_exit_code": 1,
+  "checkpoint_count": 0,
+  "tensorboard_scalar_tags": [],
+  "queue_file_state": "stale running file; no live original process",
+  "exit_code": null,
+  "cause_of_environment_restart": "not established"
+}
