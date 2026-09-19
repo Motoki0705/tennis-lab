@@ -1,0 +1,25 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789801028265387161_87223_slcs-full-real-rgb-missing-ball-court-e60-v1 (commit=edabe593ef61 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type            ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ SLCSFusionModel │  2.7 M │ train │     0 │
+│ 1 │ loss_fn │ SLCSLoss        │      0 │ train │     0 │
+└───┴─────────┴─────────────────┴────────┴───────┴───────┘
+Trainable params: 2.7 M                                                         
+Non-trainable params: 0                                                         
+Total params: 2.7 M                                                             
+Total estimated model params size (MB): 10.953                                  
+Modules in train mode: 231                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+`Trainer.fit` stopped: `max_epochs=60` reached.
+Training complete. Outputs saved to /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001
