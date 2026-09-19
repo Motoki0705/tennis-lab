@@ -22,6 +22,7 @@ from src.tasks.slcs.evaluation.comparison import (
     compare_gap_conditions,
 )
 from src.tasks.slcs.evaluation.motion import _stats
+from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 REPORT_CONDITIONS = (*CONDITIONS, "detector_gap_no_rgb")
@@ -479,10 +480,9 @@ def generate_report(
         raise ValueError(
             "Source artifact changed during rendering; report is incomplete"
         )
-    code_root = Path(__file__).resolve().parents[4]
     git = subprocess.run(
         ["git", "rev-parse", "HEAD"],
-        cwd=code_root,
+        cwd=PROJECT_ROOT,
         check=True,
         capture_output=True,
         text=True,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,7 @@ from src.tasks.slcs.evaluation.pr_report import (
     generate_report,
     read_curves,
 )
+from src.utils.paths import PROJECT_ROOT
 from tests.unit.tasks.slcs.evaluation.test_comparison import DOMAINS, _bundles
 
 
@@ -50,7 +52,19 @@ def _run(root: Path) -> Path:
     return root
 
 
-def test_real_figures_statistics_hashes_and_no_overwrite(tmp_path: Path) -> None:
+def test_real_figures_statistics_hashes_and_no_overwrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unrelated = tmp_path / "unrelated-cwd"
+    unrelated.mkdir()
+    monkeypatch.chdir(unrelated)
+    expected_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=PROJECT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     baseline = _run(tmp_path / "baseline")
     candidate = _run(tmp_path / "candidate")
     destination = generate_report(
@@ -59,6 +73,7 @@ def test_real_figures_statistics_hashes_and_no_overwrite(tmp_path: Path) -> None
         output="slcs/visualize/test/run1",
     )
     manifest = json.loads((destination / "manifest.json").read_text())
+    assert manifest["git_commit"] == expected_commit
     row = next(
         row
         for row in manifest["runs"]["Baseline"]["summaries"]
