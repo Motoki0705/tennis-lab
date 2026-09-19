@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
@@ -29,7 +29,11 @@ def _mapping(cfg: DictConfig, fields: dict[str, ConfigField], name: str) -> None
     value = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     if not isinstance(value, dict):
         raise TypeError("Diagnostic configuration must be a mapping")
-    StrictConfigSchema(fields=fields, name=name).validate(value)
+    if any(not isinstance(key, str) for key in value):
+        raise TypeError("Diagnostic configuration keys must be strings")
+    StrictConfigSchema(fields=fields, name=name).validate(
+        cast(dict[str, object], value)
+    )
 
 
 def resolver_for(cfg: DictConfig) -> PathResolver:

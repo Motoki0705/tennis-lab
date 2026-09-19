@@ -13,6 +13,7 @@ from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
 from src.tennis_scene.dataset_pipeline.diagnostics import configuration, media
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.scripts import render_reconstruction_review as review
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
@@ -173,9 +174,29 @@ def test_review_rejects_conflicting_or_invalid_modes(arguments: list[str]) -> No
     assert error.value.code == 2
 
 
+@pytest.fixture
+def diagnostic_clip(tmp_path: Path) -> ClipManifest:
+    (tmp_path / "media").mkdir()
+    (tmp_path / "media/cam0.mp4").touch()
+    return ClipManifest(
+        clip_dir=tmp_path,
+        dataset_id="diagnostic",
+        clip_id="video_000/clip_000",
+        video_id="video_000",
+        clip_name="clip_000",
+        fps=30.0,
+        num_frames=3,
+        width=4,
+        height=2,
+        camera_ids=("cam0",),
+        video_paths=("media/cam0.mp4",),
+        cameras=({"camera_id": "cam0"},),
+    )
+
+
 @pytest.mark.parametrize("fps", [0.0, float("nan"), 60.0])
 def test_media_rejects_invalid_or_mismatched_fps_and_releases(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fps: float
+    diagnostic_clip: ClipManifest, monkeypatch: pytest.MonkeyPatch, fps: float
 ) -> None:
     released = []
     capture = SimpleNamespace(
@@ -184,14 +205,13 @@ def test_media_rejects_invalid_or_mismatched_fps_and_releases(
         release=lambda: released.append(True),
     )
     monkeypatch.setattr(media.cv2, "VideoCapture", lambda path: capture)
-    clip = SimpleNamespace(fps=30.0, media_path=lambda camera: tmp_path / camera)
     with pytest.raises(ValueError, match="FPS"):
-        media.sample_frames(clip, "cam0", np.asarray([0]))
+        media.sample_frames(diagnostic_clip, "cam0", np.asarray([0]))
     assert released == [True]
 
 
 def test_media_samples_requested_frames(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    diagnostic_clip: ClipManifest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     positions = []
     props = {
@@ -208,14 +228,7 @@ def test_media_samples_requested_frames(
         read=lambda: (True, np.zeros((2, 4, 3), np.uint8)),
     )
     monkeypatch.setattr(media.cv2, "VideoCapture", lambda path: capture)
-    clip = SimpleNamespace(
-        fps=30.0,
-        width=4,
-        height=2,
-        num_frames=3,
-        media_path=lambda camera: tmp_path / camera,
-    )
-    result = media.sample_frames(clip, "cam0", np.asarray([0, 2]))
+    result = media.sample_frames(diagnostic_clip, "cam0", np.asarray([0, 2]))
     assert positions == [0, 2] and len(result) == 2
 
 
