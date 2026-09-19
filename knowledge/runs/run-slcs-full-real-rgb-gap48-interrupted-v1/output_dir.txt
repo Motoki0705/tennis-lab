@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_gap48/s42-takeover-001/logs/version_0/checkpoints
