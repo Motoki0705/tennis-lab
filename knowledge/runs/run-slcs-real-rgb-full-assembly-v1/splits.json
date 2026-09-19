@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "seed": 42,
+  "val_ratio": 0.2857142857142857,
+  "test_ratio": 0.2857142857142857,
+  "assignments": {
+    "video_000": "train",
+    "video_001": "val",
+    "video_002": "test",
+    "broadcast_shanghai": "train",
+    "broadcast_washington": "train",
+    "broadcast_indoor_hard": "val",
+    "broadcast_eastbourne": "test"
+  }
+}
