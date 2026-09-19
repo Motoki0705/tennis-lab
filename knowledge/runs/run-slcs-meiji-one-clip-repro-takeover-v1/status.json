@@ -1,0 +1,91 @@
+{
+  "status": "failed",
+  "run_id": "takeover001",
+  "reservation": {
+    "TENNIS_RUN_ID": "1789784016370976201_138208_slcs-meiji-one-clip-repro-takeover-v2",
+    "TENNIS_REPRO_DIR": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1789784016370976201_138208_slcs-meiji-one-clip-repro-takeover-v2"
+  },
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "script_sha256": "ffe093baaf8498f820ebaeaadc7ac96e92e80ba5d102ad714966876f4619feef",
+  "commit": "57726f2c8f38fe50ab3870a7a030fad78ab14b4b",
+  "roots": {
+    "a": {
+      "dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_one_clip_repro_takeover001_a",
+      "observations": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_one_clip_repro_takeover001/a",
+      "generation": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_one_clip_repro_takeover001/a"
+    },
+    "b": {
+      "dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_one_clip_repro_takeover001_b",
+      "observations": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_one_clip_repro_takeover001/b",
+      "generation": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_one_clip_repro_takeover001/b"
+    }
+  },
+  "policy": {
+    "arrays": "exact dtype, shape and values; equal NaNs; zero tolerance",
+    "location_fields": [
+      "dataset_output_directory",
+      "observation_directory",
+      "output_dir"
+    ],
+    "timestamps": [
+      "annotations/tennis_scene/annotation.json:generated_at",
+      "annotations/dino_v3/annotation.json:created_at"
+    ],
+    "warm_exclusions": [],
+    "cold_execution_log_exclusions": [
+      "generation/hydra/build_slcs_dataset.log"
+    ]
+  },
+  "commands": [
+    {
+      "phase": "cold_a",
+      "argv": [
+        "bash",
+        "scripts/datasets/build_real_rgb.sh",
+        "--execute",
+        "meiji",
+        "dataset_clip_ids=[video_000/clip_000]",
+        "dataset_output_directory=slcs/meiji_one_clip_repro_takeover001_a",
+        "observation_directory=tennis_scene/precompute/meiji_one_clip_repro_takeover001/a",
+        "output_dir=tennis_scene/generate/meiji_one_clip_repro_takeover001/a",
+        "stage=all"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_one_clip_repro/s42-takeover-001/cold_a.log",
+      "returncode": 0
+    },
+    {
+      "phase": "warm_a",
+      "argv": [
+        "bash",
+        "scripts/datasets/build_real_rgb.sh",
+        "--execute",
+        "meiji",
+        "dataset_clip_ids=[video_000/clip_000]",
+        "dataset_output_directory=slcs/meiji_one_clip_repro_takeover001_a",
+        "observation_directory=tennis_scene/precompute/meiji_one_clip_repro_takeover001/a",
+        "output_dir=tennis_scene/generate/meiji_one_clip_repro_takeover001/a",
+        "stage=all"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_one_clip_repro/s42-takeover-001/warm_a.log",
+      "returncode": 0
+    },
+    {
+      "phase": "cold_b",
+      "argv": [
+        "bash",
+        "scripts/datasets/build_real_rgb.sh",
+        "--execute",
+        "meiji",
+        "dataset_clip_ids=[video_000/clip_000]",
+        "dataset_output_directory=slcs/meiji_one_clip_repro_takeover001_b",
+        "observation_directory=tennis_scene/precompute/meiji_one_clip_repro_takeover001/b",
+        "output_dir=tennis_scene/generate/meiji_one_clip_repro_takeover001/b",
+        "stage=all"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_one_clip_repro/s42-takeover-001/cold_b.log",
+      "returncode": 0
+    }
+  ],
+  "error": "ValueError: Cold reproducibility failed; inspect cold_comparison.json (no tolerance/retry)",
+  "traceback": "Traceback (most recent call last):\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-one-clip-repro-v1/probe.py\", line 419, in main\n    raise ValueError(\nValueError: Cold reproducibility failed; inspect cold_comparison.json (no tolerance/retry)\n"
+}

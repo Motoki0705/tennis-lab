@@ -1,0 +1,12 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789784016370976201_138208_slcs-meiji-one-clip-repro-takeover-v2 (commit=57726f2c8f38 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+Starting cold_a
+Starting warm_a
+Starting cold_b
+failed: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_one_clip_repro/s42-takeover-001/status.json
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-one-clip-repro-v1/probe.py", line 460, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-one-clip-repro-v1/probe.py", line 419, in main
+    raise ValueError(
+ValueError: Cold reproducibility failed; inspect cold_comparison.json (no tolerance/retry)
+exit_code=1
