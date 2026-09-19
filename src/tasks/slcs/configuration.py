@@ -156,6 +156,8 @@ _LOSS_FIELDS = {
     "ball_position_smoothness_weight": _number(),
     "ground_penetration_weight": _number(),
     "smoothness_order": ConfigField.of(int),
+    "ball_velocity_weight": ConfigField.of(int, float, required=False),
+    "ball_velocity_scale_mps": ConfigField.of(int, float, required=False),
 }
 SLCS_LOSS_SCHEMA = _schema("loss", _LOSS_FIELDS)
 SLCS_RUN_SCHEMA = _schema(
@@ -701,6 +703,17 @@ class SLCSModelConfig:
 
 
 def _loss(raw: dict[str, object]) -> SLCSLossConfig:
+    # Explicit compatibility defaults for checkpoints predating velocity supervision.
+    velocity_weight = _finite_number(
+        raw.get("ball_velocity_weight", 0.0), path="loss.ball_velocity_weight"
+    )
+    velocity_scale = _finite_number(
+        raw.get("ball_velocity_scale_mps", 1.0), path="loss.ball_velocity_scale_mps"
+    )
+    if velocity_weight < 0 or velocity_scale <= 0:
+        raise SemanticConfigurationError(
+            "loss.ball_velocity_weight must be non-negative and loss.ball_velocity_scale_mps must be positive."
+        )
     result = SLCSLossConfig(
         player_position_weight=_finite_number(
             raw["player_position_weight"], path="loss.player_position_weight"
@@ -738,6 +751,8 @@ def _loss(raw: dict[str, object]) -> SLCSLossConfig:
             path="loss.ground_penetration_weight",
         ),
         smoothness_order=cast(int, raw["smoothness_order"]),
+        ball_velocity_weight=velocity_weight,
+        ball_velocity_scale_mps=velocity_scale,
     )
     weights = (
         result.player_position_weight,
@@ -750,6 +765,7 @@ def _loss(raw: dict[str, object]) -> SLCSLossConfig:
         result.player_position_smoothness_weight,
         result.ball_position_smoothness_weight,
         result.ground_penetration_weight,
+        result.ball_velocity_weight,
     )
     if any(weight < 0 for weight in weights):
         raise SemanticConfigurationError("SLCS loss weights must be non-negative.")

@@ -125,11 +125,14 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path, num_frames: int) -> N
             ball_position_smoothness_weight=1.0,
             ground_penetration_weight=1.0,
             smoothness_order=3,
+            ball_velocity_weight=0.1,
+            ball_velocity_scale_mps=30.0,
         )
     )(build_slcs_loss_inputs(prediction, targets))
     loss = terms["total"]
     assert torch.isfinite(loss)
     assert terms
+    assert terms["ball_velocity"] > 0
     loss.backward()
     assert any(parameter.grad is not None for parameter in model.parameters())
 
@@ -258,6 +261,8 @@ def test_real_rgb_profile_normal_fit_saves_monitored_checkpoint(
                 "training.trainer.precision=32-true",
                 "training.trainer.log_every_n_steps=1",
                 "training.trainer.enable_model_summary=false",
+                "loss.ball_velocity_weight=0.1",
+                "loss.ball_velocity_scale_mps=30.0",
             ],
         )
     runner = SLCSTrainingRunner()
@@ -283,6 +288,7 @@ def test_real_rgb_profile_normal_fit_saves_monitored_checkpoint(
     finally:
         torch.set_num_threads(old_threads)
     assert trainer.global_step == 1
+    assert trainer.callback_metrics["train/loss_ball_velocity"] > 0
     assert checkpoint.monitor in trainer.callback_metrics
     assert checkpoint.best_model_score is not None
     assert torch.isfinite(checkpoint.best_model_score)
