@@ -202,6 +202,7 @@ provenanceには入力動画のSHA-256、実FPS、フレーム数、抽出区間
 デコード・エンコードは1スレッドで逐次処理し、フレーム列全体は保持しない。
 
 CLIの既定出力rootはこのcheckoutの `outputs/slcs/visualize`。`--output-root` で変更する場合は絶対パスを指定する。Pythonからは `visualization.pr_clip.RenderRequest` と `render(request, command_line=...)` を利用でき、呼出しコマンドを渡した場合は同じprovenanceに保存する。
+指定root自体のsymlinkは解決して使う。実験名・run-idを結合した最終保存先も共通 `PathResolver` で検証し、子ディレクトリのsymlinkによるroot外への逸脱は、CLI・Python APIの双方で出力作成前に拒否する。
 
 ## 検証
 

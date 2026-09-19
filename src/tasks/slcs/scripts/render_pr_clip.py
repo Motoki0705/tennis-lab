@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from src.tasks.slcs.scripts._paths import cli_resolver
-from src.tasks.slcs.visualization.pr_clip import RenderRequest, render
+from src.tasks.slcs.visualization.pr_clip import RenderRequest, output_directory, render
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -39,6 +39,9 @@ PATH_BOUNDARY = NonHydraPathBoundary(
             PathKind.ANY,
             allow_role_root=True,
         ),
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
     ),
 )
 
@@ -71,11 +74,17 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = parser().parse_args()
+    request = RenderRequest(**vars(args))
     PATH_BOUNDARY.validate(
-        {"overlay": args.overlay, "scene": args.scene, "output_root": args.output_root},
+        {
+            "overlay": args.overlay,
+            "scene": args.scene,
+            "output_root": args.output_root,
+            "output": output_directory(request),
+        },
         resolver=cli_resolver(args.output_root, (args.overlay, args.scene)),
     )
-    print(render(RenderRequest(**vars(args)), command_line=tuple(sys.argv)))
+    print(render(request, command_line=tuple(sys.argv)))
 
 
 if __name__ == "__main__":

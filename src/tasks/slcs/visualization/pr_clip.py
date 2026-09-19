@@ -13,6 +13,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 
 WIDTH, HEIGHT = 1440, 610
@@ -38,6 +39,31 @@ class RenderRequest:
     end: float
     fps: float = 10
     output_root: Path = PROJECT_ROOT / "outputs" / "slcs" / "visualize"
+
+
+def output_directory(request: RenderRequest) -> Path:
+    """Resolve the final run, allowing a root symlink but no child-root escape."""
+    if not request.output_root.is_absolute():
+        raise ValueError("Output root must be an absolute path")
+    for value in (request.experiment, request.run_id):
+        if not value or value in (".", "..") or Path(value).name != value:
+            raise ValueError("Experiment and run-id must be single directory names")
+    # Only OUTPUT is consumed here; the other authorities remain at the project
+    # root and are not inferred from the source media or the process CWD.
+    project = PROJECT_ROOT.resolve()
+    resolver = PathResolver(
+        RuntimePathRoots(
+            project_root=project,
+            data_root=project,
+            checkpoint_root=project,
+            artifact_root=project,
+            output_root=request.output_root.resolve(),
+            cache_root=project,
+            external_asset_root=project,
+        )
+    )
+    output: Path = resolver.resolve(PathRole.OUTPUT, request.experiment, request.run_id)
+    return output
 
 
 @dataclass(frozen=True)
@@ -197,11 +223,9 @@ def compose(
 
 
 def render(args: RenderRequest, *, command_line: tuple[str, ...] = ()) -> Path:
+    output = output_directory(args)
     rgb, scene = probe(args.overlay), probe(args.scene)
     times = sample_times(rgb, scene, args.start, args.end, args.fps)
-    for value in (args.experiment, args.run_id):
-        if not value or value in (".", "..") or Path(value).name != value:
-            raise ValueError("Experiment and run-id must be single directory names")
     if (
         args.epoch < 0
         or len(args.checkpoint_sha256) != 64
@@ -213,7 +237,6 @@ def render(args: RenderRequest, *, command_line: tuple[str, ...] = ()) -> Path:
     # Validate labels and font before creating an output directory.
     blank = Image.new("RGB", (PANEL_WIDTH, PANEL_HEIGHT))
     compose(blank, blank, title, subtitle, times[0])
-    output: Path = Path(args.output_root) / args.experiment / args.run_id
     output.mkdir(parents=True, exist_ok=False)
     command = [
         "ffmpeg",

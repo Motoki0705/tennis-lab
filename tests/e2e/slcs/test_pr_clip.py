@@ -79,7 +79,10 @@ def test_probe_rejects_unsynchronized_or_variable_rate_sources(
         probe(source)
 
 
-def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
+@pytest.mark.parametrize("root_is_symlink", [False, True])
+def test_actual_video_composition_and_provenance(
+    tmp_path: Path, root_is_symlink: bool
+) -> None:
     for name, rate, color in (("rgb", 12, "red"), ("scene", 4, "blue")):
         subprocess.run(
             [
@@ -109,6 +112,11 @@ def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
                 reader.at(0)
         finally:
             reader.close()
+    output_root = tmp_path / "outputs"
+    real_root = tmp_path / "shared_results" if root_is_symlink else output_root
+    if root_is_symlink:
+        real_root.mkdir()
+        output_root.symlink_to(real_root, target_is_directory=True)
     args = parser().parse_args(
         [
             "--overlay",
@@ -138,10 +146,11 @@ def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
             "--fps",
             "4",
             "--output-root",
-            str(tmp_path / "outputs"),
+            str(output_root),
         ]
     )
     output = render(RenderRequest(**vars(args)))
+    assert output == real_root / "example/trial"
     video = probe(output / "comparison.mp4")
     assert (video.frames, video.fps) == (3, 4)
     provenance = json.loads((output / "provenance.json").read_text())
@@ -160,3 +169,35 @@ def test_actual_video_composition_and_provenance(tmp_path: Path) -> None:
         assert isinstance(right, tuple) and right[2] > 240
     with pytest.raises(FileExistsError):
         render(RenderRequest(**vars(args)))
+
+
+@pytest.mark.parametrize("escape_level", ["experiment", "run"])
+def test_render_rejects_child_symlink_escape_before_io(
+    tmp_path: Path, escape_level: str
+) -> None:
+    root, outside = tmp_path / "declared", tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    if escape_level == "experiment":
+        (root / "example").symlink_to(outside, target_is_directory=True)
+    else:
+        (root / "example").mkdir()
+        (root / "example/trial").symlink_to(outside, target_is_directory=True)
+    request = RenderRequest(
+        overlay=tmp_path / "unused_rgb.mp4",
+        scene=tmp_path / "unused_scene.mp4",
+        output_root=root,
+        experiment="example",
+        run_id="trial",
+        label="Fixture",
+        model="baseline",
+        clip_id="video/clip",
+        camera_id="cam0",
+        checkpoint_sha256="a" * 64,
+        epoch=56,
+        start=0,
+        end=0.75,
+    )
+    with pytest.raises(ValueError, match="escapes"):
+        render(request)
+    assert list(outside.iterdir()) == []
