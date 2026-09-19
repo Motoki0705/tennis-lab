@@ -22,7 +22,9 @@ from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.evaluation.ball_baseline import TrainBallMean
 from src.tasks.slcs.evaluation.comparison import (
     CONDITIONS,
+    GAP_CONDITIONS,
     compare_conditions,
+    compare_gap_conditions,
     save_comparison,
 )
 from src.tasks.slcs.evaluation.evaluate import (
@@ -185,6 +187,7 @@ def evaluate_training_run(
     domain_prefixes: Sequence[tuple[str, str]],
     default_domain: str,
     ball_train_mean: bool = False,
+    gap_no_rgb: bool = False,
 ) -> Path:
     """Create a fresh evaluation bundle with configs, selection, metrics and FPS."""
     if (
@@ -271,7 +274,8 @@ def evaluate_training_run(
         expected_labels = (
             baseline.expected_labels(split) if baseline is not None else None
         )
-        for condition in CONDITIONS:
+        conditions = (*CONDITIONS, "detector_gap_no_rgb") if gap_no_rgb else CONDITIONS
+        for condition in conditions:
             config.evaluate.split = split
             config.evaluate.input_mode = condition
             directory = destination / split / condition
@@ -323,11 +327,19 @@ def evaluate_training_run(
             )
             bundles[condition] = directory
         comparison = compare_conditions(
-            bundles, _domains(arrays["video_ids"], domain_prefixes, default_domain)
+            {mode: bundles[mode] for mode in CONDITIONS},
+            _domains(arrays["video_ids"], domain_prefixes, default_domain)
         )
         comparison["domain_rules"] = {
             "prefixes": list(domain_prefixes),
             "default": default_domain,
         }
         save_comparison(comparison, destination / split / "comparison")
+        if gap_no_rgb:
+            gap_comparison = compare_gap_conditions(
+                {mode: bundles[mode] for mode in GAP_CONDITIONS},
+                _domains(arrays["video_ids"], domain_prefixes, default_domain),
+            )
+            gap_comparison["domain_rules"] = comparison["domain_rules"]
+            save_comparison(gap_comparison, destination / split / "gap_rgb_comparison")
     return destination

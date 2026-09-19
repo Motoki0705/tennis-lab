@@ -15,6 +15,8 @@ def condition_inputs(
         raise ValueError(f"Unknown SLCS input condition {mode!r}")
     if mode == "full":
         return batch
+    if mode == "detector_gap_no_rgb":
+        return condition_inputs(condition_inputs(batch, "detector_gap"), "no_rgb")
     names = {
         "player_kp",
         "player_kp_vis",

@@ -16,6 +16,7 @@ from src.tasks.slcs.training.metrics import SLCSMetrics
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 CONDITIONS = ("full", "no_rgb", "detector_gap", "rgb_only")
+GAP_CONDITIONS = ("detector_gap", "detector_gap_no_rgb")
 METRICS = ("player_position_error_m", "ball_position_error_m", "player_angular_error_deg")
 MATCH_KEYS = (
     "scene_ids", "video_ids", "clip_ids", "camera_ids", "window_start", "window_length", "frame_idx",
@@ -105,10 +106,23 @@ def compare_conditions(bundles: dict[str, Path], domains: dict[str, str]) -> dic
     """Require exact paired samples/targets and identical checkpoint before comparing."""
     if set(bundles) != set(CONDITIONS):
         raise ValueError(f"Exactly these four conditions are required: {CONDITIONS}")
+    return _compare_paired(bundles, domains, CONDITIONS, "full")
+
+
+def compare_gap_conditions(bundles: dict[str, Path], domains: dict[str, str]) -> dict[str, Any]:
+    """Measure RGB contribution with identical deterministic detector gaps."""
+    if set(bundles) != set(GAP_CONDITIONS):
+        raise ValueError(f"Exactly these gap conditions are required: {GAP_CONDITIONS}")
+    return _compare_paired(bundles, domains, GAP_CONDITIONS, "detector_gap")
+
+
+def _compare_paired(
+    bundles: dict[str, Path], domains: dict[str, str], conditions: tuple[str, ...], reference: str
+) -> dict[str, Any]:
     loaded: dict[str, dict[str, np.ndarray]] = {}
     checkpoint: str | None = None
     coordinate_context: dict[str, Any] | None = None
-    for mode in CONDITIONS:
+    for mode in conditions:
         payload = json.loads((bundles[mode] / "metrics.json").read_text())
         context = payload["context"]
         digest = context["checkpoint_sha256"]
@@ -128,11 +142,11 @@ def compare_conditions(bundles: dict[str, Path], domains: dict[str, str]) -> dic
         _validate_arrays(arrays)
         if loaded:
             for key in MATCH_KEYS:
-                base = loaded["full"][key]
+                base = loaded[reference][key]
                 if base.dtype != arrays[key].dtype or not np.array_equal(base, arrays[key]):
                     raise ValueError(f"Unmatched {mode} array: {key}")
         loaded[mode] = arrays
-    videos = loaded["full"]["video_ids"]
+    videos = loaded[reference]["video_ids"]
     if set(domains) != set(videos.tolist()) or any(not name for name in domains.values()):
         raise ValueError("Provide exactly one explicit domain for every evaluated video")
     domain_axis = np.array([domains[str(video)] for video in videos])
@@ -141,16 +155,16 @@ def compare_conditions(bundles: dict[str, Path], domains: dict[str, str]) -> dic
     groups += [("domain", str(domain), domain_axis == domain) for domain in np.unique(domain_axis)]
     rows = []
     for group_type, group, selection in groups:
-        scores = {mode: _summarize(loaded[mode], selection) for mode in CONDITIONS}
-        for mode in CONDITIONS:
+        scores = {mode: _summarize(loaded[mode], selection) for mode in conditions}
+        for mode in conditions:
             row: dict[str, Any] = {"group_type": group_type, "group": group, "condition": mode, **scores[mode]}
             for metric in METRICS:
-                full, other = scores["full"][metric], scores[mode][metric]
-                row[f"full_minus_condition_{metric}"] = None if full is None or other is None else full - other
+                full, other = scores[reference][metric], scores[mode][metric]
+                row[f"{reference}_minus_condition_{metric}"] = None if full is None or other is None else full - other
             rows.append(row)
     return {
         "schema_version": 1, "checkpoint_sha256": checkpoint,
-        "interpretation": "Pseudo-teacher agreement; not measured 3D accuracy or a causal estimate. Negative full-minus-condition error favors full.",
+        "interpretation": f"Pseudo-teacher agreement; not measured 3D accuracy or a causal estimate. Negative {reference}-minus-condition error favors {reference}.",
         "aggregation": "SLCSMetrics masked unweighted means; label weights reported separately, not applied to headline metrics. Overlapping window occurrences remain separate.",
         "domain_mapping": domains, "sources": {key: str(value.resolve()) for key, value in bundles.items()},
         "coordinate_context": coordinate_context, "rows": rows,

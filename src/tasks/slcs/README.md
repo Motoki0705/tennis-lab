@@ -78,6 +78,15 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 `--help`で明示的な入力・出力rootとsplitの指定を確認できる。既定はvalのみでtestは明示指定とし、
 各条件の配列・設定・checkpoint選定記録と実FPSのmotion診断を同じ評価runへ保存する。
 
+`--gap-no-rgb` を指定すると、第5条件 `detector_gap_no_rgb` を追加する。
+既存 `detector_gap` と同じ有効窓中央1/3のball・全player観測欠損に `no_rgb` を重ね、court観測は維持する。
+通常の4条件比較に加え、各splitの `gap_rgb_comparison/comparison.json` と `comparison.csv` に
+`detector_gap` 対 `detector_gap_no_rgb` の位置・yaw誤差を全体・domain・video別で保存する。
+checkpoint SHA256、教師・mask・weight・window対応の完全一致を検証し、
+`detector_gap_minus_condition_*` が負ならRGBありのgap条件を支持する。
+第5条件も配列・設定・motion診断を保存し、`--ball-train-mean` 併用時は定数baselineとも比較する。
+この診断は疑似教師との一致度であり、実測3D精度や因果効果ではない。
+
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip \
   predict.checkpoint=slcs/example.ckpt \
