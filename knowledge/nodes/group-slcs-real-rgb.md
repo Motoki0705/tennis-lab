@@ -93,6 +93,7 @@ members:
 - run-slcs-meiji-v9-repair-batch-v3
 - run-slcs-meiji-v9-full-qc-v2
 - run-slcs-real-rgb-full-assembly-v1
+- run-slcs-real-rgb-cpu-smoke-v1
 parents: []
 tags:
 - slcs
