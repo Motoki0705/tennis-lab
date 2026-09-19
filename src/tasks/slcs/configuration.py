@@ -604,7 +604,7 @@ class SLCSModelConfig:
     dino_cross_attn_every: int
     log_b_min: float
     log_b_max: float
-    missing_ball_court_context: bool = False
+    missing_ball_court_context: bool
 
     @classmethod
     def from_mapping(cls, raw: dict[str, object]) -> SLCSModelConfig:

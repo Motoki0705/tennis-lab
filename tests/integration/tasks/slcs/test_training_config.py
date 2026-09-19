@@ -7,10 +7,18 @@ import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import open_dict
 
-from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
+from src.tasks.slcs.configuration import SLCSModelConfig, SLCSTrainingRuntimeConfig
 from src.tasks.slcs.training.lightning_module import SLCSLightningModule
+from src.utils.configuration.contracts import inspect_typed_adapter
 
 _CONFIG_DIR = Path(__file__).parents[4] / "src" / "tasks" / "slcs" / "configs"
+
+
+def test_model_config_has_composition_owned_defaults() -> None:
+    contract = inspect_typed_adapter(SLCSModelConfig)
+    assert any(
+        field.path.endswith(".missing_ball_court_context") for field in contract.fields
+    )
 
 
 def test_lightning_schedule_uses_trainer_max_epochs() -> None:
