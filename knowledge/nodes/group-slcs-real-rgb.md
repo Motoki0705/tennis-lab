@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-broadcast-unused-source-inventory-v1
 - run-slcs-full-real-rgb-temporal-domain-balanced-val-v1
 - run-slcs-full-real-rgb-temporal-domain-balanced-e60-v1
 - run-slcs-temporal-context-meiji-visual-v1
@@ -268,3 +269,5 @@ samplerのepochごとの再現可能性と実抽出数・unique窓数を監査�
 [GRU-D](https://arxiv.org/html/1606.01865) §2.1–2.2の観測mask・最終観測からの時間と、[BRITS](https://papers.nips.cc/paper_files/paper/2018/file/734e6bfcd358e25ac1db0a4241b95651-Paper.pdf) §4の双方向の欠損補完を参考に、片側の実観測featureへ方向・frame距離を添える転用仮説を試す。医療時系列の平均へ減衰する仮定をballへ移植せず、今回はlearnable decayを追加しない。実装契約とoffline・長gapの限界は[SLCS README](../../src/tasks/slcs/README.md#学習)を正本とする。物理的な外挿・連続性・改善を保証する手法ではない。
 
 新profile `train_real_rgb_one_sided_context`の直接対照は**非均衡samplingのTemporalContext**とし、DomainBalancedではない。変更は片側context flagと出力先だけ。seed42、60epoch・1800更新、burst24、loss・quality・dataset/split、validation checkpoint選定を固定し、旧重みからのfine-tuneはしない。事前にゼロ初期出力・共有初期値・RNG・旧checkpoint互換と実データの適用範囲を確認する。固定5条件の全体/player/domain・位置平均/p95・両欠損境界・高速区間を直接対照と元基準へ比較し、片側の左右・距離別も確認する。既知の1区間だけの改善や最大速度低下だけでは採用せず、testは選定が閉じるまで開かない。
+
+[未使用broadcast sourceの疎な目視監査](run-slcs-broadcast-unused-source-inventory-v1.md)で別会場のラリー候補を得たが、ball注釈・カット境界・静止性・教師QCは未確認で追加採用は0。既存val/test会場と衝突する区間も発見した。現在の単独比較へは混ぜず、新dataset版の候補として取込経路を調べる。
