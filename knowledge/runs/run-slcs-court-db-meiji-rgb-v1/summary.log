@@ -1,0 +1,78 @@
+{
+  "views": 9,
+  "ecc_estimates_returned": 45,
+  "ecc_attempts": 45,
+  "manual_independent_layouts": 3,
+  "manual_points": 42,
+  "manual_mean_px": {
+    "baseline": 7.312831695399613,
+    "initial": 17.388358848990723,
+    "refined": 58.72466436582349
+  },
+  "query_mean": {
+    "baseline": 3.7397923933135138,
+    "initial": 4.020097884866926,
+    "refined": 3.2288459870550366
+  },
+  "temporal_mean": {
+    "baseline": 4.049048953586155,
+    "initial": 4.293611698680454,
+    "refined": 3.578174418873257
+  }
+}
+[
+  {
+    "view": "video_000_clip_000_cam0",
+    "roll_relative_to_zero_roll_deg": -7.218459503013619,
+    "nominal_zero_roll_vs_v9_mean_px": 26.89499740440892,
+    "nominal_zero_roll_vs_v9_max_px": 51.83575895315446
+  },
+  {
+    "view": "video_000_clip_000_cam1",
+    "roll_relative_to_zero_roll_deg": -1.639174272846385,
+    "nominal_zero_roll_vs_v9_mean_px": 10.233444707176925,
+    "nominal_zero_roll_vs_v9_max_px": 17.365862172058424
+  },
+  {
+    "view": "video_000_clip_000_cam2",
+    "roll_relative_to_zero_roll_deg": -0.40890322890839126,
+    "nominal_zero_roll_vs_v9_mean_px": 3.3313346895476053,
+    "nominal_zero_roll_vs_v9_max_px": 6.19053525605528
+  },
+  {
+    "view": "video_001_clip_003_cam0",
+    "roll_relative_to_zero_roll_deg": -7.455629269014879,
+    "nominal_zero_roll_vs_v9_mean_px": 27.71879375623262,
+    "nominal_zero_roll_vs_v9_max_px": 44.51435761540558
+  },
+  {
+    "view": "video_001_clip_003_cam1",
+    "roll_relative_to_zero_roll_deg": -1.6906390778317268,
+    "nominal_zero_roll_vs_v9_mean_px": 10.51222411817153,
+    "nominal_zero_roll_vs_v9_max_px": 17.781232306377337
+  },
+  {
+    "view": "video_001_clip_003_cam2",
+    "roll_relative_to_zero_roll_deg": -0.36197807623628325,
+    "nominal_zero_roll_vs_v9_mean_px": 3.0290886789128493,
+    "nominal_zero_roll_vs_v9_max_px": 6.729878065484671
+  },
+  {
+    "view": "video_002_clip_017_cam0",
+    "roll_relative_to_zero_roll_deg": -6.757832667776261,
+    "nominal_zero_roll_vs_v9_mean_px": 25.01885216976459,
+    "nominal_zero_roll_vs_v9_max_px": 43.075155919063185
+  },
+  {
+    "view": "video_002_clip_017_cam1",
+    "roll_relative_to_zero_roll_deg": -1.2338497127760115,
+    "nominal_zero_roll_vs_v9_mean_px": 9.975651984629897,
+    "nominal_zero_roll_vs_v9_max_px": 15.29065842897339
+  },
+  {
+    "view": "video_002_clip_017_cam2",
+    "roll_relative_to_zero_roll_deg": -0.1556156337406612,
+    "nominal_zero_roll_vs_v9_mean_px": 2.4331158968275486,
+    "nominal_zero_roll_vs_v9_max_px": 5.827255357497189
+  }
+]
