@@ -1,0 +1,3 @@
+predictions -> /home/kamimura/projects/tennis-lab/outputs/slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-streaming-001/predictions.npz
+3D render  -> /home/kamimura/projects/tennis-lab/outputs/slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-streaming-001/scene_3d.mp4
+2D overlay -> /home/kamimura/projects/tennis-lab/outputs/slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-streaming-001/overlay_2d.mp4 (frames without homography: 0)
