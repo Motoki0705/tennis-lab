@@ -70,6 +70,8 @@ split 単位は `video_id` で、同じマルチカメラ動画から切り出�
 
 比較用の [`train_real_rgb_velocity.yaml`](configs/train_real_rgb_velocity.yaml) はno-ball-smooth・burst24を維持し、[train-only較正](../../../knowledge/nodes/run-slcs-ball-velocity-gradient-calibration-v1.md)のweight/scaleを固定した60epoch profileです。探索中の自動終端testは無効です。係数の決定と、学習後のvalidationによる採否判断は分けて記録します。
 
+[`train_real_rgb_missing_ball_court.yaml`](configs/train_real_rgb_missing_ball_court.yaml) はno-ball-smooth・burst24の60epoch構成で `model.missing_ball_court_context=true` を有効化する単独architecture ablationです。ball欠損の実フレームだけ、既存invisible tokenに、観測court UV（不可視座標は0）とcourt valid flagsのbiasなし線形射影を加算します。court全欠損・paddingでは加算は0です。射影は乱数を消費せずゼロ初期化され、初期のモデル挙動を維持します。既定falseでは追加パラメータはなく旧checkpointをstrict loadできます。自動終端testは無効です。欠損ball tokenにも観測court情報を保持する仮説を検証する設定であり、性能改善は未確認です。
+
 axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`、`model.num_rotation_layers` で指定します。position branchはplayer/ball位置、rotation branchはplayer yawを担当します。既定の `shared=2, position=0, rotation=0` は従来と同一の全共有構成です。small modelを完全分離する場合は次を指定します。
 
 ```bash

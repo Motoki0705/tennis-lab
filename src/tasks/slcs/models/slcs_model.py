@@ -57,6 +57,9 @@ from src.tasks.slcs.models.components.heads import (
     PlayerPositionHead,
     PlayerRotationHead,
 )
+from src.tasks.slcs.models.components.missing_ball_context import (
+    MissingBallCourtContext,
+)
 from src.tasks.slcs.models.components.padding import build_slcs_padding_masks
 from src.utils.models import (
     CrossAttnBlock,
@@ -154,8 +157,11 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         dino_cross_attn_every: int,
         log_b_min: float,
         log_b_max: float,
+        missing_ball_court_context: bool = False,
     ) -> None:
         super().__init__()
+        if not isinstance(missing_ball_court_context, bool):
+            raise ValueError("missing_ball_court_context must be a bool.")
 
         self.hidden_dim = int(hidden_dim)
         self.num_players = int(num_players)
@@ -220,6 +226,11 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             num_court_tokens=self.num_court_kp,
         )
         self.entity_embed = nn.Embedding(self.num_entities, self.hidden_dim)
+        self.missing_ball_context = (
+            MissingBallCourtContext(num_court_kp=self.num_court_kp, dim=self.hidden_dim)
+            if missing_ball_court_context
+            else None
+        )
 
         # ---- DINOv3 visual stream --------------------------------------
         self.dino_encoder = DinoTokenEncoder(
@@ -423,6 +434,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             dino_cross_attn_every=model.dino_cross_attn_every,
             log_b_min=model.log_b_min,
             log_b_max=model.log_b_max,
+            missing_ball_court_context=model.missing_ball_court_context,
         )
 
     # ------------------------------------------------------------------
@@ -486,6 +498,11 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             ball_uv.reshape(batch_size * seq_len, 2),
             ball_token_valid.reshape(batch_size * seq_len),
         ).reshape(batch_size, 1, seq_len, self.hidden_dim)
+
+        if self.missing_ball_context is not None:
+            ball_tokens = ball_tokens + self.missing_ball_context(
+                court_kp, court_vis, ball_vis, padding_mask
+            ).unsqueeze(1)
 
         x = torch.cat([player_tokens, ball_tokens], dim=1)  # (B, E, T, D)
         entity_ids = torch.arange(num_entities, device=x.device)

@@ -69,6 +69,7 @@ def test_velocity_changes_only_loss_and_disables_automatic_test() -> None:
         ("train_real_rgb_no_ball_smooth", "real_rgb_no_ball_smooth"),
         ("train_real_rgb_gap48", "real_rgb_gap48"),
         ("train_real_rgb_velocity", "real_rgb_velocity"),
+        ("train_real_rgb_missing_ball_court", "real_rgb_missing_ball_court"),
     ],
 )
 def test_ablation_output_identity_is_separate_and_stable(
@@ -79,3 +80,20 @@ def test_ablation_output_identity_is_separate_and_stable(
     assert Path(output).parts[:3] == ("slcs", "train", experiment)
     assert len(Path(output).parts) == 4
     assert config.run.output_dir == output
+
+
+def test_missing_ball_court_changes_only_architecture_and_automatic_test() -> None:
+    output = "run.output_dir=slcs/train/config_fixture/fixed"
+    baseline = _compose_profile("train_real_rgb_no_ball_smooth", output)
+    candidate = _compose_profile("train_real_rgb_missing_ball_court", output)
+    assert baseline.model.missing_ball_court_context is False
+    assert candidate.model.missing_ball_court_context is True
+    assert candidate.run.seed == 42
+    assert candidate.data.augmentation.burst_max_frames == 24
+    assert candidate.training.trainer.max_epochs == 60
+    assert candidate.run.test_after_fit is False
+    baseline.model.missing_ball_court_context = True
+    baseline.run.test_after_fit = False
+    assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(
+        baseline, resolve=True
+    )
