@@ -1,0 +1,85 @@
+env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python - <<'PY'
+from pathlib import Path
+from dataclasses import replace, fields, asdict
+from collections import defaultdict
+import hashlib, json, math, copy
+import numpy as np
+import torch
+from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
+import src.utils.hydra
+from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
+from src.tasks.slcs.data.dataset import SLCSWindowDataset, collate_slcs
+from src.tasks.slcs.training.lightning_module import SLCSLightningModule
+from src.tasks.slcs.training.losses import build_slcs_loss_inputs
+root=Path('/home/kamimura/projects/tennis-lab')
+work=root/'.claude/worktrees/slcs-real-rgb'
+overrides=[f'paths.data_root={root}/data',f'paths.output_root={root}/outputs',f'paths.checkpoint_root={root}/outputs','run.output_dir=slcs/train/real_rgb_one_sided_context/s42-001']
+with initialize_config_dir(config_dir=str(work/'src/tasks/slcs/configs'),version_base='1.3'):
+    candidate=compose(config_name='train_real_rgb_one_sided_context',overrides=overrides)
+    control=compose(config_name='train_real_rgb_ball_temporal_context',overrides=overrides[:-1]+['run.output_dir=slcs/train/real_rgb_ball_temporal_context/s42-001'])
+c=OmegaConf.to_container(candidate,resolve=True)
+b=OmegaConf.to_container(control,resolve=True)
+n=copy.deepcopy(c); n['model']['missing_ball_one_sided_context']=False; n['run']['output_dir']=b['run']['output_dir']; assert n==b
+saved_path=root/'outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/config.yaml'
+saved=OmegaConf.to_container(OmegaConf.load(saved_path),resolve=True)
+assert 'missing_ball_one_sided_context' not in saved['model']
+assert 'domain_sampling' not in saved['data']
+saved['model']['missing_ball_one_sided_context']=False
+saved['data']['domain_sampling']=b['data']['domain_sampling']
+assert b['data']['domain_sampling']['enabled'] is False
+serialized_control=copy.deepcopy(b)
+serialized_control['paths']=dict(SLCSTrainingRuntimeConfig.from_config(control).resolver.roots.as_mapping())
+assert saved==serialized_control
+runtime=SLCSTrainingRuntimeConfig.from_config(candidate)
+assert runtime.run.test_after_fit is False and runtime.run.resume is None and runtime.run.init_weights is None
+pipeline=replace(runtime.data.pipeline,cache_dino_tokens=False)
+dataset=SLCSWindowDataset(dataset_root=runtime.data.dataset_root,split_file=runtime.data.split_file,split='train',config=pipeline,stride=pipeline.train_stride,augment=False)
+assert len(dataset)==466
+stats=defaultdict(lambda:defaultdict(int)); distances=defaultdict(list); selected=None
+for i,e in enumerate(dataset._entries):
+    clip=dataset._clips[e.clip_id]
+    vis=clip.ball_vis[e.camera_index,e.plan.start:e.plan.start+e.plan.length]
+    idx=np.arange(len(vis))
+    left=np.maximum.accumulate(np.where(vis,idx,-1))
+    right=np.minimum.accumulate(np.where(vis,idx,len(vis))[::-1])[::-1]
+    one=~vis&((left>=0)^(right<len(vis)))
+    both=~vis&(left>=0)&(right<len(vis))
+    none=~vis&(left<0)&(right>=len(vis))
+    anchor=np.where(left>=0,left,right)
+    domain='meiji' if clip.manifest.video_id.startswith('video_') else 'broadcast'
+    for group in ('all',domain):
+        s=stats[group];s['windows']+=1;s['real_frame_occurrences']+=len(vis);s['observed']+=int(vis.sum())
+        s['left_only']+=int((one&(left>=0)).sum());s['right_only']+=int((one&(right<len(vis))).sum())
+        s['both_sides_missing']+=int(both.sum());s['no_anchor_missing']+=int(none.sum())
+        s['windows_with_one_sided']+=int(one.any())
+        distances[group].extend((np.abs(idx-anchor)[one]).tolist())
+    if selected is None and one.any() and clip.ball_label_valid[e.plan.start:e.plan.start+e.plan.length].any():
+        selected=i
+assert selected is not None
+batch=collate_slcs([dataset[selected]])
+torch.manual_seed(42)
+baseline=SLCSLightningModule(control).eval()
+rng=torch.get_rng_state()
+torch.manual_seed(42)
+model=SLCSLightningModule(candidate).eval()
+assert torch.equal(rng,torch.get_rng_state())
+extra=set(model.state_dict())-set(baseline.state_dict())
+assert extra=={'model.missing_ball_one_sided_context.weight'}
+for k,v in baseline.state_dict().items():
+    assert torch.equal(v,model.state_dict()[k]),k
+with torch.no_grad():
+    expected=baseline.forward_batch(batch)
+actual=model.forward_batch(batch)
+output_equal={f.name:bool(torch.equal(getattr(expected,f.name),getattr(actual,f.name))) for f in fields(actual)}
+assert all(output_equal.values())
+targets=model.model_adapter.build_training_targets(batch)
+losses=model.loss_fn(build_slcs_loss_inputs(actual,targets))
+assert all(torch.isfinite(v).all() for v in losses.values())
+losses['total'].backward()
+weight=model.model.missing_ball_one_sided_context.weight
+assert weight.numel()==16768 and torch.count_nonzero(weight)==0
+assert weight.grad is not None and torch.isfinite(weight.grad).all() and weight.grad.abs().sum()>0
+result={'schema_version':1,'source_commit':'f8f83a6c457c153640dcba04ed86722cbdb794f9','device':'cpu','profile':'train_real_rgb_one_sided_context','control_profile':'train_real_rgb_ball_temporal_context','composed_changes':['model.missing_ball_one_sided_context','run.output_dir'],'saved_control_config_sha256':hashlib.sha256(saved_path.read_bytes()).hexdigest(),'explicit_legacy_migrations':{'model.missing_ball_one_sided_context':False,'data.domain_sampling':b['data']['domain_sampling']},'saved_control_matches_after_explicit_migrations':True,'root_comparison_uses_runner_absolute_serialization':True,'dataset_sha256':hashlib.sha256((runtime.data.dataset_root/'dataset.json').read_bytes()).hexdigest(),'split_sha256':hashlib.sha256(runtime.data.split_file.read_bytes()).hexdigest(),'train_windows':len(dataset),'epochs':60,'batches_per_epoch':math.ceil(len(dataset)/runtime.data.batch_size),'total_steps':60*math.ceil(len(dataset)/runtime.data.batch_size),'sampling_balanced':False,'require_dino':pipeline.require_dino,'cache_dino_tokens_for_preflight':False,'augmentation_for_preflight':False,'test_read':False,'build_report':dataset.build_report,'frame_counts':dict(stats),'one_sided_distance_frames':{g:{'count':len(v),'median':float(np.median(v)),'p95':float(np.percentile(v,95)),'max':max(v)} for g,v in distances.items()},'real_forward_backward':{'sample_index':selected,'meta':asdict(dataset.metas[selected]),'equal_initial_output_fields':output_equal,'equal_initial_rng':True,'all_shared_parameters_equal':True,'added_parameters':weight.numel(),'losses':{k:float(v.detach()) for k,v in losses.items()},'one_sided_gradient_l1':float(weight.grad.abs().sum()),'one_sided_gradient_finite':True}}
+print(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False))
+PY
