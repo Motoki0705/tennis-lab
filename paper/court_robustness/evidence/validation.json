@@ -1,0 +1,98 @@
+{
+  "status": "passed",
+  "pages": 7,
+  "supplied_images": 4,
+  "scene_overlays": 12,
+  "overlays_per_scene": 3,
+  "source_owner_check": false,
+  "local_weights_and_config_checked": false,
+  "build_receipt_verified": true,
+  "alignment_method": {
+    "point_count": 217407,
+    "candidate_count": 75208,
+    "support_count": 65325,
+    "fit_views": 32,
+    "holdout_views": 16,
+    "shown_views": [
+      "frame_000000",
+      "frame_000183",
+      "frame_000306"
+    ],
+    "max_projection_difference_metres": 0.0,
+    "aggregate_matches_exactly": true,
+    "ransac_matches_saved_plane": true
+  },
+  "sfm_temporal_ground_audit": {
+    "scene_id": "B00",
+    "frame_count": 491,
+    "point_count": 217407,
+    "primary": {
+      "cell_size_m": 0.5,
+      "shared_cell_count": 33,
+      "median_delta_m": [
+        0.0,
+        0.012536362043265376,
+        0.03186454484424611,
+        0.015148164448182434
+      ],
+      "iqr_delta_m": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.00652086014680274,
+          0.022205987138194917
+        ],
+        [
+          0.020803217434881904,
+          0.03880032565045656
+        ],
+        [
+          0.0027857658996865886,
+          0.025604789277464686
+        ]
+      ]
+    },
+    "sensitivity": {
+      "cell_size_m": 1.0,
+      "shared_cell_count": 101,
+      "median_delta_m": [
+        0.0,
+        0.013206240222555048,
+        0.030186141668640296,
+        0.0104882470794177
+      ],
+      "iqr_delta_m": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.002263411347866215,
+          0.023682378777637486
+        ],
+        [
+          0.018502638788165462,
+          0.040481730963387905
+        ],
+        [
+          -0.0013964902149769427,
+          0.02604139064415991
+        ]
+      ]
+    }
+  },
+  "corpus_images_audited": 17256,
+  "exact_matches": 0,
+  "baseline_official_detections": [
+    3,
+    1,
+    0,
+    1
+  ],
+  "baseline_control_error_px": 1.42276633028083,
+  "max_scene_label_reprojection_difference_px": 1.7826096154749393e-10,
+  "pdf_sha256": "0fe305dc1e8bb4a0f6a5eae521a164927a246a35b1378f8074d770a322c4d4f0",
+  "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth."
+}
