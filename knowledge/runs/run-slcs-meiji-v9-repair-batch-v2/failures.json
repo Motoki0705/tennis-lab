@@ -1,0 +1,6 @@
+{
+  "stage": "infer",
+  "failures": {
+    "video_002/clip_004": "ValueError: Teacher checkpoint pin mismatch: blcs; expected dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32, actual 500327c2961bce7621518a113ad07733d7949bb4d95dc379316459456531f824"
+  }
+}
