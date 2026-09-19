@@ -158,6 +158,31 @@ def test_existing_output_rejected_before_checkpoint_or_model_loading(
         )
 
 
+@pytest.mark.parametrize(
+    "output",
+    [
+        "slcs/evaluate/example/./run-001",
+        "slcs/evaluate/./run-001",
+        "slcs/evaluate/example/../run-001",
+        "slcs/evaluate/../run-001",
+        "slcs/evaluate//run-001",
+        "slcs/evaluate/example/run-001/",
+        "slcs/evaluate/example/run-001//",
+        "slcs/evaluate/example\\nested/run-001",
+        "/slcs/evaluate/example/run-001",
+    ],
+)
+def test_output_requires_exact_raw_segments(tmp_path: Path, output: str) -> None:
+    with pytest.raises(ValueError, match="output must be slcs/evaluate"):
+        evaluate_training_run(
+            training_run=Path("does-not-exist"),
+            output_root=tmp_path,
+            output=output,
+            domain_prefixes=[],
+            default_domain="all",
+        )
+
+
 def test_cuda_requires_queue_before_any_model_work(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -209,7 +234,20 @@ def test_cli_test_evaluation_is_explicit(
     assert calls[0]["domain_prefixes"] == [("video_", "meiji")]
 
 
-def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(tmp_path: Path) -> None:
+@pytest.mark.parametrize("symlink_roots", [False, True])
+def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    symlink_roots: bool,
+) -> None:
+    if symlink_roots:
+        project = tmp_path / "project"
+        project.mkdir()
+        for name in ("data", "ckpt", ".cache", "third_party"):
+            target = tmp_path / name
+            target.mkdir()
+            (project / name).symlink_to(target, target_is_directory=True)
+        monkeypatch.chdir(project)
     dataset = tmp_path / "data/scene"
     for video, fps in (("video_000", 25.0), ("broadcast", 50.0)):
         build_slcs_dataset_fixture(

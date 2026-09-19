@@ -207,16 +207,21 @@ def evaluate_training_run(
     resolver = PathResolver(
         RuntimePathRoots(
             project_root=project,
-            data_root=project / "data",
-            checkpoint_root=project / "ckpt",
+            data_root=(project / "data").resolve(),
+            checkpoint_root=(project / "ckpt").resolve(),
             output_root=root,
             artifact_root=root,
-            cache_root=project / ".cache",
-            external_asset_root=project / "third_party",
+            cache_root=(project / ".cache").resolve(),
+            external_asset_root=(project / "third_party").resolve(),
         )
     )
-    fragment = Path(output)
-    if len(fragment.parts) != 4 or fragment.parts[:2] != ("slcs", "evaluate"):
+    segments = output.split("/")
+    if (
+        len(segments) != 4
+        or segments[:2] != ["slcs", "evaluate"]
+        or any(segment in {"", ".", ".."} for segment in segments)
+        or "\\" in output
+    ):
         raise ValueError("output must be slcs/evaluate/<experiment>/<run-id>")
     destination: Path = resolver.resolve(PathRole.OUTPUT, output)
     if destination.exists():
