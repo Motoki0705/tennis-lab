@@ -224,3 +224,13 @@ baselineと同じseed・60epoch・burst24・lossで単独比較し、validation�
 [欠損ballのcourt文脈保持](run-slcs-full-real-rgb-missing-ball-court-e60-v1.md)は60epoch・1800更新を完走した。
 追加5376重みの更新とvalidation最良epoch49を確認した。[固定5条件の評価](run-slcs-full-real-rgb-missing-ball-court-val-v1.md)は343窓で完走したが、full ball2.5210→2.5373m、gap3.0973→3.1814mへ悪化し不採用。
 full最大速度の低下とbroadcast ballの部分改善に対し、gapの両visibility境界・player・Meijiは退行した。次は入力window内の観測ballから時間的なanchorを作る仮説を調査し、元の欠損maskとteacher非参照を維持する。
+
+次の単独比較は、欠損ballへの観測済み特徴の時間的contextとする。
+[TrackNetV3著者論文](https://people.cs.nycu.edu.tw/~yushuen/data/TrackNetV3.pdf) §3.3は2D座標とrepair maskを使う学習補完を扱う一方、§4.5は単純な線形座標補間が複雑な軌道で失敗すると報告する。
+本試験はその再現ではなく、現在のoffline入力window内の両側観測を補助手掛かりにする設計仮説である。
+観測済みcourt+ballのembeddingを最近の左右anchor間で線形合成し、ゼロ初期化した射影を通して欠損tokenにだけ加える。
+既存の幾何表現を再利用するため特徴空間を選ぶが、UV補間より優れるという論文上の根拠はない。特徴の線形合成は物理的なUV/3D軌道の線形補間とも異なる。
+不可視入力・教師・別windowは参照せず、片側だけ・全欠損・paddingではcontextを厳密に0とする。元のvisibility・教師weight・出力は加工しない。
+新しい60epoch profileではcourt contextとvelocity lossを無効化し、seed42・burst24・同じ61clip/splitを固定する。
+validation sceneでcheckpointを選定し、両visibility境界、full/gapのball/player平均・p95、Meiji/broadcast、高速教師区間を同時比較する。
+最大速度低下単独や1clipの見た目では採用せず、testはvalidation選定を閉じるまで実行しない。
