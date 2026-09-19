@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
 import cv2
 import numpy as np
 import pytest
+import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
+from src.submodules.models import Pose2DRequest, Pose2DResult
 from src.tennis_scene.dataset_pipeline.diagnostics import configuration, media
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.scripts import render_reconstruction_review as review
@@ -230,6 +233,77 @@ def test_media_samples_requested_frames(
     monkeypatch.setattr(media.cv2, "VideoCapture", lambda path: capture)
     result = media.sample_frames(diagnostic_clip, "cam0", np.asarray([0, 2]))
     assert positions == [0, 2] and len(result) == 2
+
+
+@pytest.mark.parametrize("standard_name_present", [False, True])
+def test_vitpose_infers_the_same_manifest_media_that_was_validated(
+    diagnostic_clip: ClipManifest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    standard_name_present: bool,
+) -> None:
+    from src.tennis_scene.dataset_pipeline.diagnostics import vitpose
+
+    standard = diagnostic_clip.media_path("cam0")
+    if standard_name_present:
+        standard.write_bytes(b"different, unselected video")
+    else:
+        standard.unlink()
+    clip = replace(diagnostic_clip, video_paths=("media/custom_cam0.mkv",))
+    selected = clip.clip_dir / clip.video_paths[0]
+    selected.write_bytes(b"selected manifest video")
+    monkeypatch.setattr(vitpose.ClipManifest, "load", lambda path: clip)
+    validated: list[Path] = []
+    props = {
+        cv2.CAP_PROP_FPS: clip.fps,
+        cv2.CAP_PROP_FRAME_WIDTH: clip.width,
+        cv2.CAP_PROP_FRAME_HEIGHT: clip.height,
+        cv2.CAP_PROP_FRAME_COUNT: clip.num_frames,
+    }
+
+    def capture(path: str) -> SimpleNamespace:
+        validated.append(Path(path))
+        return SimpleNamespace(
+            isOpened=lambda: True, get=props.__getitem__, release=lambda: None
+        )
+
+    monkeypatch.setattr(media.cv2, "VideoCapture", capture)
+    cfg = configured("benchmark_vitpose_precision", tmp_path)
+    cfg.clip, cfg.observations = "dataset/clip", "tennis_scene/precompute/obs/run"
+    cfg.cameras, cfg.people = ["cam0"], [0]
+    cfg.frames, cfg.warmup_frames = 3, 1
+    args = replace(
+        configuration.ViTPoseBenchmarkConfig.from_config(cfg), clip=clip.clip_dir
+    )
+    args.checkpoint.parent.mkdir(parents=True)
+    args.checkpoint.write_bytes(b"checkpoint fixture")
+    args.observations.mkdir(parents=True)
+    np.savez(
+        args.observations / "cam0_people.npz",
+        boxes=np.tile(np.asarray([0, 0, 2, 2], dtype=np.float32), (1, 3, 1)),
+    )
+    predictions: list[tuple[str, Path, int]] = []
+    model = SimpleNamespace(precision="float32", load=lambda: None, unload=lambda: None)
+
+    def predict(request: Pose2DRequest) -> Pose2DResult:
+        predictions.append(
+            (model.precision, Path(request.video_path), len(request.bbx_xys))
+        )
+        return Pose2DResult(torch.zeros((len(request.bbx_xys), 17, 3)))
+
+    model.predict = predict
+    monkeypatch.setattr(vitpose, "ViTPosePose2D", lambda *args, **kwargs: model)
+    monkeypatch.setattr(vitpose.torch.cuda, "synchronize", lambda: None)
+    vitpose.benchmark(args)
+    assert validated == [selected]
+    assert predictions == [
+        (precision, selected, frames)
+        for precision in ("float32", "bfloat16")
+        for frames in (1, 3)
+    ]
+    assert (args.output / "metrics.json").is_file()
+    if standard_name_present:
+        assert standard.read_bytes() == b"different, unselected video"
 
 
 def test_blcs_fixed_seed_strict_load_and_test_only(
