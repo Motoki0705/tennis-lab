@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001/logs/version_0/checkpoints

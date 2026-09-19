@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-real-rgb-missing-ball-court-e60-v1
 - run-slcs-full-real-rgb-velocity-val-v2
 - run-slcs-full-real-rgb-velocity-val-interrupted-v1
 - run-slcs-full-real-rgb-velocity-e60-v1
@@ -218,3 +219,6 @@ Codex Windowsアプリ開始との相関はユーザーの体感として記録�
 [GRU-D](https://arxiv.org/html/1606.01865#S2)のmask・時間差も参照したが、nearest-gap-distanceの加算embeddingを検証した手法ではないため今回は導入しない。
 可視ball経路は維持し、不可視・非paddingのballだけにゼロ初期化したcourt-only projectionを加える。court自身の欠損もmaskし、教師や隠されたball座標は使わない。
 baselineと同じseed・60epoch・burst24・lossで単独比較し、validation選定と既存のfull/gap・domain・遷移・高速区間診断を維持する。
+
+[欠損ballのcourt文脈保持](run-slcs-full-real-rgb-missing-ball-court-e60-v1.md)は60epoch・1800更新を完走した。
+追加5376重みの更新とvalidation最良epoch49を確認し、固定5条件の評価へ進む。monitor単独では基準より小幅に悪く、まだ採用しない。
