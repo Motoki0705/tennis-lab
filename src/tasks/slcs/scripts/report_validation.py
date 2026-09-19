@@ -6,6 +6,42 @@ import argparse
 from pathlib import Path
 
 from src.tasks.slcs.evaluation.pr_report import generate_report
+from src.tasks.slcs.scripts._paths import cli_resolver
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="slcs.report_validation",
+    fields=(
+        BoundaryPathField(
+            "evaluations",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.ANY,
+            allow_role_root=True,
+            many=True,
+        ),
+        BoundaryPathField(
+            "output_root",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.ANY,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "output",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.ANY,
+            allow_role_root=True,
+        ),
+    ),
+)
 
 
 def _named_paths(values: list[str]) -> dict[str, Path]:
@@ -43,10 +79,24 @@ def main() -> None:
         help="slcs/visualize/<experiment>/<run-id>; must not exist",
     )
     args = parser.parse_args()
+    evaluations = _named_paths(args.evaluation)
+    training = None if args.training is None else _named_paths(args.training)
+    inputs = tuple(evaluations.values()) + (
+        () if training is None else tuple(training.values())
+    )
+    resolver = cli_resolver(args.output_root, inputs)
+    PATH_BOUNDARY.validate(
+        {
+            "evaluations": tuple(dict.fromkeys(inputs)),
+            "output_root": args.output_root,
+            "output": resolver.resolve(PathRole.OUTPUT, args.output),
+        },
+        resolver=resolver,
+    )
     print(
         generate_report(
-            evaluations=_named_paths(args.evaluation),
-            training=None if args.training is None else _named_paths(args.training),
+            evaluations=evaluations,
+            training=training,
             output_root=args.output_root,
             output=args.output,
         )

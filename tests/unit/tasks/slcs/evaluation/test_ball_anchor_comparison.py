@@ -273,7 +273,7 @@ def test_only_validation_and_new_absolute_json_cli(tmp_path: Path) -> None:
         [
             sys.executable,
             "-m",
-            "scripts.analysis.compare_slcs_ball_anchors",
+            "src.tasks.slcs.scripts.compare_ball_anchors",
             "--baseline",
             str(a),
             "--candidate",

@@ -266,7 +266,7 @@ def test_cuda_requires_queue_before_any_model_work(
 def test_cli_test_evaluation_is_explicit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, requested: list[str]
 ) -> None:
-    from scripts.analysis import evaluate_slcs_run
+    from src.tasks.slcs.scripts import evaluate_run
 
     calls = []
 
@@ -274,7 +274,7 @@ def test_cli_test_evaluation_is_explicit(
         calls.append(kwargs)
         return tmp_path
 
-    monkeypatch.setattr(evaluate_slcs_run, "evaluate_training_run", evaluate)
+    monkeypatch.setattr(evaluate_run, "evaluate_training_run", evaluate)
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -292,7 +292,7 @@ def test_cli_test_evaluation_is_explicit(
             *requested,
         ],
     )
-    evaluate_slcs_run.main()
+    evaluate_run.main()
     assert calls[0]["splits"] == (["val", "test"] if requested else ["val"])
     assert calls[0]["domain_prefixes"] == [("video_", "meiji")]
     assert calls[0]["ball_train_mean"] == bool(requested)
