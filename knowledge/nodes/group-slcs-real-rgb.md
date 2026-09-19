@@ -123,6 +123,7 @@ members:
 - run-slcs-real-rgb-full-assembly-v1
 - run-slcs-real-rgb-cpu-smoke-v1
 - run-slcs-full-real-rgb-missing-ball-court-val-v1
+- run-slcs-full-real-rgb-ball-temporal-context-e60-v1
 parents: []
 tags:
 - slcs
@@ -234,3 +235,5 @@ full最大速度の低下とbroadcast ballの部分改善に対し、gapの両vi
 新しい60epoch profileではcourt contextとvelocity lossを無効化し、seed42・burst24・同じ61clip/splitを固定する。
 validation sceneでcheckpointを選定し、両visibility境界、full/gapのball/player平均・p95、Meiji/broadcast、高速教師区間を同時比較する。
 最大速度低下単独や1clipの見た目では採用せず、testはvalidation選定を閉じるまで実行しない。
+
+[観測ballの時間的feature context](run-slcs-full-real-rgb-ball-temporal-context-e60-v1.md)は60epoch・1800更新を完走し、全16384射影重みの更新とvalidation最良epoch49を確認した。monitorは基準1.9568→1.9492mだが、5条件・欠損境界の固定評価前に採用とは判断しない。

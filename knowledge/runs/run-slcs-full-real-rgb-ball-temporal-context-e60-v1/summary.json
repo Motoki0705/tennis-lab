@@ -1,0 +1,114 @@
+{
+  "training_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001",
+  "epoch_zero_based": 59,
+  "global_step": 1800,
+  "temporal_projection": {
+    "shape": [
+      128,
+      128
+    ],
+    "nonzero": 16384,
+    "norm": 2.3306963443756104
+  },
+  "epoch_series": {
+    "train/ball_position_error_m_epoch": {
+      "points": 60,
+      "first": 9.205156326293945,
+      "last": 2.4886646270751953,
+      "last_step": 1799
+    },
+    "train/player_position_error_m_epoch": {
+      "points": 60,
+      "first": 12.12157154083252,
+      "last": 1.323377251625061,
+      "last_step": 1799
+    },
+    "val/ball_position_error_m_epoch": {
+      "points": 60,
+      "first": 7.697558403015137,
+      "last": 2.4843881130218506,
+      "last_step": 1799
+    },
+    "val/player_position_error_m_epoch": {
+      "points": 60,
+      "first": 6.393002986907959,
+      "last": 1.4387983083724976,
+      "last_step": 1799
+    },
+    "val/scene_position_error_m_epoch": {
+      "points": 60,
+      "first": 7.045280456542969,
+      "last": 1.9615931510925293,
+      "last_step": 1799
+    },
+    "train/loss_epoch": {
+      "points": 60,
+      "first": 2.979412794113159,
+      "last": -1.4114776849746704,
+      "last_step": 1799
+    },
+    "val/loss": {
+      "points": 60,
+      "first": 0.8053727746009827,
+      "last": -1.0436009168624878,
+      "last_step": 1799
+    }
+  },
+  "selection": {
+    "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+    "monitor": "val/scene_position_error_m_epoch",
+    "mode": "min",
+    "candidates": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+        "validation_score": 1.9491939544677734
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=52.ckpt",
+        "validation_score": 1.9520893096923828
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+        "validation_score": 1.9532802104949951
+      }
+    ],
+    "selected": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+      "validation_score": 1.9491939544677734,
+      "epoch_zero_based": 49
+    },
+    "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/last.ckpt",
+    "last_epoch_zero_based": 59,
+    "checkpoint_sha256": "94793e761d22a1f163d8089ae0210b6cb45f7c37144deb498c31b4d85fd6f961"
+  },
+  "forward_validation_cleanup": {
+    "training_source": "5ab9afc7da2e9cebcd461b806e0676037d97622c",
+    "cleanup_commit": "6dbb1c19",
+    "constructor_ast_identical": true,
+    "arithmetic_ast_identical": true
+  },
+  "validation_mask_applicability": {
+    "full": {
+      "nonpadding": 41160,
+      "missing_inputs": 7284,
+      "bracketed_missing_inputs": 2356,
+      "missing_with_teacher_mask": 2269,
+      "bracketed_missing_with_teacher_mask": 1778,
+      "observed_to_missing_pairs": 329,
+      "bracketed_observed_to_missing_pairs": 312,
+      "missing_to_observed_pairs": 338,
+      "bracketed_missing_to_observed_pairs": 317
+    },
+    "detector_gap": {
+      "nonpadding": 41160,
+      "missing_inputs": 18801,
+      "bracketed_missing_inputs": 13068,
+      "missing_with_teacher_mask": 13204,
+      "bracketed_missing_with_teacher_mask": 12055,
+      "observed_to_missing_pairs": 503,
+      "bracketed_observed_to_missing_pairs": 470,
+      "missing_to_observed_pairs": 495,
+      "bracketed_missing_to_observed_pairs": 465
+    }
+  }
+}
