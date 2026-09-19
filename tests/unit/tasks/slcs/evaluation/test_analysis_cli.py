@@ -19,6 +19,55 @@ MODULES = (
 )
 
 
+def test_cli_roots_resolve_shared_worktree_symlinks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.slcs.scripts import _paths
+    from src.utils.configuration import PathRole
+
+    checkout = tmp_path / "worktree"
+    checkout.mkdir()
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    for name in ("data", "ckpt", ".cache", "third_party", "outputs"):
+        (shared / name).mkdir()
+        (checkout / name).symlink_to(shared / name, target_is_directory=True)
+    monkeypatch.setattr(_paths, "PROJECT_ROOT", checkout)
+    resolver = _paths.cli_resolver(
+        checkout / "outputs", (checkout / "data" / "inputs",)
+    )
+    assert resolver.roots.project_root == checkout
+    assert resolver.roots.data_root == shared / "data"
+    assert resolver.roots.checkpoint_root == shared / "ckpt"
+    assert resolver.roots.artifact_root == shared
+    assert resolver.roots.output_root == shared / "outputs"
+    assert resolver.roots.cache_root == shared / ".cache"
+    assert resolver.roots.external_asset_root == shared / "third_party"
+    assert resolver.resolve(PathRole.OUTPUT, "slcs/evaluate/example/run") == (
+        shared / "outputs/slcs/evaluate/example/run"
+    )
+
+
+def test_task_named_input_ancestor_does_not_shadow_output_namespace(
+    tmp_path: Path,
+) -> None:
+    from src.tasks.slcs.scripts._paths import cli_resolver
+    from src.utils.configuration import PathRole
+
+    output_root = tmp_path / "outputs"
+    resolver = cli_resolver(
+        output_root,
+        (
+            output_root / "slcs/evaluate/candidate/run",
+            output_root / "slcs/train/candidate/run",
+        ),
+    )
+    assert resolver.roots.artifact_root == output_root
+    assert resolver.resolve(PathRole.OUTPUT, "slcs/visualize/comparison/run") == (
+        output_root / "slcs/visualize/comparison/run"
+    )
+
+
 @pytest.mark.parametrize("name", MODULES)
 def test_cpu_module_help(name: str) -> None:
     result = subprocess.run(
