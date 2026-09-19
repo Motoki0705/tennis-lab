@@ -1,0 +1,739 @@
+{
+  "schema_version": 1,
+  "split": "val",
+  "interpretation": "Pseudo-3D teacher agreement, not measured 3D accuracy. No test-based selection. Overlapping window occurrences counted separately.",
+  "decision": "not_adopted_global_position_and_visibility_boundary_tradeoffs",
+  "fast_teacher_threshold_mps": 26.425038598234046,
+  "runs": {
+    "baseline": {
+      "output_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002",
+      "epoch_zero_based": 56,
+      "checkpoint_sha256": "870407e89ca0ff31d07a33395acf3a3538f49146274f3566bd36ff969b6733a2",
+      "conditions": {
+        "full": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.521042585372925,
+          "player_position_error_m": 1.3826085329055786,
+          "player_angular_error_deg": 38.44415283203125,
+          "ball_position_p95_m": 7.693350160280706,
+          "ball_speed_max_mps": 481.7659207194563,
+          "ball_velocity_error_mean_mps": 8.75650502498033,
+          "ball_velocity_error_p95_mps": 25.843335014666263
+        },
+        "no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.6812899112701416,
+          "player_position_error_m": 1.5169597864151,
+          "player_angular_error_deg": 37.93250274658203,
+          "ball_position_p95_m": 7.560076756121893,
+          "ball_speed_max_mps": 393.6833572896142,
+          "ball_velocity_error_mean_mps": 8.857448301816365,
+          "ball_velocity_error_p95_mps": 26.677573263266353
+        },
+        "detector_gap": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.0972740650177,
+          "player_position_error_m": 1.463090181350708,
+          "player_angular_error_deg": 39.842010498046875,
+          "ball_position_p95_m": 8.864665308299816,
+          "ball_speed_max_mps": 418.7850070127804,
+          "ball_velocity_error_mean_mps": 11.486853891538294,
+          "ball_velocity_error_p95_mps": 32.85762942118503
+        },
+        "rgb_only": {
+          "num_windows": 343,
+          "ball_position_error_m": 7.753563404083252,
+          "player_position_error_m": 1.8890348672866821,
+          "player_angular_error_deg": 46.74005889892578,
+          "ball_position_p95_m": 14.527175497709502,
+          "ball_speed_max_mps": 37.67134944458146,
+          "ball_velocity_error_mean_mps": 13.060396243655862,
+          "ball_velocity_error_p95_mps": 30.759367144234428
+        },
+        "detector_gap_no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.2916150093078613,
+          "player_position_error_m": 1.6152840852737427,
+          "player_angular_error_deg": 39.797481536865234,
+          "ball_position_p95_m": 9.338017532105773,
+          "ball_speed_max_mps": 529.6238696185197,
+          "ball_velocity_error_mean_mps": 11.93511217747627,
+          "ball_velocity_error_p95_mps": 33.76127861891133
+        }
+      },
+      "domains": [
+        {
+          "group": "broadcast",
+          "condition": "full",
+          "ball_position_error_m": 2.4293246269226074,
+          "player_position_error_m": 2.3162410259246826
+        },
+        {
+          "group": "broadcast",
+          "condition": "no_rgb",
+          "ball_position_error_m": 3.974977970123291,
+          "player_position_error_m": 2.5183937549591064
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.6010141372680664,
+          "player_position_error_m": 2.535979986190796
+        },
+        {
+          "group": "broadcast",
+          "condition": "rgb_only",
+          "ball_position_error_m": 6.114800453186035,
+          "player_position_error_m": 3.2491793632507324
+        },
+        {
+          "group": "meiji",
+          "condition": "full",
+          "ball_position_error_m": 2.52386474609375,
+          "player_position_error_m": 1.3549517393112183
+        },
+        {
+          "group": "meiji",
+          "condition": "no_rgb",
+          "ball_position_error_m": 2.6414854526519775,
+          "player_position_error_m": 1.4872945547103882
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.0817747116088867,
+          "player_position_error_m": 1.4313081502914429
+        },
+        {
+          "group": "meiji",
+          "condition": "rgb_only",
+          "ball_position_error_m": 7.803985595703125,
+          "player_position_error_m": 1.8487434387207031
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 4.812433242797852,
+          "player_position_error_m": 2.596634864807129
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 3.244821548461914,
+          "player_position_error_m": 1.5862137079238892
+        }
+      ]
+    },
+    "candidate": {
+      "output_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_missing_ball_court/s42-001",
+      "epoch_zero_based": 49,
+      "checkpoint_sha256": "3e59feda9f3f5ba1a52d85716c658f22546a8c8f3b9eff01aeb9cdbf4887f6a4",
+      "conditions": {
+        "full": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.5372514724731445,
+          "player_position_error_m": 1.4066627025604248,
+          "player_angular_error_deg": 37.950218200683594,
+          "ball_position_p95_m": 7.6084978203981395,
+          "ball_speed_max_mps": 356.4747576142273,
+          "ball_velocity_error_mean_mps": 8.789575612911293,
+          "ball_velocity_error_p95_mps": 26.21462240493659
+        },
+        "no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 2.650775194168091,
+          "player_position_error_m": 1.4832593202590942,
+          "player_angular_error_deg": 38.03364181518555,
+          "ball_position_p95_m": 7.277756482000202,
+          "ball_speed_max_mps": 378.92608101268894,
+          "ball_velocity_error_mean_mps": 8.951379330956408,
+          "ball_velocity_error_p95_mps": 27.179699996696733
+        },
+        "detector_gap": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.1813673973083496,
+          "player_position_error_m": 1.52027428150177,
+          "player_angular_error_deg": 39.2832145690918,
+          "ball_position_p95_m": 9.120151985611471,
+          "ball_speed_max_mps": 517.1644519338993,
+          "ball_velocity_error_mean_mps": 11.664106616837827,
+          "ball_velocity_error_p95_mps": 33.82403226225278
+        },
+        "rgb_only": {
+          "num_windows": 343,
+          "ball_position_error_m": 7.746258735656738,
+          "player_position_error_m": 1.9846317768096924,
+          "player_angular_error_deg": 46.43272018432617,
+          "ball_position_p95_m": 15.250245990536582,
+          "ball_speed_max_mps": 36.17088763911862,
+          "ball_velocity_error_mean_mps": 13.074207625041915,
+          "ball_velocity_error_p95_mps": 30.711056864917126
+        },
+        "detector_gap_no_rgb": {
+          "num_windows": 343,
+          "ball_position_error_m": 3.342034101486206,
+          "player_position_error_m": 1.6120972633361816,
+          "player_angular_error_deg": 39.86916732788086,
+          "ball_position_p95_m": 9.549987293277148,
+          "ball_speed_max_mps": 584.576991551973,
+          "ball_velocity_error_mean_mps": 12.224460564714377,
+          "ball_velocity_error_p95_mps": 35.7662534203312
+        }
+      },
+      "domains": [
+        {
+          "group": "broadcast",
+          "condition": "full",
+          "ball_position_error_m": 2.234262466430664,
+          "player_position_error_m": 2.3543903827667236
+        },
+        {
+          "group": "broadcast",
+          "condition": "no_rgb",
+          "ball_position_error_m": 3.2897448539733887,
+          "player_position_error_m": 2.642456531524658
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.5516622066497803,
+          "player_position_error_m": 2.5887272357940674
+        },
+        {
+          "group": "broadcast",
+          "condition": "rgb_only",
+          "ball_position_error_m": 6.104201316833496,
+          "player_position_error_m": 3.315108060836792
+        },
+        {
+          "group": "meiji",
+          "condition": "full",
+          "ball_position_error_m": 2.5465738773345947,
+          "player_position_error_m": 1.378588080406189
+        },
+        {
+          "group": "meiji",
+          "condition": "no_rgb",
+          "ball_position_error_m": 2.631115198135376,
+          "player_position_error_m": 1.4489206075668335
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap",
+          "ball_position_error_m": 3.1699740886688232,
+          "player_position_error_m": 1.488623857498169
+        },
+        {
+          "group": "meiji",
+          "condition": "rgb_only",
+          "ball_position_error_m": 7.79678201675415,
+          "player_position_error_m": 1.9452190399169922
+        },
+        {
+          "group": "broadcast",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 4.462167263031006,
+          "player_position_error_m": 2.695054769515991
+        },
+        {
+          "group": "meiji",
+          "condition": "detector_gap_no_rgb",
+          "ball_position_error_m": 3.3075692653656006,
+          "player_position_error_m": 1.5800172090530396
+        }
+      ]
+    }
+  },
+  "paired_transitions": {
+    "full": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.75650502498033,
+          "velocity_vector_error_p95_mps": 25.843335014666263,
+          "pred_speed_max_mps": 481.7659207194563
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.789575612911293,
+          "velocity_vector_error_p95_mps": 26.21462240493659,
+          "pred_speed_max_mps": 356.4747576142273
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 21.26801180903848,
+          "velocity_vector_error_p95_mps": 46.65183264355726,
+          "pred_speed_max_mps": 481.7659207194563
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 21.446763177184703,
+          "velocity_vector_error_p95_mps": 48.51306695190888,
+          "pred_speed_max_mps": 326.15968340809053
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 61.90560217906855,
+          "velocity_vector_error_p95_mps": 152.4179871091404,
+          "pred_speed_max_mps": 367.90435199743115
+        },
+        "candidate": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 61.850591217010745,
+          "velocity_vector_error_p95_mps": 152.06183575535908,
+          "pred_speed_max_mps": 356.4747576142273
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 60.783547154664014,
+          "velocity_vector_error_p95_mps": 149.25874433123565,
+          "pred_speed_max_mps": 481.7659207194563
+        },
+        "candidate": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 61.030746700642084,
+          "velocity_vector_error_p95_mps": 157.284224883508,
+          "pred_speed_max_mps": 326.15968340809053
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.469410457451295,
+          "velocity_vector_error_p95_mps": 21.71732929741905,
+          "pred_speed_max_mps": 102.35694268363379
+        },
+        "candidate": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.499396426023387,
+          "velocity_vector_error_p95_mps": 22.113150863854983,
+          "pred_speed_max_mps": 121.971882535614
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 11.450156494219588,
+          "velocity_vector_error_p95_mps": 29.173945814154045,
+          "pred_speed_max_mps": 61.07885108159792
+        },
+        "candidate": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 11.511411111988222,
+          "velocity_vector_error_p95_mps": 29.792502651736232,
+          "pred_speed_max_mps": 78.05089457636198
+        }
+      }
+    ],
+    "no_rgb": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.857448301816365,
+          "velocity_vector_error_p95_mps": 26.677573263266353,
+          "pred_speed_max_mps": 393.6833572896142
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 8.951379330956408,
+          "velocity_vector_error_p95_mps": 27.179699996696733,
+          "pred_speed_max_mps": 378.92608101268894
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 21.42207603656857,
+          "velocity_vector_error_p95_mps": 49.01643163297513,
+          "pred_speed_max_mps": 364.4304260979272
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 22.17184851216947,
+          "velocity_vector_error_p95_mps": 47.9932621179457,
+          "pred_speed_max_mps": 307.0855079847999
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 64.4129199179977,
+          "velocity_vector_error_p95_mps": 148.43523915414553,
+          "pred_speed_max_mps": 393.6833572896142
+        },
+        "candidate": {
+          "count": 329,
+          "velocity_vector_error_mean_mps": 62.649318091319714,
+          "velocity_vector_error_p95_mps": 149.77812095876746,
+          "pred_speed_max_mps": 378.92608101268894
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 63.97383758751688,
+          "velocity_vector_error_p95_mps": 155.57983542216752,
+          "pred_speed_max_mps": 364.4304260979272
+        },
+        "candidate": {
+          "count": 338,
+          "velocity_vector_error_mean_mps": 63.70737103095229,
+          "velocity_vector_error_p95_mps": 148.56691497415454,
+          "pred_speed_max_mps": 337.4899197213185
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.482814110330388,
+          "velocity_vector_error_p95_mps": 21.949883093177966,
+          "pred_speed_max_mps": 86.98524797001002
+        },
+        "candidate": {
+          "count": 31164,
+          "velocity_vector_error_mean_mps": 7.616254725358264,
+          "velocity_vector_error_p95_mps": 22.454219010693798,
+          "pred_speed_max_mps": 88.57580890601632
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 12.027950815540896,
+          "velocity_vector_error_p95_mps": 30.012499846242452,
+          "pred_speed_max_mps": 74.53340350390974
+        },
+        "candidate": {
+          "count": 1871,
+          "velocity_vector_error_mean_mps": 11.85553548387061,
+          "velocity_vector_error_p95_mps": 29.678956713627628,
+          "pred_speed_max_mps": 84.7426642384818
+        }
+      }
+    ],
+    "detector_gap": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 11.486853891538294,
+          "velocity_vector_error_p95_mps": 32.85762942118503,
+          "pred_speed_max_mps": 418.7850070127804
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 11.664106616837827,
+          "velocity_vector_error_p95_mps": 33.82403226225278,
+          "pred_speed_max_mps": 517.1644519338993
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 23.092771567547018,
+          "velocity_vector_error_p95_mps": 50.87722309919898,
+          "pred_speed_max_mps": 248.87368799182303
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 23.894026379160252,
+          "velocity_vector_error_p95_mps": 53.777618917119895,
+          "pred_speed_max_mps": 303.4271331140829
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 67.94264115387666,
+          "velocity_vector_error_p95_mps": 164.80662317225264,
+          "pred_speed_max_mps": 418.7850070127804
+        },
+        "candidate": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 71.27894702949112,
+          "velocity_vector_error_p95_mps": 180.48032835135027,
+          "pred_speed_max_mps": 517.1644519338993
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 65.27361326556627,
+          "velocity_vector_error_p95_mps": 144.38471196789337,
+          "pred_speed_max_mps": 352.166661619145
+        },
+        "candidate": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 66.9483735677381,
+          "velocity_vector_error_p95_mps": 159.0444124710196,
+          "pred_speed_max_mps": 272.0630275798182
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.124204519152254,
+          "velocity_vector_error_p95_mps": 24.611649404360772,
+          "pred_speed_max_mps": 75.35354630442552
+        },
+        "candidate": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.328250680415534,
+          "velocity_vector_error_p95_mps": 25.31604286985031,
+          "pred_speed_max_mps": 136.10693674003414
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 12.498189888205262,
+          "velocity_vector_error_p95_mps": 31.996206685739903,
+          "pred_speed_max_mps": 179.60404218689712
+        },
+        "candidate": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 12.447000634765171,
+          "velocity_vector_error_p95_mps": 32.832399137620044,
+          "pred_speed_max_mps": 191.38016928623802
+        }
+      }
+    ],
+    "rgb_only": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 13.060396243655862,
+          "velocity_vector_error_p95_mps": 30.759367144234428,
+          "pred_speed_max_mps": 37.67134944458146
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 13.074207625041915,
+          "velocity_vector_error_p95_mps": 30.711056864917126,
+          "pred_speed_max_mps": 36.17088763911862
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 32.7617245664259,
+          "velocity_vector_error_p95_mps": 46.26635405140396,
+          "pred_speed_max_mps": 28.5797648917568
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 32.46154582577024,
+          "velocity_vector_error_p95_mps": 46.02127690336916,
+          "pred_speed_max_mps": 26.496625696646007
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null,
+          "pred_speed_max_mps": null
+        },
+        "candidate": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null,
+          "pred_speed_max_mps": null
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null,
+          "pred_speed_max_mps": null
+        },
+        "candidate": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null,
+          "pred_speed_max_mps": null
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null,
+          "pred_speed_max_mps": null
+        },
+        "candidate": {
+          "count": 0,
+          "velocity_vector_error_mean_mps": null,
+          "velocity_vector_error_p95_mps": null,
+          "pred_speed_max_mps": null
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 13.060396243655862,
+          "velocity_vector_error_p95_mps": 30.759367144234428,
+          "pred_speed_max_mps": 37.67134944458146
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 13.074207625041915,
+          "velocity_vector_error_p95_mps": 30.711056864917126,
+          "pred_speed_max_mps": 36.17088763911862
+        }
+      }
+    ],
+    "detector_gap_no_rgb": [
+      {
+        "stratum": "all",
+        "subset": "all",
+        "baseline": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 11.93511217747627,
+          "velocity_vector_error_p95_mps": 33.76127861891133,
+          "pred_speed_max_mps": 529.6238696185197
+        },
+        "candidate": {
+          "count": 33702,
+          "velocity_vector_error_mean_mps": 12.224460564714377,
+          "velocity_vector_error_p95_mps": 35.7662534203312,
+          "pred_speed_max_mps": 584.576991551973
+        }
+      },
+      {
+        "stratum": "all",
+        "subset": "fast_teacher",
+        "baseline": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 23.661065912186213,
+          "velocity_vector_error_p95_mps": 52.10941591072428,
+          "pred_speed_max_mps": 280.7874659222953
+        },
+        "candidate": {
+          "count": 3088,
+          "velocity_vector_error_mean_mps": 24.362741689526793,
+          "velocity_vector_error_p95_mps": 53.902130094791275,
+          "pred_speed_max_mps": 323.6356321376278
+        }
+      },
+      {
+        "stratum": "observed_to_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 71.94185423361738,
+          "velocity_vector_error_p95_mps": 169.73197905548344,
+          "pred_speed_max_mps": 462.31376137675693
+        },
+        "candidate": {
+          "count": 503,
+          "velocity_vector_error_mean_mps": 69.55607203846463,
+          "velocity_vector_error_p95_mps": 168.35531515681902,
+          "pred_speed_max_mps": 584.576991551973
+        }
+      },
+      {
+        "stratum": "missing_to_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 74.61515177657566,
+          "velocity_vector_error_p95_mps": 168.68727445083732,
+          "pred_speed_max_mps": 529.6238696185197
+        },
+        "candidate": {
+          "count": 495,
+          "velocity_vector_error_mean_mps": 72.8017579195728,
+          "velocity_vector_error_p95_mps": 166.35175728674298,
+          "pred_speed_max_mps": 399.9871480506568
+        }
+      },
+      {
+        "stratum": "both_observed",
+        "subset": "all",
+        "baseline": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.291316860117124,
+          "velocity_vector_error_p95_mps": 24.761723762321722,
+          "pred_speed_max_mps": 98.24969048428875
+        },
+        "candidate": {
+          "count": 20141,
+          "velocity_vector_error_mean_mps": 8.614695192258726,
+          "velocity_vector_error_p95_mps": 25.991392440078773,
+          "pred_speed_max_mps": 98.94826071943888
+        }
+      },
+      {
+        "stratum": "both_missing",
+        "subset": "all",
+        "baseline": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 12.904599611300787,
+          "velocity_vector_error_p95_mps": 32.561985585782686,
+          "pred_speed_max_mps": 123.6943237686391
+        },
+        "candidate": {
+          "count": 12563,
+          "velocity_vector_error_mean_mps": 13.329349652088252,
+          "velocity_vector_error_p95_mps": 35.49179365041145,
+          "pred_speed_max_mps": 120.39800652189314
+        }
+      }
+    ]
+  }
+}

@@ -122,6 +122,7 @@ members:
 - run-slcs-meiji-v9-full-qc-v2
 - run-slcs-real-rgb-full-assembly-v1
 - run-slcs-real-rgb-cpu-smoke-v1
+- run-slcs-full-real-rgb-missing-ball-court-val-v1
 parents: []
 tags:
 - slcs
@@ -221,4 +222,5 @@ Codex Windowsアプリ開始との相関はユーザーの体感として記録�
 baselineと同じseed・60epoch・burst24・lossで単独比較し、validation選定と既存のfull/gap・domain・遷移・高速区間診断を維持する。
 
 [欠損ballのcourt文脈保持](run-slcs-full-real-rgb-missing-ball-court-e60-v1.md)は60epoch・1800更新を完走した。
-追加5376重みの更新とvalidation最良epoch49を確認し、固定5条件の評価へ進む。monitor単独では基準より小幅に悪く、まだ採用しない。
+追加5376重みの更新とvalidation最良epoch49を確認した。[固定5条件の評価](run-slcs-full-real-rgb-missing-ball-court-val-v1.md)は343窓で完走したが、full ball2.5210→2.5373m、gap3.0973→3.1814mへ悪化し不採用。
+full最大速度の低下とbroadcast ballの部分改善に対し、gapの両visibility境界・player・Meijiは退行した。次は入力window内の観測ballから時間的なanchorを作る仮説を調査し、元の欠損maskとteacher非参照を維持する。
