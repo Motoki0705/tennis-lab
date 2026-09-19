@@ -209,3 +209,103 @@ def test_method_figures_reproduce_actual_bundled_evidence(
         np.asarray(Image.open(output)),
         np.asarray(Image.open(ROOT / f"figures/method_{name}.png")),
     )
+
+
+def test_sfm_tracks_use_frame_names_and_reject_truncation(tmp_path: Path) -> None:
+    import struct
+
+    from drift_evidence import read_tracks
+
+    images = bytearray(struct.pack("<Q", 2))
+    for ident, frame in ((100, 12), (7, 5)):
+        images.extend(struct.pack("<idddddddi", ident, 1, 0, 0, 0, 0, 0, 0, 1))
+        images.extend(f"frame_{frame:06d}.png\0".encode())
+        images.extend(struct.pack("<Qddq", 1, 10, 20, 9000))
+    (tmp_path / "images.bin").write_bytes(images)
+    point = struct.pack("<Q", 1) + struct.pack("<QdddBBBd", 9000, 1, 2, 3, 7, 8, 9, 0.3)
+    point += struct.pack("<Qiiii", 2, 100, 0, 7, 0)
+    (tmp_path / "points3D.bin").write_bytes(point)
+    xyz, rgb, tracks, frames = read_tracks(tmp_path)
+    assert frames == [5, 12]
+    assert tracks["first_frame"].tolist() == [5]
+    assert tracks["last_frame"].tolist() == [12]
+    assert tracks["point_id"].tolist() == [9000]
+    np.testing.assert_array_equal(xyz, [[1, 2, 3]])
+    np.testing.assert_array_equal(rgb, [[7, 8, 9]])
+    (tmp_path / "points3D.bin").write_bytes(point[:-1])
+    with pytest.raises(ValueError, match="Truncated"):
+        read_tracks(tmp_path)
+
+
+def test_sfm_export_mapping_requires_unique_points_and_matching_rgb() -> None:
+    from drift_evidence import match_export
+
+    xyz = np.array([[1, 2, 3], [4, 5, 6]], dtype=float)
+    rgb = np.array([[0, 128, 255], [255, 64, 0]], dtype=np.uint8)
+    exported = np.c_[xyz, rgb / 255].astype(np.float32)[::-1]
+    order, _ = match_export(xyz, rgb, exported, np.eye(4))
+    assert order.tolist() == [1, 0]
+    with pytest.raises(ValueError, match="bijectively"):
+        match_export(np.repeat(xyz[:1], 2, axis=0), rgb, exported, np.eye(4))
+    with pytest.raises(ValueError, match="bijectively"):
+        match_export(xyz, rgb[::-1], exported, np.eye(4))
+
+
+def test_sfm_height_comparison_pairs_cells_and_excludes_cross_period_tracks() -> None:
+    from drift_evidence import paired_heights
+
+    # Shared cell at U=0.1; very different surfaces present in just one period.
+    uv = np.array(
+        [
+            [0.1, 0],
+            [0.1, 0],
+            [0.1, 0],
+            [0.1, 0],
+            [1.1, 0],
+            [1.1, 0],
+            [2.1, 0],
+            [2.1, 0],
+            [0.1, 0],
+        ]
+    )
+    height = np.array([0, 0, 0.02, 0.02, 10, 10, -10, -10, 999])
+    first = np.array([0, 0, 10, 10, 0, 0, 10, 10, 9])
+    last = np.array([1, 1, 11, 11, 1, 1, 11, 11, 10])
+    result = paired_heights(
+        uv, height, first, last, np.ones(9, bool), np.array([0, 10, 20]), 0.5, 2
+    )
+    assert result["shared_cell_count"] == 1
+    assert result["qualified_point_counts"] == [4, 4]
+    np.testing.assert_allclose(result["median_delta_m"], [0, 0.02])
+
+
+def test_sfm_no_common_ground_is_rejected() -> None:
+    from drift_evidence import paired_heights
+
+    with pytest.raises(ValueError, match="No ground cells shared"):
+        paired_heights(
+            np.array([[0, 0], [1, 0]]),
+            np.array([0, 0.02]),
+            np.array([0, 10]),
+            np.array([1, 11]),
+            np.ones(2, bool),
+            np.array([0, 10, 20]),
+            0.5,
+            1,
+        )
+
+
+def test_sfm_drift_figure_reproduces_measured_bundle(tmp_path: Path) -> None:
+    import matplotlib.pyplot as plt
+    from drift_evidence import validate
+    from make_drift_figure import drift_figure
+
+    validate()
+    figure = drift_figure()
+    output = tmp_path / "drift.png"
+    figure.savefig(output, dpi=210, facecolor="white")
+    plt.close(figure)
+    np.testing.assert_array_equal(
+        np.asarray(Image.open(output)),
+        np.asarray(Image.open(ROOT / "figures/sfm_temporal_drift.png")),
+    )

@@ -1,28 +1,10 @@
 {
-  "status": "passed",
-  "pages": 7,
-  "supplied_images": 4,
-  "scene_overlays": 12,
-  "overlays_per_scene": 3,
-  "source_owner_check": false,
-  "local_weights_and_config_checked": false,
-  "build_receipt_verified": true,
-  "alignment_method": {
-    "point_count": 217407,
-    "candidate_count": 75208,
-    "support_count": 65325,
-    "fit_views": 32,
-    "holdout_views": 16,
-    "shown_views": [
-      "frame_000000",
-      "frame_000183",
-      "frame_000306"
-    ],
-    "max_projection_difference_metres": 0.0,
-    "aggregate_matches_exactly": true,
-    "ransac_matches_saved_plane": true
+  "bundle_manifest_sha256": "619ff125161c8b7a298ecd67882df01d635dfb655956033b2739551ca9900a0f",
+  "measurements_sha256": "82a876d9e1196e539af0bcbe16e0976b9b1f54fe66eaafef3bb08659fb69ea2b",
+  "figures": {
+    "sfm_temporal_drift.png": "35e02c36405226721499e0091e7ff4d4b7174bcd979da6f15eb92eabf28cabf1"
   },
-  "sfm_temporal_ground_audit": {
+  "verification": {
     "scene_id": "B00",
     "frame_count": 491,
     "point_count": 217407,
@@ -83,16 +65,5 @@
       ]
     }
   },
-  "corpus_images_audited": 17256,
-  "exact_matches": 0,
-  "baseline_official_detections": [
-    3,
-    1,
-    0,
-    1
-  ],
-  "baseline_control_error_px": 1.42276633028083,
-  "max_scene_label_reprojection_difference_px": 1.7826096154749393e-10,
-  "pdf_sha256": "0fe305dc1e8bb4a0f6a5eae521a164927a246a35b1378f8074d770a322c4d4f0",
-  "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth."
+  "display": "Full captured frames at quarter starts; actual ground points, every third point for display only; all shared cells colored by Q3 minus Q1, fixed ±12 cm. All individual cell differences, median and IQR, no smoothing. No independent survey ground truth."
 }
