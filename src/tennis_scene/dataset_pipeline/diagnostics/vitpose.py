@@ -36,7 +36,7 @@ def benchmark(args: ViTPoseBenchmarkConfig) -> None:
     )
     model.load()
     try:
-        results = _compare(args, model)
+        results = _compare(args, model, clip)
     finally:
         model.unload()
     save_json_atomic(
@@ -46,7 +46,9 @@ def benchmark(args: ViTPoseBenchmarkConfig) -> None:
     print(results, flush=True)
 
 
-def _compare(args: ViTPoseBenchmarkConfig, model: ViTPosePose2D) -> dict[str, Any]:
+def _compare(
+    args: ViTPoseBenchmarkConfig, model: ViTPosePose2D, clip: ClipManifest
+) -> dict[str, Any]:
     results = {}
     for camera in args.cameras:
         with np.load(args.observations / f"{camera}_people.npz") as saved:
@@ -65,7 +67,7 @@ def _compare(args: ViTPoseBenchmarkConfig, model: ViTPosePose2D) -> dict[str, An
         )
         for person in args.people:
             request = Pose2DRequest(
-                args.clip / f"media/{camera}.mp4",
+                clip.media_path(camera),
                 tracks.bbx_xys(person, base_enlarge=args.crop_enlarge),
             )
             timing, predictions = {}, {}
