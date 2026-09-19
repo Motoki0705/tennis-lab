@@ -191,9 +191,11 @@ def test_report_cli_keeps_all_training_labels_and_rejects_duplicate_labels(
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize("root_is_symlink", [False, True])
 def test_render_cli_passes_typed_request_and_command(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    root_is_symlink: bool,
 ) -> None:
     from src.tasks.slcs.scripts import render_pr_clip as cli
     from src.tasks.slcs.visualization.pr_clip import RenderRequest
@@ -205,6 +207,11 @@ def test_render_cli_passes_typed_request_and_command(
         return tmp_path
 
     monkeypatch.setattr(cli, "render", render)
+    output_root = tmp_path / "declared"
+    real_root = tmp_path / "shared_results" if root_is_symlink else output_root
+    real_root.mkdir()
+    if root_is_symlink:
+        output_root.symlink_to(real_root, target_is_directory=True)
     argv = [
         "render",
         "--overlay",
@@ -212,7 +219,7 @@ def test_render_cli_passes_typed_request_and_command(
         "--scene",
         str(tmp_path / "3d.mp4"),
         "--output-root",
-        str(tmp_path),
+        str(output_root),
         "--experiment",
         "fixture",
         "--run-id",
@@ -239,3 +246,10 @@ def test_render_cli_passes_typed_request_and_command(
     assert calls[0][0].epoch == 56
     assert calls[0][0].fps == 10
     assert calls[0][1] == tuple(argv)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (real_root / "fixture").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="escapes"):
+        cli.main()
+    assert len(calls) == 1
+    assert list(outside.iterdir()) == []
