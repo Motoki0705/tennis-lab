@@ -20,6 +20,7 @@ def _model(
     ffn_type: FFNType = "swiglu",
     missing_ball_court_context: bool = False,
     missing_ball_temporal_context: bool = False,
+    missing_ball_one_sided_context: bool = False,
 ) -> SLCSFusionModel:
     return SLCSFusionModel(
         hidden_dim=32,
@@ -47,6 +48,7 @@ def _model(
         log_b_max=3.0,
         missing_ball_court_context=missing_ball_court_context,
         missing_ball_temporal_context=missing_ball_temporal_context,
+        missing_ball_one_sided_context=missing_ball_one_sided_context,
     )
 
 

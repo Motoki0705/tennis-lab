@@ -93,6 +93,10 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 
 [`train_real_rgb_ball_temporal_context.yaml`](configs/train_real_rgb_ball_temporal_context.yaml) は `model.missing_ball_temporal_context=true` の単独入力feature-context仮説を検証する60epoch profileです。no-ball-smooth・burst24を維持し、court residual・velocity loss・自動終端testは無効、resume/initも追加しません。各カメラの連続・等間隔なoffline window内で、欠損実フレームの直前・直後の観測ball tokenをwindow相対indexで線形補間し、ゼロ初期化・biasなし射影を既存invisible tokenに加算します。両側anchorがないedge gap、観測0/1個、padding、rgb_onlyでは追加contextは0です。sourceはcourt+ballの非線形embedding直後で、court residual・entity/time embeddingの前です。両context有効時もsourceは共有せず、court、temporalの順に独立加算します。観測mask・UV・教師は変更せず、他window/cameraの状態、FPS/教師metadata、隠されたball UV、出力平滑化は使用しません。feature補間は物理UV/3D軌道補間とは異なります。既定falseは追加stateを持たず旧checkpointをstrict loadでき、有効時もゼロ初期化は乱数・共有parameter・初期出力を維持します。[TrackNetV3](https://people.cs.nycu.edu.tw/~yushuen/data/TrackNetV3.pdf) §3.3の時系列欠損修復を参考にした転用仮説であり、同手法の再現や改善の実証ではありません（§4.5は単純な出力線形補間の限界を指摘）。
 
+[`train_real_rgb_one_sided_context.yaml`](configs/train_real_rgb_one_sided_context.yaml) は上記の非domain-balanced temporal profileを継承し、`model.missing_ball_one_sided_context=true` と出力先だけを変更します。temporal contextの有効化が必須です。同じoffline window内で片側だけにanchorがある欠損実フレームへ、最近傍の元の観測court+ball embedding、左/右方向flag、`log1p(abs(t-anchor))` のbiasなし線形射影を追加します。距離は連続・等間隔な入力のframe index差であり、秒やpadding長で正規化しません。既存の両側補間は変更しません。単一観測ならその前後に適用し、観測frame・両側anchorあり・全欠損（rgb_onlyを含む）・paddingへの直接残差は0です。ただしattentionや再学習によって最終出力は他frameでも変化し得ます。sourceは他の残差を加える前の実観測だけで、隠されたUV・教師・別window/camera・補間済みtokenは参照しません。
+
+幅128では16,768 parameterを追加し、射影の直接ゼロ初期化により乱数・共有parameter・初期出力を維持します。既定falseおよび旧保存設定での省略時は追加stateなしでstrict checkpoint loadできます。[GRU-D](https://arxiv.org/html/1606.01865) §2.1–2.2の最終観測・mask・経過時間と、[BRITS](https://papers.nips.cc/paper_files/paper/2018/file/734e6bfcd358e25ac1db0a4241b95651-Paper.pdf) §4の双方向観測contextを参考にした転用仮説であり、論文再現ではありません。今回はlearnable decayを導入しません。長いgapではanchorが古くなる限界があり、未来anchorも許すoffline処理なのでstreaming用途ではありません。物理的な外挿、速度の連続性、性能改善は保証せず、出力clamp・平滑化・filterは行いません。
+
 ## 推論・評価・解析
 
 保存済み学習runからvalidation最良checkpointを選んで4入力条件を比較する場合は、

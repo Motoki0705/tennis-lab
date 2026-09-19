@@ -155,6 +155,7 @@ SLCS_MODEL_SCHEMA = _schema(
         "log_b_max": _number(),
         "missing_ball_court_context": ConfigField.of(bool, required=False),
         "missing_ball_temporal_context": ConfigField.of(bool, required=False),
+        "missing_ball_one_sided_context": ConfigField.of(bool, required=False),
     },
 )
 _LOSS_FIELDS = {
@@ -625,6 +626,7 @@ class SLCSModelConfig:
     log_b_max: float
     missing_ball_court_context: bool
     missing_ball_temporal_context: bool
+    missing_ball_one_sided_context: bool
 
     @classmethod
     def from_mapping(cls, raw: dict[str, object]) -> SLCSModelConfig:
@@ -676,7 +678,17 @@ class SLCSModelConfig:
             missing_ball_temporal_context=cast(
                 bool, raw.get("missing_ball_temporal_context", False)
             ),
+            missing_ball_one_sided_context=cast(
+                bool, raw.get("missing_ball_one_sided_context", False)
+            ),
         )
+        if (
+            result.missing_ball_one_sided_context
+            and not result.missing_ball_temporal_context
+        ):
+            raise SemanticConfigurationError(
+                "model.missing_ball_one_sided_context requires model.missing_ball_temporal_context."
+            )
         if result.hidden_dim <= 0 or result.num_heads <= 0:
             raise SemanticConfigurationError(
                 "model.hidden_dim and model.num_heads must be positive."

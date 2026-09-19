@@ -71,6 +71,7 @@ def test_velocity_changes_only_loss_and_disables_automatic_test() -> None:
         ("train_real_rgb_velocity", "real_rgb_velocity"),
         ("train_real_rgb_missing_ball_court", "real_rgb_missing_ball_court"),
         ("train_real_rgb_ball_temporal_context", "real_rgb_ball_temporal_context"),
+        ("train_real_rgb_one_sided_context", "real_rgb_one_sided_context"),
         (
             "train_real_rgb_temporal_domain_balanced",
             "real_rgb_temporal_domain_balanced",
@@ -136,6 +137,22 @@ def test_domain_balancing_changes_only_train_sampling() -> None:
     assert candidate.run.test_after_fit is False
     assert candidate.training.trainer.max_epochs == 60
     baseline.data.domain_sampling = candidate.data.domain_sampling
+    assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(
+        baseline, resolve=True
+    )
+
+
+def test_one_sided_changes_only_flag_against_unbalanced_temporal_control() -> None:
+    output = "run.output_dir=slcs/train/config_fixture/fixed"
+    baseline = _compose_profile("train_real_rgb_ball_temporal_context", output)
+    candidate = _compose_profile("train_real_rgb_one_sided_context", output)
+    assert baseline.model.missing_ball_one_sided_context is False
+    assert candidate.model.missing_ball_one_sided_context is True
+    assert candidate.data.domain_sampling.enabled is False
+    assert candidate.run.seed == 42
+    assert candidate.training.trainer.max_epochs == 60
+    assert candidate.data.augmentation.burst_max_frames == 24
+    baseline.model.missing_ball_one_sided_context = True
     assert OmegaConf.to_container(candidate, resolve=True) == OmegaConf.to_container(
         baseline, resolve=True
     )
