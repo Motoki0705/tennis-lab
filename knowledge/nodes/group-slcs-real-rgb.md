@@ -82,6 +82,7 @@ members:
 - run-slcs-meiji-v9-teacher-review-v1
 - run-slcs-pilot-augmented-portable-eval-v1
 - run-slcs-meiji-v9-repair-batch-v1
+- run-slcs-meiji-v9-test-teacher-review-v1
 parents: []
 tags:
 - slcs
