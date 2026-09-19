@@ -1,6 +1,8 @@
 defaults:
   - paths: default
   - _self_
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
 source: tennis_multivew/processed/tennis_clip_source/dataset
 destination: tennis_multivew/processed/tennis_clip_source/curated_ball_v1
 dataset_id: broadcast_curated_v1
