@@ -3,6 +3,10 @@ id: group-slcs-real-rgb
 type: group
 title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
 members:
+- run-slcs-full-no-smooth-broadcast-visual-v1
+- run-slcs-full-no-smooth-meiji-visual-interrupted-v1
+- run-slcs-full-no-smooth-meiji-visual-v2
+- run-slcs-full-real-rgb-gap48-interrupted-v1
 - run-slcs-full-real-rgb-no-ball-smooth-val-v3
 - run-slcs-full-real-rgb-no-ball-smooth-e60-v3
 - run-slcs-full-real-rgb-no-ball-smooth-interrupted-v2
@@ -185,5 +189,7 @@ SLCSは予定済みのball平滑化weight=0を先に比較し、その後に[Gra
 RGB欠損対策は[ModDrop](https://arxiv.org/abs/1501.00102)の欠損モダリティ学習を参考にする。全体版のball学習成立後、まず`train_real_rgb_gap48`で連続欠損の最大長だけ24→48に変更した60epochを比較する。現在のtrain burstはballと選手1人を1〜24frame消すが、評価gapはballと選手2人を中央40frame消すため、長さの不一致を単独で検証する。48は本repoでの仮説であり論文の推奨値・手法再現ではなく、選手人数の不一致は残す。full/gapの位置・裾・motionとdomain別を比較し、gapだけ改善してfull/playerや裾が悪化する場合は採用しない。RGB-onlyはcourtも消す別条件で、その改善だけを必須条件にしない。欠損＋noRGBの追加診断で、RGB利用と2D時系列補間の可能性を分ける。追加探索では終端の自動testを無効化し、testを選定に使わない。
 
 Meijiのball2Dはoutsourceを維持し、[TrackNet](https://arxiv.org/abs/1907.03698)等の追加検出器学習は現状の教師作成に不要。PLCSは実clipごとの位置・yawの裾誤差と教師品質の確認を優先する。全施策で収録分離split・教師版・seedを固定し、一度に変更する要因を限定する。
+
+[gap48の初回](run-slcs-full-real-rgb-gap48-interrupted-v1.md)は12epoch・360更新でsignal停止した。60epoch施策の採否は未判定。optimizer/schedulerを含むcheckpointが残るため、再開可能性を確認しつつ環境方針をユーザーへ相談した。
 
 生成の実行方法・採用規則は[実RGBデータ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、出力パス規則は[OUTPUTS.md](../../src/tasks/OUTPUTS.md)を正本とする。中断した学習はfailed nodeとして残し、再開run・validation選定・独立test評価を別nodeへ分離している。
