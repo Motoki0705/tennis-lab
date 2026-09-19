@@ -10,7 +10,26 @@ import pytest
 from omegaconf import OmegaConf
 
 from src.tennis_scene.dataset_pipeline import build
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.utils.checksum import FileIntegrityError
+
+
+@pytest.fixture
+def clip_manifest(tmp_path: Path) -> ClipManifest:
+    return ClipManifest(
+        clip_dir=tmp_path / "clip",
+        dataset_id="test",
+        clip_id="video/clip",
+        video_id="video",
+        clip_name="clip",
+        fps=30.0,
+        num_frames=3,
+        width=100,
+        height=100,
+        camera_ids=("cam0", "cam1"),
+        video_paths=("cam0.mp4", "cam1.mp4"),
+        cameras=(),
+    )
 
 
 @pytest.mark.parametrize("integrity", [True, False])
@@ -91,8 +110,8 @@ def test_build_records_failure_and_stops_only_for_integrity(
 
 
 def test_observe_stage_passes_runtime_pins_and_propagates_integrity(
-    tmp_path, monkeypatch
-):
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clip_manifest: ClipManifest
+) -> None:
     pins = {
         role: "a" * 64
         for role in ("court", "dino", "vitpose", "plcs", "blcs", "dinov3")
@@ -105,7 +124,7 @@ def test_observe_stage_passes_runtime_pins_and_propagates_integrity(
             roots=SimpleNamespace(data_root=tmp_path, output_root=tmp_path)
         ),
     )
-    clip = SimpleNamespace(clip_id="clip", clip_dir=tmp_path / "clip")
+    clip = clip_manifest
     paths = object()
     monkeypatch.setattr(build, "_import_ball", MagicMock())
     monkeypatch.setattr(
@@ -132,8 +151,12 @@ def test_observe_stage_passes_runtime_pins_and_propagates_integrity(
     "mismatch", [None, "dino", "vitpose", "sibling", "missing_raw"]
 )
 def test_infer_validates_receipts_before_scene_consumption(
-    tmp_path, monkeypatch, pins_enabled, mismatch
-):
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    clip_manifest: ClipManifest,
+    pins_enabled: bool,
+    mismatch: str | None,
+) -> None:
     pins = dict.fromkeys(
         ("court", "dino", "vitpose", "plcs", "blcs", "dinov3"), "a" * 64
     )
@@ -146,9 +169,7 @@ def test_infer_validates_receipts_before_scene_consumption(
             roots=SimpleNamespace(data_root=tmp_path, output_root=tmp_path)
         ),
     )
-    clip = SimpleNamespace(
-        clip_id="clip", clip_dir=tmp_path / "clip", camera_ids=("cam0", "cam1")
-    )
+    clip = clip_manifest
     observations = runtime.observations / clip.clip_id
     observations.mkdir(parents=True)
     for camera in clip.camera_ids:
@@ -174,7 +195,9 @@ def test_infer_validates_receipts_before_scene_consumption(
     monkeypatch.setattr(
         build,
         "load_dataset_manifest",
-        lambda path: SimpleNamespace(clips={"clip": SimpleNamespace(path="clip")}),
+        lambda path: SimpleNamespace(
+            clips={clip.clip_id: SimpleNamespace(path="clip")}
+        ),
     )
     monkeypatch.setattr(build.ClipManifest, "load", lambda path: object())
     cached = MagicMock(return_value=False)

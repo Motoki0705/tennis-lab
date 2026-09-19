@@ -91,7 +91,7 @@ def main() -> None:
                             projection = project_predicted_canonical_points(decoded.pose, points, points.new_tensor([[iw / 2, ih / 2]]))
                             projected_poses.append(projection.points_xy[0].cpu().numpy() * prepared.source_from_model_xy + [x0, y0])
                 raw, scores = np.asarray(raw), np.asarray(scores)
-                row = dict(checkpoint=str(checkpoint), camera=camera, variant=variant, roi=[int(x) for x in (x0, y0, x1, y1)])
+                row: dict[str, object] = dict(checkpoint=str(checkpoint), camera=camera, variant=variant, roi=[int(x) for x in (x0, y0, x1, y1)])
                 errors = np.linalg.norm(raw - targets[view, :1] * pixels, axis=-1)
                 supported = scores >= runtime.court.min_score
                 row.update(raw_error_px_median=float(np.median(errors[supported])), detected_fraction=float(supported.mean()))

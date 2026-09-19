@@ -11,6 +11,7 @@ from src.tennis_scene.dataset_pipeline.court import (
     StaticCourtSettings,
     fit_static_court,
 )
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.utils.schema.court import CourtConfig, court_keypoints_3d
 
 
@@ -116,12 +117,20 @@ def test_observe_court_passes_and_fail_closed(
 
     load = Mock(return_value=SimpleNamespace(predict=predict))
     monkeypatch.setattr(court.CourtKeypointPredictor, "load_from_checkpoint", load)
-    clip = SimpleNamespace(
-        camera_ids=["cam0"],
+    (tmp_path / "fake.mp4").touch()
+    clip = ClipManifest(
+        clip_dir=tmp_path,
+        dataset_id="test",
+        clip_id="video/clip",
+        video_id="video",
+        clip_name="clip",
+        fps=30.0,
+        camera_ids=("cam0",),
+        video_paths=("fake.mp4",),
+        cameras=(),
         num_frames=3,
         width=100,
         height=100,
-        media_path=lambda camera: tmp_path / "fake.mp4",
     )
     roots = RuntimePathRoots(*([tmp_path] * 7))
     settings = StaticCourtSettings(
