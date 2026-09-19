@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -32,13 +33,15 @@ class RealEvaluationConfig:
         )
         if not isinstance(value, dict):
             raise TypeError("evaluation must be a mapping")
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("evaluation keys must be strings")
         StrictConfigSchema(
             name="blcs.real_evaluation",
             fields={
                 "checkpoint": ConfigField.of(str),
                 "device": ConfigField.of(str),
             },
-        ).validate(value)
+        ).validate(cast(dict[str, object], value))
         if cfg.evaluation.device not in {"cpu", "cuda"}:
             raise ValueError("device must be cpu or cuda")
         training = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
