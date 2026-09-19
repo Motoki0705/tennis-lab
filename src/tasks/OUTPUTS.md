@@ -117,6 +117,7 @@ HydraログはすべてOUTPUT配下の対応する用途・実験・run-idに保
 | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
 | `scripts.analysis.evaluate_slcs_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
 | `scripts.analysis.calibrate_slcs_ball_velocity` | 明示的な絶対 `--output-root` / `--output slcs/analyze/<experiment>/<run-id>` に `calibration.json`。入力 `--training-run` は同じrootからの相対train階層。既存出力は拒否 |
+| `scripts.analysis.compare_slcs_ball_transitions` | 比較対象のevaluate run内へ `ball_transition_comparison.json` を絶対 `--output` で指定。既存JSONは拒否。新しいモデル推論や学習は行わない |
 | BLCS/PLCS `generate_dataset` | DATA / `run.output_dir`。dataset-versionは固定、生成ログだけ独立run |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
