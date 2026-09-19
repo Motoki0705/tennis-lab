@@ -16,7 +16,7 @@
 | 学習・誤差・実映像を可視化してレビュー | run添付の曲線、条件別・分布図、[Meiji](../nodes/run-slcs-temporal-context-meiji-visual-v1.md)・[broadcast](../nodes/run-slcs-temporal-context-broadcast-visual-v1.md)の可視化 | 保存成果と根拠を提示。単一clipの見た目を採用根拠にはしない |
 | 別会場を追加して頑健化 | [候補在庫](../nodes/run-slcs-broadcast-unused-source-inventory-v1.md)、生成ガイドの監査付きdetector入口 | 入口は実装済み。候補の教師生成・QC・追加採用・学習は未実施 |
 
-ここで「完了」はローカルで実行・検証した範囲を指す。run内の `outputs/`・`data/`・checkpoint参照はローカル成果であり、PRに大容量原本が含まれることを意味しない。Git管理の文書・集計・図とローカル原本を区別し、PRへのpush・CI・独立評価・merge可否は統合時の確認対象とする。本稿作成時の指定validator評価は3回、試行／完了は0／0である。
+ここで「完了」はローカルで実行・検証した範囲を指す。run内の `outputs/`・`data/`・checkpoint参照はローカル成果であり、PRに大容量原本が含まれることを意味しない。Git管理の文書・集計・図とローカル原本を区別し、PRへのpush・CI・独立評価・merge可否は統合時の確認対象とする。指定3回の独立評価の実施状況と統合後のCI結果は[PR #902の検証欄](https://github.com/Motoki0705/tennis-lab/pull/902)に記録する。
 
 ## データと評価値の意味
 

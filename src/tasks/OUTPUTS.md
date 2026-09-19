@@ -102,7 +102,10 @@ dataset-versionを作る。`tennis_scene` の実RGB build/assembleでは、同�
 `paths.output_root`、`paths.artifact_root`、`paths.data_root`、`paths.checkpoint_root`。
 rootを別々にしても役割は変わらない。Hydra CLIの一覧は
 `src/utils/configuration/inventory.py` が所有し、CPUスモークはその一覧から入口を読む。
-HydraログはすべてOUTPUT配下の対応する用途・実験・run-idに保存する。
+Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験・run-idに保存する。
+移設したオフライン診断・データ準備入口はHydraのファイルログ・設定dumpを明示的に無効化し、
+処理本体が設定・receipt・結果を保存する。既存run拒否の前にHydraがrunを作成したり、
+作業ディレクトリへ `.log` を残したりしない。
 
 | タスク・入口 | 成果物・生成データのrootと設定 |
 |---|---|
@@ -115,12 +118,15 @@ HydraログはすべてOUTPUT配下の対応する用途・実験・run-idに保
 | PLCS `analysis/*` | OUTPUT / `run.output_dir`（angle_velocity、dataset_distribution、loss_dominance、rotation_error_samples） |
 | ball `analyze_web_bbox_ratio` | OUTPUT / `analyze.output_dir` |
 | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
-| `scripts.analysis.evaluate_slcs_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
-| `scripts.analysis.calibrate_slcs_ball_velocity` | 明示的な絶対 `--output-root` / `--output slcs/analyze/<experiment>/<run-id>` に `calibration.json`。入力 `--training-run` は同じrootからの相対train階層。既存出力は拒否 |
-| `scripts.analysis.compare_slcs_ball_transitions` / `scripts.analysis.compare_slcs_ball_anchors` | 比較対象のevaluate run内へそれぞれ `ball_transition_comparison.json` / `ball_anchor_comparison.json` を絶対 `--output` で指定。既存JSON・symlinkは拒否。新しいモデル推論や学習は行わない |
-| `scripts.analysis.report_slcs_validation` | 明示的な絶対 `--output-root` / `--output slcs/visualize/<experiment>/<run-id>` に条件比較・誤差分布・任意の学習曲線PNGとmanifestを保存。完了済みの評価・学習をCPUで読む。既存runは拒否 |
-| `scripts.visualization.slcs_pr_clip` | `--output-root` はtask用途まで含む基点（既定 `outputs/slcs/visualize`）。その下の `<experiment>/<run-id>` にMP4・3時点PNG・provenanceを保存。実験名・run-idは各1成分、既存runは拒否。既存動画のCPU合成で推論は行わない |
+| `src.tasks.slcs.scripts.evaluate_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
+| `src.tasks.slcs.scripts.calibrate_ball_velocity` | 明示的な絶対 `--output-root` / `--output slcs/analyze/<experiment>/<run-id>` に `calibration.json`。入力 `--training-run` は同じrootからの相対train階層。既存出力は拒否 |
+| `src.tasks.slcs.scripts.compare_conditions` | 明示的な絶対 `--output-root` / `--output slcs/analyze/<experiment>/<run-id>`。条件別入力bundleも同じrootからの相対パス |
+| `src.tasks.slcs.scripts.compare_ball_transitions` / `src.tasks.slcs.scripts.compare_ball_anchors` | 比較対象のevaluate run内へそれぞれ `ball_transition_comparison.json` / `ball_anchor_comparison.json` を絶対 `--output` で指定。既存JSON・symlinkは拒否。新しいモデル推論や学習は行わない |
+| `src.tasks.slcs.scripts.report_validation` | 明示的な絶対 `--output-root` / `--output slcs/visualize/<experiment>/<run-id>` に条件比較・誤差分布・任意の学習曲線PNGとmanifestを保存。完了済みの評価・学習をCPUで読む。既存runは拒否 |
+| `src.tasks.slcs.scripts.render_pr_clip` | `--output-root` はtask用途まで含む基点。その下の `<experiment>/<run-id>` にMP4・3時点PNG・provenanceを保存。実験名・run-idは各1成分、既存runは拒否。既存動画のCPU合成で推論は行わない |
 | BLCS/PLCS `generate_dataset` | DATA / `run.output_dir`。dataset-versionは固定、生成ログだけ独立run |
+| BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
+| PLCS `prepare_motion_split` / `prepare_subset` | 絶対 `--source` / `--destination` で独立したDATA版を指定。出力metadata・split・照合用receiptを保存し、元データを変更しない |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
 | PLCS `extract_gvhmr_motions` | DATA / `run.output_dir`（`plcs/motions/gvhmr/<collection-version>`）。抽出元もDATA、外部モデルは別のroot |
@@ -134,10 +140,17 @@ HydraログはすべてOUTPUT配下の対応する用途・実験・run-idに保
 | tennis_scene `build_slcs_dataset`（broadcast profileを含む） | DATA / `dataset_output_directory` に版固定の教師・RGB特徴。生成記録はOUTPUT / `output_dir`、再利用する観測cacheはOUTPUT / `observation_directory` |
 | tennis_scene `assemble_slcs_dataset` | DATA / `dataset_directory` に統合dataset・固定split・`assembly.json`。実行configとHydraログはOUTPUT / `output_dir` |
 | tennis_scene `report_slcs_dataset_quality` | OUTPUT / `output_dir` に品質JSON・CSV・実行configとHydraログ（analyze run） |
+| tennis_scene `build_real_rgb` | 共有queueへ既存stageのコマンド列を投入。成果物rootは各stageの設定を使い、queue状態は元repoの `.training_queue/` に統一 |
+| tennis_scene `import_broadcast_ball` / `prepare_blcs_real_dataset` | DATA / `destination` に固定データ版と入力・recipeのreceipt。Hydraのファイルログ・設定dumpは無効 |
+| tennis_scene `benchmark_vitpose_precision` / `probe_meiji_court` / `evaluate_refinement` | OUTPUT / `output`（evaluate run）。入力role・recipeの契約は[診断ガイド](../tennis_scene/dataset_pipeline/diagnostics/README.md)を参照 |
+| tennis_scene `render_reconstruction_review` | 絶対 `--output-root` / `--output tennis_scene/visualize/<experiment>/<run-id>`。入力はmodeごとの絶対DATA/ARTIFACT root。既存runは拒否 |
 | tennis_scene `visualization`、`visualize_tasks` | OUTPUT / `output`・`preview_output`、`output_directory`。入力sceneはARTIFACT |
 | tennis_scene `clip_studio`、`export_clips`、`generate_dataset` | DATAのsource/dataset/clipに付随する編集・生成データ。HydraログだけOUTPUTのgenerate run |
 
 実RGBの生成・統合・品質レポートの手順は[生成ガイド](../tennis_scene/dataset_pipeline/README.md)を参照。
+これまでの学習結果・採否・残課題は[実RGB SLCS総括](../../knowledge/reports/slcs-real-rgb.md)へ集約する。
+実験履歴の旧トップレベルCLI名・command・patchは当時の実行証拠なので書き換えない。
+履歴の再実行にはそのrunが記録したcommitを使い、現在のcheckoutでは上表と生成ガイドの`src.*`入口を使う。
 
 入力checkpointはCHECKPOINT、既存hparamsやsceneなどの実験成果物入力は入口の
 ARTIFACT契約を使う。CHECKPOINTの既定はball/court/PLCSが `outputs`、BLCSが
