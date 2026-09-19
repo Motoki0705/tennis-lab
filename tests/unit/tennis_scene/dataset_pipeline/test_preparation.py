@@ -17,6 +17,22 @@ from src.tennis_scene.dataset_pipeline.preparation import (
 from src.utils.paths import PROJECT_ROOT
 
 
+@pytest.mark.parametrize("recipe", ["import_broadcast_ball", "prepare_blcs_real_dataset"])
+def test_preparation_recipes_disable_hydra_output_side_effects(recipe: str) -> None:
+    with initialize_config_dir(
+        config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"
+    ):
+        cfg = compose(config_name=recipe, return_hydra_config=True)
+    assert cfg.hydra.run.dir == "."
+    assert cfg.hydra.output_subdir is None
+    assert cfg.hydra.job.chdir is False
+    for logging in (cfg.hydra.job_logging, cfg.hydra.hydra_logging):
+        assert not logging.root.get("handlers", [])
+        assert logging.root.level == "ERROR"
+        assert not logging.get("handlers", {})
+        assert logging.disable_existing_loggers is True
+
+
 def test_broadcast_recipe_and_unknown_keys() -> None:
     with initialize_config_dir(
         config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"

@@ -1,6 +1,8 @@
 defaults:
   - paths: default
   - _self_
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
 destination: ???
 synthetic_source: ???
 replay_count: 128
