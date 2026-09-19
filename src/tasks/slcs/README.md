@@ -88,7 +88,7 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
   analysis.arrays=slcs/evaluate/example/s42-001/eval_arrays.npz
 ```
 
-評価は player/ball の 3D 誤差、yaw 誤差、速度・加速度・jerk を BLCS/PLCS と比較可能な単位で出力します。解析は誤差分布、時系列誤差、欠損率、uncertainty calibration を保存します。2D overlay は入力観測を描画し、3D prediction の reprojection は calibrated camera が明示された場合だけ行います。
+標準評価は player/ball の 3D 位置誤差と yaw 誤差を出力します。追加のCPU診断は `evaluation.motion.summarize_motion(arrays, fps_by_clip, position_representation="normalized_court")` を使用します。`fps_by_clip` は評価対象と完全一致する `(video_id, full clip_id) -> FPS` の明示mappingです。有効な連続フレームの組だけから速度・加速度・jerk（m/s、m/s²、m/s³）の予測値・教師値・誤差を計算し、位置のXYZ標準偏差と標準偏差ノルム比も全体・video・camera別に返します。重複windowは別々に数え、playerは追跡IDではなくnear/far slot別です。分散比は成功指標ではなく、教師分散が0の場合は未定義です。解析は誤差分布、時系列誤差、欠損率、uncertainty calibration を保存します。2D overlay は入力観測を描画し、3D prediction の reprojection は calibrated camera が明示された場合だけ行います。
 
 ## 検証
 
