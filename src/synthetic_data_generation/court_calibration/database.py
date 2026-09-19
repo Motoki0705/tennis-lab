@@ -92,7 +92,7 @@ class DatabaseConfig:
 
 
 def normalize_homography(matrix: Array) -> Array:
-    h = np.asarray(matrix, dtype=np.float64)
+    h: NDArray[np.float64] = np.asarray(matrix, dtype=np.float64)
     if h.shape != (3, 3) or not np.isfinite(h).all() or abs(h[2, 2]) < 1e-10:
         raise ValueError("invalid homography")
     h = h / h[2, 2]

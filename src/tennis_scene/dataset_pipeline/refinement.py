@@ -156,9 +156,10 @@ def refine_scene(
             ground = cv2.perspectiveTransform(
                 feet[None].astype(np.float64), np.linalg.inv(homographies[0])
             )[0]
-            visible = (
-                np.take(scene.human_kp_vis[player, 0], [15, 16], axis=1) >= 0.3
-            ).all(axis=1)
+            visible = np.asarray(
+                (np.take(scene.human_kp_vis[player, 0], [15, 16], axis=1) >= 0.3).all(axis=1),
+                dtype=np.bool_,
+            )
             supported = (
                 visible
                 & np.isfinite(ground).all(-1)

@@ -21,6 +21,7 @@ from src.tasks.court_detection.geometry.pose import (
     project_predicted_canonical_points,
 )
 from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
+from src.tasks.court_detection.model_io import CourtDecodedOutput
 from src.tasks.court_detection.model_io.images import prepare_court_input
 from src.tennis_scene.dataset_pipeline.configuration import DatasetBuildConfig
 from src.tennis_scene.dataset_pipeline.court import fit_static_court
@@ -73,12 +74,12 @@ def main() -> None:
         predictor = CourtKeypointPredictor.load_from_checkpoint(checkpoint, resolver=resolver, device=str(cfg.device), subpixel_refine=True, peak_threshold=runtime.court.min_score)
         for view, camera in enumerate(clip.camera_ids):
             for variant, (x0, y0, x1, y1) in rois[camera].items():
-                raw, scores, projected_poses = [], [], []
+                raw_frames, score_frames, projected_poses = [], [], []
                 for image in frames[camera]:
                     crop = image[y0:y1, x0:x1]
                     prediction = predictor.predict(crop)
-                    raw.append(prediction.keypoints[:, 0].cpu().numpy() + [x0, y0])
-                    scores.append(prediction.scores[:, 0].cpu().numpy())
+                    raw_frames.append(prediction.keypoints[:, 0].cpu().numpy() + [x0, y0])
+                    score_frames.append(prediction.scores[:, 0].cpu().numpy())
                     prepared = prepare_court_input(crop, spec=predictor.adapter.spec, device=predictor.device)
                     images = prepared.images
                     with torch.no_grad():
@@ -86,11 +87,13 @@ def main() -> None:
                         output = predictor.model(*call.model_args)
                         if getattr(output, 'pose', None) is not None:
                             decoded = predictor.adapter.decode_output(output)
-                            points = canonical_semantic_court_points_batched(torch.arange(14, device=predictor.device)[None])
+                            if not isinstance(decoded, CourtDecodedOutput):
+                                raise TypeError('Pose model output must decode to CourtDecodedOutput')
+                            canonical_points = canonical_semantic_court_points_batched(torch.arange(14, device=predictor.device)[None])
                             ih, iw = images.shape[-2:]
-                            projection = project_predicted_canonical_points(decoded.pose, points, points.new_tensor([[iw / 2, ih / 2]]))
+                            projection = project_predicted_canonical_points(decoded.pose, canonical_points, canonical_points.new_tensor([[iw / 2, ih / 2]]))
                             projected_poses.append(projection.points_xy[0].cpu().numpy() * prepared.source_from_model_xy + [x0, y0])
-                raw, scores = np.asarray(raw), np.asarray(scores)
+                raw, scores = np.asarray(raw_frames), np.asarray(score_frames)
                 row: dict[str, object] = dict(checkpoint=str(checkpoint), camera=camera, variant=variant, roi=[int(x) for x in (x0, y0, x1, y1)])
                 errors = np.linalg.norm(raw - targets[view, :1] * pixels, axis=-1)
                 supported = scores >= runtime.court.min_score

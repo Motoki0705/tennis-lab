@@ -99,7 +99,7 @@ def export_blcs_training(
         _import_ball(runtime, clip, observed)
         kp, _ = _observe_court(cfg, runtime, clip, observed)
         _, _, reference = build_reference(
-            clip.camera_ids,
+            list(clip.camera_ids),
             kp,
             list(cfg.view_half_turns),
             cfg.reference_camera,
