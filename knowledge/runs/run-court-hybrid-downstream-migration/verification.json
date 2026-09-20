@@ -1,0 +1,61 @@
+{
+  "base": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "checks": [
+    {
+      "command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection tests/unit/tennis_scene tests/unit/synthetic_data_generation/alignment tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/e2e/colab/test_b01_b03_alignment_script.py tests/e2e/development/test_architecture_boundaries.py",
+      "passed": 1025,
+      "failed": 1,
+      "skipped": 1,
+      "note": "The PNG integrity failure below also reproduces on main. The skipped test needs CUDA."
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py tests/unit/tennis_scene/pipeline/components/test_court_kp.py tests/unit/synthetic_data_generation/alignment/test_unified_line_detector.py",
+      "passed": 30,
+      "failed": 0,
+      "note": "After adding the strict max8 API guard."
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n0 tests/unit/tasks/plcs/inference tests/unit/tasks/blcs/inference",
+      "passed": 14,
+      "failed": 0
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n0 tests/e2e/colab/test_workflow_interface.py tests/e2e/colab/test_training_path_contracts.py",
+      "passed": 94,
+      "failed": 0
+    },
+    {
+      "command": "ruff check and mypy --follow-imports=skip on all 40 changed/new Python source and test files",
+      "status": "passed"
+    },
+    {
+      "command": "Colab B01-B03 bash --dry-run (covered by command-level e2e)",
+      "status": "passed"
+    }
+  ],
+  "known_local_data_failure": {
+    "test": "tests/unit/tasks/court_detection/visualization/review/test_dataset_review.py::test_real_dataset_smoke_for_both_sources",
+    "path": "data/court/images/unhchQqmD8E_1200.png",
+    "sha256": "5d841e391115a4e33c8cfaddf90a986d5ed1752244c8ca6ea49c2950362317b5",
+    "exception": "SyntaxError: broken PNG file (bad header checksum in b'IDAT')",
+    "reproduced_on_main_and_migration_worktree": true,
+    "training_images_checked": 6630,
+    "corrupt_training_images": 1,
+    "validation_images_checked": 2211,
+    "corrupt_validation_images": 0,
+    "action": "No data edits, integrity checks weakened, or test exclusions."
+  },
+  "known_existing_alignment_limit": {
+    "scenes": [
+      "B00",
+      "B01",
+      "B03"
+    ],
+    "detail": "Stored v2 line-heatmap archives are rejected by the existing v3-only loader. No format migration or scene publication performed."
+  },
+  "validation_reviews": {
+    "requested": 2,
+    "attempted": 0,
+    "completed": 0
+  }
+}
