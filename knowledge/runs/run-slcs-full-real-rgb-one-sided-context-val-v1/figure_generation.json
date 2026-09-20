@@ -1,0 +1,63 @@
+{
+  "source_commit": "1e5b38cfec422b595452557441cc261b00730a16",
+  "device": "cpu",
+  "panels": [
+    "player_position",
+    "ball_position",
+    "scene_position",
+    "loss"
+  ],
+  "train_and_val": "Eight real TensorBoard scalar tags, all 60 epochs, no smoothing/interpolation",
+  "visual_review": "All six PNGs reviewed by parent; axes/captions/legends/readability checked",
+  "comparisons": {
+    "Baseline": {
+      "output": "/home/kamimura/projects/tennis-lab/outputs/slcs/visualize/real_rgb_one_sided_vs_baseline/s42-v2",
+      "promoted_directory": "figures",
+      "files": {
+        "learning_curves.png": {
+          "sha256": "46dc11e54ad6ec157af90844a0b5881af64f81722930dd49ee05a613e3b0ea54",
+          "bytes": 335904
+        },
+        "conditions.png": {
+          "sha256": "5f50891fa2f5913395ff12c886525cc5c50c7bf7552d552f5c997c897683e6b5",
+          "bytes": 277077
+        },
+        "distribution.png": {
+          "sha256": "01ff14d70cd3fd021ab42a3af97c3294c7f3bc0af56d547bf59703c98f094924",
+          "bytes": 156900
+        },
+        "manifest.json": {
+          "sha256": "c91d5e1819c4bd427b36bdb06e2678c8f1633df136ec6ce9e53300474681701a",
+          "bytes": 99344
+        }
+      },
+      "validated_source_files": 27,
+      "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -c 'from pathlib import Path; from src.tasks.slcs.evaluation.pr_report import generate_report; print(generate_report(evaluations={\"Baseline\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002\"), \"OneSidedContext\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001\")}, training={\"Baseline\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003\"), \"OneSidedContext\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001\")}, output_root=Path(\"/home/kamimura/projects/tennis-lab/outputs\"), output=\"slcs/visualize/real_rgb_one_sided_vs_baseline/s42-v2\"))'"
+    },
+    "TemporalContext": {
+      "output": "/home/kamimura/projects/tennis-lab/outputs/slcs/visualize/real_rgb_one_sided_vs_temporal/s42-v2",
+      "promoted_directory": "direct_control_figures",
+      "files": {
+        "learning_curves.png": {
+          "sha256": "337015fead9c792a70647cdfd3495075f4965c2c19a618f0b48d849b4ee6560a",
+          "bytes": 352942
+        },
+        "conditions.png": {
+          "sha256": "a170228cd4369f56822fbec18dcc967ff2055a641fdd3e2603dd0e3484af72f4",
+          "bytes": 277334
+        },
+        "distribution.png": {
+          "sha256": "7cba51258e7c3e21c66d0a961364078b6ace410b42c6f15b93e5def7b83a68dc",
+          "bytes": 157861
+        },
+        "manifest.json": {
+          "sha256": "96ef312cf432ca9457c2914d953215dd1ea16937e449fd7a1c67baedb8cad8fc",
+          "bytes": 99037
+        }
+      },
+      "validated_source_files": 26,
+      "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -c 'from pathlib import Path; from src.tasks.slcs.evaluation.pr_report import generate_report; print(generate_report(evaluations={\"TemporalContext\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001\"), \"OneSidedContext\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001\")}, training={\"TemporalContext\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001\"), \"OneSidedContext\": Path(\"/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001\")}, output_root=Path(\"/home/kamimura/projects/tennis-lab/outputs\"), output=\"slcs/visualize/real_rgb_one_sided_vs_temporal/s42-v2\"))'"
+    }
+  },
+  "audit_command": "figure_audit_command.txt"
+}

@@ -2164,6 +2164,7 @@ class PLCSAnalysisRuntimeConfig:
                     "checkpoint",
                     "device",
                     "canonical_pose_source",
+                    "reference_camera_id",
                     "style",
                     "view_3d",
                 },

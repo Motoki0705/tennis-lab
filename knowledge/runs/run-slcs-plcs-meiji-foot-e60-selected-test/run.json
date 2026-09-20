@@ -1,0 +1,15 @@
+{
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "commit": "4348077d8f7a0b35ab58350232cf4ccb607990f1",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "name": "run-slcs-plcs-meiji-foot-e60-selected-test",
+  "command": "bash outputs/plcs/analyze/meiji_foot_final/s42-001/evaluate_selected.sh",
+  "status": "done",
+  "device": "cpu",
+  "checkpoint": "ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+  "parent_run": "run-slcs-plcs-meiji-foot-e60-resume-v3"
+}

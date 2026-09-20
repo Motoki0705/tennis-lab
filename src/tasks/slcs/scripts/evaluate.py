@@ -21,7 +21,11 @@ from __future__ import annotations
 from omegaconf import DictConfig
 
 from src.tasks.slcs.configuration import SLCSEvaluationConfig
-from src.tasks.slcs.evaluation.evaluate import evaluate_split, save_evaluation
+from src.tasks.slcs.evaluation.evaluate import (
+    evaluate_split,
+    evaluation_context,
+    save_evaluation,
+)
 from src.tasks.slcs.inference.predictor import SLCSPredictor
 from src.utils.hydra import hydra_main
 
@@ -43,15 +47,17 @@ def run(config: DictConfig) -> None:
         split=runtime.split,
         data_config=runtime.data.pipeline,
         batch_size=runtime.batch_size,
+        input_mode=runtime.input_mode,
     )
     metrics_path, arrays_path = save_evaluation(
         runtime.output_dir,
         report,
         arrays,
         context={
-            "checkpoint": str(runtime.checkpoint),
+            **evaluation_context(runtime.checkpoint, input_mode=runtime.input_mode),
             "split": runtime.split,
             "dataset_root": str(runtime.data.dataset_root),
+            "input_mode": runtime.input_mode,
         },
     )
     print(f"metrics -> {metrics_path}")

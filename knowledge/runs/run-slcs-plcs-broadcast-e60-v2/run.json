@@ -1,0 +1,16 @@
+{
+  "run_id": "1789716172090864239_3430207_slcs-plcs-broadcast-e60-v2",
+  "name": "slcs-plcs-broadcast-e60-v2",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_broadcast_real_rgb run.output_dir=plcs/train/broadcast_real_rgb/s42-002",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "4348077d8f7a0b35ab58350232cf4ccb607990f1",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T16:22:52+09:00"
+}

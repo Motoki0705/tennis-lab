@@ -1,0 +1,21 @@
+ M knowledge/nodes/group-slcs-real-rgb.md
+ M src/tennis_scene/configs/build_slcs_dataset.yaml
+ M src/tennis_scene/configs/report_slcs_dataset_quality.yaml
+ M src/tennis_scene/dataset_pipeline/README.md
+ M src/tennis_scene/dataset_pipeline/build.py
+ M src/tennis_scene/dataset_pipeline/checkpoint_integrity.py
+ M src/tennis_scene/dataset_pipeline/configuration.py
+ M src/tennis_scene/dataset_pipeline/people.py
+ M src/tennis_scene/dataset_pipeline/quality_report.py
+?? knowledge/nodes/run-slcs-meiji-v9-observation-reuse-v3.md
+?? knowledge/nodes/run-slcs-vitpose-redownload-v1.md
+?? knowledge/runs/run-slcs-meiji-v9-observation-reuse-v3/
+?? knowledge/runs/run-slcs-meiji-v9-observation-reuse-v4/
+?? knowledge/runs/run-slcs-vitpose-redownload-smoke-v1/
+?? knowledge/runs/run-slcs-vitpose-redownload-v1/installation.json
+?? knowledge/runs/run-slcs-vitpose-redownload-v1/run.json
+?? knowledge/runs/run-slcs-vitpose-redownload-v1/source.json
+?? knowledge/runs/run-slcs-vitpose-redownload-v1/verification.json
+?? src/tennis_scene/dataset_pipeline/checkpoint_warning.py
+?? tests/unit/tennis_scene/dataset_pipeline/test_checkpoint_warning.py
+?? tests/unit/tennis_scene/dataset_pipeline/test_observation_reuse_policy.py

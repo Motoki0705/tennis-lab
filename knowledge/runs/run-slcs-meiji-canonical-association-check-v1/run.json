@@ -1,0 +1,25 @@
+{
+  "commit": "740e788877a00971a7ab3d913458c8328379815e",
+  "branch": "codex/slcs-real-rgb",
+  "command": [
+    "knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py",
+    "--project-root",
+    "/home/kamimura/projects/tennis-lab",
+    "--output-dir",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_canonical_association/s42-001"
+  ],
+  "status": "done",
+  "production_source_identical_to_commit": true,
+  "probe_hash_matches_executed_source": true,
+  "artifacts_dual_sha256": {
+    "results.json": "875cbaf3b31fdc52ddd323ce7752a7ab45324695eedcb0f4e3f40b57b39369ca",
+    "repro.sh": "5b49fced464e461d2c102a4b832966380e8dc1f7056ae0fbd90da06a8b131b93",
+    "probe.py": "9c055120e79fb040a29a7f2924dd240130ad8ba12cd103af3e4fd5d10e292db5",
+    "uncommitted.patch": "95cfbc539b5fd36e88c09cbaeba3b2993df3634bd4644059e4b5d4a8b05c93e5"
+  },
+  "reproduction_patch_inputs": [
+    "knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py",
+    "knowledge/runs/run-slcs-meiji-observation-review-v4/results.json"
+  ],
+  "reproduction_patch_checked_against_commit": true
+}

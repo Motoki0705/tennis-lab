@@ -1,0 +1,226 @@
+{
+  "selection_metric": "val/position_error_m",
+  "mode": "min",
+  "test_used_for_selection": false,
+  "scope": "All saved checkpoints in versions 0\u20133; pruned epochs unavailable",
+  "selected": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/plcs-epoch=57.ckpt",
+    "sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+    "epoch_index": 57,
+    "global_step": 14500,
+    "validation_position_error_m": 0.21817435324192047,
+    "tensorboard_value": 0.21817435324192047,
+    "tensorboard_status": "matched",
+    "version": 3
+  },
+  "destination": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+  "candidates": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_0/checkpoints/last.ckpt",
+      "sha256": "05a81b2faefb38c62ffa5c83b3563afa8ddef9cf779387519df89701b56a8680",
+      "epoch_index": 29,
+      "global_step": 7500,
+      "validation_position_error_m": 0.2522822916507721,
+      "tensorboard_value": 0.2522822916507721,
+      "tensorboard_status": "matched",
+      "version": 0
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_0/checkpoints/plcs-epoch=24.ckpt",
+      "sha256": "7784ade56245d5db82aea767f80d9a1c18ddf699b8a67a5eb65e5ca2209b79e7",
+      "epoch_index": 24,
+      "global_step": 6250,
+      "validation_position_error_m": 0.24310101568698883,
+      "tensorboard_value": 0.24310101568698883,
+      "tensorboard_status": "matched",
+      "version": 0
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_0/checkpoints/plcs-epoch=27.ckpt",
+      "sha256": "c3a310a1c182223654be2c2c89a461232d1d0d27699578ea7689e61ce15ece0b",
+      "epoch_index": 27,
+      "global_step": 7000,
+      "validation_position_error_m": 0.24032948911190033,
+      "tensorboard_value": 0.24032948911190033,
+      "tensorboard_status": "matched",
+      "version": 0
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_0/checkpoints/plcs-epoch=28.ckpt",
+      "sha256": "d72a0099c2632e63dac7ed62602990c2afe12fc74e6c20a17b4399844ea03f26",
+      "epoch_index": 28,
+      "global_step": 7250,
+      "validation_position_error_m": 0.24610066413879395,
+      "tensorboard_value": 0.24610066413879395,
+      "tensorboard_status": "matched",
+      "version": 0
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_1/checkpoints/last.ckpt",
+      "sha256": "54b91ef34393686df232300a7b78c3a7c144ee17994faba7d082fb42fa215258",
+      "epoch_index": 37,
+      "global_step": 9500,
+      "validation_position_error_m": 0.23977425694465637,
+      "tensorboard_value": 0.23977425694465637,
+      "tensorboard_status": "matched",
+      "version": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_1/checkpoints/plcs-epoch=33.ckpt",
+      "sha256": "a505899468cb6ca0451aa9d7e09b6b518270d121ffb633970d8630161f0d4ae4",
+      "epoch_index": 33,
+      "global_step": 8500,
+      "validation_position_error_m": 0.2372346967458725,
+      "tensorboard_value": 0.2372346967458725,
+      "tensorboard_status": "matched",
+      "version": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_1/checkpoints/plcs-epoch=35.ckpt",
+      "sha256": "2acec53e87f187087709d84f8e64709c8cdadd9af396ac860139f553f7f791df",
+      "epoch_index": 35,
+      "global_step": 9000,
+      "validation_position_error_m": 0.22376742959022522,
+      "tensorboard_value": 0.22376742959022522,
+      "tensorboard_status": "matched",
+      "version": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_1/checkpoints/plcs-epoch=36.ckpt",
+      "sha256": "b7a40187ad52b9f9113d2687ff62cfa60e38ff1d0a92a497ddffcfeb40d88645",
+      "epoch_index": 36,
+      "global_step": 9250,
+      "validation_position_error_m": 0.2257595956325531,
+      "tensorboard_value": 0.2257595956325531,
+      "tensorboard_status": "matched",
+      "version": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_2/checkpoints/last.ckpt",
+      "sha256": "c86653bdae61f7041cd1ca537cde0066c5e881cd5c6018659b36888e6459ab63",
+      "epoch_index": 46,
+      "global_step": 11750,
+      "validation_position_error_m": 0.22298605740070343,
+      "tensorboard_value": null,
+      "tensorboard_status": "missing_after_environment_interruption; checkpoint_callback_used",
+      "version": 2
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_2/checkpoints/plcs-epoch=43.ckpt",
+      "sha256": "95ebbae0345da7a7eecedb25c26dba689fcbfc692ec9d899ee85a9cd6d426ba7",
+      "epoch_index": 43,
+      "global_step": 11000,
+      "validation_position_error_m": 0.22698120772838593,
+      "tensorboard_value": 0.22698120772838593,
+      "tensorboard_status": "matched",
+      "version": 2
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_2/checkpoints/plcs-epoch=44.ckpt",
+      "sha256": "2128c610e20c8d87d993ee3aeb367e8a67d0a19ee914d981cb63a39645ec44bd",
+      "epoch_index": 44,
+      "global_step": 11250,
+      "validation_position_error_m": 0.2209930419921875,
+      "tensorboard_value": 0.2209930419921875,
+      "tensorboard_status": "matched",
+      "version": 2
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_2/checkpoints/plcs-epoch=46.ckpt",
+      "sha256": "c86653bdae61f7041cd1ca537cde0066c5e881cd5c6018659b36888e6459ab63",
+      "epoch_index": 46,
+      "global_step": 11750,
+      "validation_position_error_m": 0.22298605740070343,
+      "tensorboard_value": null,
+      "tensorboard_status": "missing_after_environment_interruption; checkpoint_callback_used",
+      "version": 2
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/last.ckpt",
+      "sha256": "1baf2f5426b47426ae3af231496153ba73a71136440989affbc72e22c6e72ad7",
+      "epoch_index": 59,
+      "global_step": 15000,
+      "validation_position_error_m": 0.22391951084136963,
+      "tensorboard_value": 0.22391951084136963,
+      "tensorboard_status": "matched",
+      "version": 3
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/plcs-epoch=53.ckpt",
+      "sha256": "11f7bf668eef8972625fb99ee9102848e7c162891ec8fe96f9341169470c9fb1",
+      "epoch_index": 53,
+      "global_step": 13500,
+      "validation_position_error_m": 0.2186175435781479,
+      "tensorboard_value": 0.2186175435781479,
+      "tensorboard_status": "matched",
+      "version": 3
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/plcs-epoch=56.ckpt",
+      "sha256": "3657ef070974c3cc8afe3c3df593c926a2c484f7044b0419ef56d2dff74817c5",
+      "epoch_index": 56,
+      "global_step": 14250,
+      "validation_position_error_m": 0.21924281120300293,
+      "tensorboard_value": 0.21924281120300293,
+      "tensorboard_status": "matched",
+      "version": 3
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/plcs-epoch=57.ckpt",
+      "sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+      "epoch_index": 57,
+      "global_step": 14500,
+      "validation_position_error_m": 0.21817435324192047,
+      "tensorboard_value": 0.21817435324192047,
+      "tensorboard_status": "matched",
+      "version": 3
+    }
+  ],
+  "resume_history": [
+    {
+      "version": 0,
+      "last_epoch_index": 29,
+      "global_step": 7500,
+      "status": "interrupted",
+      "reason": "WSL restart"
+    },
+    {
+      "version": 1,
+      "last_epoch_index": 37,
+      "global_step": 9500,
+      "status": "interrupted",
+      "reason": "native exit 139"
+    },
+    {
+      "version": 2,
+      "last_epoch_index": 46,
+      "global_step": 11750,
+      "status": "interrupted",
+      "reason": "WSL restart"
+    },
+    {
+      "version": 3,
+      "last_epoch_index": 59,
+      "global_step": 15000,
+      "status": "done",
+      "reason": "completed with data.num_workers=0"
+    }
+  ],
+  "queue_job_id": "1789725679558922390_14156_slcs-plcs-meiji-foot-e60-resume-v3",
+  "queue_status": "done",
+  "terminal_test": {
+    "checkpoint": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/last.ckpt",
+      "sha256": "1baf2f5426b47426ae3af231496153ba73a71136440989affbc72e22c6e72ad7",
+      "epoch_index": 59,
+      "global_step": 15000,
+      "validation_position_error_m": 0.22391951084136963,
+      "tensorboard_value": 0.22391951084136963,
+      "tensorboard_status": "matched",
+      "version": 3
+    },
+    "equals_selected_weights": false,
+    "source": "BaseTrainingRunner.run trainer.test(lightning_module) evaluates terminal in-memory weights"
+  },
+  "interpretation": "Synthetic source-motion-disjoint target agreement, not independently measured 3D accuracy"
+}

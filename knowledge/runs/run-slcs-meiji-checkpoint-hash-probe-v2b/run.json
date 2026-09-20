@@ -1,0 +1,16 @@
+{
+  "run_id": "1789734039602475863_820662_slcs-meiji-checkpoint-hash-probe-v2b",
+  "name": "slcs-meiji-checkpoint-hash-probe-v2b",
+  "command": "timeout 10m env PYTHONPATH=. CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v2/probe.py --output-dir outputs/tennis_scene/analyze/meiji_hash_probe_v2/s42-002",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "bbe6a703022c6b44a765b6f570e6fe7b85eceb7b",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T21:20:39+09:00"
+}

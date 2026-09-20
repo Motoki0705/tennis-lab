@@ -1,0 +1,122 @@
+{
+  "interpretation": "Paired pseudo-teacher comparison, same targets/masks/weights/observations. Unweighted valid window occurrences; resumed training RNG not guaranteed identical to uninterrupted control. No test evaluation.",
+  "rows": [
+    {
+      "condition": "full",
+      "domain": "all",
+      "region": "whole_window",
+      "control_ball_mean_m": 2.5210425955487077,
+      "control_ball_p95_m": 7.6933503389358515,
+      "control_player_mean_m": 1.3826084744307867,
+      "control_player_p95_m": 4.295886135101311,
+      "gap48_ball_mean_m": 2.454431386657437,
+      "gap48_ball_p95_m": 7.024766874313352,
+      "gap48_player_mean_m": 1.3466690684664544,
+      "gap48_player_p95_m": 4.259775590896603
+    },
+    {
+      "condition": "full",
+      "domain": "meiji",
+      "region": "whole_window",
+      "control_ball_mean_m": 2.5238646006139076,
+      "control_ball_p95_m": 7.745829105377197,
+      "control_player_mean_m": 1.354951658018037,
+      "control_player_p95_m": 4.247595643997186,
+      "gap48_ball_mean_m": 2.4506650228732534,
+      "gap48_ball_p95_m": 7.075244784355164,
+      "gap48_player_mean_m": 1.314947200747918,
+      "gap48_player_p95_m": 4.196011114120481
+    },
+    {
+      "condition": "full",
+      "domain": "broadcast",
+      "region": "whole_window",
+      "control_ball_mean_m": 2.4293246696723183,
+      "control_ball_p95_m": 5.7549796104431135,
+      "control_player_mean_m": 2.316240977711448,
+      "control_player_p95_m": 5.1393632888793945,
+      "gap48_ball_mean_m": 2.576841894930881,
+      "gap48_ball_p95_m": 5.9389577150344826,
+      "gap48_player_mean_m": 2.417528646980414,
+      "gap48_player_p95_m": 5.233625531196594
+    },
+    {
+      "condition": "detector_gap",
+      "domain": "all",
+      "region": "whole_window",
+      "control_ball_mean_m": 3.0972739988512,
+      "control_ball_p95_m": 8.86466541290283,
+      "control_player_mean_m": 1.4630901694595726,
+      "control_player_p95_m": 4.461046171188354,
+      "gap48_ball_mean_m": 2.8978725971683,
+      "gap48_ball_p95_m": 8.08889555931091,
+      "gap48_player_mean_m": 1.4248494454177831,
+      "gap48_player_p95_m": 4.481609058380118
+    },
+    {
+      "condition": "detector_gap",
+      "domain": "all",
+      "region": "gap_40_80",
+      "control_ball_mean_m": 3.7014848732052794,
+      "control_ball_p95_m": 9.477091789245605,
+      "control_player_mean_m": 1.5696992845882773,
+      "control_player_p95_m": 4.631123161315914,
+      "gap48_ball_mean_m": 3.226847490775528,
+      "gap48_ball_p95_m": 8.237133979797363,
+      "gap48_player_mean_m": 1.5100619364080756,
+      "gap48_player_p95_m": 4.7111452102661096
+    },
+    {
+      "condition": "detector_gap",
+      "domain": "meiji",
+      "region": "whole_window",
+      "control_ball_mean_m": 3.0817747731434686,
+      "control_ball_p95_m": 8.864741325378418,
+      "control_player_mean_m": 1.431308167113928,
+      "control_player_p95_m": 4.432894659042357,
+      "gap48_ball_mean_m": 2.871147252967223,
+      "gap48_ball_p95_m": 8.022509098052979,
+      "gap48_player_mean_m": 1.3906657508939686,
+      "gap48_player_p95_m": 4.415661239624021
+    },
+    {
+      "condition": "detector_gap",
+      "domain": "meiji",
+      "region": "gap_40_80",
+      "control_ball_mean_m": 3.6424645726065252,
+      "control_ball_p95_m": 9.400001335144038,
+      "control_player_mean_m": 1.532633851963614,
+      "control_player_p95_m": 4.554924011230469,
+      "gap48_ball_mean_m": 3.1466603281145984,
+      "gap48_ball_p95_m": 8.009054374694816,
+      "gap48_player_mean_m": 1.4729821544864998,
+      "gap48_player_p95_m": 4.618104934692383
+    },
+    {
+      "condition": "detector_gap",
+      "domain": "broadcast",
+      "region": "whole_window",
+      "control_ball_mean_m": 3.6010139999353488,
+      "control_ball_p95_m": 8.849042367935175,
+      "control_player_mean_m": 2.535979759005994,
+      "control_player_p95_m": 5.323524713516235,
+      "gap48_ball_mean_m": 3.7664724337465607,
+      "gap48_ball_p95_m": 9.830226087570185,
+      "gap48_player_mean_m": 2.5788148119788303,
+      "gap48_player_p95_m": 5.639535427093506
+    },
+    {
+      "condition": "detector_gap",
+      "domain": "broadcast",
+      "region": "gap_40_80",
+      "control_ball_mean_m": 5.7260225497320025,
+      "control_ball_p95_m": 16.0131806373596,
+      "control_player_mean_m": 2.817361869109967,
+      "control_player_p95_m": 6.83503520488739,
+      "gap48_ball_mean_m": 5.977459235105686,
+      "gap48_ball_p95_m": 12.696137619018554,
+      "gap48_player_mean_m": 2.7582075337965772,
+      "gap48_player_p95_m": 6.594669938087463
+    }
+  ]
+}

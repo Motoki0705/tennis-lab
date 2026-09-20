@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "inference_source_commit": "dda1cc664080a0360550b7b6766b476cd23808de",
+  "renderer_source_commit": "760195c02ace1f61a102cd1ce8f97431f52ad0fc",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+  "checkpoint_sha256": "94793e761d22a1f163d8089ae0210b6cb45f7c37144deb498c31b4d85fd6f961",
+  "inference_command": "env PYTHONUNBUFFERED=1 CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs 'predict.checkpoint=\"slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt\"' data.dataset_root=slcs/real_rgb_v1 data.split_file=slcs/real_rgb_v1/splits.json data.quality.min_window_label_ratio=0.5 predict.clip_id=video_001/clip_000 predict.camera_id=cam0 predict.device=cpu predict.frame_step=3 predict.output_dir=slcs/visualize/real_rgb_temporal_context_meiji/s42-001",
+  "decision": "not_adopted; see parent validation node",
+  "source": "/home/kamimura/projects/tennis-lab/outputs/slcs/visualize/real_rgb_temporal_context_meiji/s42-001",
+  "preview": "/home/kamimura/projects/tennis-lab/outputs/slcs/visualize/pr_temporal_context_meiji/v1",
+  "clip": "video_001/clip_000",
+  "camera": "cam0",
+  "prediction_frames": 1316,
+  "scene_frames": 439,
+  "arrays": {
+    "player_position": {
+      "shape": [
+        2,
+        1316,
+        3
+      ],
+      "dtype": "float32"
+    },
+    "player_rotation": {
+      "shape": [
+        2,
+        1316,
+        2
+      ],
+      "dtype": "float32"
+    },
+    "player_position_log_b": {
+      "shape": [
+        2,
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "player_rotation_log_b": {
+      "shape": [
+        2,
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "ball_position": {
+      "shape": [
+        1316,
+        3
+      ],
+      "dtype": "float32"
+    },
+    "ball_position_log_b": {
+      "shape": [
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "player_position_meters": {
+      "shape": [
+        2,
+        1316,
+        3
+      ],
+      "dtype": "float32"
+    },
+    "player_yaw_radians": {
+      "shape": [
+        2,
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "ball_position_meters": {
+      "shape": [
+        1316,
+        3
+      ],
+      "dtype": "float32"
+    },
+    "player_position_sigma_m": {
+      "shape": [
+        2,
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "player_rotation_sigma_rad": {
+      "shape": [
+        2,
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "ball_position_sigma_m": {
+      "shape": [
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "coverage": {
+      "shape": [
+        1316
+      ],
+      "dtype": "float32"
+    },
+    "clip_id": {
+      "shape": [],
+      "dtype": "<U18"
+    },
+    "camera_id": {
+      "shape": [],
+      "dtype": "<U4"
+    }
+  },
+  "coverage": {
+    "min": 1,
+    "max": 2
+  },
+  "videos": {
+    "overlay_2d.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997003/50000",
+      "duration": "21.955000",
+      "nb_read_frames": "1316",
+      "sha256": "ba10b419a26ea053de9b3a14eb3a4cb388857c2825953ea69a719cd78b8f472c",
+      "size_bytes": 20605253
+    },
+    "scene_3d.mp4": {
+      "width": 1200,
+      "height": 600,
+      "avg_frame_rate": "999001/50000",
+      "duration": "21.971950",
+      "nb_read_frames": "439",
+      "sha256": "21ab38a17521f3b4a0c68a421561583e8cabbb86d5be63e02c978f34ff243c7a",
+      "size_bytes": 499781
+    },
+    "comparison.mp4": {
+      "width": 1440,
+      "height": 610,
+      "avg_frame_rate": "10/1",
+      "duration": "8.000000",
+      "nb_read_frames": "80",
+      "sha256": "952a2139fe016a5ad3b37cdf7260d7b2641bc747ad768855883ca95936ce612b",
+      "size_bytes": 488283
+    }
+  },
+  "gif": {
+    "frames": 80,
+    "duration_ms": 8000,
+    "width": 1200,
+    "height": 508
+  },
+  "artifacts": {
+    "real_rgb_temporal_context_meiji/s42-001/predictions.npz": {
+      "sha256": "293dfab0c674ccce4390aa33deb6a5377d641487d56fba730a5ccfc3af2f83db",
+      "size_bytes": 161957
+    },
+    "pr_temporal_context_meiji/v1/contact_sheet.png": {
+      "sha256": "0a762f781c43cc5cc852cd494b66fc70b073380ba8a40f7731c0874375d4b23b",
+      "size_bytes": 1499288
+    },
+    "pr_temporal_context_meiji/v1/comparison.gif": {
+      "sha256": "a787ed5356e76bc087daa0e197094aa864ac5556ad3237f5c322da182f0a08b4",
+      "size_bytes": 1947739
+    },
+    "pr_temporal_context_meiji/v1/provenance.json": {
+      "sha256": "f5752a302f1b7e7a82ae70e468c6ead5ad6228c4f37baad84272b48f63213406",
+      "size_bytes": 3707
+    },
+    "pr_temporal_context_meiji/v1/comparison.mp4": {
+      "sha256": "952a2139fe016a5ad3b37cdf7260d7b2641bc747ad768855883ca95936ce612b",
+      "size_bytes": 488283
+    }
+  }
+}

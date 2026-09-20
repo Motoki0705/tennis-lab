@@ -80,12 +80,8 @@ class SLCSMetrics:
                 * 180.0
                 / math.pi
             )
-            pos_b = (
-                outputs.player_position_log_b[player_mask].exp() * self._scale_mean
-            )
-            rot_b = (
-                outputs.player_rotation_log_b[player_mask].exp() * 180.0 / math.pi
-            )
+            pos_b = outputs.player_position_log_b[player_mask].exp() * self._scale_mean
+            rot_b = outputs.player_rotation_log_b[player_mask].exp() * 180.0 / math.pi
             self._player_pos_errors.append(pos_err.detach().cpu())
             self._player_ang_errors.append(ang_err_deg.detach().cpu())
             self._player_pos_b.append(pos_b.detach().cpu())
@@ -140,6 +136,10 @@ class SLCSMetrics:
             out["ball_position_pred_b_m"] = float(ball_b.mean().item())
             out["ball_position_conf_error_corr"] = _pearson(ball_b, ball)
 
+        if "player_position_error_m" in out and "ball_position_error_m" in out:
+            out["scene_position_error_m"] = (
+                out["player_position_error_m"] + out["ball_position_error_m"]
+            ) / 2
         return out
 
 

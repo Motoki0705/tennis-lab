@@ -1,0 +1,4602 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "interpretation": "Pseudo-3D teacher agreement, not measured 3D accuracy. Checkpoint selection: validation only.",
+  "aggregation": "Unweighted valid window occurrences; overlapping frames counted separately. No smoothing or clipping.",
+  "p95_definition": "numpy percentile 95, linear interpolation; descriptive tail statistic",
+  "git_commit": "1e5b38cfec422b595452557441cc261b00730a16",
+  "source_sha256": {
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/selection.json": "41d2a86921aa6277879eaee497478f10138ead1d69c4ee8b7931d5da0df5f45c",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/comparison/comparison.json": "478c53b198e832e7f1ee7f1c27f14be8e9a6a2737366d8175739b472a660d6cd",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/full/metrics.json": "f8352c7db04e7f8b74e77f660b9b7720c9f33f40564f0296410c121c8b0e9b1f",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/full/eval_arrays.npz": "972b0a65dcffd02789b9be41a600b0d666a4bfef562e789fa0da11f214fdd04f",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/no_rgb/metrics.json": "ffdc26bc7ad4934f8c92b3d693e998c4a9d3833582a897110446fbd945e8d86c",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/no_rgb/eval_arrays.npz": "50a8e668366ea697922cfe519859b0278575511d073f996be05c1289bed451f6",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/detector_gap/metrics.json": "45d8aa7e67047171547701d3689a872c1d28f7357c8214a26cd67cb0dde14fac",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/detector_gap/eval_arrays.npz": "1433cc76df6ae145a9607c44f74d6a9f4b05a3638f32fceb6600c71a09203627",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/rgb_only/metrics.json": "75b5d86608ad7ed103f4b3013182d572d67cf6790eab195ad41c88968db89912",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/rgb_only/eval_arrays.npz": "cd4d997a8998970c90f29e447056c39ca290611dc6bdb2b788baceb1874b9d04",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/detector_gap_no_rgb/metrics.json": "0bf1ee6ca334498951e22573abde3dd75efab8005a14d0746a0b2924c3c29c47",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/detector_gap_no_rgb/eval_arrays.npz": "b256a34f81ffd38a51b5c5a8a726efbc0a039def1b69173365cdb72ae429d54e",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/events.out.tfevents.1789803423.kamimura.238528.0": "aa8be7650712eb1a614b5965274fac381e56a6daaa768854883dc6af851f338e",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/selection.json": "d432635915f47ddee4a55e81e1eb205963c9eca869b07ccea75cf5bf1fa4bf2b",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/comparison/comparison.json": "ebc9cbe16db384411bbe46402b3ec9e2e1b47855d194a3545ce2f7759fdb565e",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/full/metrics.json": "40fab7cd34d524a85442318eba945d1231d2c2b5324a1a94535deed9f24df661",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/full/eval_arrays.npz": "c43dad3ec2d09e9c12ef92a71015946163d3f4aa471f2307dd5d44cb9ef60766",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/no_rgb/metrics.json": "059338b3dbb59773e3b401b0b3c9ad3d9b97b2e1368c96043fe964a26ed7f596",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/no_rgb/eval_arrays.npz": "909291cff72561070e3b2ca35c8db3158bba26bea423de1d7486ce3d46bba5c1",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/detector_gap/metrics.json": "96244602f2f489f0a6306f9be88ca0d1a4ba598d122319c4b44cf82f890736c1",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/detector_gap/eval_arrays.npz": "6b8a053156fa05b5643f1cbcbb90b99cdef99af221c169205174fc78e8bc81c7",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/rgb_only/metrics.json": "354bf8f64beda8b7af348f0547beae946d1b0837cd080048c8376519fcc9a7f4",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/rgb_only/eval_arrays.npz": "39496d5f2a4453b7af39b2d505608f88dfc10a6fd81ed6a4903ea251f1bef8bd",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/detector_gap_no_rgb/metrics.json": "2720d4a6a0cf0232cf42dd4d7a576de8b3768866b6db51458cf3d9d27c414da4",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001/val/detector_gap_no_rgb/eval_arrays.npz": "b0945971c689606f8ff0a94788e18139abda5f7749c951d97591ba1a8ed089f4",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/events.out.tfevents.1789809342.kamimura.618479.0": "8ccc54b2051450b5663800817d47c58d0052e781d62c355fb8a003b580a446da"
+  },
+  "software": {
+    "numpy": "2.3.5",
+    "matplotlib": "3.11.1"
+  },
+  "renderer_sha256": "57a24999f0e3168f9d30a8e99c04ebb9e9c9f10c1b6c50b267d79c77a26e6ba1",
+  "evaluations": {
+    "TemporalContext": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001",
+    "OneSidedContext": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001"
+  },
+  "training": {
+    "TemporalContext": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001",
+    "OneSidedContext": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001"
+  },
+  "runs": {
+    "TemporalContext": {
+      "selection": {
+        "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+        "monitor": "val/scene_position_error_m_epoch",
+        "mode": "min",
+        "candidates": [
+          {
+            "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+            "validation_score": 1.9491939544677734
+          },
+          {
+            "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=52.ckpt",
+            "validation_score": 1.9520893096923828
+          },
+          {
+            "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+            "validation_score": 1.9532802104949951
+          }
+        ],
+        "selected": {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+          "validation_score": 1.9491939544677734,
+          "epoch_zero_based": 49
+        },
+        "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/last.ckpt",
+        "last_epoch_zero_based": 59,
+        "checkpoint_sha256": "94793e761d22a1f163d8089ae0210b6cb45f7c37144deb498c31b4d85fd6f961"
+      },
+      "domains": {
+        "broadcast_indoor_hard": "broadcast",
+        "video_001": "meiji"
+      },
+      "summaries": [
+        {
+          "condition": "full",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.4058220386505127,
+          "median": 0.9321406334452496,
+          "p95": 4.4269270589671255,
+          "max": 10.970521339874747
+        },
+        {
+          "condition": "full",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 2.4899425506591797,
+          "median": 1.6699949807456544,
+          "p95": 7.602191219661746,
+          "max": 20.786206860787424
+        },
+        {
+          "condition": "full",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.3544974327087402,
+          "median": 2.1548268283524195,
+          "p95": 5.214191419844225,
+          "max": 9.827449777933367
+        },
+        {
+          "condition": "full",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 2.9541547298431396,
+          "median": 2.5941649504928774,
+          "p95": 6.425258449847966,
+          "max": 11.56393553850425
+        },
+        {
+          "condition": "full",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.377719521522522,
+          "median": 0.9155236290963723,
+          "p95": 4.380445268321949,
+          "max": 10.970521339874747
+        },
+        {
+          "condition": "full",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 2.4756598472595215,
+          "median": 1.6408704908880813,
+          "p95": 7.645888273601851,
+          "max": 20.786206860787424
+        },
+        {
+          "condition": "no_rgb",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.49371337890625,
+          "median": 1.0102933786457906,
+          "p95": 4.516627472039047,
+          "max": 12.363454993517058
+        },
+        {
+          "condition": "no_rgb",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 2.6752243041992188,
+          "median": 1.8646589538564313,
+          "p95": 7.811275548541552,
+          "max": 22.419644373987964
+        },
+        {
+          "condition": "no_rgb",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.5961341857910156,
+          "median": 2.15745207137181,
+          "p95": 5.485481700344195,
+          "max": 11.294546899637668
+        },
+        {
+          "condition": "no_rgb",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 4.133142471313477,
+          "median": 3.7338889983668895,
+          "p95": 8.245633732643185,
+          "max": 14.43661052121485
+        },
+        {
+          "condition": "no_rgb",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.4610567092895508,
+          "median": 0.987416020270856,
+          "p95": 4.4521853852949125,
+          "max": 12.363454993517058
+        },
+        {
+          "condition": "no_rgb",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 2.630366325378418,
+          "median": 1.8159133851967635,
+          "p95": 7.767439908778641,
+          "max": 22.419644373987964
+        },
+        {
+          "condition": "detector_gap",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.5187574625015259,
+          "median": 1.0513160785248745,
+          "p95": 4.492673530410853,
+          "max": 10.77909287978866
+        },
+        {
+          "condition": "detector_gap",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 2.8936479091644287,
+          "median": 1.9887263545444551,
+          "p95": 8.747262406061106,
+          "max": 19.880294456237277
+        },
+        {
+          "condition": "detector_gap",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.6056737899780273,
+          "median": 2.517577624053669,
+          "p95": 5.473040479844418,
+          "max": 9.514655444948383
+        },
+        {
+          "condition": "detector_gap",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 3.936464786529541,
+          "median": 2.951514598216953,
+          "p95": 10.454402813910523,
+          "max": 14.544229245937819
+        },
+        {
+          "condition": "detector_gap",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.4865599870681763,
+          "median": 1.0258490484000007,
+          "p95": 4.45358991407901,
+          "max": 10.77909287978866
+        },
+        {
+          "condition": "detector_gap",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 2.8615622520446777,
+          "median": 1.9632678525859397,
+          "p95": 8.697147844319094,
+          "max": 19.880294456237277
+        },
+        {
+          "condition": "rgb_only",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.9843676090240479,
+          "median": 1.5308252123282098,
+          "p95": 5.012276051240911,
+          "max": 11.51053348607227
+        },
+        {
+          "condition": "rgb_only",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 7.597579002380371,
+          "median": 7.297437638070031,
+          "p95": 13.966672340831055,
+          "max": 22.675155517135284
+        },
+        {
+          "condition": "rgb_only",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 3.4019901752471924,
+          "median": 3.1616123985792175,
+          "p95": 8.437599639863125,
+          "max": 11.51053348607227
+        },
+        {
+          "condition": "rgb_only",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 6.18996000289917,
+          "median": 5.215540598002992,
+          "p95": 12.364084931435244,
+          "max": 15.316583992306755
+        },
+        {
+          "condition": "rgb_only",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.9423736333847046,
+          "median": 1.501274407597173,
+          "p95": 4.930809518018708,
+          "max": 11.257439071333948
+        },
+        {
+          "condition": "rgb_only",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 7.6408891677856445,
+          "median": 7.375976107707737,
+          "p95": 13.996084096697494,
+          "max": 22.675155517135284
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.6205272674560547,
+          "median": 1.1183119590058115,
+          "p95": 4.770174250030956,
+          "max": 12.326381051287743
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 3.169968605041504,
+          "median": 2.1468930849082777,
+          "p95": 9.348092516720905,
+          "max": 21.53811935325082
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.6752166748046875,
+          "median": 2.27715461882861,
+          "p95": 6.091225262787698,
+          "max": 10.89629896873026
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 4.933196544647217,
+          "median": 3.95793605653573,
+          "p95": 12.25555016600207,
+          "max": 14.430229418104096
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.5892844200134277,
+          "median": 1.092317471653114,
+          "p95": 4.718309690245135,
+          "max": 12.326381051287743
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 3.1157169342041016,
+          "median": 2.105917649368966,
+          "p95": 9.18159809573943,
+          "max": 21.53811935325082
+        }
+      ],
+      "curves": {
+        "val/player_position_error_m_epoch": [
+          [
+            0.0,
+            6.393002986907959
+          ],
+          [
+            1.0,
+            2.4199509620666504
+          ],
+          [
+            2.0,
+            2.3447492122650146
+          ],
+          [
+            3.0,
+            2.4252755641937256
+          ],
+          [
+            4.0,
+            2.339202880859375
+          ],
+          [
+            5.0,
+            2.3051788806915283
+          ],
+          [
+            6.0,
+            2.2587385177612305
+          ],
+          [
+            7.0,
+            2.30647349357605
+          ],
+          [
+            8.0,
+            2.1506142616271973
+          ],
+          [
+            9.0,
+            2.1199545860290527
+          ],
+          [
+            10.0,
+            2.292613983154297
+          ],
+          [
+            11.0,
+            2.2324373722076416
+          ],
+          [
+            12.0,
+            2.0424604415893555
+          ],
+          [
+            13.0,
+            1.9674196243286133
+          ],
+          [
+            14.0,
+            1.9942079782485962
+          ],
+          [
+            15.0,
+            2.18127179145813
+          ],
+          [
+            16.0,
+            1.9532265663146973
+          ],
+          [
+            17.0,
+            1.7962641716003418
+          ],
+          [
+            18.0,
+            2.020317316055298
+          ],
+          [
+            19.0,
+            1.9324982166290283
+          ],
+          [
+            20.0,
+            1.8343390226364136
+          ],
+          [
+            21.0,
+            1.6881779432296753
+          ],
+          [
+            22.0,
+            1.8416820764541626
+          ],
+          [
+            23.0,
+            1.8509091138839722
+          ],
+          [
+            24.0,
+            1.6402183771133423
+          ],
+          [
+            25.0,
+            2.0647048950195312
+          ],
+          [
+            26.0,
+            1.5830646753311157
+          ],
+          [
+            27.0,
+            1.6582999229431152
+          ],
+          [
+            28.0,
+            1.7463464736938477
+          ],
+          [
+            29.0,
+            1.5401707887649536
+          ],
+          [
+            30.0,
+            1.5977754592895508
+          ],
+          [
+            31.0,
+            1.5686577558517456
+          ],
+          [
+            32.0,
+            1.5688153505325317
+          ],
+          [
+            33.0,
+            1.6348203420639038
+          ],
+          [
+            34.0,
+            1.4979661703109741
+          ],
+          [
+            35.0,
+            1.581425666809082
+          ],
+          [
+            36.0,
+            1.4664125442504883
+          ],
+          [
+            37.0,
+            1.5286439657211304
+          ],
+          [
+            38.0,
+            1.5380243062973022
+          ],
+          [
+            39.0,
+            1.4881736040115356
+          ],
+          [
+            40.0,
+            1.4705595970153809
+          ],
+          [
+            41.0,
+            1.5269471406936646
+          ],
+          [
+            42.0,
+            1.4849246740341187
+          ],
+          [
+            43.0,
+            1.4633477926254272
+          ],
+          [
+            44.0,
+            1.4353611469268799
+          ],
+          [
+            45.0,
+            1.476155161857605
+          ],
+          [
+            46.0,
+            1.4642796516418457
+          ],
+          [
+            47.0,
+            1.420926809310913
+          ],
+          [
+            48.0,
+            1.469533920288086
+          ],
+          [
+            49.0,
+            1.4073134660720825
+          ],
+          [
+            50.0,
+            1.4380348920822144
+          ],
+          [
+            51.0,
+            1.417975902557373
+          ],
+          [
+            52.0,
+            1.4211560487747192
+          ],
+          [
+            53.0,
+            1.4471393823623657
+          ],
+          [
+            54.0,
+            1.4329919815063477
+          ],
+          [
+            55.0,
+            1.438659906387329
+          ],
+          [
+            56.0,
+            1.4298162460327148
+          ],
+          [
+            57.0,
+            1.435257911682129
+          ],
+          [
+            58.0,
+            1.432868242263794
+          ],
+          [
+            59.0,
+            1.4387983083724976
+          ]
+        ],
+        "val/ball_position_error_m_epoch": [
+          [
+            0.0,
+            7.697558403015137
+          ],
+          [
+            1.0,
+            7.808270454406738
+          ],
+          [
+            2.0,
+            7.72615385055542
+          ],
+          [
+            3.0,
+            7.719681739807129
+          ],
+          [
+            4.0,
+            7.774093151092529
+          ],
+          [
+            5.0,
+            7.695626735687256
+          ],
+          [
+            6.0,
+            7.6543755531311035
+          ],
+          [
+            7.0,
+            7.668485164642334
+          ],
+          [
+            8.0,
+            7.650877952575684
+          ],
+          [
+            9.0,
+            7.647768020629883
+          ],
+          [
+            10.0,
+            7.590766429901123
+          ],
+          [
+            11.0,
+            7.530294418334961
+          ],
+          [
+            12.0,
+            6.7314605712890625
+          ],
+          [
+            13.0,
+            6.620959281921387
+          ],
+          [
+            14.0,
+            6.01456356048584
+          ],
+          [
+            15.0,
+            4.909722805023193
+          ],
+          [
+            16.0,
+            5.125949382781982
+          ],
+          [
+            17.0,
+            4.551057815551758
+          ],
+          [
+            18.0,
+            3.9143149852752686
+          ],
+          [
+            19.0,
+            4.871744632720947
+          ],
+          [
+            20.0,
+            3.91361927986145
+          ],
+          [
+            21.0,
+            3.5688111782073975
+          ],
+          [
+            22.0,
+            3.6117048263549805
+          ],
+          [
+            23.0,
+            3.619447946548462
+          ],
+          [
+            24.0,
+            3.5019712448120117
+          ],
+          [
+            25.0,
+            3.441850423812866
+          ],
+          [
+            26.0,
+            3.1541545391082764
+          ],
+          [
+            27.0,
+            3.0719876289367676
+          ],
+          [
+            28.0,
+            3.38124680519104
+          ],
+          [
+            29.0,
+            2.9613654613494873
+          ],
+          [
+            30.0,
+            2.9974100589752197
+          ],
+          [
+            31.0,
+            3.0347111225128174
+          ],
+          [
+            32.0,
+            3.07474946975708
+          ],
+          [
+            33.0,
+            2.849031448364258
+          ],
+          [
+            34.0,
+            2.74360728263855
+          ],
+          [
+            35.0,
+            2.744485855102539
+          ],
+          [
+            36.0,
+            2.744645357131958
+          ],
+          [
+            37.0,
+            2.70912766456604
+          ],
+          [
+            38.0,
+            2.778026580810547
+          ],
+          [
+            39.0,
+            2.7492241859436035
+          ],
+          [
+            40.0,
+            2.661261796951294
+          ],
+          [
+            41.0,
+            2.6246678829193115
+          ],
+          [
+            42.0,
+            2.7101895809173584
+          ],
+          [
+            43.0,
+            2.5860297679901123
+          ],
+          [
+            44.0,
+            2.585196018218994
+          ],
+          [
+            45.0,
+            2.5389914512634277
+          ],
+          [
+            46.0,
+            2.5070078372955322
+          ],
+          [
+            47.0,
+            2.531074047088623
+          ],
+          [
+            48.0,
+            2.574021339416504
+          ],
+          [
+            49.0,
+            2.491074323654175
+          ],
+          [
+            50.0,
+            2.499253273010254
+          ],
+          [
+            51.0,
+            2.51151967048645
+          ],
+          [
+            52.0,
+            2.483022689819336
+          ],
+          [
+            53.0,
+            2.5018742084503174
+          ],
+          [
+            54.0,
+            2.4910953044891357
+          ],
+          [
+            55.0,
+            2.49412202835083
+          ],
+          [
+            56.0,
+            2.4767441749572754
+          ],
+          [
+            57.0,
+            2.484842300415039
+          ],
+          [
+            58.0,
+            2.4809181690216064
+          ],
+          [
+            59.0,
+            2.4843881130218506
+          ]
+        ],
+        "val/scene_position_error_m_epoch": [
+          [
+            0.0,
+            7.045280456542969
+          ],
+          [
+            1.0,
+            5.114110946655273
+          ],
+          [
+            2.0,
+            5.035451412200928
+          ],
+          [
+            3.0,
+            5.072478771209717
+          ],
+          [
+            4.0,
+            5.056648254394531
+          ],
+          [
+            5.0,
+            5.000402927398682
+          ],
+          [
+            6.0,
+            4.956557273864746
+          ],
+          [
+            7.0,
+            4.987479209899902
+          ],
+          [
+            8.0,
+            4.9007463455200195
+          ],
+          [
+            9.0,
+            4.883861541748047
+          ],
+          [
+            10.0,
+            4.941690444946289
+          ],
+          [
+            11.0,
+            4.881365776062012
+          ],
+          [
+            12.0,
+            4.386960506439209
+          ],
+          [
+            13.0,
+            4.294189453125
+          ],
+          [
+            14.0,
+            4.004385948181152
+          ],
+          [
+            15.0,
+            3.545497417449951
+          ],
+          [
+            16.0,
+            3.53958797454834
+          ],
+          [
+            17.0,
+            3.17366099357605
+          ],
+          [
+            18.0,
+            2.967316150665283
+          ],
+          [
+            19.0,
+            3.4021215438842773
+          ],
+          [
+            20.0,
+            2.873979091644287
+          ],
+          [
+            21.0,
+            2.6284945011138916
+          ],
+          [
+            22.0,
+            2.7266933917999268
+          ],
+          [
+            23.0,
+            2.7351784706115723
+          ],
+          [
+            24.0,
+            2.5710947513580322
+          ],
+          [
+            25.0,
+            2.7532777786254883
+          ],
+          [
+            26.0,
+            2.368609666824341
+          ],
+          [
+            27.0,
+            2.3651437759399414
+          ],
+          [
+            28.0,
+            2.5637965202331543
+          ],
+          [
+            29.0,
+            2.2507681846618652
+          ],
+          [
+            30.0,
+            2.2975926399230957
+          ],
+          [
+            31.0,
+            2.3016843795776367
+          ],
+          [
+            32.0,
+            2.321782350540161
+          ],
+          [
+            33.0,
+            2.2419259548187256
+          ],
+          [
+            34.0,
+            2.120786666870117
+          ],
+          [
+            35.0,
+            2.1629557609558105
+          ],
+          [
+            36.0,
+            2.1055288314819336
+          ],
+          [
+            37.0,
+            2.1188857555389404
+          ],
+          [
+            38.0,
+            2.1580255031585693
+          ],
+          [
+            39.0,
+            2.118698835372925
+          ],
+          [
+            40.0,
+            2.065910816192627
+          ],
+          [
+            41.0,
+            2.075807571411133
+          ],
+          [
+            42.0,
+            2.0975570678710938
+          ],
+          [
+            43.0,
+            2.024688720703125
+          ],
+          [
+            44.0,
+            2.0102787017822266
+          ],
+          [
+            45.0,
+            2.007573366165161
+          ],
+          [
+            46.0,
+            1.985643744468689
+          ],
+          [
+            47.0,
+            1.976000428199768
+          ],
+          [
+            48.0,
+            2.021777629852295
+          ],
+          [
+            49.0,
+            1.9491939544677734
+          ],
+          [
+            50.0,
+            1.968644142150879
+          ],
+          [
+            51.0,
+            1.9647477865219116
+          ],
+          [
+            52.0,
+            1.9520893096923828
+          ],
+          [
+            53.0,
+            1.9745068550109863
+          ],
+          [
+            54.0,
+            1.9620436429977417
+          ],
+          [
+            55.0,
+            1.9663909673690796
+          ],
+          [
+            56.0,
+            1.9532802104949951
+          ],
+          [
+            57.0,
+            1.960050106048584
+          ],
+          [
+            58.0,
+            1.9568932056427002
+          ],
+          [
+            59.0,
+            1.9615931510925293
+          ]
+        ],
+        "val/loss": [
+          [
+            0.0,
+            0.8053727746009827
+          ],
+          [
+            1.0,
+            0.22692032158374786
+          ],
+          [
+            2.0,
+            0.17897875607013702
+          ],
+          [
+            3.0,
+            0.16845029592514038
+          ],
+          [
+            4.0,
+            0.05040338262915611
+          ],
+          [
+            5.0,
+            0.029604410752654076
+          ],
+          [
+            6.0,
+            0.0012787618907168508
+          ],
+          [
+            7.0,
+            0.020035265013575554
+          ],
+          [
+            8.0,
+            -0.040676768869161606
+          ],
+          [
+            9.0,
+            -0.02901891991496086
+          ],
+          [
+            10.0,
+            -0.011999053880572319
+          ],
+          [
+            11.0,
+            -0.02658308856189251
+          ],
+          [
+            12.0,
+            -0.14284498989582062
+          ],
+          [
+            13.0,
+            -0.1908947229385376
+          ],
+          [
+            14.0,
+            -0.24197469651699066
+          ],
+          [
+            15.0,
+            -0.29785048961639404
+          ],
+          [
+            16.0,
+            -0.3258451223373413
+          ],
+          [
+            17.0,
+            -0.4963309168815613
+          ],
+          [
+            18.0,
+            -0.5073140859603882
+          ],
+          [
+            19.0,
+            -0.28889432549476624
+          ],
+          [
+            20.0,
+            -0.6319789886474609
+          ],
+          [
+            21.0,
+            -0.7516217827796936
+          ],
+          [
+            22.0,
+            -0.6389299035072327
+          ],
+          [
+            23.0,
+            -0.6298683285713196
+          ],
+          [
+            24.0,
+            -0.8041810393333435
+          ],
+          [
+            25.0,
+            -0.6347334384918213
+          ],
+          [
+            26.0,
+            -0.8636735081672668
+          ],
+          [
+            27.0,
+            -0.8751310706138611
+          ],
+          [
+            28.0,
+            -0.7377971410751343
+          ],
+          [
+            29.0,
+            -0.9036558270454407
+          ],
+          [
+            30.0,
+            -0.9125001430511475
+          ],
+          [
+            31.0,
+            -0.9454374313354492
+          ],
+          [
+            32.0,
+            -0.9501189589500427
+          ],
+          [
+            33.0,
+            -0.9334449172019958
+          ],
+          [
+            34.0,
+            -1.0009585618972778
+          ],
+          [
+            35.0,
+            -0.9635540246963501
+          ],
+          [
+            36.0,
+            -0.9918730854988098
+          ],
+          [
+            37.0,
+            -1.0009547472000122
+          ],
+          [
+            38.0,
+            -0.9622759222984314
+          ],
+          [
+            39.0,
+            -1.0051745176315308
+          ],
+          [
+            40.0,
+            -1.0040029287338257
+          ],
+          [
+            41.0,
+            -1.009745717048645
+          ],
+          [
+            42.0,
+            -0.9589054584503174
+          ],
+          [
+            43.0,
+            -1.0546211004257202
+          ],
+          [
+            44.0,
+            -1.0670441389083862
+          ],
+          [
+            45.0,
+            -1.0499528646469116
+          ],
+          [
+            46.0,
+            -1.0455927848815918
+          ],
+          [
+            47.0,
+            -1.0270307064056396
+          ],
+          [
+            48.0,
+            -1.0175483226776123
+          ],
+          [
+            49.0,
+            -1.0797088146209717
+          ],
+          [
+            50.0,
+            -1.038275122642517
+          ],
+          [
+            51.0,
+            -1.045424461364746
+          ],
+          [
+            52.0,
+            -1.0539816617965698
+          ],
+          [
+            53.0,
+            -1.0469577312469482
+          ],
+          [
+            54.0,
+            -1.0447460412979126
+          ],
+          [
+            55.0,
+            -1.0421866178512573
+          ],
+          [
+            56.0,
+            -1.04778254032135
+          ],
+          [
+            57.0,
+            -1.042043924331665
+          ],
+          [
+            58.0,
+            -1.0466797351837158
+          ],
+          [
+            59.0,
+            -1.0436009168624878
+          ]
+        ],
+        "train/player_position_error_m_epoch": [
+          [
+            0.0,
+            12.12157154083252
+          ],
+          [
+            1.0,
+            4.687782287597656
+          ],
+          [
+            2.0,
+            3.3990366458892822
+          ],
+          [
+            3.0,
+            3.183830976486206
+          ],
+          [
+            4.0,
+            3.025651216506958
+          ],
+          [
+            5.0,
+            2.9152302742004395
+          ],
+          [
+            6.0,
+            2.8041398525238037
+          ],
+          [
+            7.0,
+            2.7170746326446533
+          ],
+          [
+            8.0,
+            2.6491410732269287
+          ],
+          [
+            9.0,
+            2.495258092880249
+          ],
+          [
+            10.0,
+            2.431513786315918
+          ],
+          [
+            11.0,
+            2.4235687255859375
+          ],
+          [
+            12.0,
+            2.3051156997680664
+          ],
+          [
+            13.0,
+            2.3206868171691895
+          ],
+          [
+            14.0,
+            2.184760808944702
+          ],
+          [
+            15.0,
+            2.184903144836426
+          ],
+          [
+            16.0,
+            2.135545492172241
+          ],
+          [
+            17.0,
+            2.004470109939575
+          ],
+          [
+            18.0,
+            1.9735701084136963
+          ],
+          [
+            19.0,
+            1.9542027711868286
+          ],
+          [
+            20.0,
+            1.9578009843826294
+          ],
+          [
+            21.0,
+            1.8763219118118286
+          ],
+          [
+            22.0,
+            1.8168697357177734
+          ],
+          [
+            23.0,
+            1.8261051177978516
+          ],
+          [
+            24.0,
+            1.7782353162765503
+          ],
+          [
+            25.0,
+            1.757508635520935
+          ],
+          [
+            26.0,
+            1.7033957242965698
+          ],
+          [
+            27.0,
+            1.633328914642334
+          ],
+          [
+            28.0,
+            1.6420388221740723
+          ],
+          [
+            29.0,
+            1.5885101556777954
+          ],
+          [
+            30.0,
+            1.6157410144805908
+          ],
+          [
+            31.0,
+            1.5878578424453735
+          ],
+          [
+            32.0,
+            1.6279981136322021
+          ],
+          [
+            33.0,
+            1.5590893030166626
+          ],
+          [
+            34.0,
+            1.5472742319107056
+          ],
+          [
+            35.0,
+            1.51646089553833
+          ],
+          [
+            36.0,
+            1.4975045919418335
+          ],
+          [
+            37.0,
+            1.5020499229431152
+          ],
+          [
+            38.0,
+            1.4498957395553589
+          ],
+          [
+            39.0,
+            1.4670591354370117
+          ],
+          [
+            40.0,
+            1.402732491493225
+          ],
+          [
+            41.0,
+            1.4272350072860718
+          ],
+          [
+            42.0,
+            1.4207861423492432
+          ],
+          [
+            43.0,
+            1.4152780771255493
+          ],
+          [
+            44.0,
+            1.3752233982086182
+          ],
+          [
+            45.0,
+            1.4042595624923706
+          ],
+          [
+            46.0,
+            1.3815300464630127
+          ],
+          [
+            47.0,
+            1.3372371196746826
+          ],
+          [
+            48.0,
+            1.3441178798675537
+          ],
+          [
+            49.0,
+            1.3561184406280518
+          ],
+          [
+            50.0,
+            1.339798927307129
+          ],
+          [
+            51.0,
+            1.3702950477600098
+          ],
+          [
+            52.0,
+            1.3382893800735474
+          ],
+          [
+            53.0,
+            1.3361564874649048
+          ],
+          [
+            54.0,
+            1.3363045454025269
+          ],
+          [
+            55.0,
+            1.292413353919983
+          ],
+          [
+            56.0,
+            1.3308753967285156
+          ],
+          [
+            57.0,
+            1.3301199674606323
+          ],
+          [
+            58.0,
+            1.3105520009994507
+          ],
+          [
+            59.0,
+            1.323377251625061
+          ]
+        ],
+        "train/ball_position_error_m_epoch": [
+          [
+            0.0,
+            9.205156326293945
+          ],
+          [
+            1.0,
+            8.136116981506348
+          ],
+          [
+            2.0,
+            7.935376167297363
+          ],
+          [
+            3.0,
+            7.8205180168151855
+          ],
+          [
+            4.0,
+            7.793869972229004
+          ],
+          [
+            5.0,
+            7.773278713226318
+          ],
+          [
+            6.0,
+            7.741905689239502
+          ],
+          [
+            7.0,
+            7.690850257873535
+          ],
+          [
+            8.0,
+            7.687258243560791
+          ],
+          [
+            9.0,
+            7.639406204223633
+          ],
+          [
+            10.0,
+            7.6345601081848145
+          ],
+          [
+            11.0,
+            7.50957727432251
+          ],
+          [
+            12.0,
+            7.019200801849365
+          ],
+          [
+            13.0,
+            6.406248092651367
+          ],
+          [
+            14.0,
+            5.7663254737854
+          ],
+          [
+            15.0,
+            5.485859394073486
+          ],
+          [
+            16.0,
+            4.978121757507324
+          ],
+          [
+            17.0,
+            4.616795063018799
+          ],
+          [
+            18.0,
+            4.534321308135986
+          ],
+          [
+            19.0,
+            4.246881008148193
+          ],
+          [
+            20.0,
+            4.465595722198486
+          ],
+          [
+            21.0,
+            3.990210771560669
+          ],
+          [
+            22.0,
+            3.813307046890259
+          ],
+          [
+            23.0,
+            3.6787402629852295
+          ],
+          [
+            24.0,
+            3.6583750247955322
+          ],
+          [
+            25.0,
+            3.5000617504119873
+          ],
+          [
+            26.0,
+            3.5836188793182373
+          ],
+          [
+            27.0,
+            3.3525266647338867
+          ],
+          [
+            28.0,
+            3.3372581005096436
+          ],
+          [
+            29.0,
+            3.4029183387756348
+          ],
+          [
+            30.0,
+            3.2761690616607666
+          ],
+          [
+            31.0,
+            3.188349485397339
+          ],
+          [
+            32.0,
+            3.280050277709961
+          ],
+          [
+            33.0,
+            3.02704119682312
+          ],
+          [
+            34.0,
+            2.9488108158111572
+          ],
+          [
+            35.0,
+            3.057760000228882
+          ],
+          [
+            36.0,
+            2.9688720703125
+          ],
+          [
+            37.0,
+            2.861717939376831
+          ],
+          [
+            38.0,
+            2.842076063156128
+          ],
+          [
+            39.0,
+            2.9249932765960693
+          ],
+          [
+            40.0,
+            2.7501673698425293
+          ],
+          [
+            41.0,
+            2.8975160121917725
+          ],
+          [
+            42.0,
+            2.778597831726074
+          ],
+          [
+            43.0,
+            2.6867291927337646
+          ],
+          [
+            44.0,
+            2.7391490936279297
+          ],
+          [
+            45.0,
+            2.718341112136841
+          ],
+          [
+            46.0,
+            2.553926706314087
+          ],
+          [
+            47.0,
+            2.5262091159820557
+          ],
+          [
+            48.0,
+            2.4931139945983887
+          ],
+          [
+            49.0,
+            2.6416032314300537
+          ],
+          [
+            50.0,
+            2.5725889205932617
+          ],
+          [
+            51.0,
+            2.5445001125335693
+          ],
+          [
+            52.0,
+            2.4547793865203857
+          ],
+          [
+            53.0,
+            2.25400972366333
+          ],
+          [
+            54.0,
+            2.550136089324951
+          ],
+          [
+            55.0,
+            2.323948383331299
+          ],
+          [
+            56.0,
+            2.3815412521362305
+          ],
+          [
+            57.0,
+            2.558783531188965
+          ],
+          [
+            58.0,
+            2.4178531169891357
+          ],
+          [
+            59.0,
+            2.4886646270751953
+          ]
+        ],
+        "train/scene_position_error_m_epoch": [
+          [
+            0.0,
+            10.66336441040039
+          ],
+          [
+            1.0,
+            6.411949634552002
+          ],
+          [
+            2.0,
+            5.667206287384033
+          ],
+          [
+            3.0,
+            5.502174377441406
+          ],
+          [
+            4.0,
+            5.409760475158691
+          ],
+          [
+            5.0,
+            5.344254493713379
+          ],
+          [
+            6.0,
+            5.273022651672363
+          ],
+          [
+            7.0,
+            5.203962326049805
+          ],
+          [
+            8.0,
+            5.16819953918457
+          ],
+          [
+            9.0,
+            5.0673322677612305
+          ],
+          [
+            10.0,
+            5.033037185668945
+          ],
+          [
+            11.0,
+            4.9665727615356445
+          ],
+          [
+            12.0,
+            4.662158012390137
+          ],
+          [
+            13.0,
+            4.363467216491699
+          ],
+          [
+            14.0,
+            3.9755430221557617
+          ],
+          [
+            15.0,
+            3.835381269454956
+          ],
+          [
+            16.0,
+            3.5568337440490723
+          ],
+          [
+            17.0,
+            3.3106327056884766
+          ],
+          [
+            18.0,
+            3.253945827484131
+          ],
+          [
+            19.0,
+            3.100541830062866
+          ],
+          [
+            20.0,
+            3.211698293685913
+          ],
+          [
+            21.0,
+            2.9332664012908936
+          ],
+          [
+            22.0,
+            2.8150882720947266
+          ],
+          [
+            23.0,
+            2.75242280960083
+          ],
+          [
+            24.0,
+            2.7183051109313965
+          ],
+          [
+            25.0,
+            2.6287851333618164
+          ],
+          [
+            26.0,
+            2.643507242202759
+          ],
+          [
+            27.0,
+            2.4929277896881104
+          ],
+          [
+            28.0,
+            2.4896483421325684
+          ],
+          [
+            29.0,
+            2.4957141876220703
+          ],
+          [
+            30.0,
+            2.4459550380706787
+          ],
+          [
+            31.0,
+            2.388103723526001
+          ],
+          [
+            32.0,
+            2.454024314880371
+          ],
+          [
+            33.0,
+            2.293065309524536
+          ],
+          [
+            34.0,
+            2.248042583465576
+          ],
+          [
+            35.0,
+            2.2871103286743164
+          ],
+          [
+            36.0,
+            2.2331883907318115
+          ],
+          [
+            37.0,
+            2.1818838119506836
+          ],
+          [
+            38.0,
+            2.1459858417510986
+          ],
+          [
+            39.0,
+            2.19602632522583
+          ],
+          [
+            40.0,
+            2.0764498710632324
+          ],
+          [
+            41.0,
+            2.1623754501342773
+          ],
+          [
+            42.0,
+            2.099691867828369
+          ],
+          [
+            43.0,
+            2.0510036945343018
+          ],
+          [
+            44.0,
+            2.0571861267089844
+          ],
+          [
+            45.0,
+            2.061300277709961
+          ],
+          [
+            46.0,
+            1.9677283763885498
+          ],
+          [
+            47.0,
+            1.9317231178283691
+          ],
+          [
+            48.0,
+            1.9186159372329712
+          ],
+          [
+            49.0,
+            1.9988608360290527
+          ],
+          [
+            50.0,
+            1.9561939239501953
+          ],
+          [
+            51.0,
+            1.9573975801467896
+          ],
+          [
+            52.0,
+            1.8965344429016113
+          ],
+          [
+            53.0,
+            1.7950830459594727
+          ],
+          [
+            54.0,
+            1.9432203769683838
+          ],
+          [
+            55.0,
+            1.808180809020996
+          ],
+          [
+            56.0,
+            1.856208324432373
+          ],
+          [
+            57.0,
+            1.9444518089294434
+          ],
+          [
+            58.0,
+            1.8642024993896484
+          ],
+          [
+            59.0,
+            1.9060208797454834
+          ]
+        ],
+        "train/loss_epoch": [
+          [
+            0.0,
+            2.979412794113159
+          ],
+          [
+            1.0,
+            1.2041401863098145
+          ],
+          [
+            2.0,
+            0.8384695649147034
+          ],
+          [
+            3.0,
+            0.6988990902900696
+          ],
+          [
+            4.0,
+            0.5819076895713806
+          ],
+          [
+            5.0,
+            0.45883432030677795
+          ],
+          [
+            6.0,
+            0.4059666097164154
+          ],
+          [
+            7.0,
+            0.32826632261276245
+          ],
+          [
+            8.0,
+            0.30499038100242615
+          ],
+          [
+            9.0,
+            0.23807796835899353
+          ],
+          [
+            10.0,
+            0.21671749651432037
+          ],
+          [
+            11.0,
+            0.17737701535224915
+          ],
+          [
+            12.0,
+            0.104083351790905
+          ],
+          [
+            13.0,
+            0.031984131783246994
+          ],
+          [
+            14.0,
+            -0.07386711984872818
+          ],
+          [
+            15.0,
+            -0.11714795976877213
+          ],
+          [
+            16.0,
+            -0.21766014397144318
+          ],
+          [
+            17.0,
+            -0.3164467215538025
+          ],
+          [
+            18.0,
+            -0.35366493463516235
+          ],
+          [
+            19.0,
+            -0.42634016275405884
+          ],
+          [
+            20.0,
+            -0.36966440081596375
+          ],
+          [
+            21.0,
+            -0.5548412799835205
+          ],
+          [
+            22.0,
+            -0.6235836744308472
+          ],
+          [
+            23.0,
+            -0.6715124845504761
+          ],
+          [
+            24.0,
+            -0.7022485136985779
+          ],
+          [
+            25.0,
+            -0.7493582367897034
+          ],
+          [
+            26.0,
+            -0.7842275500297546
+          ],
+          [
+            27.0,
+            -0.8500186800956726
+          ],
+          [
+            28.0,
+            -0.8786181211471558
+          ],
+          [
+            29.0,
+            -0.8714396357536316
+          ],
+          [
+            30.0,
+            -0.9135650992393494
+          ],
+          [
+            31.0,
+            -0.9543983340263367
+          ],
+          [
+            32.0,
+            -0.9001747965812683
+          ],
+          [
+            33.0,
+            -1.0273375511169434
+          ],
+          [
+            34.0,
+            -1.0484219789505005
+          ],
+          [
+            35.0,
+            -1.0472363233566284
+          ],
+          [
+            36.0,
+            -1.0822641849517822
+          ],
+          [
+            37.0,
+            -1.0933657884597778
+          ],
+          [
+            38.0,
+            -1.1545644998550415
+          ],
+          [
+            39.0,
+            -1.1226977109909058
+          ],
+          [
+            40.0,
+            -1.218675971031189
+          ],
+          [
+            41.0,
+            -1.176200270652771
+          ],
+          [
+            42.0,
+            -1.2091834545135498
+          ],
+          [
+            43.0,
+            -1.2446526288986206
+          ],
+          [
+            44.0,
+            -1.2603955268859863
+          ],
+          [
+            45.0,
+            -1.2860586643218994
+          ],
+          [
+            46.0,
+            -1.3318971395492554
+          ],
+          [
+            47.0,
+            -1.347542643547058
+          ],
+          [
+            48.0,
+            -1.3598172664642334
+          ],
+          [
+            49.0,
+            -1.3424807786941528
+          ],
+          [
+            50.0,
+            -1.3800119161605835
+          ],
+          [
+            51.0,
+            -1.3471028804779053
+          ],
+          [
+            52.0,
+            -1.391614317893982
+          ],
+          [
+            53.0,
+            -1.4445571899414062
+          ],
+          [
+            54.0,
+            -1.3576358556747437
+          ],
+          [
+            55.0,
+            -1.4560320377349854
+          ],
+          [
+            56.0,
+            -1.41343092918396
+          ],
+          [
+            57.0,
+            -1.3953334093093872
+          ],
+          [
+            58.0,
+            -1.428636908531189
+          ],
+          [
+            59.0,
+            -1.4114776849746704
+          ]
+        ]
+      }
+    },
+    "OneSidedContext": {
+      "selection": {
+        "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+        "monitor": "val/scene_position_error_m_epoch",
+        "mode": "min",
+        "candidates": [
+          {
+            "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+            "validation_score": 1.963842749595642
+          },
+          {
+            "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=54.ckpt",
+            "validation_score": 1.9651449918746948
+          },
+          {
+            "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=53.ckpt",
+            "validation_score": 1.9674806594848633
+          }
+        ],
+        "selected": {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+          "validation_score": 1.963842749595642,
+          "epoch_zero_based": 56
+        },
+        "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001/logs/version_0/checkpoints/last.ckpt",
+        "last_epoch_zero_based": 59,
+        "checkpoint_sha256": "55b8795d3d2003acd04c9b09faed99453454f8d64298d95d3b42f90a0afd4120"
+      },
+      "domains": {
+        "broadcast_indoor_hard": "broadcast",
+        "video_001": "meiji"
+      },
+      "summaries": [
+        {
+          "condition": "full",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.38576078414917,
+          "median": 0.9314478755465647,
+          "p95": 4.252337996168141,
+          "max": 10.71183477352167
+        },
+        {
+          "condition": "full",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 2.5317647457122803,
+          "median": 1.6536472302774148,
+          "p95": 7.518523700947187,
+          "max": 21.91574980767611
+        },
+        {
+          "condition": "full",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.429255723953247,
+          "median": 2.281135215461473,
+          "p95": 5.139694634759452,
+          "max": 9.437038432248734
+        },
+        {
+          "condition": "full",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 2.6839890480041504,
+          "median": 2.249809034990916,
+          "p95": 6.17948853254269,
+          "max": 10.754859538038358
+        },
+        {
+          "condition": "full",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.3548495769500732,
+          "median": 0.9086956346556843,
+          "p95": 4.190501013712832,
+          "max": 10.71183477352167
+        },
+        {
+          "condition": "full",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 2.52708101272583,
+          "median": 1.633289410569568,
+          "p95": 7.57009654575292,
+          "max": 21.91574980767611
+        },
+        {
+          "condition": "no_rgb",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.530774712562561,
+          "median": 1.0390415904988066,
+          "p95": 4.495535496977593,
+          "max": 12.810783382836895
+        },
+        {
+          "condition": "no_rgb",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 2.6940770149230957,
+          "median": 1.8200886273710233,
+          "p95": 7.626971411023814,
+          "max": 22.882223590263035
+        },
+        {
+          "condition": "no_rgb",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.664154529571533,
+          "median": 2.196017295319998,
+          "p95": 5.64819075659061,
+          "max": 11.004897928612687
+        },
+        {
+          "condition": "no_rgb",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 3.988184928894043,
+          "median": 3.479120006869214,
+          "p95": 8.367458725781335,
+          "max": 14.083966625543834
+        },
+        {
+          "condition": "no_rgb",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.497200846672058,
+          "median": 1.0102319104581128,
+          "p95": 4.421534595410901,
+          "max": 12.810783382836895
+        },
+        {
+          "condition": "no_rgb",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 2.65425968170166,
+          "median": 1.7793205954647924,
+          "p95": 7.574736222328772,
+          "max": 22.882223590263035
+        },
+        {
+          "condition": "detector_gap",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.5096505880355835,
+          "median": 1.0816965759491506,
+          "p95": 4.414950570245432,
+          "max": 10.689292668527898
+        },
+        {
+          "condition": "detector_gap",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 2.9049854278564453,
+          "median": 1.9830145036850242,
+          "p95": 8.818569143266194,
+          "max": 22.078898677910907
+        },
+        {
+          "condition": "detector_gap",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.6956183910369873,
+          "median": 2.6269352264842314,
+          "p95": 5.543913817823227,
+          "max": 9.663321605528271
+        },
+        {
+          "condition": "detector_gap",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 3.6211202144622803,
+          "median": 2.63446675960219,
+          "p95": 10.500988410502599,
+          "max": 14.224999575896966
+        },
+        {
+          "condition": "detector_gap",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.4745187759399414,
+          "median": 1.057497508280557,
+          "p95": 4.377956817050053,
+          "max": 10.689292668527898
+        },
+        {
+          "condition": "detector_gap",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 2.882951259613037,
+          "median": 1.9641510275510559,
+          "p95": 8.783802945043712,
+          "max": 22.078898677910907
+        },
+        {
+          "condition": "rgb_only",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.941055178642273,
+          "median": 1.5063953992392776,
+          "p95": 5.069938000254368,
+          "max": 11.740524647532272
+        },
+        {
+          "condition": "rgb_only",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 7.634801864624023,
+          "median": 7.289808592594694,
+          "p95": 14.278522649261692,
+          "max": 24.30406336321168
+        },
+        {
+          "condition": "rgb_only",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 3.4810397624969482,
+          "median": 3.2393562378438907,
+          "p95": 8.488789347021884,
+          "max": 11.740524647532272
+        },
+        {
+          "condition": "rgb_only",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 6.333536148071289,
+          "median": 5.120555224986738,
+          "p95": 13.05168629578251,
+          "max": 16.179854683620924
+        },
+        {
+          "condition": "rgb_only",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.895436406135559,
+          "median": 1.4780013745762814,
+          "p95": 4.967333662373051,
+          "max": 11.333942302839153
+        },
+        {
+          "condition": "rgb_only",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 7.674839496612549,
+          "median": 7.360406185066267,
+          "p95": 14.310579562628002,
+          "max": 24.30406336321168
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "all",
+          "entity": "player",
+          "count": 80499,
+          "mean": 1.6474008560180664,
+          "median": 1.1238317261431607,
+          "p95": 4.879153792835694,
+          "max": 12.628579460061115
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "all",
+          "entity": "ball",
+          "count": 34238,
+          "mean": 3.1068854331970215,
+          "median": 2.164891692944962,
+          "p95": 9.16909170217184,
+          "max": 22.528904061608305
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "broadcast",
+          "entity": "player",
+          "count": 2316,
+          "mean": 2.6899185180664062,
+          "median": 2.2405314167076447,
+          "p95": 6.1328421205898485,
+          "max": 10.384279718938123
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "broadcast",
+          "entity": "ball",
+          "count": 1022,
+          "mean": 4.7812700271606445,
+          "median": 3.8958462993904392,
+          "p95": 11.457321659838572,
+          "max": 13.563664141425688
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "meiji",
+          "entity": "player",
+          "count": 78183,
+          "mean": 1.6165183782577515,
+          "median": 1.0985525613081133,
+          "p95": 4.81883263290033,
+          "max": 12.628579460061115
+        },
+        {
+          "condition": "detector_gap_no_rgb",
+          "group": "meiji",
+          "entity": "ball",
+          "count": 33216,
+          "mean": 3.0553674697875977,
+          "median": 2.126025711060028,
+          "p95": 8.986861808292373,
+          "max": 22.528904061608305
+        }
+      ],
+      "curves": {
+        "val/player_position_error_m_epoch": [
+          [
+            0.0,
+            6.392003059387207
+          ],
+          [
+            1.0,
+            2.419785261154175
+          ],
+          [
+            2.0,
+            2.3446238040924072
+          ],
+          [
+            3.0,
+            2.422790288925171
+          ],
+          [
+            4.0,
+            2.3371763229370117
+          ],
+          [
+            5.0,
+            2.3067431449890137
+          ],
+          [
+            6.0,
+            2.2572546005249023
+          ],
+          [
+            7.0,
+            2.3056740760803223
+          ],
+          [
+            8.0,
+            2.1869595050811768
+          ],
+          [
+            9.0,
+            2.1608901023864746
+          ],
+          [
+            10.0,
+            2.110593795776367
+          ],
+          [
+            11.0,
+            2.2086594104766846
+          ],
+          [
+            12.0,
+            2.0760436058044434
+          ],
+          [
+            13.0,
+            1.8656855821609497
+          ],
+          [
+            14.0,
+            1.9083688259124756
+          ],
+          [
+            15.0,
+            2.103579044342041
+          ],
+          [
+            16.0,
+            1.8325512409210205
+          ],
+          [
+            17.0,
+            1.8201442956924438
+          ],
+          [
+            18.0,
+            1.9119491577148438
+          ],
+          [
+            19.0,
+            1.8652056455612183
+          ],
+          [
+            20.0,
+            1.7441788911819458
+          ],
+          [
+            21.0,
+            1.656041145324707
+          ],
+          [
+            22.0,
+            1.7423114776611328
+          ],
+          [
+            23.0,
+            1.6442790031433105
+          ],
+          [
+            24.0,
+            1.7277225255966187
+          ],
+          [
+            25.0,
+            2.031484603881836
+          ],
+          [
+            26.0,
+            1.5608168840408325
+          ],
+          [
+            27.0,
+            1.6223232746124268
+          ],
+          [
+            28.0,
+            1.6674633026123047
+          ],
+          [
+            29.0,
+            1.546802043914795
+          ],
+          [
+            30.0,
+            1.5222491025924683
+          ],
+          [
+            31.0,
+            1.5034458637237549
+          ],
+          [
+            32.0,
+            1.4792753458023071
+          ],
+          [
+            33.0,
+            1.5794967412948608
+          ],
+          [
+            34.0,
+            1.4984115362167358
+          ],
+          [
+            35.0,
+            1.5443687438964844
+          ],
+          [
+            36.0,
+            1.4875309467315674
+          ],
+          [
+            37.0,
+            1.4600938558578491
+          ],
+          [
+            38.0,
+            1.4778908491134644
+          ],
+          [
+            39.0,
+            1.4827675819396973
+          ],
+          [
+            40.0,
+            1.4805240631103516
+          ],
+          [
+            41.0,
+            1.458009958267212
+          ],
+          [
+            42.0,
+            1.4122161865234375
+          ],
+          [
+            43.0,
+            1.4106849431991577
+          ],
+          [
+            44.0,
+            1.4233946800231934
+          ],
+          [
+            45.0,
+            1.4190647602081299
+          ],
+          [
+            46.0,
+            1.4218497276306152
+          ],
+          [
+            47.0,
+            1.4075710773468018
+          ],
+          [
+            48.0,
+            1.4297748804092407
+          ],
+          [
+            49.0,
+            1.3799389600753784
+          ],
+          [
+            50.0,
+            1.4057804346084595
+          ],
+          [
+            51.0,
+            1.4063740968704224
+          ],
+          [
+            52.0,
+            1.3863946199417114
+          ],
+          [
+            53.0,
+            1.3963876962661743
+          ],
+          [
+            54.0,
+            1.390871524810791
+          ],
+          [
+            55.0,
+            1.3975389003753662
+          ],
+          [
+            56.0,
+            1.3880865573883057
+          ],
+          [
+            57.0,
+            1.400874376296997
+          ],
+          [
+            58.0,
+            1.3980073928833008
+          ],
+          [
+            59.0,
+            1.4007446765899658
+          ]
+        ],
+        "val/ball_position_error_m_epoch": [
+          [
+            0.0,
+            7.702455997467041
+          ],
+          [
+            1.0,
+            7.8123779296875
+          ],
+          [
+            2.0,
+            7.726686954498291
+          ],
+          [
+            3.0,
+            7.718240737915039
+          ],
+          [
+            4.0,
+            7.780324459075928
+          ],
+          [
+            5.0,
+            7.6937971115112305
+          ],
+          [
+            6.0,
+            7.653489112854004
+          ],
+          [
+            7.0,
+            7.688732147216797
+          ],
+          [
+            8.0,
+            7.752397537231445
+          ],
+          [
+            9.0,
+            7.816306114196777
+          ],
+          [
+            10.0,
+            7.679469585418701
+          ],
+          [
+            11.0,
+            6.898492336273193
+          ],
+          [
+            12.0,
+            6.460912704467773
+          ],
+          [
+            13.0,
+            5.43487024307251
+          ],
+          [
+            14.0,
+            5.835536956787109
+          ],
+          [
+            15.0,
+            4.961585521697998
+          ],
+          [
+            16.0,
+            5.007384777069092
+          ],
+          [
+            17.0,
+            4.6142144203186035
+          ],
+          [
+            18.0,
+            3.8692069053649902
+          ],
+          [
+            19.0,
+            4.377166748046875
+          ],
+          [
+            20.0,
+            3.67386531829834
+          ],
+          [
+            21.0,
+            3.6194803714752197
+          ],
+          [
+            22.0,
+            3.4624435901641846
+          ],
+          [
+            23.0,
+            3.674760341644287
+          ],
+          [
+            24.0,
+            3.3617753982543945
+          ],
+          [
+            25.0,
+            3.2698144912719727
+          ],
+          [
+            26.0,
+            3.2621853351593018
+          ],
+          [
+            27.0,
+            3.0179855823516846
+          ],
+          [
+            28.0,
+            3.2560906410217285
+          ],
+          [
+            29.0,
+            2.980895519256592
+          ],
+          [
+            30.0,
+            3.1591856479644775
+          ],
+          [
+            31.0,
+            2.881368637084961
+          ],
+          [
+            32.0,
+            3.032395839691162
+          ],
+          [
+            33.0,
+            3.0367980003356934
+          ],
+          [
+            34.0,
+            2.8358688354492188
+          ],
+          [
+            35.0,
+            2.8022754192352295
+          ],
+          [
+            36.0,
+            2.7865729331970215
+          ],
+          [
+            37.0,
+            2.847929000854492
+          ],
+          [
+            38.0,
+            2.7131834030151367
+          ],
+          [
+            39.0,
+            2.7559382915496826
+          ],
+          [
+            40.0,
+            2.855527400970459
+          ],
+          [
+            41.0,
+            2.7143611907958984
+          ],
+          [
+            42.0,
+            2.6861748695373535
+          ],
+          [
+            43.0,
+            2.62924861907959
+          ],
+          [
+            44.0,
+            2.709911584854126
+          ],
+          [
+            45.0,
+            2.638305187225342
+          ],
+          [
+            46.0,
+            2.5947859287261963
+          ],
+          [
+            47.0,
+            2.626420736312866
+          ],
+          [
+            48.0,
+            2.6430532932281494
+          ],
+          [
+            49.0,
+            2.582655429840088
+          ],
+          [
+            50.0,
+            2.5502889156341553
+          ],
+          [
+            51.0,
+            2.5544674396514893
+          ],
+          [
+            52.0,
+            2.5503313541412354
+          ],
+          [
+            53.0,
+            2.538573741912842
+          ],
+          [
+            54.0,
+            2.5394184589385986
+          ],
+          [
+            55.0,
+            2.537665843963623
+          ],
+          [
+            56.0,
+            2.5395989418029785
+          ],
+          [
+            57.0,
+            2.5462307929992676
+          ],
+          [
+            58.0,
+            2.5421743392944336
+          ],
+          [
+            59.0,
+            2.5437731742858887
+          ]
+        ],
+        "val/scene_position_error_m_epoch": [
+          [
+            0.0,
+            7.047229766845703
+          ],
+          [
+            1.0,
+            5.116081714630127
+          ],
+          [
+            2.0,
+            5.035655498504639
+          ],
+          [
+            3.0,
+            5.0705156326293945
+          ],
+          [
+            4.0,
+            5.058750152587891
+          ],
+          [
+            5.0,
+            5.000269889831543
+          ],
+          [
+            6.0,
+            4.955371856689453
+          ],
+          [
+            7.0,
+            4.9972028732299805
+          ],
+          [
+            8.0,
+            4.9696784019470215
+          ],
+          [
+            9.0,
+            4.988597869873047
+          ],
+          [
+            10.0,
+            4.895031929016113
+          ],
+          [
+            11.0,
+            4.5535759925842285
+          ],
+          [
+            12.0,
+            4.2684783935546875
+          ],
+          [
+            13.0,
+            3.650277853012085
+          ],
+          [
+            14.0,
+            3.871953010559082
+          ],
+          [
+            15.0,
+            3.5325822830200195
+          ],
+          [
+            16.0,
+            3.4199681282043457
+          ],
+          [
+            17.0,
+            3.217179298400879
+          ],
+          [
+            18.0,
+            2.890578031539917
+          ],
+          [
+            19.0,
+            3.1211862564086914
+          ],
+          [
+            20.0,
+            2.709022045135498
+          ],
+          [
+            21.0,
+            2.637760639190674
+          ],
+          [
+            22.0,
+            2.602377414703369
+          ],
+          [
+            23.0,
+            2.659519672393799
+          ],
+          [
+            24.0,
+            2.5447490215301514
+          ],
+          [
+            25.0,
+            2.6506495475769043
+          ],
+          [
+            26.0,
+            2.411501169204712
+          ],
+          [
+            27.0,
+            2.3201544284820557
+          ],
+          [
+            28.0,
+            2.4617769718170166
+          ],
+          [
+            29.0,
+            2.2638487815856934
+          ],
+          [
+            30.0,
+            2.340717315673828
+          ],
+          [
+            31.0,
+            2.1924071311950684
+          ],
+          [
+            32.0,
+            2.25583553314209
+          ],
+          [
+            33.0,
+            2.308147430419922
+          ],
+          [
+            34.0,
+            2.167140245437622
+          ],
+          [
+            35.0,
+            2.1733222007751465
+          ],
+          [
+            36.0,
+            2.137052059173584
+          ],
+          [
+            37.0,
+            2.1540114879608154
+          ],
+          [
+            38.0,
+            2.0955371856689453
+          ],
+          [
+            39.0,
+            2.1193528175354004
+          ],
+          [
+            40.0,
+            2.1680257320404053
+          ],
+          [
+            41.0,
+            2.0861854553222656
+          ],
+          [
+            42.0,
+            2.0491955280303955
+          ],
+          [
+            43.0,
+            2.0199668407440186
+          ],
+          [
+            44.0,
+            2.066653251647949
+          ],
+          [
+            45.0,
+            2.0286850929260254
+          ],
+          [
+            46.0,
+            2.0083179473876953
+          ],
+          [
+            47.0,
+            2.016995906829834
+          ],
+          [
+            48.0,
+            2.03641414642334
+          ],
+          [
+            49.0,
+            1.981297254562378
+          ],
+          [
+            50.0,
+            1.9780347347259521
+          ],
+          [
+            51.0,
+            1.9804208278656006
+          ],
+          [
+            52.0,
+            1.9683630466461182
+          ],
+          [
+            53.0,
+            1.9674806594848633
+          ],
+          [
+            54.0,
+            1.9651449918746948
+          ],
+          [
+            55.0,
+            1.9676023721694946
+          ],
+          [
+            56.0,
+            1.963842749595642
+          ],
+          [
+            57.0,
+            1.9735525846481323
+          ],
+          [
+            58.0,
+            1.9700908660888672
+          ],
+          [
+            59.0,
+            1.9722589254379272
+          ]
+        ],
+        "val/loss": [
+          [
+            0.0,
+            0.8059355020523071
+          ],
+          [
+            1.0,
+            0.22605660557746887
+          ],
+          [
+            2.0,
+            0.17837141454219818
+          ],
+          [
+            3.0,
+            0.16772599518299103
+          ],
+          [
+            4.0,
+            0.050056617707014084
+          ],
+          [
+            5.0,
+            0.029774542897939682
+          ],
+          [
+            6.0,
+            -0.0017503267154097557
+          ],
+          [
+            7.0,
+            0.015176407061517239
+          ],
+          [
+            8.0,
+            -0.026297489181160927
+          ],
+          [
+            9.0,
+            -0.012402261607348919
+          ],
+          [
+            10.0,
+            -0.05944594740867615
+          ],
+          [
+            11.0,
+            -0.12016315013170242
+          ],
+          [
+            12.0,
+            -0.19643911719322205
+          ],
+          [
+            13.0,
+            -0.38295915722846985
+          ],
+          [
+            14.0,
+            -0.34748899936676025
+          ],
+          [
+            15.0,
+            -0.35590389370918274
+          ],
+          [
+            16.0,
+            -0.4179684817790985
+          ],
+          [
+            17.0,
+            -0.519235372543335
+          ],
+          [
+            18.0,
+            -0.5997626781463623
+          ],
+          [
+            19.0,
+            -0.47061681747436523
+          ],
+          [
+            20.0,
+            -0.725670576095581
+          ],
+          [
+            21.0,
+            -0.7676729559898376
+          ],
+          [
+            22.0,
+            -0.7683560252189636
+          ],
+          [
+            23.0,
+            -0.7386489510536194
+          ],
+          [
+            24.0,
+            -0.7726768851280212
+          ],
+          [
+            25.0,
+            -0.6682658195495605
+          ],
+          [
+            26.0,
+            -0.8786323666572571
+          ],
+          [
+            27.0,
+            -0.9269502758979797
+          ],
+          [
+            28.0,
+            -0.8108643889427185
+          ],
+          [
+            29.0,
+            -0.9136225581169128
+          ],
+          [
+            30.0,
+            -0.9182438254356384
+          ],
+          [
+            31.0,
+            -1.0091643333435059
+          ],
+          [
+            32.0,
+            -0.97059166431427
+          ],
+          [
+            33.0,
+            -0.9271514415740967
+          ],
+          [
+            34.0,
+            -0.9748963117599487
+          ],
+          [
+            35.0,
+            -0.9789718985557556
+          ],
+          [
+            36.0,
+            -1.0067940950393677
+          ],
+          [
+            37.0,
+            -0.9906962513923645
+          ],
+          [
+            38.0,
+            -1.0132012367248535
+          ],
+          [
+            39.0,
+            -1.0070487260818481
+          ],
+          [
+            40.0,
+            -0.9400907158851624
+          ],
+          [
+            41.0,
+            -1.0170340538024902
+          ],
+          [
+            42.0,
+            -1.042579174041748
+          ],
+          [
+            43.0,
+            -1.068505883216858
+          ],
+          [
+            44.0,
+            -1.0230594873428345
+          ],
+          [
+            45.0,
+            -1.0482290983200073
+          ],
+          [
+            46.0,
+            -1.04311203956604
+          ],
+          [
+            47.0,
+            -1.04329514503479
+          ],
+          [
+            48.0,
+            -1.0225512981414795
+          ],
+          [
+            49.0,
+            -1.0729378461837769
+          ],
+          [
+            50.0,
+            -1.047611117362976
+          ],
+          [
+            51.0,
+            -1.0396723747253418
+          ],
+          [
+            52.0,
+            -1.0549858808517456
+          ],
+          [
+            53.0,
+            -1.0590866804122925
+          ],
+          [
+            54.0,
+            -1.0577311515808105
+          ],
+          [
+            55.0,
+            -1.0471606254577637
+          ],
+          [
+            56.0,
+            -1.0509183406829834
+          ],
+          [
+            57.0,
+            -1.042546033859253
+          ],
+          [
+            58.0,
+            -1.045836091041565
+          ],
+          [
+            59.0,
+            -1.0435090065002441
+          ]
+        ],
+        "train/player_position_error_m_epoch": [
+          [
+            0.0,
+            12.122021675109863
+          ],
+          [
+            1.0,
+            4.6814680099487305
+          ],
+          [
+            2.0,
+            3.398738384246826
+          ],
+          [
+            3.0,
+            3.183208703994751
+          ],
+          [
+            4.0,
+            3.0252552032470703
+          ],
+          [
+            5.0,
+            2.9163756370544434
+          ],
+          [
+            6.0,
+            2.8042776584625244
+          ],
+          [
+            7.0,
+            2.7196531295776367
+          ],
+          [
+            8.0,
+            2.6508469581604004
+          ],
+          [
+            9.0,
+            2.504275321960449
+          ],
+          [
+            10.0,
+            2.4249513149261475
+          ],
+          [
+            11.0,
+            2.3524179458618164
+          ],
+          [
+            12.0,
+            2.2829649448394775
+          ],
+          [
+            13.0,
+            2.2353031635284424
+          ],
+          [
+            14.0,
+            2.1172678470611572
+          ],
+          [
+            15.0,
+            2.1199166774749756
+          ],
+          [
+            16.0,
+            2.1503372192382812
+          ],
+          [
+            17.0,
+            1.9794703722000122
+          ],
+          [
+            18.0,
+            1.9814447164535522
+          ],
+          [
+            19.0,
+            1.9498475790023804
+          ],
+          [
+            20.0,
+            1.9117785692214966
+          ],
+          [
+            21.0,
+            1.834620714187622
+          ],
+          [
+            22.0,
+            1.7869651317596436
+          ],
+          [
+            23.0,
+            1.808519959449768
+          ],
+          [
+            24.0,
+            1.7476553916931152
+          ],
+          [
+            25.0,
+            1.7496662139892578
+          ],
+          [
+            26.0,
+            1.7234967947006226
+          ],
+          [
+            27.0,
+            1.650333285331726
+          ],
+          [
+            28.0,
+            1.6192023754119873
+          ],
+          [
+            29.0,
+            1.5897856950759888
+          ],
+          [
+            30.0,
+            1.59104585647583
+          ],
+          [
+            31.0,
+            1.5667058229446411
+          ],
+          [
+            32.0,
+            1.548210620880127
+          ],
+          [
+            33.0,
+            1.5206793546676636
+          ],
+          [
+            34.0,
+            1.571384310722351
+          ],
+          [
+            35.0,
+            1.4962775707244873
+          ],
+          [
+            36.0,
+            1.51029372215271
+          ],
+          [
+            37.0,
+            1.4819117784500122
+          ],
+          [
+            38.0,
+            1.431794285774231
+          ],
+          [
+            39.0,
+            1.43716299533844
+          ],
+          [
+            40.0,
+            1.4035817384719849
+          ],
+          [
+            41.0,
+            1.403501272201538
+          ],
+          [
+            42.0,
+            1.4128252267837524
+          ],
+          [
+            43.0,
+            1.4025309085845947
+          ],
+          [
+            44.0,
+            1.3615456819534302
+          ],
+          [
+            45.0,
+            1.3817343711853027
+          ],
+          [
+            46.0,
+            1.3715126514434814
+          ],
+          [
+            47.0,
+            1.329643964767456
+          ],
+          [
+            48.0,
+            1.332275152206421
+          ],
+          [
+            49.0,
+            1.3426419496536255
+          ],
+          [
+            50.0,
+            1.3312122821807861
+          ],
+          [
+            51.0,
+            1.3513087034225464
+          ],
+          [
+            52.0,
+            1.3264127969741821
+          ],
+          [
+            53.0,
+            1.3178116083145142
+          ],
+          [
+            54.0,
+            1.317388892173767
+          ],
+          [
+            55.0,
+            1.2729085683822632
+          ],
+          [
+            56.0,
+            1.3149863481521606
+          ],
+          [
+            57.0,
+            1.3125306367874146
+          ],
+          [
+            58.0,
+            1.2936780452728271
+          ],
+          [
+            59.0,
+            1.3112317323684692
+          ]
+        ],
+        "train/ball_position_error_m_epoch": [
+          [
+            0.0,
+            9.203669548034668
+          ],
+          [
+            1.0,
+            8.1341552734375
+          ],
+          [
+            2.0,
+            7.9350433349609375
+          ],
+          [
+            3.0,
+            7.8188042640686035
+          ],
+          [
+            4.0,
+            7.792026996612549
+          ],
+          [
+            5.0,
+            7.7708635330200195
+          ],
+          [
+            6.0,
+            7.732007026672363
+          ],
+          [
+            7.0,
+            7.6713128089904785
+          ],
+          [
+            8.0,
+            7.605700492858887
+          ],
+          [
+            9.0,
+            7.514209270477295
+          ],
+          [
+            10.0,
+            7.4267048835754395
+          ],
+          [
+            11.0,
+            7.045187950134277
+          ],
+          [
+            12.0,
+            6.73992919921875
+          ],
+          [
+            13.0,
+            6.021203994750977
+          ],
+          [
+            14.0,
+            5.278872966766357
+          ],
+          [
+            15.0,
+            5.170509338378906
+          ],
+          [
+            16.0,
+            4.894249439239502
+          ],
+          [
+            17.0,
+            4.737977981567383
+          ],
+          [
+            18.0,
+            4.520482063293457
+          ],
+          [
+            19.0,
+            4.329328536987305
+          ],
+          [
+            20.0,
+            4.1818318367004395
+          ],
+          [
+            21.0,
+            3.978987455368042
+          ],
+          [
+            22.0,
+            3.7923240661621094
+          ],
+          [
+            23.0,
+            3.6621410846710205
+          ],
+          [
+            24.0,
+            3.654254198074341
+          ],
+          [
+            25.0,
+            3.454307794570923
+          ],
+          [
+            26.0,
+            3.5040283203125
+          ],
+          [
+            27.0,
+            3.3813652992248535
+          ],
+          [
+            28.0,
+            3.242769479751587
+          ],
+          [
+            29.0,
+            3.332242250442505
+          ],
+          [
+            30.0,
+            3.22017240524292
+          ],
+          [
+            31.0,
+            3.1461379528045654
+          ],
+          [
+            32.0,
+            3.140625
+          ],
+          [
+            33.0,
+            2.929208278656006
+          ],
+          [
+            34.0,
+            2.9418954849243164
+          ],
+          [
+            35.0,
+            2.9888179302215576
+          ],
+          [
+            36.0,
+            2.9123876094818115
+          ],
+          [
+            37.0,
+            2.791926860809326
+          ],
+          [
+            38.0,
+            2.7947521209716797
+          ],
+          [
+            39.0,
+            2.773313522338867
+          ],
+          [
+            40.0,
+            2.6744039058685303
+          ],
+          [
+            41.0,
+            2.8169267177581787
+          ],
+          [
+            42.0,
+            2.7159910202026367
+          ],
+          [
+            43.0,
+            2.6290156841278076
+          ],
+          [
+            44.0,
+            2.6651647090911865
+          ],
+          [
+            45.0,
+            2.639984369277954
+          ],
+          [
+            46.0,
+            2.506633758544922
+          ],
+          [
+            47.0,
+            2.4335525035858154
+          ],
+          [
+            48.0,
+            2.405759811401367
+          ],
+          [
+            49.0,
+            2.5836617946624756
+          ],
+          [
+            50.0,
+            2.5122454166412354
+          ],
+          [
+            51.0,
+            2.472599506378174
+          ],
+          [
+            52.0,
+            2.3774802684783936
+          ],
+          [
+            53.0,
+            2.1799683570861816
+          ],
+          [
+            54.0,
+            2.500194549560547
+          ],
+          [
+            55.0,
+            2.2545154094696045
+          ],
+          [
+            56.0,
+            2.3033623695373535
+          ],
+          [
+            57.0,
+            2.4849865436553955
+          ],
+          [
+            58.0,
+            2.3465099334716797
+          ],
+          [
+            59.0,
+            2.409202814102173
+          ]
+        ],
+        "train/scene_position_error_m_epoch": [
+          [
+            0.0,
+            10.662845611572266
+          ],
+          [
+            1.0,
+            6.407811641693115
+          ],
+          [
+            2.0,
+            5.666891098022461
+          ],
+          [
+            3.0,
+            5.501006603240967
+          ],
+          [
+            4.0,
+            5.4086408615112305
+          ],
+          [
+            5.0,
+            5.343619346618652
+          ],
+          [
+            6.0,
+            5.268142223358154
+          ],
+          [
+            7.0,
+            5.195483207702637
+          ],
+          [
+            8.0,
+            5.128273963928223
+          ],
+          [
+            9.0,
+            5.009242057800293
+          ],
+          [
+            10.0,
+            4.925827980041504
+          ],
+          [
+            11.0,
+            4.698802947998047
+          ],
+          [
+            12.0,
+            4.511446952819824
+          ],
+          [
+            13.0,
+            4.12825345993042
+          ],
+          [
+            14.0,
+            3.698070526123047
+          ],
+          [
+            15.0,
+            3.6452131271362305
+          ],
+          [
+            16.0,
+            3.5222933292388916
+          ],
+          [
+            17.0,
+            3.3587241172790527
+          ],
+          [
+            18.0,
+            3.2509634494781494
+          ],
+          [
+            19.0,
+            3.1395881175994873
+          ],
+          [
+            20.0,
+            3.0468051433563232
+          ],
+          [
+            21.0,
+            2.906804084777832
+          ],
+          [
+            22.0,
+            2.789644718170166
+          ],
+          [
+            23.0,
+            2.735330581665039
+          ],
+          [
+            24.0,
+            2.7009549140930176
+          ],
+          [
+            25.0,
+            2.601986885070801
+          ],
+          [
+            26.0,
+            2.613762617111206
+          ],
+          [
+            27.0,
+            2.5158493518829346
+          ],
+          [
+            28.0,
+            2.430985927581787
+          ],
+          [
+            29.0,
+            2.4610140323638916
+          ],
+          [
+            30.0,
+            2.405609130859375
+          ],
+          [
+            31.0,
+            2.356421947479248
+          ],
+          [
+            32.0,
+            2.3444178104400635
+          ],
+          [
+            33.0,
+            2.2249438762664795
+          ],
+          [
+            34.0,
+            2.2566399574279785
+          ],
+          [
+            35.0,
+            2.2425477504730225
+          ],
+          [
+            36.0,
+            2.2113406658172607
+          ],
+          [
+            37.0,
+            2.1369192600250244
+          ],
+          [
+            38.0,
+            2.1132731437683105
+          ],
+          [
+            39.0,
+            2.105238199234009
+          ],
+          [
+            40.0,
+            2.0389928817749023
+          ],
+          [
+            41.0,
+            2.1102139949798584
+          ],
+          [
+            42.0,
+            2.06440806388855
+          ],
+          [
+            43.0,
+            2.015773296356201
+          ],
+          [
+            44.0,
+            2.013355255126953
+          ],
+          [
+            45.0,
+            2.010859489440918
+          ],
+          [
+            46.0,
+            1.9390732049942017
+          ],
+          [
+            47.0,
+            1.8815982341766357
+          ],
+          [
+            48.0,
+            1.869017481803894
+          ],
+          [
+            49.0,
+            1.9631519317626953
+          ],
+          [
+            50.0,
+            1.9217288494110107
+          ],
+          [
+            51.0,
+            1.9119541645050049
+          ],
+          [
+            52.0,
+            1.8519465923309326
+          ],
+          [
+            53.0,
+            1.7488899230957031
+          ],
+          [
+            54.0,
+            1.9087917804718018
+          ],
+          [
+            55.0,
+            1.763711929321289
+          ],
+          [
+            56.0,
+            1.8091742992401123
+          ],
+          [
+            57.0,
+            1.8987586498260498
+          ],
+          [
+            58.0,
+            1.8200939893722534
+          ],
+          [
+            59.0,
+            1.8602173328399658
+          ]
+        ],
+        "train/loss_epoch": [
+          [
+            0.0,
+            2.978360176086426
+          ],
+          [
+            1.0,
+            1.2031913995742798
+          ],
+          [
+            2.0,
+            0.8382806777954102
+          ],
+          [
+            3.0,
+            0.6984493136405945
+          ],
+          [
+            4.0,
+            0.5813484191894531
+          ],
+          [
+            5.0,
+            0.4583092927932739
+          ],
+          [
+            6.0,
+            0.40446406602859497
+          ],
+          [
+            7.0,
+            0.3257150948047638
+          ],
+          [
+            8.0,
+            0.29426509141921997
+          ],
+          [
+            9.0,
+            0.22701308131217957
+          ],
+          [
+            10.0,
+            0.17817111313343048
+          ],
+          [
+            11.0,
+            0.09659256041049957
+          ],
+          [
+            12.0,
+            0.03273133188486099
+          ],
+          [
+            13.0,
+            -0.07296790927648544
+          ],
+          [
+            14.0,
+            -0.19120687246322632
+          ],
+          [
+            15.0,
+            -0.21889090538024902
+          ],
+          [
+            16.0,
+            -0.23346289992332458
+          ],
+          [
+            17.0,
+            -0.34370166063308716
+          ],
+          [
+            18.0,
+            -0.390758216381073
+          ],
+          [
+            19.0,
+            -0.44940900802612305
+          ],
+          [
+            20.0,
+            -0.4893859922885895
+          ],
+          [
+            21.0,
+            -0.5982237458229065
+          ],
+          [
+            22.0,
+            -0.6548484563827515
+          ],
+          [
+            23.0,
+            -0.6978651285171509
+          ],
+          [
+            24.0,
+            -0.7240370512008667
+          ],
+          [
+            25.0,
+            -0.7753861546516418
+          ],
+          [
+            26.0,
+            -0.7898061871528625
+          ],
+          [
+            27.0,
+            -0.8407717943191528
+          ],
+          [
+            28.0,
+            -0.9047117233276367
+          ],
+          [
+            29.0,
+            -0.9020541310310364
+          ],
+          [
+            30.0,
+            -0.9375656843185425
+          ],
+          [
+            31.0,
+            -0.97198486328125
+          ],
+          [
+            32.0,
+            -0.9721585512161255
+          ],
+          [
+            33.0,
+            -1.0545856952667236
+          ],
+          [
+            34.0,
+            -1.0376287698745728
+          ],
+          [
+            35.0,
+            -1.0704704523086548
+          ],
+          [
+            36.0,
+            -1.0853912830352783
+          ],
+          [
+            37.0,
+            -1.131653904914856
+          ],
+          [
+            38.0,
+            -1.168403148651123
+          ],
+          [
+            39.0,
+            -1.1824584007263184
+          ],
+          [
+            40.0,
+            -1.2375812530517578
+          ],
+          [
+            41.0,
+            -1.2213398218154907
+          ],
+          [
+            42.0,
+            -1.2420583963394165
+          ],
+          [
+            43.0,
+            -1.2796580791473389
+          ],
+          [
+            44.0,
+            -1.2931568622589111
+          ],
+          [
+            45.0,
+            -1.3234885931015015
+          ],
+          [
+            46.0,
+            -1.3605120182037354
+          ],
+          [
+            47.0,
+            -1.3876397609710693
+          ],
+          [
+            48.0,
+            -1.3924522399902344
+          ],
+          [
+            49.0,
+            -1.369438886642456
+          ],
+          [
+            50.0,
+            -1.4091051816940308
+          ],
+          [
+            51.0,
+            -1.3876359462738037
+          ],
+          [
+            52.0,
+            -1.4238016605377197
+          ],
+          [
+            53.0,
+            -1.4806146621704102
+          ],
+          [
+            54.0,
+            -1.3935389518737793
+          ],
+          [
+            55.0,
+            -1.4908860921859741
+          ],
+          [
+            56.0,
+            -1.4550800323486328
+          ],
+          [
+            57.0,
+            -1.4296749830245972
+          ],
+          [
+            58.0,
+            -1.4618034362792969
+          ],
+          [
+            59.0,
+            -1.4475526809692383
+          ]
+        ]
+      }
+    }
+  },
+  "artifacts": {
+    "conditions.png": "a170228cd4369f56822fbec18dcc967ff2055a641fdd3e2603dd0e3484af72f4",
+    "distribution.png": "7cba51258e7c3e21c66d0a961364078b6ace410b42c6f15b93e5def7b83a68dc",
+    "learning_curves.png": "337015fead9c792a70647cdfd3495075f4965c2c19a618f0b48d849b4ee6560a"
+  }
+}

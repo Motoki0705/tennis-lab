@@ -108,7 +108,7 @@ def test_mixed_kp_config_rejects_noncanonical_synthetic_scope() -> None:
 
 def test_train_mixed_requires_explicit_variant_output_dir() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(config_name="train_mixed")
+        config = compose(config_name="train_mixed", overrides=["run.output_dir=???"])
 
     with pytest.raises(
         SemanticConfigurationError,

@@ -38,7 +38,11 @@ def resolve_mixed_training_config(
         raise ValueError("Mixed Court training requires a top-level mixed section.")
     standard_mapping = dict(unresolved)
     standard_mapping.pop("mixed")
+    # Resolve the identity on the original config before splitting it: Hydra,
+    # the runner, and the persisted full config must share one cached run ID.
+    _ = run_node.output_dir
     standard = OmegaConf.create(standard_mapping)
+    OmegaConf.copy_cache(config, standard)
     runtime = CourtTrainingConfig.from_config(standard)
 
     mixed_node = config.get("mixed")
@@ -64,7 +68,7 @@ class MixedCourtDetectionTrainingRunner(CourtDetectionTrainingRunner):
         self._mixed_config = mixed
         self._full_config = cast(
             DictConfig,
-            OmegaConf.create(OmegaConf.to_container(config, resolve=False)),
+            OmegaConf.create(OmegaConf.to_container(config, resolve=True)),
         )
         super().run(standard)
 
@@ -108,7 +112,9 @@ class MixedCourtDetectionTrainingRunner(CourtDetectionTrainingRunner):
             output_dir,
             "config.yaml",
         )
-        OmegaConf.save(self._full_config, config_path)
+        saved = OmegaConf.create(OmegaConf.to_container(self._full_config, resolve=True))
+        saved.paths = dict(runtime.resolver.roots.as_mapping())
+        OmegaConf.save(saved, config_path, resolve=True)
 
 
 __all__ = [

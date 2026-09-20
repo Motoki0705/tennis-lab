@@ -14,12 +14,12 @@ analysis:
   output_filename: angle_velocity_dominance.json
 
 run:
-  output_dir: plcs/analysis/angle_velocity
+  output_dir: ${tennis_output:plcs,analyze,angle_velocity,${tennis_run_id:}}
   seed: 42
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

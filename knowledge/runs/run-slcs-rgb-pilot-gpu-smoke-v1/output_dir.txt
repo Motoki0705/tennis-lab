@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_gpu_smoke/s42-001/logs/version_0/checkpoints

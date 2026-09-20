@@ -1,0 +1,5 @@
+ M knowledge/nodes/group-slcs-real-rgb.md
+?? knowledge/nodes/run-slcs-meiji-one-clip-repro-takeover-v1.md
+?? knowledge/nodes/run-slcs-pilot-no-ball-smooth-e60-takeover-v1.md
+?? knowledge/runs/run-slcs-meiji-one-clip-repro-takeover-v1/
+?? knowledge/runs/run-slcs-pilot-no-ball-smooth-e60-takeover-v1/

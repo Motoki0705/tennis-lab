@@ -1,0 +1,12 @@
+{
+  "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth": {
+    "before": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+    "prepublication": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+    "after": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+  },
+  "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth": {
+    "before": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+    "prepublication": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+    "after": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+  }
+}

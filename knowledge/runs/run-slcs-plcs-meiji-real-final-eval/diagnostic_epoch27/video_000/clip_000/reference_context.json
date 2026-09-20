@@ -1,0 +1,359 @@
+{
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "reference_camera": "cam0",
+  "view_half_turns": [
+    false,
+    false,
+    true
+  ],
+  "calibration_frame_index": 0,
+  "court_keypoint_views": [
+    {
+      "schema_version": 1,
+      "camera_id": "cam0",
+      "contract_id": "camera_view_courtkp20_rzpi_v1",
+      "semantic_to_physical": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "canonical_from_physical": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "camera_center_court_m": [
+        7.876505509697286,
+        -18.013634001823963,
+        2.683978822551357
+      ],
+      "coordinate_frame": "physical_court"
+    },
+    {
+      "schema_version": 1,
+      "camera_id": "cam1",
+      "contract_id": "camera_view_courtkp20_rzpi_v1",
+      "semantic_to_physical": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "canonical_from_physical": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "camera_center_court_m": [
+        -7.190732965301719,
+        -19.753402159608925,
+        2.9487669470773437
+      ],
+      "coordinate_frame": "physical_court"
+    },
+    {
+      "schema_version": 1,
+      "camera_id": "cam2",
+      "contract_id": "camera_view_courtkp20_rzpi_v1",
+      "semantic_to_physical": [
+        3,
+        2,
+        1,
+        0,
+        7,
+        6,
+        5,
+        4,
+        11,
+        10,
+        9,
+        8,
+        13,
+        12,
+        14,
+        17,
+        18,
+        15,
+        16,
+        19
+      ],
+      "canonical_from_physical": [
+        [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "camera_center_court_m": [
+        -0.2547202813631745,
+        18.85811824125874,
+        2.8077948760474127
+      ],
+      "coordinate_frame": "physical_court"
+    }
+  ],
+  "camera_fits": [
+    {
+      "camera_center_court_m": [
+        7.876505509697286,
+        -18.013634001823963,
+        2.683978822551357
+      ],
+      "K": [
+        [
+          574.0194817495385,
+          0.0,
+          960.0
+        ],
+        [
+          0.0,
+          574.0194817495385,
+          540.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "R": [
+        [
+          0.8867251569807453,
+          0.4526160243039298,
+          -0.09411286054932769
+        ],
+        [
+          0.08713403153305332,
+          -0.36355855572714274,
+          -0.9274873784081328
+        ],
+        [
+          -0.4540111854638271,
+          0.8142259582578404,
+          -0.3618147763329075
+        ]
+      ],
+      "t": [
+        1.4215607452697456,
+        -4.745965958721597,
+        19.214293207974844
+      ],
+      "rmse_px": 2.3140249200911125,
+      "calibration": "approximate single-plane pinhole; no distortion correction"
+    },
+    {
+      "camera_center_court_m": [
+        -7.190732965301719,
+        -19.753402159608925,
+        2.9487669470773437
+      ],
+      "K": [
+        [
+          1124.3234530096192,
+          0.0,
+          960.0
+        ],
+        [
+          0.0,
+          1124.3234530096192,
+          540.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "R": [
+        [
+          0.8453384282254541,
+          -0.5336549280920403,
+          -0.0248064404620561
+        ],
+        [
+          -0.0888091881107407,
+          -0.09458745078929283,
+          -0.9915473474626887
+        ],
+        [
+          0.5267977504435921,
+          0.8403961160525805,
+          -0.12735186787522315
+        ]
+      ],
+      "t": [
+        -4.389749094672984,
+        0.4168149333974861,
+        20.764275382560545
+      ],
+      "rmse_px": 1.1053285828021124,
+      "calibration": "approximate single-plane pinhole; no distortion correction"
+    },
+    {
+      "camera_center_court_m": [
+        -0.2547202813631745,
+        18.85811824125874,
+        2.8077948760474127
+      ],
+      "K": [
+        [
+          1051.9543303859668,
+          0.0,
+          960.0
+        ],
+        [
+          0.0,
+          1051.9543303859668,
+          540.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "R": [
+        [
+          -0.9992823771064602,
+          0.037232753196339556,
+          -0.006960811294867657
+        ],
+        [
+          0.014998894209464925,
+          0.22020910577221287,
+          -0.9753373687640065
+        ],
+        [
+          -0.03478166150366555,
+          -0.9747418488114802,
+          -0.2206095288028641
+        ]
+      ],
+      "t": [
+        -0.9371326201951329,
+        -1.4103615654679342,
+        18.99236374956547
+      ],
+      "rmse_px": 0.19445953779135,
+      "calibration": "approximate single-plane pinhole; no distortion correction"
+    }
+  ],
+  "court_reference_provenance": {
+    "schema_version": 1,
+    "contract_id": "camera_view_courtkp20_rzpi_v1",
+    "target_frame_id": "reference_camera_court_rzpi_v1",
+    "reference_camera_id": "cam0",
+    "reference_camera_local_index": 0,
+    "reference_from_physical": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "physical_from_reference": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "court_keypoints": {
+    "schema_version": 1,
+    "contract_id": "camera_view_courtkp20_rzpi_v1",
+    "target_frame_id": "reference_camera_court_rzpi_v1",
+    "num_keypoints": 20
+  }
+}

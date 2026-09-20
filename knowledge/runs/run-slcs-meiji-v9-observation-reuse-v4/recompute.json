@@ -1,0 +1,130 @@
+{
+  "clip_ids": [
+    "video_000/clip_007",
+    "video_000/clip_008",
+    "video_000/clip_009",
+    "video_000/clip_011",
+    "video_001/clip_000",
+    "video_001/clip_001",
+    "video_001/clip_002",
+    "video_001/clip_003",
+    "video_001/clip_005",
+    "video_001/clip_009",
+    "video_001/clip_012",
+    "video_001/clip_014",
+    "video_001/clip_016",
+    "video_001/clip_017",
+    "video_001/clip_018",
+    "video_001/clip_020",
+    "video_002/clip_010",
+    "video_002/clip_016",
+    "video_002/clip_019",
+    "video_002/clip_022"
+  ],
+  "cameras": [
+    {
+      "clip_id": "video_000/clip_007",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_000/clip_008",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_000/clip_009",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_000/clip_011",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_000",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_000",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_001",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_001",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_002",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_002",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_003",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_003",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_005",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_009",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_012",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_012",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_014",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_016",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_017",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_018",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_001/clip_020",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_020",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_002/clip_010",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_002/clip_016",
+      "camera_id": "cam0"
+    },
+    {
+      "clip_id": "video_002/clip_019",
+      "camera_id": "cam1"
+    },
+    {
+      "clip_id": "video_002/clip_022",
+      "camera_id": "cam0"
+    }
+  ]
+}

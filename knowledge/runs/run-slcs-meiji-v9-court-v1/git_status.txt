@@ -1,0 +1,17 @@
+ M knowledge/nodes/group-slcs-real-rgb.md
+?? knowledge/nodes/run-slcs-meiji-court-crop-comparison-v1.md
+?? knowledge/nodes/run-slcs-meiji-v8-features-missing-v1.md
+?? knowledge/nodes/run-slcs-meiji-v8-observe-repair-v1.md
+?? knowledge/nodes/run-slcs-meiji-video-alias-audit-v1.md
+?? knowledge/runs/run-slcs-meiji-court-crop-comparison-v1/
+?? knowledge/runs/run-slcs-meiji-v8-features-missing-v1/
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/audit.json
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/audit.py
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/git_status.txt
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/quarantine.json
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/repro.sh
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/run.json
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/test_audit.py
+?? knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/uncommitted.patch
+?? knowledge/runs/run-slcs-meiji-v9-observation-reuse-v1/
+?? knowledge/runs/run-slcs-meiji-video-alias-audit-v1/

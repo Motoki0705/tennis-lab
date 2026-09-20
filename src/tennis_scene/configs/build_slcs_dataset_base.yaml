@@ -1,0 +1,68 @@
+defaults:
+  - reference_clip
+  - _self_
+
+dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
+dataset_output_directory: slcs/meiji_rgb_v8
+clip_ids: null
+dataset_clip_ids: null
+# Each concrete profile owns its exclusion map, avoiding cross-dataset merging.
+excluded_clips: {}
+output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v8,s42-001}
+# Reuse hash-validated 2D observations independently of the PLCS/BLCS teacher.
+observation_directory: ${tennis_output:tennis_scene,precompute,meiji_dino_vitpose,s42-004}
+ball_source: outsource
+coordinate_mode: reference
+court_calibration_clips:
+  video_000: video_000/clip_000
+  video_001: video_001/clip_003
+  video_002: video_002/clip_017
+stage: all
+seed: 42
+plcs_checkpoint: plcs/real-rgb-meiji-foot-e60-v1.ckpt
+blcs_checkpoint: blcs/real-rgb-meiji-e60-v1.ckpt
+
+people:
+  precision: bfloat16
+  detection_stride: 4
+  # Include wide running steps; 5.8m incorrectly selected a bystander in cam0.
+  court_half_width_m: 6.5
+  court_half_length_m: 18.0
+  min_sample_coverage: 0.7
+  max_gap_seconds: 1.0
+  # Keep other views usable when a player leaves this camera's image.
+  long_gap_policy: mask
+
+court:
+  # Relative to paths.output_root; never use the obsolete deploy KP checkpoint.
+  checkpoint: court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
+  samples_per_clip: 9
+  min_score: 0.15
+  min_points: 10
+  ransac_px: 20.0
+  max_fit_error_px: 15.0
+  # Camera-specific preprocessing selected on the labelled development clip.
+  ball_crop_margins: {cam0: 0.25, cam1: 0.25, cam2: null}
+
+features:
+  enabled: true
+  checkpoint: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+
+refinement:
+  enabled: true
+  ball_max_reprojection_px: 20.0
+  ball_max_speed_mps: 65.0
+  player_max_reprojection_px: 40.0
+  player_max_speed_mps: 12.0
+  max_gap_seconds: 0.1
+  single_view_ball_weight: 0.15
+  single_view_player_weight: 0.5
+  min_player_label_fraction: 0.5
+  min_ball_label_fraction: 0.3
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

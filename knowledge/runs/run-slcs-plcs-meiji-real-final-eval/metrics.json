@@ -1,0 +1,18 @@
+{
+  "video_000_clip_000_diagnostic_epoch27_raw_plcs_pose_reprojection_px_median": 16.339014584178024,
+  "video_000_clip_000_diagnostic_epoch27_raw_plcs_ground_foot_to_root_xy_m_median": 1.4878756129640787,
+  "video_000_clip_000_diagnostic_epoch27_refined_plcs_pose_reprojection_px_median": 13.959058910250238,
+  "video_000_clip_000_diagnostic_epoch27_refined_plcs_ground_foot_to_root_xy_m_median": 1.2619766600137283,
+  "video_001_clip_000_diagnostic_epoch27_raw_plcs_pose_reprojection_px_median": 15.381578840572585,
+  "video_001_clip_000_diagnostic_epoch27_raw_plcs_ground_foot_to_root_xy_m_median": 1.9283790666954894,
+  "video_001_clip_000_diagnostic_epoch27_refined_plcs_pose_reprojection_px_median": 12.128519912022933,
+  "video_001_clip_000_diagnostic_epoch27_refined_plcs_ground_foot_to_root_xy_m_median": 1.9710320479649244,
+  "video_000_clip_000_selected_epoch57_raw_plcs_pose_reprojection_px_median": 14.806341045548562,
+  "video_000_clip_000_selected_epoch57_raw_plcs_ground_foot_to_root_xy_m_median": 1.452544889588815,
+  "video_000_clip_000_selected_epoch57_refined_plcs_pose_reprojection_px_median": 13.31132308080825,
+  "video_000_clip_000_selected_epoch57_refined_plcs_ground_foot_to_root_xy_m_median": 1.2619766600137283,
+  "video_001_clip_000_selected_epoch57_raw_plcs_pose_reprojection_px_median": 15.490563572742934,
+  "video_001_clip_000_selected_epoch57_raw_plcs_ground_foot_to_root_xy_m_median": 1.8518024271360127,
+  "video_001_clip_000_selected_epoch57_refined_plcs_pose_reprojection_px_median": 12.001019839587778,
+  "video_001_clip_000_selected_epoch57_refined_plcs_ground_foot_to_root_xy_m_median": 1.9595016252640836
+}

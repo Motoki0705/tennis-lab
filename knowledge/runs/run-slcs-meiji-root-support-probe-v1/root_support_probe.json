@@ -1,0 +1,957 @@
+{
+  "clips": {
+    "video_000/clip_007": {
+      "players": {
+        "player0": {
+          "frames": 652,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 1.9073486328125e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 1.0,
+            "sources": {
+              "0": 0,
+              "1": 651,
+              "2": 1
+            },
+            "speed12_zeroed_frames": 0,
+            "tri_code6_frames": 1,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 652,
+                "mean": 19.386353750238538,
+                "p95": 44.799967123930344,
+                "max": 49.65300395167363
+              },
+              "cam1": {
+                "count": 652,
+                "mean": 6.053347661766707,
+                "p95": 15.160608858546,
+                "max": 16.838545251784513
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 1.0,
+            "sources": {
+              "0": 0,
+              "1": 651,
+              "2": 1
+            },
+            "speed12_zeroed_frames": 0,
+            "tri_code6_frames": 1,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 652,
+                "mean": 19.386353750238538,
+                "p95": 44.799967123930344,
+                "max": 49.65300395167363
+              },
+              "cam1": {
+                "count": 652,
+                "mean": 6.053347661766707,
+                "p95": 15.160608858546,
+                "max": 16.838545251784513
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 1,
+              "3": 651
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 1,
+              "3": 651
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 0,
+            "frac_3view_lost": 0.0
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 0,
+            "n_gt_0_5m": 0,
+            "n_gt_1_0m": 0,
+            "max_m": 0.0,
+            "top_frames": []
+          }
+        },
+        "player1": {
+          "frames": 652,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 8.58306884765625e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 0.9892638036809815,
+            "sources": {
+              "0": 0,
+              "1": 641,
+              "2": 11
+            },
+            "speed12_zeroed_frames": 7,
+            "tri_code6_frames": 9,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 616,
+                "mean": 5.825182831975265,
+                "p95": 7.317472029950823,
+                "max": 8.064226808419024
+              },
+              "cam1": {
+                "count": 651,
+                "mean": 3.7143175079423076,
+                "p95": 5.010757941190015,
+                "max": 6.689826343730163
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 0.9800613496932515,
+            "sources": {
+              "0": 0,
+              "1": 637,
+              "2": 15
+            },
+            "speed12_zeroed_frames": 13,
+            "tri_code6_frames": 9,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 616,
+                "mean": 5.792033983373356,
+                "p95": 7.317472029950823,
+                "max": 8.925924904900068
+              },
+              "cam1": {
+                "count": 651,
+                "mean": 3.6657411467540344,
+                "p95": 4.970638004470139,
+                "max": 5.8583227345994295
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 2,
+              "2": 84,
+              "3": 566
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 6,
+              "2": 89,
+              "3": 557
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 9,
+            "frac_3view_lost": 0.015901060070671377
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 12,
+            "n_gt_0_5m": 6,
+            "n_gt_1_0m": 6,
+            "max_m": 1.3133915571525419,
+            "top_frames": [
+              {
+                "frame": 175,
+                "disp_m": 1.3133915571525419,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 172,
+                "disp_m": 1.286607827810484,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 174,
+                "disp_m": 1.1224073573501443,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 173,
+                "disp_m": 1.088107965566943,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 160,
+                "disp_m": 1.077400061278183,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 161,
+                "disp_m": 1.073925203160901,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 224,
+                "disp_m": 0.4046671124525168,
+                "src_cur": 1,
+                "src_cand": 2,
+                "w_cur": 0.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 225,
+                "disp_m": 0.2697780749683457,
+                "src_cur": 2,
+                "src_cand": 2,
+                "w_cur": 0.0,
+                "w_cand": 0.0
+              }
+            ]
+          }
+        }
+      },
+      "participation": {}
+    },
+    "video_000/clip_009": {
+      "players": {
+        "player0": {
+          "frames": 744,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 1.9073486328125e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 1.0,
+            "sources": {
+              "0": 0,
+              "1": 744,
+              "2": 0
+            },
+            "speed12_zeroed_frames": 0,
+            "tri_code6_frames": 0,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 744,
+                "mean": 11.093708820263004,
+                "p95": 16.852438958117215,
+                "max": 19.5578168702479
+              },
+              "cam1": {
+                "count": 744,
+                "mean": 3.2250477431761557,
+                "p95": 5.1811585495836505,
+                "max": 6.048603448796209
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 1.0,
+            "sources": {
+              "0": 0,
+              "1": 744,
+              "2": 0
+            },
+            "speed12_zeroed_frames": 0,
+            "tri_code6_frames": 0,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 744,
+                "mean": 11.093708820263004,
+                "p95": 16.852438958117215,
+                "max": 19.5578168702479
+              },
+              "cam1": {
+                "count": 744,
+                "mean": 3.2250477431761557,
+                "p95": 5.1811585495836505,
+                "max": 6.048603448796209
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 744
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 744
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 0,
+            "frac_3view_lost": 0.0
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 0,
+            "n_gt_0_5m": 0,
+            "n_gt_1_0m": 0,
+            "max_m": 0.0,
+            "top_frames": []
+          }
+        },
+        "player1": {
+          "frames": 744,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 9.5367431640625e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 0.9865591397849462,
+            "sources": {
+              "0": 0,
+              "1": 736,
+              "2": 8
+            },
+            "speed12_zeroed_frames": 10,
+            "tri_code6_frames": 2,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 717,
+                "mean": 5.295711637383349,
+                "p95": 7.19382354658946,
+                "max": 8.46126186076149
+              },
+              "cam1": {
+                "count": 735,
+                "mean": 3.315686605454389,
+                "p95": 4.811981862324807,
+                "max": 6.07479313884822
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 0.9771505376344086,
+            "sources": {
+              "0": 2,
+              "1": 725,
+              "2": 17
+            },
+            "speed12_zeroed_frames": 16,
+            "tri_code6_frames": 5,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 717,
+                "mean": 5.318756137054865,
+                "p95": 7.21739861563798,
+                "max": 11.54488058633582
+              },
+              "cam1": {
+                "count": 735,
+                "mean": 3.2971561355768,
+                "p95": 4.806264620201588,
+                "max": 5.947794258446325
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 6,
+              "2": 128,
+              "3": 610
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 14,
+              "2": 127,
+              "3": 603
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 7,
+            "frac_3view_lost": 0.011475409836065573
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 6,
+            "n_gt_0_5m": 3,
+            "n_gt_1_0m": 1,
+            "max_m": 1.069193952128737,
+            "top_frames": [
+              {
+                "frame": 427,
+                "disp_m": 1.069193952128737,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 242,
+                "disp_m": 0.5501811079851988,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 243,
+                "disp_m": 0.5208198809570499,
+                "src_cur": 2,
+                "src_cand": 1,
+                "w_cur": 0.4000000059604645,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 734,
+                "disp_m": 0.37599087932519226,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 742,
+                "disp_m": 0.34808362954964295,
+                "src_cur": 1,
+                "src_cand": 0,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 743,
+                "disp_m": 0.34319696062130883,
+                "src_cur": 1,
+                "src_cand": 0,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 191,
+                "disp_m": 0.035343148072654915,
+                "src_cur": 1,
+                "src_cand": 2,
+                "w_cur": 1.0,
+                "w_cand": 0.4000000059604645
+              },
+              {
+                "frame": 456,
+                "disp_m": 0.03168684764845916,
+                "src_cur": 1,
+                "src_cand": 2,
+                "w_cur": 1.0,
+                "w_cand": 0.4000000059604645
+              }
+            ]
+          }
+        }
+      },
+      "participation": {}
+    },
+    "video_001/clip_000": {
+      "players": {
+        "player0": {
+          "frames": 1316,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 1.9073486328125e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 0.9969604863221885,
+            "sources": {
+              "0": 0,
+              "1": 1313,
+              "2": 3
+            },
+            "speed12_zeroed_frames": 4,
+            "tri_code6_frames": 3,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1316,
+                "mean": 14.327928191444538,
+                "p95": 20.15862068819148,
+                "max": 28.097097616463238
+              },
+              "cam1": {
+                "count": 1316,
+                "mean": 9.77866086794649,
+                "p95": 13.736095655489594,
+                "max": 34.172089005593556
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 0.9954407294832827,
+            "sources": {
+              "0": 0,
+              "1": 1313,
+              "2": 3
+            },
+            "speed12_zeroed_frames": 6,
+            "tri_code6_frames": 3,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1316,
+                "mean": 14.30924259753406,
+                "p95": 20.15862068819148,
+                "max": 28.097097616463238
+              },
+              "cam1": {
+                "count": 1316,
+                "mean": 9.738394092506933,
+                "p95": 13.697538646471221,
+                "max": 30.751986132150453
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 3,
+              "3": 1313
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 6,
+              "3": 1310
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 3,
+            "frac_3view_lost": 0.002284843869002285
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 4,
+            "n_gt_0_5m": 0,
+            "n_gt_1_0m": 0,
+            "max_m": 0.32019683318396697,
+            "top_frames": [
+              {
+                "frame": 69,
+                "disp_m": 0.32019683318396697,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 70,
+                "disp_m": 0.25534389987653244,
+                "src_cur": 2,
+                "src_cand": 1,
+                "w_cur": 0.4000000059604645,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 71,
+                "disp_m": 0.16344397739050093,
+                "src_cur": 2,
+                "src_cand": 2,
+                "w_cur": 0.4000000059604645,
+                "w_cand": 0.4000000059604645
+              },
+              {
+                "frame": 72,
+                "disp_m": 0.11925666575381792,
+                "src_cur": 1,
+                "src_cand": 2,
+                "w_cur": 1.0,
+                "w_cand": 0.4000000059604645
+              }
+            ]
+          }
+        },
+        "player1": {
+          "frames": 1316,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 4.76837158203125e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 0.9741641337386018,
+            "sources": {
+              "0": 0,
+              "1": 1298,
+              "2": 18
+            },
+            "speed12_zeroed_frames": 34,
+            "tri_code6_frames": 11,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1154,
+                "mean": 6.246718162046729,
+                "p95": 8.609053067773047,
+                "max": 12.558051777729503
+              },
+              "cam1": {
+                "count": 1299,
+                "mean": 3.7913751813634304,
+                "p95": 7.70944078767573,
+                "max": 8.838477798994806
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 0.9756838905775076,
+            "sources": {
+              "0": 0,
+              "1": 1295,
+              "2": 21
+            },
+            "speed12_zeroed_frames": 32,
+            "tri_code6_frames": 14,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1154,
+                "mean": 6.274038986811324,
+                "p95": 8.672371525095436,
+                "max": 15.029030307442792
+              },
+              "cam1": {
+                "count": 1299,
+                "mean": 3.7725089784049652,
+                "p95": 7.70944078767573,
+                "max": 8.838477798994806
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 7,
+              "2": 165,
+              "3": 1144
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 7,
+              "2": 180,
+              "3": 1129
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 15,
+            "frac_3view_lost": 0.013111888111888112
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 12,
+            "n_gt_0_5m": 0,
+            "n_gt_1_0m": 0,
+            "max_m": 0.27132443107531634,
+            "top_frames": [
+              {
+                "frame": 435,
+                "disp_m": 0.27132443107531634,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 434,
+                "disp_m": 0.25493464629104756,
+                "src_cur": 2,
+                "src_cand": 1,
+                "w_cur": 0.4000000059604645,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 828,
+                "disp_m": 0.21176410826849176,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 827,
+                "disp_m": 0.20929403768942667,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 836,
+                "disp_m": 0.19664619624533414,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 838,
+                "disp_m": 0.195819836046748,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 1031,
+                "disp_m": 0.18289529599019005,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 803,
+                "disp_m": 0.17197732662214485,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              }
+            ]
+          }
+        }
+      },
+      "participation": {}
+    },
+    "video_001/clip_001": {
+      "players": {
+        "player0": {
+          "frames": 1300,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 1.9073486328125e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 1.0,
+            "sources": {
+              "0": 0,
+              "1": 1300,
+              "2": 0
+            },
+            "speed12_zeroed_frames": 0,
+            "tri_code6_frames": 0,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1300,
+                "mean": 9.607145039180919,
+                "p95": 14.050734757847415,
+                "max": 15.621824732875833
+              },
+              "cam1": {
+                "count": 1300,
+                "mean": 10.997889052003298,
+                "p95": 15.133993675722564,
+                "max": 16.318453703132544
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 1.0,
+            "sources": {
+              "0": 0,
+              "1": 1300,
+              "2": 0
+            },
+            "speed12_zeroed_frames": 0,
+            "tri_code6_frames": 0,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1300,
+                "mean": 9.607145039180919,
+                "p95": 14.050734757847415,
+                "max": 15.621824732875833
+              },
+              "cam1": {
+                "count": 1300,
+                "mean": 10.997889052003298,
+                "p95": 15.133993675722564,
+                "max": 16.318453703132544
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 1300
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 1300
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 0,
+            "frac_3view_lost": 0.0
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 0,
+            "n_gt_0_5m": 0,
+            "n_gt_1_0m": 0,
+            "max_m": 0.0,
+            "top_frames": []
+          }
+        },
+        "player1": {
+          "frames": 1300,
+          "replica_fidelity": {
+            "max_abs_pos_diff_m": 7.62939453125e-06,
+            "sources_match": true,
+            "weights_match": true
+          },
+          "current": {
+            "label_fraction": 0.9815384615384616,
+            "sources": {
+              "0": 0,
+              "1": 1288,
+              "2": 12
+            },
+            "speed12_zeroed_frames": 24,
+            "tri_code6_frames": 12,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1268,
+                "mean": 5.6380815662224615,
+                "p95": 7.720349426113181,
+                "max": 11.592399274827036
+              },
+              "cam1": {
+                "count": 1288,
+                "mean": 3.243478655908484,
+                "p95": 6.27285058538994,
+                "max": 7.467975299539453
+              }
+            }
+          },
+          "candidate": {
+            "label_fraction": 0.9769230769230769,
+            "sources": {
+              "0": 0,
+              "1": 1293,
+              "2": 7
+            },
+            "speed12_zeroed_frames": 30,
+            "tri_code6_frames": 7,
+            "hip_reproj_cam01": {
+              "cam0": {
+                "count": 1268,
+                "mean": 5.406424501819392,
+                "p95": 7.701141684791935,
+                "max": 16.30719600391498
+              },
+              "cam1": {
+                "count": 1288,
+                "mean": 3.136729685212461,
+                "p95": 6.298699903058393,
+                "max": 14.825575611960547
+              }
+            }
+          },
+          "participation": {
+            "current_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 182,
+              "3": 1118
+            },
+            "candidate_viewcount_dist": {
+              "0": 0,
+              "1": 0,
+              "2": 250,
+              "3": 1050
+            },
+            "frames_3view_to_nontriangulatable": 0,
+            "frames_3view_to_2view": 68,
+            "frac_3view_lost": 0.06082289803220036
+          },
+          "displacement_cand_vs_current": {
+            "n_gt_0_1m": 65,
+            "n_gt_0_5m": 51,
+            "n_gt_1_0m": 37,
+            "max_m": 1.1537460345817208,
+            "top_frames": [
+              {
+                "frame": 169,
+                "disp_m": 1.1537460345817208,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 331,
+                "disp_m": 1.034781980639254,
+                "src_cur": 1,
+                "src_cand": 2,
+                "w_cur": 1.0,
+                "w_cand": 0.4000000059604645
+              },
+              {
+                "frame": 330,
+                "disp_m": 1.0330334603107292,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 291,
+                "disp_m": 1.0310891425697595,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 0.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 328,
+                "disp_m": 1.0309067607957272,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 333,
+                "disp_m": 1.0300405691092986,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 0.0
+              },
+              {
+                "frame": 292,
+                "disp_m": 1.0271132347044893,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              },
+              {
+                "frame": 332,
+                "disp_m": 1.0264656496806264,
+                "src_cur": 1,
+                "src_cand": 1,
+                "w_cur": 1.0,
+                "w_cand": 1.0
+              }
+            ]
+          }
+        }
+      },
+      "participation": {}
+    }
+  }
+}

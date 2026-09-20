@@ -1,2 +1,2 @@
-output_dir: plcs/analysis/dataset_distribution
+output_dir: ${tennis_output:plcs,analyze,dataset_distribution,${tennis_run_id:}}
 seed: 42

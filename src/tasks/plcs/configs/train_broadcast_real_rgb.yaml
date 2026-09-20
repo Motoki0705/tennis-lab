@@ -1,0 +1,28 @@
+# Single observed broadcast view; held-out synthetic scenes, then real-video QC.
+defaults:
+  - train
+  - override model: multiview_axial_small
+  - override data: multiview_sequence_broadcast
+  - override loss: all_outputs_beta01_reprojection
+  - _self_
+model:
+  canonical_pose_readout: temporal_decomposition
+  max_views: 2
+  max_seq_len: 128
+data:
+  scene_dir: plcs/broadcast_source_disjoint_v1
+  min_cameras: 1
+  num_views_range: [1, 1]
+  # Short ACCAD clips have only ~50 frames after 120 -> 30 Hz sampling.
+  seq_len_range: [32, 128]
+  batch_size: 16
+training:
+  trainer:
+    max_epochs: 60
+    check_val_every_n_epoch: 1
+    enable_progress_bar: false
+  warmup_steps: 200
+  compile:
+    enabled: false
+run:
+  output_dir: ${tennis_output:plcs,train,broadcast_real_rgb,${tennis_run_id:}}

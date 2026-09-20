@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-19",
+  "phase": "After all 56 teacher clips were published and the original GPU build had entered RGB feature validation",
+  "procedure": "Copy selected training checkpoints to fresh staging paths with reflink disabled, verify the pinned digest using dual_sha256, preserve previous checkpoint files by copying, then atomically rename verified staging files over the normal checkpoint paths. No pin or metadata edit.",
+  "plcs": {
+    "source": "outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/plcs-epoch=57.ckpt",
+    "target": "ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+    "expected_and_verified_sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+    "size_bytes": 940592845,
+    "backup": "outputs/tennis_scene/analyze/plcs_checkpoint_restore/s42-001/previous.ckpt",
+    "promoted_inode": 689502
+  },
+  "blcs": {
+    "source": "outputs/blcs/train/meiji_real_rgb/s42-001/logs/version_0/checkpoints/blcs-epoch=58.ckpt",
+    "target": "ckpt/blcs/real-rgb-meiji-e60-v1.ckpt",
+    "expected_and_verified_sha256": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32",
+    "size_bytes": 621079077,
+    "backup": "outputs/tennis_scene/analyze/plcs_checkpoint_restore/s42-001/previous_blcs.ckpt",
+    "promoted_inode": 692939
+  },
+  "cancelled_before_workload_started": "1789781011882903231_3937054_slcs-meiji-one-clip-repro-takeover-v1.job",
+  "requeued_name": "slcs-meiji-one-clip-repro-takeover-v2",
+  "reused_output_was_absent": true,
+  "root_cause_resolved": false,
+  "pin_changed": false,
+  "old_artifacts_deleted": false
+}

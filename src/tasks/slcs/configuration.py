@@ -5,15 +5,20 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import torch
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import TrainingRuntimeConfig
+from src.tasks.slcs.data.augmentation import (
+    INPUT_CONDITIONS,
+    ObservationAugmentationConfig,
+)
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
 from src.tasks.slcs.data.quality import QualityConfig
+from src.tasks.slcs.data.sampling import DomainSamplingConfig
 from src.tasks.slcs.training.losses import SLCSLossConfig
 from src.tennis_scene.generate_dataset.manifest import (
     DatasetManifestError,
@@ -82,6 +87,19 @@ SLCS_QUALITY_SCHEMA = _schema(
         "min_window_label_ratio": _number(),
     },
 )
+SLCS_AUGMENTATION_SCHEMA = _schema(
+    "data.augmentation",
+    {
+        "enabled": ConfigField.of(bool),
+        "joint_dropout": _number(),
+        "ball_dropout": _number(),
+        "uv_std": _number(),
+        "burst_probability": _number(),
+        "burst_max_frames": ConfigField.of(int),
+        "rgb_only_probability": _number(),
+        "rgb_dropout_probability": _number(),
+    },
+)
 SLCS_DATA_SCHEMA = _schema(
     "data",
     {
@@ -101,6 +119,17 @@ SLCS_DATA_SCHEMA = _schema(
         "on_incomplete": ConfigField.of(str),
         "dino": _mapping(SLCS_DINO_SCHEMA),
         "quality": _mapping(SLCS_QUALITY_SCHEMA),
+        "augmentation": ConfigField.mapping(SLCS_AUGMENTATION_SCHEMA, required=False),
+        "domain_sampling": ConfigField.mapping(
+            _schema(
+                "data.domain_sampling",
+                {
+                    "enabled": ConfigField.of(bool),
+                    "video_domains": ConfigField.of(dict),
+                },
+            ),
+            required=False,
+        ),
     },
 )
 SLCS_MODEL_SCHEMA = _schema(
@@ -124,6 +153,9 @@ SLCS_MODEL_SCHEMA = _schema(
         "dino_cross_attn_every": ConfigField.of(int),
         "log_b_min": _number(),
         "log_b_max": _number(),
+        "missing_ball_court_context": ConfigField.of(bool, required=False),
+        "missing_ball_temporal_context": ConfigField.of(bool, required=False),
+        "missing_ball_one_sided_context": ConfigField.of(bool, required=False),
     },
 )
 _LOSS_FIELDS = {
@@ -138,6 +170,8 @@ _LOSS_FIELDS = {
     "ball_position_smoothness_weight": _number(),
     "ground_penetration_weight": _number(),
     "smoothness_order": ConfigField.of(int),
+    "ball_velocity_weight": ConfigField.of(int, float, required=False),
+    "ball_velocity_scale_mps": ConfigField.of(int, float, required=False),
 }
 SLCS_LOSS_SCHEMA = _schema("loss", _LOSS_FIELDS)
 SLCS_RUN_SCHEMA = _schema(
@@ -289,6 +323,7 @@ SLCS_EVALUATION_SCHEMA = _schema(
         "checkpoint_strict": ConfigField.of(bool),
         "checkpoint_weights_only": ConfigField.of(bool),
         "output_dir": ConfigField.of(str),
+        "input_mode": ConfigField.of(str),
     },
 )
 SLCS_PREDICTION_SCHEMA = _schema(
@@ -488,6 +523,7 @@ class SLCSDataRuntimeConfig:
     pin_memory: bool
     overfit: bool
     pipeline: SLCSDataConfig
+    domain_sampling: DomainSamplingConfig | None
 
     @classmethod
     def from_mapping(
@@ -495,7 +531,13 @@ class SLCSDataRuntimeConfig:
     ) -> SLCSDataRuntimeConfig:
         dino = cast(dict[str, object], raw["dino"])
         quality = cast(dict[str, object], raw["quality"])
+        augmentation = cast(dict[str, Any] | None, raw.get("augmentation"))
+        # Explicit legacy migration: absent sampling remains disabled (None).
+        sampling = cast(dict[str, Any] | None, raw.get("domain_sampling"))
         try:
+            domain_sampling = (
+                DomainSamplingConfig(**sampling) if sampling is not None else None
+            )
             pipeline = SLCSDataConfig(
                 window_size=cast(int, raw["window_size"]),
                 train_stride=cast(int, raw["train_stride"]),
@@ -505,6 +547,9 @@ class SLCSDataRuntimeConfig:
                 require_dino=cast(bool, raw["require_dino"]),
                 cache_dino_tokens=cast(bool, raw["cache_dino_tokens"]),
                 on_incomplete=cast(Literal["error", "skip"], raw["on_incomplete"]),
+                augmentation=ObservationAugmentationConfig(**augmentation)
+                if augmentation is not None
+                else None,
                 dino_spec=DinoTokenSpec(
                     backbone=_nonempty_string(
                         dino["backbone"], path="data.dino.backbone"
@@ -555,6 +600,7 @@ class SLCSDataRuntimeConfig:
             pin_memory=cast(bool, raw["pin_memory"]),
             overfit=cast(bool, raw["overfit"]),
             pipeline=pipeline,
+            domain_sampling=domain_sampling,
         )
 
 
@@ -578,6 +624,9 @@ class SLCSModelConfig:
     dino_cross_attn_every: int
     log_b_min: float
     log_b_max: float
+    missing_ball_court_context: bool
+    missing_ball_temporal_context: bool
+    missing_ball_one_sided_context: bool
 
     @classmethod
     def from_mapping(cls, raw: dict[str, object]) -> SLCSModelConfig:
@@ -623,7 +672,23 @@ class SLCSModelConfig:
             dino_cross_attn_every=cast(int, raw["dino_cross_attn_every"]),
             log_b_min=_finite_number(raw["log_b_min"], path="model.log_b_min"),
             log_b_max=_finite_number(raw["log_b_max"], path="model.log_b_max"),
+            missing_ball_court_context=cast(
+                bool, raw.get("missing_ball_court_context", False)
+            ),
+            missing_ball_temporal_context=cast(
+                bool, raw.get("missing_ball_temporal_context", False)
+            ),
+            missing_ball_one_sided_context=cast(
+                bool, raw.get("missing_ball_one_sided_context", False)
+            ),
         )
+        if (
+            result.missing_ball_one_sided_context
+            and not result.missing_ball_temporal_context
+        ):
+            raise SemanticConfigurationError(
+                "model.missing_ball_one_sided_context requires model.missing_ball_temporal_context."
+            )
         if result.hidden_dim <= 0 or result.num_heads <= 0:
             raise SemanticConfigurationError(
                 "model.hidden_dim and model.num_heads must be positive."
@@ -678,6 +743,17 @@ class SLCSModelConfig:
 
 
 def _loss(raw: dict[str, object]) -> SLCSLossConfig:
+    # Explicit compatibility defaults for checkpoints predating velocity supervision.
+    velocity_weight = _finite_number(
+        raw.get("ball_velocity_weight", 0.0), path="loss.ball_velocity_weight"
+    )
+    velocity_scale = _finite_number(
+        raw.get("ball_velocity_scale_mps", 1.0), path="loss.ball_velocity_scale_mps"
+    )
+    if velocity_weight < 0 or velocity_scale <= 0:
+        raise SemanticConfigurationError(
+            "loss.ball_velocity_weight must be non-negative and loss.ball_velocity_scale_mps must be positive."
+        )
     result = SLCSLossConfig(
         player_position_weight=_finite_number(
             raw["player_position_weight"], path="loss.player_position_weight"
@@ -715,6 +791,8 @@ def _loss(raw: dict[str, object]) -> SLCSLossConfig:
             path="loss.ground_penetration_weight",
         ),
         smoothness_order=cast(int, raw["smoothness_order"]),
+        ball_velocity_weight=velocity_weight,
+        ball_velocity_scale_mps=velocity_scale,
     )
     weights = (
         result.player_position_weight,
@@ -727,6 +805,7 @@ def _loss(raw: dict[str, object]) -> SLCSLossConfig:
         result.player_position_smoothness_weight,
         result.ball_position_smoothness_weight,
         result.ground_penetration_weight,
+        result.ball_velocity_weight,
     )
     if any(weight < 0 for weight in weights):
         raise SemanticConfigurationError("SLCS loss weights must be non-negative.")
@@ -800,12 +879,18 @@ class SLCSEvaluationConfig:
     checkpoint_strict: bool
     checkpoint_weights_only: bool
     output_dir: Path
+    input_mode: str
 
     @classmethod
     def from_config(cls, config: DictConfig) -> SLCSEvaluationConfig:
         raw = _validate_boundary(config, SLCS_EVALUATION_BOUNDARY_SCHEMA)
         resolver = _resolver(raw)
         values = cast(dict[str, object], raw["evaluate"])
+        input_mode = cast(str, values["input_mode"])
+        if input_mode not in INPUT_CONDITIONS:
+            raise SemanticConfigurationError(
+                f"Unknown evaluate.input_mode={input_mode!r}"
+            )
         split = cast(str, values["split"])
         if split not in {"train", "val", "test"}:
             raise SemanticConfigurationError(f"evaluate.split is invalid: {split!r}.")
@@ -834,6 +919,7 @@ class SLCSEvaluationConfig:
                 values["output_dir"],
                 path="evaluate.output_dir",
             ),
+            input_mode,
         )
 
 

@@ -15,7 +15,7 @@ server:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/api_server}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:blcs,generate,api_server,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

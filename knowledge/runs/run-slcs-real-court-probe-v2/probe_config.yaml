@@ -1,0 +1,12 @@
+overrides:
+- clip_ids=[video_000/clip_000]
+- paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party
+- output_dir=tennis_scene/evaluate/court_meiji/probe-v2-validation-geometry
+samples: 3
+margins:
+- 0.1
+- 0.25
+checkpoints:
+- court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
+- court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1/logs/version_0/checkpoints/court-detection-epoch=17.ckpt
+- court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0/checkpoints/court-detection-epoch=05.ckpt

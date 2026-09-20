@@ -5,7 +5,7 @@ Usage:
     python -m src.tasks.court_detection.scripts.materialize_targets data/source=synthetic_court data.source.schema=v2 data/processing=seg_line
 
 Notes:
-    - Hydra loads configuration from ``src/tasks/court_detection/configs/train.yaml``.
+    - Hydra loads configuration from ``src/tasks/court_detection/configs/materialize_targets.yaml``.
     - Outputs are written only below ``data.processing.derived_target_root``;
       neither source dataset is modified.
 """
@@ -37,7 +37,7 @@ register_boundary_validator(_BOUNDARY, _validate_boundary)
 
 @hydra_main(
     config_path="../configs",
-    config_name="train",
+    config_name="materialize_targets",
     version_base="1.3",
     validation_boundary=_BOUNDARY,
 )

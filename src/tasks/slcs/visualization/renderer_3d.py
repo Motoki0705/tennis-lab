@@ -3,7 +3,7 @@
 Renders prediction-vs-pseudo-label comparisons on the standard court:
 players as position markers with yaw arrows, the ball as a trajectory trail.
 Frames are drawn with matplotlib (Agg), converted to RGB arrays and written
-as H.264 video via :func:`src.utils.video.writer.save_video_rgb`.
+as H.264 video via :class:`src.utils.video.writer.VideoWriter`.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ import numpy as np
 from mpl_toolkits.mplot3d.axes3d import Axes3D
 from numpy.typing import NDArray
 
+from src.tasks.slcs.visualization._video import atomic_video_writer
 from src.utils.rendering.court_renderer import CourtRenderer
-from src.utils.video.writer import save_video_rgb
 
 _PLAYER_COLORS = ("tab:blue", "tab:orange")
 _ARROW_LEN_M = 1.2
@@ -131,13 +131,12 @@ class SLCSSceneRenderer:
         """Render the timeline and write an H.264 video; returns the path."""
         if frame_step <= 0:
             raise ValueError(f"frame_step must be positive, got {frame_step}.")
-        frames = [
-            self.render_frame(inputs, t)
-            for t in range(0, inputs.num_frames, frame_step)
-        ]
+        if inputs.num_frames <= 0:
+            raise ValueError("Cannot render an empty scene timeline")
         output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        save_video_rgb(np.stack(frames), output_path, fps=float(fps) / frame_step)
+        with atomic_video_writer(output_path, fps=float(fps) / frame_step) as writer:
+            for t in range(0, inputs.num_frames, frame_step):
+                writer.write_frame(self.render_frame(inputs, t))
         return output_path
 
     def render_frame(self, inputs: SceneRenderInputs, t: int) -> NDArray[np.uint8]:
@@ -145,17 +144,19 @@ class SLCSSceneRenderer:
         if not 0 <= t < inputs.num_frames:
             raise ValueError(f"frame {t} out of range [0, {inputs.num_frames}).")
         fig = plt.figure(figsize=self.figsize, dpi=self.dpi)
-        ax3d = cast(Axes3D, fig.add_subplot(1, 2, 1, projection="3d"))
-        ax2d = fig.add_subplot(1, 2, 2)
-        self._draw_3d(ax3d, inputs, t)
-        self._draw_topdown(ax2d, inputs, t)
-        fig.suptitle(f"SLCS frame {t}")
-        fig.tight_layout()
-        fig.canvas.draw()
-        canvas = cast(Any, fig.canvas)
-        buffer = np.asarray(canvas.buffer_rgba())[..., :3]
-        plt.close(fig)
-        return np.ascontiguousarray(buffer)
+        try:
+            ax3d = cast(Axes3D, fig.add_subplot(1, 2, 1, projection="3d"))
+            ax2d = fig.add_subplot(1, 2, 2)
+            self._draw_3d(ax3d, inputs, t)
+            self._draw_topdown(ax2d, inputs, t)
+            fig.suptitle(f"SLCS frame {t}")
+            fig.tight_layout()
+            fig.canvas.draw()
+            canvas = cast(Any, fig.canvas)
+            buffer = np.asarray(canvas.buffer_rgba())[..., :3]
+            return np.ascontiguousarray(buffer)
+        finally:
+            plt.close(fig)
 
     # ------------------------------------------------------------------
 

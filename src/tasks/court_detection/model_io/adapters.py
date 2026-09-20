@@ -328,10 +328,26 @@ class CourtModelIOAdapter(nn.Module):
         self.validate_logits(logits)
         return MappingProxyType(dict(logits))
 
-    def prepare_images(self, images: Tensor) -> CourtModelCall:
-        return self._prepare_execution(
+    def prepare_images(
+        self, images: Tensor, *, content_size_hw: Tensor | None = None
+    ) -> CourtModelCall:
+        call = self._prepare_execution(
             _prepare_image_call(images, in_channels=self.spec.in_channels)
         )
+        if content_size_hw is not None:
+            image_size = torch.tensor(
+                [[call.height, call.width]], device=images.device
+            ).expand(call.batch_size, -1)
+            content_size = self._validate_content_size(
+                content_size_hw, image_size=image_size, call=call
+            )
+            boundary = self.execution_boundary
+            if (
+                isinstance(boundary, CourtDINOv3ExecutionBoundary)
+                and boundary.patch_valid_mask_required
+            ):
+                call = boundary.attach_patch_valid_mask(call, content_size)
+        return call
 
     def _prepare_batch_model_call(
         self,
@@ -620,11 +636,14 @@ class CourtModelIOAdapter(nn.Module):
             raise CourtModelIOError(f"Court bundle has no {kind!r} head.")
         self._validate_one_logits(kind, logits, spec.output_channels)
         if kind == "kp":
-            return decode_court_keypoint_logits(
-                logits,
-                original_size_hw=original_size_hw,
-                subpixel_refine=subpixel_refine,
-                config=CourtKeypointDecoderConfig(max_peaks=max_peaks),
+            return cast(
+                CourtDecodedPrediction,
+                decode_court_keypoint_logits(
+                    logits,
+                    original_size_hw=original_size_hw,
+                    subpixel_refine=subpixel_refine,
+                    config=CourtKeypointDecoderConfig(max_peaks=max_peaks),
+                ),
             )
         if kind in {"seg", "semantic_line"}:
             return CourtSegmentationPrediction(
