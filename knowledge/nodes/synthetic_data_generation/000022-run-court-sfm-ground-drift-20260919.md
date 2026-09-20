@@ -1,6 +1,9 @@
 ---
 id: run-court-sfm-ground-drift-20260919
 type: run
+task: synthetic_data_generation
+sequence: 22
+recorded_at: '2026-09-19'
 title: B00のSfM観測区間による地面高さ不整合の診断
 provider: codex
 date: '2026-09-19'

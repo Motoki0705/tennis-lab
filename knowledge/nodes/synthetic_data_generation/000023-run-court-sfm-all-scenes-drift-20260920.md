@@ -1,6 +1,9 @@
 ---
 id: run-court-sfm-all-scenes-drift-20260920
 type: run
+task: synthetic_data_generation
+sequence: 23
+recorded_at: '2026-09-20'
 title: B00〜B03の共通条件によるSfM地面高さ不整合の診断
 provider: codex
 date: '2026-09-20'
