@@ -1,4 +1,4 @@
-<!-- knowledge-review: 476441d40cd9f63e4cb64b687fa47a856780c9bcc0fbd405853e2fa13554853c on 2026-09-21 -->
+<!-- knowledge-review: 700516cce62eeeea3725e6e4c73fc8deb0401e26e514ebded775023645f5f735 on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-21（KP＋LINE下流移行の追加確認）
