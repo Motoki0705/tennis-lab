@@ -11,14 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from kg_lib import Node, dump_frontmatter, load_nodes, nodes_dir
-
-TASK_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+from kg_schema import ID_RE, TASK_RE
 
 
 def check_identity(meta: dict[str, Any]) -> None:
     if not TASK_RE.fullmatch(str(meta.get("task", ""))):
         raise ValueError("task is required: lowercase letters, digits and underscores")
-    if not re.fullmatch(r"(?:run|group)-[a-z0-9]+(?:-[a-z0-9]+)*", str(meta.get("id", ""))):
+    if not ID_RE.fullmatch(str(meta.get("id", ""))):
         raise ValueError("id must be run-<slug> or group-<slug> (lowercase kebab-case)")
     if not str(meta["id"]).startswith(f"{meta.get('type')}-"):
         raise ValueError("id prefix must match type")
@@ -55,6 +54,8 @@ def validate_counters(nodes: list[Node]) -> list[str]:
     for directory in sorted(nodes_dir().glob("*")):
         if not directory.is_dir():
             continue
+        if not TASK_RE.fullmatch(directory.name):
+            errors.append(f"{directory}: invalid task directory")
         try:
             counter = read_counter(directory)
             maximum = max((n.meta["sequence"] for n in nodes if n.meta.get("task") == directory.name and type(n.meta.get("sequence")) is int), default=0)

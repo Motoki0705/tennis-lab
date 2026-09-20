@@ -24,6 +24,7 @@ import re
 from pathlib import Path
 
 from kg_lib import dump_frontmatter, portable_path, queue_dir
+from kg_schema import PROVIDERS, iso_date
 from kg_storage import save_node
 
 QUEUE_DIR = queue_dir()
@@ -83,10 +84,14 @@ def main() -> int:
     p.add_argument("--papers", nargs="*", default=[])
     p.add_argument("--id", help="node id (default: run-<name>)")
     p.add_argument("--issue", type=int)
-    p.add_argument("--provider", default="claude")
+    p.add_argument("--provider", choices=sorted(PROVIDERS))
     p.add_argument("--write", action="store_true", help="write to knowledge/nodes/ (else print)")
     p.add_argument("--force", action="store_true")
     args = p.parse_args()
+    if args.date and not iso_date(args.date):
+        p.error("date must be YYYY-MM-DD")
+    if args.issue is not None and args.issue <= 0:
+        p.error("issue must be positive")
 
     job, log = args.job, args.log
     if args.name and not (job and log):
