@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "pages": 7,
+  "pages": 8,
   "supplied_images": 4,
   "scene_overlays": 12,
   "overlays_per_scene": 3,
@@ -340,30 +340,98 @@
       }
     }
   },
-  "confidence_homography": {
+  "hybrid_homography": {
     "local01": {
       "status": "ok",
-      "inlier_count": 5,
-      "inlier_rms_px": 0.3283226979442124,
-      "threshold_px": 6.010176786085415
+      "inlier_count": 7,
+      "inlier_rms_px": 2.8011545122996884,
+      "threshold_px": 6.010176786085415,
+      "candidate_count": 196,
+      "refined_count": 4,
+      "alternative_score_gap": null,
+      "stage_line_support": {
+        "kp_only": {
+          "forward_support": 0.7388888888888889,
+          "reverse_support": 0.817865139998706
+        },
+        "line_selection": {
+          "forward_support": 0.9444444444444444,
+          "reverse_support": 0.9787636378835405
+        },
+        "hybrid": {
+          "forward_support": 0.9944444444444444,
+          "reverse_support": 0.9976540633167259
+        }
+      }
     },
     "local02": {
       "status": "ok",
-      "inlier_count": 7,
-      "inlier_rms_px": 1.5849813951287364,
-      "threshold_px": 3.9920045090154894
+      "inlier_count": 5,
+      "inlier_rms_px": 1.8072494271897122,
+      "threshold_px": 3.9920045090154894,
+      "candidate_count": 294,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "stage_line_support": {
+        "kp_only": {
+          "forward_support": 0.6194444444444444,
+          "reverse_support": 0.800782611107293
+        },
+        "line_selection": {
+          "forward_support": 0.8694444444444444,
+          "reverse_support": 0.9992853335538711
+        },
+        "hybrid": {
+          "forward_support": 0.838888888888889,
+          "reverse_support": 1.0
+        }
+      }
     },
     "local03": {
       "status": "ok",
-      "inlier_count": 5,
-      "inlier_rms_px": 0.7186675713221305,
-      "threshold_px": 3.2879857055650348
+      "inlier_count": 4,
+      "inlier_rms_px": 1.7165360994212104,
+      "threshold_px": 3.2879857055650348,
+      "candidate_count": 164,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "stage_line_support": {
+        "kp_only": {
+          "forward_support": 0.5333333333333333,
+          "reverse_support": 0.8614379694587647
+        },
+        "line_selection": {
+          "forward_support": 0.5416666666666666,
+          "reverse_support": 0.7518971234152577
+        },
+        "hybrid": {
+          "forward_support": 0.6611111111111111,
+          "reverse_support": 0.9859449408897196
+        }
+      }
     },
     "local04": {
       "status": "ok",
-      "inlier_count": 7,
-      "inlier_rms_px": 0.7849532630997869,
-      "threshold_px": 4.074272941274308
+      "inlier_count": 8,
+      "inlier_rms_px": 1.4580331514442113,
+      "threshold_px": 4.074272941274308,
+      "candidate_count": 484,
+      "refined_count": 6,
+      "alternative_score_gap": null,
+      "stage_line_support": {
+        "kp_only": {
+          "forward_support": 0.9055555555555556,
+          "reverse_support": 0.9157911779012733
+        },
+        "line_selection": {
+          "forward_support": 0.9888888888888889,
+          "reverse_support": 0.9662383822972512
+        },
+        "hybrid": {
+          "forward_support": 0.9944444444444444,
+          "reverse_support": 0.9676456803084574
+        }
+      }
     }
   },
   "corpus_images_audited": 17256,
@@ -376,6 +444,6 @@
   ],
   "baseline_control_error_px": 1.42276633028083,
   "max_scene_label_reprojection_difference_px": 1.7826096154749393e-10,
-  "pdf_sha256": "2a3640ed0bdaf76d80cde0af441b8502264b4659ab84babf15b79e6e19c4a473",
+  "pdf_sha256": "5c5fa2ef24ceef1283b8a5045338ee8b9cb3535f66936e061db8171217566884",
   "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth."
 }

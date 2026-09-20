@@ -108,5 +108,49 @@
     "skip_reason": "existing CUDA bf16 pose regression unavailable in validator environment",
     "findings": []
   },
-  "post_review_record_clarification": "Corrected the broad gpu_used flag to account for the existing CUDA unit test in parent validation; reviewed code, PDF and evidence arrays unchanged."
+  "post_review_record_clarification": "Corrected the broad gpu_used flag to account for the existing CUDA unit test in parent validation; reviewed code, PDF and evidence arrays unchanged.",
+  "latest_validation": "hybrid_validation",
+  "legacy_summary_scope": "Top-level legacy test/GPU summaries describe the preceding PROSAC revision; hybrid_validation is the current KP+LINE revision.",
+  "hybrid_validation": {
+    "base_commit": "6a92921d77593abe3dba60df2be3756e339e7885",
+    "pytest_command": "CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/geometry paper/court_robustness/test_artifacts.py",
+    "passed": 96,
+    "skipped": 1,
+    "skip_reason": "Existing CUDA bf16 pose regression; CUDA deliberately hidden for this CPU postprocessing revision.",
+    "ruff": "19 files check/format passed",
+    "mypy": "4 changed geometry/API/test files passed with repository --follow-imports=skip policy",
+    "offline_artifact_verifier": "passed; 8-page PDF, all inference hashes, derived H/table/figures, RANSAC/projection and all-four-scene SfM evidence",
+    "pdf_pages_visually_inspected": [
+      3,
+      4,
+      6,
+      7,
+      8
+    ],
+    "hard_kp_exclusion": "Selected-only residual test remains bit-identical after rejected KP coordinates become NaN and rejected scores become extreme; all fitted sets are bounded and geometrically/LINE gated.",
+    "kp_used_A_B_C_D": [
+      7,
+      5,
+      4,
+      8
+    ],
+    "additional_training": false,
+    "neural_reinference": false,
+    "gpu_used": false,
+    "original_prediction_npz_and_inference_hash_records": "unchanged from base commit",
+    "knowledge_validate": {
+      "nodes": 206,
+      "errors": 0,
+      "advisory_warnings": 47
+    },
+    "additional_validator_runs": 0,
+    "validator_scope": "The previously requested single round was completed for the PROSAC revision. No additional evaluation was requested for the hybrid changes; the earlier PASS does not cover them.",
+    "limitations": [
+      "No human GT on the four photographs; LINE support is internal agreement, not accuracy.",
+      "Four synthetic scenes do not establish held-out-scene generalization.",
+      "Binary LINE ambiguity and mutually wrong KP/LINE remain; LINE-only initialization is not implemented.",
+      "Historical checkpoint SHA mismatch remains documented; this revision uses the original immutable predictions."
+    ],
+    "pdf_build": "Final 8-page LuaLaTeX build and current artifact verifier passed after one transient LuaLaTeX SIGSEGV; source/figure/PDF hashes are bound by the successful build receipt."
+  }
 }

@@ -5,10 +5,9 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from common import ROOT, sha256, sources, write_json
-from homography_evidence import read_results
+from homography_evidence import EDGES, read_results
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-EDGES = [(0, 1), (2, 3), (0, 2), (1, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13)]
 FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
 
 
@@ -114,6 +113,19 @@ def external_panels(
         ),
         "ours_heat": heatmap(o["line_probability"], image.size),
     }
+    for stage in ("kp_only", "line_selection"):
+        value = homography["stages"].get(stage)
+        panels[f"ours_{stage}"] = overlay(
+            image,
+            np.asarray(value["aligned_kp"])
+            if value is not None
+            else np.full((14, 2), np.nan),
+            (0, 225, 195),
+            o["raw_kp"],
+            np.asarray(value["selected"])
+            if value is not None
+            else np.zeros(14, dtype=bool),
+        )
     # This is a direct LINE output overlay, not a fitted regulation template.
     resized_line = cv2.resize(o["line_probability"], image.size)
     line_image = np.asarray(image).copy()
