@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
-from src.synthetic_data_generation.appearance.contracts import VariantConfig
+from src.synthetic_data_generation.appearance.configuration import (
+    AppearanceRuntimeConfig,
+)
 from src.synthetic_data_generation.appearance.generation import (
     next_request,
     record_result,
@@ -17,70 +18,69 @@ from src.utils.hydra import hydra_main
 
 
 @hydra_main(
-    config_path="../configs", config_name="run_appearance_variant", version_base="1.3"
+    config_path="../configs",
+    config_name="run_appearance_variant",
+    version_base="1.3",
+    validation_boundary="synthetic.appearance_variant",
 )
 def main(config: DictConfig) -> None:
-    action = str(config.action)
+    runtime = AppearanceRuntimeConfig.from_config(config)
+    action = runtime.action
     if action == "report":
         from src.synthetic_data_generation.appearance.reporting import (
             compare_training_runs,
         )
 
         output = compare_training_runs(
-            [Path(str(root)) for root in config.report.roots],
-            Path(str(config.report.output_root)),
+            runtime.report.roots,
+            runtime.report.output_root,
         )
     elif action == "compare_models":
         from src.synthetic_data_generation.appearance.comparison import compare_models
 
-        variant = VariantConfig.model_validate(
-            OmegaConf.to_container(config.variant, resolve=True)
-        )
+        variant = runtime.variant
         output = compare_models(
             variant,
-            Path(str(config.comparison.output_root)),
-            Path(str(config.comparison.reference)),
-            int(config.comparison.target_index),
-            retry_failed_request=bool(config.api_retry),
+            runtime.comparison.output_root,
+            runtime.comparison.reference,
+            runtime.comparison.target_index,
+            retry_failed_request=runtime.api_retry,
         )
     elif action == "derive":
         from src.synthetic_data_generation.appearance.derived import derive_variant
 
         output = derive_variant(
-            Path(str(config.derive.parent_root)),
-            Path(str(config.variant.output_root)),
-            scene_id=str(config.variant.scene_id),
-            sample_count=int(config.variant.sample_count),
-            max_steps=int(config.variant.max_steps),
+            runtime.derive.parent_root,
+            runtime.variant.output_root,
+            scene_id=runtime.variant.scene_id,
+            sample_count=runtime.variant.sample_count,
+            max_steps=runtime.variant.max_steps,
         )
     elif action == "prepare":
-        variant = VariantConfig.model_validate(
-            OmegaConf.to_container(config.variant, resolve=True)
-        )
+        variant = runtime.variant
         output = prepare(variant).model_dump(mode="json")
     else:
-        root = Path(str(config.variant.output_root)).resolve()
+        root = runtime.variant.output_root.resolve()
         if action == "configure_api_key":
             from src.synthetic_data_generation.appearance.workspace import (
                 configure_api_key_file,
             )
 
-            configure_api_key_file(root, Path(str(config.variant.api.api_key_file)))
+            assert runtime.variant.api is not None
+            configure_api_key_file(root, runtime.variant.api.api_key_file)
             output = {
                 "status": "configured",
-                "api_key_file": str(config.variant.api.api_key_file),
+                "api_key_file": str(runtime.variant.api.api_key_file),
             }
         elif action == "generate_batch":
             from src.synthetic_data_generation.appearance.batch import generate_batch
 
             output = generate_batch(
                 root,
-                concurrency=int(config.batch.concurrency),
-                start_interval_seconds=float(config.batch.start_interval_seconds),
-                indices=list(config.batch.indices)
-                if config.batch.indices is not None
-                else None,
-                retry_failed_request=bool(config.api_retry),
+                concurrency=runtime.batch.concurrency,
+                start_interval_seconds=runtime.batch.start_interval_seconds,
+                indices=runtime.batch.indices,
+                retry_failed_request=runtime.api_retry,
             )
         elif action in {"check_api", "generate"}:
             from src.synthetic_data_generation.appearance.openai_api import (
@@ -91,7 +91,7 @@ def main(config: DictConfig) -> None:
             output = (
                 check_api_setup(root)
                 if action == "check_api"
-                else generate_next(root, retry_failed_request=bool(config.api_retry))
+                else generate_next(root, retry_failed_request=runtime.api_retry)
             )
         elif action == "next_request":
             request = next_request(root)
@@ -110,16 +110,15 @@ def main(config: DictConfig) -> None:
                 else {"request": None, "status": load_manifest(root).status}
             )
         elif action == "record_result":
-            if config.result.accepted is None or config.result.path is None:
-                raise ValueError(
-                    "result.path and explicit result.accepted are required"
-                )
+            assert runtime.result.accepted is not None
+            assert runtime.result.path is not None
+            assert runtime.result.request_id is not None
             output = record_result(
                 root,
-                str(config.result.request_id),
-                Path(str(config.result.path)),
-                accepted=bool(config.result.accepted),
-                review_notes=str(config.result.notes),
+                runtime.result.request_id,
+                runtime.result.path,
+                accepted=runtime.result.accepted,
+                review_notes=runtime.result.notes,
             ).model_dump(mode="json")
         elif action in {"finalize", "train", "execute_training"}:
             from src.synthetic_data_generation.appearance.nht import (
@@ -131,9 +130,7 @@ def main(config: DictConfig) -> None:
             if action == "finalize":
                 output = finalize(root)
             elif action == "train":
-                output = enqueue_training(
-                    root, retry_failed_job=bool(config.training_retry)
-                )
+                output = enqueue_training(root, retry_failed_job=runtime.training_retry)
             else:
                 output = execute_training(root)
         else:

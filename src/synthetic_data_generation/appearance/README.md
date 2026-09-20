@@ -212,6 +212,8 @@ NHT_SOURCE_WORKSPACE=/home/kamimura/projects/tennis-lab/data/synthetic_data_gene
 ```
 
 API単体テストはHTTPを置き換え、入力順序・モデル固定・秘密値の非出力・再開・失敗処理を検証する。
+CLIは`synthetic.appearance_variant`の共通Hydra検証境界に登録し、action・全設定section・
+絶対パスを副作用の前に型検証する。Python実行環境のsymlinkは解決せず、そのvenvを維持する。
 実データのCPU統合テストは、NHTの公開取込CLIから50枚のみのParser読み込みまで通し、
 元の全491カメラで計算した正規化・scene scaleと42/8分割の一致を検証する。
 API呼び出しとGPU学習は通常のテストでは実行しない。

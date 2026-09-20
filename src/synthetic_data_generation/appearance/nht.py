@@ -12,6 +12,8 @@ from typing import Any
 
 import yaml
 
+from src.utils.paths import PROJECT_ROOT
+
 from .contracts import Manifest
 from .validation import validate_ready
 from .workspace import load_manifest, save_manifest, sha256, variant_lock, write_json
@@ -108,14 +110,10 @@ def finalize(root: Path) -> dict[str, Any]:
         return {"status": manifest.status, "workspace": str(workspace)}
 
 
-def _repository_root() -> Path:
-    return Path(__file__).resolve().parents[3]
-
-
 def save_code_provenance(root: Path, nht_root: Path) -> None:
     """Snapshot all three editable repositories, including untracked source files."""
     repositories = {
-        "tennis-lab": _repository_root(),
+        "tennis-lab": PROJECT_ROOT,
         "nht": nht_root,
         "gsplat": nht_root / "gsplat",
     }
@@ -216,7 +214,7 @@ def enqueue_training(root: Path, *, retry_failed_job: bool = False) -> dict[str,
         if not session:
             raise ValueError("CODEX_THREAD_ID is required for queue attribution")
         save_code_provenance(root, manifest.config.nht_source_root)
-        repository = _repository_root()
+        repository = PROJECT_ROOT
         common_git = Path(
             subprocess.check_output(
                 ["git", "rev-parse", "--git-common-dir"], cwd=repository, text=True
@@ -280,7 +278,7 @@ def _start_worker(root: Path, record: dict[str, Any]) -> None:
     )
     worker = subprocess.run(
         ["bash", str(script), "start"],
-        cwd=_repository_root(),
+        cwd=PROJECT_ROOT,
         env=dict(os.environ, TRAINING_QUEUE_DIR=str(queue_dir)),
         check=False,
         capture_output=True,

@@ -1,4 +1,17 @@
 import { test, expect } from "@playwright/test";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const nodeRoot = fileURLToPath(new URL("../../../nodes/", import.meta.url));
+const pageSize = 30;
+const nodeCount = (task: string) =>
+  readdirSync(join(nodeRoot, task)).filter((name) =>
+    /^\d{6}-(run|group)-.+\.md$/.test(name),
+  ).length;
+const totalNodes = readdirSync(nodeRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .reduce((total, entry) => total + nodeCount(entry.name), 0);
 
 test("browse, compare, follow research, and read PDF", async ({
   page,
@@ -55,15 +68,23 @@ test("browse, compare, follow research, and read PDF", async ({
 });
 
 test("filters, pagination, graph and mobile layout", async ({ page }) => {
+  const syntheticNodes = nodeCount("synthetic_data_generation");
+  expect(totalNodes).toBeGreaterThan(pageSize);
   await page.goto("/");
-  await expect(page.locator(".experiment-row")).toHaveCount(30);
+  await expect(page.locator(".experiment-row")).toHaveCount(pageSize);
   await page.getByRole("button", { name: "次へ", exact: true }).click();
-  await expect(page.locator(".pagination")).toContainText("2 / 7");
+  await expect(page.locator(".pagination")).toContainText(
+    `2 / ${Math.ceil(totalNodes / pageSize)}`,
+  );
   await page
     .getByRole("button", { name: /^synthetic data generation/ })
     .click();
-  await expect(page.locator(".experiment-row")).toHaveCount(11);
-  await expect(page.locator(".pagination")).toContainText("1 / 1");
+  await expect(page.locator(".experiment-row")).toHaveCount(
+    Math.min(syntheticNodes, pageSize),
+  );
+  await expect(page.locator(".pagination")).toContainText(
+    `1 / ${Math.max(1, Math.ceil(syntheticNodes / pageSize))}`,
+  );
   await page.getByRole("button", { name: "知識グラフ", exact: true }).click();
   await expect(page.locator(".react-flow")).toBeVisible();
   await page.getByLabel("比較・確認などの関連線を表示").check();
