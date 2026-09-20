@@ -131,3 +131,24 @@ def test_migration_preserves_metadata_and_rebases_links(tmp_path: Path, monkeypa
     assert "nodes/plcs/000001-run-plcs-2.md" in (tmp_path / "knowledge/summary.md").read_text()
     assert snapshot.read_text() == "historical nodes/run-plcs-1.md"
     assert migration.migrate(True, {}) == {}
+
+
+def test_highest_sequence_is_never_reused_after_deletion(tmp_path: Path) -> None:
+    create(tmp_path, "run-one")
+    create(tmp_path, "run-two")
+    directory = tmp_path / "nodes/new_topic"
+    (directory / "000002-run-two.md").unlink()
+    create(tmp_path, "run-three")
+    assert (directory / "000003-run-three.md").is_file()
+    for node in directory.glob("*.md"):
+        node.unlink()
+    create(tmp_path, "run-four")
+    assert (directory / "000004-run-four.md").is_file()
+    (directory / ".sequence").write_text("2\n")
+    result = command(tmp_path, "kg_validate.py", check=False)
+    assert "below existing node" in result.stdout
+    with pytest.raises(subprocess.CalledProcessError):
+        create(tmp_path, "run-five")
+    (directory / ".sequence").unlink()
+    result = command(tmp_path, "kg_validate.py", check=False)
+    assert "missing .sequence" in result.stdout

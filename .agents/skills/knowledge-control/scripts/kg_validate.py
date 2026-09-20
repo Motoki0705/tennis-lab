@@ -15,6 +15,7 @@ import argparse
 
 from kg_lib import load_nodes, nodes_dir, validate
 from kg_papers import validate_papers
+from kg_storage import validate_counters
 from kg_summary import check_summary
 
 
@@ -30,6 +31,7 @@ def main() -> int:
         return 1
 
     res = validate(nodes)
+    res.errors.extend(validate_counters(nodes))
     papers = validate_papers(nodes)
     res.errors.extend(papers.errors)
     if args.check_summary:

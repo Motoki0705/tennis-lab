@@ -34,7 +34,7 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
         Object.fromEntries(
           Object.entries(EMPTY_FILTERS).map(([key, value]) => [
             key,
-            params.get(key) ?? value,
+            params.get(key === "paper" ? "paperFilter" : key) ?? value,
           ]),
         ) as unknown as Filters,
       );
@@ -59,7 +59,7 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value && value !== EMPTY_FILTERS[key as keyof Filters])
-        params.set(key, value);
+        params.set(key === "paper" ? "paperFilter" : key, value);
     });
     params.set("view", view);
     if (selected) params.set("node", selected);

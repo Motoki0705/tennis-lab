@@ -10,7 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from kg_lib import dump_frontmatter, load_nodes, nodes_dir
+from kg_lib import Node, dump_frontmatter, load_nodes, nodes_dir
 
 TASK_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
@@ -37,6 +37,34 @@ def registration_lock() -> Iterator[None]:
         os.close(fd)
 
 
+def read_counter(directory: Path) -> int:
+    """The allocator state survives node deletion; never reconstruct it silently."""
+    if not directory.exists():
+        return 0
+    path = directory / ".sequence"
+    if not path.is_file():
+        raise ValueError(f"{directory.name}: missing .sequence allocator state")
+    raw = path.read_text().strip()
+    if not re.fullmatch(r"[1-9][0-9]{0,5}", raw):
+        raise ValueError(f"{directory.name}: invalid .sequence allocator state")
+    return int(raw)
+
+
+def validate_counters(nodes: list[Node]) -> list[str]:
+    errors = []
+    for directory in sorted(nodes_dir().glob("*")):
+        if not directory.is_dir():
+            continue
+        try:
+            counter = read_counter(directory)
+            maximum = max((n.meta["sequence"] for n in nodes if n.meta.get("task") == directory.name and type(n.meta.get("sequence")) is int), default=0)
+            if counter < maximum:
+                errors.append(f"{directory.name}: .sequence {counter} is below existing node {maximum}")
+        except ValueError as exc:
+            errors.append(str(exc))
+    return errors
+
+
 def prepare_node(meta: dict[str, Any], force: bool = False) -> Path:
     """Called under registration_lock; force preserves identity and sequence."""
     check_identity(meta)
@@ -51,12 +79,23 @@ def prepare_node(meta: dict[str, Any], force: bool = False) -> Path:
         meta["sequence"] = old.meta["sequence"]
         meta["recorded_at"] = old.meta["recorded_at"]
         return old.path
-    meta["sequence"] = 1 + max((n.meta["sequence"] for n in nodes if n.meta["task"] == meta["task"]), default=0)
+    directory = nodes_dir() / meta["task"]
+    counter = read_counter(directory)
+    maximum = max((n.meta["sequence"] for n in nodes if n.meta["task"] == meta["task"]), default=0)
+    if counter < maximum:
+        raise ValueError(f"{meta['task']}: .sequence is below existing nodes; reconcile allocator state")
+    meta["sequence"] = counter + 1
     meta["recorded_at"] = date.today().isoformat()
     meta.setdefault("papers", [])
     if meta["sequence"] > 999999:
         raise ValueError("task sequence exhausted")
-    return nodes_dir() / meta["task"] / f"{meta['sequence']:06d}-{meta['id']}.md"
+    # Reserve before writing the node. An interrupted write leaves a gap, never
+    # a reused number. This state is git-managed along with the new node.
+    directory.mkdir(parents=True, exist_ok=True)
+    temporary = directory / ".sequence.tmp"
+    temporary.write_text(f"{meta['sequence']}\n")
+    temporary.replace(directory / ".sequence")
+    return directory / f"{meta['sequence']:06d}-{meta['id']}.md"
 
 
 def write_node(path: Path, meta: dict[str, Any], body: str) -> None:

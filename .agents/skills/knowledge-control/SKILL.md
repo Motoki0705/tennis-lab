@@ -39,7 +39,8 @@ comparison, papers with backlinks, and the cross-task summary.
    ```
 
    The script reports the allocated filename and retains `knowledge/runs/<id>/`
-   for the repro bundle and saved predictions. It accepts `--repro-dir` for an
+   for the repro bundle and saved predictions. Commit the task's `.sequence`
+   allocator state together with the node; keep it after deleting nodes. It accepts `--repro-dir` for an
    explicit staging directory. In a worktree, locate the shared training queue in
    the main checkout (or set `TRAINING_QUEUE_DIR`); do not create another queue.
    Use `--papers <paper-id> ...` to attach already registered research.
