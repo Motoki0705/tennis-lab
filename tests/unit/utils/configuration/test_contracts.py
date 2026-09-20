@@ -206,6 +206,31 @@ def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None
         assert boundary.path_role_authorities
 
 
+def test_slcs_review_declares_its_required_read_only_dataset_root() -> None:
+    boundary = next(
+        item
+        for item in BOUNDARY_CONTRACTS
+        if item.boundary_id == "src.tasks.slcs.scripts.review_dataset:main"
+    )
+    assert boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+    contract = next(
+        item
+        for item in ADAPTER_CONTRACTS
+        if item.adapter_symbol == "src.tasks.slcs.scripts.review_dataset.PATH_BOUNDARY"
+    )
+    assert len(contract.fields) == 1
+    field = contract.fields[0]
+    assert field.path.endswith(".data_root")
+    assert field.required
+    assert {
+        "path-role:data",
+        "path-direction:input",
+        "must-exist-before-side-effects",
+    } <= set(field.value_constraints)
+
+
 def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
     compaction_boundary = next(
         contract

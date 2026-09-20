@@ -335,6 +335,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "blcs.dataset_scene_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.slcs.scripts.review_dataset": (
+        "slcs.dataset_scene_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.plcs.scripts.serve_inference_ui": (
         "plcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -431,6 +435,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "src.tasks.blcs.scripts.review_dataset",
         "main",
         domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.slcs.scripts.review_dataset",
+        "main",
+        domain="slcs",
         executable_module=True,
     ),
     _non_hydra_boundary(

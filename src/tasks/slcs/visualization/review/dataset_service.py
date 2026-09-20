@@ -22,19 +22,15 @@ from src.tennis_scene.generate_dataset.manifest import (
     DatasetClipRecord,
     validate_id_component,
 )
-from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 def default_data_config(dataset_root: Path) -> SLCSDataConfig:
     """Read the training data defaults from their sole configuration source."""
-    path = Path(__file__).parents[2] / "configs" / "data" / "default.yaml"
-    raw = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
-    if not isinstance(raw, dict):
-        raise ValueError(f"{path}: expected a data configuration object.")
-    validated = SLCS_DATA_SCHEMA.validate(cast(dict[str, object], raw))
     roots = RuntimePathRoots(
-        project_root=dataset_root.parent,
+        project_root=PROJECT_ROOT,
         data_root=dataset_root,
         checkpoint_root=dataset_root,
         artifact_root=dataset_root,
@@ -42,9 +38,15 @@ def default_data_config(dataset_root: Path) -> SLCSDataConfig:
         cache_root=dataset_root,
         external_asset_root=dataset_root,
     )
-    return SLCSDataRuntimeConfig.from_mapping(
-        dict(validated), PathResolver(roots)
-    ).pipeline
+    resolver = PathResolver(roots)
+    path = resolver.resolve(
+        PathRole.PROJECT, "src/tasks/slcs/configs/data/default.yaml"
+    )
+    raw = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path}: expected a data configuration object.")
+    validated = SLCS_DATA_SCHEMA.validate(cast(dict[str, object], raw))
+    return SLCSDataRuntimeConfig.from_mapping(dict(validated), resolver).pipeline
 
 
 class SLCSDatasetReviewService:
