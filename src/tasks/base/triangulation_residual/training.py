@@ -24,6 +24,7 @@ from src.tasks.base.triangulation_residual.contracts import (
     validate_model_inputs,
 )
 from src.tasks.base.triangulation_residual.data import ResidualDataModule
+from src.tasks.base.triangulation_residual.diagnostics import prediction_diagnostics
 from src.tasks.base.triangulation_residual.losses import (
     masked_mean,
     metric_arrays,
@@ -64,6 +65,7 @@ class ResidualLightningModule(BaseLightningModule):
             self.residual_config.task, self.residual_config.model
         )
         self.phase_statistics: dict[str, dict[str, tuple[Tensor, Tensor]]] = {}
+        self.validation_predictions: dict[str, list[np.ndarray]] = {}
         self.last_test_metrics: dict[str, float] = {}
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
@@ -107,7 +109,11 @@ class ResidualLightningModule(BaseLightningModule):
             batch["features"], batch["view_valid"], batch["time_positions"]
         )
         loss, parts, world = residual_loss(
-            output, batch, self.residual_config.loss, self.residual_config.task
+            output,
+            batch,
+            self.residual_config.loss,
+            self.residual_config.task,
+            v2=self.residual_config.v2,
         )
         if not torch.isfinite(loss):
             raise FloatingPointError("Nonfinite residual loss")
@@ -157,9 +163,15 @@ class ResidualLightningModule(BaseLightningModule):
 
     def on_validation_epoch_start(self) -> None:
         self.phase_statistics["val"] = {}
+        self.validation_predictions = {}
 
     def validation_step(self, batch: dict[str, Any], batch_idx: int) -> None:
-        self._step(batch, "val")
+        _, output, world = self._step(batch, "val")
+        payload = self.test_prediction_payload(
+            batch, {"output": output, "world": world}
+        )
+        for key, value in payload.items():
+            self.validation_predictions.setdefault(key, []).append(value)
 
     def _finish_metrics(self, phase: str) -> dict[str, float]:
         metrics = {}
@@ -171,6 +183,29 @@ class ResidualLightningModule(BaseLightningModule):
 
     def on_validation_epoch_end(self) -> None:
         metrics = self._finish_metrics("val")
+        diagnostics = prediction_diagnostics(
+            {
+                key: np.concatenate(values)
+                for key, values in self.validation_predictions.items()
+            },
+            self.residual_config.task,
+        )
+        for key, value in (
+            ("world_median_m", diagnostics["world"]["predicted_m"]["median"]),
+            ("initial_world_median_m", diagnostics["world"]["initial_m"]["median"]),
+            ("improved_fraction", diagnostics["world"]["improved_fraction"]),
+            (
+                "sample_improved_fraction",
+                diagnostics["world"]["sample_improved_fraction"],
+            ),
+        ):
+            self.log(f"val/{key}", float(value))
+        if not self.trainer.sanity_checking:
+            out = self.residual_config.runtime.run.output_dir / "validation_diagnostics"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / f"epoch_{self.current_epoch:03d}.json").write_text(
+                json.dumps(diagnostics, indent=2, allow_nan=False)
+            )
         print(
             f"RESIDUAL_VALIDATION task={self.residual_config.task} epoch={self.current_epoch} "
             f"world_mpjpe_m={metrics['world_mpjpe_m']:.6f} "
@@ -201,11 +236,30 @@ class ResidualLightningModule(BaseLightningModule):
         payload.update(
             {f"pred_{key}": value for key, value in result["output"].items()}
         )
+        for key in (
+            "corruption_family",
+            "num_views",
+            "persistent_fraction",
+            "persistent_mask",
+            "calibration_attempts",
+            "calibration_failed_candidates",
+        ):
+            if key in batch:
+                payload[key] = batch[key]
         return {key: self._to_numpy(value) for key, value in payload.items()}
 
     def on_test_epoch_end(self) -> None:
         self.last_test_metrics = self._finish_metrics("test")
-        self.save_test_predictions(metrics=self.last_test_metrics)
+        diagnostics = prediction_diagnostics(
+            {
+                key: np.concatenate(values)
+                for key, values in self._test_pred_arrays.items()
+            },
+            self.residual_config.task,
+        )
+        self.save_test_predictions(
+            metrics=self.last_test_metrics, diagnostic_metrics=diagnostics
+        )
 
 
 class ResidualTrainingRunner(BaseTrainingRunner):

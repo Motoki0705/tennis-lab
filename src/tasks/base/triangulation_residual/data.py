@@ -84,6 +84,20 @@ class ResidualDataset(Dataset[dict[str, Any]]):
         world = np.asarray(
             scene.world_m[np.minimum(indices, len(scene.world_m) - 1)], dtype=np.float32
         ).copy()
+        if self.config.v2 is not None:
+            from src.tasks.base.triangulation_residual.sampling_v2 import sample_v2
+
+            values_v2 = sample_v2(
+                world,
+                frame_valid,
+                fps,
+                scene.rig,
+                rng,
+                self.config,
+                scene_id=scene.scene_id,
+                split=self.split,
+            )
+            return tensor_sample(values_v2, scene.scene_id)
         maximum = min(len(scene.rig.K), self.config.data.max_views)
         if maximum < self.config.data.min_views:
             raise ValueError(f"{scene.scene_id} has insufficient cameras")
@@ -153,12 +167,16 @@ class ResidualDataset(Dataset[dict[str, Any]]):
             "corruption_rounds": np.array(attempt + 1, np.int64),
             "selected_camera_indices": selected,
         }
-        tensors: dict[str, Any] = {
-            key: torch.from_numpy(np.ascontiguousarray(value))
-            for key, value in values.items()
-        }
-        tensors["scene_id"] = scene.scene_id
-        return tensors
+        return tensor_sample(values, scene.scene_id)
+
+
+def tensor_sample(values: dict[str, Any], scene_id: str) -> dict[str, Any]:
+    tensors: dict[str, Any] = {
+        key: torch.from_numpy(np.ascontiguousarray(value))
+        for key, value in values.items()
+    }
+    tensors["scene_id"] = scene_id
+    return tensors
 
 
 VIEW_FIELDS = frozenset(
@@ -169,6 +187,7 @@ VIEW_FIELDS = frozenset(
         "clean_uv",
         "clean_visible",
         "selected_camera_indices",
+        "persistent_kind",
     }
 )
 
