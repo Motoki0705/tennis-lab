@@ -80,3 +80,19 @@ def test_pipeline_rejects_invalid_reference_declarations_before_loading(
 ) -> None:
     with pytest.raises(SemanticConfigurationError):
         _runtime(overrides)
+
+
+@pytest.mark.parametrize("declaration", ["camera_view_v2", "physical_v1"])
+def test_pipeline_parses_explicit_legacy_input_contract(declaration: str) -> None:
+    overrides = [
+        "court_reference.view_half_turns=[false,false,true]",
+        "court_kp.source=load",
+        "court_kp.load_path=manual.json",
+        f"court_kp.load_keypoint_contract={declaration}",
+    ]
+    if declaration == "physical_v1":
+        with pytest.raises(ValueError, match="must match"):
+            _runtime(overrides)
+    else:
+        runtime = _runtime(overrides)
+        assert runtime.court_kp.load_keypoint_contract == "camera_view_v2"

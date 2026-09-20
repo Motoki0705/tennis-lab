@@ -194,6 +194,7 @@ _COURT_SCHEMA = StrictConfigSchema(
         "mode": ConfigField.of(str),
         "num_keypoints": ConfigField.of(int),
         "subpixel_refine": ConfigField.of(bool),
+        "load_keypoint_contract": ConfigField.of(str, type(None)),
         "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
     },
 )
@@ -472,6 +473,7 @@ class PipelineRuntimeConfig:
             load_path=court_load,
             postprocess=CourtKPPostprocessConfig(**cast("dict[str, Any]", dict(post))),
             output_keypoint_contract=court_contract.selector,
+            load_keypoint_contract=cast(str | None, court["load_keypoint_contract"]),
             resolver=resolver,
         )
 

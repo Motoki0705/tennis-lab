@@ -56,6 +56,7 @@ class CourtKPConfig:
     postprocess: CourtKPPostprocessConfig
     resolver: PathResolver
     output_keypoint_contract: str = "camera_view_v2"
+    load_keypoint_contract: str | None = None
 
     def __post_init__(self) -> None:
         if (self.source == "load") != (self.load_path is not None):
@@ -64,6 +65,15 @@ class CourtKPConfig:
             )
         if self.output_keypoint_contract not in {"physical_v1", "camera_view_v2"}:
             raise ValueError("Unknown downstream court keypoint contract")
+        if self.load_keypoint_contract is not None:
+            if self.source != "load":
+                raise ValueError(
+                    "load_keypoint_contract requires CourtKP source='load'"
+                )
+            if self.load_keypoint_contract != self.output_keypoint_contract:
+                raise ValueError(
+                    "load_keypoint_contract must match court_keypoints.selector"
+                )
 
 
 @dataclass
@@ -344,6 +354,18 @@ class CourtKPModule(BasePipelineModule):
             LOGGER.info(f"Loading CourtKP result from {load_path}")
             result = CourtKPResult.load(load_path)
             saved_contract = (result.diagnostics or {}).get("output_keypoint_contract")
+            if saved_contract is None:
+                saved_contract = self.config.load_keypoint_contract
+                if (
+                    saved_contract is None
+                    and self.config.output_keypoint_contract != "physical_v1"
+                ):
+                    raise ValueError(
+                        "Legacy CourtKP artifact has no keypoint contract. "
+                        "For verified camera-view inputs explicitly set "
+                        "court_kp.load_keypoint_contract=camera_view_v2; "
+                        "physical inputs require court_keypoints.selector=physical_v1."
+                    )
             if (
                 saved_contract is not None
                 and saved_contract != self.config.output_keypoint_contract
@@ -351,6 +373,12 @@ class CourtKPModule(BasePipelineModule):
                 raise ValueError(
                     "Loaded CourtKP artifact keypoint contract does not match runtime court_keypoints.selector"
                 )
+            if self.config.load_keypoint_contract is not None:
+                result.diagnostics = {
+                    **(result.diagnostics or {}),
+                    "output_keypoint_contract": saved_contract,
+                    "load_keypoint_contract_declaration": self.config.load_keypoint_contract,
+                }
             is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
             if not is_valid:
                 raise ValueError(f"Invalid CourtKP result: {errors}")

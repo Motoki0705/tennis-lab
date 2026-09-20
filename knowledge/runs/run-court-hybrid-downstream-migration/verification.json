@@ -31,6 +31,28 @@
     {
       "command": "Colab B01-B03 bash --dry-run (covered by command-level e2e)",
       "status": "passed"
+    },
+    {
+      "command": "pytest -n0 tests/unit/tennis_scene tests/unit/tasks/court_detection/visualization/test_runtime_config.py tests/unit/tasks/court_detection/visualization/inference",
+      "passed": 324,
+      "failed": 0,
+      "note": "After round1 contract and semantic fixes."
+    },
+    {
+      "command": "pytest -n0 tests/unit/tennis_scene/test_pipeline_configuration.py tests/unit/tasks/court_detection/visualization/test_runtime_config.py",
+      "passed": 11,
+      "failed": 0,
+      "note": "Includes explicit legacy-input configuration parsing."
+    },
+    {
+      "command": "pytest -n0 tests/e2e/skills/test_knowledge_control.py tests/e2e/skills/test_knowledge_library.py tests/e2e/skills/test_knowledge_skill_workflow.py",
+      "passed": 40,
+      "failed": 0,
+      "note": "Latest main task-scoped knowledge format."
+    },
+    {
+      "command": "ruff check and mypy --follow-imports=skip on all 42 changed/new source and test Python files",
+      "status": "passed"
     }
   ],
   "known_local_data_failure": {
@@ -55,7 +77,33 @@
   },
   "validation_reviews": {
     "requested": 2,
-    "attempted": 0,
-    "completed": 0
-  }
+    "attempted": 1,
+    "completed": 1,
+    "rounds": [
+      {
+        "round": 1,
+        "reviewed_commit": "70096b47167ec5af9ff5f74f7d305e1d0f2e784e",
+        "rebased_equivalent": "210a7519",
+        "verdict": "CHANGES_REQUIRED",
+        "independent_tests_passed": 51,
+        "findings": [
+          {
+            "id": "V1",
+            "severity": "P2",
+            "disposition": "accepted",
+            "problem": "Missing legacy CourtKP contract was accepted as camera_view_v2",
+            "resolution": "Require a recorded contract or explicit load_keypoint_contract; legacy implicit compatibility limited to physical_v1. Preserve original artifact bytes."
+          },
+          {
+            "id": "V2",
+            "severity": "P2",
+            "disposition": "accepted",
+            "problem": "semantic_line preset inherited curated checkpoint root for an old outputs-relative path",
+            "resolution": "Require explicit semantic checkpoint and document/test paths=default for outputs-root checkpoints."
+          }
+        ]
+      }
+    ]
+  },
+  "rebased_onto": "bdacfc3bfda95a7b22697edf452ad27778051f22"
 }
