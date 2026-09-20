@@ -64,6 +64,9 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 
 ## 推論・評価・解析
 
+保存済みデータセットの疑似ラベルをインタラクティブに確認する場合は、
+[`scripts/review_dataset.py` の利用ガイド](visualization/review/README.md)を参照してください。
+
 ```bash
 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip checkpoint_path=/path/to/model.ckpt
 .venv/bin/python -m src.tasks.slcs.scripts.evaluate checkpoint_path=/path/to/model.ckpt

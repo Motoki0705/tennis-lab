@@ -12,7 +12,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from src.tasks.base.visualization.web_assets import mount_scene_assets
 
 STATIC = Path(__file__).parent / "static"
-ASSETS = ("style.css", "app.js", "scene.mjs")
+ASSETS = ("style.css", "app.js", "scene.mjs", "model.mjs")
 
 
 class SceneReviewService(Protocol):
