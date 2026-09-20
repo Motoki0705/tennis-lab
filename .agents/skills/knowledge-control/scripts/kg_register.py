@@ -10,7 +10,7 @@ name (or an explicit ``--repro-dir``) it:
    the gitignored
    ``.training_queue/`` staging area into git-tracked
    ``knowledge/runs/<run-id>/``.
-2. Scaffolds a run node ``knowledge/nodes/<run-id>.md`` with frontmatter filled
+2. Scaffolds a run node ``knowledge/nodes/<task>/<sequence>-<run-id>.md`` with frontmatter filled
    from ``run.json`` (provider / session / issue / commit / branch / remote /
    command), config from the command overrides, metrics from
    ``predictions/metrics.json`` (or the queue log), and ``artifacts`` pointing at
@@ -21,9 +21,9 @@ run ``kg_validate.py``.
 
 Usage:
     .venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py \
-        i525_asym --issue 525 --provider claude
+        i525_asym --task plcs --issue 525 --provider claude
     .venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py \
-        --repro-dir .training_queue/repro/<jobid> --id run-i525-asym --issue 525
+        --repro-dir .training_queue/repro/<jobid> --task plcs --id run-i525-asym --issue 525
 """
 
 from __future__ import annotations
@@ -35,9 +35,11 @@ import re
 import shutil
 from pathlib import Path
 
-from kg_lib import dump_frontmatter, nodes_dir, repo_root
+from kg_lib import nodes_dir, portable_path, queue_dir, repo_root
+from kg_schema import PROVIDERS, STATUSES, iso_date
+from kg_storage import check_identity, prepare_node, registration_lock, write_node
 
-QUEUE_DIR = repo_root() / ".training_queue"
+QUEUE_DIR = queue_dir()
 OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
 CONFIG_KEYS = ("model", "loss", "data")
 METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
@@ -116,11 +118,19 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("name", nargs="?", help="queue job name (e.g. i525_asym)")
     p.add_argument("--repro-dir", type=Path, help="explicit .training_queue/repro/<jobid>")
+    p.add_argument("--task", required=True)
+    p.add_argument("--papers", nargs="*", default=[])
     p.add_argument("--id", help="node id (default: run-<name>)")
     p.add_argument("--issue", type=int)
-    p.add_argument("--provider")
+    p.add_argument("--provider", choices=sorted(PROVIDERS))
+    p.add_argument("--date", help="actual experiment date; overrides bundle capture date")
+    p.add_argument("--status", choices=sorted(STATUSES), default="done")
     p.add_argument("--force", action="store_true", help="overwrite existing node / bundle")
     args = p.parse_args()
+    if args.date and not iso_date(args.date):
+        p.error("date must be YYYY-MM-DD")
+    if args.issue is not None and args.issue <= 0:
+        p.error("issue must be positive")
 
     repro = args.repro_dir
     if repro is None and args.name:
@@ -134,7 +144,7 @@ def main() -> int:
         run = json.loads(run_json.read_text(encoding="utf-8"))
 
     name = args.name or run.get("name") or repro.name
-    provider = args.provider or run.get("provider") or "claude"
+    provider = args.provider or run.get("provider")
     issue = args.issue
     if issue is None and str(run.get("issue", "")).isdigit():
         issue = int(run["issue"])
@@ -146,72 +156,75 @@ def main() -> int:
     metrics = load_metrics(repro, name)
 
     node_id = args.id or f"run-{name.replace('_', '-')}"
-    # Tie runs/ to the same knowledge base as nodes/ (honors KNOWLEDGE_DIR).
-    run_dir = nodes_dir().parent / "runs" / node_id
-    node_path = nodes_dir() / f"{node_id}.md"
-    if (run_dir.exists() or node_path.exists()) and not args.force:
-        p.error(f"{node_id} already registered (use --force)")
-    run_dir.mkdir(parents=True, exist_ok=True)
+    with registration_lock():
+        # Tie runs/ to the same knowledge base as nodes/ (honors KNOWLEDGE_DIR).
+        run_dir = nodes_dir().parent / "runs" / node_id
+        meta = {"id": node_id, "type": "run", "task": args.task, "papers": args.papers}
+        check_identity(meta)
+        node_path = prepare_node(meta, args.force)
+        if (run_dir.exists() or node_path.exists()) and not args.force:
+            p.error(f"{node_id} already registered (use --force)")
+        run_dir.mkdir(parents=True, exist_ok=True)
 
-    copied: list[str] = []
-    for fn in BUNDLE_FILES:
-        src = repro / fn
-        if src.exists():
-            shutil.copy2(src, run_dir / fn)
-            copied.append(fn)
-    preds = repro / "predictions"
-    for fn in PREDICTION_FILES:
-        src = preds / fn
-        if src.exists():
-            shutil.copy2(src, run_dir / fn)
-            copied.append(fn)
+        copied: list[str] = []
+        for fn in BUNDLE_FILES:
+            src = repro / fn
+            if src.exists():
+                shutil.copy2(src, run_dir / fn)
+                copied.append(fn)
+        preds = repro / "predictions"
+        for fn in PREDICTION_FILES:
+            src = preds / fn
+            if src.exists():
+                shutil.copy2(src, run_dir / fn)
+                copied.append(fn)
 
-    try:
-        rel_run_dir = run_dir.relative_to(repo_root())
-    except ValueError:
-        rel_run_dir = run_dir
-    artifacts: dict[str, str] = {"run_dir": str(rel_run_dir)}
-    if (run_dir / "pred_test.npz").exists():
-        artifacts["predictions"] = str(rel_run_dir / "pred_test.npz")
-    log = find_log(name)
-    if log and log.exists():
-        artifacts["log"] = str(log.relative_to(repo_root()))
-    out_txt = repro / "output_dir.txt"
-    if out_txt.exists():
-        odir = out_txt.read_text(encoding="utf-8").strip()
-        if odir:
-            artifacts["output_dir"] = portable_output_dir(odir, run)
+        try:
+            rel_run_dir = run_dir.relative_to(repo_root())
+        except ValueError:
+            rel_run_dir = run_dir
+        artifacts: dict[str, str] = {"run_dir": str(rel_run_dir)}
+        if (run_dir / "pred_test.npz").exists():
+            artifacts["predictions"] = str(rel_run_dir / "pred_test.npz")
+        log = find_log(name)
+        if log and log.exists():
+            artifacts["log"] = portable_path(log)
+        out_txt = repro / "output_dir.txt"
+        if out_txt.exists():
+            odir = out_txt.read_text(encoding="utf-8").strip()
+            if odir:
+                artifacts["output_dir"] = portable_output_dir(odir, run)
 
-    repro_meta = {k: run[k] for k in ("commit", "branch", "remote") if run.get(k)}
-    if cmd:
-        repro_meta["command"] = cmd
+        repro_meta = {k: run[k] for k in ("commit", "branch", "remote") if run.get(k)}
+        if cmd:
+            repro_meta["command"] = cmd
 
-    meta: dict = {"id": node_id, "type": "run", "title": name}
-    if issue is not None:
-        meta["issue"] = issue
-    meta["provider"] = provider
-    if run.get("session"):
-        meta["session"] = run["session"]
-    date = (run.get("captured_at") or "")[:10]
-    if date:
-        meta["date"] = date
-    meta["status"] = "done"
-    meta["config"] = config
-    meta["metrics"] = metrics
-    if repro_meta:
-        meta["repro"] = repro_meta
-    meta["artifacts"] = artifacts
-    meta["parents"] = []
-    meta["relations"] = []
-    meta["tags"] = []
+        meta["title"] = name
+        if issue is not None:
+            meta["issue"] = issue
+        if provider:
+            meta["provider"] = provider
+        if run.get("session"):
+            meta["session"] = run["session"]
+        date = args.date or (run.get("captured_at") or "")[:10]
+        if date:
+            meta["date"] = date
+        meta["status"] = args.status
+        meta["config"] = config
+        meta["metrics"] = metrics
+        if repro_meta:
+            meta["repro"] = repro_meta
+        meta["artifacts"] = artifacts
+        meta["parents"] = []
+        meta["relations"] = []
+        meta["tags"] = []
 
-    body = (
-        "## 考察 / Findings\n\n"
-        f"<!-- run `{name}` の結果と考察を書く。parents/tags も埋め、"
-        " 主要 metrics は frontmatter と一致させること。 -->\n"
-    )
-    node_path.parent.mkdir(parents=True, exist_ok=True)
-    node_path.write_text(f"---\n{dump_frontmatter(meta)}---\n\n{body}", encoding="utf-8")
+        body = (
+            "## 考察 / Findings\n\n"
+            f"<!-- run `{name}` の結果と考察を書く。parents/tags も埋め、"
+            " 主要 metrics は frontmatter と一致させること。 -->\n"
+        )
+        write_node(node_path, meta, body)
 
     def _rel(path: Path) -> Path:
         try:

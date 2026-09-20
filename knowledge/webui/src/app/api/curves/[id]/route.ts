@@ -3,9 +3,7 @@ import path from "node:path";
 
 export const dynamic = "force-dynamic";
 
-// knowledge/runs/<id>/curves.png, one directory above this Next.js app.
-const RUNS_DIR =
-  process.env.KNOWLEDGE_RUNS_DIR ?? path.resolve(process.cwd(), "..", "runs");
+import { RUNS_DIR } from "@/lib/content";
 
 // Node ids are lowercase [a-z0-9-]; reject anything else to avoid path traversal.
 const ID_RE = /^[a-z0-9-]+$/;

@@ -3,6 +3,7 @@
 import { Handle, Position, type NodeProps } from "reactflow";
 
 import type { KnowledgeNode } from "@/lib/types";
+import { formatValue } from "@/lib/explorer";
 
 export const PROVIDER_COLOR: Record<string, string> = {
   claude: "#d97757",
@@ -25,7 +26,7 @@ function issueLabel(issue?: number | number[]): string | null {
 }
 
 /** Pick the usual two headlines plus conditional canonical-pose metrics. */
-function headlineMetrics(metrics?: Record<string, number | string>): [string, string][] {
+function headlineMetrics(metrics?: KnowledgeNode["metrics"]): [string, string][] {
   if (!metrics) return [];
   const angularErrorKey = "angular_error_deg" in metrics
     ? "angular_error_deg"
@@ -39,7 +40,7 @@ function headlineMetrics(metrics?: Record<string, number | string>): [string, st
   ];
   const out: [string, string][] = [];
   for (const k of priority) {
-    if (k in metrics) out.push([k, String(metrics[k])]);
+    if (k in metrics) out.push([k, formatValue(metrics[k])]);
     if (out.length === 2) break;
   }
   const canonicalMpjpeKey = "canonical_mpjpe_m" in metrics
@@ -48,10 +49,10 @@ function headlineMetrics(metrics?: Record<string, number | string>): [string, st
       ? "canonical_mpjpe"
       : null;
   if (canonicalMpjpeKey) {
-    out.push(["canonical_mpjpe_m", String(metrics[canonicalMpjpeKey])]);
+    out.push(["canonical_mpjpe_m", formatValue(metrics[canonicalMpjpeKey])]);
   }
   if ("canonical_pck_0.1m" in metrics) {
-    out.push(["canonical_pck_0.1m", String(metrics["canonical_pck_0.1m"])]);
+    out.push(["canonical_pck_0.1m", formatValue(metrics["canonical_pck_0.1m"])]);
   }
   return out;
 }

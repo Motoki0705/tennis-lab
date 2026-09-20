@@ -1,6 +1,8 @@
 "use client";
 
-import type { KnowledgeNode } from "@/lib/types";
+import { useEffect } from "react";
+import type { KnowledgeGraph, KnowledgeNode } from "@/lib/types";
+import { formatValue } from "@/lib/explorer";
 import { PROVIDER_COLOR } from "./nodeTypes";
 
 function KeyVals({ obj }: { obj?: Record<string, unknown> }) {
@@ -11,7 +13,7 @@ function KeyVals({ obj }: { obj?: Record<string, unknown> }) {
         {Object.entries(obj).map(([k, v]) => (
           <tr key={k}>
             <th>{k}</th>
-            <td>{String(v)}</td>
+            <td>{formatValue(v)}</td>
           </tr>
         ))}
       </tbody>
@@ -22,10 +24,23 @@ function KeyVals({ obj }: { obj?: Record<string, unknown> }) {
 export function DetailPanel({
   node,
   onClose,
+  graph,
+  onNavigate,
+  onPaper,
 }: {
   node: KnowledgeNode | null;
   onClose: () => void;
+  graph: KnowledgeGraph;
+  onNavigate: (id: string) => void;
+  onPaper: (id: string) => void;
 }) {
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, [onClose]);
   if (!node) {
     return (
       <aside className="panel panel--empty">
@@ -33,20 +48,27 @@ export function DetailPanel({
       </aside>
     );
   }
-  const accent = PROVIDER_COLOR[node.provider ?? "other"] ?? PROVIDER_COLOR.other;
+  const accent =
+    PROVIDER_COLOR[node.provider ?? "other"] ?? PROVIDER_COLOR.other;
   const issue = Array.isArray(node.issue)
     ? node.issue.map((i) => `#${i}`).join(" ")
     : node.issue != null
       ? `#${node.issue}`
       : null;
   return (
-    <aside className="panel">
+    <aside className="panel" aria-label="実験の詳細">
       <button className="panel__close" onClick={onClose} aria-label="close">
         ×
       </button>
-      <div className="panel__type" style={{ color: node.type === "group" ? "#f5d76e" : accent }}>
+      <div
+        className="panel__type"
+        style={{ color: node.type === "group" ? "#f5d76e" : accent }}
+      >
         {node.type.toUpperCase()}
       </div>
+      <p className="eyebrow">
+        {node.task} / {String(node.sequence).padStart(6, "0")}
+      </p>
       <h2 className="panel__title">{node.title}</h2>
       <div className="panel__meta">
         {issue && <span className="badge">{issue}</span>}
@@ -68,6 +90,50 @@ export function DetailPanel({
         </div>
       )}
 
+      <section>
+        <h3>関連する実験</h3>
+        {[
+          ...node.parents.map((id) => ({ id, label: "前提" })),
+          ...node.members.map((id) => ({ id, label: "メンバー" })),
+          ...node.relations.map((r) => ({ id: r.to, label: r.rel ?? "関連" })),
+          ...graph.nodes
+            .filter((n) => n.parents.includes(node.id))
+            .map((n) => ({ id: n.id, label: "後続" })),
+        ].map((r, i) => (
+          <button
+            key={`${r.id}-${i}`}
+            className="related-link"
+            onClick={() => onNavigate(r.id)}
+          >
+            {r.label} · {graph.nodes.find((n) => n.id === r.id)?.title ?? r.id}{" "}
+            →
+          </button>
+        ))}
+      </section>
+      <section>
+        <h3>関連研究</h3>
+        {node.papers.length ? (
+          node.papers.map((id) => (
+            <button
+              className="related-link"
+              key={id}
+              onClick={() => onPaper(id)}
+            >
+              {graph.papers.find((p) => p.id === id)?.title ?? id} ↗
+            </button>
+          ))
+        ) : (
+          <p className="muted">論文参照はまだ登録されていません。</p>
+        )}
+      </section>
+      <details>
+        <summary>登録情報</summary>
+        <p>{node.file}</p>
+        <p>
+          登録日: {node.recordedAt} / 日付の根拠:{" "}
+          {node.dateSource ?? "registration"}
+        </p>
+      </details>
       {node.config && (
         <section>
           <h3>config</h3>
@@ -83,9 +149,13 @@ export function DetailPanel({
       {node.curvesUrl && (
         <section>
           <h3>学習曲線 / curves</h3>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <a href={node.curvesUrl} target="_blank" rel="noreferrer">
-            <img className="curves" src={node.curvesUrl} alt={`${node.id} train/val curves`} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="curves"
+              src={node.curvesUrl}
+              alt={`${node.id} train/val curves`}
+            />
           </a>
         </section>
       )}
@@ -98,7 +168,10 @@ export function DetailPanel({
       {node.bodyHtml && (
         <section>
           <h3>考察 / Findings</h3>
-          <div className="prose" dangerouslySetInnerHTML={{ __html: node.bodyHtml }} />
+          <div
+            className="prose"
+            dangerouslySetInnerHTML={{ __html: node.bodyHtml }}
+          />
         </section>
       )}
     </aside>
