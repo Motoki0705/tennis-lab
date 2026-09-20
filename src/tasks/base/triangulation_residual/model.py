@@ -70,20 +70,7 @@ class GeometricResidualModel(nn.Module):
     def forward(
         self, features: Tensor, view_valid: Tensor, time_positions: Tensor
     ) -> dict[str, Tensor]:
-        if features.ndim != 4 or features.shape[-1] != self.input_dim:
-            raise ValueError("Expected features [B,V,T,F] for this residual profile")
         batch, views, frames, _ = features.shape
-        if (
-            view_valid.shape != features.shape[:3]
-            or view_valid.dtype != torch.bool
-            or time_positions.shape != (batch, frames)
-        ):
-            raise ValueError("Invalid residual view/time contract")
-        if (
-            features.device != view_valid.device
-            or features.device != time_positions.device
-        ):
-            raise ValueError("Inputs must share a device")
         x = self.embed(features)
         camera_valid = view_valid.permute(0, 2, 1).reshape(batch * frames, views)
         camera_mask = camera_valid[:, None, :].expand(-1, views, -1)

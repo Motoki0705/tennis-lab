@@ -19,7 +19,10 @@ from src.tasks.base.triangulation_residual.configuration import (
     ResidualConfig,
     validate_config,
 )
-from src.tasks.base.triangulation_residual.contracts import feature_dimension
+from src.tasks.base.triangulation_residual.contracts import (
+    feature_dimension,
+    validate_model_inputs,
+)
 from src.tasks.base.triangulation_residual.data import ResidualDataModule
 from src.tasks.base.triangulation_residual.losses import (
     masked_mean,
@@ -94,6 +97,12 @@ class ResidualLightningModule(BaseLightningModule):
     def _step(
         self, batch: dict[str, Any], phase: str
     ) -> tuple[Tensor, dict[str, Tensor], Tensor]:
+        validate_model_inputs(
+            batch["features"],
+            batch["view_valid"],
+            batch["time_positions"],
+            input_dim=feature_dimension(self.residual_config.joints),
+        )
         output = self.model(
             batch["features"], batch["view_valid"], batch["time_positions"]
         )

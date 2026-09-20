@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+import torch
 from numpy.typing import NDArray
+from torch import Tensor
 
 
 @dataclass(frozen=True)
@@ -111,3 +113,27 @@ def feature_dimension(joints: int) -> int:
     court UV/confidence (42), camera (16), root (3) shared per view/time.
     """
     return 18 * joints + 61
+
+
+def validate_model_inputs(
+    features: Tensor,
+    view_valid: Tensor,
+    time_positions: Tensor,
+    *,
+    input_dim: int,
+) -> None:
+    """Validate at the call boundary before the computation-only model forward."""
+    if features.ndim != 4 or features.shape[-1] != input_dim:
+        raise ValueError("Expected features [B,V,T,F] for this residual profile")
+    batch, _, frames, _ = features.shape
+    if (
+        view_valid.shape != features.shape[:3]
+        or view_valid.dtype != torch.bool
+        or time_positions.shape != (batch, frames)
+    ):
+        raise ValueError("Invalid residual view/time contract")
+    if (
+        features.device != view_valid.device
+        or features.device != time_positions.device
+    ):
+        raise ValueError("Inputs must share a device")

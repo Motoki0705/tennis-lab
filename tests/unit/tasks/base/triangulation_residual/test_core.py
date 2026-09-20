@@ -166,6 +166,45 @@ def compose_recipe(task):
         return compose(config_name="train_triangulation_residual")
 
 
+@pytest.mark.parametrize(
+    "invalid_contract",
+    ["feature_rank", "feature_width", "mask_shape", "mask_dtype", "time_shape", "device"],
+)
+def test_training_rejects_invalid_tensor_contract_before_forward(
+    invalid_contract, monkeypatch
+):
+    from unittest.mock import Mock
+
+    cfg = compose_recipe("blcs")
+    cfg.model.hidden_dim = 32
+    cfg.model.num_heads = 4
+    cfg.model.ffn_dim = 64
+    cfg.model.num_layers = 1
+    module = ResidualLightningModule(cfg)
+    batch = {
+        "features": torch.zeros(2, 3, 8, 79),
+        "view_valid": torch.ones(2, 3, 8, dtype=torch.bool),
+        "time_positions": torch.zeros(2, 8),
+    }
+    if invalid_contract == "feature_rank":
+        batch["features"] = batch["features"][0]
+    elif invalid_contract == "feature_width":
+        batch["features"] = batch["features"][..., :-1]
+    elif invalid_contract == "mask_shape":
+        batch["view_valid"] = batch["view_valid"][:, :-1]
+    elif invalid_contract == "mask_dtype":
+        batch["view_valid"] = batch["view_valid"].float()
+    elif invalid_contract == "time_shape":
+        batch["time_positions"] = batch["time_positions"][:, :-1]
+    else:
+        batch["view_valid"] = batch["view_valid"].to("meta")
+    forward = Mock(side_effect=AssertionError("Invalid batch reached model forward"))
+    monkeypatch.setattr(module.model, "forward", forward)
+    with pytest.raises(ValueError):
+        module._step(batch, "train")
+    forward.assert_not_called()
+
+
 @pytest.mark.parametrize("task", ["plcs", "blcs"])
 def test_noise_keeps_true_camera_separate_and_clean_branch_exact(task):
     c = validate_config(compose_recipe(task))
@@ -263,6 +302,9 @@ def test_sliding_window_zero_residual_is_identity(task, joints):
     for value in result.values():
         assert value.shape[0] == len(world)
         assert_allclose(value, 0, atol=0)
+    invalid = replace(geometry, view_valid=geometry.view_valid.astype(np.float32))
+    with pytest.raises(ValueError, match="view/time contract"):
+        predict_geometry(model, invalid, window_size=7, device=torch.device("cpu"))
 
 
 def test_runner_tests_best_checkpoint_explicitly(tmp_path):

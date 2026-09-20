@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 from collections.abc import Callable
@@ -13,47 +12,17 @@ import numpy as np
 import torch
 from omegaconf import OmegaConf
 
-from src.tasks.base.triangulation_residual.contracts import GeometryInput
+from src.tasks.base.triangulation_residual.contracts import (
+    GeometryInput,
+    validate_model_inputs,
+)
 from src.tasks.base.triangulation_residual.geometry import prepare_geometry
 from src.tasks.base.triangulation_residual.model import GeometricResidualModel
 from src.tasks.base.triangulation_residual.training import ResidualLightningModule
-from src.utils.configuration import (
-    BoundaryPathField,
-    NonHydraPathBoundary,
-    PathDirection,
-    PathKind,
-    PathResolver,
-    PathRole,
-    RuntimePathRoots,
-)
 from src.utils.geometry.triangulation import project_multiview
-from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import load_and_validate_checkpoint
 from src.utils.schema.player import COCO17_BONE_LENGTH_EDGES
 from src.utils.video.windows import build_window_starts
-
-PATH_BOUNDARY = NonHydraPathBoundary(
-    name="base.triangulation_residual.inference",
-    fields=(
-        BoundaryPathField(
-            "source",
-            PathRole.CHECKPOINT,
-            PathDirection.INPUT,
-            PathKind.ANY,
-            must_exist=True,
-        ),
-        BoundaryPathField(
-            "clip",
-            PathRole.DATA,
-            PathDirection.INPUT,
-            PathKind.DIRECTORY,
-            must_exist=True,
-        ),
-        BoundaryPathField(
-            "output", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
-        ),
-    ),
-)
 
 
 def statistics(values: np.ndarray) -> dict[str, float | int | None]:
@@ -94,6 +63,7 @@ def predict_geometry(
             x = torch.from_numpy(geometry.features[:, sl].copy())[None].to(device)
             valid = torch.from_numpy(geometry.view_valid[:, sl].copy())[None].to(device)
             time = torch.from_numpy(geometry.time_positions[sl].copy())[None].to(device)
+            validate_model_inputs(x, valid, time, input_dim=model.input_dim)
             output = model(x, valid, time)
             for key, tensor in output.items():
                 value = tensor[0].float().cpu().numpy()
@@ -324,58 +294,3 @@ def evaluate_clip(
         render_comparison(clip_dir, output_path, output_dir)
     print(json.dumps(metrics, indent=2), flush=True)
     return metrics
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--task", required=True, choices=("plcs", "blcs"))
-    source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument("--checkpoint", type=Path)
-    source.add_argument("--run-dir", type=Path)
-    parser.add_argument("--clip", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
-    parser.add_argument("--no-render", action="store_true")
-    args = parser.parse_args()
-    source_path = args.checkpoint if args.checkpoint is not None else args.run_dir
-    if not all(path.is_absolute() for path in (source_path, args.clip, args.output)):
-        raise ValueError("Source, clip and output must be explicit absolute paths")
-    roots = RuntimePathRoots(
-        project_root=PROJECT_ROOT,
-        data_root=args.clip.parent.resolve(),
-        checkpoint_root=source_path.parent.resolve(),
-        artifact_root=args.output.parent.resolve(),
-        output_root=args.output.parent.resolve(),
-        cache_root=PROJECT_ROOT,
-        external_asset_root=PROJECT_ROOT,
-    )
-    validated = PATH_BOUNDARY.validate(
-        {"source": source_path, "clip": args.clip, "output": args.output},
-        resolver=PathResolver(roots),
-    )
-    source_path = validated.declared("source").path
-    checkpoint = (
-        source_path
-        if args.checkpoint is not None
-        else Path(
-            json.loads((source_path / "evaluation.json").read_text())["checkpoint"]
-        )
-    )
-    if args.run_dir is not None and not checkpoint.resolve().is_relative_to(
-        source_path
-    ):
-        raise ValueError(
-            "Selected best checkpoint is outside the declared run directory"
-        )
-    evaluate_clip(
-        args.task,
-        checkpoint,
-        validated.declared("clip").path,
-        validated.declared("output").path,
-        device=args.device,
-        render=not args.no_render,
-    )
-
-
-if __name__ == "__main__":
-    main()

@@ -11,7 +11,7 @@ model:
 data:
   scene_dir: plcs/single_object_camera_view_v2
 run:
-  output_dir: plcs/triangulation_residual
+  output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
 
 hydra:
   searchpath:

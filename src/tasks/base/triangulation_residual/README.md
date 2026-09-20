@@ -48,7 +48,7 @@ BaseLightningModuleのoptimizer/repro保存、BaseTrainingRunnerのcheckpoint/qu
 # GPU実行は共有training queueから。worktreeではmainのdata/output rootsを明示。
 .venv/bin/python -m src.tasks.plcs.scripts.train_triangulation_residual paths.data_root=/absolute/repo/data
 .venv/bin/python -m src.tasks.blcs.scripts.train_triangulation_residual paths.data_root=/absolute/repo/data
-.venv/bin/python -m src.tasks.base.triangulation_residual.inference \
+.venv/bin/python -m src.tasks.base.scripts.infer_triangulation_residual \
   --task plcs --run-dir /absolute/run --clip /absolute/clip_000 \
   --output /absolute/comparison --device cuda
 ```

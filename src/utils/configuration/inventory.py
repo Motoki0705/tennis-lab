@@ -337,7 +337,7 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "court_detection.hybrid_inference_audit",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tasks.base.triangulation_residual.inference": (
+    "src.tasks.base.scripts.infer_triangulation_residual": (
         "base.triangulation_residual.inference",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
@@ -438,7 +438,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         path_authority="src.synthetic_data_generation.appearance.configuration.require_absolute_path",
     ),
     _non_hydra_boundary(
-        "src.tasks.base.triangulation_residual.inference",
+        "src.tasks.base.scripts.infer_triangulation_residual",
         "main",
         domain="base",
         executable_module=True,
