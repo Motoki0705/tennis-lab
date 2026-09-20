@@ -1,0 +1,28 @@
+{
+  "status": "complete",
+  "checkpoint_step_zero_based": 6999,
+  "training_steps": 7000,
+  "gaussians": 1000000,
+  "camera_count": 50,
+  "full_sfm_camera_count": 491,
+  "split_counts": {
+    "validation": 8,
+    "train": 42
+  },
+  "scene_scale": 1.5407659983226785,
+  "source_transform_max_abs_difference": 0.0,
+  "source_and_input_hashes_verified": true,
+  "validation_render_count": 8,
+  "validation_metrics": {
+    "psnr": 22.717906951904297,
+    "ssim": 0.6527017951011658,
+    "lpips": 0.2625459134578705,
+    "lpips_alex": 0.2625459134578705,
+    "cc_psnr": 22.547405242919922,
+    "cc_ssim": 0.6385965347290039,
+    "cc_lpips": 0.26750048995018005,
+    "ellipse_time": 0.011619985103607178,
+    "num_GS": 1000000
+  },
+  "elapsed_seconds": 384.89981622000005
+}

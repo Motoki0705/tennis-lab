@@ -8,23 +8,26 @@ the 考察 body and link ``parents`` afterwards.
 
 Usage:
     # by queue job name (searches .training_queue/{done,failed,jobs,logs})
-    .venv/bin/python .agents/skills/knowledge-control/scripts/kg_from_run.py canon_both
+    .venv/bin/python .agents/skills/knowledge-control/scripts/kg_from_run.py canon_both --task plcs
 
     # by explicit paths
     .venv/bin/python .agents/skills/knowledge-control/scripts/kg_from_run.py \
-        --job .training_queue/done/..._canon_both.job \
+        --task plcs --job .training_queue/done/..._canon_both.job \
         --log .training_queue/logs/..._canon_both.log --write
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import re
 from pathlib import Path
 
-from kg_lib import dump_frontmatter, nodes_dir, repo_root
+from kg_lib import dump_frontmatter, portable_path, queue_dir
+from kg_schema import PROVIDERS, iso_date
+from kg_storage import save_node
 
-QUEUE_DIR = repo_root() / ".training_queue"
+QUEUE_DIR = queue_dir()
 METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
 OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
 # Hydra keys we surface into config (everything else is ignored as noise).
@@ -59,10 +62,8 @@ def parse_log_metrics(log: Path) -> dict[str, float]:
         m = METRIC_ROW_RE.match(line.strip())
         if m:
             key = m.group(1).replace("test/", "")
-            try:
+            with contextlib.suppress(ValueError):
                 metrics[key] = round(float(m.group(2)), 6)
-            except ValueError:
-                pass
     return metrics
 
 
@@ -78,12 +79,19 @@ def main() -> int:
     p.add_argument("name", nargs="?", help="queue job name (e.g. canon_both)")
     p.add_argument("--job", type=Path)
     p.add_argument("--log", type=Path)
+    p.add_argument("--task", required=True)
+    p.add_argument("--date", help="actual experiment date, ISO YYYY-MM-DD")
+    p.add_argument("--papers", nargs="*", default=[])
     p.add_argument("--id", help="node id (default: run-<name>)")
     p.add_argument("--issue", type=int)
-    p.add_argument("--provider", default="claude")
+    p.add_argument("--provider", choices=sorted(PROVIDERS))
     p.add_argument("--write", action="store_true", help="write to knowledge/nodes/ (else print)")
     p.add_argument("--force", action="store_true")
     args = p.parse_args()
+    if args.date and not iso_date(args.date):
+        p.error("date must be YYYY-MM-DD")
+    if args.issue is not None and args.issue <= 0:
+        p.error("issue must be positive")
 
     job, log = args.job, args.log
     if args.name and not (job and log):
@@ -102,17 +110,19 @@ def main() -> int:
     node_id = args.id or f"run-{name.replace('_', '-')}"
     meta = {
         "id": node_id,
+        "task": args.task,
+        "papers": args.papers,
         "type": "run",
         "title": name,
         "issue": args.issue,
         "provider": args.provider,
-        "date": None,
+        "date": args.date,
         "status": status_from_job(job),
         "config": config or {"model": "", "loss": "", "data": ""},
         "metrics": metrics,
         "artifacts": {
-            "log": str(log.relative_to(repo_root())) if log else "",
-            "job": str(job.relative_to(repo_root())) if job else "",
+            "log": portable_path(log) if log else "",
+            "job": portable_path(job) if job else "",
             "output_dir": "",
         },
         "parents": [],
@@ -128,11 +138,10 @@ def main() -> int:
     doc = f"---\n{dump_frontmatter(meta)}---\n\n{body}"
 
     if args.write:
-        out = nodes_dir() / f"{node_id}.md"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        if out.exists() and not args.force:
-            p.error(f"{out} exists (use --force)")
-        out.write_text(doc, encoding="utf-8")
+        try:
+            out = save_node(meta, body, args.force)
+        except ValueError as exc:
+            p.error(str(exc))
         print(f"created {out}  (metrics: {len(metrics)}, config keys: {list(config)})")
     else:
         print(doc)

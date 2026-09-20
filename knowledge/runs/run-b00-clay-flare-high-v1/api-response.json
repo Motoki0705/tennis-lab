@@ -1,0 +1,34 @@
+{
+  "request_id": "comparison-flare-01",
+  "provider": "openai_api",
+  "api_request_id": "req_6f808d568edd458cb8248a780ece7ee8",
+  "api_parameters": {
+    "model": "gpt-image-2.5-flare-2026-09-08",
+    "quality": "high",
+    "size": "1536x864",
+    "output_format": "png",
+    "background": "opaque",
+    "n": 1
+  },
+  "created": 1789890120,
+  "usage": {
+    "input_tokens": 2735,
+    "input_tokens_details": {
+      "image_tokens": 2592,
+      "text_tokens": 143
+    },
+    "output_tokens": 1078,
+    "output_tokens_details": {
+      "image_tokens": 1078,
+      "text_tokens": 0
+    },
+    "total_tokens": 3813
+  },
+  "size": [
+    1536,
+    864
+  ],
+  "output_sha256": "1f4c62599cf29459d30d5256b9302200ebce6d5f471fa3ff73d63dadd622391a",
+  "elapsed_seconds": 17.612908241000696,
+  "revised_prompt": null
+}

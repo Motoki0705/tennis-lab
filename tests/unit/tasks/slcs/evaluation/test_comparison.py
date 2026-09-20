@@ -150,18 +150,3 @@ def test_empty_entity_and_explicit_domain_mapping(tmp_path: Path) -> None:
         np.savez_compressed(directory / "eval_arrays.npz", **arrays)
     report = compare_conditions(bundles, DOMAINS)
     assert all(row["player_position_error_m"] is None for row in report["rows"])
-
-
-def test_cli_uses_explicit_domain_prefix_and_output_role(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from src.tasks.slcs.scripts.compare_conditions import main
-
-    _bundles(tmp_path)
-    monkeypatch.setattr("sys.argv", [
-        "compare_slcs_conditions", "--output-root", str(tmp_path),
-        "--full", "full", "--no-rgb", "no_rgb", "--detector-gap", "detector_gap", "--rgb-only", "rgb_only",
-        "--domain-prefix", "video_=meiji", "--default-domain", "broadcast",
-        "--output", "slcs/analyze/conditions/test-001",
-    ])
-    main()
-    report = json.loads((tmp_path / "slcs/analyze/conditions/test-001/comparison.json").read_text())
-    assert report["domain_mapping"] == DOMAINS

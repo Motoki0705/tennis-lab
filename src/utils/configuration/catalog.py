@@ -17,9 +17,9 @@ _SOURCE_ROOT = (PROJECT_ROOT / "src").resolve()
 _CANONICAL_SYNTHETIC_MODULES = frozenset(
     {
         "src.synthetic_data_generation.scripts.compact_court_storage",
-        "src.synthetic_data_generation.scripts.court_line_database",
         "src.synthetic_data_generation.scripts.edit_alignment",
         "src.synthetic_data_generation.scripts.review_court_dataset",
+        "src.synthetic_data_generation.scripts.run_appearance_variant",
         "src.synthetic_data_generation.scripts.run_scene_pipeline",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations",
         "src.synthetic_data_generation.scripts.visualize_dataset",

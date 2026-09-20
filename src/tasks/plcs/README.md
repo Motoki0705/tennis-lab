@@ -24,6 +24,12 @@ joint confidence、frame validityへ変換します。COCO-17にはpelvisがな�
 並進・回転を17点から再推定しません。ACCAD adapterはSMPL-Hのroot信号を、GVHMR
 adapterはglobal SMPL-Xの`transl`/`global_orient`をそれぞれ保持します。
 
+`rotation=(cos θ, sin θ)`は、`motion/geometry.py`の`root_yaw()`が求める
+root-local `+X`軸の方位を符号化したyawです。ACCAD/GVHMRのSMPL身体前方は
+local `+Z`で、Z-upかつyawを除いたcanonical poseでは基準前方が`-Y`になります。
+可視化の矢印はこの基準前方を回転した`(sin θ, -cos θ)`を使います。
+保存されたrotation pair自体をXY方向として描くと90度横を向きます。
+
 保存形式はpickleを使わないversioned `*.motion.npz` です。generatorの
 `motion_sources` entryは`format`、`paths`、`weight`を明示し、現在は
 `amass_smplh_v1`と`coco17_motion_v1`を登録しています。scene生成側はsource固有の
@@ -82,23 +88,6 @@ worktreeで共有モデルを使う場合は`paths.data_root`、`paths.checkpoin
 抽出先を変更した場合は、データ生成時の`motion_sources.tennis.paths`にもその
 data-root相対パスを指定してください。既存の混合profileは既に生成済みの
 `plcs/motions/gvhmr/meiji_3cam`を参照しています。
-
-## 固定データ版の準備
-
-既存sceneからmotion source単位でtrain/val/testを分け、親splitを保ったseed固定subsetを作る。
-入力と出力は独立した絶対パスで指定する。元datasetを変更せず新しい版へ公開し、
-`dataset_version.json`に入力metadata・seed・サイズと出力metadata/splitのhashを保存する。
-同じrecipeの再実行は完成版を照合する。別recipe、改変された出力、未完の`.building`は停止する。
-出力hashを持たない旧receiptは再利用判定に使わず、新しい出力版を指定する。
-全親splitの重複・未知scene・motion source漏洩を検査してからsubsetを選ぶ。
-
-```bash
-.venv/bin/python -m src.tasks.plcs.scripts.prepare_motion_split \
-  --source /absolute/data/plcs/original --destination /absolute/data/plcs/motion_split --seed 42
-.venv/bin/python -m src.tasks.plcs.scripts.prepare_subset \
-  --source /absolute/data/plcs/motion_split --destination /absolute/data/plcs/subset \
-  --seed 42 --train 1000 --evaluation 200
-```
 
 ## Modules
 
@@ -251,7 +240,7 @@ the shared reference-frame contract. Direct scene inference requires a stable
 
 現行の `plcs_multiview_axial_foot_residual` の構成は Modules の該当項目を参照。学習・同条件の
 本番推論比較の結果と当時の実験条件は knowledge の群ノード
-[足元疑似位置・幾何埋め込み・残差学習の比較](../../../knowledge/nodes/group-plcs-foot-residual.md)
+[足元疑似位置・幾何埋め込み・残差学習の比較](../../../knowledge/nodes/plcs/000094-group-plcs-foot-residual.md)
 に集約している。
 `data.sampling_weights` はscene directory内のJSONファイル名を指定する任意項目で、
 filtered train splitの全scene名を正の有限重みに対応させる。固定dataset backendのみ対応し、

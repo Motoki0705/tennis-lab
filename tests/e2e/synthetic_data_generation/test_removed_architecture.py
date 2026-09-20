@@ -59,9 +59,30 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
 # The digests validate/reuse the exact measured source; they do not restore the
 # removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
-    # Calibration cache compatibility binds geometry/source implementation only;
-    # it creates neither scene identity nor content-addressed publication.
-    Path("src/synthetic_data_generation/court_calibration/database.py"): frozenset(
+    # Appearance variants use explicit scene IDs/paths. These hashes verify
+    # fixed inputs, paid API responses and imported SfM, not scene identity.
+    Path("src/synthetic_data_generation/appearance/batch.py"): frozenset({"sha256"}),
+    Path("src/synthetic_data_generation/appearance/comparison.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/appearance/contracts.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/appearance/derived.py"): frozenset({"sha256"}),
+    Path("src/synthetic_data_generation/appearance/generation.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/appearance/nht.py"): frozenset({"sha256"}),
+    Path("src/synthetic_data_generation/appearance/openai_api.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/appearance/reporting.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/appearance/validation.py"): frozenset(
+        {"sha256"}
+    ),
+    Path("src/synthetic_data_generation/appearance/workspace.py"): frozenset(
         {"sha256"}
     ),
     # Migration resume binds only this attempt to its unchanged source manifest;
@@ -69,9 +90,7 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/dataset/court/storage.py"): frozenset(
         {"fingerprint", "sha256"}
     ),
-    Path("src/synthetic_data_generation/alignment/heatmaps.py"): frozenset(
-        {"sha256"}
-    ),
+    Path("src/synthetic_data_generation/alignment/heatmaps.py"): frozenset({"sha256"}),
     Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
         {"sha256"}
     ),
@@ -90,9 +109,9 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/alignment/manual/source.py"): frozenset(
         {"sha256"}
     ),
-    Path(
-        "src/synthetic_data_generation/dataset/court/review/service.py"
-    ): frozenset({"sha256"}),
+    Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
+        {"sha256"}
+    ),
 }
 
 
@@ -121,10 +140,10 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     assert scripts == {
         "__init__.py",
         "compact_court_storage.py",
-        "court_line_database.py",
         "edit_alignment.py",
         "generate_publication_visualizations.py",
         "review_court_dataset.py",
+        "run_appearance_variant.py",
         "run_scene_pipeline.py",
         "visualize_dataset.py",
     }

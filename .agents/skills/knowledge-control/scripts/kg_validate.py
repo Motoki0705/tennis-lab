@@ -11,20 +11,39 @@ Usage:
 
 from __future__ import annotations
 
-import sys
+import argparse
 
+from kg_history import validate_history
 from kg_lib import load_nodes, nodes_dir, validate
+from kg_papers import validate_papers
+from kg_storage import validate_counters
+from kg_summary import check_summary
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check-summary", action="store_true")
+    parser.add_argument("--base-ref", help="Git base for immutable node identity and monotonic sequence checks")
+    args = parser.parse_args()
     directory = nodes_dir()
     try:
+        if not directory.is_dir():
+            raise ValueError(f"{directory}: missing nodes directory")
+        for path in directory.rglob("*"):
+            if path.is_symlink():
+                raise ValueError(f"{path}: symlinks are not allowed in node storage")
         nodes = load_nodes(directory)
-    except ValueError as exc:
+        res = validate(nodes)
+        res.errors.extend(validate_counters(nodes))
+        papers = validate_papers(nodes)
+        res.errors.extend(papers.errors)
+        if args.check_summary:
+            res.errors.extend(check_summary())
+        if args.base_ref:
+            res.errors.extend(validate_history(nodes, args.base_ref))
+    except (ValueError, OSError) as exc:
         print(f"ERROR: {exc}")
         return 1
-
-    res = validate(nodes)
     for w in res.warnings:
         print(f"WARN: {w}")
     for e in res.errors:

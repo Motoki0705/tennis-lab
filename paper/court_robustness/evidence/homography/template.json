@@ -1,0 +1,63 @@
+{
+  "source": "yastrebksv/TennisCourtDetector/court_reference.py",
+  "revision": "e5cd4f1ce26b15361700d3d89e068cbf0e82749e",
+  "coordinate_system": "upstream reference pixels, same KP14 correspondence as original inference",
+  "points_xy": [
+    [
+      286,
+      561
+    ],
+    [
+      1379,
+      561
+    ],
+    [
+      286,
+      2935
+    ],
+    [
+      1379,
+      2935
+    ],
+    [
+      423,
+      561
+    ],
+    [
+      423,
+      2935
+    ],
+    [
+      1242,
+      561
+    ],
+    [
+      1242,
+      2935
+    ],
+    [
+      423,
+      1110
+    ],
+    [
+      1242,
+      1110
+    ],
+    [
+      423,
+      2386
+    ],
+    [
+      1242,
+      2386
+    ],
+    [
+      832,
+      1110
+    ],
+    [
+      832,
+      2386
+    ]
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/inputs/reference.png",
+  "sha256": "e938c6671d26263ccdea93472f475e9344e8f25f3586cbec0b88a6edc0c18428",
+  "review_notes": "Fixed clay appearance reference used in the Sunburst/Flare comparison; user selected Flare with this reference. Imported bytes retained unchanged."
+}
