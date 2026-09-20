@@ -65,7 +65,8 @@ L4以外・容量不足・入力不一致・Drive同期失敗は停止する。
 ```
 
 既存Drive出力を上書きしない。各サイズの `last.ckpt` / `recovery.ckpt` を新VMへstageし、
-読み込んだglobal stepが最大の完全状態を採用する。未着手サイズは初期重みから開始し、
+読み込んだglobal stepが最大の完全状態を採用する。採用した状態を新しい出力の
+`<size>/resume/last.ckpt`へ先に保存するため、完了済みサイズも次々回の再開へ引き継がれる。未着手サイズは初期重みから開始し、
 Bの元checkpointも入力として保持する。候補が一つもない場合や同名候補が重複する場合は
 エラーにする。共通 `run.sh resume` はVM上のrequest再試行であり、このcheckpoint継続とは異なる。
 

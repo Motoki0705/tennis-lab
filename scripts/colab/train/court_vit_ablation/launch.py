@@ -22,13 +22,16 @@ def resume_inputs(
     for item in files:
         path = str(item["Path"])
         parts = Path(path).parts
-        if len(parts) != 5 or parts[0] not in {"b", "s", "splus", "l"}:
+        if not parts or parts[0] not in {"b", "s", "splus", "l"}:
             continue
-        if (
-            parts[1] != "logs"
-            or parts[3] != "checkpoints"
-            or parts[4] not in {"last.ckpt", "recovery.ckpt"}
-        ):
+        standard = (
+            len(parts) == 5
+            and parts[1] == "logs"
+            and parts[3] == "checkpoints"
+            and parts[4] in {"last.ckpt", "recovery.ckpt"}
+        )
+        carried = len(parts) == 3 and parts[1:] == ("resume", "last.ckpt")
+        if not (standard or carried):
             continue
         if path in seen:
             raise ValueError(f"Ambiguous duplicate Drive checkpoint: {path}")
