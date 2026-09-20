@@ -5,6 +5,9 @@ video and one `scene_id` resolve to one mutable workspace. NHT remains an
 independent command that owns reconstruction and rendering; tennis-lab consumes
 only its public standard scene export and render files.
 
+For reference-guided image edits and retraining with existing SfM, see
+[Appearance variants](appearance/README.md).
+
 ## Set up NHT with spin
 
 Before running the pipeline for the first time, or after updating the NHT

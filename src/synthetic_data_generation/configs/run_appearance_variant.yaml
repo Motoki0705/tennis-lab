@@ -1,0 +1,52 @@
+action: prepare
+api_retry: false
+training_retry: false
+appearance_data_root: ${oc.env:APPEARANCE_DATA_ROOT,${tennis_lab_path:project}/data/synthetic_data_generation}
+variant:
+  source_workspace: ${appearance_data_root}/scenes/B00/reconstruction
+  output_root: ${appearance_data_root}/scene_variants/B00/clay-flare-v001
+  scene_id: B00-clay-flare-v001
+  first_index: 0
+  last_index: 248
+  sample_count: 50
+  frame_indices: null
+  reference_index: 124
+  max_attempts: 3
+  max_steps: 7000
+  nht_executable: nht-reconstruct
+  nht_source_root: ${tennis_lab_path:project}/third_party/nht
+  training_python: ${oc.env:NHT_TRAINING_PYTHON,${variant.nht_source_root}/.trainer-venv/bin/python}
+  generation_size: [1536, 864]
+  generation_provider: openai_api
+  api:
+    model: gpt-image-2.5-flare-2026-09-08
+    quality: high
+    api_key_file: ${oc.env:OPENAI_API_KEY_FILE,${oc.env:HOME}/.config/tennis-lab/openai.env}
+    timeout_seconds: 600.0
+result:
+  request_id: null
+  path: null
+  accepted: null
+  notes: ""
+comparison:
+  output_root: ${appearance_data_root}/scene_variants/B00/comparison-sunburst-flare-v002
+  reference: ${appearance_data_root}/scene_variants/B00/clay-v001/reference/clay.png
+  target_index: 0
+derive:
+  parent_root: ${appearance_data_root}/scene_variants/B00/clay-flare-v001
+report:
+  roots:
+    - ${appearance_data_root}/scene_variants/B00/clay-flare-v001
+    - ${appearance_data_root}/scene_variants/B00/clay-flare-50-30k-v001
+    - ${appearance_data_root}/scene_variants/B00/clay-flare-100-30k-v001
+  output_root: ${appearance_data_root}/scene_variants/B00/comparison-flare-50-100-30k-v001
+batch:
+  concurrency: 2
+  start_interval_seconds: 13.0
+  indices: null
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,outputs,appearance,hydra}
+  output_subdir: null
+  job:
+    chdir: false
