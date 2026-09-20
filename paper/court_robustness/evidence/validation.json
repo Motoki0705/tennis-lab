@@ -340,6 +340,32 @@
       }
     }
   },
+  "confidence_homography": {
+    "local01": {
+      "status": "ok",
+      "inlier_count": 5,
+      "inlier_rms_px": 0.3283226979442124,
+      "threshold_px": 6.010176786085415
+    },
+    "local02": {
+      "status": "ok",
+      "inlier_count": 7,
+      "inlier_rms_px": 1.5849813951287364,
+      "threshold_px": 3.9920045090154894
+    },
+    "local03": {
+      "status": "ok",
+      "inlier_count": 5,
+      "inlier_rms_px": 0.7186675713221305,
+      "threshold_px": 3.2879857055650348
+    },
+    "local04": {
+      "status": "ok",
+      "inlier_count": 7,
+      "inlier_rms_px": 0.7849532630997869,
+      "threshold_px": 4.074272941274308
+    }
+  },
   "corpus_images_audited": 17256,
   "exact_matches": 0,
   "baseline_official_detections": [
@@ -350,6 +376,6 @@
   ],
   "baseline_control_error_px": 1.42276633028083,
   "max_scene_label_reprojection_difference_px": 1.7826096154749393e-10,
-  "pdf_sha256": "6b7863a46f8f517b7c64034c5e3a5a7de5d13b0433750354ba11cb767ddb3ffb",
+  "pdf_sha256": "2a3640ed0bdaf76d80cde0af441b8502264b4659ab84babf15b79e6e19c4a473",
   "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth."
 }

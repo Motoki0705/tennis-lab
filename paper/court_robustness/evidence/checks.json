@@ -1,6 +1,6 @@
 {
-  "pytest_command": ".venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py",
-  "pytest_passed": 31,
+  "pytest_command": ".venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/geometry paper/court_robustness/test_artifacts.py",
+  "pytest_passed": 82,
   "ruff_check": "passed",
   "ruff_format": "passed",
   "knowledge_validate_errors": 0,
@@ -60,5 +60,28 @@
     "bundle_manifest_sha256": "826e8b7bd3a651697761ce6158a1995c6e34cbfb34e357fb5f01788d572a5f95",
     "primary_protocol": "Same chronological registered-frame half comparison for every scene; 0.5 m cells, minimum five points per cell in each period; 1 m sensitivity and four-period audit retained."
   },
-  "all_scene_revision_previous_head": "3fff4cba21360eca85fc92349d653b3ec0122d53"
+  "all_scene_revision_previous_head": "3fff4cba21360eca85fc92349d653b3ec0122d53",
+  "pytest_execution": "79-test suite passed; 3 additional boundary regressions plus all 11 original PROSAC tests passed in a subsequent 14-test run.",
+  "mypy_check": "passed: confidence_homography.py, geometry/__init__.py and new unit tests",
+  "prosac_revision_previous_head": "492785f49d75a3195ad19456522c21aebb6e4941",
+  "prosac_validation": {
+    "cpu_only": true,
+    "neural_inference_repeated": false,
+    "original_prediction_npz_unchanged": true,
+    "new_homographies": 4,
+    "inlier_counts": [
+      5,
+      7,
+      5,
+      7
+    ],
+    "reproduction": "homography_evidence.py rechecks all fields, source/code/template hashes and numerical results",
+    "pdf_pages_inspected_this_revision": [
+      3,
+      5,
+      6,
+      7
+    ],
+    "known_checkpoint_mismatch": "historical limitation unchanged; postprocessing uses bundled original KP and scores"
+  }
 }

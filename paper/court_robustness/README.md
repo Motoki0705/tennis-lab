@@ -8,6 +8,7 @@
 |---|---|
 | `images/`, `evidence/inputs.json` | 指定画像のバイト一致コピー、元ファイル名・サイズ・SHA-256 |
 | `evidence/predictions/` | 両モデルのKP座標、H生成可否、TCD確率マップ・argmax、提案モデルのLINE確率・姿勢生出力。数値はfloat32/float64のまま保存 |
+| `evidence/homography/`, `tables/homography.tex` | 保存KP・スコアからのPROSAC再推定。参照テンプレート、H、信頼度順位、再推定に使った点と最終インライア、残差、コード・元推論のハッシュ |
 | `evidence/inference_both.json`, `checkpoint_config.json`, `target_bundle.json` | 重み・入力・出力のハッシュ、CPU実行、保存設定と出力契約 |
 | `evidence/training_run*.{json,yaml}`, `training_provenance.json` | mixed学習の保存設定と既存queue runの出典。checkpointの正規化設定から落ちる混合比を補う |
 | `evidence/dataset_audit.json` | TCD全8,841画像＋B00〜B03全8,415レンダリングとのバイト/RGB/知覚ハッシュ照合 |
@@ -39,6 +40,7 @@
 リポジトリrootで、プロジェクトの `.venv` を使用します。NumPy、OpenCV、Pillow、Matplotlib、PyTorch（CPU）・SciPyを含むプロジェクト依存関係、pytest、およびPDF検証用の `pdfinfo` / `pdftotext` が必要です。
 
 ```bash
+.venv/bin/python paper/court_robustness/homography_evidence.py
 .venv/bin/python paper/court_robustness/make_comparisons.py
 .venv/bin/python paper/court_robustness/make_scene_figures.py
 .venv/bin/python paper/court_robustness/make_alignment_figures.py
@@ -47,6 +49,8 @@
 .venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py
 .venv/bin/python paper/court_robustness/verify_artifacts.py
 ```
+
+KP由来のHは `src/tasks/court_detection/geometry/confidence_homography.py` を共通実装として、保存済み `raw_kp` と `kp_scores` からCPUで再推定します。元の推論NPZ・重みSHAは保持し、新しいHだけを別の証拠へ保存します。`infer.py` で今後推論する場合も同じ推定を呼びます。OpenCVのバージョン、推定コード、入力、設定が記録と異なると検証は停止します。方法と閾値の正本は本文3.4・4.2です。`fit_inliers` は最終最小二乗に用いた集合、`inliers` はそのHの再投影誤差による再判定で、表示と集計は後者です。TCDの公式後処理は保持しています。
 
 3DGS図は保存レンダリングの原寸RGBに、保存カメラから全コートを再投影します。キャプチャ画像への置換はありません。画像の切り抜き・補修は行わず、線分だけを画面/near planeでclipします。`--collect` なしではデータセットも不要です。テストは、カメラやアライメントを誤って組み合わせた場合の拒否、near planeを跨ぐ線分、全図版の画素一致を確認します。
 
@@ -71,6 +75,7 @@ git -C .cache/court-report/TennisCourtDetector checkout e5cd4f1ce26b15361700d3d8
 .venv/bin/python paper/court_robustness/make_scene_figures.py --collect
 .venv/bin/python paper/court_robustness/make_alignment_figures.py --collect
 .venv/bin/python paper/court_robustness/make_drift_figure.py --collect
+.venv/bin/python paper/court_robustness/homography_evidence.py
 .venv/bin/python paper/court_robustness/make_comparisons.py
 .venv/bin/python paper/court_robustness/build_paper.py
 # 元画像・カメラ・アライメント・重み・保存設定まで照合

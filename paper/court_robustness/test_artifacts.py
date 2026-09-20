@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np
 import pytest
 from common import ROOT, sha256, sources
+from homography_evidence import read_results
 from make_comparisons import external_panels, fit_panel
 from make_scene_figures import (
     SELECTION,
@@ -76,7 +77,7 @@ def test_external_panels_reproduce_saved_predictions(record: dict) -> None:
         np.load(ROOT / f"evidence/predictions/{ident}_ours.npz") as o,
     ):
         original_line = o["line_probability"].copy()
-        panels = external_panels(image, b, o)
+        panels = external_panels(image, b, o, read_results()["images"][record["id"]])
         for name, panel in panels.items():
             saved = Image.open(ROOT / f"figures/{ident}_{name}.png").convert("RGB")
             np.testing.assert_array_equal(
@@ -110,9 +111,56 @@ def test_tcd_official_panel_displays_refined_keypoints() -> None:
         no_lines = np.full((14, 2), np.nan)
         expected = overlay(image, no_lines, (255, 98, 48), b["refined_kp"])
         unrefined = overlay(image, no_lines, (255, 98, 48), b["raw_kp"])
-        actual = external_panels(image, b, o)["baseline"]
+        actual = external_panels(image, b, o, read_results()["images"][record["id"]])[
+            "baseline"
+        ]
         np.testing.assert_array_equal(np.asarray(actual), np.asarray(expected))
         assert not np.array_equal(np.asarray(actual), np.asarray(unrefined))
+
+
+def test_confidence_homography_reproduces_all_saved_kp_and_generated_table() -> None:
+    from homography_evidence import table_text
+
+    results = read_results()
+    assert table_text(results) == (ROOT / "tables/homography.tex").read_text()
+    assert results["images"]["local02"]["top4_template_collinear"]
+    for record in sources():
+        item = results["images"][record["id"]]
+        assert item["status"] == "ok"
+        assert item["inlier_count"] > 4
+        residuals = np.array(item["residuals_px"])
+        np.testing.assert_array_equal(
+            item["inliers"], residuals <= item["threshold_px"]
+        )
+        with np.load(ROOT / f"evidence/predictions/{record['id']}_ours.npz") as source:
+            scores = source["kp_scores"][item["ranked_indices"]]
+            assert np.all(np.diff(scores) <= 0)
+
+
+@pytest.mark.parametrize("change", ["parameters", "matrix", "rank", "source"])
+def test_confidence_evidence_rejects_tampering(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    import homography_evidence as module
+
+    original = module.BUNDLE
+    result = json.loads((original / "results.json").read_text())
+    item = result["images"]["local02"]
+    if change == "parameters":
+        result["parameters"]["sampler"] = 0
+    elif change == "matrix":
+        item["matrix"][0][2] += 1
+    elif change == "rank":
+        item["ranked_indices"] = item["ranked_indices"][::-1]
+    else:
+        item["source_sha256"] = "0" * 64
+    (tmp_path / "results.json").write_text(json.dumps(result))
+    (tmp_path / "template.json").write_bytes((original / "template.json").read_bytes())
+    monkeypatch.setattr(module, "BUNDLE", tmp_path)
+    with pytest.raises(ValueError, match="homography"):
+        module.read_results()
 
 
 def make_build_fixture(root: Path) -> None:

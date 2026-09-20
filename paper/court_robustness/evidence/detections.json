@@ -5,6 +5,8 @@
     "baseline_official_H": false,
     "ours_detections": 14,
     "ours_H": true,
+    "ours_inliers": 5,
+    "ours_inlier_rms_px": 0.3283226979442124,
     "ours_line_max": 1.0,
     "baseline_argmax_H": true
   },
@@ -14,6 +16,8 @@
     "baseline_official_H": false,
     "ours_detections": 14,
     "ours_H": true,
+    "ours_inliers": 7,
+    "ours_inlier_rms_px": 1.5849813951287364,
     "ours_line_max": 1.0,
     "baseline_argmax_H": false
   },
@@ -23,6 +27,8 @@
     "baseline_official_H": false,
     "ours_detections": 14,
     "ours_H": true,
+    "ours_inliers": 5,
+    "ours_inlier_rms_px": 0.7186675713221305,
     "ours_line_max": 1.0,
     "baseline_argmax_H": false
   },
@@ -32,6 +38,8 @@
     "baseline_official_H": false,
     "ours_detections": 14,
     "ours_H": true,
+    "ours_inliers": 7,
+    "ours_inlier_rms_px": 0.7849532630997869,
     "ours_line_max": 0.9999996423721313,
     "baseline_argmax_H": false
   }

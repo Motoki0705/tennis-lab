@@ -5,6 +5,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from common import ROOT, sha256, sources, write_json
+from homography_evidence import read_results
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 EDGES = [(0, 1), (2, 3), (0, 2), (1, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13)]
@@ -28,6 +29,7 @@ def overlay(
     points: np.ndarray,
     color: tuple[int, int, int],
     raw: np.ndarray | None = None,
+    inliers: np.ndarray | None = None,
 ) -> Image.Image:
     a = np.asarray(image).copy()
     h, w = a.shape[:2]
@@ -43,8 +45,19 @@ def overlay(
             cv2.line(a, start, stop, (12, 15, 20), lw + 2, cv2.LINE_AA)
             cv2.line(a, start, stop, color, lw, cv2.LINE_AA)
     if raw is not None:
-        for point in raw:
+        for index, point in enumerate(raw):
             if np.isfinite(point).all() and 0 <= point[0] < w and 0 <= point[1] < h:
+                if inliers is not None and not inliers[index]:
+                    cv2.drawMarker(
+                        a,
+                        tuple(np.rint(point).astype(int)),
+                        (180, 180, 180),
+                        cv2.MARKER_TILTED_CROSS,
+                        lw * 5,
+                        lw,
+                        cv2.LINE_AA,
+                    )
+                    continue
                 cv2.circle(
                     a,
                     tuple(np.rint(point).astype(int)),
@@ -69,7 +82,9 @@ def heatmap(probability: np.ndarray, size: tuple[int, int]) -> Image.Image:
     return Image.fromarray(colored[:, :, ::-1])
 
 
-def external_panels(image: Image.Image, b: dict, o: dict) -> dict[str, Image.Image]:
+def external_panels(
+    image: Image.Image, b: dict, o: dict, homography: dict
+) -> dict[str, Image.Image]:
     # Reuse saved forward outputs for an equal-cardinality sensitivity test.
     probability = b["kp_probability"]
     kp, fitted = b["argmax_kp"], b["argmax_aligned_kp"]
@@ -90,9 +105,12 @@ def external_panels(image: Image.Image, b: dict, o: dict) -> dict[str, Image.Ima
         "baseline_heat": heatmap(probability.max(0), image.size),
         "ours": overlay(
             image,
-            o["aligned_kp"] if o["homography_found"] else np.full((14, 2), np.nan),
+            np.asarray(homography["aligned_kp"])
+            if homography["status"] == "ok"
+            else np.full((14, 2), np.nan),
             (0, 225, 195),
             o["raw_kp"],
+            np.asarray(homography["inliers"]),
         ),
         "ours_heat": heatmap(o["line_probability"], image.size),
     }
@@ -115,6 +133,7 @@ def main() -> None:
     summary = []
     overview = Image.new("RGB", (1800, len(records) * 265), "white")
     figure_manifest = {}
+    homographies = read_results()
     for index, record in enumerate(records):
         ident = record["id"]
         image = ImageOps.exif_transpose(
@@ -122,7 +141,8 @@ def main() -> None:
         ).convert("RGB")
         b = np.load(ROOT / "evidence/predictions" / f"{ident}_baseline.npz")
         o = np.load(ROOT / "evidence/predictions" / f"{ident}_ours.npz")
-        panels = external_panels(image, b, o)
+        homography = homographies["images"][ident]
+        panels = external_panels(image, b, o, homography)
         for name, panel in panels.items():
             path = ROOT / "figures" / f"{ident}_{name}.png"
             fit_panel(panel, (720, 500)).save(path)
@@ -153,7 +173,9 @@ def main() -> None:
                 ),
                 "baseline_official_H": bool(b["homography_found"]),
                 "ours_detections": int(np.isfinite(o["raw_kp"]).all(1).sum()),
-                "ours_H": bool(o["homography_found"]),
+                "ours_H": homography["status"] == "ok",
+                "ours_inliers": homography["inlier_count"],
+                "ours_inlier_rms_px": homography["inlier_rms_px"],
                 "ours_line_max": float(o["line_probability"].max()),
                 "baseline_argmax_H": bool(b["argmax_homography_found"]),
             }
@@ -167,6 +189,9 @@ def main() -> None:
             "line_threshold": 0.5,
             "heatmap_range": [0, 1],
             "resize": "aspect-preserving; full image, no crop",
+            "homography_evidence_sha256": sha256(
+                ROOT / "evidence/homography/results.json"
+            ),
         },
     )
 
