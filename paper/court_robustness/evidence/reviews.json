@@ -89,14 +89,32 @@
       "request": "Confidence-ranked PROSAC and inlier-only refit; refresh the four-photo paper results",
       "requested": 1,
       "attempted": 1,
-      "completed": 0,
+      "completed": 1,
       "rounds": [
         {
           "round": 1,
-          "status": "starting",
+          "status": "completed",
           "artifact_commit": "14aa523410f1b393cc29fe3ae7b96b87655791d7",
           "model_provider_effort": "inherited from parent; validator role configuration has no model/effort override",
-          "fork_turns": "none"
+          "fork_turns": "none",
+          "commit": "19bfaef1ce600851e0f4af9df73e67a527cb650d",
+          "verdict": "PASS",
+          "findings": [],
+          "verified": [
+            "Actual confidence ordering passed to PROSAC; degenerate minimal samples, inlier-only refit and restoration of semantic KP order.",
+            "All four homographies, generated table and exact figure pixels; original KP/LINE NPZs and inference/checkpoint records unchanged.",
+            "81 tests passed and 1 existing CUDA-specific regression skipped in validator environment; ruff, diff check and offline artifact validation passed.",
+            "Seven-page PDF; pages 3, 5, 6 and 7 visually checked; prior 3DGS, ground RANSAC, view projection and all-scene drift content retained."
+          ],
+          "not_repeated": [
+            "Training or neural inference",
+            "Local checkpoint verification (known SHA mismatch)",
+            "LaTeX rebuild (validated saved receipt and source/PDF binding)"
+          ],
+          "remaining_limits": [
+            "No human ground truth; smaller inlier residuals do not establish physical accuracy or generalization.",
+            "Historical checkpoint byte mismatch still prevents exact neural re-inference from the currently available weight file."
+          ]
         }
       ]
     }
