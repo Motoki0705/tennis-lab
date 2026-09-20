@@ -91,6 +91,9 @@ def migrate(write: bool, overrides: dict[str, str]) -> dict[Path, Path]:
             new.write_text(updated)
             if old != new:
                 old.unlink()
+    if write:
+        for task, count in counts.items():
+            (base / task / ".sequence").write_text(f"{count}\n")
     print(json.dumps({"nodes": len(nodes), "tasks": counts, "write": write}, ensure_ascii=False))
     return mapping
 
