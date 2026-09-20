@@ -1,6 +1,6 @@
 {
   "pytest_command": ".venv/bin/python -m pytest -n0 paper/court_robustness/test_artifacts.py",
-  "pytest_passed": 27,
+  "pytest_passed": 31,
   "ruff_check": "passed",
   "ruff_format": "passed",
   "knowledge_validate_errors": 0,
@@ -28,7 +28,7 @@
   },
   "alignment_method_geometry": "production RANSAC and selected ray projections match the saved plane and arrays; fit-only 32-view sum exactly matches the original raster",
   "method_revision_previous_head": "9a3bbc4509640aa14b32f115a1842b7fabc3af8a",
-  "sfm_drift_geometry": "Full COLMAP point/track source check passed; bijective export mapping and RGB agreement; all shared-cell measurements and figure pixels reproduce.",
+  "sfm_drift_geometry": "B00--B03 full COLMAP point/track source checks passed; bijective export mapping and RGB agreement; all shared-cell measurements, table values and figure pixels reproduce. Registered-frame gaps retained; unsupported four-period comparisons explicitly null.",
   "local_source_validation": {
     "date": "2026-09-19",
     "full_command": ".venv/bin/python paper/court_robustness/verify_artifacts.py --check-local-sources --write-report",
@@ -45,5 +45,19 @@
     "existing_inference_outputs_and_weight_hash_records_changed": false,
     "interpretation": "Equal configuration/epoch does not establish identical model weights. Do not substitute current checkpoint or relax the byte check."
   },
-  "sfm_revision_previous_head": "906e6875f2402d8ef0540420d31251607f4f0362"
+  "sfm_revision_previous_head": "906e6875f2402d8ef0540420d31251607f4f0362",
+  "four_scene_source_validation": {
+    "date": "2026-09-20",
+    "status": "passed",
+    "scenes": [
+      "B00",
+      "B01",
+      "B02",
+      "B03"
+    ],
+    "source": "Original images.bin and points3D.bin reread for every scene; all per-point metadata compared after bijective mapping to the public export; saved alignment and frame IDs checked.",
+    "bundle_manifest_sha256": "826e8b7bd3a651697761ce6158a1995c6e34cbfb34e357fb5f01788d572a5f95",
+    "primary_protocol": "Same chronological registered-frame half comparison for every scene; 0.5 m cells, minimum five points per cell in each period; 1 m sensitivity and four-period audit retained."
+  },
+  "all_scene_revision_previous_head": "3fff4cba21360eca85fc92349d653b3ec0122d53"
 }

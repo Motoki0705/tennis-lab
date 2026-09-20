@@ -15,6 +15,7 @@ from build_paper import source_digests
 from common import PAPER_PAGES, REPO, ROOT, sha256, sources, write_json
 from drift_evidence import BUNDLE as DRIFT_BUNDLE
 from drift_evidence import validate as validate_drift_geometry
+from make_drift_figure import drift_table
 from make_scene_figures import SELECTION, render_overlay, validate_projection
 from PIL import Image
 
@@ -161,6 +162,15 @@ def main() -> None:
         "Changed SfM drift source bundle or measurements",
     )
     require(drift_checks == drift["verification"], "SfM drift verification differs")
+    for name, digest in drift["tables"].items():
+        require(sha256(ROOT / name) == digest, "Changed SfM drift table")
+        require(
+            (ROOT / name).read_text() == drift_table(),
+            "SfM drift table differs from measurements",
+        )
+        require(
+            name in (ROOT / "report.tex").read_text(), "SfM table absent from paper"
+        )
     for name, digest in drift["figures"].items():
         require(sha256(ROOT / "figures" / name) == digest, "Changed SfM drift figure")
         require(

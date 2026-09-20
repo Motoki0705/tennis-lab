@@ -21,7 +21,7 @@
 \renewcommand{\tablename}{表}
 \renewcommand{\refname}{参考文献}
 \pagestyle{fancy}\fancyhf{}\renewcommand{\headrulewidth}{0pt}
-\fancyfoot[L]{\sffamily\fontsize{7}{9}\selectfont\color{muted}TENNIS-LAB / Court detection / 2026-09-19}
+\fancyfoot[L]{\sffamily\fontsize{7}{9}\selectfont\color{muted}TENNIS-LAB / Court detection / 2026-09-20}
 \fancyfoot[R]{\sffamily\fontsize{8}{10}\selectfont\thepage}
 \newcommand{\sect}[1]{\section{#1}\vspace{-1mm}}
 \newcommand{\panel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth]{figures/#1}\end{minipage}}
@@ -35,7 +35,7 @@
 \begin{center}
 {\sffamily\bfseries\fontsize{17}{23}\selectfont\color{ink}3DGSによる視点拡張と幾何教師を用いた\\テニスコート検出}\par\vspace{2mm}
 {\fontsize{10}{14}\selectfont データ生成・多タスク学習・未学習画像での定性評価}\par\vspace{2mm}
-{\sffamily\fontsize{8}{11}\selectfont tennis-lab\quad 技術報告\quad 2026年9月19日}
+{\sffamily\fontsize{8}{11}\selectfont tennis-lab\quad 技術報告\quad 2026年9月20日}
 \end{center}\par
 \vspace{-1mm}
 \begin{abstract}
@@ -61,6 +61,13 @@ TennisCourtDetector（TCD）\cite{tcd}はTrackNetに近い構成で14点のコ�
 本手法ではこの画像合成を教師付きデータの視点拡張に用いる。
 検出器には自己教師あり視覚特徴のDINOv3\cite{dino}と、多段特徴を空間的な予測へ戻すDPT\cite{dpt}を組み合わせる。
 これら自体の新規性ではなく、規格コートの幾何と実画像の教師を接続する構成が本報告の対象である。
+
+\textbf{SfM・単眼SLAMのドリフト。}
+Holynskiら\cite{drift}は、画像間の通常の点対応を越えて広がる平面・消失点を大域SfMの制約に用い、位置・スケールの長周期ドリフトを低減した。
+Strasdatら\cite{scale_drift}は、単眼SLAMの再訪時に相似変換のpose graphを最適化し、回転・並進に加えてスケールのずれを補正する。
+前者は長距離の構造制約、後者はループ閉じ込みによる整合化である。
+本報告はこれらの補正法の比較実験ではなく、保存SfMに残る不整合を実点群から診断する。
+コート面への事後アライメントと、再構成自体の大域整合性の改善を区別する。
 
 \sect{手法}
 \subsection{3DGS再構成と規格コートへのアライメント}
@@ -213,27 +220,30 @@ TCD argmax：H生成 & 可 & 不可 & 不可 & 不可\\
 \subsection{SfMのドリフトと幾何教師への影響}
 SfMには、長い撮影区間で位置・姿勢・スケールの誤差が累積するドリフトの問題がある\cite{drift}。
 再構成の変形は3DGSの外観と幾何教師の整合を損なうため、保存教師との再投影一致だけでは十分でない。
-そこでB00の実SfM点217,407点と観測トラックを読み、491フレームを時系列で4等分して、地面の再構成高さを比較した（図\ref{fig:drift}）。
+そこで\textbf{B00--B03すべて}の実SfM点と観測トラックを読み、地面の再構成高さを同じ条件で比較した（図\ref{fig:drift}、表\ref{tab:drift}）。
 
-対象は保存コート2面の内側、推定地面から$\pm30$ cm以内、SfM再投影誤差1 px以下の点とした。
-全観測が一つの区間に収まるトラックだけを使い、区間をまたぐ点は除く。
-地面を0.5 m格子に分け、\textbf{全4区間で各5点以上を持つ共通33セル}に限定した。
-各セル・各区間の高さ中央値から第1区間の値を引き、同じ領域同士の差を集計する。
-これは同一特徴点の再推定比較ではなく、同一セル内の異なる点群による診断である。
+対象は保存コートの内側、保存アライメントの共通平面から$\pm30$ cm以内、SfM再投影誤差1 px以下の点である。
+登録済み画像を撮影順に二等分し、全観測が前半か後半に収まるトラックだけを使う。未登録画像は補間しない。
+0.5 m格子で\textbf{両区間に各5点以上}を持つセルについて、高さ中央値の差（後半$-$前半）を求める。
+同一特徴点の再推定比較ではなく、同一セル内の異なる点群による診断である。
+従来の4区間比較は共通セルがB00で33、B01--B03では0だったため、全シーンを同じ2区間比較に統一した。4区間診断の未成立も証拠データに残す。
 
 \newpage
 \noindent\includegraphics[width=\linewidth]{figures/sfm_temporal_drift.png}
-\captionof{figure}{B00の実データによるドリフトの兆候。上段は各撮影区間の先頭の実画像。(a)元RGBを持つ地面点群と保存コート、共通33セルの位置・第3区間と第1区間の高さ差。(b)同じ33セルの区間別の差。灰点は全セル、青緑は中央値と四分位範囲であり、信頼区間ではない。点群の表示のみ3点に1点へ間引いた。m・cmへの換算には保存アライメントのスケールを使う。}\label{fig:drift}
+\captionof{figure}{全4シーンの実点群による時間依存の地面高さの不整合。元RGBを持つ地面点群と保存コート上に、比較可能な全0.5 mセルを描く。色は後半$-$前半の高さ差で、全シーン共通の$\pm20$ cm色域。$n$はセル数、軸は保存アライメントでmへ換算した。点群の表示のみ3点に1点へ間引き、数値の集計には間引きを適用しない。}\label{fig:drift}
 
-第1区間に対する高さ差の中央値は、第2--4区間でそれぞれ\textbf{+1.3、+3.2、+1.5 cm}だった。
-第3区間の四分位範囲は+2.1--+3.9 cmで、地面の高さが撮影区間に応じて偏る。
-格子を1 mへ広げた感度確認でも、共通101セルにおける第3区間の中央値は+3.0 cmだった。
-この時間依存の不整合はドリフトと整合する兆候だが、測量正解はなく、セル内の実際の凹凸や特徴点・三角測量の誤差とも分離できない。
-したがって、\emph{絶対的なドリフト量の測定や、B00以外への一般化は行わない}。
+\begin{center}\fontsize{8}{10}\selectfont\setlength{\tabcolsep}{1.5mm}
+\input{tables/sfm_drift.tex}
+\captionof{table}{同じセルの前半・後半差の分布。四分位範囲は信頼区間ではない。右端は1 m格子での感度確認（中央値・共通セル数）。地面基準には保存アライメントを使い、B01・B02は人手調整を含む。}\label{tab:drift}
+\end{center}\vspace{-2mm}
+
+B00には小さな正の偏り、B02には負側に広がる不整合がある一方、B01の中央値はほぼ0である。
+B03は6セルと少なく、1 m格子で中央値が+1.55から+0.56 cmへ変わるため、推定は不安定である。
+これらは\emph{ドリフトと整合する兆候を調べる診断}であり、全シーンでドリフトを確証したものではない。
+測量正解がなく、セル内の実際の凹凸や特徴点・三角測量の誤差とも分離できないため、絶対的なドリフト量やシーンの精度順位とは解釈しない。
 
 一つの相似変換でコートをアライメントしても、区間ごとに異なる変形は取り除けない。
-今後はSfM段階で地面の平面性や長距離の構造対応\cite{drift}を制約し、再訪時の対応と独立な地面基準で確認する必要がある。
-これは、レンダリング枚数を増やす前に幾何教師の品質を確保する課題である。
+今後はSfM段階の構造制約\cite{drift}や再訪時の整合化\cite{scale_drift}を検討し、独立な地面基準で幾何教師の品質を確かめる必要がある。
 
 \subsection{4シーンに限られる多様性と汎化性能の不足}
 合成側はB00--B03の\textbf{4シーンのみ}で、8,415枚への視点拡張も、新しい会場・路面・照明・背景を追加するものではない。
@@ -246,11 +256,12 @@ TCD実画像8,841枚も混合しているが、合成側の分割は同一シー
 同一モデル・解像度で実写のみと合成混合を比較し、シーン数の増加が汎化へ与える効果も検証する。
 \par
 \vspace{-2mm}
-\begin{thebibliography}{5}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
+\begin{thebibliography}{6}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
 \bibitem{tcd} yastrebksv. \href{https://github.com/yastrebksv/TennisCourtDetector}{TennisCourtDetector}. 公開コード・重み、コード版 e5cd4f1（2026-09-18参照）.
 \bibitem{gs} B. Kerbl, G. Kopanas, T. Leimkühler, G. Drettakis. \href{https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}{3D Gaussian Splatting for Real-Time Radiance Field Rendering}. ACM TOG 42(4), 2023.
 \bibitem{dino} O. Siméoni et al. \href{https://arxiv.org/abs/2508.10104}{DINOv3}. arXiv:2508.10104, 2025.
 \bibitem{dpt} R. Ranftl, A. Bochkovskiy, V. Koltun. \href{https://openaccess.thecvf.com/content/ICCV2021/html/Ranftl_Vision_Transformers_for_Dense_Prediction_ICCV_2021_paper.html}{Vision Transformers for Dense Prediction}. ICCV, 2021.
 \bibitem{drift} A. Holynski, D. Geraghty, J.-M. Frahm, C. Sweeney, R. Szeliski. \href{https://arxiv.org/abs/2008.12295}{Reducing Drift in Structure From Motion Using Extended Features}. 3DV, pp. 51--60, 2020.
+\bibitem{scale_drift} H. Strasdat, J. M. M. Montiel, A. J. Davison. \href{https://www.roboticsproceedings.org/rss06/p10.html}{Scale Drift-Aware Large Scale Monocular SLAM}. RSS, 2010.
 \end{thebibliography}
 \end{document}

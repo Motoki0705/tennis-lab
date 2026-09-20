@@ -23,64 +23,321 @@
     "ransac_matches_saved_plane": true
   },
   "sfm_temporal_ground_audit": {
-    "scene_id": "B00",
-    "frame_count": 491,
-    "point_count": 217407,
-    "primary": {
-      "cell_size_m": 0.5,
-      "shared_cell_count": 33,
-      "median_delta_m": [
-        0.0,
-        0.012536362043265376,
-        0.03186454484424611,
-        0.015148164448182434
-      ],
-      "iqr_delta_m": [
-        [
+    "B00": {
+      "scene_id": "B00",
+      "frame_count": 491,
+      "point_count": 217407,
+      "primary": {
+        "status": "measured",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 617,
+        "median_delta_m": [
           0.0,
-          0.0
+          0.008820320916167522
         ],
-        [
-          0.00652086014680274,
-          0.022205987138194917
-        ],
-        [
-          0.020803217434881904,
-          0.03880032565045656
-        ],
-        [
-          0.0027857658996865886,
-          0.025604789277464686
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.005172762015125534,
+            0.022229137068078993
+          ]
         ]
-      ]
+      },
+      "sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 371,
+        "median_delta_m": [
+          0.0,
+          0.0075017459402792475
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.006600432881735608,
+            0.02138327879480543
+          ]
+        ]
+      },
+      "four_period_audit": {
+        "status": "measured",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 33,
+        "median_delta_m": [
+          0.0,
+          0.012536362043265373,
+          0.031864544844246154,
+          0.015148164448182427
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.006520860146802743,
+            0.022205987138194806
+          ],
+          [
+            0.02080321743488196,
+            0.038800325650456526
+          ],
+          [
+            0.002785765899686561,
+            0.02560478927746475
+          ]
+        ]
+      },
+      "four_period_sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 101,
+        "median_delta_m": [
+          0.0,
+          0.013206240222554982,
+          0.030186141668640296,
+          0.010488247079417694
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0022634113478661524,
+            0.023682378777637493
+          ],
+          [
+            0.018502638788165462,
+            0.04048173096338793
+          ],
+          [
+            -0.0013964902149770017,
+            0.026041390644159883
+          ]
+        ]
+      }
     },
-    "sensitivity": {
-      "cell_size_m": 1.0,
-      "shared_cell_count": 101,
-      "median_delta_m": [
-        0.0,
-        0.013206240222555048,
-        0.030186141668640296,
-        0.0104882470794177
-      ],
-      "iqr_delta_m": [
-        [
+    "B01": {
+      "scene_id": "B01",
+      "frame_count": 266,
+      "point_count": 109717,
+      "primary": {
+        "status": "measured",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 246,
+        "median_delta_m": [
           0.0,
-          0.0
+          0.0008863718554193487
         ],
-        [
-          0.002263411347866215,
-          0.023682378777637486
-        ],
-        [
-          0.018502638788165462,
-          0.040481730963387905
-        ],
-        [
-          -0.0013964902149769427,
-          0.02604139064415991
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.003971951772528803,
+            0.0056468162185415284
+          ]
         ]
-      ]
+      },
+      "sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 218,
+        "median_delta_m": [
+          0.0,
+          3.2042092251534024e-06
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.006788872765522152,
+            0.005675866794965274
+          ]
+        ]
+      },
+      "four_period_audit": {
+        "status": "no_shared_cells",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 0,
+        "median_delta_m": null,
+        "iqr_delta_m": null
+      },
+      "four_period_sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 7,
+        "median_delta_m": [
+          0.0,
+          -0.006734408766903616,
+          -0.005932004100582474,
+          -0.007563337721282034
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.013496211235531111,
+            -0.003881540944199302
+          ],
+          [
+            -0.01288859859588088,
+            0.0009004325734528478
+          ],
+          [
+            -0.01481609613480647,
+            -0.004389887353894429
+          ]
+        ]
+      }
+    },
+    "B02": {
+      "scene_id": "B02",
+      "frame_count": 157,
+      "point_count": 56620,
+      "primary": {
+        "status": "measured",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 69,
+        "median_delta_m": [
+          0.0,
+          -0.013775496912700358
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.08007358843372064,
+            0.005854875191693254
+          ]
+        ]
+      },
+      "sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 92,
+        "median_delta_m": [
+          0.0,
+          -0.016672843381058622
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.08403361029993958,
+            0.0057634546038718695
+          ]
+        ]
+      },
+      "four_period_audit": {
+        "status": "no_shared_cells",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 0,
+        "median_delta_m": null,
+        "iqr_delta_m": null
+      },
+      "four_period_sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 2,
+        "median_delta_m": [
+          0.0,
+          -0.10122528447530856,
+          -0.11709335809180685,
+          -0.10276850423408712
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.12463718976072469,
+            -0.07781337918989242
+          ],
+          [
+            -0.12503765958470614,
+            -0.10914905659890756
+          ],
+          [
+            -0.10451914788942726,
+            -0.10101786057874697
+          ]
+        ]
+      }
+    },
+    "B03": {
+      "scene_id": "B03",
+      "frame_count": 153,
+      "point_count": 44521,
+      "primary": {
+        "status": "measured",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 6,
+        "median_delta_m": [
+          0.0,
+          0.015520147622269187
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.011892012950340074,
+            0.028431572677436047
+          ]
+        ]
+      },
+      "sensitivity": {
+        "status": "measured",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 22,
+        "median_delta_m": [
+          0.0,
+          0.005649919148032296
+        ],
+        "iqr_delta_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            -0.0091034972861157,
+            0.028287742514320372
+          ]
+        ]
+      },
+      "four_period_audit": {
+        "status": "no_shared_cells",
+        "cell_size_m": 0.5,
+        "shared_cell_count": 0,
+        "median_delta_m": null,
+        "iqr_delta_m": null
+      },
+      "four_period_sensitivity": {
+        "status": "no_shared_cells",
+        "cell_size_m": 1.0,
+        "shared_cell_count": 0,
+        "median_delta_m": null,
+        "iqr_delta_m": null
+      }
     }
   },
   "corpus_images_audited": 17256,
@@ -93,6 +350,6 @@
   ],
   "baseline_control_error_px": 1.42276633028083,
   "max_scene_label_reprojection_difference_px": 1.7826096154749393e-10,
-  "pdf_sha256": "0fe305dc1e8bb4a0f6a5eae521a164927a246a35b1378f8074d770a322c4d4f0",
+  "pdf_sha256": "6b7863a46f8f517b7c64034c5e3a5a7de5d13b0433750354ba11cb767ddb3ffb",
   "scope": "Artifact integrity and rendering/inference consistency, not accuracy against human ground truth."
 }

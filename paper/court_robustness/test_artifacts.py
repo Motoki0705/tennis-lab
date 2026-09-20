@@ -120,9 +120,11 @@ def make_build_fixture(root: Path) -> None:
     from common import write_json
 
     (root / "figures").mkdir()
+    (root / "tables").mkdir()
     (root / "report.tex").write_text("source fixture")
     (root / "report.pdf").write_bytes(b"pdf byte fixture")
     (root / "figures/view.png").write_bytes(b"figure byte fixture")
+    (root / "tables/measurements.tex").write_text("table fixture")
     write_json(
         root / "evidence/build.json",
         {
@@ -142,7 +144,10 @@ def test_offline_build_binding_needs_no_temporary_log(tmp_path: Path) -> None:
     validate_build_receipt(tmp_path)
 
 
-@pytest.mark.parametrize("changed", ["report.pdf", "report.tex", "figures/view.png"])
+@pytest.mark.parametrize(
+    "changed",
+    ["report.pdf", "report.tex", "figures/view.png", "tables/measurements.tex"],
+)
 def test_build_binding_rejects_modified_artifact(tmp_path: Path, changed: str) -> None:
     from verify_artifacts import validate_build_receipt
 
@@ -279,28 +284,67 @@ def test_sfm_height_comparison_pairs_cells_and_excludes_cross_period_tracks() ->
     np.testing.assert_allclose(result["median_delta_m"], [0, 0.02])
 
 
-def test_sfm_no_common_ground_is_rejected() -> None:
+def test_sfm_no_common_ground_is_explicitly_unmeasured_not_zero() -> None:
     from drift_evidence import paired_heights
 
-    with pytest.raises(ValueError, match="No ground cells shared"):
-        paired_heights(
-            np.array([[0, 0], [1, 0]]),
-            np.array([0, 0.02]),
-            np.array([0, 10]),
-            np.array([1, 11]),
-            np.ones(2, bool),
-            np.array([0, 10, 20]),
-            0.5,
-            1,
-        )
+    result = paired_heights(
+        np.array([[0, 0], [1, 0]]),
+        np.array([0, 0.02]),
+        np.array([0, 10]),
+        np.array([1, 11]),
+        np.ones(2, bool),
+        np.array([0, 10, 20]),
+        0.5,
+        1,
+    )
+    assert result["status"] == "no_shared_cells"
+    assert result["shared_cell_count"] == 0
+    assert result["median_delta_m"] is None
+    assert result["iqr_delta_m"] is None
+
+
+def test_sfm_periods_preserve_missing_frame_ids_and_last_registered_frame() -> None:
+    from drift_evidence import period_edges
+
+    frames = [0, 1, 5, 9]
+    assert period_edges(frames, 2) == [0, 5, 10]
+    assert period_edges(frames, 4) == [0, 1, 5, 9, 10]
+    with pytest.raises(ValueError, match="unique chronological"):
+        period_edges([0, 5, 1, 9], 2)
+
+
+def test_sfm_ground_reference_rejects_non_coplanar_saved_courts() -> None:
+    from drift_evidence import ground_reference
+
+    alignment = json.loads((ROOT / "evidence/scene_sources/B01.json").read_text())
+    ground_reference(alignment)
+    alignment["alignment"]["layout"]["courts"][1]["scene_from_court"][11] += 0.1
+    with pytest.raises(ValueError, match="common ground plane"):
+        ground_reference(alignment)
+
+
+def test_sfm_all_four_scenes_have_supported_primary_measurements() -> None:
+    from drift_evidence import SCENE_IDS, validate
+
+    result = validate()
+    assert tuple(result) == SCENE_IDS
+    assert sum(r["point_count"] for r in result.values()) == 428265
+    for item in result.values():
+        for protocol in ("primary", "sensitivity"):
+            assert item[protocol]["status"] == "measured"
+            assert item[protocol]["shared_cell_count"] > 0
+            assert len(item[protocol]["median_delta_m"]) == 2
+    for sid in ("B01", "B02", "B03"):
+        assert result[sid]["four_period_audit"]["median_delta_m"] is None
 
 
 def test_sfm_drift_figure_reproduces_measured_bundle(tmp_path: Path) -> None:
     import matplotlib.pyplot as plt
     from drift_evidence import validate
-    from make_drift_figure import drift_figure
+    from make_drift_figure import drift_figure, drift_table
 
     validate()
+    assert drift_table() == (ROOT / "tables/sfm_drift.tex").read_text()
     figure = drift_figure()
     output = tmp_path / "drift.png"
     figure.savefig(output, dpi=210, facecolor="white")
