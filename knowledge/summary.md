@@ -1,7 +1,7 @@
-<!-- knowledge-review: 700516cce62eeeea3725e6e4c73fc8deb0401e26e514ebded775023645f5f735 on 2026-09-21 -->
+<!-- knowledge-review: c34f4a373fbfd40557aac4228dd8c36d8a37f4146e9261f8e7521c069af04e95 on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-21（KP＋LINE下流移行の追加確認）
+更新日: 2026-09-21（コート推定・SfM診断とKP＋LINE下流移行の統合確認）
 
 以下の既存baseline/deploy整理の調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`
 
@@ -9,11 +9,18 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
+## 2026-09-21の追加確認
+
+技術報告に伴う5ノードを確認し、実写homography postprocessと合成データ源の幾何的不確実性を更新した。以下の知見は既存deploy checkpointの昇格根拠にはしない。
+
+- **Court detection / 実写homography postprocess**: [指定4写真の保存予測](nodes/court_detection/000028-run-court-supplied-photos-paper-20260918.md)に対し、[PROSAC](nodes/court_detection/000029-run-court-prosac-paper-20260920.md)と[KP・LINE共同推定](nodes/court_detection/000030-run-court-kp-line-hybrid-20260920.md)はいずれも4枚でHを生成した。共同推定はKPのみより予測LINEとの双方向内部整合を高めたが、人手GTがなく、段階間で採用KPも異なるため、実コートへの精度向上率や4写真外への汎化は未確認である。写真CのLINE欠落・対応の曖昧さも残る。次は会場分離の人手GTと固定モデル・解像度で旧H／PROSAC／共同推定の誤差、失敗率、棄却率、処理時間、下流E2Eを同条件比較する。保存出力による再検証は可能だが、ニューラル再推論には[記録済みのcheckpointハッシュ不一致](../paper/court_robustness/README.md)の解消が必要である。
+- **Synthetic data / SfM幾何**: [B00の保存トラック診断](nodes/synthetic_data_generation/000022-run-court-sfm-ground-drift-20260919.md)に続き、[B00〜B03の共通2区間診断](nodes/synthetic_data_generation/000023-run-court-sfm-all-scenes-drift-20260920.md)でも、時間分割した共通地面セルに高さ不整合を観測した。SfM driftと整合する兆候だが絶対ドリフト誤差ではなく、符号はシーンごとに異なり、B01の偏りは小さく、B03は支持セルが少ない。地面凹凸・特徴点誤差・三角測量誤差も分離できないため、合成教師の幾何的不確実性として扱う。次は再訪で十分に重なる地面観測と独立地面基準を用意し、長距離構造制約・loop closureの有無を同条件で比較して下流court精度への影響を測る。
+
 ## 2026-09-20の追加確認
 
 CIと登録SKILLの整合性を再確認した。保存形式・未完成の記録・summary本文の更新検出を強化した運用上の変更であり、実験結果や以下の研究判断には変更がない。
 
-全200ノードを7つの機能・研究トピックへ分割した。既存の実験IDと数値・再現bundleは保持している。論文の出典は[Papers](Papers/README.md)に一元化し、GVHMRを利用するPLCS記録に背景研究の参照を追加した。これは過去runが論文の手法を比較検証したという主張ではない。
+初回移行時点の全200ノードを7つの機能・研究トピックへ分割した。既存の実験IDと数値・再現bundleは保持している。論文の出典は[Papers](Papers/README.md)に一元化し、GVHMRを利用するPLCS記録に背景研究の参照を追加した。これは過去runが論文の手法を比較検証したという主張ではない。
 
 9月に追加された知見のうち、次の判断を更新する。
 
@@ -49,7 +56,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 ## 2026-09-21のKP＋LINE下流移行
 
-[run-court-hybrid-downstream-migration](nodes/court_detection/000028-run-court-hybrid-downstream-migration.md)では、ユーザー指定の残差head checkpointへ共通KP＋LINE推論を接続し、下流もcamera_view_v2へ移行した。8画像のH採用は3例であり、推定完了率の改善や実動画E2E精度は未確立。既定の変更は入力契約の統一であって、旧モデルへの精度優位の証明ではない。B00〜B03の保存alignmentと生成データは再publicationしていない。
+[run-court-hybrid-downstream-migration](nodes/court_detection/000031-run-court-hybrid-downstream-migration.md)では、ユーザー指定の残差head checkpointへ共通KP＋LINE推論を接続し、下流もcamera_view_v2へ移行した。8画像のH採用は3例であり、推定完了率の改善や実動画E2E精度は未確立。既定の変更は入力契約の統一であって、旧モデルへの精度優位の証明ではない。B00〜B03の保存alignmentと生成データは再publicationしていない。
 
 以下の既存baseline比較は元のas-of commitに基づく履歴として保持する。現在のpipeline checkpointは下表へ更新し、PLCS/BLCSはMeiji fine-tune版・window128・明示したreference-camera契約を使う。他会場の汎化、独立正解Hでの誤採用率、下流E2E評価を次の課題とする。
 
@@ -65,7 +72,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 KP14 detectorは実pipelineで利用可能な水準ですが、`1.708886 px`は`test_dataloader`がvalidation dataを読む条件の再評価値であり、独立testではありません。次の品質更新にはrecording-disjoint test、geometry valid率、line support、処理時間、PLCS / BLCSへのE2E影響が必要です。
 
-court segmentationはKP14とは別契約です。[`group-i524-dinov3-ssl-court`](nodes/court_detection/000005-group-i524-dinov3-ssl-court.md) では凍結backbone条件で非SSL `0.517 mIoU`からSSL `0.800 mIoU`へ改善しましたが、KP14 deploy modelの置換根拠にはなりません。点・線共同postprocessについては、detectorを固定した正式なpostprocess-only baselineがまだありません。
+court segmentationはKP14とは別契約です。[`group-i524-dinov3-ssl-court`](nodes/court_detection/000005-group-i524-dinov3-ssl-court.md) では凍結backbone条件で非SSL `0.517 mIoU`からSSL `0.800 mIoU`へ改善しましたが、KP14 deploy modelの置換根拠にはなりません。点・線共同postprocessは固定した保存予測4枚に対するdiagnosticまで成立しましたが、held-out人手GT付きの正式なpostprocess-only benchmarkはまだありません。
 
 ### PLCS
 
@@ -132,7 +139,7 @@ SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball�
 
 | 優先度 | 領域 | 不足している証拠 | 完了条件 |
 |---|---|---|---|
-| S | Court Detection | recording-disjoint test | KP距離、geometry valid、line support、wall time、下流E2Eを固定評価 |
+| S | Court Detection | recording-disjoint test | 固定モデル・解像度で旧H／PROSAC／共同推定のKP距離、geometry valid、line support、失敗・棄却率、wall time、下流E2Eを比較 |
 | S | PLCS canonical motion | jitter抑制とmulti-task再導入 | motion相関を保ち、high-frequency fractionを低下させ、position / rotation併用でもmean collapseしない |
 | S | BLCS観測ベースtracking | #832が単一seed・FP augmentation無効、重複track増加 | 許容差・重みを先に固定し、同一条件で3 seed以上を比較。position / presence / ID / duplicate / missedを併記し、FP有効条件と実検出入力でも評価 |
 | A | BLCS track-query architecture | #786が旧runtime・入力契約 | associationとpost-#824 metricを固定し、A/B/Dをcurrent loss・schema、3 seed以上で再実行してposition / ID / lifecycleのParetoを確認 |

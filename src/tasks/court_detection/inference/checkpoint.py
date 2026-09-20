@@ -23,6 +23,7 @@ from src.tasks.court_detection.model_io.factory import (
     build_court_inference_pair,
 )
 from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.paths import PROJECT_ROOT
 
 
 def file_sha256(path: Path) -> str:
@@ -69,7 +70,7 @@ class CourtInferenceSpec:
             resolver = PathResolver(
                 RuntimePathRoots.from_mapping(
                     _mapping(values.get("paths"), "paths"),
-                    repository_root=Path(__file__).resolve().parents[4],
+                    repository_root=PROJECT_ROOT,
                 )
             )
         model = CourtModelConfig.from_mapping(values.get("model"), resolver=resolver)

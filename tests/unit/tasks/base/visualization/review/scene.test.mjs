@@ -18,7 +18,6 @@ import {
   strideFor,
   subtract,
   toCamera,
-  yawDirection,
 } from "../../../../../../src/tasks/base/visualization/review/static/scene.mjs";
 
 const HALF_FOV = (36 * Math.PI) / 360;
@@ -127,13 +126,6 @@ test("frustumEdges has eight pairs covering the five vertices", () => {
 test("sortFarToNear orders items by descending depth", () => {
   const sorted = sortFarToNear([{ depth: 1 }, { depth: 5 }, { depth: 3 }]);
   assert.deepEqual(sorted.map((item) => item.depth), [5, 3, 1]);
-});
-
-test("yawDirection normalizes a (cos, sin) heading onto the ground plane", () => {
-  const direction = yawDirection([3, 4]);
-  assert.ok(Math.abs(direction[0] - 0.6) < 1e-9);
-  assert.ok(Math.abs(direction[1] - 0.8) < 1e-9);
-  assert.equal(direction[2], 0);
 });
 
 test("strideFor keeps a trajectory within its sample budget", () => {

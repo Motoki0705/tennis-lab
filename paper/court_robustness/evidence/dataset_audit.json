@@ -1,0 +1,135 @@
+{
+  "input_manifest_sha256": "8aaade942ba4b7f3724cd8e70c9b7b5e3f1e2ed28f97184bcfb1fa85fa12c4dc",
+  "corpora": {
+    "TCD": {
+      "count": 8841,
+      "file_matches": [],
+      "pixel_matches": [],
+      "nearest_phash63": {
+        "local01": {
+          "distance": 20,
+          "path": "data/court/images/659p6KkJyU8_200.png"
+        },
+        "local02": {
+          "distance": 20,
+          "path": "data/court/images/5mQ2TFr1Aus_2400.png"
+        },
+        "local03": {
+          "distance": 18,
+          "path": "data/court/images/22gv4Rnezno_600.png"
+        },
+        "local04": {
+          "distance": 20,
+          "path": "data/court/images/JDKMB_0TM8k_1000.png"
+        }
+      }
+    },
+    "B00": {
+      "count": 2176,
+      "file_matches": [],
+      "pixel_matches": [],
+      "nearest_phash63": {
+        "local01": {
+          "distance": 20,
+          "path": "data/synthetic_data_generation/scenes/B00/datasets/court/samples/train/group-00512/court-sample-000874/rgb.png"
+        },
+        "local02": {
+          "distance": 16,
+          "path": "data/synthetic_data_generation/scenes/B00/datasets/court/samples/train/group-00913/court-sample-001218/rgb.png"
+        },
+        "local03": {
+          "distance": 16,
+          "path": "data/synthetic_data_generation/scenes/B00/datasets/court/samples/train/group-00108/court-sample-000305/rgb.png"
+        },
+        "local04": {
+          "distance": 18,
+          "path": "data/synthetic_data_generation/scenes/B00/datasets/court/samples/train/group-00040/court-sample-000034/rgb.png"
+        }
+      }
+    },
+    "B01": {
+      "count": 2052,
+      "file_matches": [],
+      "pixel_matches": [],
+      "nearest_phash63": {
+        "local01": {
+          "distance": 20,
+          "path": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-00324/court-sample-000439/rgb.png"
+        },
+        "local02": {
+          "distance": 14,
+          "path": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-02882/court-sample-002183/rgb.png"
+        },
+        "local03": {
+          "distance": 18,
+          "path": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-00205/court-sample-000236/rgb.png"
+        },
+        "local04": {
+          "distance": 18,
+          "path": "data/synthetic_data_generation/scenes/B01/datasets/court/samples/train/group-00089/court-sample-000202/rgb.png"
+        }
+      }
+    },
+    "B02": {
+      "count": 2094,
+      "file_matches": [],
+      "pixel_matches": [],
+      "nearest_phash63": {
+        "local01": {
+          "distance": 20,
+          "path": "data/synthetic_data_generation/scenes/B02/datasets/court/samples/test/group-01127/court-sample-001174/rgb.png"
+        },
+        "local02": {
+          "distance": 14,
+          "path": "data/synthetic_data_generation/scenes/B02/datasets/court/samples/train/group-00028/court-sample-000015/rgb.png"
+        },
+        "local03": {
+          "distance": 14,
+          "path": "data/synthetic_data_generation/scenes/B02/datasets/court/samples/train/group-00750/court-sample-000887/rgb.png"
+        },
+        "local04": {
+          "distance": 20,
+          "path": "data/synthetic_data_generation/scenes/B02/datasets/court/samples/train/group-00933/court-sample-000953/rgb.png"
+        }
+      }
+    },
+    "B03": {
+      "count": 2093,
+      "file_matches": [],
+      "pixel_matches": [],
+      "nearest_phash63": {
+        "local01": {
+          "distance": 20,
+          "path": "data/synthetic_data_generation/scenes/B03/datasets/court/samples/validation/group-00519/court-sample-000744/rgb.png"
+        },
+        "local02": {
+          "distance": 18,
+          "path": "data/synthetic_data_generation/scenes/B03/datasets/court/samples/validation/group-01182/court-sample-001489/rgb.png"
+        },
+        "local03": {
+          "distance": 14,
+          "path": "data/synthetic_data_generation/scenes/B03/datasets/court/samples/train/group-01132/court-sample-001329/rgb.png"
+        },
+        "local04": {
+          "distance": 20,
+          "path": "data/synthetic_data_generation/scenes/B03/datasets/court/samples/train/group-00990/court-sample-000959/rgb.png"
+        }
+      }
+    }
+  },
+  "synthetic_manifest_sha256": {
+    "B00": "195f8dc9d088b662c07e7594d1156ae3e5dbe312942b8938aa666dd3e5bb9daa",
+    "B01": "3958aad41e15a43a1a382172b85599ddd04023c152841c688314cc0a2de1236b",
+    "B02": "4098ac57bf60ec6e505a7412bc3a22acd56cd33c57ddf383861abb667cfb09ac",
+    "B03": "d5f47625a1c764dee927c3dc6b95fc8fc4b62007e5619581682a8766a749838b"
+  },
+  "tcd_splits": {
+    "train_rows": 6630,
+    "val_rows": 2211,
+    "train_video_ids": 490,
+    "val_video_ids": 442,
+    "shared_video_ids": 434
+  },
+  "scope": "All local TCD images and B00-B03 rendered previews across train/validation/test; no unreadable file is skipped.",
+  "limitation": "No exact match is not proof of unseen venues or absence from inaccessible DINOv3 pretraining. Perceptual hashes screen similarity, not independence."
+}

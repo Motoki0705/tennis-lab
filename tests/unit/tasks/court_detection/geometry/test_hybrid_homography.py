@@ -155,18 +155,10 @@ def test_gate_excludes_geometric_and_line_outliers_and_never_uses_all_points() -
     selected = select_keypoints(template, observed, scores, truth, distances, 3, CONFIG)
     assert selected.sum() == 8
     assert not selected[:2].any()
-    all_good = select_keypoints(template, truth, scores, truth, np.zeros(14), 3, CONFIG)
-    assert all_good.sum() == 8
-    small_input = select_keypoints(
-        template[:8], truth[:8], scores[:8], truth[:8], np.zeros(8), 3, CONFIG
+    all_good = select_keypoints(
+        template, truth, scores, truth, np.zeros(14), 3, replace(CONFIG, max_kp=100)
     )
-    assert small_input.sum() == 7  # Never use the complete input, even below KP14.
-
-
-@pytest.mark.parametrize("cap", [3, 9, 14, 100])
-def test_config_cannot_override_the_eight_point_limit(cap: int) -> None:
-    with pytest.raises(ValueError, match="cap between 4 and 8"):
-        replace(CONFIG, max_kp=cap)
+    assert all_good.sum() == 13  # even a caller's high cap cannot include all KP
 
 
 @pytest.mark.parametrize("value", [0.0, 1.0])

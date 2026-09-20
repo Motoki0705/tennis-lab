@@ -11,7 +11,6 @@ import {
   cross,
   dot,
   fitDistance,
-  headingVector,
   jointSide,
   length,
   normalize,
@@ -104,20 +103,6 @@ test("projectPolyline splits a path at the near plane", () => {
   assert.equal(runs.length, 2);
   assert.equal(runs[0].length, 2);
   assert.equal(runs[1].length, 2);
-});
-
-test("headingVector maps a (cos, sin) rotation to a world heading", () => {
-  assert.deepEqual(headingVector([1, 0]), [1, 0, 0]);
-  const north = headingVector([0, 1]);
-  assert.ok(Math.abs(north[0]) < 1e-12);
-  assert.equal(north[1], 1);
-  assert.equal(north[2], 0);
-  const diagonal = headingVector([3, 4]);
-  assert.ok(Math.abs(diagonal[0] - 0.6) < 1e-12);
-  assert.ok(Math.abs(diagonal[1] - 0.8) < 1e-12);
-  const yaw = headingVector(Math.PI / 2);
-  assert.ok(Math.abs(yaw[0]) < 1e-12);
-  assert.equal(yaw[1], 1);
 });
 
 test("jointSide reads left/right from COCO-17 joint names", () => {

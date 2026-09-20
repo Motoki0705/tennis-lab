@@ -133,6 +133,25 @@ def test_all_inventoried_runtime_boundaries_expose_truthful_authorities() -> Non
         )
 
 
+def test_hybrid_audit_declares_input_output_and_optional_scene_paths() -> None:
+    contract = next(
+        item
+        for item in ADAPTER_CONTRACTS
+        if item.adapter_symbol
+        == "src.tasks.court_detection.scripts.audit_hybrid_inference.PATH_BOUNDARY"
+    )
+    fields = {field.path.rsplit(".", 1)[-1]: field for field in contract.fields}
+    assert set(fields) == {"checkpoint", "images", "output_dir", "scene_root"}
+    assert all(fields[name].required for name in ("checkpoint", "images", "output_dir"))
+    scene = fields["scene_root"]
+    assert not scene.required
+    assert scene.absence_policy is ConfigurationAbsencePolicy.OPTIONAL_OMITTED
+    assert "path-role:data" in scene.value_constraints
+    assert "path-direction:input" in scene.value_constraints
+    assert "must-exist-before-side-effects" in scene.value_constraints
+    assert "path-direction:output" in fields["output_dir"].value_constraints
+
+
 def test_gvhmr_extraction_boundary_declares_every_storage_and_model_path() -> None:
     boundary = next(
         contract

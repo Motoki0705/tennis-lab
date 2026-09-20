@@ -51,9 +51,11 @@ class HybridHomographyConfig:
             or not 0 < self.ambiguity_displacement_ratio < 1
         ):
             raise ValueError("Invalid ambiguity thresholds")
-        if not 4 <= self.max_kp <= 8:
-            raise ValueError("The hybrid KP objective requires a cap between 4 and 8")
-        if self.max_line_observations < 16 or self.samples_per_line < 4:
+        if (
+            self.max_kp < 4
+            or self.max_line_observations < 16
+            or self.samples_per_line < 4
+        ):
             raise ValueError("Insufficient KP/LINE capacity")
         if (
             min(

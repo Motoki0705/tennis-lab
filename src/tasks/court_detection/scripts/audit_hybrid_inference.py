@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import time
@@ -20,6 +21,48 @@ from src.tasks.court_detection.inference.predictor import CourtPredictor
 from src.tasks.court_detection.model_io.contracts import (
     CourtKeypointPrediction,
     CourtLinePrediction,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="court_detection.hybrid_inference_audit",
+    fields=(
+        BoundaryPathField(
+            "checkpoint",
+            PathRole.CHECKPOINT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "images",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            many=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+        BoundaryPathField(
+            "scene_root",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            required=False,
+        ),
+    ),
 )
 
 
@@ -49,18 +92,46 @@ def main() -> None:
     parser.add_argument("--scene-root", type=Path)
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
-    output: Path = args.output_dir
+    checkpoint = args.checkpoint.expanduser().resolve()
+    images = tuple(path.expanduser().resolve() for path in args.image)
+    output = args.output_dir.expanduser().resolve()
+    scene_root = (
+        None if args.scene_root is None else args.scene_root.expanduser().resolve()
+    )
+    arguments: dict[str, object] = {
+        "checkpoint": checkpoint,
+        "images": images,
+        "output_dir": output,
+    }
+    input_parents = [path.parent for path in images]
+    if scene_root is not None:
+        arguments["scene_root"] = scene_root
+        input_parents.append(scene_root.parent)
+    # These explicit CLI paths grant their containing directories; the audit
+    # can consume supplied images from data/, paper/, or an external bundle.
+    roots = RuntimePathRoots(
+        project_root=PROJECT_ROOT,
+        data_root=Path(os.path.commonpath(input_parents)),
+        checkpoint_root=checkpoint.parent,
+        output_root=output.parent,
+        artifact_root=output.parent,
+        cache_root=output.parent,
+        external_asset_root=PROJECT_ROOT,
+    )
+    paths = PATH_BOUNDARY.validate(arguments, resolver=PathResolver(roots))
+    checkpoint = paths.declared("checkpoint").path
+    images = tuple(entry.path for entry in paths.declared_many("images"))
+    output = paths.declared("output_dir").path
+    scene_root = None if scene_root is None else paths.declared("scene_root").path
     output.mkdir(parents=True, exist_ok=False)
     for name in ("inputs", "predictions", "figures"):
         (output / name).mkdir()
-    before = _scene_snapshot(args.scene_root)
+    before = _scene_snapshot(scene_root)
     start = time.monotonic()
-    predictor = CourtPredictor.load_from_checkpoint(
-        args.checkpoint.resolve(), device=args.device
-    )
+    predictor = CourtPredictor.load_from_checkpoint(checkpoint, device=args.device)
     load_seconds = time.monotonic() - start
     records = []
-    for index, source in enumerate(args.image, 1):
+    for index, source in enumerate(images, 1):
         ident = f"{index:02d}_" + re.sub(r"[^A-Za-z0-9_-]+", "_", source.stem)
         local_input = output / "inputs" / (ident + source.suffix)
         shutil.copy2(source, local_input)
@@ -164,12 +235,12 @@ def main() -> None:
             round(elapsed, 3),
             flush=True,
         )
-    after = _scene_snapshot(args.scene_root)
+    after = _scene_snapshot(scene_root)
     if before != after:
         raise RuntimeError(
             "Scene owner metadata changed during this read-only inference audit"
         )
-    code_root = Path(__file__).resolve().parents[4]
+    code_root = PROJECT_ROOT
     code = [
         *sorted((code_root / "src/tasks/court_detection/inference").glob("*.py")),
         *sorted((code_root / "src/tasks/court_detection/geometry").glob("*.py")),
