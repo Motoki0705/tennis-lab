@@ -39,6 +39,34 @@ const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/te
     assert.match(await page.locator("#scene-note").textContent(), /疑似ラベル.*未校正/);
     assert.ok(await page.locator("#cameras").isDisabled());
     assert.ok(await page.locator("#open-camera").isDisabled());
+    await page.click("#play");
+    assert.equal(await page.locator("#play").getAttribute("title"), "再生");
+
+    // Teacher-quality masks may hide the start of a real clip. Seek to a
+    // labeled frame before inspecting pixels, with playback paused so the
+    // sampled frame cannot race into a masked gap.
+    const visibleFrame = await page.evaluate(async () => {
+      const selected = document.querySelector('.scene[aria-current="true"]');
+      const query = new URLSearchParams({ form: selected.dataset.form, scene: selected.dataset.scene });
+      const sceneResponse = await fetch(`/api/scene?${query}`);
+      if (!sceneResponse.ok) throw new Error(`scene HTTP ${sceneResponse.status}`);
+      const scene = await sceneResponse.json();
+      query.set("revision", scene.revision);
+      const bufferResponse = await fetch(`/api/scene/buffer?${query}`);
+      if (!bufferResponse.ok) throw new Error(`buffer HTTP ${bufferResponse.status}`);
+      const { decodeBuffers } = await import("/static/model.mjs");
+      const groups = decodeBuffers(await bufferResponse.arrayBuffer(), scene);
+      for (let frame = 0; frame < scene.frame_count; frame += 1) {
+        if (groups.every((group) => !group.presence || Array.from({ length: group.entity.slots }, (_, slot) => group.presence[slot * scene.frame_count + frame]).every((value) => value === 1))) return frame;
+      }
+      throw new Error("The browser fixture needs a frame with visible players and ball.");
+    });
+    await page.locator("#scrub").evaluate((scrub, frame) => {
+      scrub.value = String(frame);
+      scrub.dispatchEvent(new Event("input", { bubbles: true }));
+    }, visibleFrame);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator("#hud-frame").textContent(), String(visibleFrame));
 
     const pixels = await page.evaluate(() => {
       const canvas = document.getElementById("view");
@@ -55,8 +83,6 @@ const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/te
     });
     assert.ok(pixels.players > 40, JSON.stringify(pixels));
     assert.ok(pixels.ball > 0, JSON.stringify(pixels));
-    await page.click("#play");
-    assert.equal(await page.locator("#play").getAttribute("title"), "再生");
     await page.click("#to-start");
     await page.click("#next");
     assert.equal(await page.locator("#hud-frame").textContent(), "1");
