@@ -6,6 +6,9 @@
 
 ## Modules
 
+### triangulation_residual/
+- PLCS/BLCS共通の幾何初期値・観測/camera誤差生成・残差Transformer・学習/検証。座標、欠測、損失、実行方法の正本は[専用README](triangulation_residual/README.md)。
+
 ### Top-level
 - **`__init__.py`**: data/training/inferenceの共有APIを再export。
 

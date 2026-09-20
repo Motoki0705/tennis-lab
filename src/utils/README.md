@@ -41,6 +41,7 @@
 - **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp。
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
+- **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。対応済み2D観測と同じ座標系のカメラ行列から3D点・valid maskを返す。
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
