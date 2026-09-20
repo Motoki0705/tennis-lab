@@ -1,6 +1,6 @@
 # Dataset Scene Review (shared core)
 
-BLCS / PLCS の生成データセット（`data/<task>/<form>/scenes/<scene_id>/`）を、
+BLCS / PLCS の生成データセットとSLCSの構造化clipデータセットを、
 ローカルWeb UIで3D再生する共通基盤。読み取り専用で、データは変更しない。
 
 このパッケージはタスク非依存の中核だけを持ち、各タスクが薄いサービスを束ねる。
@@ -11,6 +11,7 @@ BLCS / PLCS の生成データセット（`data/<task>/<form>/scenes/<scene_id>/
 含むデータディレクトリを指定する。
 
 コピー可能なコマンドは[PLCS利用ガイド](../../../plcs/visualization/README.md)・[BLCS利用ガイド](../../../blcs/visualization/README.md)を参照。
+SLCSの起動・表示対象・データ形式は[SLCS利用ガイド](../../../slcs/visualization/review/README.md)を参照。
 
 PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 `--port` で変更できる。左のディレクトリからシーンを選択し、中央のコートを
@@ -18,7 +19,7 @@ PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 軌跡・追従の切り替えに対応する。Three.jsはローカル配信する。
 
 形式は `single_object` / `multi_object` と、それぞれの `_broadcast` /
-`_camera_view_v2` の全6形式。
+`_camera_view_v2` の全6形式（BLCS / PLCS）。
 
 ## 構成
 
@@ -34,6 +35,7 @@ PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 - `service.py`: `DatasetSceneReviewService`。パス解決・revision検証・コート/
   カメラのJSON化・エンティティ整形・CourtKP検証の呼び出しを共通化する。
 - `web.py`: `create_review_app(service, title=..., task=...)`。FastAPI アプリ。
+- `static/model.mjs`: 単一／混合エンティティのbinaryをdecodeし、共有3D engineへ渡す。
 
 ## API
 
@@ -48,11 +50,16 @@ PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 ## エンティティバイナリ
 
 `float32 (slots, frames, joint_count, 3)`（C順）→
-`float32 (slots, frames, 2)` orientation（PLCSのみ）→
-`uint8 (slots, frames)` presence（multiのみ）、の順に連結する。
+`float32 (slots, frames, 2)` orientation（選手のyawがある場合）→
+`uint8 (slots, frames)` presence（有効フレームマスクがある場合）、の順に連結する。
 `float32` を先に置くのは typed-array view の4バイト境界を保つため。
 要素 `(s,t,j,k)` は `((s*frames+t)*joint_count+j)*3+k`。
 `presence=false` のフレームは位置0で、UI側で非表示にする。
+
+SLCSのような混合sceneは `entity` の代わりに `entities: [player, ball, ...]` を持つ。
+各要素は同じschemaと `scene.frame_count` を共有し、上記binaryを順に連結する。
+次のgroupの開始位置だけ4バイト境界までゼロpaddingする（最終groupの後には付けない）。
+`kind` が描画種別を決めるため、`joint_count=1` のplayerはルート位置のマーカーになる。
 
 ## 座標系
 
