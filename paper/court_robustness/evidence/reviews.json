@@ -84,6 +84,21 @@
           ]
         }
       ]
+    },
+    {
+      "request": "Confidence-ranked PROSAC and inlier-only refit; refresh the four-photo paper results",
+      "requested": 1,
+      "attempted": 1,
+      "completed": 0,
+      "rounds": [
+        {
+          "round": 1,
+          "status": "starting",
+          "artifact_commit": "14aa523410f1b393cc29fe3ae7b96b87655791d7",
+          "model_provider_effort": "inherited from parent; validator role configuration has no model/effort override",
+          "fork_turns": "none"
+        }
+      ]
     }
   ]
 }
