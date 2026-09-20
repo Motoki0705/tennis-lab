@@ -95,6 +95,10 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         require_config_value(vis, "image_source", str, path="visualization")
     )
     checkpoint = str(require_config_value(vis, "checkpoint", str, path="visualization"))
+    if not checkpoint.strip() or checkpoint == "???":
+        raise MissingConfigurationKeyError(
+            "visualization.checkpoint must be explicitly set to a compatible checkpoint."
+        )
     save_raw = str(require_config_value(vis, "save", str, path="visualization"))
     image_source = str(resolver.resolve(PathRole.DATA, image_source_raw))
     save_path = resolver.resolve(PathRole.ARTIFACT, save_raw)

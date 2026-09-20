@@ -239,47 +239,15 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         evidence.line_model.checkpoint_path
         == (
             resolver.roots.checkpoint_root
-            / "court_detection/line/court-detection-epoch19.ckpt"
-        ).resolve()
-    )
-    assert (
-        evidence.line_model.backbone_repository_path
-        == (resolver.roots.external_asset_root / "dinov3").resolve()
-    )
-    assert (
-        evidence.line_model.backbone_checkpoint_path
-        == (
-            resolver.roots.external_asset_root
-            / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+            / "court_detection/hybrid/court-detection-epoch=17.ckpt"
         ).resolve()
     )
     assert (
         evidence.line_model.device,
-        evidence.line_model.expected_short_side,
         evidence.line_model.probability_threshold,
         evidence.line_model.maximum_selected_pixels_per_camera,
-    ) == ("cuda:0", 256, 0.5, 50_000)
-    architecture = evidence.line_model.architecture
-    assert architecture.backbone_name == "dinov3_vitb16"
-    assert architecture.backbone_strict is True
-    assert architecture.backbone_train_mode == "frozen"
-    assert architecture.backbone_last_n_blocks == 0
-    assert architecture.backbone_out_indices == (2, 5, 8, 11)
-    assert architecture.backbone_layer_mode == "uniform"
-    assert architecture.lora_enabled is True
-    assert (
-        architecture.lora_rank,
-        architecture.lora_alpha,
-        architecture.lora_dropout,
-        architecture.lora_target_modules,
-    ) == (8, 16.0, 0.0, ("qkv", "proj", "fc1", "fc2"))
-    assert architecture.decoder_channels == 256
-    assert architecture.decoder_reassemble_factors == (4.0, 2.0, 1.0, 0.5)
-    assert (
-        architecture.line_bce_weight,
-        architecture.line_dice_weight,
-        architecture.line_positive_weight,
-    ) == (1.0, 1.0, 8.0)
+    ) == ("cuda:0", 0.5, 50_000)
+    assert not hasattr(evidence.line_model, "architecture")
     assert astuple(evidence.ground_plane) == (
         0.01,
         0.5,

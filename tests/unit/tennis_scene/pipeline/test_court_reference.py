@@ -53,15 +53,12 @@ def test_camera_view_reference_aligns_keypoints_and_visibility(
         return _camera_fit(half_turn)
 
     monkeypatch.setattr(court_reference_module, "fit_camera", fake_fit)
-    keypoints: NDArray[np.float32] = np.zeros(
-        (3, 2, 14, 2), dtype=np.float32
-    )
-    visibility: NDArray[np.float32] = np.ones(
-        (3, 2, 14), dtype=np.float32
-    )
+    keypoints: NDArray[np.float32] = np.zeros((3, 2, 14, 2), dtype=np.float32)
+    visibility: NDArray[np.float32] = np.ones((3, 2, 14), dtype=np.float32)
     for camera in range(3):
         keypoints[camera, :, :, 0] = np.arange(14) + 20 * camera
 
+    visibility[2, 1, [1, 7]] = 0
     context = prepare_court_reference(
         camera_ids=("cam0", "cam1", "cam2"),
         keypoints=keypoints,
@@ -81,7 +78,10 @@ def test_camera_view_reference_aligns_keypoints_and_visibility(
         context.keypoints[2],
         keypoints[2][:, COURT_KP20_HALF_TURN_INDEX[:14]],
     )
-    np.testing.assert_array_equal(context.visibility, visibility)
+    np.testing.assert_array_equal(context.visibility[:2], visibility[:2])
+    np.testing.assert_array_equal(
+        context.visibility[2], visibility[2][:, COURT_KP20_HALF_TURN_INDEX[:14]]
+    )
     assert context.selection is not None
     assert context.document is not None
     assert context.provenance.reference_camera_id == "cam0"
@@ -94,9 +94,7 @@ def test_camera_view_reference_aligns_keypoints_and_visibility(
 
 
 def test_camera_view_reference_rejects_invisible_calibration_point() -> None:
-    visibility: NDArray[np.float32] = np.ones(
-        (3, 2, 14), dtype=np.float32
-    )
+    visibility: NDArray[np.float32] = np.ones((3, 2, 14), dtype=np.float32)
     visibility[1, 0, 4] = 0
     with pytest.raises(ValueError, match="all 14 finite visible points"):
         prepare_court_reference(

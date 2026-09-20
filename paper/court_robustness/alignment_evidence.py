@@ -21,7 +21,6 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     _project_probability_to_ground,
 )
 from src.synthetic_data_generation.alignment.settings import (
-    CourtLineArchitectureSettings,
     CourtLineModelSettings,
     GroundPlaneSettings,
     LineProjectionSettings,
@@ -142,16 +141,16 @@ def validate_geometry(manifest: dict, arrays: dict) -> dict:
         plane.origin / scale, frame["origin_metric_scene"], atol=1e-9, rtol=0
     ):
         raise ValueError("RANSAC plane does not match saved alignment")
-    config = manifest["settings"]["line_model"].copy()
-    config["architecture"] = CourtLineArchitectureSettings(**config["architecture"])
-    for key in (
-        "checkpoint_path",
-        "backbone_repository_path",
-        "backbone_checkpoint_path",
-    ):
-        config[key] = (REPO / "ckpt" / config[key]).absolute()
-    config["device"] = "cpu"  # Projection reads settings only, never loads a model.
-    model_settings = CourtLineModelSettings(**config)
+    config = manifest["settings"]["line_model"]
+    # Reproject the historical probabilities with their original extraction
+    # settings. Architecture metadata stays in the immutable source manifest;
+    # this check does not construct or load either the old or current model.
+    model_settings = CourtLineModelSettings(
+        checkpoint_path=(REPO / "ckpt" / config["checkpoint_path"]).absolute(),
+        device="cpu",
+        probability_threshold=config["probability_threshold"],
+        maximum_selected_pixels_per_camera=config["maximum_selected_pixels_per_camera"],
+    )
     camera_ids = arrays["camera_ids"].tolist()
     cameras = {c["camera_id"]: SceneCamera.from_dict(c) for c in manifest["cameras"]}
     max_error = 0.0
