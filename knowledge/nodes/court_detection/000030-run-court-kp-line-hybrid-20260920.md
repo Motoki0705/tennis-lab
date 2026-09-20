@@ -1,6 +1,9 @@
 ---
 id: run-court-kp-line-hybrid-20260920
 type: run
+task: court_detection
+sequence: 30
+recorded_at: '2026-09-20'
 title: KP外れ値の硬い除外とLINEによるコートH共同推定
 provider: codex
 date: '2026-09-20'

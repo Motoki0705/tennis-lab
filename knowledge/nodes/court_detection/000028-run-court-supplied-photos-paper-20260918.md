@@ -1,6 +1,9 @@
 ---
 id: run-court-supplied-photos-paper-20260918
 type: run
+task: court_detection
+sequence: 28
+recorded_at: '2026-09-18'
 title: 指定写真4枚のCourt推論とB00–B03アライメントの論文化
 provider: codex
 date: '2026-09-18'

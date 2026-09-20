@@ -1,6 +1,9 @@
 ---
 id: run-court-prosac-paper-20260920
 type: run
+task: court_detection
+sequence: 29
+recorded_at: '2026-09-20'
 title: 指定写真4枚のKP信頼度順PROSAC再推定
 provider: codex
 date: '2026-09-20'
