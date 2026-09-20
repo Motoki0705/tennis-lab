@@ -70,6 +70,6 @@ GVHMRワールドモーションの整合もパイプライン内で常に実行
 
 `pipeline.yaml`の動画パスは3台の例です。実動画と`camera_ids`を指定し、`court_reference.reference_camera`と`view_half_turns`を必ず設定してください。`view_half_turns`はcamera_ids順で、referenceは`false`、反対側のbaselineに向いたviewは`true`です。例えば向きが確認できた3台なら`court_reference.view_half_turns=[false,false,true]`と指定します。未設定・カメラ数不一致ではモデルロード前に停止します。共通predictorは各画像のcamera-view順を保ち、`court_reference`が一度だけreference-camera順へ変換します。
 
-手動入力と`source=load`はモデル補正を通りません。旧physical順の入力・保存結果には`court_keypoints.selector=physical_v1`、対応する旧PLCS/BLCS重み、`court_reference.reference_camera=null`・`view_half_turns=null`を明示してください。新Court checkpointをphysical順として使うことは拒否します。
+手動入力と`source=load`はモデル補正を通りません。旧physical順の入力・保存結果には`court_keypoints.selector=physical_v1`、対応する旧PLCS/BLCS重み、`court_reference.reference_camera=null`・`view_half_turns=null`を明示してください。新Court checkpointをphysical順として使うことは拒否します。 契約情報のない旧artifactをcamera-view順として読む場合だけ、内容の順序を確認したうえで`court_kp.load_keypoint_contract=camera_view_v2`を明示します。保存済み契約の上書きや元artifactの書換えは行いません。
 
 新規Court結果と`SceneResult.metadata.court_detection`にはcheckpoint識別情報、後処理設定、入力KP schema、採用点、H生成可否を保存します。採用点のmask（最大8点）を再投影14点のvisibilityとして使うことはありません。

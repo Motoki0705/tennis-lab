@@ -44,6 +44,8 @@ court_kp:
   save_result: true
   output_path: tennis_scene/court_kp_result.json
   load_path: null
+  # Only for legacy source=load artifacts without a recorded point-order contract.
+  load_keypoint_contract: null
 
 gvhmr:
   enabled: true

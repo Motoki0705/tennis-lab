@@ -185,3 +185,54 @@ def test_model_sequence_keeps_geometry_and_masks_failure_without_refitting(
     loaded = CourtKPResult.load(path)
     np.testing.assert_array_equal(loaded.keypoints, result.keypoints)
     assert loaded.diagnostics == result.diagnostics
+
+
+@pytest.mark.parametrize(
+    "saved_contract,declared,accepted",
+    [
+        (None, None, False),
+        (None, "camera_view_v2", True),
+        ("camera_view_v2", None, True),
+        ("physical_v1", "camera_view_v2", False),
+    ],
+)
+def test_camera_view_saved_inputs_require_recorded_or_declared_contract(
+    tmp_path, saved_contract: str | None, declared: str | None, accepted: bool
+) -> None:
+    artifact = tmp_path / "saved.json"
+    saved = CourtKPResult(
+        np.full((1, 1, 14, 2), 0.5, dtype=np.float32),
+        np.ones((1, 1, 14), dtype=np.float32),
+        np.array([0], dtype=np.int32),
+        diagnostics=None
+        if saved_contract is None
+        else {"output_keypoint_contract": saved_contract},
+    )
+    saved.save(artifact)
+    original = artifact.read_bytes()
+    config = replace(
+        make_court_kp_config(tmp_path),
+        source="load",
+        load_path=artifact,
+        load_keypoint_contract=declared,
+    )
+    module = CourtKPModule(config)
+    if accepted:
+        result = module.process([tmp_path / "video.mp4"])
+        np.testing.assert_array_equal(result.keypoints, saved.keypoints)
+        assert result.diagnostics is not None
+        assert result.diagnostics["output_keypoint_contract"] == "camera_view_v2"
+    else:
+        with pytest.raises(ValueError, match="contract"):
+            module.process([tmp_path / "video.mp4"])
+    assert artifact.read_bytes() == original
+
+
+def test_legacy_load_declaration_cannot_override_the_runtime_contract(tmp_path) -> None:
+    with pytest.raises(ValueError, match="must match"):
+        replace(
+            make_court_kp_config(tmp_path),
+            source="load",
+            load_path=tmp_path / "saved.json",
+            load_keypoint_contract="physical_v1",
+        )
