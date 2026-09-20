@@ -4,13 +4,13 @@
 Examples:
     # A run node
     .venv/bin/python .agents/skills/knowledge-control/scripts/kg_new.py \
-        --type run --id run-i521-base-vel --title "velocity loss baseline" \
+        --type run --task plcs --id run-i521-base-vel --title "velocity loss baseline" \
         --issue 521 --provider claude --status done \
         --parents run-i520-canon-none
 
     # A group node
     .venv/bin/python .agents/skills/knowledge-control/scripts/kg_new.py \
-        --type group --id group-i521-velocity --title "角速度 canonical loss (#521)" \
+        --type group --task plcs --id group-i521-velocity --title "角速度 canonical loss (#521)" \
         --issue 521 --members run-i521-base-vel run-i521-ex10-vel
 
 The frontmatter is written with placeholders; fill in metrics/config and the
@@ -22,7 +22,8 @@ from __future__ import annotations
 import argparse
 from datetime import date as _date
 
-from kg_lib import ID_RE, NODE_TYPES, dump_frontmatter, nodes_dir
+from kg_lib import ID_RE, NODE_TYPES
+from kg_storage import save_node
 
 
 def build_meta(args: argparse.Namespace) -> dict:
@@ -49,6 +50,8 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--type", required=True, choices=sorted(NODE_TYPES))
     p.add_argument("--id", required=True)
+    p.add_argument("--task", required=True)
+    p.add_argument("--papers", nargs="*", default=[])
     p.add_argument("--title", required=True)
     p.add_argument("--issue", type=int)
     p.add_argument("--provider")
@@ -63,18 +66,17 @@ def main() -> int:
     if not ID_RE.match(args.id):
         p.error(f"invalid id '{args.id}' (use lowercase a-z0-9-)")
 
-    out = nodes_dir() / f"{args.id}.md"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    if out.exists() and not args.force:
-        p.error(f"{out} already exists (use --force to overwrite)")
-
     meta = build_meta(args)
+    meta.update(task=args.task, papers=args.papers)
     body = (
         "## 考察 / Findings\n\n"
         "<!-- このノード(=1 run)の結果と考察を書く。"
         " 主要 metrics は frontmatter にも転記すること。 -->\n"
     )
-    out.write_text(f"---\n{dump_frontmatter(meta)}---\n\n{body}", encoding="utf-8")
+    try:
+        out = save_node(meta, body, args.force)
+    except ValueError as exc:
+        p.error(str(exc))
     print(f"created {out}")
     return 0
 

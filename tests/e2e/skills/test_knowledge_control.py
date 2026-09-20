@@ -51,6 +51,8 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
         [
             sys.executable,
             str(REGISTER_SCRIPT),
+            "--task",
+            "plcs",
             "--repro-dir",
             str(repro_dir),
             "--id",
@@ -79,7 +81,7 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
         == diagnostic_metrics
     )
 
-    node_text = (knowledge_dir / "nodes" / "run-register-metrics.md").read_text(
+    node_text = (knowledge_dir / "nodes" / "plcs" / "000001-run-register-metrics.md").read_text(
         encoding="utf-8"
     )
     frontmatter = yaml.safe_load(node_text.split("---", maxsplit=2)[1])

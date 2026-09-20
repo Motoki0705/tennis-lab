@@ -57,16 +57,18 @@ class Node:
 
     @property
     def parents(self) -> list[str]:
-        return [str(x) for x in (self.meta.get("parents") or [])]
+        value = self.meta.get("parents")
+        return [str(x) for x in value] if isinstance(value, list) else []
 
     @property
     def members(self) -> list[str]:
-        return [str(x) for x in (self.meta.get("members") or [])]
+        value = self.meta.get("members")
+        return [str(x) for x in value] if isinstance(value, list) else []
 
     @property
     def relations(self) -> list[dict[str, Any]]:
         rels = self.meta.get("relations") or []
-        return [r for r in rels if isinstance(r, dict)]
+        return [r for r in rels if isinstance(r, dict)] if isinstance(rels, list) else []
 
 
 def parse_node(path: Path) -> Node:
@@ -87,8 +89,8 @@ def load_nodes(directory: Path | None = None) -> list[Node]:
     directory = directory or nodes_dir()
     if not directory.exists():
         return []
-    nodes = [parse_node(p) for p in sorted(directory.glob("*.md"))]
-    return nodes
+    nodes = [parse_node(p) for p in sorted(directory.rglob("*.md"))]
+    return sorted(nodes, key=lambda n: (str(n.meta.get("task", "")), n.meta.get("sequence", 0) if type(n.meta.get("sequence")) is int else 0, n.id))
 
 
 @dataclass
@@ -104,6 +106,7 @@ class ValidationResult:
 def validate(nodes: list[Node]) -> ValidationResult:
     res = ValidationResult()
     ids: dict[str, Path] = {}
+    sequences: set[tuple[str, int]] = set()
 
     for n in nodes:
         loc = n.path.name
@@ -112,8 +115,36 @@ def validate(nodes: list[Node]) -> ValidationResult:
         if n.id in ids:
             res.errors.append(f"{loc}: duplicate id '{n.id}' (also in {ids[n.id].name})")
         ids[n.id] = n.path
-        if n.path.stem != n.id:
-            res.warnings.append(f"{loc}: filename does not match id '{n.id}'")
+        task, sequence = n.meta.get("task"), n.meta.get("sequence")
+        if not isinstance(task, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", task):
+            res.errors.append(f"{loc}: invalid or missing task")
+        if type(sequence) is not int or not 1 <= sequence <= 999999:
+            res.errors.append(f"{loc}: sequence must be an integer in 1..999999")
+        else:
+            key = (str(task), sequence)
+            if key in sequences:
+                res.errors.append(f"{loc}: duplicate task sequence {key}")
+            sequences.add(key)
+            if n.path.name != f"{sequence:06d}-{n.id}.md" or n.path.parent.name != task:
+                res.errors.append(f"{loc}: expected nodes/{task}/{sequence:06d}-{n.id}.md")
+        if not n.id.startswith(f"{n.type}-"):
+            res.errors.append(f"{loc}: id prefix must match type")
+        from datetime import date
+        for field_name in ("date", "recorded_at"):
+            value = n.meta.get(field_name)
+            if value is None and field_name == "date":
+                continue
+            try:
+                date.fromisoformat(str(value))
+            except ValueError:
+                res.errors.append(f"{loc}: {field_name} must be an ISO date")
+        for field_name in ("parents", "members", "tags", "papers"):
+            value = n.meta.get(field_name, [])
+            if not isinstance(value, list) or any(not isinstance(x, str) for x in value):
+                res.errors.append(f"{loc}: {field_name} must be a list of strings")
+        rels = n.meta.get("relations", [])
+        if not isinstance(rels, list) or any(not isinstance(r, dict) for r in rels):
+            res.errors.append(f"{loc}: relations must be a list of mappings")
         if n.type not in NODE_TYPES:
             res.errors.append(f"{loc}: type must be one of {sorted(NODE_TYPES)}, got '{n.type}'")
         if not n.meta.get("title"):
@@ -121,9 +152,8 @@ def validate(nodes: list[Node]) -> ValidationResult:
 
         if n.type == "run":
             _validate_run(n, res)
-        elif n.type == "group":
-            if not n.members:
-                res.errors.append(f"{loc}: group node has no 'members'")
+        elif n.type == "group" and not n.members:
+            res.errors.append(f"{loc}: group node has no 'members'")
 
     known = set(ids)
     for n in nodes:
@@ -167,12 +197,31 @@ def _validate_run(n: Node, res: ValidationResult) -> None:
 def dump_frontmatter(meta: dict[str, Any]) -> str:
     """Serialize frontmatter with stable key ordering for nice git diffs."""
     order = [
-        "id", "type", "title", "issue", "provider", "session", "date", "status",
+        "id", "type", "task", "sequence", "recorded_at", "date_source", "title", "issue", "provider", "session", "date", "status",
         "config", "metrics", "repro", "artifacts", "members", "parents",
-        "relations", "tags",
+        "relations", "papers", "tags",
     ]
     ordered = {k: meta[k] for k in order if k in meta}
     for k, v in meta.items():
         if k not in ordered:
             ordered[k] = v
     return yaml.safe_dump(ordered, allow_unicode=True, sort_keys=False, default_flow_style=False)
+
+
+def queue_dir() -> Path:
+    """Honor the shared training queue even when invoked from a worktree."""
+    import os
+    import subprocess
+
+    override = os.environ.get("TRAINING_QUEUE_DIR")
+    if override:
+        return Path(override).resolve()
+    common = subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=repo_root(), text=True).strip()
+    return (repo_root() / common).resolve().parent / ".training_queue"
+
+
+def portable_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(repo_root()))
+    except ValueError:
+        return str(path.resolve())

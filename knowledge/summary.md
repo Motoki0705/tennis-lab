@@ -1,26 +1,39 @@
+<!-- knowledge-review: f5f66c9c186f19e8162f1bb3f7d0a65091efdfdbf82d05941817ddfdfb3b4613 on 2026-09-20 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-04
+更新日: 2026-09-20（構造移行・9月追加ノードの確認）
 
-調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`
+以下の既存baseline/deploy整理の調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`
 
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
+## 2026-09-20の追加確認
+
+全200ノードを7つの機能・研究トピックへ分割した。既存の実験IDと数値・再現bundleは保持している。論文の出典は[Papers](Papers/README.md)に一元化し、GVHMRを利用するPLCS記録に背景研究の参照を追加した。これは過去runが論文の手法を比較検証したという主張ではない。
+
+9月に追加された知見のうち、次の判断を更新する。
+
+- **Court detection**: [run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1](nodes/court_detection/000026-run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1.md)では親に対してKP平均誤差とline Diceが改善する一方、seg mIoUとpose再投影が悪化した。head構造とline幅を同時変更しており、単一要因の効果は分離できない。次は同一line schemaでheadだけを比較する。
+- **PLCS / motion source**: [run-plcs-accad-gvhmr-meiji-1000-v1-train](nodes/plcs/000102-run-plcs-accad-gvhmr-meiji-1000-v1-train.md)は200 epochの学習と混合testを完走したが、向きとposeに改善余地がある。生成教師に対する評価で、実動画の独立3D正解への精度でもGVHMR追加の因果効果でもない。次は固定val/testでACCAD-only対混合train、未見収録holdoutを比較する。
+- **統合・生成・UI検証**: 新しいtask区分によりデータ生成・smoke・統合診断を辿れる。これらの完走を推定精度の改善と混同しない。最新の個別条件・残課題はノード本文を正本とする。
+
+以下のproduction/deploy表は**2026-09-04時点の調査記録**を保持している。今回の構造移行ではcheckpointの再評価・昇格をしておらず、9月20日の現行配備状態を保証する表には更新しない。新規結果を以前の異なるsplitと直接ランキングしない。
+
 ## 現在の全体像
 
 現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSはend-to-end経路の動作確認までは完了していますが、recording-disjointな汎化baselineはありません。2026-09-04時点でも、knowledgeの研究結果を根拠とするproduction checkpointの更新は確認されていません。
 
-前回の要約以降、正式な実験知見として追加されたのは、2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/group-i832-blcs-observation-tracking.md)、3 run）です。conservative設定が学習用associationの運用選択となりましたが、単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
+前回の要約以降、正式な実験知見として追加されたのは、2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/blcs/000031-group-i832-blcs-observation-tracking.md)、3 run）です。conservative設定が学習用associationの運用選択となりましたが、単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
 
 | task | 現在の基準 | 主な固定値 | 現在の判断 |
 |---|---|---|---|
-| `ball_detection` | [`run-i618-convnext-v2-ft`](nodes/run-i618-convnext-v2-ft.md) | test F1 `0.721789`、precision `0.735656`、recall `0.708436`、距離 `2.176208 px` | offline最高値ではなく、実clipのcoverageと軌道安定性を含めてdeploy継続 |
-| `court_detection` | [`run-i621-court-kp512-resume-r4`](nodes/run-i621-court-kp512-resume-r4.md) | val best `2.23 px`、固定checkpoint再評価 `1.708886 px` | KP14 / 512入力のdeploy。独立held-out testは未確立 |
-| `plcs` | [`run-deploy-multiview-plcs-i590-courtkp14-v2`](nodes/run-deploy-multiview-plcs-i590-courtkp14-v2.md) | position `0.175284 m`、yaw `6.443357°` | 3–6 camera・court KP14の現行single-person deploy |
-| `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
-| `slcs` | [`run-i634-slcs-overfit-dino`](nodes/run-i634-slcs-overfit-dino.md) | player `0.470360 m`、yaw `7.761920°`、ball `1.954024 m` | 同一13 windowのmemorization diagnostic。deploy / 汎化主張は不可 |
+| `ball_detection` | [`run-i618-convnext-v2-ft`](nodes/ball_detection/000009-run-i618-convnext-v2-ft.md) | test F1 `0.721789`、precision `0.735656`、recall `0.708436`、距離 `2.176208 px` | offline最高値ではなく、実clipのcoverageと軌道安定性を含めてdeploy継続 |
+| `court_detection` | [`run-i621-court-kp512-resume-r4`](nodes/court_detection/000006-run-i621-court-kp512-resume-r4.md) | val best `2.23 px`、固定checkpoint再評価 `1.708886 px` | KP14 / 512入力のdeploy。独立held-out testは未確立 |
+| `plcs` | [`run-deploy-multiview-plcs-i590-courtkp14-v2`](nodes/plcs/000082-run-deploy-multiview-plcs-i590-courtkp14-v2.md) | position `0.175284 m`、yaw `6.443357°` | 3–6 camera・court KP14の現行single-person deploy |
+| `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/blcs/000011-run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
+| `slcs` | [`run-i634-slcs-overfit-dino`](nodes/slcs/000003-run-i634-slcs-overfit-dino.md) | player `0.470360 m`、yaw `7.761920°`、ball `1.954024 m` | 同一13 windowのmemorization diagnostic。deploy / 汎化主張は不可 |
 
 [pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpointは次です。前回から変更はありません。
 
@@ -35,23 +48,23 @@
 
 ### Ball Detection
 
-現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
+現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
 
-3DGS augmentationでは、固定checkpoint・split・decodeによる比較基盤 [`run-i618-3dgs-blcs-real-baseline-v1`](nodes/run-i618-3dgs-blcs-real-baseline-v1.md) が整備されています。simple-sphereを1/12混合したtreatmentは単一seedのgame9で`+0.018454 F1`でしたが、残りseedとgame10 final testが未完了のため、効果は確立していません。
+3DGS augmentationでは、固定checkpoint・split・decodeによる比較基盤 [`run-i618-3dgs-blcs-real-baseline-v1`](nodes/ball_detection/000011-run-i618-3dgs-blcs-real-baseline-v1.md) が整備されています。simple-sphereを1/12混合したtreatmentは単一seedのgame9で`+0.018454 F1`でしたが、残りseedとgame10 final testが未完了のため、効果は確立していません。
 
 ### Court Detection
 
 KP14 detectorは実pipelineで利用可能な水準ですが、`1.708886 px`は`test_dataloader`がvalidation dataを読む条件の再評価値であり、独立testではありません。次の品質更新にはrecording-disjoint test、geometry valid率、line support、処理時間、PLCS / BLCSへのE2E影響が必要です。
 
-court segmentationはKP14とは別契約です。[`group-i524-dinov3-ssl-court`](nodes/group-i524-dinov3-ssl-court.md) では凍結backbone条件で非SSL `0.517 mIoU`からSSL `0.800 mIoU`へ改善しましたが、KP14 deploy modelの置換根拠にはなりません。点・線共同postprocessについては、detectorを固定した正式なpostprocess-only baselineがまだありません。
+court segmentationはKP14とは別契約です。[`group-i524-dinov3-ssl-court`](nodes/court_detection/000005-group-i524-dinov3-ssl-court.md) では凍結backbone条件で非SSL `0.517 mIoU`からSSL `0.800 mIoU`へ改善しましたが、KP14 deploy modelの置換根拠にはなりません。点・線共同postprocessについては、detectorを固定した正式なpostprocess-only baselineがまだありません。
 
 ### PLCS
 
-現行deployは、split trunk、H=0/S=6、position weight 8、補助pose loss無効、court KP14というpipeline互換recipeです。過去のablationでは、positionにはS6/H0、rotationには別の容量配分が有利であり、単一構成が全目的を同時に最適化しないPareto構造が確認されています。[`group-i545-loss-head-tuning`](nodes/group-i545-loss-head-tuning.md) のposition frontier `0.166 m`は有力ですが、現行KP14 deploy以前の契約なので直接置換には使いません。
+現行deployは、split trunk、H=0/S=6、position weight 8、補助pose loss無効、court KP14というpipeline互換recipeです。過去のablationでは、positionにはS6/H0、rotationには別の容量配分が有利であり、単一構成が全目的を同時に最適化しないPareto構造が確認されています。[`group-i545-loss-head-tuning`](nodes/plcs/000067-group-i545-loss-head-tuning.md) のposition frontier `0.166 m`は有力ですが、現行KP14 deploy以前の契約なので直接置換には使いません。
 
-canonical poseでは、[`run-plcs-canonical-temporal-decomp-beta01-noaug`](nodes/run-plcs-canonical-temporal-decomp-beta01-noaug.md) が平均pose固定から入力依存motionへの移行を確認しました。canonical MPJPEは`0.091136 m`、motion amplitude ratioは`1.174967`、centered Pearsonは`0.795146`です。一方、high-frequency fractionは予測`0.391067`に対してGT `0.068930`であり、motionを復元する代わりにjitterを過剰生成しています。position / rotation headは未学習なのでdeploy精度との比較には使いません。
+canonical poseでは、[`run-plcs-canonical-temporal-decomp-beta01-noaug`](nodes/plcs/000087-run-plcs-canonical-temporal-decomp-beta01-noaug.md) が平均pose固定から入力依存motionへの移行を確認しました。canonical MPJPEは`0.091136 m`、motion amplitude ratioは`1.174967`、centered Pearsonは`0.795146`です。一方、high-frequency fractionは予測`0.391067`に対してGT `0.068930`であり、motionを復元する代わりにjitterを過剰生成しています。position / rotation headは未学習なのでdeploy精度との比較には使いません。
 
-reprojection lossは一方向な改善ではありません。[`group-plcs-multiview-axial-reprojection-loss-w1-v4-t128`](nodes/group-plcs-multiview-axial-reprojection-loss-w1-v4-t128.md) のV=4/T=128条件では、position `1.386235 → 1.352761 m`、angle `66.968224 → 63.600704°`へ改善しましたが、0.5 m以内率は`0.118984 → 0.088828`へ悪化し、X誤差と分散も増えました。複数seedとweight sweep前にdefaultへ採用しません。
+reprojection lossは一方向な改善ではありません。[`group-plcs-multiview-axial-reprojection-loss-w1-v4-t128`](nodes/plcs/000090-group-plcs-multiview-axial-reprojection-loss-w1-v4-t128.md) のV=4/T=128条件では、position `1.386235 → 1.352761 m`、angle `66.968224 → 63.600704°`へ改善しましたが、0.5 m以内率は`0.118984 → 0.088828`へ悪化し、X誤差と分散も増えました。複数seedとweight sweep前にdefaultへ採用しません。
 
 camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。productionはv1を維持します。
 
@@ -59,19 +72,19 @@ camera-view v2のreference selectorも決着していません。PLCSではrefer
 
 single-ballではmultiview deployが単眼親よりposition `1.845 → 1.065 m`、endpoint `3.408 → 2.025 m`へ改善しました。ただしcamera presetも変わるため、改善全量をview数へ帰属できません。
 
-physics priorはaccuracyとsmoothnessのtrade-offです。[`group-i593-physics-prior`](nodes/group-i593-physics-prior.md) のftCは実clip jerkを`0.280 → 0.106`へ改善しましたが、in-distribution positionを`1.845 → 1.947 m`へ悪化させました。そのため機能は残してもdefault checkpointは置き換えていません。
+physics priorはaccuracyとsmoothnessのtrade-offです。[`group-i593-physics-prior`](nodes/blcs/000004-group-i593-physics-prior.md) のftCは実clip jerkを`0.280 → 0.106`へ改善しましたが、in-distribution positionを`1.845 → 1.947 m`へ悪化させました。そのため機能は残してもdefault checkpointは置き換えていません。
 
-track-query architectureの[`group-i786-normv2-large-cuda-ablation-eb32`](nodes/group-i786-normv2-large-cuda-ablation-eb32.md) では、positionはA `3.522323 m`、identity continuityはB `17.04 ID switches`、presence / lifecycleはD `0.972115 F1`・birth/death `4.43 / 5.36 frames`が最良でした。単一の総合勝者はありません。また、この群は旧versioned-v2 runtimeで、現行mainとloss beta・artifact schemaが異なるためhistorical family evidenceとして扱います。
+track-query architectureの[`group-i786-normv2-large-cuda-ablation-eb32`](nodes/blcs/000019-group-i786-normv2-large-cuda-ablation-eb32.md) では、positionはA `3.522323 m`、identity continuityはB `17.04 ID switches`、presence / lifecycleはD `0.972115 F1`・birth/death `4.43 / 5.36 frames`が最良でした。単一の総合勝者はありません。また、この群は旧versioned-v2 runtimeで、現行mainとloss beta・artifact schemaが異なるためhistorical family evidenceとして扱います。
 
-[`group-i801-reference-selector-ablation`](nodes/group-i801-reference-selector-ablation.md) のmatched BLCS比較では、selector-zeroがreferenceよりposition `3.721058 < 3.813505 m`、Y-sign accuracy `0.877656 > 0.871094`でした。第三RoPE軸によるreference明示の追加効果は確認できず、production v1を維持します。
+[`group-i801-reference-selector-ablation`](nodes/blcs/000025-group-i801-reference-selector-ablation.md) のmatched BLCS比較では、selector-zeroがreferenceよりposition `3.721058 < 3.813505 m`、Y-sign accuracy `0.877656 > 0.871094`でした。第三RoPE軸によるreference明示の追加効果は確認できず、production v1を維持します。
 
-観測ベース2D追跡の[`group-i832-blcs-observation-tracking`](nodes/group-i832-blcs-observation-tracking.md)では、GT lifecycleに依存する旧random-slot入力を、noise後の2D観測からdeterministicに対応付ける入力へ変更して比較しました。3 runは同一の`blcs/multi_object` split、`blcs_track_query`（Q=4）、seed `832`、100 epoch、FP augmentation無効で揃えています。
+観測ベース2D追跡の[`group-i832-blcs-observation-tracking`](nodes/blcs/000031-group-i832-blcs-observation-tracking.md)では、GT lifecycleに依存する旧random-slot入力を、noise後の2D観測からdeterministicに対応付ける入力へ変更して比較しました。3 runは同一の`blcs/multi_object` split、`blcs_track_query`（Q=4）、seed `832`、100 epoch、FP augmentation無効で揃えています。
 
 | run / association | position error (m) ↓ | presence F1 ↑ | ID switches ↓ | duplicate active tracks ↓ | missed GT frames ↓ |
 |---|---:|---:|---:|---:|---:|
-| [legacy random slot](nodes/run-i832-blcs-legacy-slot-baseline.md) | 5.434213 | 0.878670 | 0.64 | 80.22 | 26.76 |
-| [conservative（距離閾値0.04・保持2 frames）](nodes/run-i832-blcs-tracker-conservative.md) | 5.430877 | 0.881151 | 0.66 | 86.19 | 24.63 |
-| [permissive（距離閾値0.10・保持8 frames）](nodes/run-i832-blcs-tracker-permissive.md) | 5.435566 | 0.878761 | 0.60 | 83.53 | 25.32 |
+| [legacy random slot](nodes/blcs/000028-run-i832-blcs-legacy-slot-baseline.md) | 5.434213 | 0.878670 | 0.64 | 80.22 | 26.76 |
+| [conservative（距離閾値0.04・保持2 frames）](nodes/blcs/000029-run-i832-blcs-tracker-conservative.md) | 5.430877 | 0.881151 | 0.66 | 86.19 | 24.63 |
+| [permissive（距離閾値0.10・保持8 frames）](nodes/blcs/000030-run-i832-blcs-tracker-permissive.md) | 5.435566 | 0.878761 | 0.60 | 83.53 | 25.32 |
 
 表は各runの`metrics.json` / `diagnostic_metrics.json`に基づくtest実測値です。conservativeはposition / F1 / missed GT framesで最良ですが、baseline比のposition改善は約`0.00334 m`にとどまり、ID switchesとduplicate active tracksは増えています。permissiveはID switchesが最良で、F1もbaselineを僅かに上回りますが、positionとprecisionは悪化しています。全runが100 epochを完走し、曲線に発散やNaNは報告されていません。低いID switchesだけでtracking failureが解消したとは判断しません。
 
@@ -79,9 +92,9 @@ track-query architectureの[`group-i786-normv2-large-cuda-ablation-eb32`](nodes/
 
 #832のID switchesはpost-#824の定義です。#643 / #648 / #650などのpre-#824の保存値とは直接比較できません。再現時は各bundleのcommitと`uncommitted.patch`を確認します。特にlegacy baselineとconservativeには未commit差分が保存されており、現行mainの設定だけで同じ学習条件になるとは限りません。
 
-学習性能では、[`group-blcs-compile-training-abba-v4`](nodes/group-blcs-compile-training-abba-v4.md) によりcompiled実行がsteady-stateで`1.90×`高速、peak CUDA allocatedが`19.6%`減る一方、cold-start込み3 epochでは`2.98×`遅く、break-evenは約18 epochと分かっています。これはtrajectory精度ではなくruntime baselineです。
+学習性能では、[`group-blcs-compile-training-abba-v4`](nodes/blcs/000014-group-blcs-compile-training-abba-v4.md) によりcompiled実行がsteady-stateで`1.90×`高速、peak CUDA allocatedが`19.6%`減る一方、cold-start込み3 epochでは`2.98×`遅く、break-evenは約18 epochと分かっています。これはtrajectory精度ではなくruntime baselineです。
 
-multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep`](nodes/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep.md) の512-frame lifecycle baselineも、sequence length・data・training budgetが違うため相互に直接順位付けしません。
+multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep`](nodes/blcs/000013-run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep.md) の512-frame lifecycle baselineも、sequence length・data・training budgetが違うため相互に直接順位付けしません。
 
 ### SLCS
 

@@ -1,129 +1,105 @@
-# Knowledge Control — 学習知識グラフ
+# Knowledge Control — 研究ライブラリ
 
-Claude / Codex / Gemini など各プロバイダのセッションが回す「施策の実装 → 学習 → 考察」の
-ワークフローで得た知見を、**構造化された有向グラフ**として一元管理する場所です。
+実験の結果・考察・関連研究をgitで共有する。**1 run = 1ノード**。実験群はgroupで束ね、前提・比較・反証の関係はIDで繋ぐ。
+現在の判断は [summary.md](summary.md)、閲覧は [Web UI](webui/README.md)、登録・更新の手順は [knowledge-control skill](../.agents/skills/knowledge-control/SKILL.md) を起点にする。このREADMEが保存形式の正本。
 
-- **ノード = 1 run**（1 つの学習/実験）。複数 run を 1 ノードにまとめない。
-- **グループノード**で関連 run を束ねる（アブレーション群など）。
-- **エッジは有向**（親 → 子）。どちらが親（baseline / 前提）かを区別できる。
-- すべて **git 管理**。1 ノード = 1 Markdown ファイルなので diff・レビューが容易。
-- 各プロバイダ AI からの読み書きは [`knowledge-control` SKILL](../.agents/skills/knowledge-control/SKILL.md) 経由。
-- 現在の到達点と未解決課題は [`summary.md`](./summary.md)。
-- 閲覧は [`webui/`](./webui)（Next.js + React Flow）。
+## 保存構造
 
-関連 issue: #529。
-
-## ディレクトリ
-
-```
+```text
 knowledge/
-  README.md      # このファイル（仕様）
-  summary.md     # 現在の到達点・主要な知見・未解決課題の横断要約
-  nodes/         # 1 ノード = 1 .md（frontmatter + 考察本文）
-  runs/          # 1 run = 1 dir。再現性バンドル + test split 推論（issue #533, git 管理）
-                 #   <run-id>/{run.json, repro.sh, uncommitted.patch, pred_test.npz, metrics.json,
-                 #            diagnostic_metrics.json}
-                 #   <run-id>/curves.png  # train/val 収束カーブ（kg_curves.py が生成）
-  webui/         # Next.js 14 + React Flow 閲覧 UI
+  README.md
+  summary.md                         # 横断的な研究判断。詳細の正本は各ノード
+  nodes/
+    plcs/000001-run-<slug>.md
+    blcs/000001-run-<slug>.md
+    synthetic_data_generation/...
+    <task>/000002-group-<slug>.md
+  Papers/
+    paper-2024-gvhmr/
+      paper.md                       # 書誌情報・読解・プロジェクトとの関係
+      paper.pdf                      # 出典の版を固定したPDF
+  runs/<run-id>/                     # 再現性bundle・予測・曲線（既存パスを維持）
+  webui/
 ```
 
-`runs/<run-id>/` は ckpt の置き換え。**ckpt を消しても** `repro.sh` で再学習でき、
-`pred_test.npz` から新メトリクスを再計算できる。`training-queue` が staging
-（`.training_queue/repro/`、gitignore）に書いたものを `kg_register.py` が promote する。
+タスクは小文字snake_caseの**拡張可能なトピック**。`plcs` / `blcs` / `court_detection` / `ball_detection` に限定しない。合成データ生成、統合、独立した研究クラスタも追加できる。ノードは主目的となる1タスクに置き、タスク横断の関係はparents / relations / membersで表す。同じノード・論文を複製しない。issueは分類階層ではなく検索用メタデータ。
 
-スクリプトは SKILL 配下: `.agents/skills/knowledge-control/scripts/`
-（`kg_register.py` / `kg_new.py` / `kg_from_run.py` / `kg_validate.py` / `kg_lib.py`）。
-新フロー（issue #533）では `kg_register.py` が正規入口（repro バンドル + 推論を promote しノード生成）。
+### ID・連番・ファイル名
 
-## ノード仕様（Markdown + YAML frontmatter）
+- 不変ID: runは `run-<slug>`、groupは `group-<slug>`。slugは小文字英数字をハイフンで繋ぐ。新規は `run-i<issue>-<短い施策名>-s<seed>` など、差分がわかる名前にする。issueやseedが無い場合は省略し、架空の値を付けない。
+- ファイル名: **`<6桁連番>-<id>.md`**。タスク内でrun/group共通の連番を1から付ける。IDと連番は別物で、関係参照は連番やファイル名ではなくIDを使う。
+- `sequence` は登録順。新規登録は最大値+1、既存の番号は変更・再利用しない。`--force`も番号とタスクを維持する。削除で欠番が生じても詰めない。
+- `date` は実験日（判明している場合のみ）、`recorded_at` は登録日。過去実験の後日登録は末尾に追加し、UIの時系列表示は `date` 優先で並べる。
+- 既存200ノードの初回移行では実験日→ID順で採番。日付不明のノードはGit追加日を使用し `date_source: git_added` を記録した。判明しているものは `experiment_date`。同日内の実際の実行順は復元できないためIDで決定した。初回の `recorded_at` はこの移行時のソート基準日。
+- 同じcheckout内の同時登録はディレクトリロックで直列化する。独立したworktree/branchはそれぞれ採番するため、マージ時の重複番号はvalidatorがエラーにする。**未マージ側の新規ノードだけ**をマージ先の最大値以降に採番し直し、リンクとsummaryを更新する。ロックが別branchまで一意性を保証するとは扱わない。
 
-ファイル名は `<id>.md`（`id` と一致させる）。`id` は小文字 `[a-z0-9-]`。
-
-### run ノード
+## ノードのfrontmatter
 
 ```yaml
 ---
-id: run-i520-canon-both          # 一意 slug（必須）
-type: run                        # 必須
-title: canonical split (両分離)   # 必須
-issue: 520                       # 関連 issue 番号（int / 配列）
-provider: claude                 # claude | codex | gemini | human | other
-date: 2026-06-18
-status: done                     # done | failed | running | planned
-session: d22b7d68-...            # 担当 AI セッション id（任意。issue #533）
-config:                          # 主要な Hydra オーバーライド
-  model: multiview_axial_canon_split_both
-  loss: canonical_rot
-  data: multiview_sequence
-metrics:                         # 主要 test メトリクス（ログ実値 / metrics.json）
-  angular_error_deg: 15.9
-  position_error_m: 0.353
-repro:                           # 再現性（issue #533）. repro.sh で再走可能
-  commit: a3469ce...
-  branch: feat/issue-525-...
-  remote: git@github.com:Motoki0705/tennis-lab.git
-  command: python -m src.tasks.plcs.scripts.train model=... loss=... data=...
+id: run-i900-geometry-s42
+type: run
+task: plcs
+sequence: 103
+recorded_at: '2026-09-20'
+title: 幾何特徴を用いた位置推定
+issue: 900                         # 整数または整数配列
+provider: codex                    # claude / codex / gemini / human / other
+date: '2026-09-20'                 # 実験日が不明なら省略
+status: done                      # done / failed / running / planned
+config: {model: multiview_axial_base, run.seed: 42}
+metrics: {position_error_m: 0.38}   # 実測値のみ。split・単位を本文に記す
+repro: {commit: '<sha>', command: '<exact command>'}
 artifacts:
-  run_dir: knowledge/runs/run-i520-canon-both   # git 管理の再現性バンドル
-  predictions: knowledge/runs/run-i520-canon-both/pred_test.npz  # test split 推論
-  log: .training_queue/logs/..._canon_both.log
-  curves: knowledge/runs/run-i520-canon-both/curves.png  # train/val 収束カーブ（kg_curves.py）
-  tb_logdir: outputs/plcs/.../logs/version_25  # 上記の生成元 TensorBoard event dir
-parents: [run-i520-canon-none]   # 有向エッジ parent→this（親=baseline/前提）
-relations:                       # 任意: 非階層の有向リンク
-  - {to: run-i521-base-vel, rel: compares}
-tags: [plcs, canonical, split-trunk]
----
-
-## 考察 / Findings
-
-run ノードは固定の節構成で書く（セッション間で比較可能にするため）:
-要約 → アーキテクチャ詳細 → メトリクスの解釈 → アーキ⇄メトリクスの因果考察 →
-既存実験との比較 → 次に有効な実験。詳細・テンプレートは
-[`knowledge-control` SKILL の「考察 format」](../.agents/skills/knowledge-control/SKILL.md#考察-format-run-nodes)。
-```
-
-### group ノード
-
-group の `## まとめ` は群全体の結論を自由記述（run ノードの固定節構成は強制しない）。
-
-```yaml
----
-id: group-i520-canon-split-ablation
-type: group
-title: canonical trunk 分離アブレーション (#520)
-issue: 520
-members: [run-i520-canon-none, run-i520-canon-rot, run-i520-canon-pos, run-i520-canon-both]
-tags: [plcs, canonical]
+  run_dir: knowledge/runs/run-i900-geometry-s42
+parents: []                        # baseline / 前提 → このノード
+relations: []                      # [{to: run-..., rel: compares}]
+papers: [paper-2024-gvhmr]         # 論文ID。本文で関係を説明
+tags: []
 ---
 ```
 
-## エッジの意味
+`id` / `type` / `task` / `sequence` / `recorded_at` / `title` が必須。
+`session`、`repro.branch` / `remote`、`artifacts.predictions` / `curves` / `log` / `output_dir` / `tb_logdir` は利用可能な根拠を記す。
+`parents`, `members`, `tags`, `papers` は文字列配列。`relations` は `to` と `rel` を持つmappingの配列。
 
-- `parents`: 有向エッジ **parent → this**。親は baseline / 前提となった run。
-  新しい run は既存ノードだけを `parents` で参照して追記するため、親ファイルを編集せず、
-  複数セッションの同時追記でもコンフリクトしにくい。
-- `relations[].to` + `rel`: 親子以外の有向リンク（`compares` / `confirms` / `contradicts` / `supersedes` など）。
-- `members`（group のみ）: グループ所属。所属は group ノード側に書く。
+- **group**: `type: group`、`id: group-...` とし、`members` に既存run/groupのIDを列挙する。本文は群の結論を書く。
+- **parents**: baseline / 前提から子への有向関係。
+- **relations**: 非階層の有向関係。`compares` / `confirms` / `contradicts` / `supersedes` など。
+- **papers**: 関連研究の出典。引用だけで再現・実証したとはみなさない。背景、実装採用、比較対象、仮説のどれかを本文に説明する。
 
-## 追加〜検証フロー
+保存時のスキーマ、ID・連番重複、関係先、bundle実在、論文参照・PDF hashを `kg_validate.py` で検証する。
+`runs/` の再現コマンド・patch・予測は歴史的証拠なので、ノード移動に伴って書き換えない。実体は従来通り `runs/<id>` に保ち、巨大なcheckpointを追加しない。
+
+## Papersの仕様
+
+論文はタスクをまたぐため、`Papers/` に一元化する。UIは `tasks` によりタスク別に絞り込む。
+ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`。同名論文は著者名などで区別し、版を追加する場合は別IDに `-v2` などを付ける。ファイル名は `paper.md` と `paper.pdf` に統一する。
+
+`paper.md` の必須frontmatter:
+
+| キー | 内容 |
+|---|---|
+| `id` / `type` | ディレクトリID / `paper` |
+| `title` / `year` / `authors` | 正式題名 / 発表年 / 著者名の配列 |
+| `tasks` | 関係するタスクの配列（未実験のタスクも可） |
+| `source` | 保存した版の一次資料URL |
+| `license` | PDFの利用条件を確認できるURL |
+| `pdf` | `paper.pdf` |
+| `sha256` | 保存PDFのSHA-256。登録スクリプトで計算 |
+
+本文には研究の要点、プロジェクトとの関係、検証仮説と適用限界を記す。参照元実験の一覧はノードの `papers` からUIが生成するので手で二重管理しない。
+公開PRにPDFを含める際は転載条件を確認し、著者・原論文・ライセンス・改変の有無を併記する。PDF固有のライセンスはrepo本体のMITとは別に維持する。
+
+## summaryの継続更新
+
+`summary.md` は自動生成したノード一覧ではなく、現在の判断・根拠・未解決課題・次の実験を要約する。正確な更新手順はskillに集約する。
+`kg_summary.py` はノード本文・metadataと論文metadataの指紋で未レビューの変更を検出する。`--mark-reviewed` は**内容を見直したという記録**であり、考察を自動生成したり、その正しさを証明したりしない。
+
+## 移行・検証
+
+既存のflat形式は `kg_migrate.py`（dry-run、適用は `--write`）で移行した。不明な分類は `--task-map <JSON>` で明示する。混在状態はエラー、移行済みの再実行は無変更。保守対象Markdownの相対リンクを移動先に合わせて更新する。初回移行後もID、metrics、config、graph関係、再現bundleの内容を保持する。
 
 ```bash
-PY=.venv/bin/python
-SKILL=.agents/skills/knowledge-control/scripts
-
-# 1. 完了 run を登記（repro バンドル + test 推論を knowledge/runs/ へ promote しノード生成）
-$PY $SKILL/kg_register.py <queue-job-name> --issue <N> --provider <p>
-#    （repro バンドルが無い旧 run は $PY $SKILL/kg_from_run.py ... --write）
-
-# 2. 考察本文を固定節構成で書き、parents / relations / tags を埋める
-
-# 3. 収束カーブを生成（TensorBoard → knowledge/runs/<id>/curves.png, artifacts.curves）
-$PY $SKILL/kg_curves.py <run-id>      # 一括は --all
-
-# 4. 検証（スキーマ + エッジ参照解決 + artifacts.run_dir 実在）
-$PY $SKILL/kg_validate.py
-
-# 5. 閲覧（ノードをクリックすると metrics・収束カーブ・考察が表示される）
-cd knowledge/webui && npm install && npm run dev
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
 ```

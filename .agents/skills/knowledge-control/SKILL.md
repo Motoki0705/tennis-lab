@@ -1,99 +1,99 @@
 ---
 name: knowledge-control
-description: Use this skill to record what a training/experiment run taught us into the shared, git-managed knowledge graph under knowledge/, and to read that graph when deciding what to try next. One node = one run; nodes can be grouped; edges are directed (parent to child). Each provider session (Claude/Codex/Gemini) registers its own runs here so findings stop being scattered across chat logs and issue comments.
+description: Record experiment findings, connect them to research papers, maintain the cross-task summary, and consult prior evidence when planning the next experiment in this repository's git-managed knowledge library.
 ---
 
 # Knowledge Control
 
-## When to use
+Read `knowledge/README.md` first for the authoritative storage/schema/naming rules.
+This skill describes the operational workflow; do not maintain a second schema here.
+Use `.venv/bin/python` from the active checkout. Scripts are in
+`.agents/skills/knowledge-control/scripts` (`$SKILL` below).
 
-Use this skill whenever a learning/experiment **run finishes and you have a
-takeaway**, or when you are **planning the next experiment** and want to see what
-has already been tried. The graph lives in `knowledge/` and is the single,
-git-managed source of structured findings shared across all provider sessions.
+## Read before planning
 
-Read `knowledge/README.md` first — it is the authoritative node/edge spec. This
-file is the operational workflow.
+1. Read `knowledge/summary.md` for current decisions and unresolved questions.
+2. Read the relevant `knowledge/nodes/<task>/` nodes and their parent/comparison
+   evidence. Tasks are extensible topics, not a closed enumeration. Inspect
+   adjacent tasks for transferable findings without merging distinct evaluation contracts.
+3. Read applicable `knowledge/Papers/*/paper.md` and the PDF sections needed for
+   the hypothesis. Cite the paper ID and distinguish background, adopted method,
+   comparison, and a proposed extension. Do not claim a paper was reproduced merely
+   because it is linked. A run with no relevant source can have `papers: []`.
+4. Propose the next experiment with existing node IDs, what changes, and the
+   observation that would support or reject the hypothesis.
 
-## Model
+The Web UI (`knowledge/webui/README.md`) provides task filters, chronology, graph,
+comparison, papers with backlinks, and the cross-task summary.
 
-- **1 node = 1 run.** Never merge multiple runs into one node.
-- **group node** bundles related runs (e.g. an ablation set).
-- **edges are directed, parent -> child.** `parents:` lists the baseline /
-  prerequisite runs a node builds on. Use `relations:` for non-hierarchical
-  directed links (`compares` / `confirms` / `contradicts` / `supersedes`).
-- Each node carries: `config` (model/loss/data), `metrics` (real test values),
-  `artifacts` (log / output_dir), `issue`, `provider`, and a Markdown 考察 body.
+## Record a run
 
-## Scripts
-
-```bash
-PY=.venv/bin/python
-SKILL=.agents/skills/knowledge-control/scripts
-```
-
-| Script | Purpose |
-|--------|---------|
-| `kg_register.py <job-name>` | **Canonical entry (issue #533).** Promote a finished queue run: copy its repro bundle + test-split predictions into git-tracked `knowledge/runs/<id>/`, then scaffold the node with provider/session/issue/repro/config/metrics/artifacts. |
-| `kg_from_run.py <job-name>` | Legacy/log-only fallback: build a node from a `.training_queue` job + log (no repro bundle). |
-| `kg_new.py --type run\|group ...` | Scaffold a node by hand (use for group nodes or runs without a queue log). |
-| `kg_curves.py <id>\|--all` | Generate the train/val convergence curves (`knowledge/runs/<id>/curves.png`) from TensorBoard and set `artifacts.curves`. Finds the event dir by matching the node's `test/*` metrics fingerprint (falls back to `artifacts.output_dir`). Skips nodes with no identifiable TensorBoard — that's fine. |
-| `kg_validate.py` | Validate frontmatter schema + that every edge target & `artifacts.run_dir` exists. Run before committing. |
-
-Run everything from the repo root.
-
-## Register a finished run (typical flow)
-
-1. **Register the run** from the queue job (name is the queue job's `# name:`).
-   This promotes the reproducibility bundle + test-split predictions from the
-   gitignored `.training_queue/repro/<jobid>/` staging area into git-tracked
-   `knowledge/runs/<run-id>/`, and scaffolds the node:
+1. Choose the primary task explicitly (`--task plcs`, `--task synthetic_data_generation`,
+   or another coherent topic). Do not guess it from the queue job's name. One run
+   stays in one task; cross-task references use IDs. New task names need no enum edit.
+2. Promote a queue run and scaffold its node:
 
    ```bash
-   $PY $SKILL/kg_register.py i521_base_vel --issue 521 --provider claude
+   SKILL=.agents/skills/knowledge-control/scripts
+   .venv/bin/python $SKILL/kg_register.py <job-name> --task <task> --provider codex --issue <N>
    ```
 
-   This writes `knowledge/nodes/run-i521-base-vel.md` (config/metrics/repro/
-   session/artifacts filled) plus `knowledge/runs/run-i521-base-vel/`
-   (`run.json`, `repro.sh`, `uncommitted.patch`, `pred_test.npz`, `metrics.json`,
-   `diagnostic_metrics.json`).
-   For an older run with no repro bundle, fall back to
-   `kg_from_run.py ... --write`; with no queue log, scaffold via `kg_new.py`.
+   The script reports the allocated filename and retains `knowledge/runs/<id>/`
+   for the repro bundle and saved predictions. It accepts `--repro-dir` for an
+   explicit staging directory. In a worktree, locate the shared training queue in
+   the main checkout (or set `TRAINING_QUEUE_DIR`); do not create another queue.
+   Use `--papers <paper-id> ...` to attach already registered research.
 
-2. **Write the 考察 body** following the fixed section structure below
-   ([考察 format](#考察-format-run-nodes)). Keep `metrics` in frontmatter
-   consistent with the body.
+   For a historical log-only run, use `kg_from_run.py <job> --task <task> --write`
+   (specify `--date YYYY-MM-DD` when known). For a manual run/group, use
+   `kg_new.py --type run|group --task <task> --id <id> --title <title>`;
+   a group additionally receives `--members <run-id> ...`.
+   Missing evidence is recorded as missing. Do not fabricate logs, metrics, or dates.
+   `--force` intentionally replaces content: use only for a deliberate replacement,
+   not to append findings to an existing node.
+3. Fill in the findings below, actual config/metrics, and parents/relations/tags.
+   Add paper IDs and explain their concrete role in the findings. Keep run-level
+   detail in its node rather than copying it into group or summary documents.
+4. Run `kg_curves.py <id>` to attach available training curves. For data generation
+   or a run with no identifiable TensorBoard, state why curves are absent.
+5. **Update summary.md in the same PR** using the procedure below. This applies
+   to failed/negative runs, group conclusions, corrections, and paper-driven
+   changes to the research direction, as well as successful runs.
+6. Run `kg_validate.py --check-summary` before committing; fix every ERROR.
+   WARN messages identify missing optional evidence and must not be silently filled
+   with invented values. Resolve cross-branch sequence collisions as documented in
+   the README before merging; an unchanged node ID must keep its graph relations.
 
-3. **Link edges.** Set `parents:` to the baseline/prerequisite node id(s). Add
-   `relations:` for compare/contradict links. Reference **existing** node ids so
-   you only edit your own new file (avoids conflicts with other sessions).
+## Add related research
 
-4. **Group** related runs: create/extend a group node and list run ids in
-   `members:`:
+Use `kg_papers.py --id paper-YYYY-slug --title '<official title>'
+--authors '<author>' ... --tasks <task> ... --source <version-url>
+--license <license-url> --pdf <local.pdf>` to copy a PDF and scaffold metadata.
+Check the primary source, version, attribution, and permission to redistribute
+before adding the PDF to a public PR. Inspect existing records to avoid duplicate
+copies across tasks. Read and fill the research note, then add its ID to each
+relevant node's `papers`. The UI computes backlinks; do not maintain a second list.
+Retrospective bibliography additions must not imply that past runs were designed
+from the paper. Do not download unrelated papers just to fill the library.
 
-   ```bash
-   $PY $SKILL/kg_new.py --type group --id group-i521-velocity \
-       --title "角速度 canonical loss (#521)" --issue 521 \
-       --members run-i521-base-vel run-i521-ex10-vel
-   ```
+## Keep summary.md current
 
-5. **Generate convergence curves** so the node shows its training behaviour in
-   the webui (qualitative — see how it converged):
+After changing findings or research references:
 
-   ```bash
-   $PY $SKILL/kg_curves.py run-i521-base-vel   # or --all to (re)do every node
-   ```
-
-   This matches the node to its TensorBoard run by `test/*` metric fingerprint,
-   writes `knowledge/runs/<id>/curves.png`, and sets `artifacts.curves` /
-   `artifacts.tb_logdir`. If the run has no identifiable TensorBoard (no event
-   files, or a non-TB logger), it is skipped — that is expected, not an error.
-
-6. **Validate**:
-
-   ```bash
-   $PY $SKILL/kg_validate.py   # must exit 0 with no ERROR
-   ```
+- Read the current summary and the changed nodes plus their comparison context.
+- Update the affected task's current baseline, what was learned, unresolved
+  uncertainty, and next experiment, with links to supporting nodes. Keep the
+  fixed-split / seed / budget boundaries. A negative result may change the next
+  step without changing the baseline; record that explicitly.
+- Update the review date and scope. Historical deploy statements must retain their
+  as-of date unless checked against the current configuration. Do not present a
+  new experiment's best metric as a production promotion.
+- If an administrative change does not alter the research conclusion, record the
+  reviewed change and why the existing conclusion remains valid; do not duplicate
+  all node metrics or regenerate the narrative mechanically.
+- Only after the content review, run `kg_summary.py --mark-reviewed`, followed by
+  `kg_validate.py --check-summary`. The stored fingerprint detects later unreviewed
+  changes; the command itself does not update or verify research claims.
 
 ## 考察 format (run nodes)
 
@@ -126,25 +126,3 @@ frontmatter の主要 metrics の読み方。`curves.png` の収束の質（過�
   留めるか省く。観測（metrics / curves）と推測は区別する。
 - **group ノードのまとめ**はこの構造を強制しない。`## まとめ` に群全体の結論を
   自由記述でよい（個別 run の詳細は各 run ノードに任せる）。
-
-## Read the graph / decide next steps
-
-- Browse visually: `cd knowledge/webui && npm install && npm run dev`
-  (cards per run, directed edges, groups, click for 考察 + metrics, filter by
-  issue/tag/provider).
-- Or read `knowledge/nodes/*.md` directly.
-- When proposing the next experiment, ground it in existing nodes: cite parent
-  run ids and the 考察 that motivates the follow-up.
-
-## Conventions
-
-- ids: lowercase `[a-z0-9-]`, prefixed `run-` / `group-`; filename matches id.
-- Prefer issue-scoped prefixes for runs, e.g. `run-i521-base-vel`.
-- `provider`: set to the session writing the node (`claude` / `codex` / `gemini`).
-- Japanese for titles and 考察 bodies (match the repo convention); keep metric
-  keys, config values, paths in their original form.
-- Run-node 考察 follow the fixed [考察 format](#考察-format-run-nodes); group
-  まとめ is free-form.
-- After writing a run node, run `kg_curves.py <id>` so the node carries its
-  convergence curves.
-- Always `kg_validate.py` before committing; fix every ERROR (WARN is advisory).

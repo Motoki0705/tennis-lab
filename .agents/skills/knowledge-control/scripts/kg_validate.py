@@ -11,12 +11,17 @@ Usage:
 
 from __future__ import annotations
 
-import sys
+import argparse
 
 from kg_lib import load_nodes, nodes_dir, validate
+from kg_papers import validate_papers
+from kg_summary import check_summary
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check-summary", action="store_true")
+    args = parser.parse_args()
     directory = nodes_dir()
     try:
         nodes = load_nodes(directory)
@@ -25,6 +30,10 @@ def main() -> int:
         return 1
 
     res = validate(nodes)
+    papers = validate_papers(nodes)
+    res.errors.extend(papers.errors)
+    if args.check_summary:
+        res.errors.extend(check_summary())
     for w in res.warnings:
         print(f"WARN: {w}")
     for e in res.errors:

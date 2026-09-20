@@ -5,7 +5,7 @@
 - checkpoint: `outputs/court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0/checkpoints/last.ckpt`
 - source: `data/court/images/-0M6ixK7aIU_*.png`の先頭8枚
 - rendering: 2 fps、8 frames、入力画像と各headの予測を左右に表示
-- evaluation metrics / convergence: [`knowledge/nodes/run-court-mixed-pose-lora-b8-e20-s42.md`](../../../../knowledge/nodes/run-court-mixed-pose-lora-b8-e20-s42.md)
+- evaluation metrics / convergence: [`knowledge/nodes/run-court-mixed-pose-lora-b8-e20-s42.md`](../../../../knowledge/nodes/court_detection/000025-run-court-mixed-pose-lora-b8-e20-s42.md)
 
 ## Keypoints
 
