@@ -3,7 +3,7 @@
 Only the modes the current contract can actually execute are offered.  The
 checkpoint body is the sole authority: its saved Hydra config and
 ``target_bundle_state`` are read with a memory-mapped ``torch.load`` and
-revalidated through the strict training-config and bundle contracts.  A sibling
+revalidated through the strict inference-config and bundle contracts.  A sibling
 ``hparams.yaml`` is used only as a cross-check and never as a substitute, an
 unreadable body is always unusable, and legacy single-head checkpoints without a
 bundle snapshot are reported unsupported with the exact reason instead of being
@@ -24,8 +24,8 @@ import torch
 import yaml
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.bundle_state import deserialize_target_bundle
+from src.tasks.court_detection.inference.checkpoint import CourtInferenceSpec
 
 COURT_TASK = "court_detection"
 _SIDECAR_NAMES: Final = ("hparams.yaml", "config.yaml")
@@ -300,7 +300,7 @@ def _describe(
             reason=f"checkpoint の target_bundle_state が不正です: {error}",
         )
     try:
-        CourtTrainingConfig.from_config(config)
+        CourtInferenceSpec.from_checkpoint_config(config, bundle_state)
     except Exception as error:  # configuration contracts raise many types
         return _unsupported(
             id_str=id_str,
@@ -310,7 +310,7 @@ def _describe(
             size_bytes=size_bytes,
             modified_ns=modified_ns,
             reason=(
-                "checkpoint config が現行契約より前のもので strict に読み込めません: "
+                "checkpoint の推論設定を strict に読み込めません: "
                 f"{type(error).__name__}: {error}"
             ),
         )

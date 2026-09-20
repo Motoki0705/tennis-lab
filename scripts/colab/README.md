@@ -275,7 +275,7 @@ PLCS dataset generatorの現行configは `run.device=cpu` なのでCPU jobです
 `ckpt/`、motion dataは `data/ACCAD/`、scene pipeline用SMPL-Hは `data/smplh/` です。
 `synthetic_data_generation` はこれらに加え
 `data/synthetic_data_generation/raw/B00.mp4` と
-`ckpt/court_detection/line/court-detection-epoch19.ckpt` を必要とします。dataset系は
+`ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` を必要とします。dataset系は
 job名に対応する `data/{blcs,plcs}/...` または `data/tennis_scene_dataset/` をstage
 します。正確な最小単位はcatalog TOMLを正本とし、READMEに別のinput schemaを複製
 しません。

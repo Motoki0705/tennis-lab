@@ -1,6 +1,6 @@
 task: line
 image_source: court/images
-checkpoint: court_detection/line/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
 save: court_detection/line.gif
 fps: 6
 max_frames: 24

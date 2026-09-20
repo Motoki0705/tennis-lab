@@ -302,3 +302,11 @@ maximum adjacent displacement, and metric centre bounds. These definitions and
 their schema versions are retained in the manifest together with source owners,
 IDs, mappings, coordinate declarations, resolved semantic config, and bounded
 asset policy.
+
+## Court LINE推論の共有
+
+新しいalignment実行は、保存モデル構成を読む共通Court predictorと、その[配布checkpoint](../tasks/court_detection/README.md#共通推論と幾何補正)を使います。LINE確率のnative gridを既存の地面投影・集約へ渡すため、複数コートの観測を保持します。Hへの置換やKPの向き推定はこの経路では行いません。旧LINE専用の手書きモデル再構築・architecture設定は廃止しました。
+
+raw LINE cacheの配列形式は維持し、loaded checkpoint・backbone・保存head仕様・short-side・device・seedを新しいdetector identityへ含めます。checkpointを切り替えても旧cache・保存alignment・manual ownerを削除しません。alignmentを保持してdataset以降だけ再実行する場合は、旧line-modelの設定を保存済み`resolved-config.yaml`から引き継ぎます。検出器の既定変更を許容しても、projection/fit設定やLINE抽出条件の変更を暗黙に適用することはありません。
+
+既存B00/B01/B03の`alignment_line_heatmaps_v2`を現行v3専用loaderで読めない制約は、このモデル移行以前からあります。今回その内容をv3へ書き換えたり、不足している入力画像の出典を補ったりしません。
