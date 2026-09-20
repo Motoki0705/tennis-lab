@@ -172,11 +172,14 @@ class ManifoldConstrainedHyperConnection(nn.Module):
     def _bounded_residual_mix_gate(self, dtype: torch.dtype) -> Tensor:
         """Return the exact-zero, convex residual-map interpolation gate.
 
-        Clamping at the initialized lower boundary has unit derivative in
-        PyTorch, so the gate can leave zero while its effective value remains
-        in ``[0, 1]`` for every optimizer or loaded state.
+        Explicit strict comparisons give unit derivative at both boundaries,
+        including the zero initialization, independently of PyTorch's clamp
+        boundary convention. Outside ``[0, 1]`` the value saturates and the
+        derivative is zero.
         """
-        return self.residual_mix_gate.to(dtype=dtype).clamp(0.0, 1.0)
+        gate = self.residual_mix_gate.to(dtype=dtype)
+        gate = torch.where(gate < 0.0, torch.zeros_like(gate), gate)
+        return torch.where(gate > 1.0, torch.ones_like(gate), gate)
 
     @staticmethod
     def _coefficient_dtype(dtype: torch.dtype) -> torch.dtype:
