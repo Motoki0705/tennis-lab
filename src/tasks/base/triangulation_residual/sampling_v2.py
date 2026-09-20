@@ -91,6 +91,7 @@ def sample_v2(
                     noisy.estimated_rig,
                     root_indices=config.root_indices,
                     fps=fps,
+                    feature_config=config.features,
                     min_score=config.initializer.min_score,
                     refinement_steps=config.initializer.refinement_steps,
                 )

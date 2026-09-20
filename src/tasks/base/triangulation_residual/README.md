@@ -20,6 +20,14 @@ delta_relativeの左右hip平均をゼロへ射影し、root補正との重複�
 `geometry.py`は学習・推論共通。内部2D特徴をW/H、global 3Dを共有court scaleで正規化し、relative poseはmのまま使う。cameraはfx/W,fy/H,cx/W,cy/H,R,C/scale。confidence、観測/三角測量/使用view/再投影mask、視線角も付与する。
 1 camera×1 frameの特徴数はPLCS 367、BLCS 79。MLP埋め込み後、camera self-attentionとtime self-attentionを交互に適用する。camera任意indexへ位置encodingを付けずK/R/Cを使う。timeだけ秒×30のRoPEを適用する。camera順序に依存しないpooling後に残差headを読む。headの最終層をゼロ初期化するため未学習状態は幾何seedに一致する。
 
+`model.ffn_type`でcamera/time両方のTransformerのFFNを選択する。共有設定の既定値は`swiglu`で、`mlp`等の対応値は共通の`SUPPORTED_FFN_TYPES`で検証する。
+
+### 残差特徴の入力比較（opt-in）
+
+v1/v2とも既定値は`features.residual_encoding=raw features.residual_scale=1.0`で、従来の入力数値を維持する。比較時に`features.residual_encoding=asinh features.residual_scale=0.01`を指定すると、W/H正規化済みの`p_obs-p_reproj`だけを符号付き`asinh(residual / scale)`へ変換する。対象は特徴ベクトルの`[4J:6J]`で、特徴数・重み形状・その他の入力・幾何seed・教師・乱数列は変わらない。scaleは正の有限値を明示し、rawでは1.0に固定する。
+
+この変換は小さいUV残差をMLP埋め込みへ渡す際の数値分解能を比較するための仮説であり、GT統計や実クリップのGT誤差を使わない。欠測残差のゼロとmaskを維持し、`GeometryInput.residual_uv`および推論保存のUV診断値はrawのまま保持する。v2の誤差生成・損失比較とは独立に指定でき、精度改善はpaired runで検証する。
+
 ## 欠測
 
 confidence閾値以上の2 view以上で三角測量する。退化・負深度・絶対座標100m以上は無効。raw点はNaN＋valid=falseで保存する。
@@ -73,11 +81,15 @@ BaseLightningModuleのoptimizer/repro保存、BaseTrainingRunnerのcheckpoint/qu
   --config-name train_triangulation_residual_v2 paths.data_root=/absolute/repo/data
 .venv/bin/python -m src.tasks.blcs.scripts.train_triangulation_residual \
   --config-name train_triangulation_residual_v2 paths.data_root=/absolute/repo/data
+# 入力conditioningの比較では、上記コマンドの末尾へ次を追加する。
+# features.residual_encoding=asinh features.residual_scale=0.01
 .venv/bin/python -m src.tasks.base.scripts.infer_triangulation_residual \
   --task plcs --run-dir /absolute/run --clip /absolute/clip_000 \
   --output /absolute/comparison --device cuda
 ```
 
 推論はnative frameを保持し、学習と同程度の秒数のwindowで残差を予測し三角重みで融合する。predictions.npzへ元2D・raw/filled初期値・mask・補正後3D・残差を保存する。同じcamera/2D観測集合で前後比較し、3D正解のない実映像で再投影誤差を3D精度と解釈しない。BLCS観測のobserved/interpolated/occlusion_estimated/unresolvedは重み・出典と共にmetadataへ保存する。
+
+新checkpointのcontractはschema 2で、FFNとresidual encoding/scaleを埋込configと照合する。通常の学習configはこれらの必須項目を省略できない。履歴のschema 1は既知のPLCS/BLCS residual v1/v2 contract全体が一致する場合だけ、`training.migrate_legacy_checkpoint()`が警告付きでSwiGLU/raw/1.0のコピーへ移行する。公式`evaluate_clip`もこの入口を使い、元ファイルを変更せず、metadataの`checkpoint_migration`へ元contractと移行内容を残す。異なるroot・単位・task・特徴設定は拒否し、raw checkpointをasinhの入力定義へ読み替えない。
 
 各taskのtriangulation_residual/data.pyとreal_clip.pyがartifact固有I/Oを、共有contracts/geometry/corruption/model/losses/configuration/data/training/inference/visualizationが残差profileを担当する。

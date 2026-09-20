@@ -133,6 +133,7 @@ class ResidualDataset(Dataset[dict[str, Any]]):
                         noisy.estimated_rig,
                         root_indices=self.config.root_indices,
                         fps=fps,
+                        feature_config=self.config.features,
                         min_score=self.config.initializer.min_score,
                         refinement_steps=self.config.initializer.refinement_steps,
                     )

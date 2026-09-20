@@ -15,6 +15,7 @@ from src.tasks.base.triangulation_residual.cameras import (
 )
 from src.tasks.base.triangulation_residual.configuration import (
     CorruptionConfig,
+    FeatureConfig,
     V2Config,
 )
 from src.tasks.base.triangulation_residual.corruption_v2 import (
@@ -125,6 +126,7 @@ def test_clean_draw_fits_court_and_recovers_exact_projection_and_world(task):
         selected.estimated_rig,
         root_indices=(11, 12) if task == "plcs" else (0,),
         fps=30,
+        feature_config=FeatureConfig("raw", 1.0),
     )
     assert_allclose(geometry.init_world_m, target, atol=1e-5)
     assert not np.shares_memory(selected.true_rig.K, selected.estimated_rig.K)

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import Tensor, nn
 
 from src.tasks.base.triangulation_residual.configuration import ModelConfig
 from src.tasks.base.triangulation_residual.contracts import feature_dimension
 from src.utils.models.components.block import TransformerBlock, TransformerBlockConfig
+from src.utils.models.components.ffn_layers import FFNType
 from src.utils.models.components.rope import RotaryFrequencyComputer
 
 
@@ -37,7 +40,7 @@ class GeometricResidualModel(nn.Module):
             attention_type="mha",
             n_kv_heads=None,
             rope_base=config.rope_base,
-            ffn_type="swiglu",
+            ffn_type=cast(FFNType, config.ffn_type),
         )
         self.camera_layers = nn.ModuleList(
             [TransformerBlock(block) for _ in range(config.num_layers)]

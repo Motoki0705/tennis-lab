@@ -19,6 +19,7 @@ _EXPECTED_FFN_TYPES = frozenset(
 _EXPECTED_DIRECT_CONSUMERS = frozenset(
     {
         "src/tasks/ball_detection/models/dinov3_rope.py",
+        "src/tasks/base/triangulation_residual/model.py",
         "src/tasks/blcs/models/blcs_model.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
         "src/tasks/blcs/models/blcs_track_query_model.py",
@@ -33,6 +34,7 @@ _EXPECTED_DIRECT_CONSUMERS = frozenset(
 )
 _CONFIGURATION_SURFACES = (
     "src/tasks/ball_detection/configuration.py",
+    "src/tasks/base/triangulation_residual/configuration.py",
     "src/tasks/blcs/configuration.py",
     "src/tasks/court_detection/configuration.py",
     "src/tasks/plcs/configuration.py",

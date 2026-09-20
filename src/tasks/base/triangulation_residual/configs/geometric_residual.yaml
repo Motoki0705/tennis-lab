@@ -6,8 +6,13 @@ model:
   num_layers: 4
   num_heads: 8
   ffn_dim: 768
+  ffn_type: swiglu
   dropout: 0.1
   rope_base: 10000.0
+
+features:
+  residual_encoding: raw
+  residual_scale: 1.0
 
 data:
   scene_dir: ???
