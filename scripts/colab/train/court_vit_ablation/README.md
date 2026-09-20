@@ -1,7 +1,7 @@
 # Court DINOv3 size ablation on Colab L4
 
 実行入口は `scripts/colab/train/court_vit_ablation.sh`。Colab/Driveの認証、入力stage、
-source snapshot、GPU作成、進捗取得、終了処理は [共通workflow](../../README.md) が所有する。
+固定git commit取得、GPU作成、進捗取得、終了処理は [共通workflow](../../README.md) が所有する。
 ローカルGPUでは実行しない。
 
 ## 比較条件
