@@ -440,7 +440,8 @@ class PLCSSceneRenderer:
 
         cos_yaw = scene.rotation[frame_idx, 0]
         sin_yaw = scene.rotation[frame_idx, 1]
-        ax.arrow(x, y, -sin_yaw, cos_yaw, head_width=0.3, fc="yellow", ec="black")
+        # SMPL body forward is -Y in the yaw-zero Z-up pose.
+        ax.arrow(x, y, sin_yaw, -cos_yaw, head_width=0.3, fc="yellow", ec="black")
 
     def _compute_world_pose(self, scene: Any, frame_idx: int) -> np.ndarray:
         pos = scene.position[frame_idx]
@@ -503,12 +504,12 @@ class PLCSSceneRenderer:
         gt_sin = gt_scene.rotation[frame_idx, 1]
         pred_cos = pred_scene.rotation[frame_idx, 0]
         pred_sin = pred_scene.rotation[frame_idx, 1]
-        ax.arrow(gt_x, gt_y, -gt_sin, gt_cos, head_width=0.25, fc="green", ec="green")
+        ax.arrow(gt_x, gt_y, gt_sin, -gt_cos, head_width=0.25, fc="green", ec="green")
         ax.arrow(
             pred_x,
             pred_y,
-            -pred_sin,
-            pred_cos,
+            pred_sin,
+            -pred_cos,
             head_width=0.25,
             fc="red",
             ec="red",
