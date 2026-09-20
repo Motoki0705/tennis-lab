@@ -1,7 +1,7 @@
-<!-- knowledge-review: 6baba2b00852c3a50b8ec95ea80ced47fae0f0fb6914ad5ed016bcbcfe9c5301 on 2026-09-21 -->
+<!-- knowledge-review: 31ecfb5b9c5c9b492cf8af2b68510fdf58505507ae87a2bff8cd4a124e269aa7 on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-21（実RGB SLCSの全体版比較と、コート推定・SfM診断の追加確認を統合）
+更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -44,19 +44,25 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 | task | 現在の基準 | 主な固定値 | 現在の判断 |
 |---|---|---|---|
 | `ball_detection` | [`run-i618-convnext-v2-ft`](nodes/ball_detection/000009-run-i618-convnext-v2-ft.md) | test F1 `0.721789`、precision `0.735656`、recall `0.708436`、距離 `2.176208 px` | offline最高値ではなく、実clipのcoverageと軌道安定性を含めてdeploy継続 |
-| `court_detection` | [`run-i621-court-kp512-resume-r4`](nodes/court_detection/000006-run-i621-court-kp512-resume-r4.md) | val best `2.23 px`、固定checkpoint再評価 `1.708886 px` | KP14 / 512入力のdeploy。独立held-out testは未確立 |
+| `court_detection` | [`run-i621-court-kp512-resume-r4`](nodes/court_detection/000006-run-i621-court-kp512-resume-r4.md) | val best `2.23 px`、固定checkpoint再評価 `1.708886 px` | 旧KP14 / 512入力deployの比較値。現在のhybrid移行は別評価で、独立held-out testは未確立 |
 | `plcs` | [`run-deploy-multiview-plcs-i590-courtkp14-v2`](nodes/plcs/000082-run-deploy-multiview-plcs-i590-courtkp14-v2.md) | position `0.175284 m`、yaw `6.443357°` | 3–6 camera・court KP14の現行single-person deploy |
 | `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/blcs/000011-run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
 | `slcs` | [全体版のval5条件](nodes/slcs/000062-run-slcs-full-no-smooth-gap-rgb-val-v2.md) | 全61clipの固定split、60epoch、入力条件・train定数baseline比較 | ball低分散崩壊を脱しRGBの寄与を確認。欠損・裾・時間的スパイクは残り、頑健なdeployとは未認定 |
 
-[pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpointは次です。前回から変更はありません。
+[pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpoint（2026-09-21、下流移行後）は次です。
 
 | stage | checkpoint |
 |---|---|
-| court | `court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt` |
+| court | `court_detection/hybrid/court-detection-epoch=17.ckpt` |
 | ball | `ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt` |
-| PLCS | `plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt` |
-| BLCS | `blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt` |
+| PLCS | `plcs/real-rgb-meiji-foot-e60-v1.ckpt` |
+| BLCS | `blcs/real-rgb-meiji-e60-v1.ckpt` |
+
+## 2026-09-21のKP＋LINE下流移行
+
+[run-court-hybrid-downstream-migration](nodes/court_detection/000031-run-court-hybrid-downstream-migration.md)では、ユーザー指定の残差head checkpointへ共通KP＋LINE推論を接続し、下流もcamera_view_v2へ移行した。8画像のH採用は3例であり、推定完了率の改善や実動画E2E精度は未確立。既定の変更は入力契約の統一であって、旧モデルへの精度優位の証明ではない。B00〜B03の保存alignmentと生成データは再publicationしていない。
+
+以下の既存baseline比較は元のas-of commitに基づく履歴として保持する。現在のpipeline checkpointは下表へ更新し、PLCS/BLCSはMeiji fine-tune版・window128・明示したreference-camera契約を使う。他会場の汎化、独立正解Hでの誤採用率、下流E2E評価を次の課題とする。
 
 ## タスク別の主要な知見と判断保留事項
 
@@ -74,13 +80,13 @@ court segmentationはKP14とは別契約です。[`group-i524-dinov3-ssl-court`]
 
 ### PLCS
 
-現行deployは、split trunk、H=0/S=6、position weight 8、補助pose loss無効、court KP14というpipeline互換recipeです。過去のablationでは、positionにはS6/H0、rotationには別の容量配分が有利であり、単一構成が全目的を同時に最適化しないPareto構造が確認されています。[`group-i545-loss-head-tuning`](nodes/plcs/000067-group-i545-loss-head-tuning.md) のposition frontier `0.166 m`は有力ですが、現行KP14 deploy以前の契約なので直接置換には使いません。
+従来deploy（上記as-of commit）は、split trunk、H=0/S=6、position weight 8、補助pose loss無効、court KP14というpipeline互換recipeです。過去のablationでは、positionにはS6/H0、rotationには別の容量配分が有利であり、単一構成が全目的を同時に最適化しないPareto構造が確認されています。[`group-i545-loss-head-tuning`](nodes/plcs/000067-group-i545-loss-head-tuning.md) のposition frontier `0.166 m`は有力ですが、現行KP14 deploy以前の契約なので直接置換には使いません。
 
 canonical poseでは、[`run-plcs-canonical-temporal-decomp-beta01-noaug`](nodes/plcs/000087-run-plcs-canonical-temporal-decomp-beta01-noaug.md) が平均pose固定から入力依存motionへの移行を確認しました。canonical MPJPEは`0.091136 m`、motion amplitude ratioは`1.174967`、centered Pearsonは`0.795146`です。一方、high-frequency fractionは予測`0.391067`に対してGT `0.068930`であり、motionを復元する代わりにjitterを過剰生成しています。position / rotation headは未学習なのでdeploy精度との比較には使いません。
 
 reprojection lossは一方向な改善ではありません。[`group-plcs-multiview-axial-reprojection-loss-w1-v4-t128`](nodes/plcs/000090-group-plcs-multiview-axial-reprojection-loss-w1-v4-t128.md) のV=4/T=128条件では、position `1.386235 → 1.352761 m`、angle `66.968224 → 63.600704°`へ改善しましたが、0.5 m以内率は`0.118984 → 0.088828`へ悪化し、X誤差と分散も増えました。複数seedとweight sweep前にdefaultへ採用しません。
 
-camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。productionはv1を維持します。
+camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。このselector比較単独ではv1からの移行根拠になりません。2026-09-21のpipelineは上記の入力契約移行によりv2へ変更しています。
 
 ### BLCS
 

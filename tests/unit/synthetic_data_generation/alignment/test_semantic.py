@@ -11,43 +11,6 @@ from src.synthetic_data_generation.alignment.semantic import (
     transform_segments,
     typed_court_segments,
 )
-from src.tasks.court_detection.inference.semantic_lines import (
-    merge_camera_line_probabilities,
-)
-from src.tasks.court_detection.target_schemas import SEMANTIC_LINE_CHANNEL_NAMES
-
-
-def test_opposite_camera_channel_permutation_preserves_all_line_types() -> None:
-    rng = np.random.default_rng(880)
-    probabilities = rng.uniform(size=(12, 5, 8)).astype(np.float32)
-    probabilities /= probabilities.sum(axis=0)
-    reversed_view = probabilities[[0, 2, 1, 4, 3, 6, 5, 8, 7, 9, 11, 10]]
-    actual = merge_camera_line_probabilities(
-        probabilities, channel_names=SEMANTIC_LINE_CHANNEL_NAMES
-    )
-    reversed_actual = merge_camera_line_probabilities(
-        reversed_view, channel_names=SEMANTIC_LINE_CHANNEL_NAMES
-    )
-    np.testing.assert_array_equal(actual, reversed_actual)
-    np.testing.assert_allclose(actual.sum(axis=0), 1, atol=2e-7)
-    np.testing.assert_array_equal(actual[1], probabilities[1] + probabilities[2])
-
-
-def test_line_merging_rejects_logits_and_wrong_semantics() -> None:
-    probabilities: NDArray[np.float32] = np.full((12, 4, 5), 1 / 12, dtype=np.float32)
-    with pytest.raises(ValueError, match="channel order"):
-        merge_camera_line_probabilities(
-            probabilities, channel_names=SEMANTIC_LINE_CHANNEL_NAMES[::-1]
-        )
-    with pytest.raises(ValueError, match="summing to one"):
-        merge_camera_line_probabilities(
-            probabilities * 0.5, channel_names=SEMANTIC_LINE_CHANNEL_NAMES
-        )
-    probabilities[0, 0, 0] = np.nan
-    with pytest.raises(ValueError, match="finite"):
-        merge_camera_line_probabilities(
-            probabilities, channel_names=SEMANTIC_LINE_CHANNEL_NAMES
-        )
 
 
 def _objective() -> SemanticRasterObjective:

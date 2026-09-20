@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -339,6 +340,37 @@ def test_non_hydra_boundary_returns_typed_role_aware_paths(tmp_path: Path) -> No
         entry.field.role is PathRole.EXTERNAL_ASSET
         for entry in resolved.declared_many("assets")
     )
+
+
+def test_optional_boundary_paths_are_omitted_without_synthesizing_values(
+    tmp_path: Path,
+) -> None:
+    boundary, resolver, arguments = _non_hydra_boundary_fixture(tmp_path)
+    optional = replace(boundary.fields[0], required=False)
+    boundary = replace(boundary, fields=(optional, *boundary.fields[1:]))
+    source = arguments.pop("source")
+    result = boundary.validate(arguments, resolver=resolver)
+    assert "source" not in result
+    with pytest.raises(KeyError):
+        result.declared("source")
+    assert result["assets"] == arguments["assets"]
+    arguments["source"] = source
+    assert boundary.validate(arguments, resolver=resolver)["source"] == Path(
+        str(source)
+    )
+    arguments["source"] = None
+    with pytest.raises(PathContractError, match="str or pathlib.Path"):
+        boundary.validate(arguments, resolver=resolver)
+
+
+def test_only_optional_boundary_can_return_an_empty_mapping(tmp_path: Path) -> None:
+    boundary, resolver, _ = _non_hydra_boundary_fixture(tmp_path)
+    boundary = replace(boundary, fields=(replace(boundary.fields[0], required=False),))
+    result = boundary.validate({}, resolver=resolver)
+    assert dict(result) == {}
+    assert result.entries == ()
+    with pytest.raises(PathContractError, match="unknown"):
+        boundary.validate({"typo": tmp_path}, resolver=resolver)
 
 
 @pytest.mark.parametrize(

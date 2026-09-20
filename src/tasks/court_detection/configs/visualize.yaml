@@ -1,5 +1,5 @@
 defaults:
-  - paths: default
+  - paths: inference
   - visualization: kp
   - run: visualize
   - render_style: default

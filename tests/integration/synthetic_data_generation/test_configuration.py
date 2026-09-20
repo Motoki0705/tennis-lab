@@ -55,9 +55,7 @@ pytestmark = pytest.mark.local_data
 
 def _resource_repository_root() -> Path:
     for candidate in (PROJECT_ROOT, *PROJECT_ROOT.parents):
-        if (
-            candidate / "data/synthetic_data_generation/raw/B00.mp4"
-        ).is_file() and (
+        if (candidate / "data/synthetic_data_generation/raw/B00.mp4").is_file() and (
             candidate / "third_party/nht/configs/production.yaml"
         ).is_file():
             return Path(candidate)
@@ -285,11 +283,13 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
         )
         == line_model.checkpoint_path
     )
-    for path in (
-        line_model.backbone_repository_path,
-        line_model.backbone_checkpoint_path,
-    ):
-        assert runtime.resolver.validate(PathRole.EXTERNAL_ASSET, path) == path
+    assert (
+        line_model.checkpoint_path
+        == (
+            runtime.resolver.roots.checkpoint_root
+            / "court_detection/hybrid/court-detection-epoch=17.ckpt"
+        ).resolve()
+    )
     for path in (runtime.plcs.accad_root, runtime.plcs.smplh_model_root):
         assert runtime.resolver.validate(PathRole.DATA, path) == path
 
@@ -383,7 +383,11 @@ def test_task_local_generation_camera_profiles_remain_available() -> None:
     for task in ("blcs", "plcs"):
         camera_root = PROJECT_ROOT / f"src/tasks/{task}/configs/camera"
         profiles = tuple(sorted(camera_root.glob("*.yaml")))
-        assert {path.name for path in profiles} == {"broadcast.yaml", "default.yaml"}
+        assert {path.name for path in profiles} == {
+            "broadcast.yaml",
+            "corners.yaml",
+            "default.yaml",
+        }
         assert all(path.is_file() and not path.is_symlink() for path in profiles)
 
 

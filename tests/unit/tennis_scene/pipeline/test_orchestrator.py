@@ -160,6 +160,7 @@ def test_run_preserves_plcs_and_stores_alignment_separately(
         lambda _: VideoInfo(fps=30.0, width=640, height=360, frame_count=num_frames),
     )
     court_result = SimpleNamespace(
+        diagnostics=None,
         keypoints=np.zeros((1, num_frames, 20, 2), dtype=np.float32),
         visibility=np.ones((1, num_frames, 20), dtype=np.float32),
         frame_indices=np.array([0], dtype=np.int64),

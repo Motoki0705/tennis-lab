@@ -10,6 +10,20 @@ from numpy.typing import NDArray
 
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
+# Nine continuous ground markings. Do not use the rendering skeleton's split
+# sidelines/net: splitting a line changes the equal-line hybrid objective.
+COURT_HOMOGRAPHY_EDGES: tuple[tuple[int, int], ...] = (
+    (0, 1),
+    (2, 3),
+    (0, 2),
+    (1, 3),
+    (4, 5),
+    (6, 7),
+    (8, 9),
+    (10, 11),
+    (12, 13),
+)
+
 
 def court_template_xy(num_keypoints: int = 14) -> NDArray[np.float32]:
     """Return the canonical court-plane template points in ``(x, y)`` order."""

@@ -1,6 +1,6 @@
 task: kp
 image_source: court/images
-checkpoint: court_detection/kp/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
 save: ${run.output_dir}/kp.gif
 fps: 6
 max_frames: 24

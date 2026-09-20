@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -178,10 +178,10 @@ def _stage_path(
 _POSTPROCESS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp.postprocess",
     fields={
-        "enabled": ConfigField.of(bool),
-        "min_score": ConfigField.of(float),
-        "ransac_reproj_threshold": ConfigField.of(float),
-        "temporal_median_window": ConfigField.of(int),
+        field.name: ConfigField.of(
+            type(getattr(CourtKPPostprocessConfig(), field.name))
+        )
+        for field in fields(CourtKPPostprocessConfig)
     },
 )
 _COURT_SCHEMA = StrictConfigSchema(
@@ -194,6 +194,7 @@ _COURT_SCHEMA = StrictConfigSchema(
         "mode": ConfigField.of(str),
         "num_keypoints": ConfigField.of(int),
         "subpixel_refine": ConfigField.of(bool),
+        "load_keypoint_contract": ConfigField.of(str, type(None)),
         "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
     },
 )
@@ -428,6 +429,19 @@ class PipelineRuntimeConfig:
                 "camera_view_v2 requires a non-empty court_reference.reference_camera "
                 "and explicit court_reference.view_half_turns."
             )
+        if court_contract.selector == "camera_view_v2":
+            if half_turns is None or len(half_turns) != len(camera_ids):
+                raise SemanticConfigurationError(
+                    "camera_view_v2 requires one court_reference.view_half_turn per camera_ids entry."
+                )
+            if court_reference_camera not in camera_ids:
+                raise SemanticConfigurationError(
+                    "court_reference.reference_camera must be in camera_ids."
+                )
+            if half_turns[camera_ids.index(court_reference_camera)]:
+                raise SemanticConfigurationError(
+                    "court_reference.reference_camera must have view_half_turn=false."
+                )
         court_reference = CourtReferenceRuntimeConfig(
             reference_camera=court_reference_camera,
             view_half_turns=half_turns,
@@ -446,19 +460,6 @@ class PipelineRuntimeConfig:
         frame_index = cast(int, court["frame_index"])
         if frame_index < 0:
             raise SemanticConfigurationError("court_kp.frame_index must be >= 0.")
-        min_score = cast(float, post["min_score"])
-        _unit_interval(min_score, name="court_kp.postprocess.min_score")
-        ransac_threshold = cast(float, post["ransac_reproj_threshold"])
-        _positive(
-            ransac_threshold,
-            name="court_kp.postprocess.ransac_reproj_threshold",
-        )
-        median_window = cast(int, post["temporal_median_window"])
-        _positive(median_window, name="court_kp.postprocess.temporal_median_window")
-        if median_window % 2 == 0:
-            raise SemanticConfigurationError(
-                "court_kp.postprocess.temporal_median_window must be odd."
-            )
         court_config = CourtKPConfig(
             checkpoint=resolver.resolve(
                 PathRole.CHECKPOINT, cast(str, court["checkpoint"])
@@ -471,12 +472,9 @@ class PipelineRuntimeConfig:
             save_result=cast(bool, court["save_result"]),
             output_path=court_output,
             load_path=court_load,
-            postprocess=CourtKPPostprocessConfig(
-                enabled=cast(bool, post["enabled"]),
-                min_score=min_score,
-                ransac_reproj_threshold=ransac_threshold,
-                temporal_median_window=median_window,
-            ),
+            postprocess=CourtKPPostprocessConfig(**cast("dict[str, Any]", dict(post))),
+            output_keypoint_contract=court_contract.selector,
+            load_keypoint_contract=cast(str | None, court["load_keypoint_contract"]),
             resolver=resolver,
         )
 

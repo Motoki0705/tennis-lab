@@ -66,3 +66,15 @@ GVHMRワールドモーションの整合もパイプライン内で常に実行
 - `smpl_vertices_local` / `smpl_global_orient` / `smpl_body_pose`: GVHMR/SMPL由来の人体座標系。人体のup軸はY。
 - 可視化時は、SMPL頂点をroot中心化した後に `src.utils.geometry.matrices.smpl_y_up_to_court_z_up` でY-upからコートZ-upへ明示変換し、その後 `player_yaw` をコート+Z軸まわりに適用する。
 - `gvhmr_aligned_*`も既存レンダラーと同じ配置規則を使う。整列済みの4フィールドがworld頂点の直接相似変換を再現することの契約は[`motion_alignment/README.md`](motion_alignment/README.md)を参照。
+
+## Courtモデル推論のKP・LINE共同推定
+
+モデル実行は共通`CourtPredictor`のhybrid結果を使います。旧KP-only再推定・座標ごとのtemporal medianは適用しません。raw KP/scoreは診断へ残し、下流の`court_kp`はHによる再投影14点です。画像外座標をclipせず不可視とし、H失敗はゼロ座標＋全不可視にします。完全な14点を必要とするreference calibrationやfootpoint filterの条件は維持します。
+
+既定のCourt・PLCS・BLCSを`camera_view_v2`へ統一しました。PLCSは`real-rgb-meiji-foot-e60-v1.ckpt`、BLCSは`real-rgb-meiji-e60-v1.ckpt`を使い、windowは128フレームです。いずれもMeiji実画像でfine-tuneした重みであり、他会場への精度を保証する評価ではありません。BLCSは3〜4台の同期カメラを要求します。
+
+`pipeline.yaml`の動画パスは3台の例です。実動画と`camera_ids`を指定し、`court_reference.reference_camera`と`view_half_turns`を必ず設定してください。`view_half_turns`はcamera_ids順で、referenceは`false`、反対側のbaselineに向いたviewは`true`です。例えば向きが確認できた3台なら`court_reference.view_half_turns=[false,false,true]`と指定します。未設定・カメラ数不一致ではモデルロード前に停止します。共通predictorは各画像のcamera-view順を保ち、`court_reference`が一度だけreference-camera順へ変換します。
+
+手動入力と`source=load`はモデル補正を通りません。旧physical順の入力・保存結果には`court_keypoints.selector=physical_v1`、対応する旧PLCS/BLCS重み、`court_reference.reference_camera=null`・`view_half_turns=null`を明示してください。新Court checkpointをphysical順として使うことは拒否します。 契約情報のない旧artifactをcamera-view順として読む場合だけ、内容の順序を確認したうえで`court_kp.load_keypoint_contract=camera_view_v2`を明示します。保存済み契約の上書きや元artifactの書換えは行いません。
+
+新規Court結果と`SceneResult.metadata.court_detection`にはcheckpoint識別情報、後処理設定、入力KP schema、採用点、H生成可否を保存します。採用点のmask（最大8点）を再投影14点のvisibilityとして使うことはありません。

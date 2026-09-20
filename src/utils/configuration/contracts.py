@@ -305,6 +305,10 @@ def _path_boundary_contract(
             raise RuntimeError(f"Path boundary field metadata is incomplete: {symbol}")
         many_node = _keyword(node, "many")
         many = isinstance(many_node, ast.Constant) and many_node.value is True
+        required_node = _keyword(node, "required")
+        required = not (
+            isinstance(required_node, ast.Constant) and required_node.value is False
+        )
         must_exist_node = _keyword(node, "must_exist")
         must_exist = (
             isinstance(must_exist_node, ast.Constant)
@@ -314,11 +318,15 @@ def _path_boundary_contract(
             ConfigFieldContract(
                 path=f"{boundary_name}.{field_name}",
                 expected_types=("sequence[str]" if many else "str",),
-                required=True,
-                absence_policy=ConfigurationAbsencePolicy.REQUIRED,
+                required=required,
+                absence_policy=(
+                    ConfigurationAbsencePolicy.REQUIRED
+                    if required
+                    else ConfigurationAbsencePolicy.OPTIONAL_OMITTED
+                ),
                 value_constraints=(
                     "exact-runtime-type",
-                    "required-key",
+                    *(("required-key",) if required else ()),
                     f"path-role:{role}",
                     f"path-direction:{direction}",
                     f"path-kind:{kind}",

@@ -2,35 +2,51 @@ defaults:
   - paths: default
   - _self_
 
-video_paths: [samples/tennis_clip.mp4]
-camera_ids: [cam0]
+# Replace these synchronized example paths and declare each camera orientation below.
+# The default BLCS model requires 3 or 4 cameras.
+video_paths: [samples/cam0.mp4, samples/cam1.mp4, samples/cam2.mp4]
+camera_ids: [cam0, cam1, cam2]
 output_directory: ${tennis_output:tennis_scene,generate,pipeline,${tennis_run_id:}}
 output_name: tennis_clip
 device: cuda
 
 court_keypoints:
-  selector: physical_v1
+  selector: camera_view_v2
 
 court_reference:
-  reference_camera: null
+  reference_camera: cam0
+  # Required: one bool per camera_ids entry; reference_camera must be false.
+  # Set true for a view facing the opposite baseline from the reference camera.
   view_half_turns: null
 
 court_kp:
   enabled: true
   source: execute
-  checkpoint: court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt
+  checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
   frame_index: 0
   mode: model
   num_keypoints: 14
   subpixel_refine: true
   postprocess:
-    enabled: true
-    min_score: 0.3
-    ransac_reproj_threshold: 30.0
-    temporal_median_window: 9
+    min_score: 0.05
+    threshold_diagonal_ratio: 0.005
+    line_probability_threshold: 0.5
+    max_kp: 8
+    max_candidates: 1001
+    refine_candidates: 6
+    samples_per_line: 40
+    max_line_observations: 768
+    max_selection_rounds: 4
+    max_nfev: 70
+    kp_weight: 0.25
+    min_line_support: 0.55
+    ambiguity_gap: 0.02
+    ambiguity_displacement_ratio: 0.03
   save_result: true
   output_path: ${output_directory}/court_kp_result.json
   load_path: null
+  # Only for legacy source=load artifacts without a recorded point-order contract.
+  load_keypoint_contract: null
 
 gvhmr:
   enabled: true
@@ -134,11 +150,11 @@ ball_detection:
 plcs:
   enabled: true
   source: execute
-  checkpoint: plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt
+  checkpoint: plcs/real-rgb-meiji-foot-e60-v1.ckpt
   save_result: true
   output_path: ${output_directory}/plcs_result.json
   load_path: null
-  window_size: 1024
+  window_size: 128
   window_overlap: 64
   sample_stride: 1
   human_vis_threshold: 0.15
@@ -146,11 +162,11 @@ plcs:
 blcs:
   enabled: true
   source: execute
-  checkpoint: blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt
+  checkpoint: blcs/real-rgb-meiji-e60-v1.ckpt
   save_result: true
   output_path: ${output_directory}/blcs_result.json
   load_path: null
-  window_size: 1024
+  window_size: 128
   window_overlap: 64
   sample_stride: 1
 

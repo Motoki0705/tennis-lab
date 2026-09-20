@@ -1,0 +1,164 @@
+{
+  "base": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "checks": [
+    {
+      "command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection tests/unit/tennis_scene tests/unit/synthetic_data_generation/alignment tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/e2e/colab/test_b01_b03_alignment_script.py tests/e2e/development/test_architecture_boundaries.py",
+      "passed": 1025,
+      "failed": 1,
+      "skipped": 1,
+      "note": "The PNG integrity failure below also reproduces on main. The skipped test needs CUDA."
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/geometry/test_hybrid_homography.py tests/unit/tennis_scene/pipeline/components/test_court_kp.py tests/unit/synthetic_data_generation/alignment/test_unified_line_detector.py",
+      "passed": 30,
+      "failed": 0,
+      "note": "After adding the strict max8 API guard."
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n0 tests/unit/tasks/plcs/inference tests/unit/tasks/blcs/inference",
+      "passed": 14,
+      "failed": 0
+    },
+    {
+      "command": "CUDA_VISIBLE_DEVICES= .venv/bin/python -m pytest -n0 tests/e2e/colab/test_workflow_interface.py tests/e2e/colab/test_training_path_contracts.py",
+      "passed": 94,
+      "failed": 0
+    },
+    {
+      "command": "ruff check and mypy --follow-imports=skip on all 40 changed/new Python source and test files",
+      "status": "passed"
+    },
+    {
+      "command": "Colab B01-B03 bash --dry-run (covered by command-level e2e)",
+      "status": "passed"
+    },
+    {
+      "command": "pytest -n0 tests/unit/tennis_scene tests/unit/tasks/court_detection/visualization/test_runtime_config.py tests/unit/tasks/court_detection/visualization/inference",
+      "passed": 324,
+      "failed": 0,
+      "note": "After round1 contract and semantic fixes."
+    },
+    {
+      "command": "pytest -n0 tests/unit/tennis_scene/test_pipeline_configuration.py tests/unit/tasks/court_detection/visualization/test_runtime_config.py",
+      "passed": 11,
+      "failed": 0,
+      "note": "Includes explicit legacy-input configuration parsing."
+    },
+    {
+      "command": "pytest -n0 tests/e2e/skills/test_knowledge_control.py tests/e2e/skills/test_knowledge_library.py tests/e2e/skills/test_knowledge_skill_workflow.py",
+      "passed": 40,
+      "failed": 0,
+      "note": "Latest main task-scoped knowledge format."
+    },
+    {
+      "command": "ruff check and mypy --follow-imports=skip on all 42 changed/new source and test Python files",
+      "status": "passed"
+    },
+    {
+      "command": "pytest -n0 tests/integration/synthetic_data_generation/test_configuration.py tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py tests/integration/synthetic_data_generation/test_package_layout.py tests/integration/synthetic_data_generation/test_cross_domain_cpu.py tests/unit/tasks/court_detection/inference/test_checkpoint.py",
+      "passed": 40,
+      "failed": 1,
+      "seconds": 379.37,
+      "note": "CPU publish/rerun/recovery succeeded. Sole failure was the pre-existing missing corners.yaml expectation, corrected and retested below."
+    },
+    {
+      "command": "pytest -n0 tests/integration/synthetic_data_generation/test_configuration.py tests/unit/tasks/court_detection/inference/test_checkpoint.py",
+      "passed": 34,
+      "failed": 0,
+      "note": "Final V3 and inventory correction; ordinary validation, no third validator."
+    },
+    {
+      "command": "pytest -n0 tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/integration/synthetic_data_generation/test_configuration.py tests/unit/tasks/court_detection/inference tests/unit/tennis_scene tests/e2e/development/test_architecture_boundaries.py tests/e2e/colab/test_b01_b03_alignment_script.py",
+      "passed": 474,
+      "failed": 0,
+      "note": "Final regression suite after rebase onto 7dd5f7c4 (including the updated NHT submodule pin)."
+    },
+    {
+      "command": "ruff check and mypy --follow-imports=skip on final 43 changed/new source and test Python files",
+      "status": "passed"
+    },
+    {
+      "command": "kg_validate.py --check-summary --base-ref 7dd5f7c4",
+      "status": "passed",
+      "nodes": 211,
+      "errors": 0,
+      "warnings": 50
+    }
+  ],
+  "known_local_data_failure": {
+    "test": "tests/unit/tasks/court_detection/visualization/review/test_dataset_review.py::test_real_dataset_smoke_for_both_sources",
+    "path": "data/court/images/unhchQqmD8E_1200.png",
+    "sha256": "5d841e391115a4e33c8cfaddf90a986d5ed1752244c8ca6ea49c2950362317b5",
+    "exception": "SyntaxError: broken PNG file (bad header checksum in b'IDAT')",
+    "reproduced_on_main_and_migration_worktree": true,
+    "training_images_checked": 6630,
+    "corrupt_training_images": 1,
+    "validation_images_checked": 2211,
+    "corrupt_validation_images": 0,
+    "action": "No data edits, integrity checks weakened, or test exclusions."
+  },
+  "known_existing_alignment_limit": {
+    "scenes": [
+      "B00",
+      "B01",
+      "B03"
+    ],
+    "detail": "Stored v2 line-heatmap archives are rejected by the existing v3-only loader. No format migration or scene publication performed."
+  },
+  "validation_reviews": {
+    "requested": 2,
+    "attempted": 2,
+    "completed": 2,
+    "rounds": [
+      {
+        "round": 1,
+        "reviewed_commit": "70096b47167ec5af9ff5f74f7d305e1d0f2e784e",
+        "rebased_equivalent": "537549ab",
+        "verdict": "CHANGES_REQUIRED",
+        "independent_tests_passed": 51,
+        "findings": [
+          {
+            "id": "V1",
+            "severity": "P2",
+            "disposition": "accepted",
+            "problem": "Missing legacy CourtKP contract was accepted as camera_view_v2",
+            "resolution": "Require a recorded contract or explicit load_keypoint_contract; legacy implicit compatibility limited to physical_v1. Preserve original artifact bytes."
+          },
+          {
+            "id": "V2",
+            "severity": "P2",
+            "disposition": "accepted",
+            "problem": "semantic_line preset inherited curated checkpoint root for an old outputs-relative path",
+            "resolution": "Require explicit semantic checkpoint and document/test paths=default for outputs-root checkpoints."
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "reviewed_commit": "9c3764404b11216681a79b58114cd597c01fe549",
+        "verdict": "CHANGES_REQUIRED",
+        "independent_tests_passed": 256,
+        "independent_tests_failed": 1,
+        "real_audit_reproduced": "8 images: H accepted 3/8; strict 648 tensor load; LINE adapter difference 0; real PLCS/BLCS forward; saved owner hashes unchanged",
+        "findings": [
+          {
+            "id": "V3",
+            "severity": "P2",
+            "disposition": "accepted",
+            "problem": "Integration path-role test referenced removed legacy LINE settings",
+            "resolution": "Test now verifies configured hybrid checkpoint authority. Saved encoder external-asset roles are tested at the inference loader. No obsolete setting restored."
+          }
+        ],
+        "post_review_changes": "Test corrections only. The last correction is covered by ordinary verification and was not reevaluated by another validator.",
+        "rebased_equivalent": "d5988bc5"
+      }
+    ]
+  },
+  "rebased_onto": "bdacfc3bfda95a7b22697edf452ad27778051f22",
+  "additional_test_maintenance": {
+    "test": "tests/integration/synthetic_data_generation/test_configuration.py::test_task_local_generation_camera_profiles_remain_available",
+    "baseline": "Fails on main too: corners.yaml is already a committed public profile but absent from the expected inventory.",
+    "resolution": "Update the explicit expected public inventory to broadcast/corners/default."
+  },
+  "final_base": "7dd5f7c444b4e7baffe4200df0eaab839653edec"
+}

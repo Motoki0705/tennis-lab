@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import cv2
 import numpy as np
 
+from src.tasks.court_detection.geometry.hybrid_homography import (
+    HybridHomographyConfig as CourtKPPostprocessConfig,
+)
+from src.tasks.court_detection.inference.contracts import (
+    validate_hybrid_inference_config,
+)
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.configuration import PathResolver
 from src.utils.io import load_json, save_json
@@ -19,21 +25,11 @@ from src.utils.video import OpenCVVideoFrameReader, probe_video_info, read_video
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
+    from src.tasks.court_detection.inference.predictor import CourtPredictor
 
 LOGGER = logging.getLogger(__name__)
 
 NUM_COURT_KEYPOINTS = 14
-
-
-@dataclass(frozen=True, slots=True)
-class CourtKPPostprocessConfig:
-    """Configuration for model-mode court keypoint post-processing."""
-
-    enabled: bool
-    min_score: float
-    ransac_reproj_threshold: float
-    temporal_median_window: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,12 +58,26 @@ class CourtKPConfig:
     load_path: Path | None
     postprocess: CourtKPPostprocessConfig
     resolver: PathResolver
+    output_keypoint_contract: str = "camera_view_v2"
+    load_keypoint_contract: str | None = None
 
     def __post_init__(self) -> None:
+        validate_hybrid_inference_config(self.postprocess)
         if (self.source == "load") != (self.load_path is not None):
             raise ValueError(
                 "CourtKP source='load' requires load_path; execute forbids it"
             )
+        if self.output_keypoint_contract not in {"physical_v1", "camera_view_v2"}:
+            raise ValueError("Unknown downstream court keypoint contract")
+        if self.load_keypoint_contract is not None:
+            if self.source != "load":
+                raise ValueError(
+                    "load_keypoint_contract requires CourtKP source='load'"
+                )
+            if self.load_keypoint_contract != self.output_keypoint_contract:
+                raise ValueError(
+                    "load_keypoint_contract must match court_keypoints.selector"
+                )
 
 
 @dataclass
@@ -160,8 +170,10 @@ class CourtKPResult:
         if not np.isfinite(self.visibility).all():
             errors.append("visibility contains non-finite values")
         tol = 1e-6
-        if np.any(self.keypoints < -tol) or np.any(self.keypoints > 1.0 + tol):
-            errors.append("keypoints must be normalized to [0, 1]")
+        if self.visibility.shape == self.keypoints.shape[:3]:
+            visible_points = self.keypoints[self.visibility > 0]
+            if np.any(visible_points < -tol) or np.any(visible_points > 1.0 + tol):
+                errors.append("visible keypoints must be normalized to [0, 1]")
         if np.any(self.visibility < -tol) or np.any(self.visibility > 1.0 + tol):
             errors.append("visibility must be normalized to [0, 1]")
         return len(errors) == 0, errors
@@ -190,27 +202,49 @@ class CourtKPModule(BasePipelineModule):
             raise ValueError(
                 f"num_keypoints must be positive, got {self.num_keypoints}"
             )
-        self._predictor: CourtKeypointPredictor | None = None
+        self._predictor: CourtPredictor | None = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
 
     def load(self) -> None:
         """Load the court keypoint predictor."""
-        if self.mode == "manual_ui":
+        if self.mode == "manual_ui" or self.config.source == "load":
             return
 
         if self._predictor is not None:
             return
 
         LOGGER.info(f"Loading Court KP model from {self.checkpoint}")
-        from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
+        from src.tasks.court_detection.inference.predictor import CourtPredictor
 
-        self._predictor = CourtKeypointPredictor.load_from_checkpoint(
+        predictor = CourtPredictor.load_from_checkpoint(
             self.checkpoint,
             resolver=self.config.resolver,
             device=self.device,
             subpixel_refine=self.config.subpixel_refine,
+            hybrid_config=self.postprocess,
         )
+        schema = predictor.adapter.spec.target_bundle.targets["kp"].schema
+        self._require_keypoint_contract(schema)
+        self._predictor = predictor
+
+    def _require_keypoint_contract(self, schema: str | None) -> None:
+        camera_view_schema = schema is not None and (
+            schema.startswith("synthetic_camera_view_kp14_")
+            or schema == "tennis_court_detector_kp14:gaussian_max_v1"
+        )
+        if camera_view_schema and self.config.output_keypoint_contract == "physical_v1":
+            raise ValueError(
+                "Camera-view KP14 cannot be passed as physical_v1 identities. "
+                "Use camera_view_v2 downstream checkpoints and explicit court_reference settings."
+            )
+        if (
+            not camera_view_schema
+            and self.config.output_keypoint_contract == "camera_view_v2"
+        ):
+            raise ValueError(
+                f"camera_view_v2 requires a camera-view KP14 checkpoint schema, got {schema!r}"
+            )
 
     @property
     def is_loaded(self) -> bool:
@@ -323,6 +357,32 @@ class CourtKPModule(BasePipelineModule):
                 raise FileNotFoundError(f"CourtKP artifact not found: {load_path}")
             LOGGER.info(f"Loading CourtKP result from {load_path}")
             result = CourtKPResult.load(load_path)
+            saved_contract = (result.diagnostics or {}).get("output_keypoint_contract")
+            if saved_contract is None:
+                saved_contract = self.config.load_keypoint_contract
+                if (
+                    saved_contract is None
+                    and self.config.output_keypoint_contract != "physical_v1"
+                ):
+                    raise ValueError(
+                        "Legacy CourtKP artifact has no keypoint contract. "
+                        "For verified camera-view inputs explicitly set "
+                        "court_kp.load_keypoint_contract=camera_view_v2; "
+                        "physical inputs require court_keypoints.selector=physical_v1."
+                    )
+            if (
+                saved_contract is not None
+                and saved_contract != self.config.output_keypoint_contract
+            ):
+                raise ValueError(
+                    "Loaded CourtKP artifact keypoint contract does not match runtime court_keypoints.selector"
+                )
+            if self.config.load_keypoint_contract is not None:
+                result.diagnostics = {
+                    **(result.diagnostics or {}),
+                    "output_keypoint_contract": saved_contract,
+                    "load_keypoint_contract_declaration": self.config.load_keypoint_contract,
+                }
             is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
             if not is_valid:
                 raise ValueError(f"Invalid CourtKP result: {errors}")
@@ -427,6 +487,10 @@ class CourtKPModule(BasePipelineModule):
             keypoints=keypoints,
             visibility=np.ones(keypoints.shape[:3], dtype=np.float32),
             frame_indices=np.arange(num_frames, dtype=np.int32),
+            diagnostics={
+                "schema": "court_kp_manual_v1",
+                "output_keypoint_contract": self.config.output_keypoint_contract,
+            },
         )
 
     def _process_model_video(
@@ -438,14 +502,13 @@ class CourtKPModule(BasePipelineModule):
         """Run model inference for every selected frame in each camera video."""
         if not self.is_loaded:
             self.load()
-
         per_camera_keypoints: list[NDArray[np.float32]] = []
         per_camera_visibility: list[NDArray[np.float32]] = []
         postprocess_diagnostics: list[dict[str, Any]] = []
         expected_frame_indices: NDArray[np.int32] | None = None
         for camera_index, video_path in enumerate(video_paths):
             keypoints_px: list[NDArray[np.float32]] = []
-            scores: list[NDArray[np.float32]] = []
+            frame_diagnostics: list[dict[str, Any]] = []
             validities: list[NDArray[np.bool_]] = []
             frame_indices: list[int] = []
             image_width: int | None = None
@@ -455,11 +518,13 @@ class CourtKPModule(BasePipelineModule):
                     "NDArray[np.uint8]",
                     cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB),
                 )
-                frame_keypoints_px, frame_scores, frame_valid = (
-                    self._predict_frame_pixels(frame_rgb)
+                frame_keypoints_px, frame_valid, frame_diagnostic = (
+                    self._predict_frame_geometry(frame_rgb)
                 )
                 keypoints_px.append(frame_keypoints_px)
-                scores.append(frame_scores)
+                frame_diagnostics.append(
+                    {"frame_index": packet.index, **frame_diagnostic}
+                )
                 validities.append(frame_valid)
                 frame_indices.append(packet.index)
                 width, height = packet.original_size
@@ -488,31 +553,15 @@ class CourtKPModule(BasePipelineModule):
                 )
 
             camera_keypoints_px = np.stack(keypoints_px, axis=0).astype(np.float32)
-            camera_scores = np.stack(scores, axis=0).astype(np.float32)
             camera_validity = np.stack(validities, axis=0)
             camera_visibility = camera_validity.astype(np.float32)
-            if self.postprocess.enabled:
-                from src.tasks.court_detection.geometry import (
-                    refine_court_keypoints_with_homography,
-                )
-
-                postprocess_result = refine_court_keypoints_with_homography(
-                    camera_keypoints_px,
-                    np.where(camera_validity, camera_scores, 0.0),
-                    min_score=float(self.postprocess.min_score),
-                    ransac_reproj_threshold=float(
-                        self.postprocess.ransac_reproj_threshold
-                    ),
-                    temporal_median_window=int(self.postprocess.temporal_median_window),
-                )
-                camera_keypoints_px = postprocess_result.keypoints
-                camera_visibility = (
-                    postprocess_result.visibility * camera_validity
-                ).astype(np.float32)
-                camera_diagnostics = dict(postprocess_result.diagnostics)
-                camera_diagnostics["camera_index"] = int(camera_index)
-                camera_diagnostics["video_path"] = str(video_path)
-                postprocess_diagnostics.append(camera_diagnostics)
+            postprocess_diagnostics.append(
+                {
+                    "camera_index": int(camera_index),
+                    "video_path": str(video_path),
+                    "frames": frame_diagnostics,
+                }
+            )
 
             per_camera_keypoints.append(
                 _normalize_keypoints(
@@ -528,21 +577,14 @@ class CourtKPModule(BasePipelineModule):
 
         stacked = np.stack(per_camera_keypoints, axis=0).astype(np.float32)
         visibility = np.stack(per_camera_visibility, axis=0).astype(np.float32)
-        diagnostics = None
-        if self.postprocess.enabled:
-            diagnostics = {
-                "postprocess": {
-                    "enabled": True,
-                    "min_score": float(self.postprocess.min_score),
-                    "ransac_reproj_threshold": float(
-                        self.postprocess.ransac_reproj_threshold
-                    ),
-                    "temporal_median_window": int(
-                        self.postprocess.temporal_median_window
-                    ),
-                    "cameras": postprocess_diagnostics,
-                }
-            }
+        assert self._predictor is not None
+        diagnostics = {
+            "schema": "court_kp_hybrid_v1",
+            "checkpoint": self._predictor.checkpoint_identity,
+            "postprocess": asdict(self.postprocess),
+            "output_keypoint_contract": self.config.output_keypoint_contract,
+            "cameras": postprocess_diagnostics,
+        }
         return CourtKPResult(
             keypoints=stacked,
             visibility=visibility,
@@ -550,42 +592,24 @@ class CourtKPModule(BasePipelineModule):
             diagnostics=diagnostics,
         )
 
-    def _predict_frame_pixels(
+    def _predict_frame_geometry(
         self,
         frame_rgb: NDArray[np.uint8],
-    ) -> tuple[
-        NDArray[np.float32],
-        NDArray[np.float32],
-        NDArray[np.bool_],
-    ]:
-        """Return one explicit ordered peak, score, and validity per KP channel."""
+    ) -> tuple[NDArray[np.float32], NDArray[np.bool_], dict[str, Any]]:
         if self._predictor is None:
-            raise RuntimeError("Court KP predictor is not loaded.")
-        prediction = self._predictor.predict(frame_rgb)
-        keypoints = prediction.keypoints.numpy().astype(np.float32)
-        scores = prediction.scores.numpy().astype(np.float32)
-        valid = prediction.valid.numpy().astype(np.bool_)
-
-        if keypoints.shape != (self.num_keypoints, 1, 2):
-            raise ValueError(
-                f"Predicted court keypoints must have shape "
-                f"({self.num_keypoints}, 1, 2), got {keypoints.shape}."
-            )
-        if scores.shape != (self.num_keypoints, 1):
-            raise ValueError(
-                f"Predicted court scores must have shape ({self.num_keypoints}, 1), "
-                f"got {scores.shape}."
-            )
-        if valid.shape != (self.num_keypoints, 1):
-            raise ValueError(
-                f"Predicted court validity must have shape ({self.num_keypoints}, 1), "
-                f"got {valid.shape}."
-            )
-        return (
-            keypoints[:, 0].astype(np.float32),
-            scores[:, 0].astype(np.float32),
-            valid[:, 0],
+            raise RuntimeError("Court predictor is not loaded")
+        prediction = self._predictor.predict(
+            frame_rgb, postprocess="hybrid", heads=("kp", "line")
         )
+        points, visible = prediction.downstream_keypoints()
+        if points.shape != (self.num_keypoints, 2) or visible.shape != (
+            self.num_keypoints,
+        ):
+            raise ValueError("Hybrid court geometry must contain ordered KP14")
+        self._require_keypoint_contract(prediction.keypoint_schema)
+        diagnostic = prediction.geometry_diagnostics()
+        diagnostic["output_keypoint_contract"] = self.config.output_keypoint_contract
+        return points, visible, diagnostic
 
 
 def _normalize_keypoints(
