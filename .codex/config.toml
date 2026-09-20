@@ -1,11 +1,1 @@
 background_terminal_max_timeout = 18000000
-
-[[hooks.PreToolUse]]
-matcher = "^Bash$"
-
-[[hooks.PreToolUse.hooks]]
-type = "command"
-command = '/usr/bin/python3 "$(git rev-parse --show-toplevel)/.codex/hooks/pre_tool_use_large_read.py"'
-async = false
-timeout = 30
-statusMessage = "Checking Bash read size"
