@@ -53,6 +53,19 @@
     {
       "command": "ruff check and mypy --follow-imports=skip on all 42 changed/new source and test Python files",
       "status": "passed"
+    },
+    {
+      "command": "pytest -n0 tests/integration/synthetic_data_generation/test_configuration.py tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py tests/integration/synthetic_data_generation/test_package_layout.py tests/integration/synthetic_data_generation/test_cross_domain_cpu.py tests/unit/tasks/court_detection/inference/test_checkpoint.py",
+      "passed": 40,
+      "failed": 1,
+      "seconds": 379.37,
+      "note": "CPU publish/rerun/recovery succeeded. Sole failure was the pre-existing missing corners.yaml expectation, corrected and retested below."
+    },
+    {
+      "command": "pytest -n0 tests/integration/synthetic_data_generation/test_configuration.py tests/unit/tasks/court_detection/inference/test_checkpoint.py",
+      "passed": 34,
+      "failed": 0,
+      "note": "Final V3 and inventory correction; ordinary validation, no third validator."
     }
   ],
   "known_local_data_failure": {
@@ -77,8 +90,8 @@
   },
   "validation_reviews": {
     "requested": 2,
-    "attempted": 1,
-    "completed": 1,
+    "attempted": 2,
+    "completed": 2,
     "rounds": [
       {
         "round": 1,
@@ -102,8 +115,31 @@
             "resolution": "Require explicit semantic checkpoint and document/test paths=default for outputs-root checkpoints."
           }
         ]
+      },
+      {
+        "round": 2,
+        "reviewed_commit": "9c3764404b11216681a79b58114cd597c01fe549",
+        "verdict": "CHANGES_REQUIRED",
+        "independent_tests_passed": 256,
+        "independent_tests_failed": 1,
+        "real_audit_reproduced": "8 images: H accepted 3/8; strict 648 tensor load; LINE adapter difference 0; real PLCS/BLCS forward; saved owner hashes unchanged",
+        "findings": [
+          {
+            "id": "V3",
+            "severity": "P2",
+            "disposition": "accepted",
+            "problem": "Integration path-role test referenced removed legacy LINE settings",
+            "resolution": "Test now verifies configured hybrid checkpoint authority. Saved encoder external-asset roles are tested at the inference loader. No obsolete setting restored."
+          }
+        ],
+        "post_review_changes": "Test corrections only. The last correction is covered by ordinary verification and was not reevaluated by another validator."
       }
     ]
   },
-  "rebased_onto": "bdacfc3bfda95a7b22697edf452ad27778051f22"
+  "rebased_onto": "bdacfc3bfda95a7b22697edf452ad27778051f22",
+  "additional_test_maintenance": {
+    "test": "tests/integration/synthetic_data_generation/test_configuration.py::test_task_local_generation_camera_profiles_remain_available",
+    "baseline": "Fails on main too: corners.yaml is already a committed public profile but absent from the expected inventory.",
+    "resolution": "Update the explicit expected public inventory to broadcast/corners/default."
+  }
 }
