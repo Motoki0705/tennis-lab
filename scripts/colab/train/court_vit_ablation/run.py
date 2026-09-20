@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -63,9 +64,7 @@ def train_one(
     if not torch.cuda.is_available() or "L4" not in torch.cuda.get_device_name(0):
         raise RuntimeError("This experiment requires an NVIDIA L4 GPU")
     config = variant_config(size, overrides)
-    candidates = list(
-        Path(f"ckpt/court_vit_ablation/{size}").glob("logs/*/checkpoints/*.ckpt")
-    )
+    candidates = list(Path(f"ckpt/court_vit_ablation/{size}").glob("**/*.ckpt"))
     if config.run.resume:
         candidates.append(Path(config.paths.checkpoint_root) / config.run.resume)
     ranked = []
@@ -117,7 +116,24 @@ def train_one(
         f"START size={size} smoke={smoke} gpu={torch.cuda.get_device_name(0)}",
         flush=True,
     )
-    DurableRunner().run(config)
+    runner = DurableRunner()
+    if continuation and ranked and not smoke:
+        from src.tasks.court_detection.training.runner_mixed import (
+            resolve_mixed_training_config,
+        )
+
+        standard, _ = resolve_mixed_training_config(config)
+        runtime = runner.validate_runtime_config(standard)
+        output = runner.prepare_output_dir(runtime)
+        carried = output / "resume" / "last.ckpt"
+        carried.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(selected, carried)
+        runner.build_artifact_store(runtime, output).publish_file(carried)
+        print(
+            f"CARRIED RESUME {size}: step={step}; retained even if training is already complete",
+            flush=True,
+        )
+    runner.run(config)
     print(
         f"FINISHED size={size} smoke={smoke} peak_allocated_bytes={torch.cuda.max_memory_allocated()}",
         flush=True,

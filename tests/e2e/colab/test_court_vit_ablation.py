@@ -182,3 +182,18 @@ def test_required_recipe_resources_are_in_git_source() -> None:
     manifest = json.loads((HERE / "archives.json").read_text())
     assert len(manifest["archives"]) == 6
     assert sum(item["size_bytes"] for item in manifest["archives"]) == 42905595821
+
+
+def test_continuation_keeps_completed_variants_from_earlier_sessions() -> None:
+    from scripts.colab.train.court_vit_ablation.launch import resume_inputs
+
+    result = resume_inputs(
+        [
+            {"Path": "b/resume/last.ckpt"},
+            {"Path": "s/logs/version_0/checkpoints/recovery.ckpt"},
+            {"Path": "splus/smoke/resume/last.ckpt"},
+        ],
+        "second-run",
+    )
+    assert len(result) == 2
+    assert result[0]["destination"] == "ckpt/court_vit_ablation/b/resume/last.ckpt"
