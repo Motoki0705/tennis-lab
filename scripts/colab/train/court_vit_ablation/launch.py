@@ -108,6 +108,7 @@ def main() -> None:
             args.run_id,
             "--gpu",
             "L4",
+            "--keep-on-failure",
             "--source",
             "git",
         ]
