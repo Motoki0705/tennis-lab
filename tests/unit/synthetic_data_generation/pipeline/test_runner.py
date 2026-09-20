@@ -880,8 +880,10 @@ def test_relocated_source_with_different_bytes_fails_before_mutation(
     assert rerun.workspace.resolved_config_path.read_bytes() == config_before
 
 
+@pytest.mark.parametrize("migrate_detector", [False, True])
 def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
     tmp_path: Path,
+    migrate_detector: bool,
 ) -> None:
     all_targets = frozenset(DatasetTarget)
     original_source = tmp_path / "original" / "source.mp4"
@@ -908,6 +910,36 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
         },
         source_video=relocated_source,
     )
+    if migrate_detector:
+        first_document = yaml.safe_load(first_yaml)
+        second_document = yaml.safe_load(court_v2_yaml)
+        shared_extraction = {
+            "device": "cpu",
+            "probability_threshold": 0.5,
+            "maximum_selected_pixels_per_camera": 100,
+        }
+        first_document["alignment"] = {
+            "evidence": {
+                "line_model": {
+                    **shared_extraction,
+                    "checkpoint_path": "old-line.ckpt",
+                    "architecture": {"name": "old-linear"},
+                    "expected_short_side": 256,
+                }
+            },
+            "plane": "retained",
+        }
+        second_document["alignment"] = {
+            "evidence": {
+                "line_model": {
+                    **shared_extraction,
+                    "checkpoint_path": "new-hybrid.ckpt",
+                }
+            },
+            "plane": "retained",
+        }
+        first_yaml = yaml.safe_dump(first_document)
+        court_v2_yaml = yaml.safe_dump(second_document)
     first_registry, _ = _registry(payload="retained")
     first = _runner(tmp_path, first_registry, resolved_config_yaml=first_yaml)
     first.run(
@@ -940,6 +972,32 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
         )
     )
 
+    if migrate_detector:
+        saved_config = yaml.safe_load(second.workspace.resolved_config_path.read_text())
+        assert saved_config["alignment"] == yaml.safe_load(first_yaml)["alignment"]
+        assert saved_config["dataset"] == yaml.safe_load(court_v2_yaml)["dataset"]
+        changed_extraction = yaml.safe_load(court_v2_yaml)
+        changed_extraction["alignment"]["evidence"]["line_model"][
+            "probability_threshold"
+        ] = 0.7
+        blocked_registry, blocked_handlers = _registry(payload="forbidden")
+        blocked = _runner(
+            tmp_path,
+            blocked_registry,
+            resolved_config_yaml=yaml.safe_dump(changed_extraction),
+        )
+        before_config = second.workspace.resolved_config_path.read_bytes()
+        with pytest.raises(ValueError, match="Resolved configuration changed"):
+            blocked.run(
+                _request(
+                    tmp_path,
+                    from_stage=StageName.COURT_DATASET,
+                    targets=frozenset({DatasetTarget.COURT}),
+                    source_video=relocated_source,
+                )
+            )
+        assert all(h.execute_calls == 0 for h in blocked_handlers.values())
+        assert second.workspace.resolved_config_path.read_bytes() == before_config
     assert handlers[StageName.COURT_DATASET].execute_calls == 1
     assert handlers[StageName.REPORT].execute_calls == 1
     for retained_stage in (
@@ -1187,22 +1245,32 @@ def test_definition_rejects_handler_summary_type_at_execution(tmp_path: Path) ->
 
 
 def _tree_snapshot(root: Path) -> dict[str, bytes]:
-    return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+    return {
+        str(path.relative_to(root)): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
 
 
 def _alignment_reuse_config_yaml(*, updated: bool, mutation: str = "") -> str:
-    config = yaml.safe_load(_court_reuse_config_yaml(
-        from_stage=StageName.ALIGNMENT if updated else StageName.INGEST,
-        targets=frozenset({DatasetTarget.COURT}) if updated else frozenset(DatasetTarget),
-        court_schema_version="v3" if updated else "v1",
-        nht={"backend": "public-cli", "training_python_path": "/stable/python"},
-    ))
-    config.update({
-        "alignment": {"evidence_schema": "v14" if updated else "v11"},
-        "roots": {"data": "/stable/data"},
-        "camera": {"profile": "stable"},
-        "profile": {"scene_id": "stable"},
-    })
+    config = yaml.safe_load(
+        _court_reuse_config_yaml(
+            from_stage=StageName.ALIGNMENT if updated else StageName.INGEST,
+            targets=frozenset({DatasetTarget.COURT})
+            if updated
+            else frozenset(DatasetTarget),
+            court_schema_version="v3" if updated else "v1",
+            nht={"backend": "public-cli", "training_python_path": "/stable/python"},
+        )
+    )
+    config.update(
+        {
+            "alignment": {"evidence_schema": "v14" if updated else "v11"},
+            "roots": {"data": "/stable/data"},
+            "camera": {"profile": "stable"},
+            "profile": {"scene_id": "stable"},
+        }
+    )
     if updated:
         config["nht"]["trainer_path"] = "/runtime/trainer.py"
         config["dataset"]["blcs"] = {"schema": "changed-descendant"}
@@ -1225,13 +1293,27 @@ def test_alignment_config_upgrade_reuses_upstream_and_invalidates_all_descendant
     tmp_path: Path,
 ) -> None:
     first_registry, _ = _registry(payload="retained")
-    first = _runner(tmp_path, first_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=False))
+    first = _runner(
+        tmp_path,
+        first_registry,
+        resolved_config_yaml=_alignment_reuse_config_yaml(updated=False),
+    )
     first.run(_request(tmp_path, targets=frozenset(DatasetTarget)))
     reconstruction = first.workspace.root / "reconstruction/export/scene.json"
     before = reconstruction.read_bytes()
     second_registry, handlers = _registry(payload="upgraded")
-    second = _runner(tmp_path, second_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=True))
-    second.run(_request(tmp_path, from_stage=StageName.ALIGNMENT, targets=frozenset({DatasetTarget.COURT})))
+    second = _runner(
+        tmp_path,
+        second_registry,
+        resolved_config_yaml=_alignment_reuse_config_yaml(updated=True),
+    )
+    second.run(
+        _request(
+            tmp_path,
+            from_stage=StageName.ALIGNMENT,
+            targets=frozenset({DatasetTarget.COURT}),
+        )
+    )
     assert reconstruction.read_bytes() == before
     assert handlers[StageName.INGEST].execute_calls == 0
     assert handlers[StageName.RECONSTRUCTION].execute_calls == 0
@@ -1239,20 +1321,52 @@ def test_alignment_config_upgrade_reuses_upstream_and_invalidates_all_descendant
     assert handlers[StageName.COURT_DATASET].execute_calls == 1
     assert not (second.workspace.root / "datasets/blcs").exists()
     assert not (second.workspace.root / "datasets/plcs").exists()
-    assert (second.workspace.root / "alignment/alignment.json").read_text() == "upgraded"
+    assert (
+        second.workspace.root / "alignment/alignment.json"
+    ).read_text() == "upgraded"
 
 
-@pytest.mark.parametrize("mutation", ["roots", "camera", "profile", "pipeline", "existing-nht", "removed-nht", "extra-nht", "blank-nht", "nonstring-nht"])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "roots",
+        "camera",
+        "profile",
+        "pipeline",
+        "existing-nht",
+        "removed-nht",
+        "extra-nht",
+        "blank-nht",
+        "nonstring-nht",
+    ],
+)
 def test_alignment_config_upgrade_rejects_upstream_changes_before_mutation(
-    tmp_path: Path, mutation: str,
+    tmp_path: Path,
+    mutation: str,
 ) -> None:
     first_registry, _ = _registry(payload="retained")
-    first = _runner(tmp_path, first_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=False))
+    first = _runner(
+        tmp_path,
+        first_registry,
+        resolved_config_yaml=_alignment_reuse_config_yaml(updated=False),
+    )
     first.run(_request(tmp_path, targets=frozenset(DatasetTarget)))
     before = _tree_snapshot(first.workspace.root)
     second_registry, handlers = _registry(payload="forbidden")
-    second = _runner(tmp_path, second_registry, resolved_config_yaml=_alignment_reuse_config_yaml(updated=True, mutation=mutation))
+    second = _runner(
+        tmp_path,
+        second_registry,
+        resolved_config_yaml=_alignment_reuse_config_yaml(
+            updated=True, mutation=mutation
+        ),
+    )
     with pytest.raises(ValueError, match="Resolved configuration changed"):
-        second.run(_request(tmp_path, from_stage=StageName.ALIGNMENT, targets=frozenset({DatasetTarget.COURT})))
+        second.run(
+            _request(
+                tmp_path,
+                from_stage=StageName.ALIGNMENT,
+                targets=frozenset({DatasetTarget.COURT}),
+            )
+        )
     assert _tree_snapshot(first.workspace.root) == before
     assert all(handler.execute_calls == 0 for handler in handlers.values())

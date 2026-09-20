@@ -18,11 +18,16 @@ def _runtime(overrides: list[str]) -> PipelineRuntimeConfig:
     return PipelineRuntimeConfig.from_config(config)
 
 
-def test_pipeline_defaults_to_physical_court_reference() -> None:
-    runtime = _runtime([])
-    assert runtime.plcs.court_keypoint_contract.selector == "physical_v1"
+def test_pipeline_defaults_to_camera_view_models_with_explicit_orientation() -> None:
+    runtime = _runtime(["court_reference.view_half_turns=[false,false,true]"])
+    assert runtime.plcs.court_keypoint_contract.selector == "camera_view_v2"
     assert runtime.blcs.court_keypoint_contract == runtime.plcs.court_keypoint_contract
-    assert runtime.court_reference.reference_camera is None
+    assert runtime.court_kp.output_keypoint_contract == "camera_view_v2"
+    assert runtime.plcs.checkpoint.name == "real-rgb-meiji-foot-e60-v1.ckpt"
+    assert runtime.blcs.checkpoint.name == "real-rgb-meiji-e60-v1.ckpt"
+    assert runtime.plcs.window_size == runtime.blcs.window_size == 128
+    assert len(runtime.camera_ids) == 3
+    assert runtime.court_reference.reference_camera == "cam0"
     assert runtime.gvhmr.court_footpoint_filter.enabled is False
 
 
@@ -52,7 +57,42 @@ def test_court_footpoint_filter_requires_dino_detector() -> None:
     ):
         _runtime(
             [
+                "court_reference.view_half_turns=[false,false,true]",
                 "gvhmr.detector=yolo",
                 "gvhmr.court_footpoint_filter.enabled=true",
             ]
         )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        ["court_reference.view_half_turns=[false]"],
+        [
+            "court_reference.view_half_turns=[false,false,true]",
+            "court_reference.reference_camera=missing",
+        ],
+        ["court_reference.view_half_turns=[true,false,true]"],
+    ],
+)
+def test_pipeline_rejects_invalid_reference_declarations_before_loading(
+    overrides: list[str],
+) -> None:
+    with pytest.raises(SemanticConfigurationError):
+        _runtime(overrides)
+
+
+@pytest.mark.parametrize("declaration", ["camera_view_v2", "physical_v1"])
+def test_pipeline_parses_explicit_legacy_input_contract(declaration: str) -> None:
+    overrides = [
+        "court_reference.view_half_turns=[false,false,true]",
+        "court_kp.source=load",
+        "court_kp.load_path=manual.json",
+        f"court_kp.load_keypoint_contract={declaration}",
+    ]
+    if declaration == "physical_v1":
+        with pytest.raises(ValueError, match="must match"):
+            _runtime(overrides)
+    else:
+        runtime = _runtime(overrides)
+        assert runtime.court_kp.load_keypoint_contract == "camera_view_v2"

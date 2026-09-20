@@ -25,7 +25,6 @@ from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
     CourtCandidateFitSettings,
-    CourtLineArchitectureSettings,
     CourtLineModelSettings,
     GroundPlaneSettings,
     LineProjectionSettings,
@@ -621,129 +620,22 @@ class AlignmentConfiguration:
                 "correspondences",
             },
         )
+        line_path = f"{path}.line_model"
         line_raw = _exact(
             raw["line_model"],
-            path=f"{path}.line_model",
+            path=line_path,
             keys={
                 "checkpoint_path",
-                "backbone_repository_path",
-                "backbone_checkpoint_path",
                 "device",
-                "expected_short_side",
                 "probability_threshold",
                 "maximum_selected_pixels_per_camera",
-                "architecture",
             },
         )
-        architecture_path = f"{path}.line_model.architecture"
-        architecture_raw = _exact(
-            line_raw["architecture"],
-            path=architecture_path,
-            keys={
-                "backbone_name",
-                "backbone_strict",
-                "backbone_train_mode",
-                "backbone_last_n_blocks",
-                "backbone_out_indices",
-                "backbone_layer_mode",
-                "lora_enabled",
-                "lora_rank",
-                "lora_alpha",
-                "lora_dropout",
-                "lora_target_modules",
-                "decoder_channels",
-                "decoder_reassemble_factors",
-                "line_bce_weight",
-                "line_dice_weight",
-                "line_positive_weight",
-            },
-        )
-        out_indices = _sequence(
-            _value(
-                architecture_raw,
-                "backbone_out_indices",
-                (list, tuple),
-                path=architecture_path,
-            ),
-            path=f"{architecture_path}.backbone_out_indices",
-        )
-        if len(out_indices) != 4 or any(type(item) is not int for item in out_indices):
-            raise ConfigurationTypeError(
-                f"{architecture_path}.backbone_out_indices must contain four integers."
-            )
-        architecture = CourtLineArchitectureSettings(
-            backbone_name=_text(
-                architecture_raw, "backbone_name", path=architecture_path
-            ),
-            backbone_strict=_flag(
-                architecture_raw, "backbone_strict", path=architecture_path
-            ),
-            backbone_train_mode=_text(
-                architecture_raw, "backbone_train_mode", path=architecture_path
-            ),
-            backbone_last_n_blocks=_integer(
-                architecture_raw,
-                "backbone_last_n_blocks",
-                path=architecture_path,
-                minimum=0,
-            ),
-            backbone_out_indices=tuple(cast(int, item) for item in out_indices),
-            backbone_layer_mode=_text(
-                architecture_raw, "backbone_layer_mode", path=architecture_path
-            ),
-            lora_enabled=_flag(
-                architecture_raw, "lora_enabled", path=architecture_path
-            ),
-            lora_rank=_integer(
-                architecture_raw, "lora_rank", path=architecture_path, minimum=1
-            ),
-            lora_alpha=_number(architecture_raw, "lora_alpha", path=architecture_path),
-            lora_dropout=_number(
-                architecture_raw, "lora_dropout", path=architecture_path
-            ),
-            lora_target_modules=_text_sequence(
-                architecture_raw, "lora_target_modules", path=architecture_path
-            ),
-            decoder_channels=_integer(
-                architecture_raw,
-                "decoder_channels",
-                path=architecture_path,
-                minimum=1,
-            ),
-            decoder_reassemble_factors=_number_sequence(
-                architecture_raw,
-                "decoder_reassemble_factors",
-                path=architecture_path,
-                minimum_length=4,
-            ),
-            line_bce_weight=_number(
-                architecture_raw, "line_bce_weight", path=architecture_path
-            ),
-            line_dice_weight=_number(
-                architecture_raw, "line_dice_weight", path=architecture_path
-            ),
-            line_positive_weight=_number(
-                architecture_raw, "line_positive_weight", path=architecture_path
-            ),
-        )
-        line_path = f"{path}.line_model"
         line_model = CourtLineModelSettings(
             checkpoint_path=resolver.resolve(
-                PathRole.CHECKPOINT,
-                _text(line_raw, "checkpoint_path", path=line_path),
-            ),
-            backbone_repository_path=resolver.resolve(
-                PathRole.EXTERNAL_ASSET,
-                _text(line_raw, "backbone_repository_path", path=line_path),
-            ),
-            backbone_checkpoint_path=resolver.resolve(
-                PathRole.EXTERNAL_ASSET,
-                _text(line_raw, "backbone_checkpoint_path", path=line_path),
+                PathRole.CHECKPOINT, _text(line_raw, "checkpoint_path", path=line_path)
             ),
             device=_text(line_raw, "device", path=line_path),
-            expected_short_side=_integer(
-                line_raw, "expected_short_side", path=line_path, minimum=1
-            ),
             probability_threshold=_number(
                 line_raw, "probability_threshold", path=line_path
             ),
@@ -753,7 +645,6 @@ class AlignmentConfiguration:
                 path=line_path,
                 minimum=1,
             ),
-            architecture=architecture,
         )
         ground_path = f"{path}.ground_plane"
         ground_raw = _exact(
@@ -1180,10 +1071,22 @@ class CourtTrajectoryPolicy:
                 path=path,
                 enum_type=OrbitCurveMode,
             ),
-            sfm_boundary_margin_m=(None if raw["sfm_boundary_margin_m"] is None else _number(raw, "sfm_boundary_margin_m", path=path)),
-            sfm_boundary_expansion_percent=_number(raw, "sfm_boundary_expansion_percent", path=path),
-            sfm_complex_center_on_hull=_flag(raw, "sfm_complex_center_on_hull", path=path),
-            spatial_coverage_cell_m=(None if raw["spatial_coverage_cell_m"] is None else _number(raw, "spatial_coverage_cell_m", path=path)),
+            sfm_boundary_margin_m=(
+                None
+                if raw["sfm_boundary_margin_m"] is None
+                else _number(raw, "sfm_boundary_margin_m", path=path)
+            ),
+            sfm_boundary_expansion_percent=_number(
+                raw, "sfm_boundary_expansion_percent", path=path
+            ),
+            sfm_complex_center_on_hull=_flag(
+                raw, "sfm_complex_center_on_hull", path=path
+            ),
+            spatial_coverage_cell_m=(
+                None
+                if raw["spatial_coverage_cell_m"] is None
+                else _number(raw, "spatial_coverage_cell_m", path=path)
+            ),
         )
         if result.sfm_boundary_margin_m is not None:
             margin = result.sfm_boundary_margin_m
@@ -1192,16 +1095,22 @@ class CourtTrajectoryPolicy:
                     "SfM bounds require non-negative margin and radius scales <= 1."
                 )
         if result.sfm_complex_center_on_hull and result.sfm_boundary_margin_m is None:
-            raise SemanticConfigurationError("Captured-hull complex centre requires explicit SfM bounds.")
+            raise SemanticConfigurationError(
+                "Captured-hull complex centre requires explicit SfM bounds."
+            )
         expansion = result.sfm_boundary_expansion_percent
-        if expansion < 0.0 or (expansion > 0.0 and result.sfm_boundary_margin_m is None):
+        if expansion < 0.0 or (
+            expansion > 0.0 and result.sfm_boundary_margin_m is None
+        ):
             raise SemanticConfigurationError(
                 "SfM expansion requires a non-negative percent and explicit SfM bounds."
             )
         if result.spatial_coverage_cell_m is not None:
             cell_m = result.spatial_coverage_cell_m
             if cell_m <= 0.0 or result.sfm_boundary_margin_m is None:
-                raise SemanticConfigurationError("Spatial coverage requires a positive cell size and explicit SfM bounds.")
+                raise SemanticConfigurationError(
+                    "Spatial coverage requires a positive cell size and explicit SfM bounds."
+                )
         if not {OrbitShape.CIRCLE, OrbitShape.ELLIPSE}.issubset(result.shapes):
             raise SemanticConfigurationError(
                 "Court trajectory shapes must include circle and ellipse."
@@ -1261,7 +1170,13 @@ class CourtViewPolicy:
         raw = _exact(
             value,
             path="dataset.court.view",
-            keys={"target_modes", "coverage_modes", "look_at_height_m", "hfov_degrees", "look_at_jitter_radius_m"},
+            keys={
+                "target_modes",
+                "coverage_modes",
+                "look_at_height_m",
+                "hfov_degrees",
+                "look_at_jitter_radius_m",
+            },
         )
         path = "dataset.court.view"
         result = cls(
@@ -1284,7 +1199,9 @@ class CourtViewPolicy:
             look_at_jitter_radius_m=_number(raw, "look_at_jitter_radius_m", path=path),
         )
         radius = result.look_at_jitter_radius_m
-        if radius < 0.0 or (radius > 0.0 and schema_version is not CourtDatasetSchemaVersion.V3):
+        if radius < 0.0 or (
+            radius > 0.0 and schema_version is not CourtDatasetSchemaVersion.V3
+        ):
             raise SemanticConfigurationError(
                 "Look-at jitter requires v3 and a non-negative radius."
             )
@@ -2513,12 +2430,9 @@ class ScenePipelineConfiguration:
             dataset["plcs"],
             resolver=resolver,
         )
-        if (
-            DatasetTarget.PLCS in request.active_targets
-            and (
-                request.scene_id not in plcs.scene_splits
-                or plcs.scene_splits[request.scene_id] != plcs.split
-            )
+        if DatasetTarget.PLCS in request.active_targets and (
+            request.scene_id not in plcs.scene_splits
+            or plcs.scene_splits[request.scene_id] != plcs.split
         ):
             raise SemanticConfigurationError(
                 "dataset.plcs.scene_splits must explicitly bind request.scene_id "

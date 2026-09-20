@@ -1,0 +1,144 @@
+{
+  "maximum_absolute_line_difference_from_unified_hybrid": 0.0,
+  "shape": [
+    256,
+    384
+  ],
+  "identity": {
+    "schema": "court_line_inference_identity_v3",
+    "checkpoint_sha256": "dd3a396841097e60ff1bc0eabcf7b911e97685e251bf8cc441c100b17276e816",
+    "backbone_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+    "architecture": {
+      "encoder": {
+        "name": "dinov3",
+        "backbone_name": "dinov3_vitb16",
+        "repository_path": "dinov3",
+        "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+        "strict": true,
+        "train_mode": "frozen",
+        "last_n_blocks": 0,
+        "out_indices": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "layer_mode": "uniform",
+        "lora": {
+          "enabled": true,
+          "rank": 8,
+          "alpha": 16.0,
+          "dropout": 0.0,
+          "target_modules": [
+            "qkv",
+            "proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      },
+      "transformer_encoder": {
+        "name": "transformer",
+        "enabled": true,
+        "dim": 768,
+        "depth": 8,
+        "num_heads": 12,
+        "head_dim": 64,
+        "ffn_dim": 2048,
+        "rope_dim": 64,
+        "rope_theta": 10000.0,
+        "dropout": 0.0,
+        "attention_type": "mha",
+        "n_kv_heads": null,
+        "ffn_type": "swiglu"
+      },
+      "decoder": {
+        "name": "dpt",
+        "size": "large",
+        "channels": 512,
+        "reassemble_factors": [
+          4.0,
+          2.0,
+          1.0,
+          0.5
+        ]
+      },
+      "dense_head": {
+        "name": "residual",
+        "normalization_groups": 32,
+        "kp": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "seg": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "line": {
+          "hidden_channels": 256,
+          "depth": 2
+        }
+      },
+      "name": "court_hierarchical",
+      "in_channels": 3
+    },
+    "target_bundle": {
+      "schema": "court_target_bundle_v1",
+      "targets": [
+        {
+          "kind": "kp",
+          "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+          "output_channels": 14,
+          "channel_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "target_dtype": "float32",
+          "precomputed": false
+        },
+        {
+          "kind": "seg",
+          "schema": "court_cell_segmentation_v1",
+          "output_channels": 7,
+          "channel_names": [
+            "background",
+            "service_left",
+            "service_right",
+            "back_left",
+            "back_right",
+            "doubles_left",
+            "doubles_right"
+          ],
+          "target_dtype": "int64",
+          "precomputed": true
+        },
+        {
+          "kind": "line",
+          "schema": "court_line_binary_75mm_150mm_v2",
+          "output_channels": 1,
+          "channel_names": [
+            "court_line"
+          ],
+          "target_dtype": "float32",
+          "precomputed": true
+        }
+      ]
+    },
+    "short_side": 256,
+    "device": "cpu",
+    "seed": 42
+  },
+  "scene_publication": false
+}

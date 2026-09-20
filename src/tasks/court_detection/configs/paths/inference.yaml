@@ -1,0 +1,5 @@
+defaults:
+  - default
+  - _self_
+
+checkpoint_root: ckpt

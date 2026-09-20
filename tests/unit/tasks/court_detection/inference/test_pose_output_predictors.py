@@ -11,11 +11,11 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetSpec,
 )
-from src.tasks.court_detection.inference.mask_predictor import (
+from src.tasks.court_detection.inference.predictor import (
+    CourtKeypointPredictor,
     CourtLinePredictor,
     CourtSegPredictor,
 )
-from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import CourtModelSpec
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel

@@ -1,0 +1,7 @@
+{
+  "schema": "court_downstream_migration_audit_v1",
+  "implementation_commit": "e002a6a801b2cffd654e54a0cd790e5ae973adeb",
+  "geometry_source_commit": "5b9f8d1d497d2be71dea4cccf62c1c15976c2eb4",
+  "checkpoint_copy": "checkpoint-copy.json",
+  "scope": "CPU inference only; no scene publication, model training or checkpoint retuning"
+}
