@@ -10,7 +10,11 @@ from common import PAPER_PAGES, ROOT, sha256, write_json
 
 
 def source_digests(root: Path) -> dict[str, str]:
-    files = [root / "report.tex", *sorted((root / "figures").glob("*.png"))]
+    files = [
+        root / "report.tex",
+        *sorted((root / "figures").glob("*.png")),
+        *sorted((root / "tables").glob("*.tex")),
+    ]
     return {str(p.relative_to(root)): sha256(p) for p in files}
 
 

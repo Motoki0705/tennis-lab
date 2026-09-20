@@ -1,4 +1,4 @@
-"""Audit temporal ground-height disagreement in the saved B00 sparse SfM model.
+"""Audit temporal ground-height disagreement in all four saved sparse SfM models.
 
 COLMAP's documented binary tracks identify observation frames, not acquisition
 times of the reconstructed coordinates. Distinct short tracks are compared in
@@ -9,7 +9,6 @@ Binary format: https://colmap.github.io/format.html
 from __future__ import annotations
 
 import json
-import shutil
 import struct
 from pathlib import Path
 from typing import BinaryIO
@@ -20,8 +19,17 @@ from scipy.spatial import cKDTree
 
 BUNDLE = ROOT / "evidence/sfm_drift"
 METHOD = ROOT / "evidence/alignment_method"
-ALIGNMENT = ROOT / "evidence/scene_sources/B00.json"
-SCENE = REPO / "data/synthetic_data_generation/scenes/B00"
+SCENE_IDS = ("B00", "B01", "B02", "B03")
+SCENES = REPO / "data/synthetic_data_generation/scenes"
+SELECTION = {
+    "region": "Union of interiors of all saved doubles courts in each scene",
+    "track_rule": "All observations in one period; boundary-crossing tracks excluded",
+    "maximum_absolute_height_m": 0.3,
+    "maximum_reprojection_error_px": 1.0,
+    "cell_size_m": 0.5,
+    "sensitivity_cell_size_m": 1.0,
+    "minimum_points_per_cell": 5,
+}
 
 
 def read_exact(stream: BinaryIO, size: int) -> bytes:
@@ -43,7 +51,7 @@ def read_tracks(model: Path) -> tuple[np.ndarray, np.ndarray, dict, list[int]]:
                 name.extend(char)
             stem = Path(name.decode("utf-8")).stem
             if not stem.startswith("frame_") or not stem[6:].isdigit():
-                raise ValueError(f"Unexpected B00 frame name: {stem}")
+                raise ValueError(f"Unexpected frame name: {stem}")
             if image[0] in frames:
                 raise ValueError("Duplicate COLMAP image ID")
             frames[image[0]] = int(stem[6:])
@@ -124,20 +132,70 @@ def paired_heights(
         point_counts.append(int(chosen.sum()))
         cell_counts.append(len(medians))
     shared = sorted(set.intersection(*(set(p) for p in per_period)))
-    if not shared:
-        raise ValueError("No ground cells shared by all temporal periods")
-    medians = np.array([[p[cell] for cell in shared] for p in per_period])
-    delta = medians - medians[0]
-    return {
+    result = {
+        "status": "measured" if shared else "no_shared_cells",
         "cell_size_m": cell_size,
         "qualified_point_counts": point_counts,
         "qualified_cell_counts": cell_counts,
         "shared_cell_count": len(shared),
         "shared_cell_indices": np.array(shared).tolist(),
+    }
+    if not shared:
+        # An unsupported comparison is not a zero-error measurement.
+        return {
+            **result,
+            "cell_median_height_m": [],
+            "cell_delta_from_first_m": [],
+            "median_delta_m": None,
+            "iqr_delta_m": None,
+        }
+    medians = np.array([[p[cell] for cell in shared] for p in per_period])
+    delta = medians - medians[0]
+    return {
+        **result,
         "cell_median_height_m": medians.tolist(),
         "cell_delta_from_first_m": delta.tolist(),
         "median_delta_m": np.median(delta, axis=1).tolist(),
         "iqr_delta_m": np.quantile(delta, [0.25, 0.75], axis=1).T.tolist(),
+    }
+
+
+def period_edges(frames: list[int], periods: int) -> list[int]:
+    """Split registered images by chronological rank, retaining gaps and the tail."""
+    if frames != sorted(set(frames)) or len(frames) < periods:
+        raise ValueError("Expected unique chronological registered frames")
+    indices = np.linspace(0, len(frames), periods + 1, dtype=int)
+    return [frames[i] for i in indices[:-1]] + [frames[-1] + 1]
+
+
+def ground_reference(alignment: dict) -> dict:
+    """Use the same saved-court-plane construction, including manual scenes."""
+    courts = alignment["alignment"]["layout"]["courts"]
+    matrix = np.array(courts[0]["scene_from_court"]).reshape(4, 4)
+    normal = matrix[:3, 2] / np.linalg.norm(matrix[:3, 2])
+    height = float(normal @ matrix[:3, 3])
+    for court in courts:
+        matrix = np.array(court["scene_from_court"]).reshape(4, 4)
+        if (
+            not np.allclose(matrix[:3, 2], normal, atol=1e-8, rtol=0)
+            or abs(float(normal @ matrix[:3, 3]) - height) > 1e-8
+        ):
+            raise ValueError("Saved courts do not share a common ground plane")
+    u = np.array([1.0, 0, 0]) - normal * normal[0]
+    if np.linalg.norm(u) < 0.1:
+        raise ValueError("Ground U basis is degenerate")
+    u /= np.linalg.norm(u)
+    return {
+        "authority": "Common plane of saved aligned courts; closest origin to metric scene origin; U is projected scene X, V = normal cross U",
+        "nht_scene_units_per_metre": alignment["alignment"]["metric_scene_adapter"][
+            "nht_scene_units_per_metre"
+        ],
+        "ground_plane_frame": {
+            "origin_metric_scene": (normal * height).tolist(),
+            "normal_metric_scene": normal.tolist(),
+            "basis_u_metric_scene": u.tolist(),
+            "basis_v_metric_scene": np.cross(normal, u).tolist(),
+        },
     }
 
 
@@ -183,115 +241,171 @@ def measure(
         & (np.abs(geom["height"]) < cfg["maximum_absolute_height_m"])
         & (tracks["reprojection_error_px"] <= cfg["maximum_reprojection_error_px"])
     )
-    results = [
-        paired_heights(
+    results = {}
+    for key, edges, size in (
+        ("primary", manifest["period_edges"], cfg["cell_size_m"]),
+        ("sensitivity", manifest["period_edges"], cfg["sensitivity_cell_size_m"]),
+        ("four_period_audit", manifest["four_period_edges"], cfg["cell_size_m"]),
+        (
+            "four_period_sensitivity",
+            manifest["four_period_edges"],
+            cfg["sensitivity_cell_size_m"],
+        ),
+    ):
+        results[key] = paired_heights(
             geom["uv"],
             geom["height"],
             tracks["first_frame"],
             tracks["last_frame"],
             eligible,
-            np.array(manifest["period_edges"]),
+            np.array(edges),
             size,
             cfg["minimum_points_per_cell"],
         )
-        for size in (cfg["cell_size_m"], cfg["sensitivity_cell_size_m"])
-    ]
-    return {"primary": results[0], "sensitivity": results[1]}
+    if (
+        results["primary"]["status"] != "measured"
+        or results["sensitivity"]["status"] != "measured"
+    ):
+        raise ValueError("Primary half-sequence comparison has no shared support")
+    return results
 
 
-def load_bundle() -> tuple[dict, dict, np.ndarray, dict, dict]:
-    manifest = json.loads((BUNDLE / "manifest.json").read_text())
+def load_bundle(scene_id: str) -> tuple[dict, dict, np.ndarray, dict, dict]:
+    index = json.loads((BUNDLE / "manifest.json").read_text())
+    if (
+        index["schema"] != "court_sfm_temporal_ground_audit_v2"
+        or tuple(index["scenes"]) != SCENE_IDS
+    ):
+        raise ValueError("Expected SfM evidence for all four scenes")
+    manifest = {"selection": index["selection"], **index["scenes"][scene_id]}
     for name, digest in manifest["files"].items():
         if sha256(BUNDLE / name) != digest:
             raise ValueError(f"Changed SfM drift evidence: {name}")
     for name, digest in manifest["dependencies"].items():
         if sha256(ROOT / name) != digest:
             raise ValueError(f"Changed SfM drift dependency: {name}")
-    method = json.loads((METHOD / "manifest.json").read_text())
-    alignment = json.loads(ALIGNMENT.read_text())
-    with np.load(BUNDLE / "tracks.npz") as archive:
+    alignment = json.loads(
+        (ROOT / f"evidence/scene_sources/{scene_id}.json").read_text()
+    )
+    reference = ground_reference(alignment)
+    if reference != manifest["ground_reference"]:
+        raise ValueError("Saved-court ground reference differs")
+    frames = manifest["registered_frame_ids"]
+    if manifest["period_edges"] != period_edges(frames, 2) or manifest[
+        "four_period_edges"
+    ] != period_edges(frames, 4):
+        raise ValueError("Chronological period boundaries differ")
+    with np.load(BUNDLE / scene_id / "tracks.npz") as archive:
         tracks = {k: archive[k] for k in archive.files}
-    with np.load(METHOD / "arrays.npz") as archive:
+    with np.load(ROOT / manifest["points_archive"]) as archive:
         points = archive["points_xyzrgb"]
-    return manifest, tracks, points, method, alignment
+    return manifest, tracks, points, reference, alignment
 
 
 def collect() -> None:
-    BUNDLE.mkdir(parents=True, exist_ok=True)
-    export = SCENE / "reconstruction/export"
-    scene = json.loads((export / "scene.json").read_text())
-    with np.load(METHOD / "arrays.npz") as archive:
-        points = archive["points_xyzrgb"]
-    if not np.array_equal(points, np.load(export / "points_scene.npy")):
-        raise ValueError("Method point cloud differs from current B00 export")
-    xyz, rgb, raw, frames = read_tracks(SCENE / "reconstruction/sfm/model")
-    if frames != list(range(491)):
-        raise ValueError("Expected the full saved B00 sequence, frames 0--490")
-    order, error = match_export(xyz, rgb, points, np.array(scene["scene_from_sfm"]))
-    np.savez_compressed(BUNDLE / "tracks.npz", **{k: v[order] for k, v in raw.items()})
-    edges = np.linspace(0, len(frames), 5, dtype=int).tolist()
-    photos = [f"frame_{i:06d}.png" for i in edges[:-1]]
-    for name in photos:
-        shutil.copyfile(export / "images" / name, BUNDLE / name)
-    sources = [
-        SCENE / "reconstruction/sfm/model/images.bin",
-        SCENE / "reconstruction/sfm/model/points3D.bin",
-        export / "scene.json",
-        export / "points_scene.npy",
-        *(export / "images" / name for name in photos),
-    ]
-    manifest = {
-        "schema": "court_sfm_temporal_ground_audit_v1",
-        "scene_id": "B00",
-        "frame_count": len(frames),
-        "point_count": len(points),
-        "period_edges": edges,
-        "photos": photos,
-        "photo_selection": "First captured/exported RGB of each equal chronological quarter, full field of view.",
-        "selection": {
-            "region": "Union of interiors of the two saved doubles courts",
-            "track_rule": "All observations in one quarter; boundary-crossing tracks excluded",
-            "maximum_absolute_height_m": 0.3,
-            "maximum_reprojection_error_px": 1.0,
-            "cell_size_m": 0.5,
-            "sensitivity_cell_size_m": 1.0,
-            "minimum_points_per_cell": 5,
-        },
-        "comparison": "Median height per cell and quarter; intersect cells across all four quarters; subtract first-quarter median in each cell, then summarize across cells. Distinct points, not repeat estimates of the same point.",
-        "limitations": "No survey truth or causal isolation. Surface relief within cells, feature/triangulation errors and reconstruction distortion can all contribute. Metric scale comes from the saved court alignment. B00 only, not a four-scene drift estimate.",
-        "source_export_max_distance_native": error,
-        "source_export_rgb_exact": True,
-        "source_format": "https://colmap.github.io/format.html",
-        "dependencies": {
-            str(p.relative_to(ROOT)): sha256(p)
-            for p in (METHOD / "manifest.json", METHOD / "arrays.npz", ALIGNMENT)
-        },
-        "files": {name: sha256(BUNDLE / name) for name in ["tracks.npz", *photos]},
-        "source_files": {str(p.relative_to(REPO)): sha256(p) for p in sources},
+    index = {
+        "schema": "court_sfm_temporal_ground_audit_v2",
+        "selection": SELECTION,
+        "protocol": "All scenes: first/second chronological halves of registered frames. Four-period comparisons retained as an audit, explicitly unsupported when no cell is shared. The original four-period 0.5 m rule has no support in B01--B03; neither cell width nor minimum support is tuned per scene.",
+        "comparison": "Median height per cell and period; intersect cells across periods; subtract the first-period median in each cell, then summarize equally weighted cells. Distinct points, not repeat estimates of the same point.",
+        "limitations": "No survey truth or causal isolation. Surface relief within cells, feature/triangulation errors and reconstruction distortion can all contribute. Metric scale and plane come from saved court alignment, including manual B01/B02 adjustments. Missing registered frames are not interpolated.",
+        "scenes": {},
     }
-    write_json(BUNDLE / "manifest.json", manifest)
-    write_json(BUNDLE / "measurements.json", measure(*load_bundle()))
+    for sid in SCENE_IDS:
+        bundle = BUNDLE / sid
+        bundle.mkdir(parents=True, exist_ok=True)
+        source = SCENES / sid
+        export = source / "reconstruction/export"
+        scene = json.loads((export / "scene.json").read_text())
+        cameras = json.loads((export / "cameras.json").read_text())["cameras"]
+        alignment_path = ROOT / f"evidence/scene_sources/{sid}.json"
+        alignment = json.loads(alignment_path.read_text())
+        if sha256(source / "alignment/alignment.json") != alignment["alignment_sha256"]:
+            raise ValueError(f"Saved alignment changed: {sid}")
+        points = np.load(export / "points_scene.npy")
+        points_path = METHOD / "arrays.npz" if sid == "B00" else bundle / "points.npz"
+        if sid == "B00":
+            with np.load(points_path) as archive:
+                if not np.array_equal(points, archive["points_xyzrgb"]):
+                    raise ValueError(
+                        "Method point cloud differs from current B00 export"
+                    )
+        else:
+            np.savez_compressed(points_path, points_xyzrgb=points)
+        xyz, rgb, raw, frames = read_tracks(source / "reconstruction/sfm/model")
+        exported_frames = sorted(int(c["camera_id"][6:]) for c in cameras)
+        if frames != exported_frames or len(frames) != scene["camera_count"]:
+            raise ValueError(f"SfM and exported registered cameras differ: {sid}")
+        order, error = match_export(xyz, rgb, points, np.array(scene["scene_from_sfm"]))
+        np.savez_compressed(
+            bundle / "tracks.npz", **{k: v[order] for k, v in raw.items()}
+        )
+        sources = [
+            source / "reconstruction/sfm/model/images.bin",
+            source / "reconstruction/sfm/model/points3D.bin",
+            export / "scene.json",
+            export / "cameras.json",
+            export / "points_scene.npy",
+            source / "alignment/alignment.json",
+        ]
+        files = [bundle / "tracks.npz"] + ([] if sid == "B00" else [points_path])
+        dependencies = [alignment_path] + ([points_path] if sid == "B00" else [])
+        index["scenes"][sid] = {
+            "scene_id": sid,
+            "frame_count": len(frames),
+            "point_count": len(points),
+            "registered_frame_ids": frames,
+            "unregistered_frame_ids_within_span": sorted(
+                set(range(frames[0], frames[-1] + 1)) - set(frames)
+            ),
+            "period_edges": period_edges(frames, 2),
+            "four_period_edges": period_edges(frames, 4),
+            "ground_reference": ground_reference(alignment),
+            "points_archive": str(points_path.relative_to(ROOT)),
+            "source_export_max_distance_native": error,
+            "source_export_rgb_exact": True,
+            "source_format": "https://colmap.github.io/format.html",
+            "dependencies": {str(p.relative_to(ROOT)): sha256(p) for p in dependencies},
+            "files": {str(p.relative_to(BUNDLE)): sha256(p) for p in files},
+            "source_files": {str(p.relative_to(REPO)): sha256(p) for p in sources},
+        }
+    write_json(BUNDLE / "manifest.json", index)
+    write_json(
+        BUNDLE / "measurements.json",
+        {sid: measure(*load_bundle(sid)) for sid in SCENE_IDS},
+    )
 
 
 def validate(*, check_local_sources: bool = False) -> dict:
-    bundle = load_bundle()
+    saved = json.loads((BUNDLE / "measurements.json").read_text())
+    if tuple(saved) != SCENE_IDS:
+        raise ValueError("Missing scene in SfM measurements")
+    return {
+        sid: validate_scene(sid, saved[sid], check_local_sources=check_local_sources)
+        for sid in SCENE_IDS
+    }
+
+
+def validate_scene(scene_id: str, saved: dict, *, check_local_sources: bool) -> dict:
+    bundle = load_bundle(scene_id)
     manifest, tracks, points, _, _ = bundle
     actual = measure(*bundle)
-    if actual != json.loads((BUNDLE / "measurements.json").read_text()):
+    if actual != saved:
         raise ValueError("Temporal ground-height measurements differ")
     if check_local_sources:
         for name, digest in manifest["source_files"].items():
             if sha256(REPO / name) != digest:
                 raise ValueError(f"Changed original SfM source: {name}")
-        xyz, rgb, raw, frames = read_tracks(SCENE / "reconstruction/sfm/model")
+        source = SCENES / scene_id
+        xyz, rgb, raw, frames = read_tracks(source / "reconstruction/sfm/model")
         transform = np.array(
-            json.loads((SCENE / "reconstruction/export/scene.json").read_text())[
+            json.loads((source / "reconstruction/export/scene.json").read_text())[
                 "scene_from_sfm"
             ]
         )
         order, error = match_export(xyz, rgb, points, transform)
         if (
-            frames != list(range(manifest["frame_count"]))
+            frames != manifest["registered_frame_ids"]
             or error != manifest["source_export_max_distance_native"]
         ):
             raise ValueError("SfM source frame or point mapping differs")
@@ -299,7 +413,7 @@ def validate(*, check_local_sources: bool = False) -> dict:
             if not np.array_equal(value[order], tracks[key]):
                 raise ValueError(f"Bundled track metadata differs: {key}")
     return {
-        "scene_id": "B00",
+        "scene_id": scene_id,
         "frame_count": manifest["frame_count"],
         "point_count": len(points),
         **{
@@ -307,7 +421,13 @@ def validate(*, check_local_sources: bool = False) -> dict:
                 k: v
                 for k, v in value.items()
                 if k
-                in ("cell_size_m", "shared_cell_count", "median_delta_m", "iqr_delta_m")
+                in (
+                    "status",
+                    "cell_size_m",
+                    "shared_cell_count",
+                    "median_delta_m",
+                    "iqr_delta_m",
+                )
             }
             for key, value in actual.items()
         },

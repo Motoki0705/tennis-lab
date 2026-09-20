@@ -1,7 +1,7 @@
 {
   "schema": "court_paper_build_v1",
   "source_sha256": {
-    "report.tex": "6e135b1e6eb8fb9eca2104a243d1ff56935f756e71db8cb411640c7cdda4522e",
+    "report.tex": "5845b34c2d28a7fae765c9e8ad1afa7d6595000b3256c9088dc682c1805740bd",
     "figures/B00_000423_alignment.png": "c5bda24fbbe0148f4fb1de510ddb90864bcc7ee31e73e60c2414d2ba2cd434e0",
     "figures/B00_000720_alignment.png": "58896c57a96f73144926c5dcc992875a2691ade637d1b1039f5e5c94013b4117",
     "figures/B00_001493_alignment.png": "93ae4c9441567b1cd5c8d2c9f24e4a258f0d2df71fdacc20d8dceb08a9fb6c8a",
@@ -48,9 +48,10 @@
     "figures/local04_ours_line_overlay.png": "3c8fe788101fddd35ba2b7e33b093439e90650ba1da1289ef6c508261ce46b01",
     "figures/method_projection.png": "b1bb9b29c756b7736572244c8b976e2cc020d4b797d53f96ff96b05623d2f5dc",
     "figures/method_ransac.png": "6db91889d3969b9c3765073bb8759c34a23ab441e948a772a006b403325576f2",
-    "figures/sfm_temporal_drift.png": "35e02c36405226721499e0091e7ff4d4b7174bcd979da6f15eb92eabf28cabf1"
+    "figures/sfm_temporal_drift.png": "2246b4a1c7a11f136504d1751186fa901d4770a56cfcabfbfdc3daf684066711",
+    "tables/sfm_drift.tex": "8b0e74df57ed00bc81ae267cd6d07b28b75465009a5049cf9c3b4d8415a325ca"
   },
-  "pdf_sha256": "0fe305dc1e8bb4a0f6a5eae521a164927a246a35b1378f8074d770a322c4d4f0",
+  "pdf_sha256": "6b7863a46f8f517b7c64034c5e3a5a7de5d13b0433750354ba11cb767ddb3ffb",
   "pages": 7,
   "latex_runs": 2,
   "layout_glyph_reference_checks": "passed",

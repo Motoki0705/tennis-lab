@@ -13,14 +13,14 @@
 | `evidence/dataset_audit.json` | TCD全8,841画像＋B00〜B03全8,415レンダリングとのバイト/RGB/知覚ハッシュ照合 |
 | `evidence/scene_sources/` | 実レンダリングPNG、選択サンプルのカメラ・教師、現存アライメントと分割集計。各sourceのハッシュ付き |
 | `evidence/alignment_method/`, `alignment_figures.json` | 元のSfM点群、保存平面・設定、48視点の投影証拠、掲載3視点のRGBとLINE生出力、32視点の集約。RANSAC・射影の再計算と元データ照合に使用 |
-| `evidence/sfm_drift/`, `drift_figures.json` | B00の全点に対応するSfMトラックの観測区間・再投影誤差、4区間の先頭実画像、共通セルの高さ差と格子幅の感度確認。元COLMAPモデル・座標変換のハッシュ付き。点群は上記の方法図バンドルを共有 |
+| `evidence/sfm_drift/`, `drift_figures.json`, `tables/sfm_drift.tex` | B00〜B03の全点に対応するSfMトラックの観測区間・再投影誤差・登録画像ID、前半／後半の共通セルの高さ差、格子幅の感度確認、4区間診断の成立状況。図と表を同じ数値から生成。元COLMAPモデル・座標変換のハッシュ付き。B00点群は方法図バンドルを共有し、他3シーンは同梱 |
 | `figures/`, `evidence/*figures.json`, `scene_visualization.json` | PDF図版と数値・実画像からの生成結果のハッシュ |
-| `evidence/build.json` | PDF・TeX・図版のハッシュとLuaLaTeXの組版検証記録 |
+| `evidence/build.json` | PDF・TeX・図版・生成表のハッシュとLuaLaTeXの組版検証記録 |
 | `evidence/validation.json` | PDFと掲載成果物の検証結果。精度評価ではない |
 
 同梱物だけの検証は、git管理されたビルド記録を読み、一時的なLaTeXログを要求しません。通常は読み取り専用で、`--write-report` を付けた場合だけ `validation.json` を更新します。`--check-local-sources` は両モデルの重み、checkpoint内の設定・出力契約・epoch/stepも現物と照合します。
 
-現物照合の最新状態は [evidence/checks.json](evidence/checks.json) の `local_source_validation` に記録しています。今回の確認では、以前の未学習推論に使用したcheckpointの現物が保存SHA-256と一致せず、全現物照合は失敗しました。既存の推論結果・重みの記録は保持し、同梱成果物の検証と今回のSfM元データの照合を分けています。元のバイト列が必要な再推論では、この不一致を解消する必要があります。
+現物照合の状態は [evidence/checks.json](evidence/checks.json) に記録しています。`local_source_validation` に残す2026-09-19の確認では、以前の未学習推論に使用したcheckpointの現物が保存SHA-256と一致せず、全現物照合は失敗しました。今回の全4シーンのSfM元データ照合は `four_scene_source_validation` に分けています。既存の推論結果・重みの記録は保持しており、元のバイト列が必要な再推論ではこの不一致を解消する必要があります。
 
 方法図はB00の保存済みv2 heatmap archiveを明示的に読みます。当時の入力は校正済み実画像で、現在のNHTレンダリング入力cacheへの差し替えは行いません。全48視点の確率配列と入力画像ハッシュが当時のcacheと一致することを確認しています。LINE専用のepoch 19重みと、未学習写真に使う多タスクepoch 17重みの出典も分けて保存しています。
 
@@ -52,7 +52,9 @@
 
 方法図のRANSACは元の全点群からproduction関数で再計算し、保存平面への一致を要求します。投影もproduction関数で再計算します。共通グリッドへの集約は当時のreducerを数値的に再現し、保留視点の混入を拒否します。元データから方法図の証拠を再収集する場合だけ、`make_alignment_figures.py --collect` を使用してください。未学習写真のLINEは、同一の保存確率から二値マスク・RGB重畳・確率マップを生成します。
 
-SfM診断は `drift_evidence.py` が公開COLMAP binary形式の点・観測トラックを読み、公開 `scene_from_sfm` で既存点群へ対応付けます。点の全単射・座標許容差・RGB一致を要求し、ファイル内の並びや連番IDには依存しません。`make_drift_figure.py --collect` の場合だけ元SfMモデルが必要です。`--check-local-sources` はモデルを再読してトラックの全件一致も確認します。通常の再生成は同梱証拠のみで行い、区間をまたぐ点の除外、同じセル同士の比較、図の画素一致をテストします。測定値の解釈・交絡要因は本文第6節を参照してください。
+SfM診断は `drift_evidence.py` が公開COLMAP binary形式の点・観測トラックを読み、公開 `scene_from_sfm` で既存点群へ対応付けます。点の全単射・座標許容差・RGB一致を要求し、ファイル内の並びや連番IDには依存しません。登録画像の欠番を保持して撮影順の順位で分割し、地面基準は全シーンで保存コートの共通平面から構成します。コート間の非共面性は拒否します。全シーン共通の2区間診断を本文に掲載し、4区間で共通セルがない場合は0誤差にせず `no_shared_cells` / `null` と記録します。
+
+`make_drift_figure.py --collect` の場合だけ元SfMモデルが必要です。`--check-local-sources` は全4シーンのモデルを再読してトラックの全件一致も確認します。通常の再生成は同梱証拠のみで行い、区間をまたぐ点の除外、同じセル同士の比較、欠番を持つ区間分割、図の画素一致と表の数値をテストします。測定条件・解釈・交絡要因と、SfM／SLAMのドリフト研究との関係は本文第2・6節を参照してください。
 
 ## 指定入力から推論を再実行
 
