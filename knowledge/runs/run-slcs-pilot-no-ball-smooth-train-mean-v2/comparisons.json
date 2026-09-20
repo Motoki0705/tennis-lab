@@ -1,0 +1,274 @@
+{
+  "full": {
+    "schema_version": 1,
+    "split": "val",
+    "in_sample": false,
+    "aggregation": "Unweighted valid window occurrences; overlapping windows counted separately, including valid zero-confidence labels.",
+    "interpretation": "Pseudo-teacher agreement; negative model-minus-baseline is better agreement. Train split scores are in-sample.",
+    "position_scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "constant_m": [
+      -0.48040531882522086,
+      0.4049685549008817,
+      1.813896779689518
+    ],
+    "domain_mapping": {
+      "broadcast_indoor_hard": "broadcast",
+      "video_001": "meiji"
+    },
+    "rows": [
+      {
+        "group_type": "all",
+        "group": "all",
+        "num_windows": 43,
+        "valid_window_occurrences": 4265,
+        "model_error_m": 7.003022836387012,
+        "train_mean_error_m": 7.033323568923691,
+        "model_minus_train_mean_error_m": -0.030300732536678865
+      },
+      {
+        "group_type": "domain",
+        "group": "broadcast",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 5.827973891967678,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": -0.2926203050953786
+      },
+      {
+        "group_type": "domain",
+        "group": "meiji",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.373328115818575,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.052366736829643656
+      },
+      {
+        "group_type": "video",
+        "group": "broadcast_indoor_hard",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 5.827973891967678,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": -0.2926203050953786
+      },
+      {
+        "group_type": "video",
+        "group": "video_001",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.373328115818575,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.052366736829643656
+      }
+    ]
+  },
+  "no_rgb": {
+    "schema_version": 1,
+    "split": "val",
+    "in_sample": false,
+    "aggregation": "Unweighted valid window occurrences; overlapping windows counted separately, including valid zero-confidence labels.",
+    "interpretation": "Pseudo-teacher agreement; negative model-minus-baseline is better agreement. Train split scores are in-sample.",
+    "position_scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "constant_m": [
+      -0.48040531882522086,
+      0.4049685549008817,
+      1.813896779689518
+    ],
+    "domain_mapping": {
+      "broadcast_indoor_hard": "broadcast",
+      "video_001": "meiji"
+    },
+    "rows": [
+      {
+        "group_type": "all",
+        "group": "all",
+        "num_windows": 43,
+        "valid_window_occurrences": 4265,
+        "model_error_m": 7.014247385764406,
+        "train_mean_error_m": 7.033323568923691,
+        "model_minus_train_mean_error_m": -0.019076183159284277
+      },
+      {
+        "group_type": "domain",
+        "group": "broadcast",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 5.828320038549161,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": -0.29227415851389527
+      },
+      {
+        "group_type": "domain",
+        "group": "meiji",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.387980888340411,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.06701950935147938
+      },
+      {
+        "group_type": "video",
+        "group": "broadcast_indoor_hard",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 5.828320038549161,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": -0.29227415851389527
+      },
+      {
+        "group_type": "video",
+        "group": "video_001",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.387980888340411,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.06701950935147938
+      }
+    ]
+  },
+  "detector_gap": {
+    "schema_version": 1,
+    "split": "val",
+    "in_sample": false,
+    "aggregation": "Unweighted valid window occurrences; overlapping windows counted separately, including valid zero-confidence labels.",
+    "interpretation": "Pseudo-teacher agreement; negative model-minus-baseline is better agreement. Train split scores are in-sample.",
+    "position_scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "constant_m": [
+      -0.48040531882522086,
+      0.4049685549008817,
+      1.813896779689518
+    ],
+    "domain_mapping": {
+      "broadcast_indoor_hard": "broadcast",
+      "video_001": "meiji"
+    },
+    "rows": [
+      {
+        "group_type": "all",
+        "group": "all",
+        "num_windows": 43,
+        "valid_window_occurrences": 4265,
+        "model_error_m": 7.007242376986856,
+        "train_mean_error_m": 7.033323568923691,
+        "model_minus_train_mean_error_m": -0.02608119193683489
+      },
+      {
+        "group_type": "domain",
+        "group": "broadcast",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 5.912484962396331,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": -0.20810923466672548
+      },
+      {
+        "group_type": "domain",
+        "group": "meiji",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.352244559444922,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.03128318045599077
+      },
+      {
+        "group_type": "video",
+        "group": "broadcast_indoor_hard",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 5.912484962396331,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": -0.20810923466672548
+      },
+      {
+        "group_type": "video",
+        "group": "video_001",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.352244559444922,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.03128318045599077
+      }
+    ]
+  },
+  "rgb_only": {
+    "schema_version": 1,
+    "split": "val",
+    "in_sample": false,
+    "aggregation": "Unweighted valid window occurrences; overlapping windows counted separately, including valid zero-confidence labels.",
+    "interpretation": "Pseudo-teacher agreement; negative model-minus-baseline is better agreement. Train split scores are in-sample.",
+    "position_scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "constant_m": [
+      -0.48040531882522086,
+      0.4049685549008817,
+      1.813896779689518
+    ],
+    "domain_mapping": {
+      "broadcast_indoor_hard": "broadcast",
+      "video_001": "meiji"
+    },
+    "rows": [
+      {
+        "group_type": "all",
+        "group": "all",
+        "num_windows": 43,
+        "valid_window_occurrences": 4265,
+        "model_error_m": 7.046573797194281,
+        "train_mean_error_m": 7.033323568923691,
+        "model_minus_train_mean_error_m": 0.013250228270590192
+      },
+      {
+        "group_type": "domain",
+        "group": "broadcast",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 6.158346159477112,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": 0.037751962414056095
+      },
+      {
+        "group_type": "domain",
+        "group": "meiji",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.3264901233573845,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.005528744368453076
+      },
+      {
+        "group_type": "video",
+        "group": "broadcast_indoor_hard",
+        "num_windows": 10,
+        "valid_window_occurrences": 1022,
+        "model_error_m": 6.158346159477112,
+        "train_mean_error_m": 6.120594197063056,
+        "model_minus_train_mean_error_m": 0.037751962414056095
+      },
+      {
+        "group_type": "video",
+        "group": "video_001",
+        "num_windows": 33,
+        "valid_window_occurrences": 3243,
+        "model_error_m": 7.3264901233573845,
+        "train_mean_error_m": 7.320961378988931,
+        "model_minus_train_mean_error_m": 0.005528744368453076
+      }
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "status": "done",
+  "evaluation_root": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001",
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/evaluation_config.yaml": "d2fc420f9a939140a5189e1dc2fba61f4fac45babfb3de43e9300a96267049f4",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/selection.json": "a820d0b30c43ad37b5a3458ed11874f7055986c928ac80e493aa71abb9dd587e",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/full/metrics.json": "b7976b7c95969d52ae8b4bcfbd908f71531a0152680673c16ef25fc962628ac7",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/full/eval_arrays.npz": "d556cc9dcb33ab07f91248a32148a91b94fb8521862d7f54630168c35ea74682",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/no_rgb/metrics.json": "8a70da4e92e87103ee3484c1adf037aa3cb456296d7db37ebecc278976587acb",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/no_rgb/eval_arrays.npz": "3077f3b0855e0707d028fa8de5bedd90fc7f4817f9c5ca3d129d57c09f5706f2",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/detector_gap/metrics.json": "89fbd76eff44344f088f56da263a4fc0b2904c17aad99e0538302e933ad754fe",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/detector_gap/eval_arrays.npz": "2f2891ef1e5ff0ee60fbe690933d23adb4ad45a2202612d646fd2e433d34c0fa",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/rgb_only/metrics.json": "b0f21167ea39f3d48f521a2dbce5d2714892d47d2ad76235f1c189605bea60ba",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/rgb_only/eval_arrays.npz": "f86f16581a181d8de70824987cf15b6b9a4ab8b5ab4274cfd2326e4864e75813"
+  }
+}

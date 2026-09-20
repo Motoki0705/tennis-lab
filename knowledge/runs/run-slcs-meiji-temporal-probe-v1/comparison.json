@@ -1,0 +1,201 @@
+{
+  "status": "incomplete",
+  "pending_clips": [
+    "video_000/clip_001"
+  ],
+  "scope": "positive teacher and final SLCS frame weights; no independent measured 3D accuracy; a changed producer receipt confounds attribution to association alone",
+  "quality": {
+    "min_player_confidence": 0.3,
+    "min_ball_cameras": 1,
+    "label_weight_power": 1.0,
+    "min_window_label_ratio": 0.5
+  },
+  "results": [
+    {
+      "clip_id": "video_000/clip_007",
+      "versions": {
+        "v6": {
+          "player_teacher_fraction": [
+            0.8757668711656442,
+            0.9892638036809815
+          ],
+          "player_slcs_frame_fraction": [
+            0.8757668711656442,
+            0.9892638036809815
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            81,
+            5
+          ],
+          "ball_teacher_fraction": 0.7714723926380368,
+          "scene_sha256": "87ee2bbc0114d7483377c73cbbeff87033f1ab2c55f322ce7b5ccb420305e454"
+        },
+        "v7": {
+          "player_teacher_fraction": [
+            1.0,
+            0.9892638036809815
+          ],
+          "player_slcs_frame_fraction": [
+            1.0,
+            0.9892638036809815
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            0,
+            5
+          ],
+          "ball_teacher_fraction": 0.7714723926380368,
+          "scene_sha256": "c14843d549d4b4bae6a92f41f2fd5276a6d4e765f6ab9f3758ae025716e79dc1"
+        }
+      },
+      "controls": {
+        "ball_max_absolute_difference_m": 0.0,
+        "ball_uv_identical": true,
+        "court_identical": true,
+        "teacher_checkpoints_identical": true
+      },
+      "changed_pose_checkpoint_receipts": [],
+      "p0_supported_frames_571_through_651": {
+        "v6": 0,
+        "v7": 81
+      }
+    },
+    {
+      "clip_id": "video_001/clip_001",
+      "versions": {
+        "v6": {
+          "player_teacher_fraction": [
+            1.0,
+            0.9815384615384616
+          ],
+          "player_slcs_frame_fraction": [
+            1.0,
+            0.9815384615384616
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            0,
+            4
+          ],
+          "ball_teacher_fraction": 0.83,
+          "scene_sha256": "2583b9f286488e841dc56bb0180a66e5abf9190b4613a5d998a71dd9d1d0e361"
+        },
+        "v7": {
+          "player_teacher_fraction": [
+            1.0,
+            0.9815384615384616
+          ],
+          "player_slcs_frame_fraction": [
+            1.0,
+            0.9815384615384616
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            0,
+            4
+          ],
+          "ball_teacher_fraction": 0.83,
+          "scene_sha256": "0b348ccf0c8548b0d3b8710bcf452e6f4e5cedb81d6a87191c41c40746bd7ba4"
+        }
+      },
+      "controls": {
+        "ball_max_absolute_difference_m": 3.814697265625e-06,
+        "ball_uv_identical": true,
+        "court_identical": true,
+        "teacher_checkpoints_identical": true
+      },
+      "changed_pose_checkpoint_receipts": [
+        {
+          "camera": "cam2",
+          "old_sha256": "fd0a266e2cf40e33aa7ad8805d2d794db52371d4f96c7506469ea1867b5a2ca6",
+          "new_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_009",
+      "versions": {
+        "v6": {
+          "player_teacher_fraction": [
+            1.0,
+            0.9879032258064516
+          ],
+          "player_slcs_frame_fraction": [
+            1.0,
+            0.967741935483871
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            0,
+            6
+          ],
+          "ball_teacher_fraction": 0.8454301075268817,
+          "scene_sha256": "085e346a3482cb72bb6b06babe74f38306e1cde5cc58f549e376a244cafb21d5"
+        },
+        "v7": {
+          "player_teacher_fraction": [
+            1.0,
+            0.9865591397849462
+          ],
+          "player_slcs_frame_fraction": [
+            1.0,
+            0.9663978494623656
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            0,
+            6
+          ],
+          "ball_teacher_fraction": 0.8454301075268817,
+          "scene_sha256": "6ac4c85c10533f5c7cb6318e56d0e038b3c102336ea334bf8c0a2a7d20530683"
+        }
+      },
+      "controls": {
+        "ball_max_absolute_difference_m": 0.0,
+        "ball_uv_identical": true,
+        "court_identical": true,
+        "teacher_checkpoints_identical": true
+      },
+      "changed_pose_checkpoint_receipts": []
+    },
+    {
+      "clip_id": "video_001/clip_000",
+      "versions": {
+        "v6": {
+          "player_teacher_fraction": [
+            0.7697568389057751,
+            0.9741641337386018
+          ],
+          "player_slcs_frame_fraction": [
+            0.7697568389057751,
+            0.9741641337386018
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            235,
+            4
+          ],
+          "ball_teacher_fraction": 0.8183890577507599,
+          "scene_sha256": "a23a2b649155943528a1c301a1e691b7cf12d9f0bd3863fc79a9e8f6c0aeffed"
+        },
+        "v7": {
+          "player_teacher_fraction": [
+            0.9969604863221885,
+            0.9741641337386018
+          ],
+          "player_slcs_frame_fraction": [
+            0.9969604863221885,
+            0.9741641337386018
+          ],
+          "longest_unsupported_slcs_player_gap": [
+            4,
+            4
+          ],
+          "ball_teacher_fraction": 0.8183890577507599,
+          "scene_sha256": "ba7f11dffc1e29574b12c613ce5ba817834c9fbdf481f5563581bc2c5e055c2f"
+        }
+      },
+      "controls": {
+        "ball_max_absolute_difference_m": 0.0,
+        "ball_uv_identical": true,
+        "court_identical": true,
+        "teacher_checkpoints_identical": true
+      },
+      "changed_pose_checkpoint_receipts": []
+    }
+  ]
+}

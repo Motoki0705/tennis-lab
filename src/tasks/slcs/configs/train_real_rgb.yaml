@@ -1,0 +1,34 @@
+defaults:
+  - train
+  - _self_
+model:
+  hidden_dim: 128
+  num_shared_layers: 4
+  num_heads: 4
+  ffn_dim: 384
+  rope_dim: 32
+  dino_patch_downsample_factor: 2
+  dino_cross_attn_every: 1
+data:
+  dataset_root: slcs/real_rgb_v1
+  split_file: slcs/real_rgb_v1/splits.json
+  batch_size: 16
+  num_workers: 2
+  quality:
+    min_window_label_ratio: 0.5
+  augmentation:
+    enabled: true
+training:
+  trainer:
+    max_epochs: 60
+    enable_progress_bar: false
+  learning_rate: 0.0003
+  warmup_steps: 200
+  checkpoint:
+    monitor: val/scene_position_error_m_epoch
+  early_stopping:
+    enabled: false
+  compile:
+    enabled: false
+run:
+  output_dir: ${tennis_output:slcs,train,real_rgb,${tennis_run_id:}}

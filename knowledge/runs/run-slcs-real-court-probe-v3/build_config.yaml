@@ -1,0 +1,46 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: /home/kamimura/projects/tennis-lab/third_party
+clip_dir: tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000
+output_dir: tennis_scene/evaluate/court_meiji/probe-v3-context
+device: cuda:0
+stage: all
+reference_camera: cam0
+view_half_turns:
+- false
+- false
+- true
+people:
+  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  dino_repository: DINO
+  vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+  confidence: 0.3
+  short_side: 800
+  max_long_side: 1333
+  batch_size: 8
+plcs_checkpoint: plcs/plcs-axial-reference-corners-v3-4-t128-seed42-epoch47.ckpt
+blcs_checkpoint: blcs/blcs-axial-reference-kp14-corners-v3-4-t128-seed42-best.ckpt
+window_size: 128
+window_overlap: 64
+sample_stride: 2
+pose_visibility_threshold: 0.15
+dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
+dataset_output_directory: slcs/meiji_rgb_v1
+clip_ids:
+- video_000/clip_000
+seed: 42
+court:
+  checkpoint: court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
+  samples_per_clip: 9
+  min_score: 0.15
+  min_points: 6
+  ransac_px: 20.0
+  max_fit_error_px: 30.0
+features:
+  enabled: true
+  checkpoint: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth

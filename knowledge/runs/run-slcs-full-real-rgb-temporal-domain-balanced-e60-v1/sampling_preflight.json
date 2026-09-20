@@ -1,0 +1,755 @@
+{
+  "profile": "train_real_rgb_temporal_domain_balanced",
+  "source_commit": "760195c0",
+  "direct_control_profile": "train_real_rgb_ball_temporal_context",
+  "profile_difference": "domain_sampling and run.output_dir only",
+  "seed": 42,
+  "require_dino": true,
+  "cache_dino_tokens_for_this_preflight": false,
+  "train_windows": 466,
+  "train_batches": 30,
+  "planned_epochs": 60,
+  "planned_steps": 1800,
+  "build_report": {
+    "clips_in_split": 15,
+    "clips_loaded": 15,
+    "clips_skipped_incomplete": 0,
+    "windows_total": 466,
+    "windows_dropped_low_label": 0
+  },
+  "domain_counts": {
+    "broadcast": 40,
+    "meiji": 426
+  },
+  "video_counts": {
+    "broadcast_shanghai": 25,
+    "broadcast_washington": 15,
+    "video_000": 426
+  },
+  "total_draws": {
+    "broadcast": 13917,
+    "meiji": 14043
+  },
+  "epochs": [
+    {
+      "epoch_zero_based": 0,
+      "draw_counts": {
+        "broadcast": 243,
+        "meiji": 223
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 170
+      },
+      "draw_indices_sha256": "c17f5520e4de1fc5870581a3cf92233a93673da4bc80e00ce93b8c4eb25ac08b"
+    },
+    {
+      "epoch_zero_based": 1,
+      "draw_counts": {
+        "meiji": 229,
+        "broadcast": 237
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 175
+      },
+      "draw_indices_sha256": "34b01eb1d422ed0bd8636303114194958bfefd9e78ca1461aa491ec187183034"
+    },
+    {
+      "epoch_zero_based": 2,
+      "draw_counts": {
+        "meiji": 247,
+        "broadcast": 219
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 184
+      },
+      "draw_indices_sha256": "85f51008b474f4e0fa13d6a6d99d7a8a834e4aa892e6aaafcc0563db1f42ff0c"
+    },
+    {
+      "epoch_zero_based": 3,
+      "draw_counts": {
+        "broadcast": 244,
+        "meiji": 222
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 166
+      },
+      "draw_indices_sha256": "ff46814927bc09b708bd45a219701a23d5f7fcc5c02172b455489c3636029d23"
+    },
+    {
+      "epoch_zero_based": 4,
+      "draw_counts": {
+        "broadcast": 215,
+        "meiji": 251
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 192
+      },
+      "draw_indices_sha256": "22a7dcdaff53d45615eedabc1cbde5486fcba48c86044b0f1a8fbe113925da78"
+    },
+    {
+      "epoch_zero_based": 5,
+      "draw_counts": {
+        "broadcast": 257,
+        "meiji": 209
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 171
+      },
+      "draw_indices_sha256": "d6c9ae3b3b08384b788b528c6a79bedab4545f4fa510dbdccc2bafe843b06ade"
+    },
+    {
+      "epoch_zero_based": 6,
+      "draw_counts": {
+        "meiji": 257,
+        "broadcast": 209
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 191
+      },
+      "draw_indices_sha256": "a56d572fe54d2f0d448f72134c15a4e64895e922f78793d6728848696c779e33"
+    },
+    {
+      "epoch_zero_based": 7,
+      "draw_counts": {
+        "broadcast": 235,
+        "meiji": 231
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 177
+      },
+      "draw_indices_sha256": "d576401e95847818d060d0f4e0c1e436019a765d3003d2e2ff1d0cb16a8ec8a1"
+    },
+    {
+      "epoch_zero_based": 8,
+      "draw_counts": {
+        "meiji": 248,
+        "broadcast": 218
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 196
+      },
+      "draw_indices_sha256": "286357a246393be9e038cb66159e4b5eb6dfe44e9cafc645246ca47e0aafba45"
+    },
+    {
+      "epoch_zero_based": 9,
+      "draw_counts": {
+        "meiji": 231,
+        "broadcast": 235
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 181
+      },
+      "draw_indices_sha256": "b8684e93ac63fec86c0b017a8d3159e9726cf3d1a3842146da6a10ba8184800a"
+    },
+    {
+      "epoch_zero_based": 10,
+      "draw_counts": {
+        "meiji": 243,
+        "broadcast": 223
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 194
+      },
+      "draw_indices_sha256": "15c98144deafc65e5bcd625dca76e080764f4154c90cafbeb01168f04fbe1f31"
+    },
+    {
+      "epoch_zero_based": 11,
+      "draw_counts": {
+        "meiji": 238,
+        "broadcast": 228
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 179
+      },
+      "draw_indices_sha256": "16135c148541bc17207b2d069ce0e5eedf46e54302d65f5b8c6ae829708324ca"
+    },
+    {
+      "epoch_zero_based": 12,
+      "draw_counts": {
+        "meiji": 249,
+        "broadcast": 217
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 186
+      },
+      "draw_indices_sha256": "627891c94cd9037635eb251a75885c3604eb7801e211a43813449377f26680e0"
+    },
+    {
+      "epoch_zero_based": 13,
+      "draw_counts": {
+        "meiji": 224,
+        "broadcast": 242
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 170
+      },
+      "draw_indices_sha256": "82f2e68cf9937aacd0d1711592f5ef32592abb2a8e5d1b2bc82ea10d5e701294"
+    },
+    {
+      "epoch_zero_based": 14,
+      "draw_counts": {
+        "meiji": 208,
+        "broadcast": 258
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 162
+      },
+      "draw_indices_sha256": "55bd7f270442ea53e0bde86514a799219b2be7a996d126f3718c414139bb4429"
+    },
+    {
+      "epoch_zero_based": 15,
+      "draw_counts": {
+        "meiji": 227,
+        "broadcast": 239
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 179
+      },
+      "draw_indices_sha256": "ce5fcaba4cde2cc51305b768ce88a325713e3b2bf51a32373e310ef8aaed2f0d"
+    },
+    {
+      "epoch_zero_based": 16,
+      "draw_counts": {
+        "meiji": 215,
+        "broadcast": 251
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 166
+      },
+      "draw_indices_sha256": "2df5e3e63f984ceae1e24c4b76da5ff98b81805cc20c8a02953a559f53288a41"
+    },
+    {
+      "epoch_zero_based": 17,
+      "draw_counts": {
+        "broadcast": 232,
+        "meiji": 234
+      },
+      "unique_window_counts": {
+        "broadcast": 39,
+        "meiji": 181
+      },
+      "draw_indices_sha256": "a866eec769c9b52fd3609b8a0dc700289027dd18c31bedef81b72bfdfb8b68b4"
+    },
+    {
+      "epoch_zero_based": 18,
+      "draw_counts": {
+        "broadcast": 219,
+        "meiji": 247
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 178
+      },
+      "draw_indices_sha256": "875697722d30acf206de6134a2dc0286bf3b1975454e2813b2ac01408d0543e4"
+    },
+    {
+      "epoch_zero_based": 19,
+      "draw_counts": {
+        "meiji": 232,
+        "broadcast": 234
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 186
+      },
+      "draw_indices_sha256": "32ee18d22868e0879cc4d29bc3602e14b197c8be5957ad39ddf33d0cf0ff1fea"
+    },
+    {
+      "epoch_zero_based": 20,
+      "draw_counts": {
+        "broadcast": 230,
+        "meiji": 236
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "1f897fd2cf86dfe43b52ab83406b939c48531c84104ff8bad06e152a6b7620f0"
+    },
+    {
+      "epoch_zero_based": 21,
+      "draw_counts": {
+        "broadcast": 243,
+        "meiji": 223
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 166
+      },
+      "draw_indices_sha256": "b46dfb5551dd78f2b094d0f62961d878aef4d40c5f9e614b5666225179c7d0f4"
+    },
+    {
+      "epoch_zero_based": 22,
+      "draw_counts": {
+        "broadcast": 228,
+        "meiji": 238
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 186
+      },
+      "draw_indices_sha256": "ddfd413caf37896f7915fe8bafc6a14a2d5881ae1f6293783c7e0a69cd2e758b"
+    },
+    {
+      "epoch_zero_based": 23,
+      "draw_counts": {
+        "meiji": 234,
+        "broadcast": 232
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 181
+      },
+      "draw_indices_sha256": "2da339f0c25a6c91e7eea88987c34479b8e738f5acc419c5a5c4d3356af76608"
+    },
+    {
+      "epoch_zero_based": 24,
+      "draw_counts": {
+        "meiji": 231,
+        "broadcast": 235
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 179
+      },
+      "draw_indices_sha256": "145a04c341c2977ef2e6ecb98477010ccfe3f4e4f130031297bfb4f570670685"
+    },
+    {
+      "epoch_zero_based": 25,
+      "draw_counts": {
+        "meiji": 246,
+        "broadcast": 220
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "ceaf5138a55a982c48f4b77609862af285cff2d501dc73cabdd95eb00878852f"
+    },
+    {
+      "epoch_zero_based": 26,
+      "draw_counts": {
+        "broadcast": 221,
+        "meiji": 245
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 186
+      },
+      "draw_indices_sha256": "2a15bfb99baba5cbf460d02e474788467bee7b373a464b3f8133e06cba3ae152"
+    },
+    {
+      "epoch_zero_based": 27,
+      "draw_counts": {
+        "meiji": 243,
+        "broadcast": 223
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 185
+      },
+      "draw_indices_sha256": "3b6e9a8e465d92d9cf556625a04553c8fe16b818d47da549d073cb3a466612d6"
+    },
+    {
+      "epoch_zero_based": 28,
+      "draw_counts": {
+        "broadcast": 232,
+        "meiji": 234
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 178
+      },
+      "draw_indices_sha256": "068116a27ba82b9122989db0b6c29f0086192fe05d46bcf217721af4d13c9f53"
+    },
+    {
+      "epoch_zero_based": 29,
+      "draw_counts": {
+        "broadcast": 228,
+        "meiji": 238
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 177
+      },
+      "draw_indices_sha256": "652254f60e3c5a0003bc95357739d2b3a8e524a43f55ab84bcea58618ab1cec0"
+    },
+    {
+      "epoch_zero_based": 30,
+      "draw_counts": {
+        "meiji": 229,
+        "broadcast": 237
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 171
+      },
+      "draw_indices_sha256": "fcc34103574c8af35ad6a310fd4d3de6fc267b083923c810aef7bab7b4fb22c3"
+    },
+    {
+      "epoch_zero_based": 31,
+      "draw_counts": {
+        "broadcast": 230,
+        "meiji": 236
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 173
+      },
+      "draw_indices_sha256": "ab40dfcaed88fd9bdf8850649d4e523af1f4376b117016eb04ae8318dcc215b7"
+    },
+    {
+      "epoch_zero_based": 32,
+      "draw_counts": {
+        "broadcast": 229,
+        "meiji": 237
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 191
+      },
+      "draw_indices_sha256": "328bab918472c0a3056de94c3b68718972d7c4d02148b2311a5d230005bf7559"
+    },
+    {
+      "epoch_zero_based": 33,
+      "draw_counts": {
+        "broadcast": 233,
+        "meiji": 233
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 176
+      },
+      "draw_indices_sha256": "73e7feb765dfe4fc527ca5fed4dd181d8254a88345ec88be49c81da27cdc5c1f"
+    },
+    {
+      "epoch_zero_based": 34,
+      "draw_counts": {
+        "meiji": 247,
+        "broadcast": 219
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 189
+      },
+      "draw_indices_sha256": "8d3a45fa8f15f294c45cc9d5e6511d209a55da8368999db173fb55014b9fb793"
+    },
+    {
+      "epoch_zero_based": 35,
+      "draw_counts": {
+        "broadcast": 222,
+        "meiji": 244
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "a0d7817a4c82cc8f63807cc86ec45f22ac033925fcd8c6b7962594dbc1696d96"
+    },
+    {
+      "epoch_zero_based": 36,
+      "draw_counts": {
+        "meiji": 238,
+        "broadcast": 228
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 191
+      },
+      "draw_indices_sha256": "4dfb58e02dc87abc7646167b4ff2836953a2f841a29d87106875beb17efec6c5"
+    },
+    {
+      "epoch_zero_based": 37,
+      "draw_counts": {
+        "broadcast": 231,
+        "meiji": 235
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 172
+      },
+      "draw_indices_sha256": "ea2800eb8c30fb0dbe18cc9d4c62aaa3845dc5b8ef946e4233ba38fea2e28d97"
+    },
+    {
+      "epoch_zero_based": 38,
+      "draw_counts": {
+        "meiji": 234,
+        "broadcast": 232
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "12d042b216eb0a5b3d5d9695d3a74b951771e71534237822b51d958708191ccd"
+    },
+    {
+      "epoch_zero_based": 39,
+      "draw_counts": {
+        "meiji": 231,
+        "broadcast": 235
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 177
+      },
+      "draw_indices_sha256": "83cfbaafcf6f525129499724c3d24b68707e4700acb56602019e8a1946200eff"
+    },
+    {
+      "epoch_zero_based": 40,
+      "draw_counts": {
+        "meiji": 233,
+        "broadcast": 233
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 183
+      },
+      "draw_indices_sha256": "d32466583ad42ba4478a44a46b89684e8e6cf845999c85660469bccacfd64b43"
+    },
+    {
+      "epoch_zero_based": 41,
+      "draw_counts": {
+        "broadcast": 234,
+        "meiji": 232
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 175
+      },
+      "draw_indices_sha256": "d79f9bc52b94a826b671f208fa7c561e399f9a4f743f4a01f21d7ffff2e619f0"
+    },
+    {
+      "epoch_zero_based": 42,
+      "draw_counts": {
+        "broadcast": 216,
+        "meiji": 250
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 192
+      },
+      "draw_indices_sha256": "9d42a686a74d00f98fd57be2ca4ceb2654061ed5845ba14660a0acb0a2d76695"
+    },
+    {
+      "epoch_zero_based": 43,
+      "draw_counts": {
+        "meiji": 228,
+        "broadcast": 238
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 182
+      },
+      "draw_indices_sha256": "1e2ed5c0d7902fec7b9309f28175f623edb4bb9ce06a378f4274da976fed5b38"
+    },
+    {
+      "epoch_zero_based": 44,
+      "draw_counts": {
+        "meiji": 236,
+        "broadcast": 230
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 186
+      },
+      "draw_indices_sha256": "c78c8faa9fc19e2334ceeb3432b91163de488411613f7c96e00e0dcf9b5dcddd"
+    },
+    {
+      "epoch_zero_based": 45,
+      "draw_counts": {
+        "broadcast": 249,
+        "meiji": 217
+      },
+      "unique_window_counts": {
+        "broadcast": 39,
+        "meiji": 166
+      },
+      "draw_indices_sha256": "44fa70ff58f1c20814074629fa0d6047fbb961ed2b42051231e42f32851ee67b"
+    },
+    {
+      "epoch_zero_based": 46,
+      "draw_counts": {
+        "broadcast": 240,
+        "meiji": 226
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 174
+      },
+      "draw_indices_sha256": "468752547f4ae4ae85feed0443f2ccdd706870a77e390118db551da40ae89d2d"
+    },
+    {
+      "epoch_zero_based": 47,
+      "draw_counts": {
+        "broadcast": 231,
+        "meiji": 235
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "cc8999778a6392a471473e83889640d9f6f5fd0a4b2b8bfe6b171291dbf52d85"
+    },
+    {
+      "epoch_zero_based": 48,
+      "draw_counts": {
+        "broadcast": 236,
+        "meiji": 230
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 175
+      },
+      "draw_indices_sha256": "3bb757c64ed8cde13aa348c7196d3c0afef588c13b716da4dac3d7d083f521f6"
+    },
+    {
+      "epoch_zero_based": 49,
+      "draw_counts": {
+        "meiji": 233,
+        "broadcast": 233
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "48162d302738a14648c9006743638df8057e44870f462cdad84aaadf3966bb37"
+    },
+    {
+      "epoch_zero_based": 50,
+      "draw_counts": {
+        "broadcast": 246,
+        "meiji": 220
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 182
+      },
+      "draw_indices_sha256": "dbf1be5b9a001881dd762f4e5e52cea9a7d762161637d4b9c11fd5ff04b16c90"
+    },
+    {
+      "epoch_zero_based": 51,
+      "draw_counts": {
+        "meiji": 242,
+        "broadcast": 224
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 187
+      },
+      "draw_indices_sha256": "561c8b1017b8f030904aba0b5b634af6865404f6d0fc5a4481def4305c7178ef"
+    },
+    {
+      "epoch_zero_based": 52,
+      "draw_counts": {
+        "broadcast": 219,
+        "meiji": 247
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 184
+      },
+      "draw_indices_sha256": "f40255a67debe0dd82336db173af163896acc1091b9e1fbaa4b9facceb0ea730"
+    },
+    {
+      "epoch_zero_based": 53,
+      "draw_counts": {
+        "meiji": 232,
+        "broadcast": 234
+      },
+      "unique_window_counts": {
+        "broadcast": 39,
+        "meiji": 180
+      },
+      "draw_indices_sha256": "dfcff932577ff9f189f7e0967a102905e9e8a04090c88daec17fc2a509f7388d"
+    },
+    {
+      "epoch_zero_based": 54,
+      "draw_counts": {
+        "meiji": 219,
+        "broadcast": 247
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 166
+      },
+      "draw_indices_sha256": "79ce4d65f2fc2014bd0a9237b4092c92dd389c3be2d1f032fd8e37445c69a320"
+    },
+    {
+      "epoch_zero_based": 55,
+      "draw_counts": {
+        "broadcast": 222,
+        "meiji": 244
+      },
+      "unique_window_counts": {
+        "broadcast": 39,
+        "meiji": 188
+      },
+      "draw_indices_sha256": "cfb5e70b859b3beba4997cb0c50e2cc264efade1c12ef32e9ed1b599f1d47c62"
+    },
+    {
+      "epoch_zero_based": 56,
+      "draw_counts": {
+        "meiji": 228,
+        "broadcast": 238
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 184
+      },
+      "draw_indices_sha256": "7258d1bd866a3938ac43350ba4498efb30b0a23ec5d7d2a4fdb9cf4787eae31d"
+    },
+    {
+      "epoch_zero_based": 57,
+      "draw_counts": {
+        "meiji": 244,
+        "broadcast": 222
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 189
+      },
+      "draw_indices_sha256": "5c8f8ee3631b46a63d002ef3f8c411609de5104abaf9e6180735c6a83cf7562e"
+    },
+    {
+      "epoch_zero_based": 58,
+      "draw_counts": {
+        "meiji": 229,
+        "broadcast": 237
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 181
+      },
+      "draw_indices_sha256": "0b6b999bf9c6513a2956fedf7b4911304974c6a4a42e07aec0d7ebd3966e5c33"
+    },
+    {
+      "epoch_zero_based": 59,
+      "draw_counts": {
+        "meiji": 221,
+        "broadcast": 245
+      },
+      "unique_window_counts": {
+        "broadcast": 40,
+        "meiji": 165
+      },
+      "draw_indices_sha256": "5ee907acbdf6045350ea194c8f5197da88d9c6a0914bd07dd6de7245a5f2a88a"
+    }
+  ]
+}

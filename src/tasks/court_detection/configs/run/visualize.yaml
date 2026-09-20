@@ -1,2 +1,2 @@
-output_dir: court_detection/visualization
+output_dir: ${tennis_output:court_detection,visualize,default,${tennis_run_id:}}
 device: auto

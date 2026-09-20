@@ -18,6 +18,9 @@ def _model(
     num_position_layers: int = 0,
     num_rotation_layers: int = 0,
     ffn_type: FFNType = "swiglu",
+    missing_ball_court_context: bool = False,
+    missing_ball_temporal_context: bool = False,
+    missing_ball_one_sided_context: bool = False,
 ) -> SLCSFusionModel:
     return SLCSFusionModel(
         hidden_dim=32,
@@ -43,6 +46,9 @@ def _model(
         dino_cross_attn_every=1,
         log_b_min=-6.0,
         log_b_max=3.0,
+        missing_ball_court_context=missing_ball_court_context,
+        missing_ball_temporal_context=missing_ball_temporal_context,
+        missing_ball_one_sided_context=missing_ball_one_sided_context,
     )
 
 
@@ -106,6 +112,73 @@ def test_fully_split_trunks_isolate_position_and_rotation_gradients() -> None:
     assert all(
         parameter.grad is None for parameter in model.rotation_entity_layers.parameters()
     )
+
+
+def test_missing_ball_context_zero_init_preserves_rng_state_and_all_outputs() -> None:
+    torch.manual_seed(42)
+    legacy = _model(num_shared_layers=1).eval()
+    legacy_rng = torch.get_rng_state()
+    torch.manual_seed(42)
+    enabled = _model(num_shared_layers=1, missing_ball_court_context=True).eval()
+    assert torch.equal(legacy_rng, torch.get_rng_state())
+    assert set(enabled.state_dict()) - set(legacy.state_dict()) == {
+        "missing_ball_context.weight"
+    }
+    for key, value in legacy.state_dict().items():
+        assert torch.equal(value, enabled.state_dict()[key])
+    restored = _model(num_shared_layers=1).eval()
+    restored.load_state_dict(legacy.state_dict(), strict=True)
+    inputs = _inputs()
+    inputs["ball_vis"][:, 2:6] = False
+    inputs["court_vis"][:, 3] = 0
+    inputs["padding_mask"][:, -1] = True
+    with torch.no_grad():
+        expected = legacy(**inputs)
+        actual = enabled(**inputs)
+        checkpoint_output = restored(**inputs)
+    for key in expected:
+        assert torch.equal(expected[key], actual[key]), key
+        assert torch.equal(expected[key], checkpoint_output[key]), key
+
+
+def test_missing_ball_context_is_trained_through_full_model() -> None:
+    model = _model(num_shared_layers=1, missing_ball_court_context=True)
+    inputs = _inputs()
+    inputs["ball_vis"][:, 2:6] = False
+    model(**inputs)["ball_position"].square().sum().backward()
+    assert model.missing_ball_context is not None
+    grad = model.missing_ball_context.weight.grad
+    assert grad is not None and torch.isfinite(grad).all() and grad.abs().sum() > 0
+
+
+def test_missing_ball_context_ignores_invalid_observation_values() -> None:
+    model = _model(num_shared_layers=1, missing_ball_court_context=True).eval()
+    assert model.missing_ball_context is not None
+    with torch.no_grad():
+        model.missing_ball_context.weight.normal_()
+    inputs = _inputs()
+    inputs["ball_vis"][:, 2:6] = False
+    inputs["court_vis"][:, :, :7] = 0
+    changed = {key: value.clone() for key, value in inputs.items()}
+    changed["ball_uv"][:, 2:6] = 1234
+    changed["court_kp"][:, :, :7] = -5678
+    with torch.no_grad():
+        expected = model(**inputs)
+        actual = model(**changed)
+    for key in expected:
+        assert torch.equal(expected[key], actual[key]), key
+
+
+def test_missing_ball_context_leaves_fully_observed_model_outputs_unchanged() -> None:
+    model = _model(num_shared_layers=1, missing_ball_court_context=True).eval()
+    inputs = _inputs()
+    with torch.no_grad():
+        expected = model(**inputs)
+        assert model.missing_ball_context is not None
+        model.missing_ball_context.weight.normal_()
+        actual = model(**inputs)
+    for key in expected:
+        assert torch.equal(expected[key], actual[key]), key
 
 
 def test_all_shared_configuration_has_no_task_trunk_parameters() -> None:

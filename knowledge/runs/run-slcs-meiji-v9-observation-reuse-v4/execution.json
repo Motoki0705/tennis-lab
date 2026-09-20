@@ -1,0 +1,24 @@
+{
+  "commit": "0e2c252a86fd2068849ac9a8d59636d39db1b530",
+  "command": [
+    ".venv/bin/python",
+    "knowledge/runs/run-slcs-meiji-v9-observation-reuse-v4/reuse.py",
+    "--source",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004",
+    "--target",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_observation_reuse/s42-004"
+  ],
+  "environment": {
+    "PYTHONPATH": ".",
+    "CUDA_VISIBLE_DEVICES": "",
+    "OMP_NUM_THREADS": "4",
+    "MKL_NUM_THREADS": "4"
+  },
+  "started_at": "2026-09-18T23:49:59.474789+00:00",
+  "finished_at": "2026-09-18T23:52:06.337057+00:00",
+  "elapsed_seconds": 134.96623973200622,
+  "returncode": 0,
+  "attempts": 1
+}

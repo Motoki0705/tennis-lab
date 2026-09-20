@@ -1,0 +1,16 @@
+{
+  "run_id": "1789809294678939765_618256_slcs-full-real-rgb-one-sided-context-e60-v1",
+  "name": "slcs-full-real-rgb-one-sided-context-e60-v1",
+  "command": "env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -m src.tasks.slcs.scripts.train --config-name train_real_rgb_one_sided_context paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs run.output_dir=slcs/train/real_rgb_one_sided_context/s42-001",
+  "provider": "codex",
+  "session": "01a0b71f-c516-75b2-ac58-0c92e8a4f098",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-19T18:14:54+09:00"
+}

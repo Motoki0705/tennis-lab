@@ -1,7 +1,7 @@
 task: seg
 image_source: court/images
 checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
-save: court_detection/seg.gif
+save: ${run.output_dir}/seg.gif
 fps: 6
 max_frames: 24
 info: false

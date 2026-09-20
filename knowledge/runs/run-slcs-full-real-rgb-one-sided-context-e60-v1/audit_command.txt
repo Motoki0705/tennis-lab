@@ -1,0 +1,61 @@
+env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python - <<'PY'
+from pathlib import Path
+import hashlib,json,math,subprocess
+import torch
+from omegaconf import OmegaConf
+from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+from src.tasks.slcs.evaluation.run_evaluation import select_checkpoint
+root=Path('/home/kamimura/projects/tennis-lab')
+run=root/'outputs/slcs/train/real_rgb_one_sided_context/s42-001'
+job='1789809294678939765_618256_slcs-full-real-rgb-one-sided-context-e60-v1'
+q=root/'.training_queue'
+receipt=(q/'state'/f'{job}.state').read_text()
+assert 'state=done' in receipt, receipt
+pgids={int(x) for x in subprocess.check_output(['ps','-eo','pgid='],text=True).split()}
+assert 618368 not in pgids
+assert (q/'done'/f'{job}.job').is_file()
+assert (q/'repro'/job/'uncommitted.patch').stat().st_size==0
+assert (q/'repro'/job/'git_status.txt').stat().st_size==0
+checkpoint,selection=select_checkpoint(run)
+last=torch.load(selection['last_checkpoint'],map_location='cpu',weights_only=False)
+selected=torch.load(checkpoint,map_location='cpu',weights_only=False)
+assert last['epoch']==59 and last['global_step']==1800
+
+def audit(state):
+    counts={'floating_tensors':0,'floating_values':0}; bad=[]
+    def visit(value,path):
+        if isinstance(value,torch.Tensor) and (value.is_floating_point() or value.is_complex()):
+            counts['floating_tensors']+=1; counts['floating_values']+=value.numel()
+            if not torch.isfinite(value).all(): bad.append({'path':path,'value':float(value) if value.numel()==1 else 'non-scalar'})
+        elif isinstance(value,dict):
+            for k,v in value.items(): visit(v,path+'/'+str(k))
+        elif isinstance(value,(list,tuple)):
+            for i,v in enumerate(value): visit(v,path+'/'+str(i))
+        elif isinstance(value,float) and not math.isfinite(value): bad.append({'path':path,'value':value})
+    visit(state,'')
+    assert len(bad)==1 and "/callbacks/ModelCheckpoint{'monitor': None" in bad[0]['path'] and bad[0]['path'].endswith('/kth_value') and bad[0]['value']==float('inf'), bad
+    return {**counts,'only_nonfinite':{'path':bad[0]['path'],'value':'positive infinity','reason':'unmonitored last-checkpoint saver kth_value sentinel'}}
+
+def sha(p): return hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+config=OmegaConf.to_container(OmegaConf.load(run/'config.yaml'),resolve=True)
+assert config['model']['missing_ball_one_sided_context'] is True
+assert config['model']['missing_ball_temporal_context'] is True
+assert config['data']['domain_sampling']['enabled'] is False
+assert config['training']['trainer']['max_epochs']==60
+acc=EventAccumulator(str(run/'logs/version_0'),size_guidance={'scalars':0}); acc.Reload()
+tags=['train/ball_position_error_m_epoch','train/player_position_error_m_epoch','val/ball_position_error_m_epoch','val/player_position_error_m_epoch','val/scene_position_error_m_epoch','train/loss_epoch','val/loss']
+curves={}
+epoch=selection['selected']['epoch_zero_based']
+for tag in tags:
+    events=acc.Scalars(tag)
+    assert len(events)==60 and events[-1].step==1799 and all(math.isfinite(e.value) for e in events),(tag,len(events))
+    curves[tag]={'points':len(events),'last_step':events[-1].step,'last':events[-1].value,'selected_epoch_value':events[epoch].value,'minimum':min(e.value for e in events),'minimum_epoch':min(range(len(events)),key=lambda i:events[i].value)}
+assert abs(curves['val/scene_position_error_m_epoch']['selected_epoch_value']-selection['selected']['validation_score'])<1e-6
+weights={}
+for key in ['model.missing_ball_temporal_context.weight','model.missing_ball_one_sided_context.weight']:
+    w=selected['state_dict'][key]
+    assert torch.isfinite(w).all() and int(torch.count_nonzero(w))>0
+    weights[key]={'shape':list(w.shape),'nonzero':int(torch.count_nonzero(w)),'l1':float(w.abs().sum()),'l2':float(w.norm()),'max_abs':float(w.abs().max())}
+summary={'job_id':job,'training_run':str(run),'source_commit':json.loads((q/'repro'/job/'run.json').read_text())['commit'],'terminal_state':receipt,'pgid_absent':618368,'epochs_completed':60,'optimizer_steps':1800,'selection':selection,'selected_sha256':sha(checkpoint),'last_sha256':sha(Path(selection['last_checkpoint'])),'saved_config_sha256':sha(run/'config.yaml'),'last_checkpoint_audit':audit(last),'selected_checkpoint_audit':audit(selected),'projection_weights':weights,'curves':curves,'test_evaluated':False}
+print(json.dumps(summary,ensure_ascii=False,allow_nan=False,indent=2))
+PY

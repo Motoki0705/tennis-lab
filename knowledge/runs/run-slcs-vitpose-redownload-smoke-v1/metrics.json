@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "queue_id": "1789775189411271550_3174748_slcs-vitpose-redownload-smoke-v1",
+  "load_seconds": 8.51287542499631,
+  "forward_seconds": 0.9770847969994065,
+  "strict_load": {
+    "strict": true,
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "shape": [
+    2,
+    1,
+    17,
+    3
+  ],
+  "all_finite": true,
+  "confidence_min": 0.34765625,
+  "confidence_mean": 0.7111672759056091,
+  "confidence_max": 0.89453125,
+  "confidence_ge_03_fraction": 1.0,
+  "keypoints_inside_image_fraction": 1.0,
+  "per_person_inside_image_fraction": [
+    1.0,
+    1.0
+  ],
+  "checkpoint_after": {
+    "inode": 276740,
+    "size": 2549075546,
+    "mtime_ns": 1789774418063218101,
+    "device": 2096
+  },
+  "gpu_name": "NVIDIA GeForce RTX 5060 Ti",
+  "gpu_peak_allocated_bytes": 3940516864,
+  "precision": "bfloat16"
+}

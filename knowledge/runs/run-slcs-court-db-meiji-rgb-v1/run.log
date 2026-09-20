@@ -1,0 +1,11 @@
+fixture checks passed
+video_000_clip_000_cam0 refinement_returned_not_verified [589, 609]
+video_000_clip_000_cam1 refinement_returned_not_verified [612, 739]
+video_000_clip_000_cam2 refinement_returned_not_verified [2176, 2160]
+video_001_clip_003_cam0 refinement_returned_not_verified [800, 743]
+video_001_clip_003_cam1 refinement_returned_not_verified [1002, 989]
+video_001_clip_003_cam2 refinement_returned_not_verified [2900, 2808]
+video_002_clip_017_cam0 refinement_returned_not_verified [838, 528]
+video_002_clip_017_cam1 refinement_returned_not_verified [1078, 1135]
+video_002_clip_017_cam2 refinement_returned_not_verified [2250, 2148]
+complete

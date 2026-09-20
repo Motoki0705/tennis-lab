@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-19",
+  "repair_run": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-001",
+  "repair_dataset": "data/slcs/meiji_rgb_v9_repair_batch_v1",
+  "target_run": "outputs/tennis_scene/generate/meiji_rgb_v9/s42-002",
+  "target_dataset": "data/slcs/meiji_rgb_v9",
+  "backup_root": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-001/quarantine",
+  "procedure": "For each explicit clip, audited fresh CPU outputs were staged beside the target, original published_annotation and generation directories were moved to backup_root/<clip>, staged raw generation then annotation were renamed into place. diff -qr confirmed every published annotation file equals the repair source. repair_generation_recipe.json identifies CPU provenance.",
+  "metadata_edited": false,
+  "old_artifacts_deleted": false,
+  "clips": {
+    "video_001/clip_010": {
+      "old_scene_sha256": "4da4fb906ff1a0601dc32ab793f67f9d8e50d5673c0b0eee3d789ab8f6bb711d",
+      "replacement_scene_sha256": "f7bfdeb0317cc3eeeec6e19e0dfa76aba3a981c02653298e08b08322154fb2a7"
+    },
+    "video_001/clip_011": {
+      "old_scene_sha256": "a20f966d786503c7f427294265b029bf417d4f5dd0a36a8ab6e12dc9910824e4",
+      "replacement_scene_sha256": "99cbe1d5398da2d14da4fd5348b2cb2213b80cb73851c025040b2514bb68cebb"
+    }
+  },
+  "qc_command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality dataset_directory=slcs/meiji_rgb_v9_repair_batch_v1 generation_directories=[tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-001] allow_incomplete=true output_dir=tennis_scene/analyze/meiji_rgb_v9_repair_batch_quality/s42-001"
+}

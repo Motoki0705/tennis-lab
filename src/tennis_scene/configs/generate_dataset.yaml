@@ -15,7 +15,7 @@ pipeline_overrides:
   - blcs.save_result=false
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},tennis_scene/generate_dataset,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,generate,generate_dataset,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

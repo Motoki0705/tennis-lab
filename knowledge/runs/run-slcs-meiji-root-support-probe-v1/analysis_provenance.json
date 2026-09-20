@@ -1,0 +1,10 @@
+{
+  "source_commit": "7a452096bddef69a27a7fdcb9281c9c500e5531c",
+  "script_sha256": "6137f998b282e9317bfdb6df2fa32df4017d8d9fac1d09e03256542c67eb05ff",
+  "script_was_untracked_at_run": true,
+  "source_reconstruction": "checkout source_commit and apply bundled uncommitted.patch",
+  "original_command": ".venv/bin/python outputs/tennis_scene/analyze/meiji_root_support_probe/s42-001/01_root_support_probe_cpu.py",
+  "original_output_dir": "outputs/tennis_scene/analyze/meiji_root_support_probe/s42-001",
+  "replica_max_abs_position_diff_m": 9.5367431640625e-06,
+  "sources_and_weights_exact": true
+}

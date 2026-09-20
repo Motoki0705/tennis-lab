@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -24,6 +25,7 @@ from src.tasks.base.configuration import (
     BaseTrainingConfig,
     as_config_mapping,
     require_config_mapping,
+    require_config_value,
 )
 from src.tasks.base.training.batch_transfer import (
     move_batch_to_device_preserving_frozen_metadata,
@@ -38,7 +40,9 @@ class _SavezCompressed(Protocol):
     def __call__(self, file: str | Path, **arrays: np.ndarray) -> None: ...
 
 
-def _concat_padded(chunks: list[np.ndarray]) -> np.ndarray:
+def _concat_padded(
+    chunks: list[np.ndarray], *, padding_value: int | bool = 0
+) -> np.ndarray:
     """Concatenate per-batch arrays along axis 0, padding the time axis (1).
 
     Test batches can have different sequence lengths, so ``(b, T_i, ...)`` arrays
@@ -54,7 +58,7 @@ def _concat_padded(chunks: list[np.ndarray]) -> np.ndarray:
             if c.shape[1] < max_t:
                 pad_width = [(0, 0)] * c.ndim
                 pad_width[1] = (0, max_t - c.shape[1])
-                c = np.pad(c, pad_width)
+                c = np.pad(c, pad_width, constant_values=padding_value)
             padded.append(c)
         chunks = padded
     concatenated: np.ndarray = np.asarray(np.concatenate(chunks, axis=0))
@@ -77,7 +81,10 @@ class BaseLightningModule(pl.LightningModule):
         # frozen BoundModelIO dataclass.  TensorBoard cannot serialize those
         # objects, while the Hydra config is the only hyperparameter source we
         # intend to persist here.
-        self.save_hyperparameters("config")
+        # Pass the value rather than an argument name. Subclasses may accept a
+        # frozen runtime config and pass only its raw Hydra mapping to us;
+        # name-based frame inspection would capture the subclass argument.
+        self.save_hyperparameters({"config": config})
 
         root = as_config_mapping(config, path="configuration")
         self.config = config
@@ -257,6 +264,21 @@ class BaseLightningModule(pl.LightningModule):
         trainer = self._safe_trainer()
         dm = trainer.datamodule if trainer is not None else None
         dataset = dm.test_dataset if dm is not None else None
+        if dataset is not None and hasattr(dataset, "prediction_ids"):
+            prediction_ids = dataset.prediction_ids
+            if (
+                not isinstance(prediction_ids, (list, tuple))
+                or len(prediction_ids) != len(dataset)
+                or any(not isinstance(value, str) or not value for value in prediction_ids)
+                or len(set(prediction_ids)) != len(prediction_ids)
+            ):
+                raise ValueError("dataset.prediction_ids must contain one unique nonempty string per sample")
+            start = self._test_pred_cursor
+            end = start + batch_size
+            if end > len(prediction_ids):
+                raise ValueError("Test prediction batch exceeds dataset.prediction_ids")
+            self._test_pred_cursor = end
+            return list(prediction_ids[start:end])
         scenes = (
             dataset.scenes
             if dataset is not None and hasattr(dataset, "scenes")
@@ -295,10 +317,14 @@ class BaseLightningModule(pl.LightningModule):
         queue_repro_dir: Path | None = resolve_queue_repro_dir()
         if queue_repro_dir is not None:
             return queue_repro_dir / "predictions"
-        resolved: Path = self.path_resolver.resolve(
-            PathRole.ARTIFACT, "test_predictions"
-        )
-        return resolved
+        return self._run_predictions_dir()
+
+    def _run_predictions_dir(self) -> Path:
+        root = as_config_mapping(self.config, path="configuration")
+        run = require_config_mapping(root, "run", path="configuration")
+        output = cast(str, require_config_value(run, "output_dir", str, path="run"))
+        predictions_dir: Path = self.path_resolver.resolve(PathRole.OUTPUT, output, "predictions")
+        return predictions_dir
 
     def save_test_predictions(
         self,
@@ -308,9 +334,9 @@ class BaseLightningModule(pl.LightningModule):
         """Write predictions plus separated headline/diagnostic metric artifacts.
 
         Queue jobs write below their isolated
-        ``$TENNIS_REPRO_DIR/predictions`` directory. Non-queue runs retain the
-        configured artifact-root location. Invalid queue paths fail before any
-        files are written.
+        ``$TENNIS_REPRO_DIR/predictions`` directory and copy the same files to
+        ``run.output_dir/predictions``. Non-queue runs use that run directory
+        directly. Invalid queue paths fail before any files are written.
 
         Returns the npz path, or ``None`` if there is nothing to save.
         """
@@ -324,9 +350,10 @@ class BaseLightningModule(pl.LightningModule):
         if not hasattr(self, "_test_pred_arrays") or not self._test_pred_arrays:
             return None
         out_dir = self._test_predictions_dir()
+        run_predictions = self._run_predictions_dir()
         out_dir.mkdir(parents=True, exist_ok=True)
         arrays: dict[str, np.ndarray] = {
-            key: _concat_padded(chunks)
+            key: _concat_padded(chunks, padding_value=key == "padding_mask")
             for key, chunks in self._test_pred_arrays.items()
         }
         # Fixed-width unicode (not object) so np.load works without allow_pickle.
@@ -342,6 +369,12 @@ class BaseLightningModule(pl.LightningModule):
                 json.dumps(diagnostic_metrics, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
+        if run_predictions != out_dir:
+            run_predictions.mkdir(parents=True, exist_ok=True)
+            for name in ("pred_test.npz", "metrics.json", "diagnostic_metrics.json"):
+                source = out_dir / name
+                if source.is_file():
+                    shutil.copy2(source, run_predictions / name)
         return npz_path
 
     def _estimate_total_steps(self) -> int:

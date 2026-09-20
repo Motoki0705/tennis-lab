@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import torch
@@ -50,6 +51,7 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
         flip_test: bool,
         batch_size: int,
         head_config: ViTPoseHeadConfig,
+        precision: Literal["float32", "bfloat16"] = "float32",
     ) -> None:
         super().__init__(device)
         if type(flip_test) is not bool:
@@ -61,6 +63,9 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
         self.checkpoint = require_absolute_path(checkpoint, name="ViTPose checkpoint")
         self.flip_test = flip_test
         self.batch_size = batch_size
+        if precision not in {"float32", "bfloat16"}:
+            raise ValueError(f"Unsupported ViTPose precision: {precision}")
+        self.precision = precision
         if not isinstance(head_config, ViTPoseHeadConfig):
             raise TypeError("head_config must be a validated ViTPoseHeadConfig.")
         self.head_config = head_config
@@ -90,19 +95,24 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
         keypoints = []
         for j in tqdm(range(0, num_frames, self.batch_size), desc="ViTPose"):
             imgs_batch = imgs[j : j + self.batch_size, :, :, 32:224].to(self._device)
-            if self.flip_test:
-                heatmap, heatmap_flipped = self._pose(
-                    torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)
-                ).chunk(2)
-                heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
-                heatmap = (heatmap + heatmap_flipped) * 0.5
-                del heatmap_flipped
-            else:
-                heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
+            with torch.autocast(
+                self.device.type,
+                dtype=torch.bfloat16,
+                enabled=self.precision == "bfloat16",
+            ):
+                if self.flip_test:
+                    heatmap, heatmap_flipped = self._pose(
+                        torch.cat([imgs_batch, imgs_batch.flip(3)], dim=0)
+                    ).chunk(2)
+                    heatmap_flipped = flip_heatmap_coco17(heatmap_flipped)
+                    heatmap = (heatmap + heatmap_flipped) * 0.5
+                    del heatmap_flipped
+                else:
+                    heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
 
             # mmpose-style UDP post-processing back to full-image pixels
             bbx_xys_batch = bbx_xys[j : j + self.batch_size]
-            heatmap_np = heatmap.cpu().numpy()
+            heatmap_np = heatmap.float().cpu().numpy()
             center = bbx_xys_batch[:, :2].numpy()
             scale = (
                 torch.cat(

@@ -27,7 +27,10 @@ from src.tasks.court_detection.geometry.hybrid_homography import (
     HybridHomographyResult,
 )
 from src.tasks.court_detection.inference.contracts import CourtPrediction
-from src.tasks.court_detection.inference.predictor import CourtPredictor
+from src.tasks.court_detection.inference.predictor import (
+    CourtKeypointPredictor,
+    CourtPredictor,
+)
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtKeypointPrediction,
@@ -151,8 +154,10 @@ def test_noncanonical_kp_cannot_silently_enter_hybrid() -> None:
         _predictor().predict(torch.zeros(1, 3, 5, 6))
 
 
+@pytest.mark.parametrize("pose_long_side", [False, True])
 def test_hybrid_receives_one_forward_original_pixel_kp_and_native_line(
     monkeypatch: pytest.MonkeyPatch,
+    pose_long_side: bool,
 ) -> None:
     import src.tasks.court_detection.inference.predictor as module
 
@@ -178,11 +183,16 @@ def test_hybrid_receives_one_forward_original_pixel_kp_and_native_line(
             logits = dict(output.dense_logits)
             logits["kp"] = image.new_full((1, 14, *image.shape[-2:]), -8)
             logits["kp"][:, :, 10, 10] = 8
+            if pose_long_side:
+                logits["kp"][:, :, -1, -1] = (
+                    12  # Padding must not consume the only peak.
+                )
             return CourtModelOutput(logits, output.pose)
 
     model = OrderedModel(bundle)
     adapter = CourtModelIOAdapter(
-        CourtModelSpec(bundle, 3, 32), loss_config=_loss_config()
+        CourtModelSpec(bundle, 3, 32, pose_long_side=pose_long_side),
+        loss_config=_loss_config(),
     )
     predictor = CourtPredictor(
         bind_model_io(model, adapter), torch.device("cpu"), subpixel_refine=False
@@ -210,9 +220,24 @@ def test_hybrid_receives_one_forward_original_pixel_kp_and_native_line(
     native_h, native_w = captured["line"].shape
     np.testing.assert_allclose(
         captured["points"],
-        np.tile([10 / (native_w - 1) * 30, 10 / (native_h - 1) * 16], (14, 1)),
+        np.tile(
+            [10 * 31 / 32, 10 * 31 / 32]
+            if pose_long_side
+            else [10 / (native_w - 1) * 30, 10 / (native_h - 1) * 16],
+            (14, 1),
+        ),
         atol=1e-5,
     )
+    if pose_long_side:
+        assert result.native_size_hw == (18, 32)
+        assert captured["line"].shape == (18, 32)
+    raw = CourtKeypointPredictor(
+        bind_model_io(model, adapter), torch.device("cpu"), subpixel_refine=False
+    ).predict(Image.new("RGB", (31, 17)))
+    expected = result.raw_heads["kp"]
+    assert isinstance(expected, CourtKeypointPrediction)
+    torch.testing.assert_close(raw.keypoints, expected.keypoints)
+    assert bool(raw.valid.all())
     assert captured["edges"].shape == (9, 2)
     assert captured["config"].max_kp == 8
     assert (

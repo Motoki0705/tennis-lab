@@ -1,0 +1,16 @@
+{
+  "run_id": "1789793266244824652_47135_slcs-full-real-rgb-no-ball-smooth-val-gap-rgb-v2",
+  "name": "slcs-full-real-rgb-no-ball-smooth-val-gap-rgb-v2",
+  "command": "env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -m scripts.analysis.evaluate_slcs_run --output-root /home/kamimura/projects/tennis-lab/outputs --training-run slcs/train/real_rgb_no_ball_smooth/s42-takeover-003 --output slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002 --domain-prefix video_=meiji --default-domain broadcast --device cuda --batch-size 4 --ball-train-mean --gap-no-rgb",
+  "provider": "codex",
+  "session": "01a0b71f-c516-75b2-ac58-0c92e8a4f098",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "1758eda44debb618395fc7fe86e9ecb30f32a4fa",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-19T13:47:46+09:00"
+}

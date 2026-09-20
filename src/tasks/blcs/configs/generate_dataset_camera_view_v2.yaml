@@ -7,6 +7,6 @@ defaults:
 generator:
   num_scenes: 10000
 run:
-  output_dir: blcs/single_object_camera_view_v2
+  output_dir: ${tennis_dataset:blcs,single_object_camera_view_v2}
   seed: 42
   num_workers: 8

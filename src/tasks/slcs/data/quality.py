@@ -98,6 +98,7 @@ def build_label_masks(
     player_yaw: NDArray[np.float32],
     ball_3d: NDArray[np.float32],
     config: QualityConfig,
+    teacher_quality: dict[str, Any] | None = None,
 ) -> dict[str, NDArray[Any]]:
     """Compute label validity masks and confidence weights for a whole clip.
 
@@ -137,6 +138,28 @@ def build_label_masks(
     ball_weight = np.where(
         ball_valid, ball_conf**config.label_weight_power, 0.0
     ).astype(np.float32)
+
+    if teacher_quality is not None:
+        if (
+            teacher_quality.get("schema_version") != 1
+            or teacher_quality.get("is_ground_truth") is not False
+        ):
+            raise ValueError(
+                "Unsupported teacher label quality schema or ground-truth claim"
+            )
+        for name, weight, valid in (
+            ("player", player_weight, player_valid),
+            ("ball", ball_weight, ball_valid),
+        ):
+            evidence = np.asarray(teacher_quality[f"{name}_weight"], np.float32)
+            if (
+                evidence.shape != weight.shape
+                or not np.isfinite(evidence).all()
+                or ((evidence < 0) | (evidence > 1)).any()
+            ):
+                raise ValueError(f"Invalid {name} teacher-quality weights")
+            weight *= evidence
+            valid &= evidence > 0
 
     return {
         "player_label_valid": player_valid,

@@ -38,7 +38,10 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtSegmentationPrediction,
 )
 from src.tasks.court_detection.model_io.factory import CourtDetectionBoundModelIO
-from src.tasks.court_detection.model_io.images import prepare_court_image
+from src.tasks.court_detection.model_io.images import (
+    PreparedCourtImage,
+    prepare_court_input,
+)
 from src.tasks.court_detection.model_io.keypoint_decoder import (
     CourtKeypointDecoderConfig,
     decode_court_keypoint_logits,
@@ -97,6 +100,8 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         nms_kernel: int = 7,
         max_peaks: int = 1,
         hybrid_config: HybridHomographyConfig = DEFAULT_HYBRID_CONFIG,
+        strict: bool = True,
+        weights_only: bool = False,
     ) -> Self:
         validate_hybrid_inference_config(hybrid_config)
         if resolver is not None:
@@ -113,7 +118,9 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
                 )
         if len(paths) != 1:
             raise CourtModelIOError("CourtPredictor requires exactly one checkpoint")
-        loaded = load_court_checkpoint(paths[0], resolver=resolver)
+        loaded = load_court_checkpoint(
+            paths[0], resolver=resolver, strict=strict, weights_only=weights_only
+        )
         return cls(
             loaded.model_io,
             resolve_device(device),
@@ -156,9 +163,17 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
                 raise CourtModelIOError(
                     "Hybrid postprocess requires ordered KP14 and max_peaks=1"
                 )
-        images, original_size = self._prepare_image(image)
+        prepared = self._prepare_image(image)
+        images = prepared.images
+        original_size = prepared.original_size_hw
+        content_height, content_width = prepared.content_size_hw
         with torch.no_grad():
-            call = self.adapter.prepare_images(images)
+            call = self.adapter.prepare_images(
+                images,
+                content_size_hw=torch.tensor(
+                    [prepared.content_size_hw], device=images.device
+                ),
+            )
             output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
             self.adapter.validate_logits(output, call)
             logits = (
@@ -166,17 +181,34 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
             )
             decoded: dict[CourtTargetKind, CourtDecodedPrediction] = {}
             for kind in requested:
+                content_logits = logits[kind][..., :content_height, :content_width]
                 if kind == "kp":
-                    decoded[kind] = decode_court_keypoint_logits(
-                        logits[kind],
-                        original_size_hw=original_size,
+                    prediction = decode_court_keypoint_logits(
+                        content_logits,
+                        original_size_hw=prepared.content_size_hw,
                         subpixel_refine=self.subpixel_refine,
                         config=self.decoder_config,
+                    )
+                    points = prediction.keypoints * prediction.keypoints.new_tensor(
+                        prepared.source_from_model_xy
+                    )
+                    valid = (
+                        prediction.valid
+                        & (points[..., 0] >= 0)
+                        & (points[..., 0] < original_size[1])
+                        & (points[..., 1] >= 0)
+                        & (points[..., 1] < original_size[0])
+                    )
+                    decoded[kind] = CourtKeypointPrediction(
+                        points,
+                        prediction.scores.masked_fill(~valid, 0),
+                        valid,
+                        prediction.heatmaps,
                     )
                 else:
                     decoded[kind] = self.adapter.decode_prediction(
                         kind,
-                        logits[kind],
+                        content_logits,
                         original_size_hw=original_size,
                         subpixel_refine=False,
                     )
@@ -201,14 +233,14 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         return CourtPrediction(
             decoded,
             original_size,
-            tuple(next(iter(logits.values())).shape[-2:]),
+            prepared.content_size_hw,
             geometry,
             self.adapter.spec.target_bundle.targets["kp"].schema
             if "kp" in decoded
             else None,
         )
 
-    def _prepare_image(self, image: CourtImage) -> tuple[Tensor, tuple[int, int]]:
+    def _prepare_image(self, image: CourtImage) -> PreparedCourtImage:
         if isinstance(image, Tensor):
             if image.ndim not in {3, 4}:
                 raise CourtModelIOError(
@@ -217,11 +249,9 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
             images = image.unsqueeze(0) if image.ndim == 3 else image
             if images.shape[0] != 1:
                 raise CourtModelIOError("Court predictors accept exactly one image")
-            return images.to(self.device), (image.shape[-2], image.shape[-1])
-        images, height, width = prepare_court_image(
-            image, short_side=self.short_side, device=self.device
-        )
-        return images, (height, width)
+            size = (image.shape[-2], image.shape[-1])
+            return PreparedCourtImage(images.to(self.device), size, (1.0, 1.0), size)
+        return prepare_court_input(image, spec=self.adapter.spec, device=self.device)
 
     @property
     def decoder_config(self) -> CourtKeypointDecoderConfig:
@@ -289,9 +319,12 @@ class _CourtHeadPredictor:
         return self.target_kind
 
     def _predict_head(self, image: CourtImage) -> CourtDecodedPrediction:
-        return self.predictor.predict(
-            image, postprocess="none", heads=(self.target_kind,)
-        ).raw_heads[self.target_kind]
+        return cast(
+            CourtDecodedPrediction,
+            self.predictor.predict(
+                image, postprocess="none", heads=(self.target_kind,)
+            ).raw_heads[self.target_kind],
+        )
 
 
 class CourtKeypointPredictor(

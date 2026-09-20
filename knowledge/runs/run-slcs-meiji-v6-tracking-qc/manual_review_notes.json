@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "dataset": "slcs/meiji_rgb_v6",
+  "status": "tracking_fix_required",
+  "entries": [
+    {
+      "clip_id": "video_000/clip_002",
+      "frames": [
+        650,
+        678,
+        1100
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip002_quality/s42-001/review.json",
+      "review_sha256": "919e6dc048b4dff471d206068f2756200ca9fc1f30a7dc239006e778e1d090bf",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip002_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "6cd793bad85eec90fcb7c49a2a0bee8b622ad3e18298df1fb5b5daada151b4b3",
+      "observations": [
+        "3カメラで同じ2選手へ観測が対応し、選択フレームで隣接コートの人物への切替は見られない。",
+        "支持付き最大速度付近を含む。教師投影と2D関節には局所的なずれが残り、姿勢/yawを実測正解とは扱わない。"
+      ],
+      "scope": "manual contact-sheet inspection of selected frames only; not a full-video or measured-3D validation"
+    },
+    {
+      "clip_id": "video_000/clip_003",
+      "frames": [
+        200,
+        982,
+        996
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip003_quality/s42-001/review.json",
+      "review_sha256": "55732fea51a607a0d725ba6a0388f07f00c250178681d01e567d747420f3ed37",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip003_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "9671e14d6e967c9eea1f1dac8b4d232106e2e6c8629383708b84c09b846baf5f",
+      "observations": [
+        "選択フレームで人物軸の入替は見られない。cam2右端の他コート人物は教師に取り込まれていない。",
+        "frame996のball教師は短欠損補間でweight0.4。支持付き負高さは995–997の約-0.008〜-0.031mに限られ、既定の三角測量許容範囲内。近似校正のためcm精度を主張しない。"
+      ],
+      "scope": "manual contact-sheet inspection of selected frames only; not a full-video or measured-3D validation"
+    },
+    {
+      "clip_id": "video_000/clip_005",
+      "frames": [
+        95,
+        186,
+        300
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip005_quality/s42-001/review.json",
+      "review_sha256": "84368aced6987aba5ff257064daeaf053902b6da86c4a4394bbf7b29414fa57b",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip005_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "d6ea67d9e25b9d19a9ba4dff60eac141ea997f13e1e8c6b1a7a07ea794c864b9",
+      "observations": [
+        "支持付きball再投影p95はcam0約38px、cam1/2約8px。frame95付近のcam0誤差が大きい。異なるコートのボールへの取り違えは選択映像では見られないが、近似校正の誤差か注釈の誤差かは独立3D正解なしでは確定できない。",
+        "全視点を合算したp95は補正前28.4pxから32.4pxへ悪化。全指標が改善したとは報告しない。"
+      ],
+      "scope": "manual inspection of selected frames and saved diagnostic arrays; not measured 3D ground truth"
+    },
+    {
+      "clip_id": "video_001/clip_001",
+      "frames": [
+        170,
+        182,
+        185
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_boundary_pose_quality/s42-001/review.json",
+      "review_sha256": "17084a6af80018be01b854dfa7b64a4e52fb6f351cc209b49357f5950f4f2651",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_boundary_pose_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "2583b9f286488e841dc56bb0180a66e5abf9190b4613a5d998a71dd9d1d0e361",
+      "observations": [
+        "最大関節再投影誤差はP1/cam2/frame182/右手首で約697px、検出confidence0.531。映像では画面端に足先のみが残る状態で、不可視関節の2D推定は信頼しにくい。",
+        "frame185からcam2 P1の観測支持maskは0になり、green骨格は非表示。P1の3D教師は他カメラから支持される。frame170はP1の全体教師weight0で投影が非表示。",
+        "世界座標root/yaw教師の精度と全関節の再投影最大値を同一視しない。画面境界の不安定入力は残る制約として記録する。"
+      ],
+      "scope": "manual inspection of selected frames and saved diagnostic arrays; not measured 3D ground truth"
+    },
+    {
+      "clip_id": "video_000/clip_007",
+      "frames": [
+        569,
+        611,
+        651
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "status": "tracking_fix_required",
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip007_quality/s42-001/review.json",
+      "review_sha256": "5aa8b0f55131afcea33263194b24dd5987fe5230cb52e52f85a944a4350afc11",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip007_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "87ee2bbc0114d7483377c73cbbeff87033f1ab2c55f322ce7b5ccb420305e454",
+      "observations": [
+        "cam1ではframe569にコート内のP0へ2D観測が対応するが、frame611/651では手前に入った別人へ2D骨格が移る。raw detectorには本来選手も残っている。",
+        "P0教師weightは571–651の81framesで0となり不正教師は抑制されるが、2D入力の人物対応の修正が必要。",
+        "追加のraw検出対応調査で、cam0もsample576/580の一時切替と620以降の継続切替を確認した。初回静止画レビューの「cam0も本来選手」は訂正する。cam2の選択は維持される。",
+        "根拠: cam1はsample576で手前人物のcourt x=-6.45mが選択範囲へ入る。cam0はsample620で他人物のbbox面積2704が本来選手2164を上回る。各frame最大boxの選択が切替原因。"
+      ],
+      "scope": "selected-frame visual review; no measured 3D ground truth"
+    },
+    {
+      "clip_id": "video_000/clip_000",
+      "frames": [
+        642,
+        712,
+        783
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "status": "diagnostic_limitation",
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip_000_gap_quality/s42-001/review.json",
+      "review_sha256": "c2d740e6830f5125b11877af760ae0f2fcfcac7c85ea9ebd22230b7bb6053055",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip_000_gap_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "c611da8dca7556324459e197db4d0ba282002b2fc291e19aaa6912aa54a26bab",
+      "observations": [
+        "P0教師weight0の最長区間645–779の前後と中間を確認。選択frame642/712/783では全カメラの2D骨格は本来選手に対応しており、別人への切替には見えない。",
+        "教師欠損を全てtracking failureと解釈しない。幾何による採用判定の制約として分離して記録する。"
+      ],
+      "scope": "selected-frame visual review; no measured 3D ground truth"
+    },
+    {
+      "clip_id": "video_000/clip_008",
+      "frames": [
+        0,
+        8,
+        20
+      ],
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "status": "partial_visibility",
+      "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip_008_gap_quality/s42-001/review.json",
+      "review_sha256": "1e16c6fc2b717c2506f83660e8f733b97b8eb196cae0aeb60aea5ae72ea8c538",
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_clip_008_gap_quality/s42-001/contact_sheet.jpg",
+      "scene_sha256": "88201c36c3222ebf10f00bd6055c36337afa90a72cba7a2ae99207e43b1cbacd",
+      "observations": [
+        "P1教師が冒頭17framesで不支持となる。cam2では人物の大半が画面外で、選択フレームに別人への切替は見られない。",
+        "不可視/幾何不支持とID switchを別の問題として扱う。"
+      ],
+      "scope": "selected-frame visual review; no measured 3D ground truth"
+    }
+  ],
+  "court_review": {
+    "artifact": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/meiji_recording_court_review/s42-001/review.json",
+    "calibration_clips": [
+      "video_000/clip_000",
+      "video_001/clip_003",
+      "video_002/clip_017"
+    ],
+    "frames": [
+      0
+    ],
+    "views_per_clip": 3,
+    "observations": [
+      "全3収録・9 viewの選択フレームで、フィットされたコートが対象コートに対応することを目視確認した。隣接コートの取り違えは見られない。",
+      "画像端や近側baselineには投影ずれが残る。表示残差はモデルが出したkeypointに対する値であり、手動点や独立3D正解に対する精度ではない。",
+      "RANSACから外れた/直接支持のない点も投影されるため、orange点を独立した検出成功と数えない。"
+    ],
+    "scope": "calibration clip frame0 only; learned planar fit, no measured lens distortion"
+  }
+}

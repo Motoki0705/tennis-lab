@@ -1,0 +1,120 @@
+{
+  "training_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001",
+  "training_source": "760195c02ace1f61a102cd1ce8f97431f52ad0fc",
+  "epoch_zero_based": 59,
+  "global_step": 1800,
+  "finite_floating_tensors_checked": 1320,
+  "permitted_callback_sentinels": [
+    {
+      "path": "last/callbacks/ModelCheckpoint{'monitor': None, 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}/kth_value",
+      "value": "positive infinity",
+      "meaning": "unmonitored ModelCheckpoint ranking sentinel, not model/optimizer/metric"
+    },
+    {
+      "path": "selected/callbacks/ModelCheckpoint{'monitor': None, 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}/kth_value",
+      "value": "positive infinity",
+      "meaning": "unmonitored ModelCheckpoint ranking sentinel, not model/optimizer/metric"
+    }
+  ],
+  "epoch_series": {
+    "train/ball_position_error_m_epoch": {
+      "points": 60,
+      "first": 8.216291427612305,
+      "last": 2.459723472595215,
+      "last_step": 1799
+    },
+    "train/player_position_error_m_epoch": {
+      "points": 60,
+      "first": 11.764698028564453,
+      "last": 1.2514451742172241,
+      "last_step": 1799
+    },
+    "val/ball_position_error_m_epoch": {
+      "points": 60,
+      "first": 7.724575042724609,
+      "last": 2.5065035820007324,
+      "last_step": 1799
+    },
+    "val/player_position_error_m_epoch": {
+      "points": 60,
+      "first": 6.32780122756958,
+      "last": 1.2526277303695679,
+      "last_step": 1799
+    },
+    "val/scene_position_error_m_epoch": {
+      "points": 60,
+      "first": 7.026187896728516,
+      "last": 1.879565715789795,
+      "last_step": 1799
+    },
+    "train/loss_epoch": {
+      "points": 60,
+      "first": 3.1759181022644043,
+      "last": -1.4577791690826416,
+      "last_step": 1799
+    },
+    "val/loss": {
+      "points": 60,
+      "first": 0.9265111684799194,
+      "last": -1.1918865442276,
+      "last_step": 1799
+    }
+  },
+  "selection": {
+    "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+    "monitor": "val/scene_position_error_m_epoch",
+    "mode": "min",
+    "candidates": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+        "validation_score": 1.8646280765533447
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001/logs/version_0/checkpoints/slcs-epoch=58.ckpt",
+        "validation_score": 1.8711819648742676
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001/logs/version_0/checkpoints/slcs-epoch=57.ckpt",
+        "validation_score": 1.8722147941589355
+      }
+    ],
+    "selected": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+      "validation_score": 1.8646280765533447,
+      "epoch_zero_based": 56
+    },
+    "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001/logs/version_0/checkpoints/last.ckpt",
+    "last_epoch_zero_based": 59,
+    "checkpoint_sha256": "5438fb94cd3be5e57994423293e02cda9bdf9ed40478290458a389f99102edee"
+  },
+  "selected_temporal_projection": {
+    "model.missing_ball_temporal_context.weight": {
+      "shape": [
+        128,
+        128
+      ],
+      "nonzero": 16384,
+      "norm": 2.291102170944214
+    }
+  },
+  "config_differences_vs_temporal_control": [
+    {
+      "path": "data.domain_sampling",
+      "control": null,
+      "candidate": {
+        "enabled": true,
+        "video_domains": {
+          "video_000": "meiji",
+          "broadcast_shanghai": "broadcast",
+          "broadcast_washington": "broadcast"
+        }
+      }
+    },
+    {
+      "path": "run.output_dir",
+      "control": "slcs/train/real_rgb_ball_temporal_context/s42-001",
+      "candidate": "slcs/train/real_rgb_temporal_domain_balanced/s42-001"
+    }
+  ],
+  "sampler_preflight_file": "sampling_preflight.json"
+}

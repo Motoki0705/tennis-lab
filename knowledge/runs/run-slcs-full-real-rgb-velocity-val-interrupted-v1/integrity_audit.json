@@ -1,0 +1,150 @@
+{
+  "observed_utc": "2026-09-19 06:10:12 UTC",
+  "run_id": "1789796179532511110_297368_slcs-full-real-rgb-velocity-val-v1",
+  "output_dir": "outputs/slcs/evaluate/real_rgb_velocity/s42-001",
+  "scope": "Read-only file-size audit after Windows restart. Does not certify the correctness of nonempty artifacts.",
+  "queue_reported_state": "done",
+  "qualification": "failed-incomplete-artifacts",
+  "file_count": 32,
+  "empty_files": [
+    "val/comparison/comparison.csv",
+    "val/comparison/comparison.json",
+    "val/detector_gap_no_rgb/ball_train_mean_comparison.json",
+    "val/detector_gap_no_rgb/eval_arrays.npz",
+    "val/detector_gap_no_rgb/evaluation_config.yaml",
+    "val/detector_gap_no_rgb/metrics.json",
+    "val/detector_gap_no_rgb/motion.json",
+    "val/gap_rgb_comparison/comparison.csv",
+    "val/gap_rgb_comparison/comparison.json"
+  ],
+  "files": [
+    {
+      "path": "ball_train_mean_fit.json",
+      "size_bytes": 2145
+    },
+    {
+      "path": "evaluation_config.yaml",
+      "size_bytes": 1590
+    },
+    {
+      "path": "selection.json",
+      "size_bytes": 1285
+    },
+    {
+      "path": "val/comparison/comparison.csv",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/comparison/comparison.json",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/detector_gap_no_rgb/ball_train_mean_comparison.json",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/detector_gap_no_rgb/eval_arrays.npz",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/detector_gap_no_rgb/evaluation_config.yaml",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/detector_gap_no_rgb/metrics.json",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/detector_gap_no_rgb/motion.json",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/detector_gap/ball_train_mean_comparison.json",
+      "size_bytes": 2034
+    },
+    {
+      "path": "val/detector_gap/eval_arrays.npz",
+      "size_bytes": 4267267
+    },
+    {
+      "path": "val/detector_gap/evaluation_config.yaml",
+      "size_bytes": 1615
+    },
+    {
+      "path": "val/detector_gap/metrics.json",
+      "size_bytes": 8611
+    },
+    {
+      "path": "val/detector_gap/motion.json",
+      "size_bytes": 67546
+    },
+    {
+      "path": "val/full/ball_train_mean_comparison.json",
+      "size_bytes": 2037
+    },
+    {
+      "path": "val/full/eval_arrays.npz",
+      "size_bytes": 4257003
+    },
+    {
+      "path": "val/full/evaluation_config.yaml",
+      "size_bytes": 1599
+    },
+    {
+      "path": "val/full/metrics.json",
+      "size_bytes": 8579
+    },
+    {
+      "path": "val/full/motion.json",
+      "size_bytes": 67552
+    },
+    {
+      "path": "val/gap_rgb_comparison/comparison.csv",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/gap_rgb_comparison/comparison.json",
+      "size_bytes": 0
+    },
+    {
+      "path": "val/no_rgb/ball_train_mean_comparison.json",
+      "size_bytes": 2039
+    },
+    {
+      "path": "val/no_rgb/eval_arrays.npz",
+      "size_bytes": 4256993
+    },
+    {
+      "path": "val/no_rgb/evaluation_config.yaml",
+      "size_bytes": 1603
+    },
+    {
+      "path": "val/no_rgb/metrics.json",
+      "size_bytes": 8581
+    },
+    {
+      "path": "val/no_rgb/motion.json",
+      "size_bytes": 67537
+    },
+    {
+      "path": "val/rgb_only/ball_train_mean_comparison.json",
+      "size_bytes": 2040
+    },
+    {
+      "path": "val/rgb_only/eval_arrays.npz",
+      "size_bytes": 4220517
+    },
+    {
+      "path": "val/rgb_only/evaluation_config.yaml",
+      "size_bytes": 1607
+    },
+    {
+      "path": "val/rgb_only/metrics.json",
+      "size_bytes": 8597
+    },
+    {
+      "path": "val/rgb_only/motion.json",
+      "size_bytes": 67646
+    }
+  ]
+}

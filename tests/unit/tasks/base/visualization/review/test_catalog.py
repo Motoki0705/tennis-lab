@@ -141,7 +141,8 @@ def test_form_paths_cannot_escape(tmp_path: Path) -> None:
 def test_real_blcs_forms_are_detected() -> None:
     catalog = DatasetCatalog(DATA_ROOT, "blcs")
     forms = {form.name: form for form in catalog.forms()}
-    assert set(forms) == EXPECTED_FORMS
+    # Versioned experiment datasets may coexist with the standard forms.
+    assert set(forms) >= EXPECTED_FORMS
     assert forms["single_object"].scene_count == 1000
     assert forms["single_object"].has_samples is True
     assert forms["single_object_camera_view_v2"].has_samples is False

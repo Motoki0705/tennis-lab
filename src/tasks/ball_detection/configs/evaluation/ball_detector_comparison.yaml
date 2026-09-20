@@ -1,6 +1,6 @@
 schema: ball_detection_evaluation_manifest_v1
 # evaluation/ holds pre-#618 legacy-protocol results; keep them separate.
-output_dir: ball_detection/evaluation_native
+output_dir: ${tennis_output:ball_detection,evaluate,detector_comparison,${tennis_run_id:}}
 device: auto
 resume: true
 fail_fast: false

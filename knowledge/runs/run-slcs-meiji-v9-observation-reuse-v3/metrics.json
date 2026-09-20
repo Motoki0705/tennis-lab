@@ -1,0 +1,21 @@
+{
+  "elapsed_seconds": 40.00238067100145,
+  "attempts": 1,
+  "camera_plans": 0,
+  "published_raw_cameras": 0,
+  "published_people_cameras": 0,
+  "reused_cameras": 0,
+  "recompute_cameras": null,
+  "recompute_clip_ids": null,
+  "input_files": 928,
+  "unchanged_input_files": 927,
+  "inputs_before_after_equal": false,
+  "dino_initial_pin_matches": false,
+  "dino_exception_audit_pin_matches": true,
+  "vitpose_pin_check": "not_reached",
+  "target_observation_counts": {
+    "*_detections.npz": 0,
+    "*_people.npz": 0,
+    "*_people.reuse.json": 0
+  }
+}

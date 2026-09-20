@@ -1,0 +1,157 @@
+{
+  "status": "passed",
+  "provenance": {
+    "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+    "executable": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "openssl": "OpenSSL 3.5.5 27 Jan 2026",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "boot_id": "7335b1ab-913a-4b7f-a989-89d114610d4c",
+    "pid": 904748,
+    "pgid": 904747,
+    "OPENSSL_ia32cap": null
+  },
+  "iterations_per_worker": 64,
+  "timeout_seconds": 240,
+  "buffer_bytes": 67108864,
+  "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+  "pattern": "bytes(range(256)) repeated; one immutable bytes per child",
+  "workers": [
+    {
+      "cpu": 0,
+      "pid": 904756,
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py",
+        "--child-cpu",
+        "0",
+        "--iterations",
+        "64"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-0.jsonl",
+      "stderr_log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-0.stderr.log",
+      "returncode": 0,
+      "complete": true,
+      "passed": true,
+      "iteration_records": 64
+    },
+    {
+      "cpu": 1,
+      "pid": 904757,
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py",
+        "--child-cpu",
+        "1",
+        "--iterations",
+        "64"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-1.jsonl",
+      "stderr_log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-1.stderr.log",
+      "returncode": 0,
+      "complete": true,
+      "passed": true,
+      "iteration_records": 64
+    },
+    {
+      "cpu": 2,
+      "pid": 904758,
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py",
+        "--child-cpu",
+        "2",
+        "--iterations",
+        "64"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-2.jsonl",
+      "stderr_log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-2.stderr.log",
+      "returncode": 0,
+      "complete": true,
+      "passed": true,
+      "iteration_records": 64
+    },
+    {
+      "cpu": 3,
+      "pid": 904759,
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py",
+        "--child-cpu",
+        "3",
+        "--iterations",
+        "64"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-3.jsonl",
+      "stderr_log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-3.stderr.log",
+      "returncode": 0,
+      "complete": true,
+      "passed": true,
+      "iteration_records": 64
+    },
+    {
+      "cpu": 4,
+      "pid": 904760,
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py",
+        "--child-cpu",
+        "4",
+        "--iterations",
+        "64"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-4.jsonl",
+      "stderr_log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-4.stderr.log",
+      "returncode": 0,
+      "complete": true,
+      "passed": true,
+      "iteration_records": 64
+    },
+    {
+      "cpu": 5,
+      "pid": 904761,
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py",
+        "--child-cpu",
+        "5",
+        "--iterations",
+        "64"
+      ],
+      "log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-5.jsonl",
+      "stderr_log": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001/cpu-5.stderr.log",
+      "returncode": 0,
+      "complete": true,
+      "passed": true,
+      "iteration_records": 64
+    }
+  ],
+  "elapsed_seconds": 24.86841116999858,
+  "selected_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}

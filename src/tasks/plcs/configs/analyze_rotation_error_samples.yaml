@@ -31,11 +31,13 @@ analysis:
   overwrite: true
 
 visualization:
+  # The analysis writes per-sample GIFs under run.output_dir.
+  save: null
   device: ${analysis.device}
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

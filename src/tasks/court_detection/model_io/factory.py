@@ -49,6 +49,8 @@ def build_court_detection_pair(
         model_config=runtime.model,
         loss_config=runtime.loss,
         short_side=runtime.data.augmentation.val_short_side,
+        pose_long_side=runtime.loss.pose.enabled,
+        patch_size=runtime.data.augmentation.patch_size,
         target_bundle=target_bundle,
     )
 
@@ -58,6 +60,8 @@ def build_court_inference_pair(
     model_config: CourtModelConfig,
     loss_config: CourtLossConfig,
     short_side: int,
+    pose_long_side: bool,
+    patch_size: int,
     target_bundle: CourtTargetBundleSpec,
 ) -> CourtDetectionBoundModelIO:
     """Build the saved architecture without parsing training-only run/data fields."""
@@ -66,6 +70,8 @@ def build_court_inference_pair(
         in_channels=model_config.in_channels,
         short_side=short_side,
         encoder_kind=cast(CourtEncoderKind, model_config.encoder.name),
+        pose_long_side=pose_long_side,
+        patch_size=patch_size,
     )
     model = CourtHierarchicalModel.from_config(model_config, target_bundle)
     adapter = _build_adapter(spec, model_config=model_config, loss_config=loss_config)

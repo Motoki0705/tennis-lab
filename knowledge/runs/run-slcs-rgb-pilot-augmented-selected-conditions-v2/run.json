@@ -1,0 +1,9 @@
+{
+  "provider": "codex",
+  "experiment": "validation-selected CPU FP32 val/test four conditions",
+  "checkpoint_sha256": "b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c",
+  "command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python knowledge/runs/run-slcs-rgb-pilot-augmented-selected-conditions-v2/reproduce.py augmented",
+  "dataset": "slcs/real_rgb_pilot_v2",
+  "min_window_label_ratio": 0.5,
+  "code_commit": "44e529721933b08f5703526f554a155247b3df6c"
+}

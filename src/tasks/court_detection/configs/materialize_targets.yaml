@@ -1,0 +1,10 @@
+defaults:
+  - train
+  - _self_
+
+run:
+  output_dir: ${tennis_output:court_detection,precompute,materialize_targets,${tennis_run_id:}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}

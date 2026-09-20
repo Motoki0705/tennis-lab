@@ -2,4 +2,4 @@ defaults:
   - train_base
   - _self_
 
-output_dir: court_detection/${data.source.kind}
+output_dir: ${tennis_output:court_detection,train,${data.source.kind},${tennis_run_id:}}

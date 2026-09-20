@@ -1,0 +1,9 @@
+{
+  "source_commit": "b494d168721f20688dc47fc6f105ec67828d3b62",
+  "command": "env CUDA_VISIBLE_DEVICES='' PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -B knowledge/runs/run-slcs-meiji-v8-root-replay-v1/probe.py --output-dir outputs/tennis_scene/analyze/meiji_v8_root_replay/s42-001",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "exit_code": 1,
+  "output_dir": "outputs/tennis_scene/analyze/meiji_v8_root_replay/s42-001",
+  "failure": "AssertionError: video_001/clip_000; invalid assumption that player0 would be unchanged"
+}

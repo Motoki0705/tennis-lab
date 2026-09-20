@@ -24,6 +24,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.slcs.data.dataset import ClipArrays
+from src.tasks.slcs.visualization._video import atomic_video_writer
 from src.tasks.slcs.visualization.ground_projection import (
     GroundProjectionError,
     ground_homography_from_court,
@@ -31,7 +32,6 @@ from src.tasks.slcs.visualization.ground_projection import (
 )
 from src.utils.schema.player import COCO17_SKELETON
 from src.utils.video.reader import OpenCVVideoFrameReader
-from src.utils.video.writer import save_video_rgb
 
 _PLAYER_COLORS_BGR = ((255, 128, 0), (0, 128, 255))  # per player slot
 _BALL_COLOR_BGR = (0, 200, 0)
@@ -55,6 +55,8 @@ def render_overlay_video(
     camera_id = manifest.camera_ids[camera_index]
     video_path = manifest.media_path(camera_id)
     num_frames = clip.num_frames
+    if num_frames <= 0:
+        raise ValueError("Cannot render an empty clip")
     if (
         player_position_m.shape[1] != num_frames
         or ball_position_m.shape[0] != num_frames
@@ -65,55 +67,53 @@ def render_overlay_video(
         )
 
     width, height = manifest.width, manifest.height
-    rendered: list[NDArray[np.uint8]] = []
+    decoded = 0
     frames_without_homography = 0
-
-    for packet in OpenCVVideoFrameReader(video_path):
-        t = packet.index
-        if t >= num_frames:
-            break
-        frame = packet.frame.copy()
-        _draw_observations(frame, clip, camera_index, t, width, height)
-        try:
-            homography = ground_homography_from_court(
-                clip.court_kp[camera_index, t],
-                clip.court_vis[camera_index, t],
-                width=width,
-                height=height,
-                court_kp_indices=court_kp_indices,
-                min_points=min_homography_points,
-                vis_threshold=court_visibility_threshold,
-            )
-        except GroundProjectionError:
-            frames_without_homography += 1
-            cv2.putText(
-                frame,
-                "no ground homography (court occluded)",
-                (10, height - 12),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 0, 255),
-                1,
-                cv2.LINE_AA,
-            )
-        else:
-            _draw_ground_predictions(
-                frame,
-                homography,
-                player_position_m=player_position_m[:, t],
-                player_yaw_rad=player_yaw_rad[:, t],
-                ball_position_m=ball_position_m[t],
-            )
-        rendered.append(np.ascontiguousarray(frame[..., ::-1]))
-
-    if len(rendered) != num_frames:
-        raise RuntimeError(
-            f"{manifest.clip_id}/{camera_id}: decoded {len(rendered)} frames, "
-            f"manifest declares {num_frames}."
-        )
     output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    save_video_rgb(np.stack(rendered), output_path, fps=clip.fps)
+    with atomic_video_writer(output_path, fps=clip.fps) as writer:
+        for packet in OpenCVVideoFrameReader(video_path):
+            t = packet.index
+            if t >= num_frames:
+                break
+            frame = packet.frame.copy()
+            _draw_observations(frame, clip, camera_index, t, width, height)
+            try:
+                homography = ground_homography_from_court(
+                    clip.court_kp[camera_index, t],
+                    clip.court_vis[camera_index, t],
+                    width=width,
+                    height=height,
+                    court_kp_indices=court_kp_indices,
+                    min_points=min_homography_points,
+                    vis_threshold=court_visibility_threshold,
+                )
+            except GroundProjectionError:
+                frames_without_homography += 1
+                cv2.putText(
+                    frame,
+                    "no ground homography (court occluded)",
+                    (10, height - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 255),
+                    1,
+                    cv2.LINE_AA,
+                )
+            else:
+                _draw_ground_predictions(
+                    frame,
+                    homography,
+                    player_position_m=player_position_m[:, t],
+                    player_yaw_rad=player_yaw_rad[:, t],
+                    ball_position_m=ball_position_m[t],
+                )
+            writer.write_frame(np.ascontiguousarray(frame[..., ::-1]))
+            decoded += 1
+        if decoded != num_frames:
+            raise RuntimeError(
+                f"{manifest.clip_id}/{camera_id}: decoded {decoded} frames, "
+                f"manifest declares {num_frames}."
+            )
     return output_path, frames_without_homography
 
 

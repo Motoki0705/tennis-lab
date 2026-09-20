@@ -1,0 +1,13 @@
+# Only train sampling differs from the temporal-context 60-epoch control.
+defaults:
+  - train_real_rgb_ball_temporal_context
+  - _self_
+data:
+  domain_sampling:
+    enabled: true
+    video_domains:
+      video_000: meiji
+      broadcast_shanghai: broadcast
+      broadcast_washington: broadcast
+run:
+  output_dir: ${tennis_output:slcs,train,real_rgb_temporal_domain_balanced,${tennis_run_id:}}

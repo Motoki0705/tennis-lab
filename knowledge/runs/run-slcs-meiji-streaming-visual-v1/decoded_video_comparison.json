@@ -1,0 +1,12 @@
+{
+  "overlay_2d.mp4": {
+    "s42-takeover-004": "SHA256=fd41c20a4b90faa55c660d51d5ff971e768503198ce3ebd3ad0459e3a270f923",
+    "s42-streaming-001": "SHA256=fd41c20a4b90faa55c660d51d5ff971e768503198ce3ebd3ad0459e3a270f923",
+    "decoded_frames_equal": true
+  },
+  "scene_3d.mp4": {
+    "s42-takeover-004": "SHA256=352d397f5418929611c24e2e0e9e84b502a931dc98c9002e522f57c2836f52a0",
+    "s42-streaming-001": "SHA256=352d397f5418929611c24e2e0e9e84b502a931dc98c9002e522f57c2836f52a0",
+    "decoded_frames_equal": true
+  }
+}

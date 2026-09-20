@@ -11,7 +11,11 @@ from typing import Any, cast
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.court_detection.configuration import CourtLossConfig, CourtModelConfig
+from src.tasks.court_detection.configuration import (
+    CourtInferenceConfig,
+    CourtLossConfig,
+    CourtModelConfig,
+)
 from src.tasks.court_detection.data.bundle_state import (
     deserialize_target_bundle,
     serialize_target_bundle,
@@ -49,6 +53,8 @@ class CourtInferenceSpec:
     loss: CourtLossConfig
     target_bundle: CourtTargetBundleSpec
     short_side: int
+    pose_long_side: bool
+    patch_size: int
     architecture: dict[str, Any]
 
     @classmethod
@@ -73,20 +79,11 @@ class CourtInferenceSpec:
                     repository_root=PROJECT_ROOT,
                 )
             )
-        model = CourtModelConfig.from_mapping(values.get("model"), resolver=resolver)
-        loss = CourtLossConfig.from_mapping(values.get("loss"))
+        runtime = CourtInferenceConfig.from_config(config, resolver=resolver)
+        model, loss = runtime.model, runtime.loss
         bundle = deserialize_target_bundle(
             _mapping(bundle_state, "target_bundle_state")
         )
-        augmentation = _mapping(
-            _mapping(values.get("data"), "data").get("augmentation"),
-            "data.augmentation",
-        )
-        short_side = augmentation.get("val_short_side")
-        if type(short_side) is not int or short_side <= 0:
-            raise CourtModelIOError(
-                "Checkpoint val_short_side must be a positive integer"
-            )
         if set(bundle.kinds) - set(loss.dense_weights):
             raise CourtModelIOError("Checkpoint loss/head definitions disagree")
         if model.dense_head.name == "residual" and set(bundle.kinds) - set(
@@ -95,7 +92,15 @@ class CourtInferenceSpec:
             raise CourtModelIOError(
                 "Checkpoint has no saved architecture for a declared head"
             )
-        return cls(model, loss, bundle, short_side, _plain(values["model"]))
+        return cls(
+            model,
+            loss,
+            bundle,
+            runtime.short_side,
+            runtime.pose_long_side,
+            runtime.patch_size,
+            _plain(values["model"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -109,16 +114,21 @@ def load_court_checkpoint(
     path: Path,
     *,
     resolver: PathResolver | None = None,
+    strict: bool = True,
+    weights_only: bool = False,
 ) -> LoadedCourtModel:
     """Strictly load the complete model on CPU, then let the predictor move it.
 
     Callers own path authorization: the normal factory uses PathResolver and
     the inference UI resolves its allowed checkpoint catalog before this call.
     """
+    if not strict:
+        raise ValueError("Court inference requires strict checkpoint loading")
     path = Path(path).resolve(strict=True)
     digest = file_sha256(path)
     checkpoint = _mapping(
-        torch.load(path, map_location="cpu", weights_only=False, mmap=True), "body"
+        torch.load(path, map_location="cpu", weights_only=weights_only, mmap=True),
+        "body",
     )
     hyper = _mapping(checkpoint.get("hyper_parameters"), "hyper_parameters")
     spec = CourtInferenceSpec.from_checkpoint_config(
@@ -127,9 +137,15 @@ def load_court_checkpoint(
         resolver=resolver,
     )
     state = _mapping(checkpoint.get("state_dict"), "state_dict")
-    if not state or any(
-        not key.startswith("model.") or not isinstance(value, torch.Tensor)
+    # Lightning may also persist criterion buffers. Only the model namespace
+    # participates in inference; every model parameter is still loaded strictly.
+    model_state = {
+        key.removeprefix("model."): value
         for key, value in state.items()
+        if key.startswith("model.")
+    }
+    if not model_state or any(
+        not isinstance(value, torch.Tensor) for value in model_state.values()
     ):
         raise CourtModelIOError(
             "Expected the complete tensor state_dict with model. prefixes"
@@ -138,11 +154,11 @@ def load_court_checkpoint(
         model_config=spec.model,
         loss_config=spec.loss,
         short_side=spec.short_side,
+        pose_long_side=spec.pose_long_side,
+        patch_size=spec.patch_size,
         target_bundle=spec.target_bundle,
     )
-    pair.model.load_state_dict(
-        {key.removeprefix("model."): value for key, value in state.items()}, strict=True
-    )
+    pair.model.load_state_dict(model_state, strict=True)
     if file_sha256(path) != digest:
         raise CourtModelIOError("Checkpoint changed while being loaded")
     backbone = spec.model.encoder.checkpoint_path
@@ -154,7 +170,22 @@ def load_court_checkpoint(
         "architecture": spec.architecture,
         "target_bundle": serialize_target_bundle(spec.target_bundle),
         "short_side": spec.short_side,
+        "pose_long_side": spec.pose_long_side,
+        "patch_size": spec.patch_size,
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
     }
     return LoadedCourtModel(pair, spec, identity)
+
+
+def load_court_pair(
+    path: Path,
+    *,
+    resolver: PathResolver,
+    strict: bool = True,
+    weights_only: bool = False,
+) -> CourtDetectionBoundModelIO:
+    """Load the same strict checkpoint for consumers needing only the model pair."""
+    return load_court_checkpoint(
+        path, resolver=resolver, strict=strict, weights_only=weights_only
+    ).model_io

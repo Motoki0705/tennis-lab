@@ -1,9 +1,11 @@
-<!-- knowledge-review: c34f4a373fbfd40557aac4228dd8c36d8a37f4146e9261f8e7521c069af04e95 on 2026-09-21 -->
+<!-- knowledge-review: 31ecfb5b9c5c9b492cf8af2b68510fdf58505507ae87a2bff8cd4a124e269aa7 on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-21（コート推定・SfM診断とKP＋LINE下流移行の統合確認）
+更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
 
-以下の既存baseline/deploy整理の調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`
+実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
+
+従来の横断調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`。追加実験の版・差分は各runの再現性bundleを参照。
 
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
@@ -33,9 +35,11 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 ## 現在の全体像
 
-現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSはend-to-end経路の動作確認までは完了していますが、recording-disjointな汎化baselineはありません。2026-09-04時点でも、knowledgeの研究結果を根拠とするproduction checkpointの更新は確認されていません。
+現行pipelineでは、2D ball detection、court detection、single-person PLCS、single-ball BLCSにdeploy checkpointがあります。SLCSは全体版の収録分離学習・validation比較まで進みましたが、実世界での頑健性は未確立です。実RGB用の教師checkpointは専用生成profileで選択し、以下の従来pipelineのdeployとは区別します。
 
-前回の要約以降、正式な実験知見として追加されたのは、2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/blcs/000031-group-i832-blcs-observation-tracking.md)、3 run）です。conservative設定が学習用associationの運用選択となりましたが、単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
+追加の[実RGB SLCSの実験群](nodes/slcs/000009-group-slcs-real-rgb.md)では、Meiji全体の生成・品質確認とbroadcastとの統合を完了しました。現在の課題は入力欠損・裾誤差・時間的スパイクであり、教師生成の未完了とは区別します。
+
+従来の2026-08-30のBLCS観測ベース2D追跡比較（[#832のgroup](nodes/blcs/000031-group-i832-blcs-observation-tracking.md)、3 run）では、conservative設定が学習用associationの運用選択となりました。ただし単一seed・FP augmentation無効のfamily内比較であり、single-ball deployの置換や実動画での優位を示す結果ではありません。
 
 | task | 現在の基準 | 主な固定値 | 現在の判断 |
 |---|---|---|---|
@@ -43,7 +47,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 | `court_detection` | [`run-i621-court-kp512-resume-r4`](nodes/court_detection/000006-run-i621-court-kp512-resume-r4.md) | val best `2.23 px`、固定checkpoint再評価 `1.708886 px` | 旧KP14 / 512入力deployの比較値。現在のhybrid移行は別評価で、独立held-out testは未確立 |
 | `plcs` | [`run-deploy-multiview-plcs-i590-courtkp14-v2`](nodes/plcs/000082-run-deploy-multiview-plcs-i590-courtkp14-v2.md) | position `0.175284 m`、yaw `6.443357°` | 3–6 camera・court KP14の現行single-person deploy |
 | `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/blcs/000011-run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
-| `slcs` | [`run-i634-slcs-overfit-dino`](nodes/slcs/000003-run-i634-slcs-overfit-dino.md) | player `0.470360 m`、yaw `7.761920°`、ball `1.954024 m` | 同一13 windowのmemorization diagnostic。deploy / 汎化主張は不可 |
+| `slcs` | [全体版のval5条件](nodes/slcs/000062-run-slcs-full-no-smooth-gap-rgb-val-v2.md) | 全61clipの固定split、60epoch、入力条件・train定数baseline比較 | ball低分散崩壊を脱しRGBの寄与を確認。欠損・裾・時間的スパイクは残り、頑健なdeployとは未認定 |
 
 [pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpoint（2026-09-21、下流移行後）は次です。
 
@@ -114,7 +118,12 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 
 ### SLCS
 
-SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball側の改善までは確認されています。しかしtrain / val / testが同じ13 windowを共有するmemorization実験であり、モデルの汎化性能は未評価です。最初にrecording_id非重複のsplitを作り、shared DINO、split DINO、DINOなしを同一seed・budgetで比較する必要があります。
+従来のshared/split DINO比較はtrain / val / testが同じ13 windowを共有するmemorization実験でした。[収録分離パイロット](nodes/slcs/000009-group-slcs-real-rgb.md)で残ったball低分散出力は、[全体版60epoch](nodes/slcs/000072-run-slcs-full-real-rgb-no-ball-smooth-e60-v3.md)では改善し、[同じvalの5入力条件](nodes/slcs/000062-run-slcs-full-no-smooth-gap-rgb-val-v2.md)でtrain平均位置定数との差とRGBの寄与を確認しました。pilotと全体版は更新数・評価clip構成が異なるため、両者の差を単一施策の効果とは呼びません。
+
+[Meiji全件監査](nodes/slcs/000108-run-slcs-meiji-v9-full-qc-v2.md)と[broadcastとの統合](nodes/slcs/000134-run-slcs-real-rgb-full-assembly-v1.md)は完了し、全体版testにはMeijiの別収録もあります。既存基準runの自動testは終端last重みの記録であり、候補選定根拠ではありません。追加探索では自動testを無効にし、validationで採否を決めます。[gap48比較](nodes/slcs/000069-run-slcs-full-real-rgb-gap48-val-v1.md)は全体平均を改善してもbroadcast full/gapが悪化したため基準置換を見送りました。教師は独立実測3D正解ではなく、欠損区間の大誤差と時間的スパイクは未解決です。最新の施策・選定・限界は[実験群](nodes/slcs/000009-group-slcs-real-rgb.md)を参照してください。
+
+なお、[速度整合候補の初回val評価](nodes/slcs/000081-run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)は再起動後に空出力が見つかり採用不可。
+その後のユーザーのgoal優先指示でローカル作業を再開し、[新しいval5条件評価](nodes/slcs/000082-run-slcs-full-real-rgb-velocity-val-v2.md)は完走しましたが、位置平均と欠損境界の退行により基準置換を見送りました。Windowsクラッシュの原因は未確定です。
 
 ## 結果を解釈するための規則
 
@@ -144,7 +153,7 @@ SLCSはshared DINOによるend-to-end経路と、split DINOによるyaw / ball�
 | S | BLCS観測ベースtracking | #832が単一seed・FP augmentation無効、重複track増加 | 許容差・重みを先に固定し、同一条件で3 seed以上を比較。position / presence / ID / duplicate / missedを併記し、FP有効条件と実検出入力でも評価 |
 | A | BLCS track-query architecture | #786が旧runtime・入力契約 | associationとpost-#824 metricを固定し、A/B/Dをcurrent loss・schema、3 seed以上で再実行してposition / ID / lifecycleのParetoを確認 |
 | A | PLCS reprojection | 単一seed・weight 1のみ | weight `0.1/0.3/1.0`を複数seedで比較し、meanだけでなく0.5 m率・軸別誤差・tailを改善 |
-| A | SLCS | 汎化splitがない | recording-disjoint splitで3 seed、欠損率・jerk・calibrationまで報告 |
+| A | SLCS | 入力欠損・位置の裾・時間的スパイクと擬似教師の限界 | 固定valのdomain別・高速区間別で施策を比較し、選定後testと複数seedで再現性を確認 |
 | A | Ball 3DGS augmentation | campaign未完了 | 残りseedとgame10 final testを固定protocolで完了 |
 | B | multi-person / multi-ball | deploy互換E2E評価が不足 | single-object契約と分離したまま、lifecycle・presence・identityを長sequenceで評価 |
 
