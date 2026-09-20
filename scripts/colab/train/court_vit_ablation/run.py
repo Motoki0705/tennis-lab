@@ -153,20 +153,19 @@ def main() -> None:
         return
     environment = os.environ.copy()
     environment["PYTHONUNBUFFERED"] = "1"
-    for smoke in (True, False):
-        for size in VARIANTS:
-            command = [
-                sys.executable,
-                "-m",
-                "scripts.colab.train.court_vit_ablation.run",
-                "--size",
-                size,
-            ]
-            if smoke:
-                command.append("--smoke")
-            if args.continuation:
-                command.append("--continuation")
-            subprocess.run([*command, *overrides], check=True, env=environment)
+    for size in VARIANTS:
+        command = [
+            sys.executable,
+            "-m",
+            "scripts.colab.train.court_vit_ablation.run",
+            "--size",
+            size,
+        ]
+        if args.smoke:
+            command.append("--smoke")
+        if args.continuation:
+            command.append("--continuation")
+        subprocess.run([*command, *overrides], check=True, env=environment)
     print(json.dumps({"suite": "court_vit_ablation", "state": "completed"}), flush=True)
 
 
