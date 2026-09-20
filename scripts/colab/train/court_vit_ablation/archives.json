@@ -1,0 +1,8 @@
+{"schema":"court_training_archives_v1","archives":[
+{"name":"court.tar.zst","sha256":"ee2f8591310d012412e699a99b153e75661439b34e74043d8ef1d8b7eb159589","size_bytes":7595544177,"uncompressed_bytes":7746121009,"file_count":8843},
+{"name":"synthetic_court_B00.tar.zst","sha256":"84f0cc15d708e678c0457ed55353c114716ca971b17287f72225f745deb3637c","size_bytes":9340887081,"uncompressed_bytes":9438586884,"file_count":13057},
+{"name":"synthetic_court_B01.tar.zst","sha256":"f5d83be1596dcd04c0f32bd84c751c332648cbce2e644b920573d86364e071aa","size_bytes":8243025384,"uncompressed_bytes":8376389274,"file_count":12313},
+{"name":"synthetic_court_B02.tar.zst","sha256":"ad55b45b40c76f124279d3c0384ed53d86b0702ccb253ecb02e19f66756b8ef8","size_bytes":8639418156,"uncompressed_bytes":8696285826,"file_count":12565},
+{"name":"synthetic_court_B03.tar.zst","sha256":"45099b181d4bb41c5646458859daa4bfdda9042150801aee067acad5bca5a543","size_bytes":8895660079,"uncompressed_bytes":8950324899,"file_count":12559},
+{"name":"court_detection.tar.zst","sha256":"cf222e721931cc28245e7e40386537b87353a640ff106b7c09cb4e523b2799c8","size_bytes":191060944,"uncompressed_bytes":230925599,"file_count":103530}
+]}
