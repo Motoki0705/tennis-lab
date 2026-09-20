@@ -1,0 +1,42 @@
+name: Knowledge library
+on:
+  pull_request:
+    paths:
+      - 'knowledge/**'
+      - '.agents/skills/knowledge-control/**'
+      - 'tests/e2e/skills/test_knowledge_control.py'
+      - 'tests/e2e/skills/test_knowledge_library.py'
+      - '.github/workflows/knowledge.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  knowledge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: knowledge/webui/package-lock.json
+      - name: Install CPU validation tools
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install PyYAML pytest
+      - name: Validate graph, papers and summary review
+        run: .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
+      - name: Test storage and registration
+        run: .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts='' tests/e2e/skills/test_knowledge_control.py tests/e2e/skills/test_knowledge_library.py
+      - name: Validate Web UI
+        working-directory: knowledge/webui
+        run: |
+          npm ci
+          npm run lint
+          npm run test
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:e2e

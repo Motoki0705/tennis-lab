@@ -6,6 +6,13 @@ export interface KnowledgeNode {
   id: string;
   type: NodeType;
   title: string;
+  task: string;
+  sequence: number;
+  recordedAt: string;
+  dateSource?: string;
+  papers: string[];
+  searchText: string;
+  file: string;
   issue?: number | number[];
   provider?: string;
   date?: string;
@@ -35,4 +42,18 @@ export interface KnowledgeEdge {
 export interface KnowledgeGraph {
   nodes: KnowledgeNode[];
   edges: KnowledgeEdge[];
+  papers: Paper[];
+  summaryHtml: string;
+}
+
+export interface Paper {
+  id: string;
+  title: string;
+  year: number;
+  authors: string[];
+  tasks: string[];
+  source: string;
+  license: string;
+  pdfUrl: string;
+  bodyHtml: string;
 }
