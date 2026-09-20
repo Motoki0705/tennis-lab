@@ -1,0 +1,21 @@
+source_workspace: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/reconstruction
+output_root: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/clay-flare-v001
+scene_id: B00-clay-flare-v001
+first_index: 0
+last_index: 248
+sample_count: 50
+reference_index: 124
+max_attempts: 3
+max_steps: 7000
+nht_executable: nht-reconstruct
+nht_source_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/b00-clay-variant/third_party/nht
+training_python: /home/kamimura/projects/tennis-lab/third_party/nht/.trainer-venv/bin/python
+generation_size:
+- 1536
+- 864
+generation_provider: openai_api
+api:
+  model: gpt-image-2.5-flare-2026-09-08
+  quality: high
+  api_key_file: /mnt/c/Users/kamim/.codex/openai.env
+  timeout_seconds: 600.0

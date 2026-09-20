@@ -1,0 +1,16 @@
+{
+  "run_id": "1789897561505554623_429001_appearance-b00-clay-flare-100-30k-v001-30000",
+  "name": "appearance-b00-clay-flare-100-30k-v001-30000",
+  "command": "/home/kamimura/projects/tennis-lab/.claude/worktrees/b00-clay-variant/.venv/bin/python -m src.synthetic_data_generation.scripts.run_appearance_variant action=execute_training variant.output_root=/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/clay-flare-100-30k-v001",
+  "provider": "codex",
+  "session": "01a0bd70-e78d-7732-ba19-1a4595e91a32",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "branch": "codex/b00-clay-variant",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/b00-clay-variant",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/b00-clay-variant",
+  "captured_at": "2026-09-20T19:04:58+09:00"
+}
