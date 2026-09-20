@@ -197,3 +197,23 @@ def test_continuation_keeps_completed_variants_from_earlier_sessions() -> None:
     )
     assert len(result) == 2
     assert result[0]["destination"] == "ckpt/court_vit_ablation/b/resume/last.ckpt"
+
+
+def test_archive_data_prefix_materializes_at_repository_root(tmp_path: Path) -> None:
+    import io
+
+    from scripts.colab.train.court_vit_ablation.prepare import extract_members
+
+    name = "data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json"
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        member = tarfile.TarInfo(name)
+        member.size = 2
+        archive.addfile(member, io.BytesIO(b"{}"))
+    buffer.seek(0)
+    with tarfile.open(fileobj=buffer, mode="r|") as archive:
+        extract_members(archive, tmp_path)
+    assert (tmp_path / name).read_bytes() == b"{}"
+    assert not (tmp_path / "data/data").exists()
+    with pytest.raises(ValueError, match="Unsafe"):
+        validate_member(tarfile.TarInfo("src/overwrite.py"))
