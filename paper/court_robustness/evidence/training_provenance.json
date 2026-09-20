@@ -1,0 +1,7 @@
+{
+  "run_config_source": "outputs/court_detection/multiscale-depth3-local-rtx/config.yaml",
+  "run_config_sha256": "b2f4224043c6b7a1ddd55ec5ff55d6c1afbef3e60d79816d374be96811c19885",
+  "queue_run_source": ".training_queue/repro/1789435724930966957_297687_court-ms5-depth3-local-rtx-resume1/run.json",
+  "queue_run_sha256": "3b33e5495fdfdcce39d8a488a122a637514e02e27cfc5c120f6a0de1c51eeec6",
+  "note": "Saved mixed-training run configuration supplements the checkpoint, whose normalized config omits the mixed data-loader fields. No training was run for this paper."
+}

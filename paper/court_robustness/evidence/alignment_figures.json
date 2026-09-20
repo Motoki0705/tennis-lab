@@ -1,0 +1,56 @@
+{
+  "bundle_manifest_sha256": "b193bfba29971b361fac4d08ab11a0a4b29de57827761ba353a7161254179e30",
+  "figures": {
+    "method_ransac.png": "6db91889d3969b9c3765073bb8759c34a23ab441e948a772a006b403325576f2",
+    "method_projection.png": "b1bb9b29c756b7736572244c8b976e2cc020d4b797d53f96ff96b05623d2f5dc"
+  },
+  "display": {
+    "method_ransac": {
+      "display_bounds_metres": [
+        [
+          -14.04809217045853,
+          -21.83269960804304,
+          -4.925317338802904
+        ],
+        [
+          20.90470594866301,
+          16.497822275498553,
+          5.091702441757897
+        ]
+      ],
+      "displayed_points": 40804,
+      "display_policy": "Common ground-support ROI expanded by 2 m horizontally, 1 m below and 6 m above; every third visible point. Candidate/support/plane layers are drawn in the foreground. Fitting uses all original points. Metric scale is applied only after fitting."
+    },
+    "method_projection": {
+      "ground_range": [
+        0,
+        2.069711685180664
+      ],
+      "ground_display_gamma": 0.3333333333333333,
+      "ground_interpolation": "3x3 maximum display bins, nearest interpolation; original numeric arrays unchanged",
+      "ground_zero": "white; no projected support",
+      "raw_probability_range": [
+        0,
+        1
+      ],
+      "raw_overlay_threshold": 0.5,
+      "raw_overlay": "0.7*RGB background; inferno color at LINE probability >=0.5",
+      "alignment_bundle_sha256": "036ca2ac8a49db0241e10306757671a5e1e606f28db654b50f93d7a7366495d0"
+    }
+  },
+  "verification": {
+    "point_count": 217407,
+    "candidate_count": 75208,
+    "support_count": 65325,
+    "fit_views": 32,
+    "holdout_views": 16,
+    "shown_views": [
+      "frame_000000",
+      "frame_000183",
+      "frame_000306"
+    ],
+    "max_projection_difference_metres": 0.0,
+    "aggregate_matches_exactly": true,
+    "ransac_matches_saved_plane": true
+  }
+}
