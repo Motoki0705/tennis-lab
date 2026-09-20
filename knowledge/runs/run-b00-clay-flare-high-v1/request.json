@@ -1,0 +1,32 @@
+{
+  "workflow_revision": 1,
+  "request_id": "comparison-flare-01",
+  "target": "frame_000000.jpg",
+  "attempt": 1,
+  "prompt": "Image 1 is the fixed appearance reference. Image 2 is the edit target and the sole authority for geometry and composition. Change only the tennis playing surfaces and surrounding court ground to red clay matching Image 1. Preserve Image 2’s exact viewpoint, perspective, lens distortion, framing, court boundaries, white-line positions and widths, nets, posts, fences, buildings, vegetation, sky, lighting, and shadows. Do not copy Image 1’s layout. Add or remove no objects. Return one 1536×864 image without cropping, padding, text, or watermark.",
+  "prompt_sha256": "133e4f1a7ce9339bf236512e1c1bbac4457d671fef6dd9f2136548752fd6e2ea",
+  "referenced_image_paths": [
+    "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/inputs/reference.png",
+    "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/inputs/target.png"
+  ],
+  "input_sha256": [
+    "e938c6671d26263ccdea93472f475e9344e8f25f3586cbec0b88a6edc0c18428",
+    "2b32079c47bd56d52bcd0d90d0604ec1db28d413a1a672c74ebc2d88812f701d"
+  ],
+  "input_geometry": {
+    "generation_size": [
+      1536,
+      864
+    ],
+    "preprocessing": "full-image LANCZOS resize before API"
+  },
+  "provider": "openai_api",
+  "api_parameters": {
+    "model": "gpt-image-2.5-flare-2026-09-08",
+    "quality": "high",
+    "size": "1536x864",
+    "output_format": "png",
+    "background": "opaque",
+    "n": 1
+  }
+}

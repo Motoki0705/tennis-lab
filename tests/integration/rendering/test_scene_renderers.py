@@ -21,6 +21,7 @@ import numpy as np
 import pytest
 import torch
 from matplotlib.animation import PillowWriter
+from matplotlib.patches import FancyArrow
 from numpy.typing import NDArray
 
 from src.tasks.base.visualization.style import SceneStyleConfig
@@ -263,6 +264,34 @@ class TestBLCSSceneRenderer:
 
 
 class TestPLCSSceneRenderer:
+    @pytest.mark.parametrize("frame", range(4))
+    @pytest.mark.parametrize("comparison", [False, True])
+    def test_topdown_arrows_point_along_body_forward(
+        self, frame: int, comparison: bool
+    ) -> None:
+        renderer = PLCSSceneRenderer(style=_style("light"))
+        gt = _plcs_scene(num_frames=4)
+        pred = _plcs_scene(num_frames=4)
+        gt.position.fill(0)
+        pred.position.fill(0)
+        gt.rotation = np.array([[1, 0], [0, 1], [-1, 0], [0, -1]])
+        pred.rotation = np.roll(gt.rotation, -1, axis=0)
+        # Body forward is -Y at zero yaw; advance counterclockwise by 90°.
+        directions = np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
+        _, ax = plt.subplots()
+        if comparison:
+            renderer._render_2d_comparison_subplot(ax, gt, pred, frame)
+            expected = [directions[frame], directions[(frame + 1) % 4]]
+        else:
+            renderer._render_2d_subplot(ax, gt, frame)
+            expected = [directions[frame]]
+        arrows = [patch for patch in ax.patches if isinstance(patch, FancyArrow)]
+        assert len(arrows) == len(expected)
+        for arrow, direction in zip(arrows, expected, strict=True):
+            vertices = arrow.get_xy()
+            tip = vertices[np.linalg.norm(vertices, axis=1).argmax()]
+            np.testing.assert_allclose(tip / np.linalg.norm(tip), direction, atol=1e-7)
+
     def test_dark_3d_animation_full_overlays(self, tmp_path: Path) -> None:
         renderer = PLCSSceneRenderer(style=_style("dark"))
 

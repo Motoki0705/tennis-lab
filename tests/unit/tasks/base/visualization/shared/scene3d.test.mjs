@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   PRESETS,
+  Scene3D,
   cameraAxis,
   deriveApron,
   deriveNet,
@@ -16,6 +17,11 @@ import {
   rootAt,
   trailSegments,
 } from "../../../../../../src/tasks/base/visualization/shared/scene3d.mjs";
+import {
+  Group,
+  Matrix4,
+  Vector3,
+} from "../../../../../../src/tasks/base/visualization/shared/three.module.js";
 
 function assertVector(actual, expected, tolerance = 1e-9) {
   assert.equal(actual.length, expected.length);
@@ -26,6 +32,78 @@ function assertVector(actual, expected, tolerance = 1e-9) {
     );
   }
 }
+
+// Exercise the real model/frame/geometry pipeline without a WebGL context.
+function geometryScene(entities, frames) {
+  const scene = Object.assign(Object.create(Scene3D.prototype), {
+    courtGroup: new Group(),
+    entityGroup: new Group(),
+    cameraGroup: new Group(),
+    axisGroup: new Group(),
+    _scratch: new Vector3(),
+    _matrix: new Matrix4(),
+    _hidden: new Matrix4().makeScale(0, 0, 0),
+    showTrail: true,
+    follow: false,
+  });
+  scene.setModel({ frames, entities });
+  return scene;
+}
+
+for (const layout of ["flat review buffer", "inference pairs"]) {
+  test(`PLCS arrows rotate canonical -Y forward for ${layout}`, () => {
+    // Identity, +90, 180, -90 degrees and a non-unit diagonal yaw pair.
+    const rotations = [[1, 0], [0, 1], [-1, 0], [0, -1], [3, 4]];
+    const expected = [[0, -1], [1, 0], [0, 1], [-1, 0], [0.8, -0.6]];
+    const heading = layout === "flat review buffer"
+      ? new Float32Array(rotations.flat()) : rotations;
+    const frames = rotations.length;
+    const roots = new Float32Array(Array(frames).fill([2, 3, 0.9]).flat());
+    const scene = geometryScene([
+      {
+        id: "gt", kind: "player", frames, joints: 2, heading, roots,
+        positions: new Float32Array(Array(frames).fill([2, 3, 0.9, 2, 3, 1.5]).flat()),
+        edges: [[0, 1]],
+      },
+      {
+        id: "pred", kind: "player-root", frames, joints: 1, heading,
+        positions: roots,
+      },
+    ], frames);
+
+    expected.forEach(([x, y], frame) => {
+      scene.setFrame(frame);
+      for (const entity of scene._entities) {
+        assert.equal(entity.headingLine.visible, true);
+        const points = entity.headingLine.geometry.getAttribute("position");
+        const origin = new Vector3().fromBufferAttribute(points, 0);
+        const tip = new Vector3().fromBufferAttribute(points, 1);
+        assertVector(origin.toArray(), [2, 3, 0.03], 1e-6);
+        assertVector(tip.clone().sub(origin).toArray(), [0.9 * x, 0.9 * y, 0], 1e-6);
+        // Both arrowhead wings meet at the forward tip and extend behind it.
+        for (const index of [2, 4]) {
+          assertVector(new Vector3().fromBufferAttribute(points, index).toArray(), tip.toArray());
+          const wing = new Vector3().fromBufferAttribute(points, index + 1).sub(tip);
+          assert.ok(wing.dot(new Vector3(x, y, 0)) < 0);
+        }
+      }
+    });
+  });
+}
+
+test("PLCS arrows hide absent players and missing rotations", () => {
+  const frames = 4;
+  const scene = geometryScene([{
+    id: "gt", kind: "player-root", frames, joints: 1,
+    positions: new Float32Array(frames * 3),
+    heading: [[1, 0], [0, 1], [0, 0]],
+    presence: new Uint8Array([1, 0, 1, 1]),
+  }], frames);
+  for (let frame = 0; frame < frames; frame += 1) {
+    scene.setFrame(frame);
+    assert.equal(scene._entities[0].headingLine.visible, frame === 0);
+  }
+});
 
 const HALF_LENGTH = 11.885;
 const HALF_DOUBLES = 5.485;

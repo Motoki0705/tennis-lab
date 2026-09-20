@@ -1,0 +1,16 @@
+{
+  "run_id": "1789435724930966957_297687_court-ms5-depth3-local-rtx-resume1",
+  "name": "court-ms5-depth3-local-rtx-resume1",
+  "command": "CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.court_detection.scripts.train_mixed --config-name=train_mixed_multiscale paths.output_root=outputs run.output_dir=court_detection/multiscale-depth3-local-rtx run.gpus=1 run.resume=court_detection/multiscale-depth3-local-rtx/logs/version_1/checkpoints/last.ckpt",
+  "provider": "codex",
+  "session": "01a09db3-d058-7f22-8aa0-65840b87679f",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "b8ccc6bac5beac082b97e94c8b42edd9da8d2f40",
+  "branch": "codex/court-colab-multiscale",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-colab-multiscale",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-colab-multiscale",
+  "captured_at": "2026-09-15T10:28:45+09:00"
+}

@@ -203,7 +203,10 @@ SLCSの実RGB学習profileは [`train_real_rgb.yaml`](../../tasks/slcs/configs/t
 Meijiのtest収録を含まない。最終評価には全体版と収録単位の固定test splitを使う。
 教師の再学習profileは各タスクの `train_broadcast_real_rgb.yaml`、
 PLCSの `train_meiji_foot_real_rgb.yaml`、BLCSの `train_meiji_real_rgb.yaml`。
-PLCSの分割・subset作成は[PLCSの準備手順](../../tasks/plcs/README.md#固定データ版の準備)を参照する。
+PLCSを収録元単位で分割して新規生成する場合は、既存の
+[`generate_dataset_camera_view_v2.yaml`](../../tasks/plcs/configs/generate_dataset_camera_view_v2.yaml)
+（`run.split_group: motion_source`）を `src.tasks.plcs.scripts.generate_dataset` の
+`--config-name generate_dataset_camera_view_v2` で選択する。
 BLCSの準備は [`prepare_blcs_real_dataset.yaml`](../configs/prepare_blcs_real_dataset.yaml)で
 source recipe・収録単位のsplit・幾何閾値を明示し、次の入口で実行する。
 出力には入力設定・観測hash・採用frame・synthetic replay IDを保存する。GPUを使うため共有queue経由で実行する。
@@ -215,8 +218,14 @@ source recipe・収録単位のsplit・幾何閾値を明示し、次の入口�
 ```
 
 BLCS旧/改善重みの同条件比較には `src.tasks.blcs.scripts.evaluate_real` を使う。
-教師のRGB/3Dレビュー入口は `src.tennis_scene.scripts.render_reconstruction_review`。
-Court・ViTPose・補正前後の診断とレビュー引数は[診断ガイド](diagnostics/README.md)を参照する。
+教師のCPU画像レビュー入口は `src.tennis_scene.scripts.render_reconstruction_review`。
+`--mode teachers` は絶対 `--dataset-root` / `--run-root` と繰り返し `--clip` を受け、
+raw/refined教師を比較する。`--mode frames` は絶対 `--data-root`、その配下の
+`--dataset` / `--video` / 単一 `--clip` / `--frames` と任意 `--cameras` で指定frameを描画する。
+両modeとも絶対 `--output-root` と相対
+`--output tennis_scene/visualize/<experiment>/<run-id>` が必要。
+既存のmode省略呼び出しは解析済みroot引数から一意に選択し、異なるmodeの引数の混在は拒否する。
+完全な引数は `--help` で確認できる。
 
 ## 全clip品質レポート（Meiji、CPU）
 

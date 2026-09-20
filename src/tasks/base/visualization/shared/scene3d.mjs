@@ -281,7 +281,11 @@ function presenceAt(entity, frame) {
   return entity.presence[frame] === 1;
 }
 
-/** Normalise a heading payload (flat ``T*2`` or ``T`` pairs) to ``[x, y]``. */
+/**
+ * Convert PLCS root yaw (flat ``T*2`` or ``T`` cos/sin pairs) to forward XY.
+ * SMPL body forward is -Y in the yaw-zero Z-up pose, so the arrow is
+ * Rz(yaw) @ [0, -1, 0] = [sin, -cos, 0].
+ */
 function normalizeHeadings(heading, frames) {
   const out = new Array(frames).fill(null);
   const flat = typeof heading[0] === "number";
@@ -298,7 +302,7 @@ function normalizeHeadings(heading, frames) {
     }
     const norm = Math.hypot(cos, sin);
     if (!norm) continue;
-    out[frame] = [cos / norm, sin / norm];
+    out[frame] = [sin / norm, -cos / norm];
   }
   return out;
 }

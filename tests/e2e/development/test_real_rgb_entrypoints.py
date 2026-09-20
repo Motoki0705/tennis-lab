@@ -14,22 +14,14 @@ from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ENTRYPOINTS = (
-    "src.tasks.slcs.scripts.calibrate_ball_velocity",
-    "src.tasks.slcs.scripts.compare_ball_anchors",
-    "src.tasks.slcs.scripts.compare_ball_transitions",
-    "src.tasks.slcs.scripts.compare_conditions",
     "src.tasks.slcs.scripts.evaluate_run",
-    "src.tasks.slcs.scripts.report_validation",
-    "src.tasks.slcs.scripts.render_pr_clip",
     "src.tasks.blcs.scripts.evaluate_real",
-    "src.tasks.plcs.scripts.prepare_motion_split",
-    "src.tasks.plcs.scripts.prepare_subset",
     "src.tennis_scene.scripts.import_broadcast_ball",
     "src.tennis_scene.scripts.prepare_blcs_real_dataset",
     "src.tennis_scene.scripts.build_real_rgb",
-    "src.tennis_scene.scripts.benchmark_vitpose_precision",
-    "src.tennis_scene.scripts.probe_meiji_court",
-    "src.tennis_scene.scripts.evaluate_refinement",
+    "src.tennis_scene.scripts.build_slcs_dataset",
+    "src.tennis_scene.scripts.assemble_slcs_dataset",
+    "src.tennis_scene.scripts.report_slcs_dataset_quality",
     "src.tennis_scene.scripts.render_reconstruction_review",
 )
 REMOVED_ENTRYPOINTS = (
