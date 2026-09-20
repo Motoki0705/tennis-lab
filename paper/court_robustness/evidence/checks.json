@@ -13,18 +13,16 @@
     "verification_without_temporary_log"
   ],
   "clean_checkout": {
-    "commit": "44481a6cb2d63870e49bf7457d1deadcfb8264ab",
+    "commit": "14aa523410f1b393cc29fe3ae7b96b87655791d7",
     "data_and_weights_absent": true,
     "temporary_latex_log_absent": true,
     "regenerated_artifacts": [
-      "external_predictions",
-      "3dgs_alignment",
-      "ransac_and_projection",
-      "sfm_temporal_drift_all_scenes",
-      "sfm_drift_latex_table"
+      "confidence_homographies",
+      "homography_latex_table",
+      "external_prediction_figures"
     ],
     "offline_verification": "passed",
-    "pytest_passed": 31,
+    "pytest_passed": 82,
     "tracked_diff": "empty"
   },
   "alignment_method_geometry": "production RANSAC and selected ray projections match the saved plane and arrays; fit-only 32-view sum exactly matches the original raster",
@@ -61,7 +59,7 @@
     "primary_protocol": "Same chronological registered-frame half comparison for every scene; 0.5 m cells, minimum five points per cell in each period; 1 m sensitivity and four-period audit retained."
   },
   "all_scene_revision_previous_head": "3fff4cba21360eca85fc92349d653b3ec0122d53",
-  "pytest_execution": "79-test suite passed; 3 additional boundary regressions plus all 11 original PROSAC tests passed in a subsequent 14-test run.",
+  "pytest_execution": "All 82 tests passed together in clean checkout without data, weights or temporary LaTeX log.",
   "mypy_check": "passed: confidence_homography.py, geometry/__init__.py and new unit tests",
   "prosac_revision_previous_head": "492785f49d75a3195ad19456522c21aebb6e4941",
   "prosac_validation": {
@@ -83,5 +81,20 @@
       7
     ],
     "known_checkpoint_mismatch": "historical limitation unchanged; postprocessing uses bundled original KP and scores"
+  },
+  "clean_checkout_previous_all_scene_revision": {
+    "commit": "44481a6cb2d63870e49bf7457d1deadcfb8264ab",
+    "data_and_weights_absent": true,
+    "temporary_latex_log_absent": true,
+    "regenerated_artifacts": [
+      "external_predictions",
+      "3dgs_alignment",
+      "ransac_and_projection",
+      "sfm_temporal_drift_all_scenes",
+      "sfm_drift_latex_table"
+    ],
+    "offline_verification": "passed",
+    "pytest_passed": 31,
+    "tracked_diff": "empty"
   }
 }
