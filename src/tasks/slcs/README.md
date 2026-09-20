@@ -97,6 +97,9 @@ axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`�
 
 ## 推論・評価・解析
 
+保存済みデータセットの疑似ラベルをインタラクティブに確認する場合は、
+[`scripts/review_dataset.py` の利用ガイド](visualization/review/README.md)を参照してください。
+
 CLIは `src.tasks.slcs.scripts` に集約し、評価計算は `evaluation/`、予測の描画は `visualization/` が担当します。`evaluate_run` の明示rootは絶対パス、学習runと評価先はOUTPUT相対fragmentを使います。
 
 保存済み学習runからvalidation最良checkpointを選んで4入力条件を比較する場合は、

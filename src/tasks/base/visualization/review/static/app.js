@@ -1,10 +1,11 @@
 // Browser wiring for the dataset scene review UI: form/scene browser on the
-// left, live 3D playback of the selected BLCS/PLCS scene in the centre. All
+// left, live 3D playback of the selected scene in the centre. All
 // drawing is delegated to the shared Three.js engine at /shared/scene3d.mjs.
 
 import { Scene3D } from "/shared/scene3d.mjs";
 
 import { COLORS } from "./scene.mjs";
+import { buildModel, decodeBuffers, entityGroups } from "./model.mjs";
 
 const PLAY_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" fill="currentColor" stroke="none" /></svg>';
@@ -32,6 +33,7 @@ const dom = {
   dataRoot: byId("data-root"),
   dataset: byId("scene-dataset"),
   title: byId("scene-title"),
+  note: byId("scene-note"),
   chips: byId("chips"),
   presets: Array.from(document.querySelectorAll("[data-preset]")),
   cameras: byId("cameras"),
@@ -64,7 +66,7 @@ const state = {
   query: "",
   selection: null,
   scene: null,
-  buffers: null,
+  model: null,
   openForms: new Set(),
   frame: 0,
   phase: 0,
@@ -168,9 +170,10 @@ function renderTree() {
     const tags = document.createElement("span");
     tags.className = "form-tags";
     for (const [text, title] of [
-      [form.mode === "multi" ? "multi" : "single", "オブジェクト数"],
-      [form.has_samples ? "samples" : "no-samples", "サンプル画像の有無"],
+      [form.mode, "オブジェクト数"],
+      [form.has_samples === undefined ? null : form.has_samples ? "samples" : "no-samples", "サンプル画像の有無"],
     ]) {
+      if (text === null) continue;
       const tag = document.createElement("span");
       tag.className = "tag";
       tag.textContent = text;
@@ -284,16 +287,20 @@ async function selectedScene(formName, sceneId) {
     }
     const buffer = await response.arrayBuffer();
     if (token !== state.token) return;
-    const buffers = decodeBuffers(buffer, scene.entity);
+    const buffers = decodeBuffers(buffer, scene);
     state.scene = scene;
-    state.buffers = buffers;
+    dom.dataset.textContent = scene.dataset;
+    dom.note.textContent = scene.description ?? "";
+    dom.note.hidden = !scene.description;
+    state.model = buildModel(scene, buffers);
     state.frame = 0;
     state.phase = 0;
-    view.setModel(buildModel(scene, buffers));
-    dom.scrub.max = String(scene.entity.frames - 1);
+    view.setModel(state.model);
+    dom.scrub.max = String(scene.frame_count - 1);
     dom.transport.hidden = false;
     dom.hud.hidden = false;
     selectCamera(null);
+    dom.cameras.disabled = scene.cameras.length === 0;
     renderChips(scene);
     renderLegend(scene);
     applyFrame(0);
@@ -309,97 +316,13 @@ async function selectedScene(formName, sceneId) {
   }
 }
 
-function decodeBuffers(buffer, entity) {
-  const joints = entity.slots * entity.frames * entity.joint_count;
-  let expected = joints * 3 * 4;
-  if (entity.orientation) expected += entity.slots * entity.frames * 2 * 4;
-  if (entity.presence) expected += entity.slots * entity.frames;
-  if (buffer.byteLength !== expected) {
-    throw new Error(`entity buffer is ${buffer.byteLength} bytes, expected ${expected}`);
-  }
-  const frames = new Float32Array(buffer, 0, joints * 3);
-  let floats = joints * 3;
-  let orientation = null;
-  if (entity.orientation) {
-    orientation = new Float32Array(buffer, floats * 4, entity.slots * entity.frames * 2);
-    floats += entity.slots * entity.frames * 2;
-  }
-  let presence = null;
-  if (entity.presence) {
-    presence = new Uint8Array(buffer, floats * 4, entity.slots * entity.frames);
-  }
-  return { frames, presence, orientation };
-}
-
-/**
- * Translate one decoded review scene into the shared engine model: one entity
- * per slot, each carrying its own root track so trails and follow target the
- * player hips rather than a hand or foot.
- */
-function buildModel(scene, buffers) {
-  const entity = scene.entity;
-  const { frames: data, presence, orientation } = buffers;
-  const frameCount = entity.frames;
-  const jointCount = entity.joint_count;
-  const entities = [];
-  for (let slot = 0; slot < entity.slots; slot += 1) {
-    const length = frameCount * jointCount * 3;
-    const offset = slot * length;
-    const positions = data.slice(offset, offset + length);
-    const roots = new Float32Array(frameCount * 3);
-    for (let frame = 0; frame < frameCount; frame += 1) {
-      const base = frame * jointCount * 3;
-      const out = frame * 3;
-      if (jointCount === 1) {
-        roots[out] = positions[base];
-        roots[out + 1] = positions[base + 1];
-        roots[out + 2] = positions[base + 2];
-      } else {
-        const hip = base + 11 * 3;
-        const other = base + 12 * 3;
-        roots[out] = (positions[hip] + positions[other]) / 2;
-        roots[out + 1] = (positions[hip + 1] + positions[other + 1]) / 2;
-        roots[out + 2] = (positions[hip + 2] + positions[other + 2]) / 2;
-      }
-    }
-    entities.push({
-      id: `slot-${slot}`,
-      color: entity.colors[slot % entity.colors.length],
-      kind: jointCount === 1 ? "ball" : "player",
-      frames: frameCount,
-      joints: jointCount,
-      positions,
-      roots,
-      heading: orientation
-        ? orientation.slice(slot * frameCount * 2, (slot + 1) * frameCount * 2)
-        : null,
-      presence: presence
-        ? presence.slice(slot * frameCount, (slot + 1) * frameCount)
-        : null,
-      edges: jointCount === 1 ? null : entity.skeleton,
-    });
-  }
-  return {
-    court: scene.court,
-    frames: frameCount,
-    entities,
-    cameras: scene.cameras.map((camera) => ({
-      id: camera.id,
-      label: camera.id,
-      center: camera.center,
-      frustum: camera.frustum,
-      rotation: camera.rotation,
-    })),
-  };
-}
-
 function renderChips(scene) {
   const chips = [
     ["mode", scene.mode],
     ["fps", Math.round(scene.fps)],
-    ["frames", scene.entity.frames],
-    ["slots", scene.entity.slots],
-    ["cams", scene.cameras.length],
+    ["frames", scene.frame_count],
+    ["slots", entityGroups(scene).reduce((sum, entity) => sum + entity.slots, 0)],
+    [scene.source_camera_ids ? "views" : "cams", scene.source_camera_ids?.length ?? scene.cameras.length],
   ];
   dom.chips.textContent = "";
   for (const [label, value] of chips) {
@@ -424,41 +347,23 @@ function renderLegend(scene) {
     dom.legend.append(span);
   }
   const camera = document.createElement("span");
-  camera.textContent = `カメラ ${scene.cameras.length}`;
-  const entity = document.createElement("span");
-  entity.textContent =
-    scene.entity.kind === "ball"
-      ? `ボール ${scene.entity.slots}`
-      : `選手 ${scene.entity.slots} / 関節 ${scene.entity.joint_count}`;
-  dom.legend.append(camera, entity);
-}
-
-function rootPosition(frame, slot = 0) {
-  const { entity } = state.scene;
-  const data = state.buffers.frames;
-  const base = ((slot * entity.frames + frame) * entity.joint_count) * 3;
-  if (entity.joint_count === 1) {
-    return [data[base], data[base + 1], data[base + 2]];
+  camera.textContent = scene.source_camera_ids
+    ? `入力カメラ ${scene.source_camera_ids.join(", ")}`
+    : `カメラ ${scene.cameras.length}`;
+  dom.legend.append(camera);
+  for (const group of entityGroups(scene)) {
+    const entity = document.createElement("span");
+    entity.textContent = group.kind === "ball"
+      ? `ボール ${group.slots}`
+      : `選手 ${group.slots}${group.joint_count > 1 ? ` / 関節 ${group.joint_count}` : " / ルート位置"}`;
+    dom.legend.append(entity);
   }
-  const hip = base + 11 * 3;
-  const other = base + 12 * 3;
-  return [
-    (data[hip] + data[other]) / 2,
-    (data[hip + 1] + data[other + 1]) / 2,
-    (data[hip + 2] + data[other + 2]) / 2,
-  ];
-}
-
-function presentAt(frame, slot = 0) {
-  const presence = state.buffers.presence;
-  if (!presence) return true;
-  return presence[slot * state.scene.entity.frames + frame] === 1;
 }
 
 function applyFrame(frame) {
   const scene = state.scene;
   if (!scene) return;
-  const total = scene.entity.frames;
+  const total = scene.frame_count;
   state.frame = Math.max(0, Math.min(total - 1, Math.round(frame)));
   state.phase = state.frame;
   view.setFrame(state.frame);
@@ -466,15 +371,17 @@ function applyFrame(frame) {
   dom.clock.textContent = `${state.frame + 1} / ${total}`;
   dom.hudFrame.textContent = String(state.frame);
   dom.hudTime.textContent = formatSeconds(state.frame / scene.fps);
-  if (presentAt(state.frame)) {
-    const root = rootPosition(state.frame);
+  const entity = state.model.entities[0];
+  const present = entity && (!entity.presence || entity.presence[state.frame] === 1);
+  if (present) {
+    const root = entity.roots.subarray(state.frame * 3, state.frame * 3 + 3);
     dom.hudPos.textContent =
       `${root[0].toFixed(2)}, ${root[1].toFixed(2)}, ${root[2].toFixed(2)} m`;
   } else {
     dom.hudPos.textContent = "–";
   }
-  const orientation = state.buffers.orientation;
-  if (orientation) {
+  const orientation = entity?.heading;
+  if (present && orientation) {
     const base = state.frame * 2;
     const yaw = Math.atan2(orientation[base + 1], orientation[base]);
     dom.hudYaw.textContent = `${((yaw * 180) / Math.PI).toFixed(1)}°`;
@@ -516,7 +423,7 @@ function loop(now) {
   const delta = state.lastTime ? (now - state.lastTime) / 1000 : 0;
   state.lastTime = now;
   if (state.playing && state.scene) {
-    const total = state.scene.entity.frames;
+    const total = state.scene.frame_count;
     state.phase += delta * state.scene.fps * state.speed;
     if (state.phase >= total) {
       state.phase -= total;
@@ -589,7 +496,7 @@ dom.toStart.addEventListener("click", () => {
 });
 dom.toEnd.addEventListener("click", () => {
   setPlaying(false);
-  applyFrame(state.scene ? state.scene.entity.frames - 1 : 0);
+  applyFrame(state.scene ? state.scene.frame_count - 1 : 0);
 });
 dom.scrub.addEventListener("input", () => {
   setPlaying(false);
