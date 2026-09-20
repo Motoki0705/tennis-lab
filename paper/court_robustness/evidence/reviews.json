@@ -1,0 +1,122 @@
+{
+  "requested": 2,
+  "attempted": 2,
+  "completed": 2,
+  "rounds": [
+    {
+      "round": 1,
+      "commit": "6e4659af8ddb70675188c0dc6b38f169e551db9f",
+      "verdict": "CHANGES_REQUIRED",
+      "findings": [
+        {
+          "id": "V1",
+          "decision": "accepted",
+          "resolution": "Pinned the actual checkpoint SHA-256, checked it before/after loading and after inference, reran all four photos, and extended local validation to both weight files plus checkpoint config/bundle/step."
+        },
+        {
+          "id": "V2",
+          "decision": "accepted",
+          "resolution": "Displayed refined_kp in the official TCD panel and added a regression test distinguishing it from raw_kp."
+        },
+        {
+          "id": "V3",
+          "decision": "accepted",
+          "resolution": "Added a two-pass PDF builder and committed build receipt; offline verification binds PDF/TeX/figures without report.log. Added no-log and tampering tests."
+        }
+      ],
+      "status": "completed"
+    },
+    {
+      "round": 2,
+      "status": "completed",
+      "model_provider_effort": "inherited from parent",
+      "fork_turns": "none",
+      "commit": "c51da4c43adce1b5c5ad58f19ebaa03af6e7f9da",
+      "verdict": "PASS",
+      "findings": [],
+      "verified": [
+        "All five PDF pages, manuscript, figures, evidence and relevant implementations.",
+        "Independent CPU inference for all four photos matched every saved output array exactly; positive control matched and CUDA remained uninitialized.",
+        "All twelve B00-B03 source renders, cameras, current alignments and labels; maximum reprojection discrepancy 1.78e-10 px.",
+        "17 tests, local source and checkpoint validation, and offline verification in a checkout without data, weights or temporary LaTeX logs.",
+        "All three first-round findings resolved; no changes to artifacts or git state during review."
+      ],
+      "not_repeated": [
+        "Training",
+        "3DGS rendering",
+        "Full 17,256-image overlap audit",
+        "LaTeX build"
+      ],
+      "remaining_limits": [
+        "Artifact consistency does not establish physical label accuracy, generalization performance or non-overlap with pretraining data."
+      ]
+    }
+  ],
+  "followup_reviews": [
+    {
+      "request": "RANSAC ground-plane and multiview LINE projection visualization; explicit unseen-image LINE panels",
+      "requested": 1,
+      "attempted": 1,
+      "completed": 1,
+      "rounds": [
+        {
+          "round": 1,
+          "status": "completed",
+          "model_provider_effort": "inherited from parent",
+          "fork_turns": "none",
+          "commit": "218b61586dec9ad088abbde9065ee022a27e9ce6",
+          "verdict": "PASS",
+          "findings": [],
+          "verified": [
+            "Final six-page PDF, requested RANSAC/projection/LINE figures, preservation of all 12 3DGS overlays.",
+            "22 tests, ruff, local source verification, and offline verification without data or weights.",
+            "Production RANSAC plane match, zero projection discrepancy for three shown views, exact 32-view aggregate, and pixel equality of new figures and LINE masks.",
+            "All 48 saved probabilities and RGB sources, and historical LINE checkpoint SHA-256 and epoch 19."
+          ],
+          "not_repeated": [
+            "Training",
+            "Neural inference",
+            "3DGS rendering",
+            "LaTeX build"
+          ],
+          "remaining_limits": [
+            "Artifact consistency does not establish physical ground/label accuracy, generalization performance or pretraining independence."
+          ]
+        }
+      ]
+    },
+    {
+      "request": "Confidence-ranked PROSAC and inlier-only refit; refresh the four-photo paper results",
+      "requested": 1,
+      "attempted": 1,
+      "completed": 1,
+      "rounds": [
+        {
+          "round": 1,
+          "status": "completed",
+          "artifact_commit": "14aa523410f1b393cc29fe3ae7b96b87655791d7",
+          "model_provider_effort": "inherited from parent; validator role configuration has no model/effort override",
+          "fork_turns": "none",
+          "commit": "19bfaef1ce600851e0f4af9df73e67a527cb650d",
+          "verdict": "PASS",
+          "findings": [],
+          "verified": [
+            "Actual confidence ordering passed to PROSAC; degenerate minimal samples, inlier-only refit and restoration of semantic KP order.",
+            "All four homographies, generated table and exact figure pixels; original KP/LINE NPZs and inference/checkpoint records unchanged.",
+            "81 tests passed and 1 existing CUDA-specific regression skipped in validator environment; ruff, diff check and offline artifact validation passed.",
+            "Seven-page PDF; pages 3, 5, 6 and 7 visually checked; prior 3DGS, ground RANSAC, view projection and all-scene drift content retained."
+          ],
+          "not_repeated": [
+            "Training or neural inference",
+            "Local checkpoint verification (known SHA mismatch)",
+            "LaTeX rebuild (validated saved receipt and source/PDF binding)"
+          ],
+          "remaining_limits": [
+            "No human ground truth; smaller inlier residuals do not establish physical accuracy or generalization.",
+            "Historical checkpoint byte mismatch still prevents exact neural re-inference from the currently available weight file."
+          ]
+        }
+      ]
+    }
+  ]
+}

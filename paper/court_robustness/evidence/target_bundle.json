@@ -1,0 +1,75 @@
+{
+  "schema": "court_target_bundle_v1",
+  "targets": [
+    {
+      "kind": "kp",
+      "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "output_channels": 14,
+      "channel_names": [
+        "far_doubles_left",
+        "far_doubles_right",
+        "near_doubles_left",
+        "near_doubles_right",
+        "far_singles_left",
+        "near_singles_left",
+        "far_singles_right",
+        "near_singles_right",
+        "far_service_left",
+        "far_service_right",
+        "near_service_left",
+        "near_service_right",
+        "far_service_t",
+        "near_service_t"
+      ],
+      "target_dtype": "float32",
+      "precomputed": false
+    },
+    {
+      "kind": "seg",
+      "schema": "court_cell_segmentation_single_court_v2",
+      "output_channels": 7,
+      "channel_names": [
+        "background",
+        "service_left",
+        "service_right",
+        "back_left",
+        "back_right",
+        "doubles_left",
+        "doubles_right"
+      ],
+      "target_dtype": "int64",
+      "precomputed": true
+    },
+    {
+      "kind": "line",
+      "schema": "court_line_binary_75mm_150mm_single_court_v3",
+      "output_channels": 1,
+      "channel_names": [
+        "court_line"
+      ],
+      "target_dtype": "float32",
+      "precomputed": true
+    },
+    {
+      "kind": "semantic_line",
+      "schema": "court_line_semantic_camera_view_75mm_150mm_single_court_v1",
+      "output_channels": 12,
+      "channel_names": [
+        "background",
+        "far_baseline",
+        "near_baseline",
+        "left_doubles_sideline",
+        "right_doubles_sideline",
+        "left_singles_sideline",
+        "right_singles_sideline",
+        "far_service_line",
+        "near_service_line",
+        "center_service_line",
+        "far_center_mark",
+        "near_center_mark"
+      ],
+      "target_dtype": "int64",
+      "precomputed": true
+    }
+  ]
+}
