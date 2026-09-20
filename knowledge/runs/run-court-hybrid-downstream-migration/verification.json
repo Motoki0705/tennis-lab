@@ -66,6 +66,23 @@
       "passed": 34,
       "failed": 0,
       "note": "Final V3 and inventory correction; ordinary validation, no third validator."
+    },
+    {
+      "command": "pytest -n0 tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/integration/synthetic_data_generation/test_configuration.py tests/unit/tasks/court_detection/inference tests/unit/tennis_scene tests/e2e/development/test_architecture_boundaries.py tests/e2e/colab/test_b01_b03_alignment_script.py",
+      "passed": 474,
+      "failed": 0,
+      "note": "Final regression suite after rebase onto 7dd5f7c4 (including the updated NHT submodule pin)."
+    },
+    {
+      "command": "ruff check and mypy --follow-imports=skip on final 43 changed/new source and test Python files",
+      "status": "passed"
+    },
+    {
+      "command": "kg_validate.py --check-summary --base-ref 7dd5f7c4",
+      "status": "passed",
+      "nodes": 211,
+      "errors": 0,
+      "warnings": 50
     }
   ],
   "known_local_data_failure": {
@@ -96,7 +113,7 @@
       {
         "round": 1,
         "reviewed_commit": "70096b47167ec5af9ff5f74f7d305e1d0f2e784e",
-        "rebased_equivalent": "210a7519",
+        "rebased_equivalent": "537549ab",
         "verdict": "CHANGES_REQUIRED",
         "independent_tests_passed": 51,
         "findings": [
@@ -132,7 +149,8 @@
             "resolution": "Test now verifies configured hybrid checkpoint authority. Saved encoder external-asset roles are tested at the inference loader. No obsolete setting restored."
           }
         ],
-        "post_review_changes": "Test corrections only. The last correction is covered by ordinary verification and was not reevaluated by another validator."
+        "post_review_changes": "Test corrections only. The last correction is covered by ordinary verification and was not reevaluated by another validator.",
+        "rebased_equivalent": "d5988bc5"
       }
     ]
   },
@@ -141,5 +159,6 @@
     "test": "tests/integration/synthetic_data_generation/test_configuration.py::test_task_local_generation_camera_profiles_remain_available",
     "baseline": "Fails on main too: corners.yaml is already a committed public profile but absent from the expected inventory.",
     "resolution": "Update the explicit expected public inventory to broadcast/corners/default."
-  }
+  },
+  "final_base": "7dd5f7c444b4e7baffe4200df0eaab839653edec"
 }
