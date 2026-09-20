@@ -171,7 +171,7 @@ def test_required_recipe_resources_are_in_git_source() -> None:
 
     from scripts.colab.train.court_vit_ablation.launch import REPO
 
-    for name in ("archives.json", "baseline.yaml"):
+    for name in ("archives.json", "baseline.yaml", "baseline_checkpoint.sha256"):
         path = HERE / name
         subprocess.run(
             ["git", "ls-files", "--error-unmatch", str(path.relative_to(REPO))],
