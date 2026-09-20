@@ -13,8 +13,6 @@ protected_override_keys = [
   "request.scene_id",
   "request.source_video",
   "alignment.evidence.line_model.checkpoint_path",
-  "alignment.evidence.line_model.backbone_repository_path",
-  "alignment.evidence.line_model.backbone_checkpoint_path",
   "dataset.plcs.accad_root",
   "dataset.plcs.smplh_model_root",
 ]
@@ -42,8 +40,8 @@ destination = "data/smplh"
 writable = false
 
 [[inputs]]
-source = "ckpt/court_detection/line/court-detection-epoch19.ckpt"
-destination = "ckpt/court_detection/line/court-detection-epoch19.ckpt"
+source = "ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt"
+destination = "ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt"
 writable = false
 
 [[inputs]]

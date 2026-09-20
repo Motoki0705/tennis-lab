@@ -62,9 +62,9 @@ RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-${REVISION}"
 RESULT_RUN_ROOT="${RESULT_RUN_ROOT:-${DRIVE_ROOT}/outputs/synthetic_data_generation/alignment-runs/${RUN_ID}}"
 
 DINOV3_NAME="dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-LINE_CHECKPOINT_NAME="court-detection-epoch19.ckpt"
+LINE_CHECKPOINT_NAME="court-detection-epoch=17.ckpt"
 DINOV3_SHA256="73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c"
-LINE_CHECKPOINT_SHA256="81914bc58ba08824061b4509f54fcb2637a99b5c505cd5c28780cd4c1e88bfd4"
+LINE_CHECKPOINT_SHA256="dd3a396841097e60ff1bc0eabcf7b911e97685e251bf8cc441c100b17276e816"
 SCENES=(B01 B02 B03)
 declare -A VIDEO_SHA256=(
     [B01]="c9608e911f86274a862a289927ff9d0cc587543f836ffbdcad127f8ce61b5d56"
@@ -97,7 +97,7 @@ print_dry_run() {
     log "dry-run result_run_root=${RESULT_RUN_ROOT}"
     log "dry-run setup=mount-drive,verify-gpu,init-dinov3,verify-inputs,system-deps,uv-sync,setup-nht"
     log "dry-run asset=${DRIVE_DATA_ROOT}/${DINOV3_NAME} sha256=${DINOV3_SHA256}"
-    log "dry-run asset=${DRIVE_CHECKPOINT_ROOT}/court_detection/line/${LINE_CHECKPOINT_NAME} sha256=${LINE_CHECKPOINT_SHA256}"
+    log "dry-run asset=${DRIVE_CHECKPOINT_ROOT}/court_detection/hybrid/${LINE_CHECKPOINT_NAME} sha256=${LINE_CHECKPOINT_SHA256}"
     local scene profile
     for scene in "${SCENES[@]}"; do
         profile="${scene,,}"
@@ -244,8 +244,8 @@ stage_inputs() {
         "${REPO_ROOT}/third_party/dinov3/checkpoints/${DINOV3_NAME}" \
         "${DINOV3_SHA256}"
     stage_verified_file \
-        "${DRIVE_CHECKPOINT_ROOT}/court_detection/line/${LINE_CHECKPOINT_NAME}" \
-        "${REPO_ROOT}/ckpt/court_detection/line/${LINE_CHECKPOINT_NAME}" \
+        "${DRIVE_CHECKPOINT_ROOT}/court_detection/hybrid/${LINE_CHECKPOINT_NAME}" \
+        "${REPO_ROOT}/ckpt/court_detection/hybrid/${LINE_CHECKPOINT_NAME}" \
         "${LINE_CHECKPOINT_SHA256}"
 
     local scene

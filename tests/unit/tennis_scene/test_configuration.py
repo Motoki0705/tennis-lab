@@ -37,7 +37,11 @@ def _pipeline_config(root: Path, *overrides: str) -> DictConfig:
     """Compose the shipped pipeline config with a temporary project root."""
     with _composed(
         "pipeline",
-        [f"paths.project_root={root.resolve()}", *overrides],
+        [
+            f"paths.project_root={root.resolve()}",
+            "court_reference.view_half_turns=[false,false,true]",
+            *overrides,
+        ],
     ) as config:
         return config
 

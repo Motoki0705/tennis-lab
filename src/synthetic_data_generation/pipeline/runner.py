@@ -25,9 +25,7 @@ from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.synthetic_data_generation.pipeline.workspace import SceneWorkspace
 
-_LEGACY_REUSE_ADDITIVE_NHT_KEYS = frozenset(
-    {"training_python_path", "trainer_path"}
-)
+_LEGACY_REUSE_ADDITIVE_NHT_KEYS = frozenset({"training_python_path", "trainer_path"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +81,16 @@ class ScenePipelineRunner:
         self.workspace.root.mkdir(parents=True, exist_ok=True)
         config_path = self.workspace.resolved_config_path
         config_staging = config_path.with_suffix(config_path.suffix + ".tmp")
-        config_staging.write_text(self.resolved_config_yaml, encoding="utf-8")
+        effective_config = self.resolved_config_yaml
+        if config_path.exists() and _retains_alignment(plan):
+            old_config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            new_config = yaml.safe_load(effective_config)
+            if "alignment" in old_config:
+                # Preflight has verified the retained owner. Do not relabel its
+                # original detector as the current default during a dataset run.
+                new_config["alignment"] = deepcopy(old_config["alignment"])
+                effective_config = yaml.safe_dump(new_config, sort_keys=False)
+        config_staging.write_text(effective_config, encoding="utf-8")
         config_staging.replace(config_path)
         manifest.targets = sorted(target.value for target in request.targets)
         invalidated_names = {definition.name for definition in plan.invalidated}
@@ -324,6 +331,8 @@ def _resolved_configuration_is_reusable(
     """Compare retained authority with explicit alignment and Court suffix scopes."""
     existing = _configuration_authority(existing_yaml)
     requested = _configuration_authority(requested_yaml)
+    if _retains_alignment(plan):
+        requested = _normalize_retained_line_model(existing, requested)
     if plan.cursor.name is StageName.ALIGNMENT:
         alignment_existing = _alignment_scoped_authority(existing)
         alignment_requested = _alignment_scoped_authority(requested)
@@ -346,6 +355,50 @@ def _resolved_configuration_is_reusable(
         scoped_existing,
         scoped_requested,
     )
+
+
+def _retains_alignment(plan: StageExecutionPlan) -> bool:
+    return any(stage.name is StageName.ALIGNMENT for stage in plan.retained_ancestors)
+
+
+def _normalize_retained_line_model(
+    existing: Mapping[str, object], requested: Mapping[str, object]
+) -> Mapping[str, object]:
+    """Allow detector-schema/default migration only for a retained alignment.
+
+    Projection/fitting settings and probability extraction still must match.
+    Publication writes the saved alignment section, never this requested model.
+    """
+    normalized = deepcopy(dict(requested))
+    old_alignment, new_alignment = (
+        existing.get("alignment"),
+        normalized.get("alignment"),
+    )
+    if not isinstance(old_alignment, Mapping) or not isinstance(new_alignment, dict):
+        return requested
+    old_evidence, new_evidence = (
+        old_alignment.get("evidence"),
+        new_alignment.get("evidence"),
+    )
+    if not isinstance(old_evidence, Mapping) or not isinstance(new_evidence, dict):
+        return requested
+    old_model, new_model = (
+        old_evidence.get("line_model"),
+        new_evidence.get("line_model"),
+    )
+    if not isinstance(old_model, Mapping) or not isinstance(new_model, Mapping):
+        return requested
+    if any(
+        old_model.get(key) != new_model.get(key)
+        for key in (
+            "device",
+            "probability_threshold",
+            "maximum_selected_pixels_per_camera",
+        )
+    ):
+        return requested
+    new_evidence["line_model"] = deepcopy(dict(old_model))
+    return normalized
 
 
 def _scoped_authorities_match(

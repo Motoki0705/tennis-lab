@@ -143,12 +143,7 @@ def make_court_kp_config(root: Path) -> CourtKPConfig:
         save_result=False,
         output_path=resolver.resolve(PathRole.ARTIFACT, "court.json"),
         load_path=None,
-        postprocess=CourtKPPostprocessConfig(
-            enabled=False,
-            min_score=0.5,
-            ransac_reproj_threshold=3.0,
-            temporal_median_window=5,
-        ),
+        postprocess=CourtKPPostprocessConfig(),
         resolver=resolver,
     )
 

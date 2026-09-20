@@ -6,7 +6,6 @@ import heapq
 import logging
 import math
 import os
-import warnings
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -91,33 +90,8 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.base.model_io import bind_model_io
-from src.tasks.court_detection.configuration import (
-    DPT_CHANNELS_BY_SIZE,
-    CourtDecoderConfig,
-    CourtDenseHeadConfig,
-    CourtDPTSize,
-    CourtEncoderConfig,
-    CourtLoRAConfig,
-    CourtLossConfig,
-    CourtModelConfig,
-    CourtTransformerEncoderConfig,
-)
-from src.tasks.court_detection.data.bundle_state import deserialize_target_bundle
-from src.tasks.court_detection.data.contracts import (
-    CourtTargetBundleSpec,
-    CourtTargetSpec,
-)
 from src.tasks.court_detection.inference import CourtLinePredictor
-from src.tasks.court_detection.inference.mask_predictor import CourtBoundModelIO
-from src.tasks.court_detection.model_io.adapters import (
-    CourtDINOv3ExecutionBoundary,
-    CourtModelIOAdapter,
-)
-from src.tasks.court_detection.model_io.contracts import CourtModelSpec
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.target_schemas import LINE_TARGET_SCHEMA_V1
-from src.utils.configuration import PathResolver, PathRole
+from src.utils.configuration import PathResolver
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 _MAXIMUM_ORIENTATION_BAND_COUNT = 2
@@ -186,16 +160,6 @@ class ProductionCourtLineDetector:
             raise FileNotFoundError(
                 f"Court-line checkpoint does not exist: {settings.checkpoint_path}"
             )
-        if not settings.backbone_checkpoint_path.is_file():
-            raise FileNotFoundError(
-                "Court-line backbone checkpoint does not exist: "
-                f"{settings.backbone_checkpoint_path}"
-            )
-        if not settings.backbone_repository_path.is_dir():
-            raise FileNotFoundError(
-                "Court-line backbone repository does not exist: "
-                f"{settings.backbone_repository_path}"
-            )
         if settings.device.startswith("cuda") and not torch.cuda.is_available():
             raise RuntimeError(
                 f"CUDA device {settings.device!r} was requested for alignment, "
@@ -219,119 +183,24 @@ class ProductionCourtLineDetector:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.allow_tf32 = False
         torch.backends.cuda.matmul.allow_tf32 = False
-        raw: Any = torch.load(
+        predictor = CourtLinePredictor.load_from_checkpoint(
             settings.checkpoint_path,
-            map_location="cpu",
-            weights_only=False,
+            resolver=self._resolver,
+            device=settings.device,
         )
-        if not isinstance(raw, dict):
-            raise ValueError("Court-line checkpoint payload must be a mapping.")
-        self._resolver.validate(PathRole.CHECKPOINT, settings.checkpoint_path)
-        self._resolver.validate(
-            PathRole.EXTERNAL_ASSET,
-            settings.backbone_repository_path,
-        )
-        self._resolver.validate(
-            PathRole.EXTERNAL_ASSET,
-            settings.backbone_checkpoint_path,
-        )
-        hyper_parameters = raw.get("hyper_parameters")
-        if not isinstance(hyper_parameters, Mapping):
-            raise ValueError("Court-line checkpoint has no hyper_parameters mapping.")
-        embedded = hyper_parameters.get("config")
-        if not isinstance(embedded, Mapping):
-            raise ValueError("Court-line checkpoint has no embedded config mapping.")
-        config = _plain_mapping(embedded)
-        model_mapping = _required_mapping(config, "model")
-        encoder = _required_mapping(model_mapping, "encoder")
-        embedded_checkpoint = encoder.get("checkpoint_path")
-        if not isinstance(embedded_checkpoint, str) or not embedded_checkpoint:
-            raise ValueError("Court-line checkpoint has no encoder checkpoint_path.")
-        if Path(embedded_checkpoint).name != settings.backbone_checkpoint_path.name:
+        line_spec = predictor.adapter.spec.target_bundle.targets["line"]
+        if line_spec.output_channels != 1 or line_spec.channel_names != ("court_line",):
             raise ValueError(
-                "Configured court-line backbone disagrees with the trained checkpoint: "
-                f"{settings.backbone_checkpoint_path.name!r} != "
-                f"{Path(embedded_checkpoint).name!r}."
-            )
-        _validate_embedded_architecture(settings, model_mapping)
-        architecture = settings.architecture
-        model_config = _court_line_model_config(settings)
-        target_bundle = _alignment_line_target_bundle(
-            hyper_parameters=hyper_parameters,
-        )
-        model = CourtHierarchicalModel.from_config(model_config, target_bundle)
-        raw_state = raw.get("state_dict")
-        if not isinstance(raw_state, Mapping):
-            raise ValueError("Court-line checkpoint has no state_dict mapping.")
-        model_state = _court_line_model_state(raw_state)
-        model.load_state_dict(model_state, strict=True)
-        model.eval()
-        spec = CourtModelSpec(
-            target_bundle=target_bundle,
-            in_channels=3,
-            short_side=settings.expected_short_side,
-            encoder_kind="dinov3",
-        )
-        adapter = CourtModelIOAdapter(
-            spec,
-            loss_config=CourtLossConfig.from_mapping(
-                {
-                    "seg": {
-                        "ce_weight": 1.0,
-                        "dice_weight": 1.0,
-                        "weight": 1.0,
-                    },
-                    "kp": {"focal_gamma": 2.0, "weight": 1.0},
-                    "line": {
-                        "bce_weight": architecture.line_bce_weight,
-                        "dice_weight": architecture.line_dice_weight,
-                        "pos_weight": architecture.line_positive_weight,
-                        "weight": 1.0,
-                    },
-                    "pose": {
-                        "enabled": False,
-                        "translation_weight": 0.0,
-                        "rotation_weight": 0.0,
-                        "focal_weight": 0.0,
-                    },
-                    "consistency": {
-                        "enabled": False,
-                        "weight": 0.0,
-                        "temperature": 1.0,
-                        "huber_delta": 0.01,
-                        "min_depth_m": 0.1,
-                        "depth_scale_m": 1.0,
-                        "cheirality_weight": 0.0,
-                        "warmup_fraction": 0.0,
-                        "gradient_flow": "both",
-                    },
-                }
-            ),
-            execution_boundary=CourtDINOv3ExecutionBoundary(
-                frozen_backbone=(
-                    architecture.backbone_train_mode == "frozen"
-                    and not architecture.lora_enabled
-                )
-            ),
-        )
-        predictor = CourtLinePredictor(
-            cast(CourtBoundModelIO, bind_model_io(model, adapter)),
-            torch.device(settings.device),
-        )
-        if predictor.adapter.spec.short_side != settings.expected_short_side:
-            raise AssertionError(
-                "Constructed court-line adapter lost the configured preprocessing size."
+                "Alignment requires the binary court_line probability head"
             )
         if settings.device.startswith("cuda") and predictor.device.type != "cuda":
-            raise RuntimeError(
-                "Court-line predictor silently changed the requested CUDA device."
-            )
+            raise RuntimeError("Court predictor changed the requested CUDA device")
         self._predictor = predictor
         is_cuda = settings.device.startswith("cuda")
         self._determinism = LineInferenceDeterminismDiagnostics(
             seed=self._seed,
             device=settings.device,
-            model_eval=not model.training,
+            model_eval=not predictor.model.training,
             inference_mode=True,
             deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
             deterministic_warn_only=(
@@ -386,9 +255,12 @@ class ProductionCourtLineDetector:
 
     def inference_cache_identity(self) -> Mapping[str, object]:
         """Return a stable identity independent of downstream alignment settings."""
-        return cast(
-            Mapping[str, object],
-            court_line_inference_identity(self._settings, seed=self._seed),
+        self.preflight()
+        assert self._predictor is not None
+        return court_line_inference_identity(
+            self._settings,
+            seed=self._seed,
+            checkpoint_identity=self._predictor.checkpoint_identity,
         )
 
 
@@ -4804,192 +4676,6 @@ def _plain_value(value: object) -> Any:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return [_plain_value(item) for item in value]
     return value
-
-
-def _court_line_model_state(
-    raw_state: Mapping[Any, Any],
-) -> dict[str, torch.Tensor]:
-    """Normalize the exact historical single-line head before a strict load."""
-    model_state: dict[str, torch.Tensor] = {}
-    for key, value in raw_state.items():
-        if not isinstance(key, str) or not key.startswith("model."):
-            continue
-        if not isinstance(value, torch.Tensor):
-            raise TypeError(f"Court-line tensor {key!r} is not a Tensor.")
-        model_state[key.removeprefix("model.")] = value
-    if not model_state:
-        raise ValueError("Court-line checkpoint contains no model tensors.")
-
-    legacy_keys = {"final_conv.weight", "final_conv.bias"}
-    canonical_keys = {"heads.line.weight", "heads.line.bias"}
-    legacy_candidates = {key for key in model_state if key.startswith("final_conv.")}
-    canonical_candidates = {key for key in model_state if key.startswith("heads.line.")}
-    if legacy_candidates:
-        if legacy_candidates != legacy_keys or canonical_candidates:
-            raise ValueError(
-                "Court-line checkpoint mixes or incompletely defines legacy and "
-                "canonical line-head tensors."
-            )
-        model_state["heads.line.weight"] = model_state.pop("final_conv.weight")
-        model_state["heads.line.bias"] = model_state.pop("final_conv.bias")
-        warnings.warn(
-            "Mapped the exact historical court-line final_conv head to "
-            "heads.line before strict checkpoint loading.",
-            UserWarning,
-            stacklevel=2,
-        )
-    elif canonical_candidates != canonical_keys:
-        raise ValueError(
-            "Court-line checkpoint must contain exactly one complete heads.line head."
-        )
-    return model_state
-
-
-def _alignment_line_target_bundle(
-    *, hyper_parameters: Mapping[object, object]
-) -> CourtTargetBundleSpec:
-    """Recover line semantics without constraining how many courts they represent."""
-    snapshot = hyper_parameters.get("target_bundle_state")
-    if snapshot is None:
-        return CourtTargetBundleSpec(
-            {
-                "line": CourtTargetSpec(
-                    kind="line",
-                    schema=LINE_TARGET_SCHEMA_V1,
-                    output_channels=1,
-                    channel_names=("court_line",),
-                    target_dtype=torch.float32,
-                    precomputed=True,
-                )
-            }
-        )
-    bundle = deserialize_target_bundle(snapshot)
-    line = bundle.targets.get("line")
-    if line is None:
-        raise ValueError("Alignment checkpoint target bundle has no line target.")
-    return CourtTargetBundleSpec({"line": line})
-
-
-def _court_line_model_config(settings: CourtLineModelSettings) -> CourtModelConfig:
-    """Rebuild the checkpoint architecture with the current strict model fields."""
-    architecture = settings.architecture
-    matching_sizes: tuple[CourtDPTSize, ...] = tuple(
-        size
-        for size, channels in DPT_CHANNELS_BY_SIZE.items()
-        if channels == architecture.decoder_channels
-    )
-    if len(matching_sizes) != 1:
-        raise ValueError(
-            "Court-line decoder_channels must match exactly one strict DPT size "
-            f"preset; got {architecture.decoder_channels}."
-        )
-    encoder_config = CourtEncoderConfig(
-        name="dinov3",
-        repository_path=settings.backbone_repository_path,
-        checkpoint_path=settings.backbone_checkpoint_path,
-        backbone_name=architecture.backbone_name,
-        strict=architecture.backbone_strict,
-        train_mode=architecture.backbone_train_mode,
-        last_n_blocks=architecture.backbone_last_n_blocks,
-        out_indices=architecture.backbone_out_indices,
-        layer_mode=architecture.backbone_layer_mode,
-        lora=CourtLoRAConfig(
-            enabled=architecture.lora_enabled,
-            rank=architecture.lora_rank,
-            alpha=architecture.lora_alpha,
-            dropout=architecture.lora_dropout,
-            target_modules=architecture.lora_target_modules,
-        ),
-    )
-    return CourtModelConfig(
-        name="court_hierarchical",
-        in_channels=3,
-        encoder=encoder_config,
-        decoder=CourtDecoderConfig(
-            name="dpt",
-            size=matching_sizes[0],
-            channels=architecture.decoder_channels,
-            reassemble_factors=architecture.decoder_reassemble_factors,
-        ),
-        transformer_encoder=CourtTransformerEncoderConfig(
-            name="none",
-            enabled=False,
-            dim=None,
-            depth=None,
-            num_heads=None,
-            head_dim=None,
-            ffn_dim=None,
-            rope_dim=None,
-            rope_theta=None,
-            dropout=None,
-            attention_type=None,
-            n_kv_heads=None,
-            ffn_type=None,
-        ),
-        dense_head=CourtDenseHeadConfig(
-            name="linear",
-            normalization_groups=None,
-            branches=MappingProxyType({}),
-        ),
-    )
-
-
-def _validate_embedded_architecture(
-    settings: CourtLineModelSettings,
-    model: Mapping[str, Any],
-) -> None:
-    """Cross-check explicit inference architecture against trained metadata."""
-    architecture = settings.architecture
-    expected_model_values: dict[str, object] = {
-        "in_channels": 3,
-        "num_classes": 1,
-    }
-    for key, expected in expected_model_values.items():
-        if key not in model or model[key] != expected:
-            raise ValueError(
-                f"Court-line checkpoint model.{key} disagrees with {expected!r}."
-            )
-    encoder = _required_mapping(model, "encoder")
-    expected_encoder_values: dict[str, object] = {
-        "name": "dinov3",
-        "backbone_name": architecture.backbone_name,
-        "strict": architecture.backbone_strict,
-        "train_mode": architecture.backbone_train_mode,
-        "last_n_blocks": architecture.backbone_last_n_blocks,
-        "out_indices": list(architecture.backbone_out_indices),
-    }
-    for key, expected in expected_encoder_values.items():
-        if key not in encoder or encoder[key] != expected:
-            raise ValueError(
-                f"Court-line checkpoint encoder.{key} disagrees with explicit "
-                f"architecture {expected!r}."
-            )
-    lora = _required_mapping(encoder, "lora")
-    expected_lora_values: dict[str, object] = {
-        "enabled": architecture.lora_enabled,
-        "rank": architecture.lora_rank,
-        "alpha": architecture.lora_alpha,
-        "dropout": architecture.lora_dropout,
-        "target_modules": list(architecture.lora_target_modules),
-    }
-    for key, expected in expected_lora_values.items():
-        if key not in lora or lora[key] != expected:
-            raise ValueError(
-                f"Court-line checkpoint LoRA {key} disagrees with explicit "
-                f"architecture {expected!r}."
-            )
-    decoder = _required_mapping(model, "decoder")
-    expected_decoder_values: dict[str, object] = {
-        "name": "dpt",
-        "channels": architecture.decoder_channels,
-        "reassemble_factors": list(architecture.decoder_reassemble_factors),
-    }
-    for key, expected in expected_decoder_values.items():
-        if key not in decoder or decoder[key] != expected:
-            raise ValueError(
-                f"Court-line checkpoint decoder.{key} disagrees with explicit "
-                f"architecture {expected!r}."
-            )
 
 
 def _required_mapping(value: Mapping[str, Any], key: str) -> dict[str, Any]:

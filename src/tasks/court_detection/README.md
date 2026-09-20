@@ -50,8 +50,21 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
-- `inference/`: single-head predictorはmulti-head checkpointから対象headを明示選択します。
+- `inference/`: `CourtPredictor` が1回のforwardでraw head群と任意のKP・LINE共同推定を返します。head別predictorは同じ実装へのraw出力の委譲です。
+- `geometry/hybrid_homography.py`: 外れ値を除いた最大8点とLINEでHを推定します。規格コートのメートル座標・KP14順序・主要9線を共有します。
 - `visualization/`: bundle-awareなprediction/rendering surface。
+
+### 共通推論と幾何補正
+
+`CourtPredictor.load_from_checkpoint(..., resolver=resolver, device=device)` はcheckpointの保存モデル構成・loss定義・target bundle・`val_short_side`を読み、全model tensorをstrictにロードします。学習専用のrun/source/augmentation検証と分離しており、旧checkpointへ`artifact_store`等を補う処理はありません。学習時の設定検証は従来どおりです。既定の配布先は `ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` で、重みはGit管理しません。
+
+`predict(rgb, postprocess="hybrid")` は `CourtPrediction.raw_heads` と `homography` を分けて返します。KP座標は原画像pixel、raw LINE確率・logitsはnative gridで、両サイズを結果に保持します。hybridにはordered KP14・1 peak/channel・LINEが必要です。失敗理由を返し、raw KPや別Hへ代替しません。`downstream_keypoints()` は再投影14点と画像内validityを返し、失敗時はゼロ座標・全不可視です。`selected`は最適化に採用した観測のmaskであり、このvalidityとは別です。
+
+LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。今回の配布重みは短辺256・KP/SEG/LINE＋poseで、semantic LINE headはありません。
+
+KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。
+
+実checkpointの確認は `python -m src.tasks.court_detection.scripts.audit_hybrid_inference --checkpoint <absolute.ckpt> --image <image> --output-dir <new-directory>` で、KP/LINE/H・画像・診断・実行時間を保存できます。複数画像は`--image`を繰り返し指定します。`--scene-root`は既存ownerのハッシュを前後照合する読み取り専用オプションです。Hの生成可否とLINE支持率はGT精度ではありません。
 
 ### KP heatmapのピークcardinality
 
@@ -202,12 +215,12 @@ dense layerは`data/court_detection/derived_targets/`の事前生成物をcanoni
 ### checkpoint互換契約
 
 候補は`outputs/court_detection/**/*.ckpt`と`ckpt/court_detection/**/*.ckpt`を再帰scanし、
-checkpoint本体（`hyper_parameters.config`と`target_bundle_state`）だけを正本として判定します。
+checkpoint本体（`hyper_parameters.config`と`target_bundle_state`）の推論契約を正本として判定します。
 `hparams.yaml`は本体との一致確認にのみ使い、本文が読めないcheckpointは常にunusableです。
 
 - `target_bundle_state`を持たないlegacy single-head checkpoint（`ckpt/court_detection/kp`・`line`）は、
   現行bundleへ移行せずunsupportedと理由を表示します。
-- 現行contractを満たさない保存config（例: `run.artifact_store`以前のrun）もunsupportedです。
+- モデル構成・出力bundle・推論解像度が不正な保存configはunsupportedです。学習専用の`run.artifact_store`の有無は推論可否に使いません。
 - 互換datasetは、bundleが宣言したKP channel semanticsとdense target schemaが一致するものだけです。
   schemaが違うlayerは同じ教師として比較せず、dataset側を明示的に除外します。
 - synthetic v1（`all_courts`、7-channel semantic KP）は14-channel bundleとsemanticが違うため、

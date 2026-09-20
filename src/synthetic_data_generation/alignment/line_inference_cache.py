@@ -8,7 +8,6 @@ import os
 import shutil
 import tempfile
 from collections.abc import Callable, Mapping
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
 
@@ -32,15 +31,22 @@ _MIRROR_ROOT_ENV = "TENNIS_LAB_ALIGNMENT_INFERENCE_MIRROR_ROOT"
 
 
 def court_line_inference_identity(
-    settings: CourtLineModelSettings, *, seed: int
+    settings: CourtLineModelSettings,
+    *,
+    seed: int,
+    checkpoint_identity: Mapping[str, object],
 ) -> dict[str, object]:
-    """Fingerprint only inputs that can change raw model probabilities."""
+    """Fingerprint the actual loaded model and preprocessing, not fit settings."""
+    digest = _sha256_file(settings.checkpoint_path)
+    if checkpoint_identity["checkpoint_sha256"] != digest:
+        raise ValueError("Loaded Court checkpoint differs from the cache source")
     return {
-        "schema": "court_line_inference_identity_v1",
-        "checkpoint_sha256": _sha256_file(settings.checkpoint_path),
-        "backbone_checkpoint_sha256": _sha256_file(settings.backbone_checkpoint_path),
-        "architecture": asdict(settings.architecture),
-        "expected_short_side": settings.expected_short_side,
+        "schema": "court_line_inference_identity_v3",
+        "checkpoint_sha256": digest,
+        "backbone_checkpoint_sha256": checkpoint_identity["backbone_sha256"],
+        "architecture": checkpoint_identity["architecture"],
+        "target_bundle": checkpoint_identity["target_bundle"],
+        "short_side": checkpoint_identity["short_side"],
         "device": settings.device,
         "seed": seed,
     }

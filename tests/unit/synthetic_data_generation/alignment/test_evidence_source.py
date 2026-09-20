@@ -12,7 +12,6 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-import torch
 from numpy.typing import NDArray
 from PIL import Image
 
@@ -31,12 +30,9 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     MeasuredAlignmentEvidenceSource,
     ProductionAlignmentEvidenceSource,
     ProductionCourtLineDetector,
-    _alignment_line_target_bundle,
     _assign_candidate_evidence,
     _center_space_tiles,
     _CenterTile,
-    _court_line_model_config,
-    _court_line_model_state,
     _CourtHypothesis,
     _deduplicate_tiled_proposals,
     _fit_court_hypotheses,
@@ -82,7 +78,6 @@ from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
     CourtCandidateFitSettings,
-    CourtLineArchitectureSettings,
     CourtLineModelSettings,
     GroundPlaneSettings,
     LineProjectionSettings,
@@ -99,15 +94,6 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.court_detection.data.bundle_state import serialize_target_bundle
-from src.tasks.court_detection.data.contracts import (
-    CourtTargetBundleSpec,
-    CourtTargetSpec,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    LINE_TARGET_SCHEMA_V2,
-)
 from src.utils.schema.court import HALF_DOUBLES_WIDTH
 
 
@@ -150,20 +136,6 @@ class _Detector:
             device_name="cpu",
             cross_hardware_bit_identity_claimed=False,
         )
-
-
-def test_production_line_config_rebuilds_legacy_checkpoint_with_strict_fields(
-    tmp_path: Path,
-) -> None:
-    settings = _settings(tmp_path).line_model
-
-    config = _court_line_model_config(settings)
-
-    assert config.decoder.name == "dpt"
-    assert config.decoder.size == "base"
-    assert config.decoder.channels == 256
-    assert config.transformer_encoder.name == "none"
-    assert not config.transformer_encoder.enabled
 
 
 def test_production_line_detector_accepts_explicit_cpu_runtime_override(
@@ -222,135 +194,6 @@ def test_production_source_rejects_unbounded_holdout_prefix_expansion(
             cast(Any, object()),
             input_source=CapturedAlignmentLineInputSource(),
         )
-
-
-def test_line_checkpoint_maps_only_the_exact_historical_single_head() -> None:
-    weight = torch.ones((1, 4, 1, 1))
-    bias = torch.ones(1)
-
-    with pytest.warns(UserWarning, match="historical court-line final_conv"):
-        state = _court_line_model_state(
-            {
-                "model.encoder.value": torch.ones(1),
-                "model.final_conv.weight": weight,
-                "model.final_conv.bias": bias,
-                "optimizer.value": "ignored",
-            }
-        )
-
-    assert state["heads.line.weight"] is weight
-    assert state["heads.line.bias"] is bias
-    assert "final_conv.weight" not in state
-    assert "final_conv.bias" not in state
-
-
-def test_line_checkpoint_rejects_mixed_head_schemas() -> None:
-    with pytest.raises(ValueError, match="mixes or incompletely defines"):
-        _court_line_model_state(
-            {
-                "model.final_conv.weight": torch.ones((1, 4, 1, 1)),
-                "model.final_conv.bias": torch.ones(1),
-                "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-                "model.heads.line.bias": torch.ones(1),
-            }
-        )
-
-
-@pytest.mark.parametrize(
-    "head_state",
-    (
-        {"model.final_conv.weight": torch.ones((1, 4, 1, 1))},
-        {"model.final_conv.bias": torch.ones(1)},
-    ),
-)
-def test_line_checkpoint_rejects_incomplete_historical_head(
-    head_state: dict[str, torch.Tensor],
-) -> None:
-    with pytest.raises(ValueError, match="incompletely defines"):
-        _court_line_model_state(head_state)
-
-
-def test_line_checkpoint_accepts_complete_canonical_head_without_remapping() -> None:
-    weight = torch.ones((1, 4, 1, 1))
-    bias = torch.ones(1)
-
-    state = _court_line_model_state(
-        {
-            "model.heads.line.weight": weight,
-            "model.heads.line.bias": bias,
-        }
-    )
-
-    assert set(state) == {"heads.line.weight", "heads.line.bias"}
-    assert state["heads.line.weight"] is weight
-    assert state["heads.line.bias"] is bias
-
-
-@pytest.mark.parametrize("line_schema", (LINE_TARGET_SCHEMA, LINE_TARGET_SCHEMA_V2))
-def test_alignment_accepts_any_court_scope_line_target_schema(
-    line_schema: str,
-) -> None:
-    expected = CourtTargetSpec(
-        kind="line",
-        schema=line_schema,
-        output_channels=1,
-        channel_names=("court_line",),
-        target_dtype=torch.float32,
-        precomputed=True,
-    )
-    checkpoint_bundle = CourtTargetBundleSpec(
-        {
-            "kp": CourtTargetSpec(
-                kind="kp",
-                schema="test_kp14",
-                output_channels=14,
-                channel_names=tuple(f"kp_{index}" for index in range(14)),
-                target_dtype=torch.float32,
-                precomputed=False,
-            ),
-            "line": expected,
-        }
-    )
-
-    observed = _alignment_line_target_bundle(
-        hyper_parameters={
-            "target_bundle_state": serialize_target_bundle(checkpoint_bundle)
-        }
-    )
-
-    assert observed.targets == {"line": expected}
-
-
-@pytest.mark.parametrize(
-    "head_state",
-    (
-        {"model.encoder.value": torch.ones(1)},
-        {"model.heads.line.weight": torch.ones((1, 4, 1, 1))},
-        {
-            "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-            "model.heads.line.bias": torch.ones(1),
-            "model.heads.line.extra": torch.ones(1),
-        },
-    ),
-)
-def test_line_checkpoint_rejects_noncanonical_current_head(
-    head_state: dict[str, torch.Tensor],
-) -> None:
-    with pytest.raises(ValueError, match="exactly one complete heads.line"):
-        _court_line_model_state(head_state)
-
-
-def test_production_line_config_rejects_channels_without_a_dpt_size(
-    tmp_path: Path,
-) -> None:
-    settings = _settings(tmp_path).line_model
-    settings = replace(
-        settings,
-        architecture=replace(settings.architecture, decoder_channels=96),
-    )
-
-    with pytest.raises(ValueError, match="strict DPT size preset"):
-        _court_line_model_config(settings)
 
 
 def test_measured_source_preflight_checks_real_images_and_detector(
@@ -2963,24 +2806,6 @@ def _scene(tmp_path: Path, *, camera_count: int) -> StandardSceneExport:
 
 
 def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
-    architecture = CourtLineArchitectureSettings(
-        backbone_name="dinov3_vitb16",
-        backbone_strict=True,
-        backbone_train_mode="frozen",
-        backbone_last_n_blocks=0,
-        backbone_out_indices=(2, 5, 8, 11),
-        backbone_layer_mode="uniform",
-        lora_enabled=True,
-        lora_rank=8,
-        lora_alpha=16.0,
-        lora_dropout=0.0,
-        lora_target_modules=("qkv", "proj", "fc1", "fc2"),
-        decoder_channels=256,
-        decoder_reassemble_factors=(4.0, 2.0, 1.0, 0.5),
-        line_bce_weight=1.0,
-        line_dice_weight=1.0,
-        line_positive_weight=8.0,
-    )
     return AlignmentEvidenceSettings(
         seed=42,
         fit_fraction=2.0 / 3.0,
@@ -2990,13 +2815,9 @@ def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
         camera_prefix_count=3,
         line_model=CourtLineModelSettings(
             checkpoint_path=(tmp_path / "line.ckpt").resolve(),
-            backbone_repository_path=(tmp_path / "dinov3").resolve(),
-            backbone_checkpoint_path=(tmp_path / "backbone.pth").resolve(),
             device="cpu",
-            expected_short_side=256,
             probability_threshold=0.5,
             maximum_selected_pixels_per_camera=100,
-            architecture=architecture,
         ),
         ground_plane=GroundPlaneSettings(
             footprint_quantile=0.0,

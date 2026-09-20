@@ -54,7 +54,7 @@ def test_dry_run_fixes_scene_order_terminal_stage_and_input_hashes() -> None:
         "c9608e911f86274a862a289927ff9d0cc587543f836ffbdcad127f8ce61b5d56",
         "035a3e79637583d0794e598808fcdd46aac9d3f8e374599f453718a3d6c8615a",
         "80ec1676b420b05f22fc9c4ed5db9257e1c35b9e9bb9596dd1be3f479c7287ac",
-        "81914bc58ba08824061b4509f54fcb2637a99b5c505cd5c28780cd4c1e88bfd4",
+        "dd3a396841097e60ff1bc0eabcf7b911e97685e251bf8cc441c100b17276e816",
         "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
     ):
         assert expected_hash in output
