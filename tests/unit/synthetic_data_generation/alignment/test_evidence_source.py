@@ -12,7 +12,6 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
-import torch
 from numpy.typing import NDArray
 from PIL import Image
 
@@ -31,12 +30,9 @@ from src.synthetic_data_generation.alignment.evidence_source import (
     MeasuredAlignmentEvidenceSource,
     ProductionAlignmentEvidenceSource,
     ProductionCourtLineDetector,
-    _alignment_line_target_bundle,
     _assign_candidate_evidence,
     _center_space_tiles,
     _CenterTile,
-    _court_line_model_config,
-    _court_line_model_state,
     _CourtHypothesis,
     _deduplicate_tiled_proposals,
     _fit_court_hypotheses,
@@ -82,7 +78,6 @@ from src.synthetic_data_generation.alignment.settings import (
     AlignmentEvidenceSettings,
     CorrespondenceSettings,
     CourtCandidateFitSettings,
-    CourtLineArchitectureSettings,
     CourtLineModelSettings,
     GroundPlaneSettings,
     LineProjectionSettings,
@@ -99,15 +94,6 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
     StandardSceneExport,
 )
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.tasks.court_detection.data.bundle_state import serialize_target_bundle
-from src.tasks.court_detection.data.contracts import (
-    CourtTargetBundleSpec,
-    CourtTargetSpec,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    LINE_TARGET_SCHEMA_V2,
-)
 from src.utils.schema.court import HALF_DOUBLES_WIDTH
 
 
@@ -150,20 +136,6 @@ class _Detector:
             device_name="cpu",
             cross_hardware_bit_identity_claimed=False,
         )
-
-
-def test_production_line_config_rebuilds_legacy_checkpoint_with_strict_fields(
-    tmp_path: Path,
-) -> None:
-    settings = _settings(tmp_path).line_model
-
-    config = _court_line_model_config(settings)
-
-    assert config.decoder.name == "dpt"
-    assert config.decoder.size == "base"
-    assert config.decoder.channels == 256
-    assert config.transformer_encoder.name == "none"
-    assert not config.transformer_encoder.enabled
 
 
 def test_production_line_detector_accepts_explicit_cpu_runtime_override(
@@ -222,135 +194,6 @@ def test_production_source_rejects_unbounded_holdout_prefix_expansion(
             cast(Any, object()),
             input_source=CapturedAlignmentLineInputSource(),
         )
-
-
-def test_line_checkpoint_maps_only_the_exact_historical_single_head() -> None:
-    weight = torch.ones((1, 4, 1, 1))
-    bias = torch.ones(1)
-
-    with pytest.warns(UserWarning, match="historical court-line final_conv"):
-        state = _court_line_model_state(
-            {
-                "model.encoder.value": torch.ones(1),
-                "model.final_conv.weight": weight,
-                "model.final_conv.bias": bias,
-                "optimizer.value": "ignored",
-            }
-        )
-
-    assert state["heads.line.weight"] is weight
-    assert state["heads.line.bias"] is bias
-    assert "final_conv.weight" not in state
-    assert "final_conv.bias" not in state
-
-
-def test_line_checkpoint_rejects_mixed_head_schemas() -> None:
-    with pytest.raises(ValueError, match="mixes or incompletely defines"):
-        _court_line_model_state(
-            {
-                "model.final_conv.weight": torch.ones((1, 4, 1, 1)),
-                "model.final_conv.bias": torch.ones(1),
-                "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-                "model.heads.line.bias": torch.ones(1),
-            }
-        )
-
-
-@pytest.mark.parametrize(
-    "head_state",
-    (
-        {"model.final_conv.weight": torch.ones((1, 4, 1, 1))},
-        {"model.final_conv.bias": torch.ones(1)},
-    ),
-)
-def test_line_checkpoint_rejects_incomplete_historical_head(
-    head_state: dict[str, torch.Tensor],
-) -> None:
-    with pytest.raises(ValueError, match="incompletely defines"):
-        _court_line_model_state(head_state)
-
-
-def test_line_checkpoint_accepts_complete_canonical_head_without_remapping() -> None:
-    weight = torch.ones((1, 4, 1, 1))
-    bias = torch.ones(1)
-
-    state = _court_line_model_state(
-        {
-            "model.heads.line.weight": weight,
-            "model.heads.line.bias": bias,
-        }
-    )
-
-    assert set(state) == {"heads.line.weight", "heads.line.bias"}
-    assert state["heads.line.weight"] is weight
-    assert state["heads.line.bias"] is bias
-
-
-@pytest.mark.parametrize("line_schema", (LINE_TARGET_SCHEMA, LINE_TARGET_SCHEMA_V2))
-def test_alignment_accepts_any_court_scope_line_target_schema(
-    line_schema: str,
-) -> None:
-    expected = CourtTargetSpec(
-        kind="line",
-        schema=line_schema,
-        output_channels=1,
-        channel_names=("court_line",),
-        target_dtype=torch.float32,
-        precomputed=True,
-    )
-    checkpoint_bundle = CourtTargetBundleSpec(
-        {
-            "kp": CourtTargetSpec(
-                kind="kp",
-                schema="test_kp14",
-                output_channels=14,
-                channel_names=tuple(f"kp_{index}" for index in range(14)),
-                target_dtype=torch.float32,
-                precomputed=False,
-            ),
-            "line": expected,
-        }
-    )
-
-    observed = _alignment_line_target_bundle(
-        hyper_parameters={
-            "target_bundle_state": serialize_target_bundle(checkpoint_bundle)
-        }
-    )
-
-    assert observed.targets == {"line": expected}
-
-
-@pytest.mark.parametrize(
-    "head_state",
-    (
-        {"model.encoder.value": torch.ones(1)},
-        {"model.heads.line.weight": torch.ones((1, 4, 1, 1))},
-        {
-            "model.heads.line.weight": torch.ones((1, 4, 1, 1)),
-            "model.heads.line.bias": torch.ones(1),
-            "model.heads.line.extra": torch.ones(1),
-        },
-    ),
-)
-def test_line_checkpoint_rejects_noncanonical_current_head(
-    head_state: dict[str, torch.Tensor],
-) -> None:
-    with pytest.raises(ValueError, match="exactly one complete heads.line"):
-        _court_line_model_state(head_state)
-
-
-def test_production_line_config_rejects_channels_without_a_dpt_size(
-    tmp_path: Path,
-) -> None:
-    settings = _settings(tmp_path).line_model
-    settings = replace(
-        settings,
-        architecture=replace(settings.architecture, decoder_channels=96),
-    )
-
-    with pytest.raises(ValueError, match="strict DPT size preset"):
-        _court_line_model_config(settings)
 
 
 def test_measured_source_preflight_checks_real_images_and_detector(
@@ -1502,7 +1345,7 @@ def test_refined_shallow_frontier_wins_before_deeper_proposals(
                     native_center_uv=(1.0, 0.0),
                 ),
             )
-        return selected_state.selected
+        return cast(tuple[_CourtHypothesis, ...], selected_state.selected)
 
     monkeypatch.setattr(
         "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
@@ -1645,7 +1488,7 @@ def test_ranked_complete_state_refinement_runs_in_parallel_and_retains_proposal(
         refinement_barrier.wait(timeout=2.0)
         if selected[0].center_uv[0] < 0.0:
             raise ValueError("ranked basin saturated during refinement")
-        return selected
+        return cast(tuple[_CourtHypothesis, ...], selected)
 
     monkeypatch.setattr(
         "src.synthetic_data_generation.alignment.evidence_source."
@@ -2277,83 +2120,56 @@ def test_common_scale_replacement_refits_pose_and_recomputes_score(
 ) -> None:
     settings = replace(
         _settings(tmp_path).candidate_fit,
-        maximum_candidate_count=2,
         minimum_explained_evidence_fraction=0.2,
-        evidence_assignment_distance_metres=1.0e-4,
         common_scale_relative_tolerance=0.1,
-        orientation_minimum_radians=-0.3,
-        orientation_maximum_radians=0.3,
     )
-    calls: list[float | None] = []
-    answers = iter(
-        (
-            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
-            (np.asarray((2.0, 0.0, 0.0, 0.072)), 0.79),
-            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
-            (np.asarray((0.01, 0.0, 0.0)), 0.90),
-            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.81),
-            (np.asarray((2.0, 0.0, 0.0, 0.072)), 0.79),
-            (np.asarray((0.02, 0.01, 0.1)), 0.91),
-            (np.asarray((2.02, 0.01, 0.1)), 0.89),
-        )
-    )
-
-    def fake_optimize(
-        *_args: object, **kwargs: object
-    ) -> tuple[NDArray[np.float64], float]:
-        fixed_scale = kwargs.get("fixed_scale")
-        calls.append(None if fixed_scale is None else cast(float, fixed_scale))
-        return next(answers)
-
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
-        fake_optimize,
-    )
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source."
-        "_maximum_center_tile_width_scene_units",
-        lambda _settings: 100.0,
-    )
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source._suppress_assigned_points",
-        lambda points, **_kwargs: points[round(len(points) * 0.6) :],
-    )
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source."
-        "_suppress_assigned_evidence",
-        lambda points, evidence_weights, **_kwargs: (
-            points[round(len(points) * 0.6) :],
-            evidence_weights[round(len(points) * 0.6) :],
+    native = (
+        replace(
+            _hypothesis_for_topology(center=(0.0, 0.0)),
+            template_score=0.81,
+            native_template_score=0.81,
+        ),
+        replace(
+            _hypothesis_for_topology(center=(2.0, 0.0)),
+            nht_scene_units_per_metre=0.072,
+            native_nht_scene_units_per_metre=0.072,
+            template_score=0.79,
+            native_template_score=0.79,
         ),
     )
-    points = np.column_stack(
-        (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
-    )
+    calls: dict[float, float] = {}
 
-    hypotheses, common_scale, _deviation, _search, _trace = _fit_court_hypotheses(
-        points,
-        evidence_weights=np.ones(len(points), dtype=np.float64),
-        bounds=(-12.0, 12.0, -10.0, 10.0),
-        seed=42,
-        settings=settings,
-    )
+    def refit(*_args: object, **kwargs: object) -> tuple[NDArray[np.float64], float]:
+        initial = cast(NDArray[np.float64], kwargs["initial_parameters"])
+        scale = cast(float, kwargs["fixed_scale"])
+        assert initial.shape == (3,)
+        assert len(cast(list[tuple[float, float]], kwargs["bounds"])) == 3
+        center = float(initial[0])
+        assert center not in calls
+        calls[center] = scale
+        return np.asarray((center + 0.02, 0.01, 0.1)), 0.91 if center == 0.0 else 0.89
 
-    assert calls == [
-        None,
-        None,
-        None,
-        pytest.approx(0.070),
-        None,
-        None,
-        pytest.approx(0.071),
-        pytest.approx(0.071),
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court", refit
+    )
+    refined = _refine_native_fixture(native, settings=settings, monkeypatch=monkeypatch)
+
+    assert refined.common_scale == pytest.approx(0.071)
+    assert calls == {0.0: pytest.approx(0.071), 2.0: pytest.approx(0.071)}
+    assert [item.center_uv for item in refined.hypotheses] == [
+        (0.02, 0.01),
+        (2.02, 0.01),
     ]
-    assert common_scale == pytest.approx(0.071)
-    assert [item.center_uv for item in hypotheses] == [(0.02, 0.01), (2.02, 0.01)]
-    assert [item.template_score for item in hypotheses] == [0.91, 0.89]
+    assert [item.orientation_radians for item in refined.hypotheses] == [0.1, 0.1]
+    assert [item.template_score for item in refined.hypotheses] == [0.91, 0.89]
+    assert [item.native_template_score for item in refined.hypotheses] == [0.81, 0.79]
+    assert [item.native_nht_scene_units_per_metre for item in refined.hypotheses] == [
+        0.070,
+        0.072,
+    ]
     assert all(
-        item.nht_scene_units_per_metre == pytest.approx(common_scale)
-        for item in hypotheses
+        item.nht_scene_units_per_metre == pytest.approx(refined.common_scale)
+        for item in refined.hypotheses
     )
 
 
@@ -2363,88 +2179,55 @@ def test_common_scale_refit_bounds_preserve_parallel_court_identity(
 ) -> None:
     settings = replace(
         _settings(tmp_path).candidate_fit,
-        maximum_candidate_count=2,
         minimum_explained_evidence_fraction=0.2,
-        evidence_assignment_distance_metres=1.0e-4,
         common_scale_relative_tolerance=0.07,
         orientation_minimum_radians=-0.3,
         orientation_maximum_radians=0.3,
     )
-    native_answers = iter(
-        (
-            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
-            (np.asarray((1.0, 0.0, 0.0, 0.071)), 0.89),
-            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
-            (np.asarray((0.0, 0.0, 0.0, 0.070)), 0.9),
-            (np.asarray((1.0, 0.0, 0.0, 0.071)), 0.89),
-        )
+    native = (
+        _hypothesis_for_topology(center=(0.0, 0.0)),
+        replace(
+            _hypothesis_for_topology(center=(1.0, 0.0)),
+            nht_scene_units_per_metre=0.071,
+            native_nht_scene_units_per_metre=0.071,
+        ),
     )
-    refit_bounds: list[list[tuple[float, float]]] = []
+    refit_bounds: dict[float, list[tuple[float, float]]] = {}
 
-    def fake_optimize(
-        *_args: object,
-        **kwargs: object,
-    ) -> tuple[NDArray[np.float64], float]:
-        if kwargs.get("fixed_scale") is None:
-            return next(native_answers)
+    def refit(*_args: object, **kwargs: object) -> tuple[NDArray[np.float64], float]:
+        assert kwargs["fixed_scale"] == pytest.approx(0.0705)
+        initial = cast(NDArray[np.float64], kwargs["initial_parameters"])
         bounds = cast(list[tuple[float, float]], kwargs["bounds"])
-        refit_bounds.append(bounds)
-        candidate_index = len(refit_bounds) - 1
-        x = bounds[0][1] if candidate_index == 0 else bounds[0][0]
+        center = float(initial[0])
+        assert center not in refit_bounds
+        refit_bounds[center] = bounds
+        # Move the two courts toward each other, to their allowed pose limits.
+        x = bounds[0][1] if center == 0.0 else bounds[0][0]
         return np.asarray((x, 0.0, 0.0)), 0.95
 
     monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source._optimize_court",
-        fake_optimize,
+        "src.synthetic_data_generation.alignment.evidence_source._optimize_court", refit
     )
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source."
-        "_maximum_center_tile_width_scene_units",
-        lambda _settings: 100.0,
-    )
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source._suppress_assigned_points",
-        lambda points, **_kwargs: points[round(len(points) * 0.6) :],
-    )
-    monkeypatch.setattr(
-        "src.synthetic_data_generation.alignment.evidence_source."
-        "_suppress_assigned_evidence",
-        lambda points, evidence_weights, **_kwargs: (
-            points[round(len(points) * 0.6) :],
-            evidence_weights[round(len(points) * 0.6) :],
-        ),
-    )
-    points = np.column_stack(
-        (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
-    )
-
-    hypotheses, common_scale, _deviation, _search, _trace = _fit_court_hypotheses(
-        points,
-        evidence_weights=np.ones(len(points), dtype=np.float64),
-        bounds=(-12.0, 12.0, -10.0, 10.0),
-        seed=42,
-        settings=settings,
-    )
-
+    refined = _refine_native_fixture(native, settings=settings, monkeypatch=monkeypatch)
     maximum_scene_displacement = (
-        common_scale * settings.maximum_center_refit_displacement_metres()
+        refined.common_scale * settings.maximum_center_refit_displacement_metres()
     )
-    assert len(refit_bounds) == 3
-    assert refit_bounds[1][0] == pytest.approx(
+    assert set(refit_bounds) == {0.0, 1.0}
+    assert refit_bounds[0.0][0] == pytest.approx(
         (-maximum_scene_displacement, maximum_scene_displacement)
     )
-    assert refit_bounds[2][0] == pytest.approx(
+    assert refit_bounds[1.0][0] == pytest.approx(
         (1.0 - maximum_scene_displacement, 1.0 + maximum_scene_displacement)
     )
-    assert hypotheses[0].center_uv[0] < hypotheses[1].center_uv[0]
-    assert [item.candidate_id for item in hypotheses] == [
+    assert refined.hypotheses[0].center_uv[0] < refined.hypotheses[1].center_uv[0]
+    assert [item.candidate_id for item in refined.hypotheses] == [
         "candidate-000",
         "candidate-001",
     ]
     assert all(
         item.common_scale_refit_center_displacement_metres
         <= item.maximum_common_scale_refit_center_displacement_metres
-        for item in hypotheses
+        for item in refined.hypotheses
     )
 
 
@@ -2897,6 +2680,50 @@ def _stub_linear_candidate_search(
     )
 
 
+def _refine_native_fixture(
+    native: tuple[_CourtHypothesis, ...],
+    *,
+    settings: CourtCandidateFitSettings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> _RefinedCompleteState:
+    """Exercise one complete state's common-scale refit independently of search scheduling."""
+    points = np.column_stack(
+        (np.linspace(-10.0, 10.0, 200), np.linspace(-8.0, 8.0, 200))
+    )
+    weights: NDArray[np.float64] = np.ones(len(points), dtype=np.float64)
+    selected_state = _ProposalSearchState(
+        selected=native,
+        residual=points[168:],
+        residual_evidence_weights=weights[168:],
+        explained_evidence_fractions=(0.6, 0.24),
+        orientation_band_indices=(0, 0),
+        center_tile_indices=(0, 0),
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._refine_selected_native_hypotheses",
+        lambda *_args, **_kwargs: native,
+    )
+    monkeypatch.setattr(
+        "src.synthetic_data_generation.alignment.evidence_source._suppress_assigned_evidence",
+        lambda points, evidence_weights, **_kwargs: (
+            points[round(len(points) * 0.6) :],
+            evidence_weights[round(len(points) * 0.6) :],
+        ),
+    )
+    bounds = (-12.0, 12.0, -10.0, 10.0)
+    return _refine_complete_proposal_state(
+        selected_state,
+        points=points,
+        evidence_weights=weights,
+        bounds=bounds,
+        template=sample_court_line_template(settings.samples_per_metre),
+        orientation_bands=_orientation_search_bands(settings),
+        center_tiles=_center_space_tiles(bounds, maximum_width=100.0),
+        seed=42,
+        settings=settings,
+    )
+
+
 def _hypothesis_for_topology(
     *,
     center: tuple[float, float],
@@ -2963,24 +2790,6 @@ def _scene(tmp_path: Path, *, camera_count: int) -> StandardSceneExport:
 
 
 def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
-    architecture = CourtLineArchitectureSettings(
-        backbone_name="dinov3_vitb16",
-        backbone_strict=True,
-        backbone_train_mode="frozen",
-        backbone_last_n_blocks=0,
-        backbone_out_indices=(2, 5, 8, 11),
-        backbone_layer_mode="uniform",
-        lora_enabled=True,
-        lora_rank=8,
-        lora_alpha=16.0,
-        lora_dropout=0.0,
-        lora_target_modules=("qkv", "proj", "fc1", "fc2"),
-        decoder_channels=256,
-        decoder_reassemble_factors=(4.0, 2.0, 1.0, 0.5),
-        line_bce_weight=1.0,
-        line_dice_weight=1.0,
-        line_positive_weight=8.0,
-    )
     return AlignmentEvidenceSettings(
         seed=42,
         fit_fraction=2.0 / 3.0,
@@ -2990,13 +2799,9 @@ def _settings(tmp_path: Path) -> AlignmentEvidenceSettings:
         camera_prefix_count=3,
         line_model=CourtLineModelSettings(
             checkpoint_path=(tmp_path / "line.ckpt").resolve(),
-            backbone_repository_path=(tmp_path / "dinov3").resolve(),
-            backbone_checkpoint_path=(tmp_path / "backbone.pth").resolve(),
             device="cpu",
-            expected_short_side=256,
             probability_threshold=0.5,
             maximum_selected_pixels_per_camera=100,
-            architecture=architecture,
         ),
         ground_plane=GroundPlaneSettings(
             footprint_quantile=0.0,

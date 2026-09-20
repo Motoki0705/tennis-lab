@@ -56,7 +56,7 @@ def prepare_court_image(
     return batched, original_height, original_width
 
 
-__all__ = ["prepare_court_image"]
+__all__ = ["PreparedCourtImage", "prepare_court_image", "prepare_court_input"]
 
 
 @dataclass(frozen=True)

@@ -465,6 +465,11 @@ def test_pose_training_propagates_content_size_as_dino_patch_mask(
     output = model(*call.model_call.model_args)
 
     torch.testing.assert_close(inference_patch_valid_mask, patch_valid_mask)
+    images, content_size = batch["image"], batch["content_size_hw"]
+    assert isinstance(images, torch.Tensor)
+    assert isinstance(content_size, torch.Tensor)
+    image_call = adapter.prepare_images(images, content_size_hw=content_size)
+    torch.testing.assert_close(image_call.model_args[-1], patch_valid_mask)
     assert patch_valid_mask.dtype is torch.bool
     assert patch_valid_mask.shape == (2, 5, 5)
     assert torch.count_nonzero(patch_valid_mask[0]).item() == 25

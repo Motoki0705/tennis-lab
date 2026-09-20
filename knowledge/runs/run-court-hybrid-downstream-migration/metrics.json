@@ -1,0 +1,1366 @@
+{
+  "schema": "court_hybrid_inference_audit_v1",
+  "checkpoint": {
+    "schema": "court_inference_checkpoint_v1",
+    "checkpoint_path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt",
+    "checkpoint_sha256": "dd3a396841097e60ff1bc0eabcf7b911e97685e251bf8cc441c100b17276e816",
+    "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+    "architecture": {
+      "encoder": {
+        "name": "dinov3",
+        "backbone_name": "dinov3_vitb16",
+        "repository_path": "dinov3",
+        "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+        "strict": true,
+        "train_mode": "frozen",
+        "last_n_blocks": 0,
+        "out_indices": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "layer_mode": "uniform",
+        "lora": {
+          "enabled": true,
+          "rank": 8,
+          "alpha": 16.0,
+          "dropout": 0.0,
+          "target_modules": [
+            "qkv",
+            "proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      },
+      "transformer_encoder": {
+        "name": "transformer",
+        "enabled": true,
+        "dim": 768,
+        "depth": 8,
+        "num_heads": 12,
+        "head_dim": 64,
+        "ffn_dim": 2048,
+        "rope_dim": 64,
+        "rope_theta": 10000.0,
+        "dropout": 0.0,
+        "attention_type": "mha",
+        "n_kv_heads": null,
+        "ffn_type": "swiglu"
+      },
+      "decoder": {
+        "name": "dpt",
+        "size": "large",
+        "channels": 512,
+        "reassemble_factors": [
+          4.0,
+          2.0,
+          1.0,
+          0.5
+        ]
+      },
+      "dense_head": {
+        "name": "residual",
+        "normalization_groups": 32,
+        "kp": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "seg": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "line": {
+          "hidden_channels": 256,
+          "depth": 2
+        }
+      },
+      "name": "court_hierarchical",
+      "in_channels": 3
+    },
+    "target_bundle": {
+      "schema": "court_target_bundle_v1",
+      "targets": [
+        {
+          "kind": "kp",
+          "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+          "output_channels": 14,
+          "channel_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "target_dtype": "float32",
+          "precomputed": false
+        },
+        {
+          "kind": "seg",
+          "schema": "court_cell_segmentation_v1",
+          "output_channels": 7,
+          "channel_names": [
+            "background",
+            "service_left",
+            "service_right",
+            "back_left",
+            "back_right",
+            "doubles_left",
+            "doubles_right"
+          ],
+          "target_dtype": "int64",
+          "precomputed": true
+        },
+        {
+          "kind": "line",
+          "schema": "court_line_binary_75mm_150mm_v2",
+          "output_channels": 1,
+          "channel_names": [
+            "court_line"
+          ],
+          "target_dtype": "float32",
+          "precomputed": true
+        }
+      ]
+    },
+    "short_side": 256,
+    "epoch": 17,
+    "global_step": 29844
+  },
+  "device": "cpu",
+  "load_seconds": 4.283684812999127,
+  "hybrid_config": {
+    "min_score": 0.05,
+    "threshold_diagonal_ratio": 0.005,
+    "line_probability_threshold": 0.5,
+    "max_kp": 8,
+    "max_candidates": 1001,
+    "refine_candidates": 6,
+    "samples_per_line": 40,
+    "max_line_observations": 768,
+    "max_selection_rounds": 4,
+    "max_nfev": 70,
+    "kp_weight": 0.25,
+    "min_line_support": 0.55,
+    "ambiguity_gap": 0.02,
+    "ambiguity_displacement_ratio": 0.03
+  },
+  "source_sha256": {
+    "src/tasks/court_detection/inference/__init__.py": "d96132b221d35d5489fd654b12029e7cbeac34e7461613d73eb24d2d0eceadbb",
+    "src/tasks/court_detection/inference/checkpoint.py": "ee49c36ea1783ecf7a5082d3cec854f03a59d0d7c2cbe11eec2728263117a69b",
+    "src/tasks/court_detection/inference/contracts.py": "a9b819654589cf0c5b081e8f29d4b5ef9d67b675c5d703abdf158bfcb8078d78",
+    "src/tasks/court_detection/inference/predictor.py": "10448828bf24f8082bee2394fe8da0218804d709793a5a9c438d38eaa75d2e0a",
+    "src/tasks/court_detection/geometry/__init__.py": "1b51fe4d36cad5be632cf5b9b9fcccd8f934f3079af3976612383b4a9d9f003c",
+    "src/tasks/court_detection/geometry/confidence_homography.py": "64cf4d0dd0a7878895aa18b89bcdc3685a7282cd7561607022526b6815c392ab",
+    "src/tasks/court_detection/geometry/homography.py": "d2cccc1664eac1a812bbd95fd8d548620793c53420195fffca42c6412182e35d",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "2aa8022229acca20071466278e8980fda69aba1745c3b6960a4d389ff17d4068",
+    "src/tasks/court_detection/geometry/line_evidence.py": "a4a9fa809191b776ea4d85919f05f8aa97fd6540d5a4b9dd26f97da0ed37f353",
+    "src/tasks/court_detection/geometry/pose.py": "43e1e20cdd1d436b97b25bcd86205ad71533747c0317984f3a6889f2fff6d7ad",
+    "src/tasks/court_detection/geometry/postprocess.py": "83360fe0115b3337adfce1f8ff55315ad7cc7dfced674521d19cf0ea4914dcf5"
+  },
+  "scene_owner_sha256_before_and_after": {
+    "B00/alignment/alignment.json": "d973abf8f6e8f82ac4322562f1b468c24e4472d7ed7164f79eac06a264a86581",
+    "B00/alignment/ground-line-map.npz": "7bc6819ae028151c1d9c4f5a2e9f78d0c29916a26b31b59c63d76a98972e9c51",
+    "B00/datasets/court/dataset.json": "195f8dc9d088b662c07e7594d1156ae3e5dbe312942b8938aa666dd3e5bb9daa",
+    "B00/resolved-config.yaml": "5abc57074b5829575d167815db6f015204ce90032f8eab214cea7e5c8c12d379",
+    "B01/alignment/alignment.json": "c3b0da3cfdc8aac390acfcb758395033ced707c05554651e2c67d1edeb24d4a9",
+    "B01/alignment/ground-line-map.npz": "22840f2fb83910dd3c5a66014372ffab5f699b39a0684aa99082fea19ebe0435",
+    "B01/datasets/court/dataset.json": "3958aad41e15a43a1a382172b85599ddd04023c152841c688314cc0a2de1236b",
+    "B01/resolved-config.yaml": "fa77bd3107b9f5b5e5620d793a9830dbcfe1f80cb8c4f9beff8a0fa8db74e170",
+    "B02/alignment/alignment.json": "5cf7a69e60df3a6551f21404047df27e9e5808742518da6c7540f58232207b9d",
+    "B02/alignment/ground-line-map.npz": "89eef4e2fbec655160b9f69492db149f39b2a8a63a81987e24743bda5d62eece",
+    "B02/datasets/court/dataset.json": "4098ac57bf60ec6e505a7412bc3a22acd56cd33c57ddf383861abb667cfb09ac",
+    "B02/resolved-config.yaml": "5bf1a0d32b22dc337d180b144ac2903490d5e9fbaba7f52582bf33012a133ad4",
+    "B03/alignment/alignment.json": "8e1029f091a8d0a1bbea4992353b7dd3836bdb1b8c3bb7ecab0a00d51dba8e99",
+    "B03/alignment/ground-line-map.npz": "45ca8080d603fc847548378d6bd766475f2d2cb8368d277ecca5caa8b91c20f6",
+    "B03/datasets/court/dataset.json": "d5f47625a1c764dee927c3dc6b95fc8fc4b62007e5619581682a8766a749838b",
+    "B03/resolved-config.yaml": "51dceb2865c2be1f80dbf4a76749a8a45447bf89ab68879adbcb97fcb083cbd6"
+  },
+  "scene_owners_unchanged": true,
+  "images": [
+    {
+      "id": "01_ennai011_1",
+      "source": "/home/kamimura/projects/tennis-lab/data/samples/tennis_court/ennai011_1.jpg",
+      "input": "inputs/01_ennai011_1.jpg",
+      "input_sha256": "7d4fc062c2ee1480b04d77c5ed79e79d0983446c80119063aa9436d6e6c2f016",
+      "native_size_hw": [
+        256,
+        384
+      ],
+      "inference_seconds": 2.5074441920005484,
+      "status": "ok",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": [
+        [
+          -8.242258562877911,
+          39.58810943355611,
+          602.4461972819213
+        ],
+        [
+          -12.539718889271544,
+          10.972599619945624,
+          349.8434661297084
+        ],
+        [
+          -0.048662385874671255,
+          0.0399330927808393,
+          1.0
+        ]
+      ],
+      "selected_keypoints": [
+        1,
+        4,
+        11,
+        13
+      ],
+      "raw_keypoints_px": [
+        [
+          214.69081115722656,
+          359.7426452636719
+        ],
+        [
+          849.5809326171875,
+          339.1673889160156
+        ],
+        [
+          336.2972717285156,
+          580.0587768554688
+        ],
+        [
+          618.3626098632812,
+          462.22796630859375
+        ],
+        [
+          661.2412719726562,
+          318.1907653808594
+        ],
+        [
+          388.0788879394531,
+          483.9678649902344
+        ],
+        [
+          794.6982421875,
+          336.7021789550781
+        ],
+        [
+          337.5823974609375,
+          579.6846923828125
+        ],
+        [
+          586.916748046875,
+          327.3072509765625
+        ],
+        [
+          767.1166381835938,
+          346.8638610839844
+        ],
+        [
+          295.73712158203125,
+          505.1954040527344
+        ],
+        [
+          577.7421264648438,
+          421.2449035644531
+        ],
+        [
+          672.1598510742188,
+          336.5855712890625
+        ],
+        [
+          472.93951416015625,
+          378.00262451171875
+        ]
+      ],
+      "raw_scores": [
+        0.5102070569992065,
+        0.599531888961792,
+        0.7590233683586121,
+        0.21590936183929443,
+        0.7207193970680237,
+        0.1892291009426117,
+        0.41713854670524597,
+        0.4313433766365051,
+        0.6112203598022461,
+        0.22650937736034393,
+        0.5275956988334656,
+        0.8040904998779297,
+        0.7207526564598083,
+        0.8844953775405884
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        429.67816125230445,
+        2.0940013684609817,
+        243.89802658143043,
+        307.4611204082288,
+        0.7352071561012166,
+        194.02147043436975,
+        20.642945632303217,
+        73.05832978650983,
+        24.462170696180642,
+        11.909823544580878,
+        189.54334961839055,
+        2.6434815737975703,
+        9.663977509167127,
+        4.669082118483715
+      ],
+      "candidate_count": 138,
+      "line_support": {
+        "forward_support": 0.8055555555555556,
+        "reverse_support": 0.6941623625156425,
+        "segment_support": [
+          0.675,
+          1.0,
+          0.8,
+          1.0,
+          0.6,
+          0.925,
+          0.4,
+          0.975,
+          0.875
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 8.0,
+        "forward_rms_px": 6.515233073627218,
+        "reverse_rms_px": 72.54620691508478
+      },
+      "original_size_hw": [
+        667,
+        1000
+      ],
+      "predictions": "predictions/01_ennai011_1.npz",
+      "predictions_sha256": "d5f835d59021aa82e1a147fc81bc192ca79c6d60326b5a8b277f596bffb93b9d",
+      "figure": "figures/01_ennai011_1.png",
+      "figure_sha256": "4e18063b80859a69940d6cf5c8b7b8a0defd6a7a78630a272a27cec2c44c913b"
+    },
+    {
+      "id": "02_images_1_",
+      "source": "/home/kamimura/projects/tennis-lab/data/samples/tennis_court/images (1).jpg",
+      "input": "inputs/02_images_1_.jpg",
+      "input_sha256": "e76a1b63ff1e6aef6db63c5ea2f237ce7afd3de4be723131859aace12457e31f",
+      "native_size_hw": [
+        256,
+        336
+      ],
+      "inference_seconds": 1.9978106490016216,
+      "status": "ok",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": [
+        [
+          31.777636693858994,
+          3.0890763764657607,
+          291.8125973899457
+        ],
+        [
+          6.585937679332332,
+          11.255384631835728,
+          278.5044870260978
+        ],
+        [
+          0.028387819612919057,
+          0.04814846358230421,
+          1.0
+        ]
+      ],
+      "selected_keypoints": [
+        0,
+        2,
+        5,
+        13
+      ],
+      "raw_keypoints_px": [
+        [
+          108.13044738769531,
+          264.90771484375
+        ],
+        [
+          261.7292175292969,
+          264.50823974609375
+        ],
+        [
+          298.0576171875,
+          400.5789489746094
+        ],
+        [
+          619.4822998046875,
+          339.8271789550781
+        ],
+        [
+          259.9952392578125,
+          264.5679931640625
+        ],
+        [
+          398.32916259765625,
+          378.3826599121094
+        ],
+        [
+          247.8542022705078,
+          265.2066345214844
+        ],
+        [
+          405.0660400390625,
+          378.2403259277344
+        ],
+        [
+          155.7218780517578,
+          267.4857177734375
+        ],
+        [
+          314.0269470214844,
+          265.6221008300781
+        ],
+        [
+          253.4217071533203,
+          317.0413818359375
+        ],
+        [
+          419.654541015625,
+          280.6314392089844
+        ],
+        [
+          285.37823486328125,
+          265.3016662597656
+        ],
+        [
+          392.40069580078125,
+          296.4136657714844
+        ]
+      ],
+      "raw_scores": [
+        0.258116751909256,
+        0.10120515525341034,
+        0.675692617893219,
+        0.4291101396083832,
+        0.20799177885055542,
+        0.9129933714866638,
+        0.23897172510623932,
+        0.304274320602417,
+        0.5085291862487793,
+        0.3144984841346741,
+        0.8088406920433044,
+        0.2937699854373932,
+        0.4367366433143616,
+        0.7451891899108887
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        0.9786579003957236,
+        29.69244017406119,
+        1.7120714851859176,
+        120.2327415324032,
+        124.11687100603261,
+        1.537592709971089,
+        24.596475729294212,
+        309.90690103377733,
+        5.6222010898400026,
+        3.650657510517756,
+        9.2736164055044,
+        78.88690928583492,
+        47.26763252098235,
+        2.1745336089346368
+      ],
+      "candidate_count": 27,
+      "line_support": {
+        "forward_support": 0.7472222222222222,
+        "reverse_support": 0.984742881217032,
+        "segment_support": [
+          0.475,
+          0.975,
+          1.0,
+          0.6,
+          0.975,
+          0.7,
+          0.325,
+          0.825,
+          0.85
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 7.0,
+        "forward_rms_px": 4.79493623315037,
+        "reverse_rms_px": 13.632589346025899
+      },
+      "original_size_hw": [
+        480,
+        638
+      ],
+      "predictions": "predictions/02_images_1_.npz",
+      "predictions_sha256": "b19911c746a46140062d99bbd4d5a4794d5671ee650409e5eb20f30d44bec7c7",
+      "figure": "figures/02_images_1_.png",
+      "figure_sha256": "2ca56f7f2a6a8fabd10e3d11a2dd774d011fd9aefd192355741646a7207d23d7"
+    },
+    {
+      "id": "03_images_2_",
+      "source": "/home/kamimura/projects/tennis-lab/data/samples/tennis_court/images (2).jpg",
+      "input": "inputs/03_images_2_.jpg",
+      "input_sha256": "64aa07abf02b6ae27e1da6f2eb4d195d1cec55469db4d20a6996bf8c8e63c1fa",
+      "native_size_hw": [
+        256,
+        384
+      ],
+      "inference_seconds": 1.4306937450019177,
+      "status": "joint_optimization_failed",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": null,
+      "selected_keypoints": [],
+      "raw_keypoints_px": [
+        [
+          88.15767669677734,
+          206.49571228027344
+        ],
+        [
+          183.47662353515625,
+          197.21865844726562
+        ],
+        [
+          178.16322326660156,
+          200.76913452148438
+        ],
+        [
+          538.0459594726562,
+          281.70849609375
+        ],
+        [
+          92.9107666015625,
+          207.08799743652344
+        ],
+        [
+          282.05255126953125,
+          322.10784912109375
+        ],
+        [
+          173.4075164794922,
+          195.87786865234375
+        ],
+        [
+          481.58160400390625,
+          300.1624755859375
+        ],
+        [
+          109.95454406738281,
+          212.62728881835938
+        ],
+        [
+          246.90965270996094,
+          202.62237548828125
+        ],
+        [
+          196.57684326171875,
+          269.21270751953125
+        ],
+        [
+          371.8600769042969,
+          218.85931396484375
+        ],
+        [
+          231.398193359375,
+          197.35955810546875
+        ],
+        [
+          321.5275573730469,
+          247.3248291015625
+        ]
+      ],
+      "raw_scores": [
+        0.23999124765396118,
+        0.25640618801116943,
+        0.1611301451921463,
+        0.515199601650238,
+        0.1662275642156601,
+        0.26739659905433655,
+        0.18265479803085327,
+        0.27076104283332825,
+        0.24507524073123932,
+        0.16594062745571136,
+        0.8726347088813782,
+        0.29333049058914185,
+        0.1899278312921524,
+        0.8074294924736023
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "candidate_count": 2,
+      "line_support": null,
+      "original_size_hw": [
+        365,
+        547
+      ],
+      "predictions": "predictions/03_images_2_.npz",
+      "predictions_sha256": "89a6bc4e0b6e2a2475645d50b79cdf8ab2245baae9cc6a0d00837f84553227fb",
+      "figure": "figures/03_images_2_.png",
+      "figure_sha256": "eec3e0a57d63af5b7cd9477e38261482ce647ddf0ae1caef88d75da69b5dbde7"
+    },
+    {
+      "id": "04_images",
+      "source": "/home/kamimura/projects/tennis-lab/data/samples/tennis_court/images.jpg",
+      "input": "inputs/04_images.jpg",
+      "input_sha256": "fff92432ea6e17c83c6c1e7d1dbb8917c9421a6b0408b17b3848122fbf93610b",
+      "native_size_hw": [
+        256,
+        384
+      ],
+      "inference_seconds": 2.061142603000917,
+      "status": "joint_optimization_failed",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": null,
+      "selected_keypoints": [],
+      "raw_keypoints_px": [
+        [
+          101.39713287353516,
+          200.4388885498047
+        ],
+        [
+          291.93048095703125,
+          174.0604705810547
+        ],
+        [
+          378.1792297363281,
+          214.51199340820312
+        ],
+        [
+          609.0419921875,
+          292.1033630371094
+        ],
+        [
+          114.0345458984375,
+          200.22677612304688
+        ],
+        [
+          150.4322967529297,
+          215.60536193847656
+        ],
+        [
+          377.7135314941406,
+          208.4656524658203
+        ],
+        [
+          446.8836975097656,
+          348.9466857910156
+        ],
+        [
+          150.611572265625,
+          216.3820343017578
+        ],
+        [
+          377.4210205078125,
+          214.06971740722656
+        ],
+        [
+          321.94317626953125,
+          306.0046081542969
+        ],
+        [
+          505.179443359375,
+          263.547607421875
+        ],
+        [
+          255.63331604003906,
+          207.9429168701172
+        ],
+        [
+          419.4854736328125,
+          278.4635009765625
+        ]
+      ],
+      "raw_scores": [
+        0.2689030170440674,
+        0.2650836408138275,
+        0.11094546318054199,
+        0.7137342095375061,
+        0.5409003496170044,
+        0.15551193058490753,
+        0.23927004635334015,
+        0.14981786906719208,
+        0.5209373235702515,
+        0.48805561661720276,
+        0.7156891822814941,
+        0.603574275970459,
+        0.780860424041748,
+        0.4895113408565521
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "candidate_count": 47,
+      "line_support": null,
+      "original_size_hw": [
+        452,
+        678
+      ],
+      "predictions": "predictions/04_images.npz",
+      "predictions_sha256": "6251eb8e5d3f5ff8090d1c33c5193ef2509a19d1ed0bca01fd42a66305e2b2d1",
+      "figure": "figures/04_images.png",
+      "figure_sha256": "9b69ed11515765d7570fe72d52f67a4c419e04405298f642c55aab75b287b7ec"
+    },
+    {
+      "id": "05_B00_000720",
+      "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-robustness-report/paper/court_robustness/evidence/scene_sources/B00_000720.png",
+      "input": "inputs/05_B00_000720.png",
+      "input_sha256": "cc2e19db1853c888145381bf34b10f26935c6fceaee8911ee5be94b0d705b4fe",
+      "native_size_hw": [
+        256,
+        448
+      ],
+      "inference_seconds": 2.3881248720026633,
+      "status": "joint_optimization_failed",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": null,
+      "selected_keypoints": [],
+      "raw_keypoints_px": [
+        [
+          11.422693252563477,
+          263.60296630859375
+        ],
+        [
+          336.58819580078125,
+          237.99583435058594
+        ],
+        [
+          13.045212745666504,
+          271.5334777832031
+        ],
+        [
+          18.518095016479492,
+          271.2798156738281
+        ],
+        [
+          56.27139663696289,
+          263.2803955078125
+        ],
+        [
+          1.071588397026062,
+          264.8477478027344
+        ],
+        [
+          318.75152587890625,
+          239.26113891601562
+        ],
+        [
+          19.621870040893555,
+          265.7137145996094
+        ],
+        [
+          139.3848419189453,
+          272.074951171875
+        ],
+        [
+          389.8677978515625,
+          241.30963134765625
+        ],
+        [
+          818.1590576171875,
+          307.44635009765625
+        ],
+        [
+          757.3948364257812,
+          271.34661865234375
+        ],
+        [
+          302.6715087890625,
+          254.51226806640625
+        ],
+        [
+          810.3941650390625,
+          308.534912109375
+        ]
+      ],
+      "raw_scores": [
+        0.3362545371055603,
+        0.7814531922340393,
+        0.44731053709983826,
+        0.129411980509758,
+        0.7267828583717346,
+        0.15711458027362823,
+        0.8500810861587524,
+        0.19708341360092163,
+        0.5255993008613586,
+        0.5061783790588379,
+        0.08599177747964859,
+        0.9580997824668884,
+        0.5415908098220825,
+        0.8899984955787659
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "candidate_count": 15,
+      "line_support": null,
+      "original_size_hw": [
+        539,
+        959
+      ],
+      "predictions": "predictions/05_B00_000720.npz",
+      "predictions_sha256": "a98ee186bcd9fb9c5d2221f4752b8714b3b87c65604ebc9538820f4cb7350ce9",
+      "figure": "figures/05_B00_000720.png",
+      "figure_sha256": "ab9dd5af82e9bb06f42db63f97fce4397f13c39e5400700a0733b1d656388120"
+    },
+    {
+      "id": "06_B01_001403",
+      "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-robustness-report/paper/court_robustness/evidence/scene_sources/B01_001403.png",
+      "input": "inputs/06_B01_001403.png",
+      "input_sha256": "618dd63a71b5021dc67cd956c428b2bef022c0789850c77cea29a79a5278300c",
+      "native_size_hw": [
+        256,
+        448
+      ],
+      "inference_seconds": 1.1964682949983398,
+      "status": "joint_optimization_failed",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": null,
+      "selected_keypoints": [],
+      "raw_keypoints_px": [
+        [
+          945.0010375976562,
+          257.1294860839844
+        ],
+        [
+          515.4470825195312,
+          238.30166625976562
+        ],
+        [
+          73.33521270751953,
+          266.13970947265625
+        ],
+        [
+          945.3668823242188,
+          263.1241149902344
+        ],
+        [
+          378.6313781738281,
+          339.306396484375
+        ],
+        [
+          47.68427276611328,
+          271.3307800292969
+        ],
+        [
+          499.796630859375,
+          239.20843505859375
+        ],
+        [
+          432.6405029296875,
+          509.6536865234375
+        ],
+        [
+          107.07588958740234,
+          272.7609558105469
+        ],
+        [
+          516.771728515625,
+          247.1879425048828
+        ],
+        [
+          1.071588397026062,
+          330.7009582519531
+        ],
+        [
+          389.7503356933594,
+          332.0921630859375
+        ],
+        [
+          476.6531982421875,
+          247.0121612548828
+        ],
+        [
+          165.33946228027344,
+          374.3874816894531
+        ]
+      ],
+      "raw_scores": [
+        0.22389012575149536,
+        0.2943923771381378,
+        0.17634345591068268,
+        0.4124199151992798,
+        0.16684989631175995,
+        0.31390833854675293,
+        0.2685485780239105,
+        0.32356196641921997,
+        0.4973766803741455,
+        0.3078455924987793,
+        0.6362806558609009,
+        0.3274770975112915,
+        0.47716063261032104,
+        0.8815034627914429
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "candidate_count": 3,
+      "line_support": null,
+      "original_size_hw": [
+        539,
+        959
+      ],
+      "predictions": "predictions/06_B01_001403.npz",
+      "predictions_sha256": "d9310819aff95c7d5d40d3cbb93f5422003986c909f74a1a90e583fe55499c9c",
+      "figure": "figures/06_B01_001403.png",
+      "figure_sha256": "b76fc884bed23034f24e0abc31bbf6c1cb4293fecd010ed18a9d9e8df12516e2"
+    },
+    {
+      "id": "07_B02_000808",
+      "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-robustness-report/paper/court_robustness/evidence/scene_sources/B02_000808.png",
+      "input": "inputs/07_B02_000808.png",
+      "input_sha256": "6745cce4515ad0345ee2593213ae49629d38d2cfdf87f5922ac0eb055a6844ce",
+      "native_size_hw": [
+        256,
+        448
+      ],
+      "inference_seconds": 1.6055258589985897,
+      "status": "ok",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": [
+        [
+          29.273670241110292,
+          27.798163617729102,
+          462.4323729233603
+        ],
+        [
+          0.5529225150814492,
+          11.97832418152042,
+          263.86323606806917
+        ],
+        [
+          0.0027450149554579923,
+          0.06073414327164166,
+          1.0
+        ]
+      ],
+      "selected_keypoints": [
+        5,
+        7,
+        10,
+        13
+      ],
+      "raw_keypoints_px": [
+        [
+          27.515119552612305,
+          390.1964416503906
+        ],
+        [
+          13.101913452148438,
+          391.8574523925781
+        ],
+        [
+          37.997596740722656,
+          449.90167236328125
+        ],
+        [
+          22.202835083007812,
+          391.2239074707031
+        ],
+        [
+          662.8794555664062,
+          299.3222961425781
+        ],
+        [
+          45.27842712402344,
+          444.1031799316406
+        ],
+        [
+          492.5286560058594,
+          230.33326721191406
+        ],
+        [
+          869.1878051757812,
+          426.2558898925781
+        ],
+        [
+          20.293542861938477,
+          391.6641540527344
+        ],
+        [
+          664.3712768554688,
+          306.4949645996094
+        ],
+        [
+          270.80694580078125,
+          307.0272521972656
+        ],
+        [
+          662.3617553710938,
+          306.5906066894531
+        ],
+        [
+          466.2065734863281,
+          255.66162109375
+        ],
+        [
+          466.18011474609375,
+          307.1029052734375
+        ]
+      ],
+      "raw_scores": [
+        0.1624007523059845,
+        0.1689073145389557,
+        0.3895074725151062,
+        0.13893279433250427,
+        0.1333685964345932,
+        0.8540418148040771,
+        0.4335663914680481,
+        0.8083311915397644,
+        0.12163793295621872,
+        0.10643932968378067,
+        0.9794446229934692,
+        0.895065426826477,
+        0.575380265712738,
+        0.99445641040802
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        375.89814249782324,
+        558.113251732259,
+        146.37090858047313,
+        976.2777740279248,
+        277.10819520107697,
+        3.2214747455549166,
+        34.84132664073002,
+        3.4112132937940896,
+        385.8667489403952,
+        135.74022705607302,
+        2.8818137015267924,
+        12.0970121770205,
+        11.62759445668645,
+        1.1406003997438356
+      ],
+      "candidate_count": 34,
+      "line_support": {
+        "forward_support": 0.7055555555555555,
+        "reverse_support": 0.9980714747378617,
+        "segment_support": [
+          0.325,
+          1.0,
+          0.9,
+          0.525,
+          0.925,
+          0.8,
+          0.0,
+          1.0,
+          0.875
+        ],
+        "visible_segments": 9.0,
+        "supported_segments": 7.0,
+        "forward_rms_px": 9.33121322499983,
+        "reverse_rms_px": 1.9916194355313588
+      },
+      "original_size_hw": [
+        539,
+        959
+      ],
+      "predictions": "predictions/07_B02_000808.npz",
+      "predictions_sha256": "a7ff4e98db802a684a12b72338d84ca65a1ce6c5d0ae9a15e1e59b46a7bf4754",
+      "figure": "figures/07_B02_000808.png",
+      "figure_sha256": "e621a148a94dc37ec7b51e2d233b8a97dec8b1f0da4b97ad996dc6fa645e86a6"
+    },
+    {
+      "id": "08_B03_001112",
+      "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-robustness-report/paper/court_robustness/evidence/scene_sources/B03_001112.png",
+      "input": "inputs/08_B03_001112.png",
+      "input_sha256": "015d129e183b326063eb8b939410ee6e3792df958f1efb89c298c5bf5642dac8",
+      "native_size_hw": [
+        256,
+        448
+      ],
+      "inference_seconds": 0.8461335669999244,
+      "status": "no_jointly_supported_candidate",
+      "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+      "homography_frame": "checkpoint_KP14_template_metres",
+      "homography_court_metres_to_image_pixels": null,
+      "selected_keypoints": [],
+      "raw_keypoints_px": [
+        [
+          38.60669708251953,
+          510.4254455566406
+        ],
+        [
+          39.08672332763672,
+          510.7372741699219
+        ],
+        [
+          284.7403564453125,
+          297.9354248046875
+        ],
+        [
+          739.1741333007812,
+          281.4010009765625
+        ],
+        [
+          423.1753234863281,
+          262.6793518066406
+        ],
+        [
+          567.9850463867188,
+          264.6376647949219
+        ],
+        [
+          39.23851013183594,
+          510.2214660644531
+        ],
+        [
+          947.306884765625,
+          364.9534912109375
+        ],
+        [
+          424.9779357910156,
+          263.2904357910156
+        ],
+        [
+          475.3247375488281,
+          297.6315612792969
+        ],
+        [
+          305.3281555175781,
+          289.5207824707031
+        ],
+        [
+          636.7422485351562,
+          288.3155822753906
+        ],
+        [
+          474.9920654296875,
+          262.89703369140625
+        ],
+        [
+          484.4649353027344,
+          291.0072326660156
+        ]
+      ],
+      "raw_scores": [
+        0.19019989669322968,
+        0.19174803793430328,
+        0.3213787376880646,
+        0.16867400705814362,
+        0.2451556921005249,
+        0.19182580709457397,
+        0.1337815672159195,
+        0.16334865987300873,
+        0.38953328132629395,
+        0.15512920916080475,
+        0.2571936845779419,
+        0.4075087010860443,
+        0.1569204479455948,
+        0.8254784941673279
+      ],
+      "raw_valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "residuals_px": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "candidate_count": 0,
+      "line_support": null,
+      "original_size_hw": [
+        539,
+        959
+      ],
+      "predictions": "predictions/08_B03_001112.npz",
+      "predictions_sha256": "791d26c79c7988e26200736efb0b42e4e11f5d1e2f1d38e43b16859d8e6e0b4d",
+      "figure": "figures/08_B03_001112.png",
+      "figure_sha256": "5900bc0a367105583dae0cb33774d78e6fb87028fa6bb1a529fd04508820a9a1"
+    }
+  ],
+  "scope": "Real saved-model inference. LINE support is internal agreement, not human-GT accuracy. Geometry is in the input KP channel convention; no multiview physical identity is inferred."
+}

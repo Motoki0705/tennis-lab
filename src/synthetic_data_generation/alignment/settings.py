@@ -38,100 +38,22 @@ def _positive_int(value: int, *, name: str) -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class CourtLineArchitectureSettings:
-    """Exact trained court-line network architecture required for strict loading."""
-
-    backbone_name: str
-    backbone_strict: bool
-    backbone_train_mode: str
-    backbone_last_n_blocks: int
-    backbone_out_indices: tuple[int, ...]
-    backbone_layer_mode: str
-    lora_enabled: bool
-    lora_rank: int
-    lora_alpha: float
-    lora_dropout: float
-    lora_target_modules: tuple[str, ...]
-    decoder_channels: int
-    decoder_reassemble_factors: tuple[float, ...]
-    line_bce_weight: float
-    line_dice_weight: float
-    line_positive_weight: float
-
-    def __post_init__(self) -> None:
-        for name in ("backbone_name", "backbone_train_mode", "backbone_layer_mode"):
-            value = getattr(self, name)
-            if not isinstance(value, str) or not value.strip():
-                raise TypeError(f"{name} must be a non-empty string.")
-        if (
-            type(self.backbone_strict) is not bool
-            or type(self.lora_enabled) is not bool
-        ):
-            raise TypeError("Backbone strictness and LoRA enablement must be booleans.")
-        if self.backbone_train_mode not in {"frozen", "last_n", "full"}:
-            raise ValueError("backbone_train_mode is invalid.")
-        if self.backbone_layer_mode not in {"uniform", "last"}:
-            raise ValueError("backbone_layer_mode is invalid.")
-        if (
-            isinstance(self.backbone_last_n_blocks, bool)
-            or not isinstance(self.backbone_last_n_blocks, int)
-            or self.backbone_last_n_blocks < 0
-        ):
-            raise TypeError("backbone_last_n_blocks must be a non-negative integer.")
-        if len(self.backbone_out_indices) != 4 or any(
-            isinstance(item, bool) or not isinstance(item, int) or item < 0
-            for item in self.backbone_out_indices
-        ):
-            raise ValueError(
-                "backbone_out_indices must contain four non-negative integers."
-            )
-        _positive_int(self.lora_rank, name="lora_rank")
-        _positive_float(self.lora_alpha, name="lora_alpha")
-        if not 0.0 <= self.lora_dropout < 1.0:
-            raise ValueError("lora_dropout must lie in [0, 1).")
-        if not self.lora_target_modules or any(
-            not isinstance(item, str) or not item for item in self.lora_target_modules
-        ):
-            raise ValueError("lora_target_modules must contain non-empty strings.")
-        _positive_int(self.decoder_channels, name="decoder_channels")
-        if len(self.decoder_reassemble_factors) != 4:
-            raise ValueError("decoder_reassemble_factors must contain four values.")
-        for index, value in enumerate(self.decoder_reassemble_factors):
-            _positive_float(value, name=f"decoder_reassemble_factors[{index}]")
-        for name in ("line_bce_weight", "line_dice_weight"):
-            value = getattr(self, name)
-            if not math.isfinite(value) or value < 0.0:
-                raise ValueError(f"{name} must be non-negative and finite.")
-        if self.line_bce_weight == 0.0 and self.line_dice_weight == 0.0:
-            raise ValueError("At least one court-line loss weight must be positive.")
-        _positive_float(self.line_positive_weight, name="line_positive_weight")
-
-
-@dataclass(frozen=True, slots=True)
 class CourtLineModelSettings:
-    """Required trained line-model and deterministic image extraction settings."""
+    """Checkpoint authority and extraction settings; no copied architecture."""
 
     checkpoint_path: Path
-    backbone_repository_path: Path
-    backbone_checkpoint_path: Path
     device: str
-    expected_short_side: int
     probability_threshold: float
     maximum_selected_pixels_per_camera: int
-    architecture: CourtLineArchitectureSettings
 
     def __post_init__(self) -> None:
-        for name in (
-            "checkpoint_path",
-            "backbone_repository_path",
-            "backbone_checkpoint_path",
+        if (
+            not isinstance(self.checkpoint_path, Path)
+            or not self.checkpoint_path.is_absolute()
         ):
-            path = getattr(self, name)
-            if not isinstance(path, Path) or not path.is_absolute():
-                raise ValueError(f"{name} must be an explicit absolute Path.")
+            raise ValueError("checkpoint_path must be an explicit absolute Path")
         if not isinstance(self.device, str) or not self.device.strip():
-            raise TypeError("device must be a non-empty string.")
-        _positive_int(self.expected_short_side, name="expected_short_side")
+            raise TypeError("device must be a non-empty string")
         _fraction(
             self.probability_threshold,
             name="probability_threshold",
@@ -695,7 +617,6 @@ __all__ = [
     "AlignmentEvidenceSettings",
     "CorrespondenceSettings",
     "CourtCandidateFitSettings",
-    "CourtLineArchitectureSettings",
     "CourtLineModelSettings",
     "GroundPlaneSettings",
     "LineProjectionSettings",

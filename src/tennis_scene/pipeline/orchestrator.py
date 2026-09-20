@@ -398,6 +398,7 @@ class TennisSceneOrchestrator:
                 "sync_assumption": "preprocessed",
                 "frame_index": frame_index,
                 "court_kp_frame_indices": court_result.frame_indices.tolist(),
+                "court_detection": court_result.diagnostics,
                 "track_ids": track_ids.tolist(),
                 "track_ids_by_camera": [
                     camera_track_ids.tolist()

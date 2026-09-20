@@ -327,6 +327,12 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         )
         for script in _SLCS_REAL_RGB_ENTRYPOINTS
     },
+
+
+    "src.tasks.court_detection.scripts.audit_hybrid_inference": (
+        "court_detection.hybrid_inference_audit",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.base.scripts.inference_worker": (
         "base.inference_worker",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -385,6 +391,7 @@ def _non_hydra_boundary(
     kind: BoundaryKind = BoundaryKind.ARGPARSE,
     domain: str = "synthetic_data_generation",
     executable_module: bool = False,
+    optional_policy: str = "optional non-path values use an explicit typed contract",
 ) -> RuntimeBoundary:
     validator_key, validator_callable = _NON_HYDRA_BOUNDARY_BINDINGS[module]
     return RuntimeBoundary(
@@ -398,14 +405,21 @@ def _non_hydra_boundary(
         configuration_authority=validator_callable,
         path_authority=validator_callable,
         validation_target="validated typed runtime contract before side effects",
-        required_policy="all declared path arguments are present",
-        optional_policy="optional non-path values use an explicit typed contract",
+        required_policy="all required path arguments are present",
+        optional_policy=optional_policy,
         default_authority="caller-owned explicit values only; no boundary fallback",
         precedence_authority="one role/direction declaration per explicit path",
     )
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.court_detection.scripts.audit_hybrid_inference",
+        "main",
+        domain="court_detection",
+        executable_module=True,
+        optional_policy="scene_root may be omitted; supplied paths are validated before side effects",
+    ),
     _runtime_boundary(
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.run_appearance_variant",

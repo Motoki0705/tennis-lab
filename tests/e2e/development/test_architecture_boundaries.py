@@ -92,6 +92,10 @@ PROHIBITED_SYMBOLS = frozenset(
         "_sort_tracks",
     }
 )
+COURT_INFERENCE_REMOVED_MODULES = (
+    "src.tasks.court_detection.inference.mask_predictor",
+    "src.tasks.court_detection.inference.semantic_lines",
+)
 ISSUE_695_REMOVAL_PREFIXES = ("src.synthetic_data_generation.",)
 SUPPORTED_TASK_LOCAL_MODULES = frozenset(
     {
@@ -116,9 +120,9 @@ SUPPORTED_TASK_LOCAL_MODULES = frozenset(
     }
 )
 COURT_LINE_PREPROCESSING_CONSUMERS = {
-    "src/synthetic_data_generation/alignment/evidence_source.py": (
-        "predictor.adapter.spec.short_side",
-        "predictor.short_side",
+    "src/tasks/court_detection/inference/predictor.py": (
+        "self.adapter.spec.short_side",
+        "self.model.short_side",
     ),
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
@@ -906,7 +910,7 @@ def test_reserved_vendor_scope_contains_only_the_public_nht_gitlink() -> None:
 
 def test_court_line_preprocessing_size_has_one_public_surface() -> None:
     predictor_path = (
-        REPOSITORY_ROOT / "src/tasks/court_detection/inference/mask_predictor.py"
+        REPOSITORY_ROOT / "src/tasks/court_detection/inference/predictor.py"
     )
     predictor_tree = ast.parse(
         predictor_path.read_text(encoding="utf-8"),
@@ -1363,12 +1367,16 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     assert original <= deleted
     unexpected = {
         module
-        for module in deleted - original
+        for module in deleted - original - frozenset(COURT_INFERENCE_REMOVED_MODULES)
         if not module.startswith(ISSUE_695_REMOVAL_PREFIXES)
     }
     assert not unexpected, f"deletions outside the canonical migration: {unexpected}"
 
-    missing = [module for module in REMOVED_MODULES if _module_path(module) is not None]
+    missing = [
+        module
+        for module in (*REMOVED_MODULES, *COURT_INFERENCE_REMOVED_MODULES)
+        if _module_path(module) is not None
+    ]
     assert not missing, f"removed modules still exist: {missing}"
 
     stale: list[str] = []
@@ -1376,7 +1384,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         if path.resolve() == Path(__file__).resolve():
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        for module in REMOVED_MODULES:
+        for module in (*REMOVED_MODULES, *COURT_INFERENCE_REMOVED_MODULES):
             references = (module, module.replace(".", "/"))
             if any(reference in text for reference in references):
                 stale.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")
