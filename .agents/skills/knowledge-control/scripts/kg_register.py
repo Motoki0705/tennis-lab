@@ -36,6 +36,7 @@ import shutil
 from pathlib import Path
 
 from kg_lib import nodes_dir, portable_path, queue_dir, repo_root
+from kg_schema import PROVIDERS, STATUSES, iso_date
 from kg_storage import check_identity, prepare_node, registration_lock, write_node
 
 QUEUE_DIR = queue_dir()
@@ -121,9 +122,15 @@ def main() -> int:
     p.add_argument("--papers", nargs="*", default=[])
     p.add_argument("--id", help="node id (default: run-<name>)")
     p.add_argument("--issue", type=int)
-    p.add_argument("--provider")
+    p.add_argument("--provider", choices=sorted(PROVIDERS))
+    p.add_argument("--date", help="actual experiment date; overrides bundle capture date")
+    p.add_argument("--status", choices=sorted(STATUSES), default="done")
     p.add_argument("--force", action="store_true", help="overwrite existing node / bundle")
     args = p.parse_args()
+    if args.date and not iso_date(args.date):
+        p.error("date must be YYYY-MM-DD")
+    if args.issue is not None and args.issue <= 0:
+        p.error("issue must be positive")
 
     repro = args.repro_dir
     if repro is None and args.name:
@@ -137,7 +144,7 @@ def main() -> int:
         run = json.loads(run_json.read_text(encoding="utf-8"))
 
     name = args.name or run.get("name") or repro.name
-    provider = args.provider or run.get("provider") or "claude"
+    provider = args.provider or run.get("provider")
     issue = args.issue
     if issue is None and str(run.get("issue", "")).isdigit():
         issue = int(run["issue"])
@@ -195,13 +202,14 @@ def main() -> int:
         meta["title"] = name
         if issue is not None:
             meta["issue"] = issue
-        meta["provider"] = provider
+        if provider:
+            meta["provider"] = provider
         if run.get("session"):
             meta["session"] = run["session"]
-        date = (run.get("captured_at") or "")[:10]
+        date = args.date or (run.get("captured_at") or "")[:10]
         if date:
             meta["date"] = date
-        meta["status"] = "done"
+        meta["status"] = args.status
         meta["config"] = config
         meta["metrics"] = metrics
         if repro_meta:

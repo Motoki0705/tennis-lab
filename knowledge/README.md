@@ -60,22 +60,28 @@ tags: []
 ---
 ```
 
-`id` / `type` / `task` / `sequence` / `recorded_at` / `title` が必須。
+`id` / `type` / `task` / `sequence` / `recorded_at` / `title` が必須。titleは空白だけでない文字列。
 `session`、`repro.branch` / `remote`、`artifacts.predictions` / `curves` / `log` / `output_dir` / `tb_logdir` は利用可能な根拠を記す。
-`parents`, `members`, `tags`, `papers` は文字列配列。`relations` は `to` と `rel` を持つmappingの配列。
+`parents`, `members`, `tags`, `papers` は空でない文字列の配列（重複不可、配列自体は空でも可）。`relations` は空でない文字列の `to` と `rel` を持つmappingの配列。これらは未使用なら省略できる。
+
+`config`, `metrics`, `repro`, `artifacts` はmapping。文字列キー、JSON互換の値（数値・真偽・文字列・null・配列・入れ子mapping）を使う。NaN/InfinityやYAML固有オブジェクトは不可。未測定は省略・空mapping・null値とし、理由を本文に記す。任意の `issue` は正の整数またはその非空配列。`status` / `provider` は上記の値を使い、未確認なら省略またはnull。`date` / `recorded_at` は実在する `YYYY-MM-DD`（引用推奨）。`date_source` は移行由来の `experiment_date` / `git_added` のみで、前者には `date` が必要。
+
+frontmatterはYAML mappingとして記述し、重複キー・alias/mergeを使わない。設定のコピーが必要なら値を明示する。登録スクリプトの出力は雛形であり、見出しとコメントだけの本文はCIエラーになる。考察の具体的な見出し・順序は強制しない。
 
 - **group**: `type: group`、`id: group-...` とし、`members` に既存run/groupのIDを列挙する。本文は群の結論を書く。
-- **parents**: baseline / 前提から子への有向関係。
+- **parents**: baseline / 前提から子への有向関係。循環不可。groupの `members` 入れ子も循環不可。すべての関係で自己参照は禁止。
 - **relations**: 非階層の有向関係。`compares` / `confirms` / `contradicts` / `supersedes` など。
 - **papers**: 関連研究の出典。引用だけで再現・実証したとはみなさない。背景、実装採用、比較対象、仮説のどれかを本文に説明する。
 
-保存時のスキーマ、ID・連番重複、関係先、bundle実在、論文参照・PDF hashを `kg_validate.py` で検証する。
+runに `members` は指定しない。groupには1件以上のmemberが必要。`relations.rel` は拡張可能であり、比較関係同士の循環は許可する。
+
+`artifacts.run_dir` を記録した場合は、そのノード自身の `knowledge/runs/<id>/` ディレクトリが必須。通常はrepo相対パスを使う。`KNOWLEDGE_DIR` で隔離したライブラリを使う場合はそのライブラリの `runs/<id>` を指す。`log` / `output_dir` / checkpoint等のローカルパスはCIでの存在を要求しない。
 `runs/` の再現コマンド・patch・予測は歴史的証拠なので、ノード移動に伴って書き換えない。実体は従来通り `runs/<id>` に保ち、巨大なcheckpointを追加しない。
 
 ## Papersの仕様
 
 論文はタスクをまたぐため、`Papers/` に一元化する。UIは `tasks` によりタスク別に絞り込む。
-ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`。同名論文は著者名などで区別し、版を追加する場合は別IDに `-v2` などを付ける。ファイル名は `paper.md` と `paper.pdf` に統一する。
+ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`（年は1000〜9999）。同名論文は著者名などで区別し、版を追加する場合は別IDに `-v2` などを付ける。ファイル名は `paper.md` と `paper.pdf` に統一し、論文ディレクトリ内はこの2つの通常ファイルだけにする（symlink不可）。直下のREADME以外の孤立PDF・未認識ディレクトリもエラー。
 
 `paper.md` の必須frontmatter:
 
@@ -90,12 +96,13 @@ tags: []
 | `sha256` | 保存PDFのSHA-256。登録スクリプトで計算 |
 
 本文には研究の要点、プロジェクトとの関係、検証仮説と適用限界を記す。参照元実験の一覧はノードの `papers` からUIが生成するので手で二重管理しない。
+`authors` / `tasks` は非空・重複なしの文字列配列。title・著者名は空白のみ不可。`tasks` はノードと同じ命名規則、`source` / `license` はHTTP(S) URL。yearはIDの発表年と一致する整数。PDF signatureとhashを検証するが、内容の読解や転載条件の適合性は人間・agentが確認する。
 公開PRにPDFを含める際は転載条件を確認し、著者・原論文・ライセンス・改変の有無を併記する。PDF固有のライセンスはrepo本体のMITとは別に維持する。
 
 ## summaryの継続更新
 
 `summary.md` は自動生成したノード一覧ではなく、現在の判断・根拠・未解決課題・次の実験を要約する。正確な更新手順はskillに集約する。
-`kg_summary.py` はノード本文・metadataと論文metadataの指紋で未レビューの変更を検出する。`--mark-reviewed` は**内容を見直したという記録**であり、考察を自動生成したり、その正しさを証明したりしない。
+`kg_summary.py` はノード本文・metadata、論文ノート、summary本文の指紋で未レビューの変更を検出する。summaryは本文と有効な日付のreview markerが1つ必要。`--mark-reviewed` は**内容を見直したという記録**であり、考察を自動生成したり、その正しさを証明したりしない。更新手順はSKILLに集約する。
 
 ## 移行・検証
 
@@ -104,3 +111,13 @@ tags: []
 ```bash
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
 ```
+
+PRの番号衝突・既存identityの変更は、マージ先commitを比較元として追加検証する。既存IDのtask / sequence / recorded_at変更、counterの削除・縮小、新規IDによる予約済み番号の再利用をエラーにする。比較元が初回移行前のflat形式なら番号履歴の比較は適用しない。参照先はローカルにfetchしておく。
+
+```bash
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main
+```
+
+CI `Knowledge library` は関連ファイルのPR・main push・手動実行で動く。上記検証、CPUのみのstorage/登録/曲線テスト、SKILLの例を実行して成果物を検証するテスト、Web UIのlint/test/build/E2Eを行う。PRはbase commit、main pushは直前commitと比較する。手動実行は現在の構造を検証する。
+
+ERRORは修正必須。issue未記録のWARNは任意の追跡情報の不足であり、CI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致・PDF転載条件は機械検証の範囲外。

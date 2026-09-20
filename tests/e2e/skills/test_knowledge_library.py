@@ -24,7 +24,10 @@ def meta(path: Path) -> dict[str, Any]:
 
 
 def create(base: Path, node_id: str, task: str = "new_topic", *extra: str) -> subprocess.CompletedProcess[str]:
-    return command(base, "kg_new.py", "--type", "run", "--task", task, "--id", node_id, "--title", "試験", *extra)
+    result = command(base, "kg_new.py", "--type", "run", "--task", task, "--id", node_id, "--title", "試験", *extra)
+    path = next((base / "nodes").rglob(f"*-{node_id}.md"))
+    path.write_text(path.read_text() + "\n合成入力の登録動作を確認した。精度の評価は行っていない。\n")
+    return result
 
 
 def test_task_scoped_sequences_force_and_invalid_task(tmp_path: Path) -> None:
@@ -55,6 +58,8 @@ def test_paper_references_checksum_and_summary_staleness(tmp_path: Path) -> None
     pdf = tmp_path / "input.pdf"
     pdf.write_bytes(b"%PDF-1.4\nfixture\n%%EOF")
     command(tmp_path, "kg_papers.py", "--id", "paper-2024-fixture", "--title", "Paper", "--authors", "Author", "--tasks", "new_topic", "--source", "https://example.org/paper/v1", "--license", "https://creativecommons.org/licenses/by/4.0/", "--pdf", str(pdf))
+    note = tmp_path / "Papers/paper-2024-fixture/paper.md"
+    note.write_text(note.read_text() + "\n検証用のPDF fixture。実在研究の主張は含まない。\n")
     create(tmp_path, "run-one", "new_topic", "--papers", "paper-2024-fixture")
     (tmp_path / "summary.md").write_text("# Summary\n試験の限界を確認した。\n")
     stale = command(tmp_path, "kg_validate.py", "--check-summary", check=False)
@@ -152,3 +157,143 @@ def test_highest_sequence_is_never_reused_after_deletion(tmp_path: Path) -> None
     (directory / ".sequence").unlink()
     result = command(tmp_path, "kg_validate.py", check=False)
     assert "missing .sequence" in result.stdout
+
+
+def update_meta(path: Path, **changes: Any) -> None:
+    _, frontmatter, body = path.read_text().split('---', 2)
+    values = yaml.safe_load(frontmatter)
+    values.update(changes)
+    path.write_text('---\n' + yaml.safe_dump(values, allow_unicode=True) + '---' + body)
+
+
+@pytest.mark.parametrize(('changes', 'message'), [
+    ({'id': 'run--one'}, 'invalid id'),
+    ({'title': ['not', 'text']}, 'title must'),
+    ({'issue': True}, 'issue must'),
+    ({'issue': [1, '2']}, 'issue must'),
+    ({'provider': 'typo'}, 'provider must'),
+    ({'status': {}}, 'status must'),
+    ({'config': []}, 'config must'),
+    ({'metrics': {'loss': float('nan')}}, 'metrics must'),
+    ({'artifacts': 'output'}, 'artifacts must'),
+    ({'artifacts': {'run_dir': '.'}}, 'artifacts.run_dir'),
+    ({'artifacts': {'run_dir': False}}, 'artifacts.run_dir'),
+    ({'date': '20260101'}, 'date must'),
+    ({'recorded_at': '2026-02-30'}, 'recorded_at must'),
+    ({'date_source': 'guessed'}, 'date_source must'),
+    ({'parents': ['run-one']}, 'self parent'),
+    ({'tags': ['one', 'one']}, 'duplicate tags'),
+    ({'relations': [{'to': 'run-one', 'rel': []}]}, 'relation requires'),
+    ({'members': ['run-one']}, 'members are only allowed'),
+])
+def test_schema_contract_rejects_invalid_values(tmp_path: Path, changes: dict[str, Any], message: str) -> None:
+    create(tmp_path, 'run-one')
+    path = next((tmp_path / 'nodes').rglob('*.md'))
+    update_meta(path, **changes)
+    result = command(tmp_path, 'kg_validate.py', check=False)
+    assert result.returncode == 1 and message in result.stdout
+    assert 'Traceback' not in result.stderr
+
+
+@pytest.mark.parametrize('frontmatter', [
+    'id: run-one\nid: run-two\n',
+    'id: [unterminated\n',
+    'config: &config {model: test}\nmetrics: *config\n',
+    'metrics: {loss: 1, loss: 2}\n',
+])
+def test_bad_yaml_is_an_actionable_error(tmp_path: Path, frontmatter: str) -> None:
+    create(tmp_path, 'run-one')
+    path = next((tmp_path / 'nodes').rglob('*.md'))
+    path.write_text('---\n' + frontmatter + '---\nFindings\n')
+    result = command(tmp_path, 'kg_validate.py', check=False)
+    assert result.returncode == 1 and 'invalid YAML' in result.stdout
+    assert 'Traceback' not in result.stderr
+
+
+def test_cycles_rejected_but_mutual_comparisons_allowed(tmp_path: Path) -> None:
+    create(tmp_path, 'run-one')
+    create(tmp_path, 'run-two')
+    first = tmp_path / 'nodes/new_topic/000001-run-one.md'
+    second = tmp_path / 'nodes/new_topic/000002-run-two.md'
+    update_meta(first, relations=[{'to': 'run-two', 'rel': 'compares'}])
+    update_meta(second, parents=['run-one'], relations=[{'to': 'run-one', 'rel': 'compares'}])
+    command(tmp_path, 'kg_validate.py')
+    update_meta(first, parents=['run-two'])
+    result = command(tmp_path, 'kg_validate.py', check=False)
+    assert 'parents: cycle detected' in result.stdout
+    update_meta(first, parents=[])
+    for name in ('a', 'b'):
+        command(tmp_path, 'kg_new.py', '--task', 'new_topic', '--type', 'group', '--id', f'group-{name}', '--title', '比較', '--members', 'run-one')
+    groups = sorted((tmp_path / 'nodes').rglob('*-group-*.md'))
+    for i, group in enumerate(groups):
+        group.write_text(group.read_text() + '\n比較条件は同一。精度の主張はしない。\n')
+        update_meta(group, members=[f'group-{("b", "a")[i]}'])
+    assert 'members: cycle detected' in command(tmp_path, 'kg_validate.py', check=False).stdout
+
+
+def test_unfinished_scaffold_and_summary_edits_require_completion(tmp_path: Path) -> None:
+    command(tmp_path, 'kg_new.py', '--type', 'run', '--task', 'new_topic', '--id', 'run-draft', '--title', '下書き')
+    node = next((tmp_path / 'nodes').rglob('*.md'))
+    assert 'date' not in meta(node) and 'provider' not in meta(node)
+    assert 'unfinished' in command(tmp_path, 'kg_validate.py', check=False).stdout
+    node.write_text(node.read_text() + '\nデータ不足で測定できなかった。曲線も未取得。次に入力を確認する。\n')
+    update_meta(node, status='failed', metrics={}, issue=None)
+    summary = tmp_path / 'summary.md'
+    summary.write_text('# Summary\n')
+    assert command(tmp_path, 'kg_summary.py', '--mark-reviewed', check=False).returncode == 1
+    summary.write_text('# Summary\n実行失敗のためbaselineは維持する。\n')
+    command(tmp_path, 'kg_summary.py', '--mark-reviewed')
+    command(tmp_path, 'kg_validate.py', '--check-summary')
+    summary.write_text(summary.read_text() + '\n追加の解釈は未レビュー。\n')
+    assert command(tmp_path, 'kg_validate.py', '--check-summary', check=False).returncode == 1
+    command(tmp_path, 'kg_summary.py', '--mark-reviewed')
+    command(tmp_path, 'kg_validate.py', '--check-summary')
+    summary.write_text(summary.read_text().replace(' on ', ' on 2026-02-30 --><!-- on ', 1))
+    assert command(tmp_path, 'kg_validate.py', '--check-summary', check=False).returncode == 1
+
+
+def test_missing_library_or_orphan_papers_are_not_silently_ignored(tmp_path: Path) -> None:
+    result = command(tmp_path, 'kg_validate.py', check=False)
+    assert result.returncode == 1 and 'missing nodes directory' in result.stdout
+    create(tmp_path, 'run-one')
+    orphan = tmp_path / 'Papers/paper-2024-orphan'
+    orphan.mkdir(parents=True)
+    (orphan / 'paper.pdf').write_bytes(b'%PDF-fixture')
+    assert 'missing paper.md' in command(tmp_path, 'kg_validate.py', check=False).stdout
+    (orphan / 'paper.md').write_text('---\nid: [bad\n---\nNote\n')
+    result = command(tmp_path, 'kg_validate.py', check=False)
+    assert result.returncode == 1 and 'invalid YAML' in result.stdout
+    assert 'Traceback' not in result.stderr
+
+
+def test_base_comparison_preserves_identity_and_deleted_allocations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.syspath_prepend(str(SCRIPTS))
+    history = importlib.import_module('kg_history')
+    base = tmp_path / 'knowledge'
+    create(base, 'run-one')
+    create(base, 'run-two')
+    subprocess.run(['git', 'init', '-q', str(tmp_path)], check=True)
+    subprocess.run(['git', '-C', str(tmp_path), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(tmp_path), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.org', 'commit', '-qm', 'base'], check=True)
+    monkeypatch.setattr(history, 'repo_root', lambda: tmp_path)
+    monkeypatch.setattr(history, 'nodes_dir', lambda: base / 'nodes')
+    lib = importlib.import_module('kg_lib')
+    directory = base / 'nodes/new_topic'
+    assert history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD') == []
+    create(base, 'run-three')
+    assert history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD') == []
+    first = directory / '000001-run-one.md'
+    update_meta(first, sequence=4, recorded_at='2000-01-01')
+    errors = history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD')
+    assert any('sequence is immutable' in e for e in errors)
+    assert any('recorded_at is immutable' in e for e in errors)
+    first.unlink()
+    (directory / '000002-run-two.md').unlink()
+    (directory / '.sequence').write_text('1\n')
+    errors = history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD')
+    assert any('retain at least base allocation 2' in e for e in errors)
+    update_meta(directory / '000003-run-three.md', sequence=2)
+    errors = history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD')
+    assert any('new sequence must exceed base allocation 2' in e for e in errors)
+    with pytest.raises(ValueError, match='cannot read history base'):
+        history.validate_history([], 'unknown-ref')

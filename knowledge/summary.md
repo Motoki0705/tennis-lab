@@ -1,4 +1,4 @@
-<!-- knowledge-review: f5f66c9c186f19e8162f1bb3f7d0a65091efdfdbf82d05941817ddfdfb3b4613 on 2026-09-20 -->
+<!-- knowledge-review: 68071745a9d3fe1173e62a4fd2ec0ef1449d91ff6cecc1aba0240cba6b11f1ee on 2026-09-20 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-20（構造移行・9月追加ノードの確認）
@@ -10,6 +10,8 @@
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
 ## 2026-09-20の追加確認
+
+CIと登録SKILLの整合性を再確認した。保存形式・未完成の記録・summary本文の更新検出を強化した運用上の変更であり、実験結果や以下の研究判断には変更がない。
 
 全200ノードを7つの機能・研究トピックへ分割した。既存の実験IDと数値・再現bundleは保持している。論文の出典は[Papers](Papers/README.md)に一元化し、GVHMRを利用するPLCS記録に背景研究の参照を追加した。これは過去runが論文の手法を比較検証したという主張ではない。
 

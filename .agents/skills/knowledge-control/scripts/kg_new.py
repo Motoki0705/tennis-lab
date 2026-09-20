@@ -20,9 +20,9 @@ The frontmatter is written with placeholders; fill in metrics/config and the
 from __future__ import annotations
 
 import argparse
-from datetime import date as _date
 
 from kg_lib import ID_RE, NODE_TYPES
+from kg_schema import PROVIDERS, STATUSES, iso_date, nonempty_text
 from kg_storage import save_node
 
 
@@ -31,12 +31,14 @@ def build_meta(args: argparse.Namespace) -> dict:
     if args.issue is not None:
         meta["issue"] = args.issue
     if args.type == "run":
-        meta["provider"] = args.provider or "claude"
-        meta["date"] = args.date or _date.today().isoformat()
+        if args.provider:
+            meta["provider"] = args.provider
+        if args.date:
+            meta["date"] = args.date
         meta["status"] = args.status or "done"
-        meta["config"] = {"model": "", "loss": "", "data": ""}
+        meta["config"] = {}
         meta["metrics"] = {}
-        meta["artifacts"] = {"log": "", "output_dir": ""}
+        meta["artifacts"] = {}
         meta["parents"] = list(args.parents or [])
         meta["relations"] = []
     else:
@@ -54,9 +56,9 @@ def main() -> int:
     p.add_argument("--papers", nargs="*", default=[])
     p.add_argument("--title", required=True)
     p.add_argument("--issue", type=int)
-    p.add_argument("--provider")
+    p.add_argument("--provider", choices=sorted(PROVIDERS))
     p.add_argument("--date")
-    p.add_argument("--status")
+    p.add_argument("--status", choices=sorted(STATUSES))
     p.add_argument("--parents", nargs="*", default=[])
     p.add_argument("--members", nargs="*", default=[])
     p.add_argument("--tags", nargs="*", default=[])
@@ -65,6 +67,12 @@ def main() -> int:
 
     if not ID_RE.match(args.id):
         p.error(f"invalid id '{args.id}' (use lowercase a-z0-9-)")
+    if not nonempty_text(args.title) or (args.date and not iso_date(args.date)):
+        p.error("title must be nonempty and date must be YYYY-MM-DD when provided")
+    if args.issue is not None and args.issue <= 0:
+        p.error("issue must be positive")
+    if args.type == "group" and not args.members:
+        p.error("a group requires --members with existing node IDs")
 
     meta = build_meta(args)
     meta.update(task=args.task, papers=args.papers)
