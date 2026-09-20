@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from enum import StrEnum
 from pathlib import Path
 
@@ -437,8 +437,18 @@ class NonHydraPathBoundary:
         arguments: Mapping[str, object],
         *,
         resolver: PathResolver,
+        independent_artifact_inputs: bool = False,
     ) -> ResolvedBoundaryPaths:
-        """Validate the exact path mapping without changing the filesystem."""
+        """Validate the exact path mapping without changing the filesystem.
+
+        A CLI accepting caller-selected absolute artifacts can explicitly grant
+        each input its own read scope with ``independent_artifact_inputs``. This
+        requires ``allow_role_root`` on those fields, never uses a common input
+        ancestor, and does not change output or other role authorities. The
+        default keeps all inputs beneath the configured role roots.
+        """
+        if type(independent_artifact_inputs) is not bool:
+            raise TypeError("independent_artifact_inputs must be exactly bool.")
         expected = {field.name for field in self.fields}
         actual = set(arguments)
         missing = sorted(
@@ -474,7 +484,12 @@ class NonHydraPathBoundary:
             else:
                 raw_paths = (raw_value,)
             field_values = tuple(
-                self._validate_path(field, raw_path, resolver=resolver)
+                self._validate_path(
+                    field,
+                    raw_path,
+                    resolver=resolver,
+                    independent_artifact_inputs=independent_artifact_inputs,
+                )
                 for raw_path in raw_paths
             )
             if len(set(field_values)) != len(field_values):
@@ -493,6 +508,7 @@ class NonHydraPathBoundary:
         raw_path: object,
         *,
         resolver: PathResolver,
+        independent_artifact_inputs: bool,
     ) -> Path:
         if type(raw_path) is not str and not isinstance(raw_path, Path):
             raise PathContractError(
@@ -512,6 +528,14 @@ class NonHydraPathBoundary:
                 f"{self.name}.{field.name} must be an explicit absolute "
                 f"{field.direction.value} path for role {field.role.value}; "
                 f"got {candidate}."
+            )
+        if (
+            independent_artifact_inputs
+            and field.role is PathRole.ARTIFACT
+            and field.direction is PathDirection.INPUT
+        ):
+            resolver = PathResolver(
+                replace(resolver.roots, artifact_root=candidate.resolve(strict=False))
             )
         resolved = resolver.validate(field.role, candidate)
         if not field.allow_role_root and resolved == resolver.roots.root(field.role):

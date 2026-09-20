@@ -70,9 +70,7 @@ def _batch(*, frames: int = 8) -> dict[str, Tensor]:
     return {
         "player_kp": torch.rand(batch_size, players, frames, joints, 2),
         "player_kp_vis": torch.ones(batch_size, players, frames, joints),
-        "player_valid": torch.ones(
-            batch_size, players, frames, dtype=torch.bool
-        ),
+        "player_valid": torch.ones(batch_size, players, frames, dtype=torch.bool),
         "ball_uv": torch.rand(batch_size, frames, 2),
         "ball_vis": torch.ones(batch_size, frames, dtype=torch.bool),
         "court_kp": torch.rand(batch_size, frames, court, 2),
@@ -107,6 +105,38 @@ def test_valid_batch_runs_once_and_returns_typed_decode() -> None:
     assert isinstance(output, SLCSDecodedOutput)
     assert output.player_position.shape == (2, 2, 8, 3)
     assert len(calls) == 1
+
+
+def test_training_time_metadata_survives_decode_and_detached_cpu() -> None:
+    from src.tasks.slcs.training.losses import (
+        build_slcs_loss_inputs,
+        make_ball_velocity_term,
+    )
+
+    batch = _batch()
+    batch["frame_idx"] = torch.arange(8)[None].expand(2, -1)
+    batch["timestamp"] = batch["frame_idx"].float() / 60
+    batch["ball_vis"].zero_()
+    adapter = _adapter()
+    targets = adapter.build_training_targets(batch).detached_cpu()
+    output = bind_model_io(_model(), adapter).run(batch).detached_cpu()
+    inputs = build_slcs_loss_inputs(output, targets)
+    assert inputs.frame_idx is not None and inputs.timestamp is not None
+    torch.testing.assert_close(inputs.frame_idx, batch["frame_idx"])
+    torch.testing.assert_close(inputs.timestamp, batch["timestamp"])
+    assert make_ball_velocity_term(30.0)(inputs) > 0
+
+
+@pytest.mark.parametrize("key", ["frame_idx", "timestamp"])
+@pytest.mark.parametrize("problem", ["dtype", "shape"])
+def test_adapter_rejects_malformed_time_metadata(key: str, problem: str) -> None:
+    batch = _batch()
+    value = torch.arange(8)[None].expand(2, -1)
+    if key == "timestamp":
+        value = value.float()
+    batch[key] = value.double() if problem == "dtype" else value[:, :1]
+    with pytest.raises(ModelInputContractError):
+        _adapter().build_training_targets(batch)
 
 
 def test_all_dino_padding_is_a_finite_raw_model_boundary_case() -> None:
@@ -191,9 +221,7 @@ def test_dino_sample_cannot_reference_a_padded_frame() -> None:
         ("dino_valid", "dino_padding_mask"),
     ],
 )
-def test_legacy_mask_keys_are_rejected(
-    legacy_key: str, replacement_key: str
-) -> None:
+def test_legacy_mask_keys_are_rejected(legacy_key: str, replacement_key: str) -> None:
     batch = _batch()
     batch[legacy_key] = batch.pop(replacement_key)
 

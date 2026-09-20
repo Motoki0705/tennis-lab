@@ -1,0 +1,6 @@
+?? knowledge/nodes/run-slcs-full-real-rgb-no-ball-smooth-start-failure-v1.md
+?? knowledge/nodes/run-slcs-pilot-no-ball-smooth-ball8-e60-v1.md
+?? knowledge/runs/run-slcs-full-real-rgb-no-ball-smooth-start-failure-v1/
+?? knowledge/runs/run-slcs-pilot-no-ball-smooth-ball8-e60-v1/
+?? knowledge/runs/run-slcs-pilot-no-ball-smooth-train-mean-v2/
+?? knowledge/runs/run-slcs-real-rgb-dino-crc-v1/

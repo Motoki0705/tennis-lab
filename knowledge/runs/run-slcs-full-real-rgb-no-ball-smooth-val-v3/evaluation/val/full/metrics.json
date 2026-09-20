@@ -1,0 +1,246 @@
+{
+  "player_position_error_m": 1.3826085329055786,
+  "player_position_error_median_m": 0.8866696357727051,
+  "player_angular_error_deg": 38.44415283203125,
+  "player_angular_error_median_deg": 20.875133514404297,
+  "player_position_accuracy_0.3m": 0.10562863945960999,
+  "player_position_accuracy_0.5m": 0.26525795459747314,
+  "player_position_accuracy_1.0m": 0.5447521209716797,
+  "player_position_accuracy_2.0m": 0.7984198331832886,
+  "player_angle_accuracy_10deg": 0.3013080954551697,
+  "player_angle_accuracy_15deg": 0.4097193777561188,
+  "player_angle_accuracy_30deg": 0.5995975136756897,
+  "player_position_pred_b_m": 0.5249688029289246,
+  "player_rotation_pred_b_deg": 22.065805435180664,
+  "player_position_conf_error_corr": 0.4142065306778529,
+  "player_rotation_conf_error_corr": 0.36481270675917565,
+  "ball_position_error_m": 2.521042585372925,
+  "ball_position_error_median_m": 1.6706559658050537,
+  "ball_position_accuracy_0.3m": 0.027338044717907906,
+  "ball_position_accuracy_0.5m": 0.0901629775762558,
+  "ball_position_accuracy_1.0m": 0.2895905077457428,
+  "ball_position_accuracy_2.0m": 0.5661545395851135,
+  "ball_position_pred_b_m": 0.8193097114562988,
+  "ball_position_conf_error_corr": 0.2920270866443763,
+  "scene_position_error_m": 1.9518255591392517,
+  "num_windows": 343.0,
+  "context": {
+    "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+    "checkpoint_sha256": "870407e89ca0ff31d07a33395acf3a3538f49146274f3566bd36ff969b6733a2",
+    "input_mode": "full",
+    "reference_interpretation": "Metrics measure agreement with dataset annotation targets. For pseudo-3D teacher annotations they measure teacher agreement, not independently measured 3D accuracy; reference quality is not verified by this evaluator.",
+    "position_representation": "normalized court coordinates (same as training payload)",
+    "position_scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "rotation_representation": "yaw (cos, sin)",
+    "frame_idx_reference": "zero-based absolute frame in clip camera video; padding=-1",
+    "padding_mask": "true indicates padding",
+    "split": "val",
+    "training_run": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003",
+    "selection": {
+      "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+      "monitor": "val/scene_position_error_m_epoch",
+      "mode": "min",
+      "candidates": [
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+          "validation_score": 1.9567973613739014
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+          "validation_score": 1.9586114883422852
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+          "validation_score": 1.9586563110351562
+        }
+      ],
+      "selected": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+        "validation_score": 1.9567973613739014,
+        "epoch_zero_based": 56
+      },
+      "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/last.ckpt",
+      "last_epoch_zero_based": 59,
+      "checkpoint_sha256": "870407e89ca0ff31d07a33395acf3a3538f49146274f3566bd36ff969b6733a2"
+    },
+    "evaluation_config": {
+      "paths": {
+        "project_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+        "data_root": "/home/kamimura/projects/tennis-lab/data",
+        "checkpoint_root": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003",
+        "artifact_root": "/home/kamimura/projects/tennis-lab/outputs",
+        "output_root": "/home/kamimura/projects/tennis-lab/outputs",
+        "cache_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.cache",
+        "external_asset_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/third_party"
+      },
+      "data": {
+        "dataset_root": "slcs/real_rgb_v1",
+        "split_file": "slcs/real_rgb_v1/splits.json",
+        "batch_size": 16,
+        "num_workers": 2,
+        "pin_memory": true,
+        "overfit": false,
+        "window_size": 120,
+        "train_stride": 60,
+        "eval_stride": 120,
+        "num_players": 2,
+        "num_court_kp": 14,
+        "require_dino": true,
+        "cache_dino_tokens": true,
+        "on_incomplete": "error",
+        "dino": {
+          "backbone": "dinov3_vitb16",
+          "patch_size": 16,
+          "image_height": 256,
+          "image_width": 448,
+          "embed_dim": 768,
+          "frame_stride": 10
+        },
+        "quality": {
+          "min_player_confidence": 0.3,
+          "min_ball_cameras": 1,
+          "label_weight_power": 1.0,
+          "min_window_label_ratio": 0.5
+        },
+        "augmentation": {
+          "enabled": false,
+          "joint_dropout": 0.1,
+          "ball_dropout": 0.15,
+          "uv_std": 0.003,
+          "burst_probability": 0.5,
+          "burst_max_frames": 24,
+          "rgb_only_probability": 0.15,
+          "rgb_dropout_probability": 0.1
+        }
+      },
+      "evaluate": {
+        "checkpoint": "logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+        "split": "val",
+        "device": "cuda",
+        "batch_size": 4,
+        "input_mode": "full",
+        "checkpoint_strict": true,
+        "checkpoint_weights_only": false,
+        "output_dir": "slcs/evaluate/real_rgb_no_ball_smooth/s42-takeover-003/val/full"
+      }
+    },
+    "precision": "cuda float32 (no autocast)",
+    "augmentation_applied": false,
+    "fps_by_clip": [
+      {
+        "video_id": "broadcast_indoor_hard",
+        "clip_id": "broadcast_indoor_hard/clip_001",
+        "fps": 30.0
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_001",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_002",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_003",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_004",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_005",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_006",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_007",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_008",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_009",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_010",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_011",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_012",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_013",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_014",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_015",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_016",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_017",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_018",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_019",
+        "fps": 59.94006
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_020",
+        "fps": 59.94006
+      }
+    ]
+  }
+}

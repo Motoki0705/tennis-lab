@@ -1,0 +1,146 @@
+{
+  "player_position_error_m": 2.8944122791290283,
+  "player_position_error_median_m": 2.172738552093506,
+  "player_angular_error_deg": 45.9613151550293,
+  "player_angular_error_median_deg": 26.334659576416016,
+  "player_position_accuracy_0.3m": 0.022670570760965347,
+  "player_position_accuracy_0.5m": 0.0676862969994545,
+  "player_position_accuracy_1.0m": 0.19394728541374207,
+  "player_position_accuracy_2.0m": 0.4595943093299866,
+  "player_angle_accuracy_10deg": 0.23614275455474854,
+  "player_angle_accuracy_15deg": 0.35025492310523987,
+  "player_angle_accuracy_30deg": 0.537585437297821,
+  "player_position_pred_b_m": 0.8973909020423889,
+  "player_rotation_pred_b_deg": 28.286937713623047,
+  "player_position_conf_error_corr": 0.22463449057499682,
+  "player_rotation_conf_error_corr": 0.01487207585410468,
+  "ball_position_error_m": 7.007242202758789,
+  "ball_position_error_median_m": 6.431260585784912,
+  "ball_position_accuracy_0.3m": 0.0004689331690315157,
+  "ball_position_accuracy_0.5m": 0.003985932096838951,
+  "ball_position_accuracy_1.0m": 0.012192262336611748,
+  "ball_position_accuracy_2.0m": 0.04548651725053787,
+  "ball_position_pred_b_m": 2.93320369720459,
+  "ball_position_conf_error_corr": 0.19939324955844678,
+  "scene_position_error_m": 4.950827240943909,
+  "num_windows": 43.0,
+  "context": {
+    "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+    "checkpoint_sha256": "c03165b52017c9a145dd5b4f807a746a5d5eda98979e92a908e0718e7d0ca580",
+    "input_mode": "detector_gap",
+    "reference_interpretation": "Metrics measure agreement with dataset annotation targets. For pseudo-3D teacher annotations they measure teacher agreement, not independently measured 3D accuracy; reference quality is not verified by this evaluator.",
+    "position_representation": "normalized court coordinates (same as training payload)",
+    "position_scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "rotation_representation": "yaw (cos, sin)",
+    "frame_idx_reference": "zero-based absolute frame in clip camera video; padding=-1",
+    "padding_mask": "true indicates padding",
+    "split": "val",
+    "training_run": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001",
+    "selection": {
+      "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+      "monitor": "val/scene_position_error_m_epoch",
+      "mode": "min",
+      "candidates": [
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+          "validation_score": 4.848258972167969
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+          "validation_score": 4.851203918457031
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0/checkpoints/slcs-epoch=57.ckpt",
+          "validation_score": 4.863885402679443
+        }
+      ],
+      "selected": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+        "validation_score": 4.848258972167969,
+        "epoch_zero_based": 55
+      },
+      "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0/checkpoints/last.ckpt",
+      "last_epoch_zero_based": 59,
+      "checkpoint_sha256": "c03165b52017c9a145dd5b4f807a746a5d5eda98979e92a908e0718e7d0ca580"
+    },
+    "evaluation_config": {
+      "paths": {
+        "project_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+        "data_root": "/home/kamimura/projects/tennis-lab/data",
+        "checkpoint_root": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001",
+        "artifact_root": "/home/kamimura/projects/tennis-lab/outputs",
+        "output_root": "/home/kamimura/projects/tennis-lab/outputs",
+        "cache_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.cache",
+        "external_asset_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/third_party"
+      },
+      "data": {
+        "dataset_root": "slcs/real_rgb_pilot_v2",
+        "split_file": "slcs/real_rgb_pilot_v2/splits.json",
+        "batch_size": 16,
+        "num_workers": 0,
+        "pin_memory": true,
+        "overfit": false,
+        "window_size": 120,
+        "train_stride": 60,
+        "eval_stride": 120,
+        "num_players": 2,
+        "num_court_kp": 14,
+        "require_dino": true,
+        "cache_dino_tokens": true,
+        "on_incomplete": "error",
+        "dino": {
+          "backbone": "dinov3_vitb16",
+          "patch_size": 16,
+          "image_height": 256,
+          "image_width": 448,
+          "embed_dim": 768,
+          "frame_stride": 10
+        },
+        "quality": {
+          "min_player_confidence": 0.3,
+          "min_ball_cameras": 1,
+          "label_weight_power": 1.0,
+          "min_window_label_ratio": 0.5
+        },
+        "augmentation": {
+          "enabled": false,
+          "joint_dropout": 0.1,
+          "ball_dropout": 0.15,
+          "uv_std": 0.003,
+          "burst_probability": 0.5,
+          "burst_max_frames": 24,
+          "rgb_only_probability": 0.15,
+          "rgb_dropout_probability": 0.1
+        }
+      },
+      "evaluate": {
+        "checkpoint": "logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+        "split": "val",
+        "device": "cpu",
+        "batch_size": 4,
+        "input_mode": "detector_gap",
+        "checkpoint_strict": true,
+        "checkpoint_weights_only": false,
+        "output_dir": "slcs/evaluate/real_rgb_pilot_no_ball_smooth/s42-takeover-001/val/detector_gap"
+      }
+    },
+    "precision": "cpu float32 (no autocast)",
+    "augmentation_applied": false,
+    "fps_by_clip": [
+      {
+        "video_id": "broadcast_indoor_hard",
+        "clip_id": "broadcast_indoor_hard/clip_001",
+        "fps": 30.0
+      },
+      {
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "fps": 59.94006
+      }
+    ]
+  }
+}

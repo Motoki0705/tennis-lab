@@ -1,0 +1,226 @@
+{
+  "video_000/clip_001": {
+    "cam0": {
+      "supported_fraction": [
+        1.0,
+        1.0
+      ],
+      "unsupported_frames": [
+        [],
+        []
+      ],
+      "observed_frames": [
+        255,
+        255
+      ],
+      "sha256": "1e0e439bb84e37954d9db78b82455caf9b3607b12097727a253e1b98acc5cbf1"
+    },
+    "cam1": {
+      "supported_fraction": [
+        1.0,
+        1.0
+      ],
+      "unsupported_frames": [
+        [],
+        []
+      ],
+      "observed_frames": [
+        255,
+        253
+      ],
+      "sha256": "fd469320f2ce04c5eb910f7e36a9033791242009f62db19e8a282109d8658786"
+    },
+    "cam2": {
+      "supported_fraction": [
+        1.0,
+        1.0
+      ],
+      "unsupported_frames": [
+        [],
+        []
+      ],
+      "observed_frames": [
+        255,
+        255
+      ],
+      "sha256": "448e53692d7a6a87ff25de4511ad4310525ec7d2e44879ea7b07009cc4c03ab4"
+    },
+    "label_evidence": {
+      "player_label_fraction": [
+        1.0,
+        0.9960668633235005
+      ],
+      "ball_label_fraction": 0.943952802359882,
+      "player_source_counts": [
+        {
+          "1": 1017
+        },
+        {
+          "1": 1015,
+          "2": 2
+        }
+      ],
+      "ball_source_counts": {
+        "0": 47,
+        "1": 955,
+        "2": 15
+      }
+    }
+  },
+  "video_001/clip_001": {
+    "cam0": {
+      "supported_fraction": [
+        1.0,
+        1.0
+      ],
+      "unsupported_frames": [
+        [],
+        []
+      ],
+      "observed_frames": [
+        326,
+        317
+      ],
+      "sha256": "7e4d236c56800b242edc1055fa167de2b07200a94ed1acb0eeda7500907cc39f"
+    },
+    "cam1": {
+      "supported_fraction": [
+        1.0,
+        1.0
+      ],
+      "unsupported_frames": [
+        [],
+        []
+      ],
+      "observed_frames": [
+        326,
+        320
+      ],
+      "sha256": "5d1807248b0fd58d68b50baefded0ee12a5663d680a9bc727624ef90b186a9f4"
+    },
+    "cam2": {
+      "supported_fraction": [
+        0.933076923076923,
+        1.0
+      ],
+      "unsupported_frames": [
+        [
+          185,
+          186,
+          187,
+          188,
+          189,
+          190,
+          191,
+          192,
+          193,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          200,
+          201,
+          202,
+          203,
+          204,
+          205,
+          206,
+          207,
+          208,
+          209,
+          210,
+          211,
+          212,
+          213,
+          214,
+          215,
+          216,
+          217,
+          218,
+          219,
+          220,
+          221,
+          222,
+          223,
+          224,
+          225,
+          226,
+          227,
+          228,
+          229,
+          230,
+          231,
+          232,
+          233,
+          234,
+          235,
+          236,
+          237,
+          238,
+          239,
+          240,
+          241,
+          242,
+          243,
+          244,
+          245,
+          246,
+          247,
+          248,
+          249,
+          250,
+          251,
+          252,
+          253,
+          254,
+          255,
+          256,
+          257,
+          258,
+          259,
+          260,
+          261,
+          262,
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          269,
+          270,
+          271
+        ],
+        []
+      ],
+      "observed_frames": [
+        304,
+        326
+      ],
+      "sha256": "b854461354a54f4aa5332e156f441c9daa1414f7accd13d5feefb800654c5152"
+    },
+    "label_evidence": {
+      "player_label_fraction": [
+        1.0,
+        0.9815384615384616
+      ],
+      "ball_label_fraction": 0.83,
+      "player_source_counts": [
+        {
+          "1": 1300
+        },
+        {
+          "1": 1288,
+          "2": 12
+        }
+      ],
+      "ball_source_counts": {
+        "0": 211,
+        "1": 1077,
+        "2": 12
+      }
+    }
+  }
+}

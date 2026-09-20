@@ -1,0 +1,87 @@
+{
+  "status": "running",
+  "clips": {
+    "video_000/clip_007": {
+      "control_arrays_exact": {
+        "player_position": true,
+        "player_kp_3d": true,
+        "ball_3d": true,
+        "player_yaw": true
+      },
+      "control_label_quality_exact": true,
+      "ball_and_yaw_unchanged": true,
+      "player0_positions_unchanged": true,
+      "old_player_label_fraction": [
+        1.0,
+        0.9892638036809815
+      ],
+      "new_player_label_fraction": [
+        1.0,
+        0.9800613496932515
+      ],
+      "max_position_change_m": [
+        0.0,
+        1.3133991956710815
+      ],
+      "position_change_over_1m_frames": [
+        0,
+        6
+      ],
+      "newly_excluded_frames": [
+        0,
+        9
+      ],
+      "newly_supported_frames": [
+        0,
+        3
+      ]
+    },
+    "video_000/clip_009": {
+      "control_arrays_exact": {
+        "player_position": true,
+        "player_kp_3d": true,
+        "ball_3d": true,
+        "player_yaw": true
+      },
+      "control_label_quality_exact": true,
+      "ball_and_yaw_unchanged": true,
+      "player0_positions_unchanged": true,
+      "old_player_label_fraction": [
+        1.0,
+        0.9865591397849462
+      ],
+      "new_player_label_fraction": [
+        1.0,
+        0.9771505376344086
+      ],
+      "max_position_change_m": [
+        0.0,
+        1.0691882371902466
+      ],
+      "position_change_over_1m_frames": [
+        0,
+        1
+      ],
+      "newly_excluded_frames": [
+        0,
+        9
+      ],
+      "newly_supported_frames": [
+        0,
+        2
+      ]
+    }
+  },
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_007/scene.npz": "1bc426c0c0cf841eb3d06931df153c60e0b8dd6bc9158209676ae28cc8d99494",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_007/scene.metadata.json": "32bdc03049943a855493e6ba6f4f05e78a0f3eb827057d0d417e8bd3c2c06b3f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_007/refined_scene.npz": "c14843d549d4b4bae6a92f41f2fd5276a6d4e765f6ab9f3758ae025716e79dc1",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_007/refined_scene.metadata.json": "8d1ff473bc65b2a2a561164d22991ef08f0bc1b8d50d10dced00ce65d43149f8",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007/court.npz": "c66ac740d5c33687cb3b2b3c072dc8c47fc13812b1baedc00344e4392e9f71bf",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_009/scene.npz": "a92eb804d74ca85a175ca9adefec71e3afa1a238c774fb770f1931e3c5f6be67",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_009/scene.metadata.json": "9fda714b8d8c52f2a80636b17a5b0b7efed95ba52591dad241911afca736b28f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_009/refined_scene.npz": "6ac4c85c10533f5c7cb6318e56d0e038b3c102336ea334bf8c0a2a7d20530683",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_009/refined_scene.metadata.json": "228f9981b430ab093c9cacbe34e3101198ff241c6ea02b2a44d11a6485e02bc3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009/court.npz": "9d4da81fd849b643b7bec036011ce7ca28dbaa54fa0ae1cb71abddea7f45a988"
+  }
+}

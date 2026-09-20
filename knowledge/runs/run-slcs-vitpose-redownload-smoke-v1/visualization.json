@@ -1,0 +1,7 @@
+{
+  "renderer_sha256": "09b6a643992f5a6196b52529c4b0069eaf3e7dd5091cb4be68e7f6fc52981c0f",
+  "command": "PYTHONPATH=. .venv/bin/python knowledge/runs/run-slcs-vitpose-redownload-smoke-v1/render_overlay.py /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload_smoke/s42-001",
+  "input_predictions_sha256": "93bef71fbf9b60f6db1109f27e1c329f8ffe4606e828afa5d1ecb88b48b96b3a",
+  "output": "overlay_zoom.png",
+  "gpu_used": false
+}

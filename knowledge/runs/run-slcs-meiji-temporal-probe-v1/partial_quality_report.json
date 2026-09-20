@@ -1,0 +1,2509 @@
+{
+  "schema_version": 1,
+  "dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7",
+  "expected_dataset": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset",
+  "quality_config": {
+    "min_player_confidence": 0.3,
+    "min_ball_cameras": 1,
+    "label_weight_power": 1.0,
+    "min_window_label_ratio": 0.5
+  },
+  "allow_incomplete": true,
+  "clips": {
+    "video_000/clip_000": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_001": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_002": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_003": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_004": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_005": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_006": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_007": {
+      "status": "completed",
+      "people_producer": {
+        "schema_version": 4,
+        "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset",
+        "settings_sha256": "9215dc135aaba83f4976e4c84c691033f5f60894be3cba432239d51901841bad",
+        "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+        "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "court_producer": {
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "settings_sha256": "ec2eb4766e9a3c6976a8ba914c499eb0cfa2b53a5cb04d8cc1143ff15c0f42c9"
+      },
+      "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
+      "source_manifest_sha256": "280d6032b3eb9ac701332f1b9a619343ed6d293a4c96a81b9ad1070f3d122b1f",
+      "manifest_sha256": "280d6032b3eb9ac701332f1b9a619343ed6d293a4c96a81b9ad1070f3d122b1f",
+      "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
+      "observation_sha256": {
+        "court.npz": "c66ac740d5c33687cb3b2b3c072dc8c47fc13812b1baedc00344e4392e9f71bf",
+        "court.json": "5d3516b3b9785ca62aac2ac44c6e87e8b00430b9689a3d718542b2afc6d52b4e",
+        "ball_detection_result.json": "4d49629615bfd422ebc496fc336361f7d8f515dbea3346507632d41e3d5297ed",
+        "ball_import.metadata.json": "e0811c85a26f2c255709400b32951d5e71c10673a658341284e8e808d8ef578e",
+        "cam0_people.npz": "594023983f209ccb5d971f7d54b22cde65cbdd0c0d1b0cddc1cd1b4bd08b1196",
+        "cam0_people.metadata.json": "19d0e95d3b5ad5b03ae923673804da99b47aa6e03519a97ebc8e19c316217620",
+        "cam1_people.npz": "34fbdf46e964c1923d76e0bf1ccad44119f5b5dc6bff8a7bae358c9cf2d510d6",
+        "cam1_people.metadata.json": "6af4bf0ece29bdb4c8293865238341366e066f1e721652ff6094b5a608f3cf2b",
+        "cam2_people.npz": "b2ef6e70250d8a9a744e4c5ae1bde1fb4d2750a548db8b7be3a4a90a475aa2ea",
+        "cam2_people.metadata.json": "0610c31e057a3aa6d4e770a24e6e3d6ef18d297860b58d2fb261746faea2d76e"
+      },
+      "run_artifact_sha256": {
+        "scene.npz": "1bc426c0c0cf841eb3d06931df153c60e0b8dd6bc9158209676ae28cc8d99494",
+        "scene.metadata.json": "32bdc03049943a855493e6ba6f4f05e78a0f3eb827057d0d417e8bd3c2c06b3f",
+        "raw_model_quality.json": "7c9c307676fc31059d35d1166edaf7a8e97b2441758defc1a8a05877a9fdfec1",
+        "quality.json": "01fb1c07ebd95638067f2ec824abf1157fad6e45311c79e8d7aa6fd5ddfbdc4b",
+        "label_evidence.json": "9c09677f79b0cfdb44765eb5a2deb754650b30d11ba9e54c743922b9b5b38824",
+        "quality_arrays.npz": "f0dade148e857b8c4aed825b01b7bf423ba7026a9059fc0d23618e62b3d4c595"
+      },
+      "fps": 59.94006,
+      "frames": 652,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "teacher_checkpoints": {
+        "plcs": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+        "blcs": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32"
+      },
+      "teacher_settings_sha256": "8e0f30fa84c35c262d118441ff9744bef42d9f56bb5da79ea6608213f6fdbc5d",
+      "dino_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "dino_spec": {
+        "backbone": "dinov3_vitb16",
+        "patch_size": 16,
+        "image_height": 256,
+        "image_width": 448,
+        "embed_dim": 768,
+        "frame_stride": 10
+      },
+      "scene_sha256": "c14843d549d4b4bae6a92f41f2fd5276a6d4e765f6ab9f3758ae025716e79dc1",
+      "run_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_007",
+      "observation_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_007",
+      "coverage": {
+        "player": [
+          1.0,
+          0.9892638036809815
+        ],
+        "ball": 0.7714723926380368
+      },
+      "unsupported_longest_gap_frames": {
+        "player": [
+          0,
+          5
+        ],
+        "ball": 68
+      },
+      "sources": {
+        "player": {
+          "0": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 1292,
+            "slcs_positive_weight": 1287
+          },
+          "2": {
+            "all": 12,
+            "slcs_positive_weight": 10
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        },
+        "ball": {
+          "0": {
+            "all": 144,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 508,
+            "slcs_positive_weight": 503
+          },
+          "2": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        }
+      },
+      "observations": {
+        "cam0": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.25153374233128833,
+              0.23466257668711657
+            ],
+            "longest_gap_frames": [
+              3,
+              31
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.01687116564417178,
+            "observed": 0.8957055214723927,
+            "occlusion_estimated": 0.007668711656441718,
+            "unresolved": 0.07975460122699386
+          }
+        },
+        "cam1": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.25153374233128833,
+              0.24846625766871167
+            ],
+            "longest_gap_frames": [
+              3,
+              7
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.02147239263803681,
+            "observed": 0.9371165644171779,
+            "occlusion_estimated": 0.003067484662576687,
+            "unresolved": 0.03834355828220859
+          }
+        },
+        "cam2": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.24079754601226994,
+              0.25153374233128833
+            ],
+            "longest_gap_frames": [
+              23,
+              3
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.03067484662576687,
+            "observed": 0.7438650306748467,
+            "occlusion_estimated": 0.012269938650306749,
+            "unresolved": 0.21319018404907975
+          }
+        }
+      },
+      "stages": {
+        "raw": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 1302,
+              "mean": 1.9647916555404663,
+              "median": 1.5873947143554688,
+              "p95": 4.569858074188232,
+              "max": 22.092409133911133
+            },
+            "ball_speed_mps": {
+              "count": 651,
+              "mean": 10.16843032836914,
+              "median": 9.463995933532715,
+              "p95": 28.70797348022461,
+              "max": 39.44280242919922
+            },
+            "ball_height_m": {
+              "count": 652,
+              "mean": 2.63008975982666,
+              "median": 2.181821584701538,
+              "p95": 7.2148284912109375,
+              "max": 7.402521133422852
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1740,
+              "mean": 23.97795940753382,
+              "median": 12.203377178083372,
+              "p95": 88.96854781248413,
+              "max": 155.51403309886467
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 64269,
+              "mean": 27.892570269059554,
+              "median": 11.343918129329353,
+              "p95": 118.80500223922215,
+              "max": 285.6545609950332
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 1293,
+              "mean": 1.9570688009262085,
+              "median": 1.584841251373291,
+              "p95": 4.54412317276001,
+              "max": 22.092409133911133
+            },
+            "ball_speed_mps": {
+              "count": 498,
+              "mean": 10.84738826751709,
+              "median": 9.458600997924805,
+              "p95": 29.62088966369629,
+              "max": 38.83792495727539
+            },
+            "ball_height_m": {
+              "count": 503,
+              "mean": 2.0354647636413574,
+              "median": 1.7642505168914795,
+              "p95": 4.992067813873291,
+              "max": 7.288139820098877
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1434,
+              "mean": 16.429913861639292,
+              "median": 10.060854293912133,
+              "p95": 48.20582217669174,
+              "max": 116.44318327456575
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 63982,
+              "mean": 27.879827505544995,
+              "median": 11.343486007983643,
+              "p95": 118.74766864311606,
+              "max": 285.6545609950332
+            }
+          }
+        },
+        "refined": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 1302,
+              "mean": 1.9508458375930786,
+              "median": 1.7249447107315063,
+              "p95": 3.8688740730285645,
+              "max": 76.68500518798828
+            },
+            "ball_speed_mps": {
+              "count": 651,
+              "mean": 11.826398849487305,
+              "median": 10.418034553527832,
+              "p95": 31.377452850341797,
+              "max": 206.10047912597656
+            },
+            "ball_height_m": {
+              "count": 652,
+              "mean": 2.666060209274292,
+              "median": 2.1437792778015137,
+              "p95": 7.379782199859619,
+              "max": 8.405966758728027
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1740,
+              "mean": 15.92654584447156,
+              "median": 4.395505251884967,
+              "p95": 62.245773974922045,
+              "max": 155.51403309886467
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 64269,
+              "mean": 19.5726431198953,
+              "median": 10.167902763285353,
+              "p95": 61.88397393895455,
+              "max": 530.1035825840623
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 1293,
+              "mean": 1.8398873805999756,
+              "median": 1.7220717668533325,
+              "p95": 3.807480812072754,
+              "max": 11.539595603942871
+            },
+            "ball_speed_mps": {
+              "count": 498,
+              "mean": 11.43470287322998,
+              "median": 10.768579483032227,
+              "p95": 31.210023880004883,
+              "max": 64.25004577636719
+            },
+            "ball_height_m": {
+              "count": 503,
+              "mean": 2.0746219158172607,
+              "median": 1.7454711198806763,
+              "p95": 5.600223064422607,
+              "max": 8.378637313842773
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1434,
+              "mean": 6.975533885576734,
+              "median": 3.897026738005989,
+              "p95": 31.389411620275617,
+              "max": 44.58170008768606
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 63982,
+              "mean": 19.428810938278872,
+              "median": 10.162026660516052,
+              "p95": 61.37547696733368,
+              "max": 530.1035825840623
+            }
+          }
+        }
+      },
+      "court_image_homography_fit": [
+        {
+          "camera_id": "cam0",
+          "source_roi_xyxy": [
+            444,
+            198,
+            1292,
+            559
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            7,
+            9,
+            9,
+            2,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.693575382232666,
+          "fit_error_px_p95": 33.56586456298828,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam1",
+          "source_roi_xyxy": [
+            280,
+            209,
+            1628,
+            752
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            0,
+            4,
+            9,
+            0,
+            9,
+            6,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            1,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 4.695438861846924,
+          "fit_error_px_p95": 34.311527252197266,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam2",
+          "source_roi_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.153531789779663,
+          "fit_error_px_p95": 7.421823978424072,
+          "is_measured_calibration": false
+        }
+      ],
+      "approximate_pinhole_fit_rmse_px": [
+        2.3140249200911125,
+        1.1053285828021124,
+        0.19445953779135
+      ],
+      "review_flags": [
+        "observable_consistency_not_measured_3d_accuracy",
+        "all_joint_reprojection_has_no_triangulation_acceptance_threshold"
+      ]
+    },
+    "video_000/clip_008": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_009": {
+      "status": "completed",
+      "people_producer": {
+        "schema_version": 4,
+        "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset",
+        "settings_sha256": "9215dc135aaba83f4976e4c84c691033f5f60894be3cba432239d51901841bad",
+        "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+        "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "court_producer": {
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "settings_sha256": "ec2eb4766e9a3c6976a8ba914c499eb0cfa2b53a5cb04d8cc1143ff15c0f42c9"
+      },
+      "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
+      "source_manifest_sha256": "69603ba816d1092ad90d42b7db1259ec1565417c2320c611e7fa012a7e9bc403",
+      "manifest_sha256": "69603ba816d1092ad90d42b7db1259ec1565417c2320c611e7fa012a7e9bc403",
+      "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
+      "observation_sha256": {
+        "court.npz": "9d4da81fd849b643b7bec036011ce7ca28dbaa54fa0ae1cb71abddea7f45a988",
+        "court.json": "d0cdd703c011d14e9c3bcb888435031b72facf4ccb8083a79f702582d237411b",
+        "ball_detection_result.json": "d8e9210b41770513028597d3693a18bae94b496c938ee13531c3450a7ab331b3",
+        "ball_import.metadata.json": "d2cba92d439a8acda4ab930779db318f8baba68c65efaa39655ff8c50f7ec907",
+        "cam0_people.npz": "5e90a6c790638880ef3d100fa9fa83da7683217d8a276f33badb15a294ef7558",
+        "cam0_people.metadata.json": "328c37d4ca448551bf09f9b99c9cd09895d65a102d98550ca7782099ec022f5e",
+        "cam1_people.npz": "f6ab784c69cce4420e528bd305640479fe6dc3b3ee22d4b86b047feb6e604b9b",
+        "cam1_people.metadata.json": "ea9f3eb7c54d667fef1165b68b9c3bd757f37a254fa766ce3c6874269714250b",
+        "cam2_people.npz": "fd34c6f2c9a19f92ea2ca4b9d74b3ba0ff0da6d461c08bb3c5073e6b08b2343e",
+        "cam2_people.metadata.json": "e4102b79c8e3ca60abc88ce3f629a8ffeb54ad552e8f91f1177071d20ece8023"
+      },
+      "run_artifact_sha256": {
+        "scene.npz": "a92eb804d74ca85a175ca9adefec71e3afa1a238c774fb770f1931e3c5f6be67",
+        "scene.metadata.json": "9fda714b8d8c52f2a80636b17a5b0b7efed95ba52591dad241911afca736b28f",
+        "raw_model_quality.json": "7eb9f52f96b3cb916ba37ea71319f173c882d31a4be11aabc99a36ec6c50bc59",
+        "quality.json": "6d7e94efcb57194093cd4585b4b6086ca043c5de18e9906df16370a8406c25c7",
+        "label_evidence.json": "85e18487bcac626c09cd387b7520ecd99e0c806c0d2aa96887550f0827b54099",
+        "quality_arrays.npz": "fd3bcd86ee4466a2c3f04d3e974d95e1214961403eb3ee818cfe8b9bfddc4e3a"
+      },
+      "fps": 59.94006,
+      "frames": 744,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "teacher_checkpoints": {
+        "plcs": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+        "blcs": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32"
+      },
+      "teacher_settings_sha256": "8e0f30fa84c35c262d118441ff9744bef42d9f56bb5da79ea6608213f6fdbc5d",
+      "dino_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "dino_spec": {
+        "backbone": "dinov3_vitb16",
+        "patch_size": 16,
+        "image_height": 256,
+        "image_width": 448,
+        "embed_dim": 768,
+        "frame_stride": 10
+      },
+      "scene_sha256": "6ac4c85c10533f5c7cb6318e56d0e038b3c102336ea334bf8c0a2a7d20530683",
+      "run_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_000/clip_009",
+      "observation_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_009",
+      "coverage": {
+        "player": [
+          1.0,
+          0.9663978494623656
+        ],
+        "ball": 0.8454301075268817
+      },
+      "unsupported_longest_gap_frames": {
+        "player": [
+          0,
+          6
+        ],
+        "ball": 66
+      },
+      "sources": {
+        "player": {
+          "0": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 1480,
+            "slcs_positive_weight": 1459
+          },
+          "2": {
+            "all": 8,
+            "slcs_positive_weight": 4
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        },
+        "ball": {
+          "0": {
+            "all": 114,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 622,
+            "slcs_positive_weight": 621
+          },
+          "2": {
+            "all": 8,
+            "slcs_positive_weight": 8
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        }
+      },
+      "observations": {
+        "cam0": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2513440860215054,
+              0.2217741935483871
+            ],
+            "longest_gap_frames": [
+              3,
+              59
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.030913978494623656,
+            "observed": 0.8884408602150538,
+            "occlusion_estimated": 0.008064516129032258,
+            "unresolved": 0.07258064516129033
+          }
+        },
+        "cam1": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              0.9905913978494624
+            ],
+            "longest_gap_frames": [
+              0,
+              7
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2513440860215054,
+              0.24865591397849462
+            ],
+            "longest_gap_frames": [
+              3,
+              7
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.013440860215053764,
+            "observed": 0.9220430107526881,
+            "occlusion_estimated": 0.0013440860215053765,
+            "unresolved": 0.06317204301075269
+          }
+        },
+        "cam2": {
+          "pose_supported_mask": {
+            "fraction": [
+              0.8723118279569892,
+              1.0
+            ],
+            "longest_gap_frames": [
+              95,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.22043010752688172,
+              0.2513440860215054
+            ],
+            "longest_gap_frames": [
+              95,
+              3
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.005376344086021506,
+            "observed": 0.7325268817204301,
+            "occlusion_estimated": 0.013440860215053764,
+            "unresolved": 0.24865591397849462
+          }
+        }
+      },
+      "stages": {
+        "raw": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 1486,
+              "mean": 1.9962505102157593,
+              "median": 1.3542463779449463,
+              "p95": 5.158846855163574,
+              "max": 24.723939895629883
+            },
+            "ball_speed_mps": {
+              "count": 743,
+              "mean": 11.491384506225586,
+              "median": 9.724668502807617,
+              "p95": 26.28018569946289,
+              "max": 40.16109085083008
+            },
+            "ball_height_m": {
+              "count": 744,
+              "mean": 2.6587133407592773,
+              "median": 1.945481777191162,
+              "p95": 7.459930419921875,
+              "max": 7.7442216873168945
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1946,
+              "mean": 19.34660553811671,
+              "median": 8.116925051154377,
+              "p95": 76.91983513232479,
+              "max": 278.78237743220245
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 72020,
+              "mean": 26.29079095154852,
+              "median": 10.335820338182707,
+              "p95": 109.50708611936987,
+              "max": 1819.0618292469944
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 1452,
+              "mean": 1.860702633857727,
+              "median": 1.3335187435150146,
+              "p95": 4.827889442443848,
+              "max": 20.775911331176758
+            },
+            "ball_speed_mps": {
+              "count": 626,
+              "mean": 12.13984489440918,
+              "median": 10.172454833984375,
+              "p95": 27.476961135864258,
+              "max": 40.16109085083008
+            },
+            "ball_height_m": {
+              "count": 629,
+              "mean": 2.23598575592041,
+              "median": 1.6265522241592407,
+              "p95": 5.747428894042969,
+              "max": 7.515211582183838
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1769,
+              "mean": 14.074676646145726,
+              "median": 7.407459531086915,
+              "p95": 47.506650692774556,
+              "max": 278.78237743220245
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 71268,
+              "mean": 25.882285340049663,
+              "median": 10.334584786376809,
+              "p95": 109.28604574576293,
+              "max": 899.0103897014319
+            }
+          }
+        },
+        "refined": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 1486,
+              "mean": 1.8945426940917969,
+              "median": 1.4501326084136963,
+              "p95": 4.150663375854492,
+              "max": 65.87071990966797
+            },
+            "ball_speed_mps": {
+              "count": 743,
+              "mean": 12.782938003540039,
+              "median": 10.604291915893555,
+              "p95": 30.866741180419922,
+              "max": 138.16738891601562
+            },
+            "ball_height_m": {
+              "count": 744,
+              "mean": 2.694716691970825,
+              "median": 1.862721562385559,
+              "p95": 7.678831577301025,
+              "max": 8.867091178894043
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1946,
+              "mean": 11.161678094881648,
+              "median": 3.5064404204258794,
+              "p95": 47.350216122226286,
+              "max": 145.35279010321358
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 72020,
+              "mean": 14.55949916652034,
+              "median": 8.365666507728411,
+              "p95": 51.043701142457714,
+              "max": 661.9831783410742
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 1452,
+              "mean": 1.7539993524551392,
+              "median": 1.4282870292663574,
+              "p95": 4.034024238586426,
+              "max": 9.416906356811523
+            },
+            "ball_speed_mps": {
+              "count": 626,
+              "mean": 13.3110990524292,
+              "median": 11.072315216064453,
+              "p95": 32.294212341308594,
+              "max": 60.92333984375
+            },
+            "ball_height_m": {
+              "count": 629,
+              "mean": 2.276458740234375,
+              "median": 1.5824569463729858,
+              "p95": 6.403981685638428,
+              "max": 8.857288360595703
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1769,
+              "mean": 5.145816690907477,
+              "median": 3.279276007871603,
+              "p95": 19.399110142285057,
+              "max": 42.871528705782914
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 71268,
+              "mean": 14.47519666758646,
+              "median": 8.39789993123671,
+              "p95": 50.79152092533558,
+              "max": 661.9831783410742
+            }
+          }
+        }
+      },
+      "court_image_homography_fit": [
+        {
+          "camera_id": "cam0",
+          "source_roi_xyxy": [
+            444,
+            198,
+            1292,
+            559
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            7,
+            9,
+            9,
+            2,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.693575382232666,
+          "fit_error_px_p95": 33.56586456298828,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam1",
+          "source_roi_xyxy": [
+            280,
+            209,
+            1628,
+            752
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            0,
+            4,
+            9,
+            0,
+            9,
+            6,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            1,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 4.695438861846924,
+          "fit_error_px_p95": 34.311527252197266,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam2",
+          "source_roi_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.153531789779663,
+          "fit_error_px_p95": 7.421823978424072,
+          "is_measured_calibration": false
+        }
+      ],
+      "approximate_pinhole_fit_rmse_px": [
+        2.3140249200911125,
+        1.1053285828021124,
+        0.19445953779135
+      ],
+      "review_flags": [
+        "observable_consistency_not_measured_3d_accuracy",
+        "all_joint_reprojection_has_no_triangulation_acceptance_threshold"
+      ]
+    },
+    "video_000/clip_010": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_000/clip_011": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_000": {
+      "status": "completed",
+      "people_producer": {
+        "schema_version": 4,
+        "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset",
+        "settings_sha256": "9215dc135aaba83f4976e4c84c691033f5f60894be3cba432239d51901841bad",
+        "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+        "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "court_producer": {
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "settings_sha256": "ec2eb4766e9a3c6976a8ba914c499eb0cfa2b53a5cb04d8cc1143ff15c0f42c9"
+      },
+      "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
+      "source_manifest_sha256": "c2f417ca07956c53ab2ec87116c0f8c42b6c1884b1f36f2686183f016e7da407",
+      "manifest_sha256": "c2f417ca07956c53ab2ec87116c0f8c42b6c1884b1f36f2686183f016e7da407",
+      "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
+      "observation_sha256": {
+        "court.npz": "2b484a81a0fff1841cee94c65825293707dc41f22bfe36a280a9ae060f35a629",
+        "court.json": "579f80c4fe0e6f04b79ad899ca092adaf2c919a949d8ffd8c89229aa98afead2",
+        "ball_detection_result.json": "0564f73377b07e5c5ccba549c6819bee99e386a9fa76b7eec40e7435f801fc39",
+        "ball_import.metadata.json": "7c16a2eaa99c8a5e2f690a9b4d5d046570084a0746761dc6410dc1fdb251a736",
+        "cam0_people.npz": "51096d087ac60017b4ad2ad7963f8ec8344a22cf943232ec87ce460472551f88",
+        "cam0_people.metadata.json": "bcd98ba6dd81e63ef91467cace9589f9b814955d019376e7acfeab12e5016df3",
+        "cam1_people.npz": "e964aeee8e627030c95d74ca3affff97194aeec63b85adfc78f374bea1fde29b",
+        "cam1_people.metadata.json": "82cc61a19496611bbc6f618c9eea3ccfac7a13199e6346398df2231010fa3a28",
+        "cam2_people.npz": "431466c535cccdca546392da6358bd96df36d968df1f69ea2e8efb78ceeedab1",
+        "cam2_people.metadata.json": "8063e77bb77209325ebd60d2da657ae785507f97b77012d67dd0405c266b68ec"
+      },
+      "run_artifact_sha256": {
+        "scene.npz": "17f5cf3c2e13ce8bbc7b355ec0f85d7cbeb200cda88f470df1318953c9203b93",
+        "scene.metadata.json": "e066ee915596b0aa889d51bd0c1875d2d3a3e9916b0b732ee4e351aad9452bac",
+        "raw_model_quality.json": "e8cc370765908c64dc5f1af258c3d4c7f56e1cb319a4533a6f09b9dda4dafd4f",
+        "quality.json": "c765a4aae305b7089d86d1bcde0aac36c3fe7c09ee1557a3538ed262ab8cb62c",
+        "label_evidence.json": "7aae69e21ff31753eaedea67d179d94118479dce1f93c16a0a32b7d882e9c8bd",
+        "quality_arrays.npz": "c105c818b30e6611f64000b9068f4c7db25b7001d22fce654a11ff14ec5014df"
+      },
+      "fps": 59.94006,
+      "frames": 1316,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "teacher_checkpoints": {
+        "plcs": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+        "blcs": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32"
+      },
+      "teacher_settings_sha256": "8e0f30fa84c35c262d118441ff9744bef42d9f56bb5da79ea6608213f6fdbc5d",
+      "dino_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "dino_spec": {
+        "backbone": "dinov3_vitb16",
+        "patch_size": 16,
+        "image_height": 256,
+        "image_width": 448,
+        "embed_dim": 768,
+        "frame_stride": 10
+      },
+      "scene_sha256": "ba7f11dffc1e29574b12c613ce5ba817834c9fbdf481f5563581bc2c5e055c2f",
+      "run_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_001/clip_000",
+      "observation_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_000",
+      "coverage": {
+        "player": [
+          0.9969604863221885,
+          0.9741641337386018
+        ],
+        "ball": 0.8183890577507599
+      },
+      "unsupported_longest_gap_frames": {
+        "player": [
+          4,
+          4
+        ],
+        "ball": 89
+      },
+      "sources": {
+        "player": {
+          "0": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 2611,
+            "slcs_positive_weight": 2573
+          },
+          "2": {
+            "all": 21,
+            "slcs_positive_weight": 21
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        },
+        "ball": {
+          "0": {
+            "all": 225,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 1073,
+            "slcs_positive_weight": 1059
+          },
+          "2": {
+            "all": 18,
+            "slcs_positive_weight": 18
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        }
+      },
+      "observations": {
+        "cam0": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              0.9946808510638298
+            ],
+            "longest_gap_frames": [
+              0,
+              7
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2507598784194529,
+              0.2013677811550152
+            ],
+            "longest_gap_frames": [
+              3,
+              47
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.037993920972644375,
+            "observed": 0.6869300911854104,
+            "unresolved": 0.2750759878419453
+          }
+        },
+        "cam1": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2507598784194529,
+              0.2454407294832827
+            ],
+            "longest_gap_frames": [
+              3,
+              11
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.004559270516717325,
+            "observed": 0.9224924012158054,
+            "unresolved": 0.0729483282674772
+          }
+        },
+        "cam2": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2507598784194529,
+              0.24924012158054712
+            ],
+            "longest_gap_frames": [
+              3,
+              7
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.015957446808510637,
+            "observed": 0.7515197568389058,
+            "occlusion_estimated": 0.0007598784194528875,
+            "unresolved": 0.2317629179331307
+          }
+        }
+      },
+      "stages": {
+        "raw": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 2630,
+              "mean": 1.7347720861434937,
+              "median": 1.352851152420044,
+              "p95": 4.4278883934021,
+              "max": 28.956239700317383
+            },
+            "ball_speed_mps": {
+              "count": 1315,
+              "mean": 12.6277494430542,
+              "median": 11.864252090454102,
+              "p95": 24.704233169555664,
+              "max": 35.22753143310547
+            },
+            "ball_height_m": {
+              "count": 1316,
+              "mean": 2.0465900897979736,
+              "median": 1.7441877126693726,
+              "p95": 5.45542049407959,
+              "max": 6.922599792480469
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 3185,
+              "mean": 14.688849901944504,
+              "median": 10.78133851308673,
+              "p95": 41.74388705405728,
+              "max": 288.5328313477162
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 129260,
+              "mean": 28.56503260014954,
+              "median": 13.833329506824224,
+              "p95": 108.43973286934433,
+              "max": 459.15501039725467
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 2578,
+              "mean": 1.6569839715957642,
+              "median": 1.3259344100952148,
+              "p95": 4.007693767547607,
+              "max": 17.45584487915039
+            },
+            "ball_speed_mps": {
+              "count": 1067,
+              "mean": 13.019740104675293,
+              "median": 12.388703346252441,
+              "p95": 25.334373474121094,
+              "max": 35.22753143310547
+            },
+            "ball_height_m": {
+              "count": 1077,
+              "mean": 1.9405536651611328,
+              "median": 1.801285743713379,
+              "p95": 3.7676730155944824,
+              "max": 6.673281669616699
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 2961,
+              "mean": 13.094508746685454,
+              "median": 10.31736732484532,
+              "p95": 32.98902052867907,
+              "max": 149.2213683440111
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 127608,
+              "mean": 28.478570650473134,
+              "median": 13.830477005149302,
+              "p95": 108.46240786645077,
+              "max": 459.15501039725467
+            }
+          }
+        },
+        "refined": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 2630,
+              "mean": 1.864271879196167,
+              "median": 1.4501256942749023,
+              "p95": 4.267664909362793,
+              "max": 43.64317321777344
+            },
+            "ball_speed_mps": {
+              "count": 1315,
+              "mean": 14.006936073303223,
+              "median": 11.819842338562012,
+              "p95": 28.045164108276367,
+              "max": 170.0721893310547
+            },
+            "ball_height_m": {
+              "count": 1316,
+              "mean": 1.9949274063110352,
+              "median": 1.6650474071502686,
+              "p95": 5.518624782562256,
+              "max": 6.922599792480469
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 3185,
+              "mean": 8.458567400623858,
+              "median": 5.7778624369543286,
+              "p95": 24.873594841781017,
+              "max": 288.5328313477162
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 129260,
+              "mean": 16.348455950718495,
+              "median": 11.20646407066721,
+              "p95": 50.842603317279945,
+              "max": 180.40137630002104
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 2578,
+              "mean": 1.7063344717025757,
+              "median": 1.4374303817749023,
+              "p95": 3.889526844024658,
+              "max": 11.768917083740234
+            },
+            "ball_speed_mps": {
+              "count": 1067,
+              "mean": 13.938188552856445,
+              "median": 12.339788436889648,
+              "p95": 27.98834991455078,
+              "max": 53.14784240722656
+            },
+            "ball_height_m": {
+              "count": 1077,
+              "mean": 1.8782349824905396,
+              "median": 1.6860260963439941,
+              "p95": 3.9535248279571533,
+              "max": 6.5998334884643555
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 2961,
+              "mean": 6.522711105838369,
+              "median": 5.459091271715501,
+              "p95": 15.909958013862655,
+              "max": 32.07275897693929
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 127608,
+              "mean": 16.308071568858704,
+              "median": 11.19363585052048,
+              "p95": 50.6388359315763,
+              "max": 180.40137630002104
+            }
+          }
+        }
+      },
+      "court_image_homography_fit": [
+        {
+          "camera_id": "cam0",
+          "source_roi_xyxy": [
+            359,
+            55,
+            1278,
+            604
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 6.293097496032715,
+          "fit_error_px_p95": 15.838016510009766,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam1",
+          "source_roi_xyxy": [
+            153,
+            0,
+            1920,
+            801
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            0,
+            8,
+            9,
+            0,
+            9,
+            0,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            3,
+            4,
+            6,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            1,
+            3,
+            4,
+            6,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.238513946533203,
+          "fit_error_px_p95": 38.761329650878906,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam2",
+          "source_roi_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.261505603790283,
+          "fit_error_px_p95": 7.1923112869262695,
+          "is_measured_calibration": false
+        }
+      ],
+      "approximate_pinhole_fit_rmse_px": [
+        3.1293416925786226,
+        2.683550354777812,
+        0.8691530656535787
+      ],
+      "review_flags": [
+        "observable_consistency_not_measured_3d_accuracy",
+        "all_joint_reprojection_has_no_triangulation_acceptance_threshold"
+      ]
+    },
+    "video_001/clip_001": {
+      "status": "completed",
+      "people_producer": {
+        "schema_version": 4,
+        "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset",
+        "settings_sha256": "9215dc135aaba83f4976e4c84c691033f5f60894be3cba432239d51901841bad",
+        "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+        "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "court_producer": {
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "settings_sha256": "ec2eb4766e9a3c6976a8ba914c499eb0cfa2b53a5cb04d8cc1143ff15c0f42c9"
+      },
+      "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
+      "source_manifest_sha256": "36af0f219298b616cbef39bd57428c01be0ca6d08886fe1ad77b294162a2a6a1",
+      "manifest_sha256": "36af0f219298b616cbef39bd57428c01be0ca6d08886fe1ad77b294162a2a6a1",
+      "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
+      "observation_sha256": {
+        "court.npz": "d9f207c53ad83eb1589fc8935aaad09a4261856a2374b20622764df9c22a180b",
+        "court.json": "735c4046e9b9a4b3c8e784d5d845e0f1db4786ffd872e28c5f46a856276202f6",
+        "ball_detection_result.json": "c5ebe349cb8b2a0dd435e48d8954de2c72678a62e45e0082b84de969a4949c89",
+        "ball_import.metadata.json": "86b46505d5585a830b623e9b8bdb8e9af1061d46ce7a9e11f49541d389e912e1",
+        "cam0_people.npz": "7e4d236c56800b242edc1055fa167de2b07200a94ed1acb0eeda7500907cc39f",
+        "cam0_people.metadata.json": "9a959c44189ca355b069d32b5e397a920e4f3f0c7310d8b969766652f2251ff4",
+        "cam1_people.npz": "5d1807248b0fd58d68b50baefded0ee12a5663d680a9bc727624ef90b186a9f4",
+        "cam1_people.metadata.json": "ea41759aa32a570fafaba224e6739564ad384050527e426dc36be936ed68af4f",
+        "cam2_people.npz": "58b9e5bdb3d5c312a8c855c6f59fe732f88c355624d82a7912cea1b92a0bad7d",
+        "cam2_people.metadata.json": "2627d3f5d9ee0686995e79b480df0a661e11a9399d0805e1badd2868254c4dba"
+      },
+      "run_artifact_sha256": {
+        "scene.npz": "b18562e271d68144eb4fd3429a34f91e9a167daf35e5b25480a27449e8ef4dd0",
+        "scene.metadata.json": "e329245c21dbbfe6a17a22fa0366f0b5b99cbc403835df9005546f4574a4e861",
+        "raw_model_quality.json": "4d6df69cca972fe2cc8036ac9e76d25a3dd083a91981628cf6685cce8652808f",
+        "quality.json": "0b6444c2f7164dbf1ba9ab48911fe1d19437ab1d5523537c156e48e142ef94a0",
+        "label_evidence.json": "17a14a0b603ffc5e8e0961c0294e26c8638cbed1d8273719fc8cf2c5b9e3b8fd",
+        "quality_arrays.npz": "60692da7ba30515bcc73caf6b8ed94a68cd10071a85cf1abb9011a2920a1c0ee"
+      },
+      "fps": 59.94006,
+      "frames": 1300,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "teacher_checkpoints": {
+        "plcs": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+        "blcs": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32"
+      },
+      "teacher_settings_sha256": "8e0f30fa84c35c262d118441ff9744bef42d9f56bb5da79ea6608213f6fdbc5d",
+      "dino_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "dino_spec": {
+        "backbone": "dinov3_vitb16",
+        "patch_size": 16,
+        "image_height": 256,
+        "image_width": 448,
+        "embed_dim": 768,
+        "frame_stride": 10
+      },
+      "scene_sha256": "0b348ccf0c8548b0d3b8710bcf452e6f4e5cedb81d6a87191c41c40746bd7ba4",
+      "run_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v7/s42-001/video_001/clip_001",
+      "observation_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_001/clip_001",
+      "coverage": {
+        "player": [
+          1.0,
+          0.9815384615384616
+        ],
+        "ball": 0.83
+      },
+      "unsupported_longest_gap_frames": {
+        "player": [
+          0,
+          4
+        ],
+        "ball": 170
+      },
+      "sources": {
+        "player": {
+          "0": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 2588,
+            "slcs_positive_weight": 2564
+          },
+          "2": {
+            "all": 12,
+            "slcs_positive_weight": 12
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        },
+        "ball": {
+          "0": {
+            "all": 211,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 1077,
+            "slcs_positive_weight": 1067
+          },
+          "2": {
+            "all": 12,
+            "slcs_positive_weight": 12
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        }
+      },
+      "observations": {
+        "cam0": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.25076923076923074,
+              0.24384615384615385
+            ],
+            "longest_gap_frames": [
+              3,
+              23
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.016153846153846154,
+            "observed": 0.7407692307692307,
+            "occlusion_estimated": 0.011538461538461539,
+            "unresolved": 0.23153846153846153
+          }
+        },
+        "cam1": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.25076923076923074,
+              0.24615384615384617
+            ],
+            "longest_gap_frames": [
+              3,
+              15
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.003076923076923077,
+            "observed": 0.81,
+            "occlusion_estimated": 0.016153846153846154,
+            "unresolved": 0.17076923076923076
+          }
+        },
+        "cam2": {
+          "pose_supported_mask": {
+            "fraction": [
+              0.93,
+              1.0
+            ],
+            "longest_gap_frames": [
+              91,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.23307692307692307,
+              0.25076923076923074
+            ],
+            "longest_gap_frames": [
+              91,
+              3
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.023846153846153847,
+            "observed": 0.7346153846153847,
+            "occlusion_estimated": 0.011538461538461539,
+            "unresolved": 0.23
+          }
+        }
+      },
+      "stages": {
+        "raw": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 2598,
+              "mean": 1.4821743965148926,
+              "median": 0.9405703544616699,
+              "p95": 4.366608619689941,
+              "max": 10.500802993774414
+            },
+            "ball_speed_mps": {
+              "count": 1299,
+              "mean": 11.21303939819336,
+              "median": 9.047883033752441,
+              "p95": 25.905677795410156,
+              "max": 44.95008087158203
+            },
+            "ball_height_m": {
+              "count": 1300,
+              "mean": 1.6214795112609863,
+              "median": 1.5493040084838867,
+              "p95": 3.437312126159668,
+              "max": 4.257062911987305
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 3078,
+              "mean": 16.656120371508106,
+              "median": 10.462683432165878,
+              "p95": 57.036553069137874,
+              "max": 142.6786486737967
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 127232,
+              "mean": 32.6880389017434,
+              "median": 13.336785081762788,
+              "p95": 169.7627246898955,
+              "max": 579.6295697308774
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 2564,
+              "mean": 1.4537856578826904,
+              "median": 0.9349664449691772,
+              "p95": 4.317718029022217,
+              "max": 10.500744819641113
+            },
+            "ball_speed_mps": {
+              "count": 1072,
+              "mean": 11.638952255249023,
+              "median": 9.433521270751953,
+              "p95": 26.004419326782227,
+              "max": 35.07648468017578
+            },
+            "ball_height_m": {
+              "count": 1079,
+              "mean": 1.7223783731460571,
+              "median": 1.609056830406189,
+              "p95": 3.494372606277466,
+              "max": 4.257062911987305
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 3042,
+              "mean": 16.52697131362224,
+              "median": 10.411905295800898,
+              "p95": 57.019602632892195,
+              "max": 137.32243416303123
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 126206,
+              "mean": 32.53905649258411,
+              "median": 13.368383366596365,
+              "p95": 169.3376737204982,
+              "max": 579.6295697308774
+            }
+          }
+        },
+        "refined": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 2598,
+              "mean": 1.574661135673523,
+              "median": 0.9544476270675659,
+              "p95": 4.379451274871826,
+              "max": 62.422725677490234
+            },
+            "ball_speed_mps": {
+              "count": 1299,
+              "mean": 12.268298149108887,
+              "median": 9.223827362060547,
+              "p95": 28.19482421875,
+              "max": 221.926025390625
+            },
+            "ball_height_m": {
+              "count": 1300,
+              "mean": 1.646874189376831,
+              "median": 1.5047413110733032,
+              "p95": 3.811718225479126,
+              "max": 4.27479362487793
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 3078,
+              "mean": 6.308097618191479,
+              "median": 4.855372828054756,
+              "p95": 15.928301022468554,
+              "max": 39.11539494469696
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 127232,
+              "mean": 17.151645824803275,
+              "median": 9.287478024872582,
+              "p95": 57.86649180831448,
+              "max": 697.5246281674614
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 2564,
+              "mean": 1.4125269651412964,
+              "median": 0.9393852949142456,
+              "p95": 4.116549491882324,
+              "max": 11.904902458190918
+            },
+            "ball_speed_mps": {
+              "count": 1072,
+              "mean": 12.263710975646973,
+              "median": 9.676616668701172,
+              "p95": 27.741012573242188,
+              "max": 63.13100814819336
+            },
+            "ball_height_m": {
+              "count": 1079,
+              "mean": 1.7529737949371338,
+              "median": 1.5300542116165161,
+              "p95": 3.852567434310913,
+              "max": 4.27479362487793
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 3042,
+              "mean": 6.1767729707629195,
+              "median": 4.818908682649371,
+              "p95": 15.240378081708343,
+              "max": 35.755282715062904
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 126206,
+              "mean": 17.026520805252805,
+              "median": 9.29469777028562,
+              "p95": 57.5147171134539,
+              "max": 697.5246281674614
+            }
+          }
+        }
+      },
+      "court_image_homography_fit": [
+        {
+          "camera_id": "cam0",
+          "source_roi_xyxy": [
+            359,
+            55,
+            1278,
+            604
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 6.293097496032715,
+          "fit_error_px_p95": 15.838016510009766,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam1",
+          "source_roi_xyxy": [
+            153,
+            0,
+            1920,
+            801
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            0,
+            8,
+            9,
+            0,
+            9,
+            0,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            3,
+            4,
+            6,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            1,
+            3,
+            4,
+            6,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.238513946533203,
+          "fit_error_px_p95": 38.761329650878906,
+          "is_measured_calibration": false
+        },
+        {
+          "camera_id": "cam2",
+          "source_roi_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.261505603790283,
+          "fit_error_px_p95": 7.1923112869262695,
+          "is_measured_calibration": false
+        }
+      ],
+      "approximate_pinhole_fit_rmse_px": [
+        3.1293416925786226,
+        2.683550354777812,
+        0.8691530656535787
+      ],
+      "review_flags": [
+        "observable_consistency_not_measured_3d_accuracy",
+        "all_joint_reprojection_has_no_triangulation_acceptance_threshold"
+      ]
+    },
+    "video_001/clip_002": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_003": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_004": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_005": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_006": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_007": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_008": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_009": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_010": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_011": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_012": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_013": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_014": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_015": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_016": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_017": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_018": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_019": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_001/clip_020": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_000": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_001": {
+      "status": "excluded",
+      "reason": "Explicit exclusion in build_slcs_dataset.yaml (insufficient outsourced multiview ball coverage)."
+    },
+    "video_002/clip_002": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_003": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_004": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_005": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_006": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_007": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_008": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_009": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_010": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_011": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_012": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_013": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_014": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_015": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_016": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_017": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_018": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_019": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_020": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_021": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_022": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    },
+    "video_002/clip_023": {
+      "status": "missing",
+      "reason": "missing annotation completion marker"
+    }
+  },
+  "errors": [],
+  "counts": {
+    "completed": 4,
+    "missing": 52,
+    "error": 0,
+    "excluded": 1
+  },
+  "expected_count": 57,
+  "complete": false,
+  "status": "incomplete",
+  "metric_interpretation": "Raw and refined use the SAME final SLCS positive frame weights; frame eligibility only, before training window selection. Reprojection is observable consistency, not independent 3D accuracy.",
+  "aggregate_sample_weighted_metrics": {
+    "raw.all_trajectory.player_speed_mps": {
+      "count": 8016,
+      "max": 28.956239700317383,
+      "mean": 1.738738356087498
+    },
+    "raw.all_trajectory.ball_speed_mps": {
+      "count": 4008,
+      "max": 44.95008087158203,
+      "mean": 11.559125630679482
+    },
+    "raw.all_trajectory.ball_height_m": {
+      "count": 4012,
+      "max": 7.7442216873168945,
+      "mean": 2.1171827447022182
+    },
+    "raw.all_trajectory.ball_reprojection_px": {
+      "count": 9949,
+      "max": 288.5328313477162,
+      "mean": 17.83311580937573
+    },
+    "raw.all_trajectory.pose_all_joint_reprojection_px": {
+      "count": 392781,
+      "max": 1819.0618292469944,
+      "mean": 29.373546689872114
+    },
+    "raw.slcs_positive_weight.player_speed_mps": {
+      "count": 7887,
+      "max": 22.092409133911133,
+      "mean": 1.6776266374469513
+    },
+    "raw.slcs_positive_weight.ball_speed_mps": {
+      "count": 3263,
+      "max": 40.16109085083008,
+      "mean": 12.06575598235953
+    },
+    "raw.slcs_positive_weight.ball_height_m": {
+      "count": 3288,
+      "max": 7.515211582183838,
+      "mean": 1.9399928158724684
+    },
+    "raw.slcs_positive_weight.ball_reprojection_px": {
+      "count": 9206,
+      "max": 278.78237743220245,
+      "mean": 14.936615967803284
+    },
+    "raw.slcs_positive_weight.pose_all_joint_reprojection_px": {
+      "count": 389064,
+      "max": 899.0103897014319,
+      "mean": 29.221679318423412
+    },
+    "refined.all_trajectory.player_speed_mps": {
+      "count": 8016,
+      "max": 76.68500518798828,
+      "mean": 1.7900818858199015
+    },
+    "refined.all_trajectory.ball_speed_mps": {
+      "count": 4008,
+      "max": 221.926025390625,
+      "mean": 12.86236247997322
+    },
+    "refined.all_trajectory.ball_height_m": {
+      "count": 4012,
+      "max": 8.867091178894043,
+      "mean": 2.1209873848874214
+    },
+    "refined.all_trajectory.ball_reprojection_px": {
+      "count": 9949,
+      "max": 288.5328313477162,
+      "mean": 9.628070859563831
+    },
+    "refined.all_trajectory.pose_all_joint_reprojection_px": {
+      "count": 392781,
+      "max": 697.5246281674614,
+      "mean": 16.80816777903358
+    },
+    "refined.slcs_positive_weight.player_speed_mps": {
+      "count": 7887,
+      "max": 11.904902458190918,
+      "mean": 1.6414899010462982
+    },
+    "refined.slcs_positive_weight.ball_speed_mps": {
+      "count": 3263,
+      "max": 64.25004577636719,
+      "mean": 12.885680474863804
+    },
+    "refined.slcs_positive_weight.ball_height_m": {
+      "count": 3288,
+      "max": 8.857288360595703,
+      "mean": 1.9433531545447027
+    },
+    "refined.slcs_positive_weight.ball_reprojection_px": {
+      "count": 9206,
+      "max": 44.58170008768606,
+      "mean": 6.2143554507474015
+    },
+    "refined.slcs_positive_weight.pose_all_joint_reprojection_px": {
+      "count": 389064,
+      "max": 697.5246281674614,
+      "mean": 16.718591231944277
+    }
+  }
+}

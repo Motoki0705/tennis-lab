@@ -1,0 +1,982 @@
+{
+  "schema_version": 1,
+  "split": "val",
+  "interpretation": "Unweighted valid consecutive window occurrences; pseudo-3D teacher, not measured 3D accuracy. Diagnostics do not prove a single causal mechanism.",
+  "input_receipts": [
+    {
+      "model": "baseline",
+      "condition": "full",
+      "arrays": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002/val/full/eval_arrays.npz",
+      "sha256": "ac7c4117fc0677f381e54d180f2edf32fa69764b8dd2df826601ce590c8d8097"
+    },
+    {
+      "model": "baseline",
+      "condition": "detector_gap",
+      "arrays": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002/val/detector_gap/eval_arrays.npz",
+      "sha256": "aecac68c879fdd30eececd794cc19bc15657fe984f55a00a56cd06e221881561"
+    },
+    {
+      "model": "temporal_control",
+      "condition": "full",
+      "arrays": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/full/eval_arrays.npz",
+      "sha256": "972b0a65dcffd02789b9be41a600b0d666a4bfef562e789fa0da11f214fdd04f"
+    },
+    {
+      "model": "temporal_control",
+      "condition": "detector_gap",
+      "arrays": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/detector_gap/eval_arrays.npz",
+      "sha256": "1433cc76df6ae145a9607c44f74d6a9f4b05a3638f32fceb6600c71a09203627"
+    },
+    {
+      "model": "domain_balanced",
+      "condition": "full",
+      "arrays": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_temporal_domain_balanced/s42-001/val/full/eval_arrays.npz",
+      "sha256": "7833fe5b76f960bee3eb3321c415f77b00207addd9aaa3d34a7eded2038a8995"
+    },
+    {
+      "model": "domain_balanced",
+      "condition": "detector_gap",
+      "arrays": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_temporal_domain_balanced/s42-001/val/detector_gap/eval_arrays.npz",
+      "sha256": "3f4becf68894239fa23bef7f27151ecd50839d084fb0936d16bd2a47471263e0"
+    }
+  ],
+  "domain_balanced_top10_predicted_speed": {
+    "full": [
+      {
+        "window_index": 43,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_001",
+        "camera_id": "cam0",
+        "window_start": 0,
+        "pair_window_frames": [
+          30,
+          31
+        ],
+        "pair_absolute_frames": [
+          30,
+          31
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 30,
+            "absolute_frame": 30,
+            "left_anchor": null,
+            "right_anchor": 31,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 22.443603367624245,
+        "predicted_speed_mps": {
+          "baseline": 34.01135292517587,
+          "temporal_control": 270.1578364537502,
+          "domain_balanced": 935.381128740937
+        },
+        "domain_balanced_endpoint_error_m": [
+          16.3011417388916,
+          1.2169381380081177
+        ]
+      },
+      {
+        "window_index": 38,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam2",
+        "window_start": 720,
+        "pair_window_frames": [
+          61,
+          62
+        ],
+        "pair_absolute_frames": [
+          781,
+          782
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 62,
+            "absolute_frame": 782,
+            "left_anchor": 61,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 52.994952579450946,
+        "predicted_speed_mps": {
+          "baseline": 51.386403528309,
+          "temporal_control": 493.14132757684314,
+          "domain_balanced": 809.1866903954145
+        },
+        "domain_balanced_endpoint_error_m": [
+          4.756453514099121,
+          10.080912590026855
+        ]
+      },
+      {
+        "window_index": 47,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_001",
+        "camera_id": "cam0",
+        "window_start": 480,
+        "pair_window_frames": [
+          67,
+          68
+        ],
+        "pair_absolute_frames": [
+          547,
+          548
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 67,
+            "absolute_frame": 547,
+            "left_anchor": null,
+            "right_anchor": 68,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 19.735022496905163,
+        "predicted_speed_mps": {
+          "baseline": 36.226475784223986,
+          "temporal_control": 177.47203274401565,
+          "domain_balanced": 795.8676835979235
+        },
+        "domain_balanced_endpoint_error_m": [
+          13.932417869567871,
+          1.0827223062515259
+        ]
+      },
+      {
+        "window_index": 12,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam0",
+        "window_start": 240,
+        "pair_window_frames": [
+          10,
+          11
+        ],
+        "pair_absolute_frames": [
+          250,
+          251
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 10,
+            "absolute_frame": 250,
+            "left_anchor": null,
+            "right_anchor": 11,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 20.60621449336193,
+        "predicted_speed_mps": {
+          "baseline": 68.73050037260973,
+          "temporal_control": 117.64183494696938,
+          "domain_balanced": 745.7137912630802
+        },
+        "domain_balanced_endpoint_error_m": [
+          12.545559883117676,
+          0.37905699014663696
+        ]
+      },
+      {
+        "window_index": 21,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam1",
+        "window_start": 0,
+        "pair_window_frames": [
+          26,
+          27
+        ],
+        "pair_absolute_frames": [
+          26,
+          27
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 26,
+            "absolute_frame": 26,
+            "left_anchor": null,
+            "right_anchor": 27,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 36.66763293973896,
+        "predicted_speed_mps": {
+          "baseline": 13.961550653337042,
+          "temporal_control": 284.13025243170836,
+          "domain_balanced": 676.380460082438
+        },
+        "domain_balanced_endpoint_error_m": [
+          12.21763801574707,
+          0.39391276240348816
+        ]
+      },
+      {
+        "window_index": 241,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_014",
+        "camera_id": "cam1",
+        "window_start": 106,
+        "pair_window_frames": [
+          113,
+          114
+        ],
+        "pair_absolute_frames": [
+          219,
+          220
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 114,
+            "absolute_frame": 220,
+            "left_anchor": 113,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 7.799723773377269,
+        "predicted_speed_mps": {
+          "baseline": 166.074965903402,
+          "temporal_control": 249.66663221265,
+          "domain_balanced": 610.6211044227048
+        },
+        "domain_balanced_endpoint_error_m": [
+          2.6644575595855713,
+          12.344673156738281
+        ]
+      },
+      {
+        "window_index": 11,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam0",
+        "window_start": 120,
+        "pair_window_frames": [
+          117,
+          118
+        ],
+        "pair_absolute_frames": [
+          237,
+          238
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 118,
+            "absolute_frame": 238,
+            "left_anchor": 117,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 38.75524039738245,
+        "predicted_speed_mps": {
+          "baseline": 75.28522180148573,
+          "temporal_control": 70.28747751931506,
+          "domain_balanced": 598.6204020682455
+        },
+        "domain_balanced_endpoint_error_m": [
+          4.898359775543213,
+          15.155014991760254
+        ]
+      },
+      {
+        "window_index": 116,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_003",
+        "camera_id": "cam2",
+        "window_start": 0,
+        "pair_window_frames": [
+          19,
+          20
+        ],
+        "pair_absolute_frames": [
+          19,
+          20
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 19,
+            "absolute_frame": 19,
+            "left_anchor": null,
+            "right_anchor": 20,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 21.19071787095468,
+        "predicted_speed_mps": {
+          "baseline": 52.457407898876525,
+          "temporal_control": 74.97164790171676,
+          "domain_balanced": 520.3064647659206
+        },
+        "domain_balanced_endpoint_error_m": [
+          8.678537368774414,
+          0.29985129833221436
+        ]
+      },
+      {
+        "window_index": 183,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_009",
+        "camera_id": "cam0",
+        "window_start": 499,
+        "pair_window_frames": [
+          115,
+          116
+        ],
+        "pair_absolute_frames": [
+          614,
+          615
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 116,
+            "absolute_frame": 615,
+            "left_anchor": 115,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 18.103829517896642,
+        "predicted_speed_mps": {
+          "baseline": 38.89844767146593,
+          "temporal_control": 146.0296310345918,
+          "domain_balanced": 511.35286019628893
+        },
+        "domain_balanced_endpoint_error_m": [
+          0.17593811452388763,
+          8.753414154052734
+        ]
+      },
+      {
+        "window_index": 40,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam2",
+        "window_start": 960,
+        "pair_window_frames": [
+          56,
+          57
+        ],
+        "pair_absolute_frames": [
+          1016,
+          1017
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 57,
+            "absolute_frame": 1017,
+            "left_anchor": 56,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 6.623449134577805,
+        "predicted_speed_mps": {
+          "baseline": 50.92149655411237,
+          "temporal_control": 211.39894341826414,
+          "domain_balanced": 479.9257765178263
+        },
+        "domain_balanced_endpoint_error_m": [
+          2.113386869430542,
+          6.408885955810547
+        ]
+      }
+    ],
+    "detector_gap": [
+      {
+        "window_index": 43,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_001",
+        "camera_id": "cam0",
+        "window_start": 0,
+        "pair_window_frames": [
+          30,
+          31
+        ],
+        "pair_absolute_frames": [
+          30,
+          31
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 30,
+            "absolute_frame": 30,
+            "left_anchor": null,
+            "right_anchor": 31,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 22.443603367624245,
+        "predicted_speed_mps": {
+          "baseline": 33.77185215695271,
+          "temporal_control": 319.64908277276,
+          "domain_balanced": 881.8851561460579
+        },
+        "domain_balanced_endpoint_error_m": [
+          15.92724609375,
+          1.77435302734375
+        ]
+      },
+      {
+        "window_index": 47,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_001",
+        "camera_id": "cam0",
+        "window_start": 480,
+        "pair_window_frames": [
+          79,
+          80
+        ],
+        "pair_absolute_frames": [
+          559,
+          560
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 79,
+            "absolute_frame": 559,
+            "left_anchor": null,
+            "right_anchor": 80,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 2.441331676811215,
+        "predicted_speed_mps": {
+          "baseline": 66.19742044231127,
+          "temporal_control": 220.09289578882183,
+          "domain_balanced": 784.2191048888743
+        },
+        "domain_balanced_endpoint_error_m": [
+          13.951069831848145,
+          0.8926126956939697
+        ]
+      },
+      {
+        "window_index": 12,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam0",
+        "window_start": 240,
+        "pair_window_frames": [
+          10,
+          11
+        ],
+        "pair_absolute_frames": [
+          250,
+          251
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 10,
+            "absolute_frame": 250,
+            "left_anchor": null,
+            "right_anchor": 11,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 20.60621449336193,
+        "predicted_speed_mps": {
+          "baseline": 65.34778777924,
+          "temporal_control": 119.56457462318433,
+          "domain_balanced": 744.396802564333
+        },
+        "domain_balanced_endpoint_error_m": [
+          12.270438194274902,
+          0.5048421621322632
+        ]
+      },
+      {
+        "window_index": 240,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_014",
+        "camera_id": "cam1",
+        "window_start": 0,
+        "pair_window_frames": [
+          79,
+          80
+        ],
+        "pair_absolute_frames": [
+          79,
+          80
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 79,
+            "absolute_frame": 79,
+            "left_anchor": null,
+            "right_anchor": 80,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 4.166126022487516,
+        "predicted_speed_mps": {
+          "baseline": 19.10961625137995,
+          "temporal_control": 76.53821459030812,
+          "domain_balanced": 707.7157504595414
+        },
+        "domain_balanced_endpoint_error_m": [
+          10.83436107635498,
+          0.972676694393158
+        ]
+      },
+      {
+        "window_index": 328,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_020",
+        "camera_id": "cam1",
+        "window_start": 360,
+        "pair_window_frames": [
+          79,
+          80
+        ],
+        "pair_absolute_frames": [
+          439,
+          440
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 79,
+            "absolute_frame": 439,
+            "left_anchor": null,
+            "right_anchor": 80,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 2.8761225888148076,
+        "predicted_speed_mps": {
+          "baseline": 20.78932706410474,
+          "temporal_control": 111.19497926625534,
+          "domain_balanced": 700.9882272575411
+        },
+        "domain_balanced_endpoint_error_m": [
+          10.855951309204102,
+          0.9187044501304626
+        ]
+      },
+      {
+        "window_index": 21,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_000",
+        "camera_id": "cam1",
+        "window_start": 0,
+        "pair_window_frames": [
+          26,
+          27
+        ],
+        "pair_absolute_frames": [
+          26,
+          27
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 26,
+            "absolute_frame": 26,
+            "left_anchor": null,
+            "right_anchor": 27,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 36.66763293973896,
+        "predicted_speed_mps": {
+          "baseline": 21.083262579247165,
+          "temporal_control": 347.0784386989701,
+          "domain_balanced": 683.7463750252575
+        },
+        "domain_balanced_endpoint_error_m": [
+          12.745867729187012,
+          0.783450186252594
+        ]
+      },
+      {
+        "window_index": 58,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_001",
+        "camera_id": "cam1",
+        "window_start": 480,
+        "pair_window_frames": [
+          79,
+          80
+        ],
+        "pair_absolute_frames": [
+          559,
+          560
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 79,
+            "absolute_frame": 559,
+            "left_anchor": null,
+            "right_anchor": 80,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 2.441331676811215,
+        "predicted_speed_mps": {
+          "baseline": 20.808816889067003,
+          "temporal_control": 286.187100167615,
+          "domain_balanced": 667.9121453346429
+        },
+        "domain_balanced_endpoint_error_m": [
+          11.938334465026855,
+          0.8721190690994263
+        ]
+      },
+      {
+        "window_index": 231,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_013",
+        "camera_id": "cam0",
+        "window_start": 122,
+        "pair_window_frames": [
+          39,
+          40
+        ],
+        "pair_absolute_frames": [
+          161,
+          162
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 40,
+            "absolute_frame": 162,
+            "left_anchor": 39,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 20.283602417628796,
+        "predicted_speed_mps": {
+          "baseline": 85.91814923938918,
+          "temporal_control": 113.41640319658903,
+          "domain_balanced": 648.5617562728062
+        },
+        "domain_balanced_endpoint_error_m": [
+          1.7589550018310547,
+          12.825617790222168
+        ]
+      },
+      {
+        "window_index": 230,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_013",
+        "camera_id": "cam0",
+        "window_start": 120,
+        "pair_window_frames": [
+          39,
+          40
+        ],
+        "pair_absolute_frames": [
+          159,
+          160
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 40,
+            "absolute_frame": 160,
+            "left_anchor": 39,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 20.417520502324304,
+        "predicted_speed_mps": {
+          "baseline": 86.92031695066551,
+          "temporal_control": 114.65414349034448,
+          "domain_balanced": 643.7191669500926
+        },
+        "domain_balanced_endpoint_error_m": [
+          1.4136842489242554,
+          12.423930168151855
+        ]
+      },
+      {
+        "window_index": 100,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_003",
+        "camera_id": "cam0",
+        "window_start": 1440,
+        "pair_window_frames": [
+          39,
+          40
+        ],
+        "pair_absolute_frames": [
+          1479,
+          1480
+        ],
+        "pair_observed": [
+          true,
+          false
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 40,
+            "absolute_frame": 1480,
+            "left_anchor": 39,
+            "right_anchor": null,
+            "anchor_sides": "left_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 22.353659424913147,
+        "predicted_speed_mps": {
+          "baseline": 54.10632307388164,
+          "temporal_control": 130.52560255965133,
+          "domain_balanced": 643.5477640891459
+        },
+        "domain_balanced_endpoint_error_m": [
+          5.088930130004883,
+          15.570541381835938
+        ]
+      }
+    ]
+  },
+  "counterexamples": {
+    "both_anchor_gap": {
+      "full": {
+        "window_index": 241,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_014",
+        "camera_id": "cam1",
+        "window_start": 106,
+        "pair_window_frames": [
+          79,
+          80
+        ],
+        "pair_absolute_frames": [
+          185,
+          186
+        ],
+        "pair_observed": [
+          true,
+          true
+        ],
+        "missing_endpoints": [],
+        "teacher_speed_mps": 15.208419703309279,
+        "predicted_speed_mps": {
+          "baseline": 5.9141842723171445,
+          "temporal_control": 3.7166751506031925,
+          "domain_balanced": 2.0585824412156266
+        },
+        "domain_balanced_endpoint_error_m": [
+          0.6874733567237854,
+          0.45532312989234924
+        ]
+      },
+      "detector_gap": {
+        "window_index": 241,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_014",
+        "camera_id": "cam1",
+        "window_start": 106,
+        "pair_window_frames": [
+          79,
+          80
+        ],
+        "pair_absolute_frames": [
+          185,
+          186
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 79,
+            "absolute_frame": 185,
+            "left_anchor": 39,
+            "right_anchor": 80,
+            "anchor_sides": "both",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 15.208419703309279,
+        "predicted_speed_mps": {
+          "baseline": 50.509550273031245,
+          "temporal_control": 325.3823913638599,
+          "domain_balanced": 171.37271107966427
+        },
+        "domain_balanced_endpoint_error_m": [
+          1.8416664600372314,
+          0.8414785265922546
+        ]
+      }
+    },
+    "improvement_against_temporal_control": {
+      "full": {
+        "window_index": 86,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_002",
+        "camera_id": "cam2",
+        "window_start": 240,
+        "pair_window_frames": [
+          36,
+          37
+        ],
+        "pair_absolute_frames": [
+          276,
+          277
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 36,
+            "absolute_frame": 276,
+            "left_anchor": null,
+            "right_anchor": 37,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 31.284465761998504,
+        "predicted_speed_mps": {
+          "baseline": 481.7659207194563,
+          "temporal_control": 409.26932145955317,
+          "domain_balanced": 261.47082612183823
+        },
+        "domain_balanced_endpoint_error_m": [
+          11.423177719116211,
+          12.599051475524902
+        ]
+      },
+      "detector_gap": {
+        "window_index": 86,
+        "video_id": "video_001",
+        "clip_id": "video_001/clip_002",
+        "camera_id": "cam2",
+        "window_start": 240,
+        "pair_window_frames": [
+          36,
+          37
+        ],
+        "pair_absolute_frames": [
+          276,
+          277
+        ],
+        "pair_observed": [
+          false,
+          true
+        ],
+        "missing_endpoints": [
+          {
+            "window_frame": 36,
+            "absolute_frame": 276,
+            "left_anchor": null,
+            "right_anchor": 37,
+            "anchor_sides": "right_only",
+            "nearest_distance_frames": 1
+          }
+        ],
+        "teacher_speed_mps": 31.284465761998504,
+        "predicted_speed_mps": {
+          "baseline": 248.87368799182303,
+          "temporal_control": 462.29203141837723,
+          "domain_balanced": 280.6108782252168
+        },
+        "domain_balanced_endpoint_error_m": [
+          13.934551239013672,
+          14.729278564453125
+        ]
+      }
+    }
+  }
+}

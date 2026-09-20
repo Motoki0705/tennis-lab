@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints

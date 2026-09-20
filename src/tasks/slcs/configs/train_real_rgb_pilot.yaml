@@ -1,0 +1,14 @@
+# Exploratory RGB ablation: two Meiji clips plus five screened broadcast clips.
+# Meiji video_001 is validation; this pilot has no Meiji test recording yet.
+# The Meiji teacher is the explicitly identified epoch-27 diagnostic checkpoint.
+defaults:
+  - train_real_rgb
+  - _self_
+data:
+  dataset_root: slcs/real_rgb_pilot_v2
+  split_file: slcs/real_rgb_pilot_v2/splits.json
+  num_workers: 0
+training:
+  warmup_steps: 20
+run:
+  output_dir: ${tennis_output:slcs,train,real_rgb_pilot,${tennis_run_id:}}

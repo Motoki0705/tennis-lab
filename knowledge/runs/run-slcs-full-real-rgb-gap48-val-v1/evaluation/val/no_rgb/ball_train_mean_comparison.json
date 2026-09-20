@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "split": "val",
+  "in_sample": false,
+  "aggregation": "Unweighted valid window occurrences; overlapping windows counted separately, including valid zero-confidence labels.",
+  "interpretation": "Pseudo-teacher agreement; negative model-minus-baseline is better agreement. Train split scores are in-sample.",
+  "position_scale_xyz_m": [
+    11.885,
+    11.885,
+    11.885
+  ],
+  "constant_m": [
+    0.08721076885289107,
+    0.9426883921841688,
+    1.8232401220318883
+  ],
+  "domain_mapping": {
+    "broadcast_indoor_hard": "broadcast",
+    "video_001": "meiji"
+  },
+  "rows": [
+    {
+      "group_type": "all",
+      "group": "all",
+      "num_windows": 343,
+      "valid_window_occurrences": 34238,
+      "model_error_m": 2.6770054736252713,
+      "train_mean_error_m": 7.692206743130705,
+      "model_minus_train_mean_error_m": -5.015201269505434
+    },
+    {
+      "group_type": "domain",
+      "group": "broadcast",
+      "num_windows": 10,
+      "valid_window_occurrences": 1022,
+      "model_error_m": 4.7762365024269915,
+      "train_mean_error_m": 6.1454461927310415,
+      "model_minus_train_mean_error_m": -1.36920969030405
+    },
+    {
+      "group_type": "domain",
+      "group": "meiji",
+      "num_windows": 333,
+      "valid_window_occurrences": 33216,
+      "model_error_m": 2.6124156942588406,
+      "train_mean_error_m": 7.73979794262819,
+      "model_minus_train_mean_error_m": -5.127382248369349
+    },
+    {
+      "group_type": "video",
+      "group": "broadcast_indoor_hard",
+      "num_windows": 10,
+      "valid_window_occurrences": 1022,
+      "model_error_m": 4.7762365024269915,
+      "train_mean_error_m": 6.1454461927310415,
+      "model_minus_train_mean_error_m": -1.36920969030405
+    },
+    {
+      "group_type": "video",
+      "group": "video_001",
+      "num_windows": 333,
+      "valid_window_occurrences": 33216,
+      "model_error_m": 2.6124156942588406,
+      "train_mean_error_m": 7.73979794262819,
+      "model_minus_train_mean_error_m": -5.127382248369349
+    }
+  ]
+}

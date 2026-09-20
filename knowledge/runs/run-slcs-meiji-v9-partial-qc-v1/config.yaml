@@ -1,0 +1,24 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+dataset_directory: slcs/meiji_rgb_v9
+expected_dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
+generation_directories:
+- tennis_scene/generate/meiji_rgb_v9/s42-002
+observation_directories:
+- tennis_scene/precompute/meiji_dino_vitpose/s42-005
+excluded_clips:
+  video_002/clip_001: Explicit exclusion in build_slcs_dataset.yaml (insufficient
+    outsourced multiview ball coverage).
+allow_incomplete: true
+quality:
+  min_player_confidence: 0.3
+  min_ball_cameras: 1
+  label_weight_power: 1.0
+  min_window_label_ratio: 0.5
+output_dir: tennis_scene/analyze/meiji_rgb_v9_quality/s42-takeover-001

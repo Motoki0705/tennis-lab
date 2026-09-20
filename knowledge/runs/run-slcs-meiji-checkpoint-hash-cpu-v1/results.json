@@ -1,0 +1,781 @@
+{
+  "status": "passed",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+  "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "iterations_per_condition": 8,
+  "memory_iterations": 4,
+  "file_rows": [
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.083948382998642,
+      "scope": "file",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.369910893999986,
+      "scope": "file",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.07371330100068,
+      "scope": "file",
+      "iteration": 1,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.3535794879990135,
+      "scope": "file",
+      "iteration": 1,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.070986955999615,
+      "scope": "file",
+      "iteration": 2,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.396869660999073,
+      "scope": "file",
+      "iteration": 2,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.096556434999002,
+      "scope": "file",
+      "iteration": 3,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.449876250999296,
+      "scope": "file",
+      "iteration": 3,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.0832750710014807,
+      "scope": "file",
+      "iteration": 4,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.396235025000351,
+      "scope": "file",
+      "iteration": 4,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.0738717090007412,
+      "scope": "file",
+      "iteration": 5,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.384899876999043,
+      "scope": "file",
+      "iteration": 5,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.091861771001277,
+      "scope": "file",
+      "iteration": 6,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.4068607879999036,
+      "scope": "file",
+      "iteration": 6,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 2.078527887000746,
+      "scope": "file",
+      "iteration": 7,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc  /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 5.3816089579995605,
+      "scope": "file",
+      "iteration": 7,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "stat_before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "stat_after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    }
+  ],
+  "memory_rows": [
+    {
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-cpu-v1/probe.py",
+        "--memory-child"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "{\"scope\": \"known_memory\", \"pid\": 873998, \"python\": \"3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]\", \"executable\": \"/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python\", \"openssl\": \"OpenSSL 3.5.5 27 Jan 2026\", \"environment\": {\"OPENSSL_ia32cap\": null, \"OPENSSL_CONF\": null, \"OPENSSL_MODULES\": null, \"LD_PRELOAD\": null, \"LD_LIBRARY_PATH\": null, \"PYTHONPATH\": null, \"PATH\": \"/home/kamimura/.local/bin:/home/kamimura/.bun/bin:/home/kamimura/.local/bin:/mnt/c/Users/kamim/.codex/tmp/arg0/codex-arg0bPVf0Z:/mnt/c/Users/kamim/.codex/bin/wsl/385b74eb4db8c237:/mnt/c/Users/kamim/.codex/bin/wsl/1a4f6f66dd2f3710:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Tailscale/:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/kamim/AppData/Local/Programs/OpenAI/Codex/bin:/mnt/c/Users/kamim/AppData/Local/hermes/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/kamim/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/kamim/AppData/Roaming/npm:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe/rclone-v1.73.4-windows-amd64:/mnt/c/Users/kamim/AppData/Local/hermes/git/cmd:/mnt/c/Users/kamim/AppData/Local/hermes/git/bin:/mnt/c/Users/kamim/AppData/Local/hermes/git/usr/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin:/mnt/c/Users/kamim/AppData/Local/Programs/Zed/bin:/mnt/c/Users/kamim/.local/bin:/snap/bin\"}, \"pattern\": \"bytes(range(256)) repeated to 64 MiB, one immutable buffer reused\", \"buffer_bytes\": 67108864, \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"rows\": [{\"iteration\": 0, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.3329094090004219, \"match\": true}, {\"iteration\": 1, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.3336009140002716, \"match\": true}, {\"iteration\": 2, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.3331845100001374, \"match\": true}, {\"iteration\": 3, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.33372507199965185, \"match\": true}], \"match\": true, \"hashlib_type\": \"<class '_hashlib.HASH'>\", \"software_type\": \"<class '_sha256.sha256'>\", \"module_origins\": {\"_hashlib\": \"built-in\", \"_sha256\": \"built-in\", \"hashlib\": \"/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/hashlib.py\"}}\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 1.4084861329993146,
+      "scope": "known_memory",
+      "report": {
+        "scope": "known_memory",
+        "pid": 873998,
+        "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+        "executable": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "openssl": "OpenSSL 3.5.5 27 Jan 2026",
+        "environment": {
+          "OPENSSL_ia32cap": null,
+          "OPENSSL_CONF": null,
+          "OPENSSL_MODULES": null,
+          "LD_PRELOAD": null,
+          "LD_LIBRARY_PATH": null,
+          "PYTHONPATH": null,
+          "PATH": "/home/kamimura/.local/bin:/home/kamimura/.bun/bin:/home/kamimura/.local/bin:/mnt/c/Users/kamim/.codex/tmp/arg0/codex-arg0bPVf0Z:/mnt/c/Users/kamim/.codex/bin/wsl/385b74eb4db8c237:/mnt/c/Users/kamim/.codex/bin/wsl/1a4f6f66dd2f3710:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Tailscale/:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/kamim/AppData/Local/Programs/OpenAI/Codex/bin:/mnt/c/Users/kamim/AppData/Local/hermes/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/kamim/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/kamim/AppData/Roaming/npm:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe/rclone-v1.73.4-windows-amd64:/mnt/c/Users/kamim/AppData/Local/hermes/git/cmd:/mnt/c/Users/kamim/AppData/Local/hermes/git/bin:/mnt/c/Users/kamim/AppData/Local/hermes/git/usr/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin:/mnt/c/Users/kamim/AppData/Local/Programs/Zed/bin:/mnt/c/Users/kamim/.local/bin:/snap/bin"
+        },
+        "pattern": "bytes(range(256)) repeated to 64 MiB, one immutable buffer reused",
+        "buffer_bytes": 67108864,
+        "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "rows": [
+          {
+            "iteration": 0,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.3329094090004219,
+            "match": true
+          },
+          {
+            "iteration": 1,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.3336009140002716,
+            "match": true
+          },
+          {
+            "iteration": 2,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.3331845100001374,
+            "match": true
+          },
+          {
+            "iteration": 3,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.33372507199965185,
+            "match": true
+          }
+        ],
+        "match": true,
+        "hashlib_type": "<class '_hashlib.HASH'>",
+        "software_type": "<class '_sha256.sha256'>",
+        "module_origins": {
+          "_hashlib": "built-in",
+          "_sha256": "built-in",
+          "hashlib": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/hashlib.py"
+        }
+      },
+      "match": true
+    },
+    {
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "-B",
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-cpu-v1/probe.py",
+        "--memory-child"
+      ],
+      "condition": "masked_sha_extension",
+      "OPENSSL_ia32cap": ":~0x20000000",
+      "exit_code": 0,
+      "stdout": "{\"scope\": \"known_memory\", \"pid\": 874166, \"python\": \"3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]\", \"executable\": \"/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python\", \"openssl\": \"OpenSSL 3.5.5 27 Jan 2026\", \"environment\": {\"OPENSSL_ia32cap\": \":~0x20000000\", \"OPENSSL_CONF\": null, \"OPENSSL_MODULES\": null, \"LD_PRELOAD\": null, \"LD_LIBRARY_PATH\": null, \"PYTHONPATH\": null, \"PATH\": \"/home/kamimura/.local/bin:/home/kamimura/.bun/bin:/home/kamimura/.local/bin:/mnt/c/Users/kamim/.codex/tmp/arg0/codex-arg0bPVf0Z:/mnt/c/Users/kamim/.codex/bin/wsl/385b74eb4db8c237:/mnt/c/Users/kamim/.codex/bin/wsl/1a4f6f66dd2f3710:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Tailscale/:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/kamim/AppData/Local/Programs/OpenAI/Codex/bin:/mnt/c/Users/kamim/AppData/Local/hermes/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/kamim/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/kamim/AppData/Roaming/npm:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe/rclone-v1.73.4-windows-amd64:/mnt/c/Users/kamim/AppData/Local/hermes/git/cmd:/mnt/c/Users/kamim/AppData/Local/hermes/git/bin:/mnt/c/Users/kamim/AppData/Local/hermes/git/usr/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin:/mnt/c/Users/kamim/AppData/Local/Programs/Zed/bin:/mnt/c/Users/kamim/.local/bin:/snap/bin\"}, \"pattern\": \"bytes(range(256)) repeated to 64 MiB, one immutable buffer reused\", \"buffer_bytes\": 67108864, \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"rows\": [{\"iteration\": 0, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.41969937999965623, \"match\": true}, {\"iteration\": 1, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.42021423499863886, \"match\": true}, {\"iteration\": 2, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.42002901600062614, \"match\": true}, {\"iteration\": 3, \"hashlib\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"_sha256\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"expected\": \"281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6\", \"seconds\": 0.41990175299906696, \"match\": true}], \"match\": true, \"hashlib_type\": \"<class '_hashlib.HASH'>\", \"software_type\": \"<class '_sha256.sha256'>\", \"module_origins\": {\"_hashlib\": \"built-in\", \"_sha256\": \"built-in\", \"hashlib\": \"/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/hashlib.py\"}}\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 1.7518311249987164,
+      "scope": "known_memory",
+      "report": {
+        "scope": "known_memory",
+        "pid": 874166,
+        "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+        "executable": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+        "openssl": "OpenSSL 3.5.5 27 Jan 2026",
+        "environment": {
+          "OPENSSL_ia32cap": ":~0x20000000",
+          "OPENSSL_CONF": null,
+          "OPENSSL_MODULES": null,
+          "LD_PRELOAD": null,
+          "LD_LIBRARY_PATH": null,
+          "PYTHONPATH": null,
+          "PATH": "/home/kamimura/.local/bin:/home/kamimura/.bun/bin:/home/kamimura/.local/bin:/mnt/c/Users/kamim/.codex/tmp/arg0/codex-arg0bPVf0Z:/mnt/c/Users/kamim/.codex/bin/wsl/385b74eb4db8c237:/mnt/c/Users/kamim/.codex/bin/wsl/1a4f6f66dd2f3710:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Tailscale/:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/kamim/AppData/Local/Programs/OpenAI/Codex/bin:/mnt/c/Users/kamim/AppData/Local/hermes/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/kamim/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/kamim/AppData/Roaming/npm:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe/rclone-v1.73.4-windows-amd64:/mnt/c/Users/kamim/AppData/Local/hermes/git/cmd:/mnt/c/Users/kamim/AppData/Local/hermes/git/bin:/mnt/c/Users/kamim/AppData/Local/hermes/git/usr/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin:/mnt/c/Users/kamim/AppData/Local/Programs/Zed/bin:/mnt/c/Users/kamim/.local/bin:/snap/bin"
+        },
+        "pattern": "bytes(range(256)) repeated to 64 MiB, one immutable buffer reused",
+        "buffer_bytes": 67108864,
+        "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "rows": [
+          {
+            "iteration": 0,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.41969937999965623,
+            "match": true
+          },
+          {
+            "iteration": 1,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.42021423499863886,
+            "match": true
+          },
+          {
+            "iteration": 2,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.42002901600062614,
+            "match": true
+          },
+          {
+            "iteration": 3,
+            "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+            "seconds": 0.41990175299906696,
+            "match": true
+          }
+        ],
+        "match": true,
+        "hashlib_type": "<class '_hashlib.HASH'>",
+        "software_type": "<class '_sha256.sha256'>",
+        "module_origins": {
+          "_hashlib": "built-in",
+          "_sha256": "built-in",
+          "hashlib": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/hashlib.py"
+        }
+      },
+      "match": true
+    }
+  ],
+  "provenance_commands": [
+    {
+      "command": [
+        "openssl",
+        "version",
+        "-a"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)\nbuilt on: Tue Aug 18 12:10:36 2026 UTC\nplatform: debian-amd64\noptions:  bn(64,64)\ncompiler: gcc -fPIC -pthread -m64 -Wa,--noexecstack -Wall -fzero-call-used-regs=used-gpr -DOPENSSL_TLS_SECURITY_LEVEL=2 -Wa,--noexecstack -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/openssl-Bh92mR/openssl-3.0.13=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/openssl-Bh92mR/openssl-3.0.13=/usr/src/openssl-3.0.13-0ubuntu3.15 -DOPENSSL_USE_NODELETE -DL_ENDIAN -DOPENSSL_PIC -DOPENSSL_BUILDING_OPENSSL -DNDEBUG -Wdate-time -D_FORTIFY_SOURCE=3\nOPENSSLDIR: \"/usr/lib/ssl\"\nENGINESDIR: \"/usr/lib/x86_64-linux-gnu/engines-3\"\nMODULESDIR: \"/usr/lib/x86_64-linux-gnu/ossl-modules\"\nSeeding source: os-specific\nCPUINFO: OPENSSL_ia32cap=0xfed83203078bffff:0x405fc6f1bf07a9\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 0.016229257000304642
+    },
+    {
+      "command": [
+        "/usr/bin/sha256sum",
+        "--version"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "sha256sum (GNU coreutils) 9.4\nCopyright (C) 2023 Free Software Foundation, Inc.\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n\nWritten by Ulrich Drepper, Scott Miller, and David Madore.\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 0.002863167999748839
+    },
+    {
+      "command": [
+        "ldd",
+        "/usr/bin/sha256sum"
+      ],
+      "condition": "inherited",
+      "OPENSSL_ia32cap": null,
+      "exit_code": 0,
+      "stdout": "\tlinux-vdso.so.1 (0x00007ffffcb66000)\n\tlibcrypto.so.3 => /lib/x86_64-linux-gnu/libcrypto.so.3 (0x0000793d90400000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x0000793d90000000)\n\t/lib64/ld-linux-x86-64.so.2 (0x0000793d90980000)\n",
+      "stderr": "",
+      "timed_out": false,
+      "seconds": 0.008410738000748097
+    }
+  ],
+  "provenance": {
+    "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+    "executable": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "child_python": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "conditions": {
+      "inherited": {
+        "OPENSSL_ia32cap": null,
+        "OPENSSL_CONF": null,
+        "OPENSSL_MODULES": null,
+        "LD_PRELOAD": null,
+        "LD_LIBRARY_PATH": null,
+        "PYTHONPATH": null,
+        "PATH": "/home/kamimura/.local/bin:/home/kamimura/.bun/bin:/home/kamimura/.local/bin:/mnt/c/Users/kamim/.codex/tmp/arg0/codex-arg0bPVf0Z:/mnt/c/Users/kamim/.codex/bin/wsl/385b74eb4db8c237:/mnt/c/Users/kamim/.codex/bin/wsl/1a4f6f66dd2f3710:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Tailscale/:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/kamim/AppData/Local/Programs/OpenAI/Codex/bin:/mnt/c/Users/kamim/AppData/Local/hermes/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/kamim/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/kamim/AppData/Roaming/npm:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe/rclone-v1.73.4-windows-amd64:/mnt/c/Users/kamim/AppData/Local/hermes/git/cmd:/mnt/c/Users/kamim/AppData/Local/hermes/git/bin:/mnt/c/Users/kamim/AppData/Local/hermes/git/usr/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin:/mnt/c/Users/kamim/AppData/Local/Programs/Zed/bin:/mnt/c/Users/kamim/.local/bin:/snap/bin"
+      },
+      "masked_sha_extension": {
+        "OPENSSL_ia32cap": ":~0x20000000",
+        "OPENSSL_CONF": null,
+        "OPENSSL_MODULES": null,
+        "LD_PRELOAD": null,
+        "LD_LIBRARY_PATH": null,
+        "PYTHONPATH": null,
+        "PATH": "/home/kamimura/.local/bin:/home/kamimura/.bun/bin:/home/kamimura/.local/bin:/mnt/c/Users/kamim/.codex/tmp/arg0/codex-arg0bPVf0Z:/mnt/c/Users/kamim/.codex/bin/wsl/385b74eb4db8c237:/mnt/c/Users/kamim/.codex/bin/wsl/1a4f6f66dd2f3710:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/Program Files/Common Files/Oracle/Java/javapath:/mnt/c/WINDOWS/system32:/mnt/c/WINDOWS:/mnt/c/WINDOWS/System32/Wbem:/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/mnt/c/WINDOWS/System32/OpenSSH/:/mnt/c/Program Files/Tailscale/:/mnt/c/Program Files/nodejs/:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/kamim/AppData/Local/Programs/OpenAI/Codex/bin:/mnt/c/Users/kamim/AppData/Local/hermes/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/kamim/AppData/Local/Programs/Microsoft VS Code/bin:/mnt/c/Users/kamim/AppData/Roaming/npm:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Rclone.Rclone_Microsoft.Winget.Source_8wekyb3d8bbwe/rclone-v1.73.4-windows-amd64:/mnt/c/Users/kamim/AppData/Local/hermes/git/cmd:/mnt/c/Users/kamim/AppData/Local/hermes/git/bin:/mnt/c/Users/kamim/AppData/Local/hermes/git/usr/bin:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/mnt/c/Users/kamim/AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe/ffmpeg-8.1.1-full_build/bin:/mnt/c/Users/kamim/AppData/Local/Programs/Zed/bin:/mnt/c/Users/kamim/.local/bin:/snap/bin"
+      }
+    },
+    "mask_source": "https://docs.openssl.org/3.5/man3/OPENSSL_ia32cap/",
+    "mask": ":~0x20000000",
+    "interpretation": "Child-local diagnostic intervention, not a production fix. The mask targets OpenSSL SHA-extension dispatch; coreutils may use another implementation and ignore it. Inherited condition retains any existing mask. OpenSSL 3.5 documents that this two-vector syntax also zeroes later capability vectors, so the intervention is not restricted to the SHA bit. Alternating fresh processes do not eliminate chronological confounding."
+  },
+  "elapsed_seconds": 63.003466768999715,
+  "initial_stat": {
+    "st_dev": 2096,
+    "st_ino": 71274,
+    "st_size": 2549075546,
+    "st_mtime_ns": 1779091833671210124,
+    "st_ctime_ns": 1788991599915204724
+  },
+  "sha256sum_path": "/usr/bin/sha256sum",
+  "summary": {
+    "file": {
+      "inherited": {
+        "runs": 8,
+        "mismatches_or_errors": 0
+      },
+      "masked_sha_extension": {
+        "runs": 8,
+        "mismatches_or_errors": 0
+      }
+    },
+    "known_memory": {
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "children": 2,
+      "all_children_match": true,
+      "unique_digests_across_conditions_and_implementations": [
+        "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      ],
+      "cross_condition_match": true,
+      "all_digests_match_expected": true
+    }
+  }
+}

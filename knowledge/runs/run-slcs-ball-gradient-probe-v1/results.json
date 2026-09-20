@@ -1,0 +1,1990 @@
+{
+  "status": "completed",
+  "scope": "Local checkpoint diagnostic, two batch-size-1 train windows; not proof of training causality or population gradient dominance.",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/slcs/real-rgb-pilot-augmented-e60-v2.ckpt",
+  "checkpoint_sha256": "b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c",
+  "config": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/config.yaml",
+  "seed": 42,
+  "device": "cpu",
+  "threads": 2,
+  "training_precision": "bf16-mixed",
+  "diagnostic_precision": "float32",
+  "augmentation": {
+    "dataset_augment": false,
+    "pipeline_augmentation": null,
+    "same_batch_between_modes": true
+  },
+  "selection": "First eligible dataset index per domain, full 120 frames, positive-weight ball supervision; no random search",
+  "shared_group_definition": "Shared axial entity/time/DINO cross layers and final norm, excludes input embeddings/projections and task heads; see exact names",
+  "versions": {
+    "python": "3.11.15",
+    "torch": "2.13.0+cu130",
+    "numpy": "2.3.5"
+  },
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "knowledge/runs/run-slcs-ball-gradient-probe-v1/probe.py",
+    "--output-dir",
+    "outputs/slcs/analyze/ball_gradient_probe/s42-001"
+  ],
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "git_head": "bc2e8e00e1dff7746ac8c099dcf791e9431146fc",
+  "git_status": "?? knowledge/runs/run-slcs-ball-gradient-probe-v1/__pycache__/\n?? knowledge/runs/run-slcs-meiji-v8-feature-reuse-v1/__pycache__/\n",
+  "court_coordinate_scale_xyz": [
+    11.885,
+    11.885,
+    11.885
+  ],
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-ball-gradient-probe-v1/probe.py": "1742e3777d378ae02f0238ecc3259502d22cd954d5e007e41eefd7a83af9d7e3",
+    "/home/kamimura/projects/tennis-lab/ckpt/slcs/real-rgb-pilot-augmented-e60-v2.ckpt": "b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/dataset.json": "59ba35fb2bd1f71f30001300650855a99db395a958cb18fcc6fc9a94c7f7d3e5",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/splits.json": "1f4085e198812e3cd749b3f4bf838dd1d81c80d1c47dc86c1c1048c61f6c4ec7",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/broadcast_shanghai/clips/clip_004/annotations/dino_v3/annotation.json": "c740e80458d338f341049fba2c127e0f0be20a9b59710bff1070d86c1d5ed5d5",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/broadcast_shanghai/clips/clip_004/annotations/dino_v3/cam0.npz": "550932b665c3d3db8ce63a40eabc30d5c6b0e9a3cc7aa727f71b5f1e40e85538",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/broadcast_shanghai/clips/clip_004/annotations/tennis_scene/annotation.json": "3cbe2fe30fedc9bbc5ac1871f5a3b8e7b49dbd8d54b8080a90d1ff16872aef12",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/broadcast_shanghai/clips/clip_004/annotations/tennis_scene/scene.metadata.json": "b159889df9c0f8d6e56a044fbbe1790954ed1c9cdc7fcb4ff1f00dccc6e6ef9c",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/broadcast_shanghai/clips/clip_004/annotations/tennis_scene/scene.npz": "f36dce8be5a2bf780f1bdf900f38c32491f36d0a386147dba33c2fd003aea482",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/broadcast_shanghai/clips/clip_004/clip.json": "62bde19bfbb104db41d4f3210068ac45ac0427bbffe52e2f3ec545af7cf2e357",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/video_000/clips/clip_000/annotations/dino_v3/annotation.json": "b90d95169fad3058d76ed0dabd8f8164a4cff47ab14a011142ecd4b0072e2b75",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/video_000/clips/clip_000/annotations/dino_v3/cam0.npz": "b53957eaa327bef2117b752938641ca5a5988265fee35ac020dd388ab04870c2",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/video_000/clips/clip_000/annotations/tennis_scene/annotation.json": "bf9a1c9bb28806168159c115c07ad0c19d1be9eae87f34862c8d9a5ea0003583",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.metadata.json": "6cbc72a03bdb14e3331d0cebcf60653327bbcbb7ca29ad797142489b62805c7a",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.npz": "b9e8c90cd0664ffe72ffa0acbf3d71cfda367a3db61033a0bb7b18506ffa68fd",
+    "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_pilot_v2/videos/video_000/clips/clip_000/clip.json": "5f5608d2877818dbd62fa35d440302b8248e860c494586dbcd2174336d810b5b",
+    "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/config.yaml": "41453a2ef157a51a2c6e9959c96ddc4284d48edd015505f14ed5eaf54be28f44"
+  },
+  "domains": {
+    "broadcast": {
+      "dataset_index": 0,
+      "meta": {
+        "clip_id": "broadcast_shanghai/clip_004",
+        "video_id": "broadcast_shanghai",
+        "camera_id": "cam0",
+        "window_start": 0,
+        "window_length": 120
+      },
+      "prediction_id": "broadcast_shanghai/clip_004@cam0@000000",
+      "fps": 30.0,
+      "camera_metadata": {
+        "camera_id": "cam0",
+        "video": "media/cam0.mp4",
+        "source_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/raw/tennis_clip_source/cam0.mp4",
+        "offset_sec": 0.0,
+        "source_fps": 30.0,
+        "source_frame_start": 5949,
+        "source_frame_end": 7050,
+        "letterbox": null
+      },
+      "frame_idx_clip": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "frame_idx_source": [
+        5949,
+        5950,
+        5951,
+        5952,
+        5953,
+        5954,
+        5955,
+        5956,
+        5957,
+        5958,
+        5959,
+        5960,
+        5961,
+        5962,
+        5963,
+        5964,
+        5965,
+        5966,
+        5967,
+        5968,
+        5969,
+        5970,
+        5971,
+        5972,
+        5973,
+        5974,
+        5975,
+        5976,
+        5977,
+        5978,
+        5979,
+        5980,
+        5981,
+        5982,
+        5983,
+        5984,
+        5985,
+        5986,
+        5987,
+        5988,
+        5989,
+        5990,
+        5991,
+        5992,
+        5993,
+        5994,
+        5995,
+        5996,
+        5997,
+        5998,
+        5999,
+        6000,
+        6001,
+        6002,
+        6003,
+        6004,
+        6005,
+        6006,
+        6007,
+        6008,
+        6009,
+        6010,
+        6011,
+        6012,
+        6013,
+        6014,
+        6015,
+        6016,
+        6017,
+        6018,
+        6019,
+        6020,
+        6021,
+        6022,
+        6023,
+        6024,
+        6025,
+        6026,
+        6027,
+        6028,
+        6029,
+        6030,
+        6031,
+        6032,
+        6033,
+        6034,
+        6035,
+        6036,
+        6037,
+        6038,
+        6039,
+        6040,
+        6041,
+        6042,
+        6043,
+        6044,
+        6045,
+        6046,
+        6047,
+        6048,
+        6049,
+        6050,
+        6051,
+        6052,
+        6053,
+        6054,
+        6055,
+        6056,
+        6057,
+        6058,
+        6059,
+        6060,
+        6061,
+        6062,
+        6063,
+        6064,
+        6065,
+        6066,
+        6067,
+        6068
+      ],
+      "input_tensor_sha256": {
+        "player_kp": "cefe08e7fa3cebadca57b7b08d68a875a7c16ace6d76bef76a06ef7c57e0c930",
+        "player_kp_vis": "80ab4477f79860bdee0dc12834c39ed22a57921cbe6fd974bf39902333003e22",
+        "player_valid": "29a7b6ca0e66215a0d828bb1b2ce1f365489215522c5e083db6834cc7caaf12e",
+        "ball_uv": "1df0c4f009f00108dc53b409ba65d4ce431d8a82a84a2b4cbd1be0b1a0d61db5",
+        "ball_vis": "c68c27f6b322df65d708371ad1ea9dbc77532e98d72fadcff5db9cf097422398",
+        "court_kp": "97641cf5c219cf31400a6160f20a4bafb3865aac0b42bae8497f171c7b2685bb",
+        "court_vis": "cec980d5c16954b1a94675654edd1caa145525fe5115df4952d51fe34613475d",
+        "frame_idx": "7dda7b6c80515e0ebe4e6682972b85f9c50dd19edb24492f333d184a030ad914",
+        "timestamp": "aef78712630df4ff6bc696c8640e9470dfca7a0590c6db68a20692de83f286ba",
+        "padding_mask": "532a40e02d739b86526600eff860ec5acc7a457b9c66ba5fe0d1c3ba634a0aa6",
+        "target_player_position": "a902cc67c51da4506658a02c63d8badad526e9e0e62e12e0deb35f7a8be9b488",
+        "target_player_rotation": "e60fef642b09ff38f6e351b8a48edb25e33a3ee2154c628fa21b366521962d5e",
+        "target_player_valid": "cac2278ee1c623077c8181a3756df4700e9018ba64a213d60f7134f9aa64ab7d",
+        "target_player_weight": "f23ac6a60c4b3ee4b3619107906fed163f84639689f7e20c3b00d4c73cfa07cf",
+        "target_ball_position": "2e606bf893a361821c75cb95dfd2de8f513e0e571bbce4120c8c7e123ec3ed33",
+        "target_ball_valid": "d14b0f06e61e2425078599fe283ec8d0298fdbb3e5d671b0b59c242734b3109b",
+        "target_ball_weight": "f5805acc38aee2ef903b42b1055c10dfcb1034d06ca6bd229ff004f035f4187c",
+        "dino_tokens": "21ad404c4d6da9dcb4211a5f5cf0755194aa527644235a8cde9be4d039538aab",
+        "dino_frame_idx": "126dacaf961252f1890dc4b94a7991efbcbe903be88b4ebdf91866f9b37cdbc8",
+        "dino_padding_mask": "6d4f6112d4bc11337ee8210fdf8c835f336b47fc5e35c45fe34c14af27e719b9"
+      },
+      "modes": {
+        "eval": {
+          "mode": "eval",
+          "seed": 42,
+          "precision": "float32; autocast disabled",
+          "raw_losses": {
+            "player_position": 0.010977093130350113,
+            "player_rotation": 0.016123918816447258,
+            "player_angle": 0.016282768920063972,
+            "ball_position": 0.04377404972910881,
+            "player_position_nll": -1.4372884035110474,
+            "player_rotation_nll": -0.5473133325576782,
+            "ball_position_nll": -0.640662670135498,
+            "player_position_smoothness": 0.0004941641236655414,
+            "ball_position_smoothness": 1.041954237734899e-05,
+            "ground_penetration": 0.0,
+            "total": -1.096282958984375
+          },
+          "weighted_losses": {
+            "player_position": 0.010977093130350113,
+            "player_rotation": 0.016123918816447258,
+            "player_angle": 0.008141384460031986,
+            "ball_position": 0.04377404972910881,
+            "player_position_nll": -0.7186442017555237,
+            "player_rotation_nll": -0.13682833313941956,
+            "ball_position_nll": -0.320331335067749,
+            "player_position_smoothness": 0.0004941641236655414,
+            "ball_position_smoothness": 1.041954237734899e-05,
+            "ground_penetration": 0.0
+          },
+          "gradient_objective_values": {
+            "ball_supervised": -0.2765572965145111,
+            "ball_smooth": 1.041954237734899e-05,
+            "player": -0.8197359442710876,
+            "ground": 0.0
+          },
+          "gradients": {
+            "shared_axial_trunk": {
+              "tensor_count": 97,
+              "element_count": 2559616,
+              "norms": {
+                "ball_supervised": 0.170422681972774,
+                "ball_smooth": 0.0001923084280318629,
+                "player": 3.1243516166485343,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 3.4900763185983357e-06,
+                  "cosine": 0.10649009401437717
+                },
+                "ball_supervised__player": {
+                  "dot": -0.026209515932276196,
+                  "cosine": -0.049223410457353255
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": -1.1148176223077947e-05,
+                  "cosine": -0.018554343970230116
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "entity_layers.0.attn_norm.weight",
+                "entity_layers.0.attn.wqkv.weight",
+                "entity_layers.0.attn.wo.weight",
+                "entity_layers.0.ffn_norm.weight",
+                "entity_layers.0.ffn.w1.weight",
+                "entity_layers.0.ffn.w2.weight",
+                "entity_layers.0.ffn.w3.weight",
+                "entity_layers.1.attn_norm.weight",
+                "entity_layers.1.attn.wqkv.weight",
+                "entity_layers.1.attn.wo.weight",
+                "entity_layers.1.ffn_norm.weight",
+                "entity_layers.1.ffn.w1.weight",
+                "entity_layers.1.ffn.w2.weight",
+                "entity_layers.1.ffn.w3.weight",
+                "entity_layers.2.attn_norm.weight",
+                "entity_layers.2.attn.wqkv.weight",
+                "entity_layers.2.attn.wo.weight",
+                "entity_layers.2.ffn_norm.weight",
+                "entity_layers.2.ffn.w1.weight",
+                "entity_layers.2.ffn.w2.weight",
+                "entity_layers.2.ffn.w3.weight",
+                "entity_layers.3.attn_norm.weight",
+                "entity_layers.3.attn.wqkv.weight",
+                "entity_layers.3.attn.wo.weight",
+                "entity_layers.3.ffn_norm.weight",
+                "entity_layers.3.ffn.w1.weight",
+                "entity_layers.3.ffn.w2.weight",
+                "entity_layers.3.ffn.w3.weight",
+                "time_layers.0.attn_norm.weight",
+                "time_layers.0.attn.wqkv.weight",
+                "time_layers.0.attn.wo.weight",
+                "time_layers.0.ffn_norm.weight",
+                "time_layers.0.ffn.w1.weight",
+                "time_layers.0.ffn.w2.weight",
+                "time_layers.0.ffn.w3.weight",
+                "time_layers.1.attn_norm.weight",
+                "time_layers.1.attn.wqkv.weight",
+                "time_layers.1.attn.wo.weight",
+                "time_layers.1.ffn_norm.weight",
+                "time_layers.1.ffn.w1.weight",
+                "time_layers.1.ffn.w2.weight",
+                "time_layers.1.ffn.w3.weight",
+                "time_layers.2.attn_norm.weight",
+                "time_layers.2.attn.wqkv.weight",
+                "time_layers.2.attn.wo.weight",
+                "time_layers.2.ffn_norm.weight",
+                "time_layers.2.ffn.w1.weight",
+                "time_layers.2.ffn.w2.weight",
+                "time_layers.2.ffn.w3.weight",
+                "time_layers.3.attn_norm.weight",
+                "time_layers.3.attn.wqkv.weight",
+                "time_layers.3.attn.wo.weight",
+                "time_layers.3.ffn_norm.weight",
+                "time_layers.3.ffn.w1.weight",
+                "time_layers.3.ffn.w2.weight",
+                "time_layers.3.ffn.w3.weight",
+                "dino_cross_layers.0.block.q_norm.weight",
+                "dino_cross_layers.0.block.kv_norm.weight",
+                "dino_cross_layers.0.block.attn.wq.weight",
+                "dino_cross_layers.0.block.attn.wk.weight",
+                "dino_cross_layers.0.block.attn.wv.weight",
+                "dino_cross_layers.0.block.attn.wo.weight",
+                "dino_cross_layers.0.block.ffn_norm.weight",
+                "dino_cross_layers.0.block.ffn.w1.weight",
+                "dino_cross_layers.0.block.ffn.w2.weight",
+                "dino_cross_layers.0.block.ffn.w3.weight",
+                "dino_cross_layers.1.block.q_norm.weight",
+                "dino_cross_layers.1.block.kv_norm.weight",
+                "dino_cross_layers.1.block.attn.wq.weight",
+                "dino_cross_layers.1.block.attn.wk.weight",
+                "dino_cross_layers.1.block.attn.wv.weight",
+                "dino_cross_layers.1.block.attn.wo.weight",
+                "dino_cross_layers.1.block.ffn_norm.weight",
+                "dino_cross_layers.1.block.ffn.w1.weight",
+                "dino_cross_layers.1.block.ffn.w2.weight",
+                "dino_cross_layers.1.block.ffn.w3.weight",
+                "dino_cross_layers.2.block.q_norm.weight",
+                "dino_cross_layers.2.block.kv_norm.weight",
+                "dino_cross_layers.2.block.attn.wq.weight",
+                "dino_cross_layers.2.block.attn.wk.weight",
+                "dino_cross_layers.2.block.attn.wv.weight",
+                "dino_cross_layers.2.block.attn.wo.weight",
+                "dino_cross_layers.2.block.ffn_norm.weight",
+                "dino_cross_layers.2.block.ffn.w1.weight",
+                "dino_cross_layers.2.block.ffn.w2.weight",
+                "dino_cross_layers.2.block.ffn.w3.weight",
+                "dino_cross_layers.3.block.q_norm.weight",
+                "dino_cross_layers.3.block.kv_norm.weight",
+                "dino_cross_layers.3.block.attn.wq.weight",
+                "dino_cross_layers.3.block.attn.wk.weight",
+                "dino_cross_layers.3.block.attn.wv.weight",
+                "dino_cross_layers.3.block.attn.wo.weight",
+                "dino_cross_layers.3.block.ffn_norm.weight",
+                "dino_cross_layers.3.block.ffn.w1.weight",
+                "dino_cross_layers.3.block.ffn.w2.weight",
+                "dino_cross_layers.3.block.ffn.w3.weight",
+                "final_norm.weight"
+              ]
+            },
+            "ball_position_head": {
+              "tensor_count": 10,
+              "element_count": 12867,
+              "norms": {
+                "ball_supervised": 3.4833592411984133,
+                "ball_smooth": 0.000314041213009869,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 10,
+                  "unused_elements": 12867
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": -8.563536585813265e-05,
+                  "cosine": -0.07828314148070785
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "ball_position_head.mlp.0.weight",
+                "ball_position_head.mlp.0.bias",
+                "ball_position_head.mlp.1.weight",
+                "ball_position_head.mlp.1.bias",
+                "ball_position_head.mlp.4.weight",
+                "ball_position_head.mlp.4.bias",
+                "ball_position_head.mlp.5.weight",
+                "ball_position_head.mlp.5.bias",
+                "ball_position_head.mlp.8.weight",
+                "ball_position_head.mlp.8.bias"
+              ]
+            },
+            "pred_ball_position": {
+              "tensor_count": 1,
+              "element_count": 360,
+              "norms": {
+                "ball_supervised": 0.15571460247303867,
+                "ball_smooth": 0.048292333922489036,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 1,
+                  "unused_elements": 360
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 9.590421811087313e-05,
+                  "cosine": 0.012753523085666303
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "pred_ball_position"
+              ]
+            }
+          },
+          "ball_valid_count": 96,
+          "ball_error_m_mean": 5.202081203460693,
+          "pred_ball_std_m_xyz_population": [
+            0.010169794782996178,
+            0.010751751251518726,
+            0.00255371886305511
+          ],
+          "target_ball_std_m_xyz_population": [
+            1.6174057722091675,
+            4.060797691345215,
+            0.8235320448875427
+          ],
+          "ball_b_normalized_mean": 0.20495887100696564,
+          "smoothness": {
+            "order": 3,
+            "beta": 0.001,
+            "unit": "normalized court coordinates; per-frame differences; no dt division",
+            "valid_stencils": 87,
+            "model_all_real_frames": 1.041954237734899e-05,
+            "model_valid_supported": 1.2586425327754114e-05,
+            "target_valid_supported": 0.0027360152453184128
+          }
+        },
+        "train_dropout": {
+          "mode": "train_dropout",
+          "seed": 42,
+          "precision": "float32; autocast disabled",
+          "raw_losses": {
+            "player_position": 0.013119103386998177,
+            "player_rotation": 0.021550705656409264,
+            "player_angle": 0.021803278475999832,
+            "ball_position": 0.043855395168066025,
+            "player_position_nll": -1.265804409980774,
+            "player_rotation_nll": -0.4711214303970337,
+            "ball_position_nll": -0.6279715299606323,
+            "player_position_smoothness": 0.1573929786682129,
+            "ball_position_smoothness": 0.05575551837682724,
+            "ground_penetration": 5.121759750181809e-05,
+            "total": -0.7620418071746826
+          },
+          "weighted_losses": {
+            "player_position": 0.013119103386998177,
+            "player_rotation": 0.021550705656409264,
+            "player_angle": 0.010901639237999916,
+            "ball_position": 0.043855395168066025,
+            "player_position_nll": -0.632902204990387,
+            "player_rotation_nll": -0.11778035759925842,
+            "ball_position_nll": -0.31398576498031616,
+            "player_position_smoothness": 0.1573929786682129,
+            "ball_position_smoothness": 0.05575551837682724,
+            "ground_penetration": 5.121759750181809e-05
+          },
+          "gradient_objective_values": {
+            "ball_supervised": -0.27013036608695984,
+            "ball_smooth": 0.05575551837682724,
+            "player": -0.5477181673049927,
+            "ground": 5.121759750181809e-05
+          },
+          "gradients": {
+            "shared_axial_trunk": {
+              "tensor_count": 97,
+              "element_count": 2559616,
+              "norms": {
+                "ball_supervised": 0.1823307433792003,
+                "ball_smooth": 0.09630177616065924,
+                "player": 2.5282017633612215,
+                "ground": 0.006544676466568352
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 0.004067608877128827,
+                  "cosine": 0.23165676465229948
+                },
+                "ball_supervised__player": {
+                  "dot": -0.027661344697981923,
+                  "cosine": -0.060006964205954666
+                },
+                "ball_supervised__ground": {
+                  "dot": 3.828074980814062e-05,
+                  "cosine": 0.03207985162076241
+                },
+                "ball_smooth__player": {
+                  "dot": -0.0018054678134435008,
+                  "cosine": -0.00741555607758562
+                },
+                "ball_smooth__ground": {
+                  "dot": -3.0467468806960908e-05,
+                  "cosine": -0.048340806943928456
+                },
+                "player__ground": {
+                  "dot": -0.004594842380045209,
+                  "cosine": -0.2776966917382954
+                }
+              },
+              "names_in_order": [
+                "entity_layers.0.attn_norm.weight",
+                "entity_layers.0.attn.wqkv.weight",
+                "entity_layers.0.attn.wo.weight",
+                "entity_layers.0.ffn_norm.weight",
+                "entity_layers.0.ffn.w1.weight",
+                "entity_layers.0.ffn.w2.weight",
+                "entity_layers.0.ffn.w3.weight",
+                "entity_layers.1.attn_norm.weight",
+                "entity_layers.1.attn.wqkv.weight",
+                "entity_layers.1.attn.wo.weight",
+                "entity_layers.1.ffn_norm.weight",
+                "entity_layers.1.ffn.w1.weight",
+                "entity_layers.1.ffn.w2.weight",
+                "entity_layers.1.ffn.w3.weight",
+                "entity_layers.2.attn_norm.weight",
+                "entity_layers.2.attn.wqkv.weight",
+                "entity_layers.2.attn.wo.weight",
+                "entity_layers.2.ffn_norm.weight",
+                "entity_layers.2.ffn.w1.weight",
+                "entity_layers.2.ffn.w2.weight",
+                "entity_layers.2.ffn.w3.weight",
+                "entity_layers.3.attn_norm.weight",
+                "entity_layers.3.attn.wqkv.weight",
+                "entity_layers.3.attn.wo.weight",
+                "entity_layers.3.ffn_norm.weight",
+                "entity_layers.3.ffn.w1.weight",
+                "entity_layers.3.ffn.w2.weight",
+                "entity_layers.3.ffn.w3.weight",
+                "time_layers.0.attn_norm.weight",
+                "time_layers.0.attn.wqkv.weight",
+                "time_layers.0.attn.wo.weight",
+                "time_layers.0.ffn_norm.weight",
+                "time_layers.0.ffn.w1.weight",
+                "time_layers.0.ffn.w2.weight",
+                "time_layers.0.ffn.w3.weight",
+                "time_layers.1.attn_norm.weight",
+                "time_layers.1.attn.wqkv.weight",
+                "time_layers.1.attn.wo.weight",
+                "time_layers.1.ffn_norm.weight",
+                "time_layers.1.ffn.w1.weight",
+                "time_layers.1.ffn.w2.weight",
+                "time_layers.1.ffn.w3.weight",
+                "time_layers.2.attn_norm.weight",
+                "time_layers.2.attn.wqkv.weight",
+                "time_layers.2.attn.wo.weight",
+                "time_layers.2.ffn_norm.weight",
+                "time_layers.2.ffn.w1.weight",
+                "time_layers.2.ffn.w2.weight",
+                "time_layers.2.ffn.w3.weight",
+                "time_layers.3.attn_norm.weight",
+                "time_layers.3.attn.wqkv.weight",
+                "time_layers.3.attn.wo.weight",
+                "time_layers.3.ffn_norm.weight",
+                "time_layers.3.ffn.w1.weight",
+                "time_layers.3.ffn.w2.weight",
+                "time_layers.3.ffn.w3.weight",
+                "dino_cross_layers.0.block.q_norm.weight",
+                "dino_cross_layers.0.block.kv_norm.weight",
+                "dino_cross_layers.0.block.attn.wq.weight",
+                "dino_cross_layers.0.block.attn.wk.weight",
+                "dino_cross_layers.0.block.attn.wv.weight",
+                "dino_cross_layers.0.block.attn.wo.weight",
+                "dino_cross_layers.0.block.ffn_norm.weight",
+                "dino_cross_layers.0.block.ffn.w1.weight",
+                "dino_cross_layers.0.block.ffn.w2.weight",
+                "dino_cross_layers.0.block.ffn.w3.weight",
+                "dino_cross_layers.1.block.q_norm.weight",
+                "dino_cross_layers.1.block.kv_norm.weight",
+                "dino_cross_layers.1.block.attn.wq.weight",
+                "dino_cross_layers.1.block.attn.wk.weight",
+                "dino_cross_layers.1.block.attn.wv.weight",
+                "dino_cross_layers.1.block.attn.wo.weight",
+                "dino_cross_layers.1.block.ffn_norm.weight",
+                "dino_cross_layers.1.block.ffn.w1.weight",
+                "dino_cross_layers.1.block.ffn.w2.weight",
+                "dino_cross_layers.1.block.ffn.w3.weight",
+                "dino_cross_layers.2.block.q_norm.weight",
+                "dino_cross_layers.2.block.kv_norm.weight",
+                "dino_cross_layers.2.block.attn.wq.weight",
+                "dino_cross_layers.2.block.attn.wk.weight",
+                "dino_cross_layers.2.block.attn.wv.weight",
+                "dino_cross_layers.2.block.attn.wo.weight",
+                "dino_cross_layers.2.block.ffn_norm.weight",
+                "dino_cross_layers.2.block.ffn.w1.weight",
+                "dino_cross_layers.2.block.ffn.w2.weight",
+                "dino_cross_layers.2.block.ffn.w3.weight",
+                "dino_cross_layers.3.block.q_norm.weight",
+                "dino_cross_layers.3.block.kv_norm.weight",
+                "dino_cross_layers.3.block.attn.wq.weight",
+                "dino_cross_layers.3.block.attn.wk.weight",
+                "dino_cross_layers.3.block.attn.wv.weight",
+                "dino_cross_layers.3.block.attn.wo.weight",
+                "dino_cross_layers.3.block.ffn_norm.weight",
+                "dino_cross_layers.3.block.ffn.w1.weight",
+                "dino_cross_layers.3.block.ffn.w2.weight",
+                "dino_cross_layers.3.block.ffn.w3.weight",
+                "final_norm.weight"
+              ]
+            },
+            "ball_position_head": {
+              "tensor_count": 10,
+              "element_count": 12867,
+              "norms": {
+                "ball_supervised": 3.5171332524231325,
+                "ball_smooth": 0.7514871176918854,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 10,
+                  "unused_elements": 12867
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": -0.9780835346643684,
+                  "cosine": -0.37005441091368585
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "ball_position_head.mlp.0.weight",
+                "ball_position_head.mlp.0.bias",
+                "ball_position_head.mlp.1.weight",
+                "ball_position_head.mlp.1.bias",
+                "ball_position_head.mlp.4.weight",
+                "ball_position_head.mlp.4.bias",
+                "ball_position_head.mlp.5.weight",
+                "ball_position_head.mlp.5.bias",
+                "ball_position_head.mlp.8.weight",
+                "ball_position_head.mlp.8.bias"
+              ]
+            },
+            "pred_ball_position": {
+              "tensor_count": 1,
+              "element_count": 360,
+              "norms": {
+                "ball_supervised": 0.16249257209922058,
+                "ball_smooth": 0.3285446206858377,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 1,
+                  "unused_elements": 360
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 0.0021707921750423434,
+                  "cosine": 0.040662153306509644
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "pred_ball_position"
+              ]
+            }
+          },
+          "ball_valid_count": 96,
+          "ball_error_m_mean": 5.211867809295654,
+          "pred_ball_std_m_xyz_population": [
+            0.21731749176979065,
+            0.18436962366104126,
+            0.15776455402374268
+          ],
+          "target_ball_std_m_xyz_population": [
+            1.6174057722091675,
+            4.060797691345215,
+            0.8235320448875427
+          ],
+          "ball_b_normalized_mean": 0.2000524252653122,
+          "smoothness": {
+            "order": 3,
+            "beta": 0.001,
+            "unit": "normalized court coordinates; per-frame differences; no dt division",
+            "valid_stencils": 87,
+            "model_all_real_frames": 0.05575551837682724,
+            "model_valid_supported": 0.05614936351776123,
+            "target_valid_supported": 0.0027360152453184128
+          }
+        }
+      }
+    },
+    "meiji": {
+      "dataset_index": 40,
+      "meta": {
+        "clip_id": "video_000/clip_000",
+        "video_id": "video_000",
+        "camera_id": "cam0",
+        "window_start": 0,
+        "window_length": 120
+      },
+      "prediction_id": "video_000/clip_000@cam0@000000",
+      "fps": 59.94006,
+      "camera_metadata": {
+        "camera_id": "cam0",
+        "video": "media/cam0.mp4",
+        "source_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/raw/meiji_3cam/video_000/cam0.mp4",
+        "offset_sec": 0.0,
+        "source_fps": 59.94005994005994,
+        "source_frame_start": 2238,
+        "source_frame_end": 3247,
+        "letterbox": {
+          "scale": 1.125,
+          "pad_x": 240,
+          "pad_y": 0,
+          "scaled_width": 1440,
+          "scaled_height": 1080
+        }
+      },
+      "frame_idx_clip": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "frame_idx_source": [
+        2238,
+        2239,
+        2240,
+        2241,
+        2242,
+        2243,
+        2244,
+        2245,
+        2246,
+        2247,
+        2248,
+        2249,
+        2250,
+        2251,
+        2252,
+        2253,
+        2254,
+        2255,
+        2256,
+        2257,
+        2258,
+        2259,
+        2260,
+        2261,
+        2262,
+        2263,
+        2264,
+        2265,
+        2266,
+        2267,
+        2268,
+        2269,
+        2270,
+        2271,
+        2272,
+        2273,
+        2274,
+        2275,
+        2276,
+        2277,
+        2278,
+        2279,
+        2280,
+        2281,
+        2282,
+        2283,
+        2284,
+        2285,
+        2286,
+        2287,
+        2288,
+        2289,
+        2290,
+        2291,
+        2292,
+        2293,
+        2294,
+        2295,
+        2296,
+        2297,
+        2298,
+        2299,
+        2300,
+        2301,
+        2302,
+        2303,
+        2304,
+        2305,
+        2306,
+        2307,
+        2308,
+        2309,
+        2310,
+        2311,
+        2312,
+        2313,
+        2314,
+        2315,
+        2316,
+        2317,
+        2318,
+        2319,
+        2320,
+        2321,
+        2322,
+        2323,
+        2324,
+        2325,
+        2326,
+        2327,
+        2328,
+        2329,
+        2330,
+        2331,
+        2332,
+        2333,
+        2334,
+        2335,
+        2336,
+        2337,
+        2338,
+        2339,
+        2340,
+        2341,
+        2342,
+        2343,
+        2344,
+        2345,
+        2346,
+        2347,
+        2348,
+        2349,
+        2350,
+        2351,
+        2352,
+        2353,
+        2354,
+        2355,
+        2356,
+        2357
+      ],
+      "input_tensor_sha256": {
+        "player_kp": "805863850999d552b2c370331031460a855c99a74191517b7682d67a7c12e3be",
+        "player_kp_vis": "4d7c1691176c584325a2b78e8bf2d8c793c2c59605a04b20bcb34fef2244504c",
+        "player_valid": "29a7b6ca0e66215a0d828bb1b2ce1f365489215522c5e083db6834cc7caaf12e",
+        "ball_uv": "b780cfd13413f50659f2e2f7d4550e4f0963f28225e062352117b118570fa889",
+        "ball_vis": "1fe847560e39986dad2e739601415507abb6ede5fc835d836ab85c7ba5908041",
+        "court_kp": "ea93905500e4e6f10e9695c95e724c49b1ccdd04c429d33da5c0d9219edf3af9",
+        "court_vis": "cec980d5c16954b1a94675654edd1caa145525fe5115df4952d51fe34613475d",
+        "frame_idx": "7dda7b6c80515e0ebe4e6682972b85f9c50dd19edb24492f333d184a030ad914",
+        "timestamp": "9910ba5eca8820726cb9bd29eb5ad27451bd63677cfb03acbaa5c1b35afdad0d",
+        "padding_mask": "532a40e02d739b86526600eff860ec5acc7a457b9c66ba5fe0d1c3ba634a0aa6",
+        "target_player_position": "ca0d5c802027f98fe7f7d4a099ba7f4d298a193d0d5907e22cf82bd29d1ad34a",
+        "target_player_rotation": "64b29846d2358f7ea2edecf42b1b2c39fe8c0fa5fdba887b3529c66ac1d80a0c",
+        "target_player_valid": "29a7b6ca0e66215a0d828bb1b2ce1f365489215522c5e083db6834cc7caaf12e",
+        "target_player_weight": "471e0bef8a49aa73220c8d05da8f21f4996fe26189ccd7e0416d295e15a38d75",
+        "target_ball_position": "81392bf2f643f6cb200c4d20a7f39d2b5701ea611ee27f17f387b141e98e3dd9",
+        "target_ball_valid": "bfe1fddacda5aa8e3617f8a23bd2e28df56bad3f6ba48ad1b00eb2f009cd341d",
+        "target_ball_weight": "4e5a74c5b692064cee3905f950e4130949470880b01aee5119e5d6969f8234aa",
+        "dino_tokens": "37e14056a217e9f040beeab3d74882341a58300cb86d5b9291dd7371a1478c9a",
+        "dino_frame_idx": "126dacaf961252f1890dc4b94a7991efbcbe903be88b4ebdf91866f9b37cdbc8",
+        "dino_padding_mask": "6d4f6112d4bc11337ee8210fdf8c835f336b47fc5e35c45fe34c14af27e719b9"
+      },
+      "modes": {
+        "eval": {
+          "mode": "eval",
+          "seed": 42,
+          "precision": "float32; autocast disabled",
+          "raw_losses": {
+            "player_position": 0.0012188374530524015,
+            "player_rotation": 0.11620856821537018,
+            "player_angle": 0.12286800891160965,
+            "ball_position": 0.06493602693080902,
+            "player_position_nll": -2.194392204284668,
+            "player_rotation_nll": 0.1604030579328537,
+            "ball_position_nll": -0.4718226492404938,
+            "player_position_smoothness": 0.0007957646157592535,
+            "ball_position_smoothness": 7.523425301769748e-05,
+            "ground_penetration": 0.0,
+            "total": -1.0483382940292358
+          },
+          "weighted_losses": {
+            "player_position": 0.0012188374530524015,
+            "player_rotation": 0.11620856821537018,
+            "player_angle": 0.061434004455804825,
+            "ball_position": 0.06493602693080902,
+            "player_position_nll": -1.097196102142334,
+            "player_rotation_nll": 0.040100764483213425,
+            "ball_position_nll": -0.2359113246202469,
+            "player_position_smoothness": 0.0007957646157592535,
+            "ball_position_smoothness": 7.523425301769748e-05,
+            "ground_penetration": 0.0
+          },
+          "gradient_objective_values": {
+            "ball_supervised": -0.17097529768943787,
+            "ball_smooth": 7.523425301769748e-05,
+            "player": -0.8774381875991821,
+            "ground": 0.0
+          },
+          "gradients": {
+            "shared_axial_trunk": {
+              "tensor_count": 97,
+              "element_count": 2559616,
+              "norms": {
+                "ball_supervised": 0.16559472075472773,
+                "ball_smooth": 0.002879920344137682,
+                "player": 2.5442322189147624,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 1.0895633575975728e-05,
+                  "cosine": 0.02284680770869378
+                },
+                "ball_supervised__player": {
+                  "dot": -0.02489439506611176,
+                  "cosine": -0.05908787101004673
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 5.6507118093456136e-05,
+                  "cosine": 0.00771198071271325
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "entity_layers.0.attn_norm.weight",
+                "entity_layers.0.attn.wqkv.weight",
+                "entity_layers.0.attn.wo.weight",
+                "entity_layers.0.ffn_norm.weight",
+                "entity_layers.0.ffn.w1.weight",
+                "entity_layers.0.ffn.w2.weight",
+                "entity_layers.0.ffn.w3.weight",
+                "entity_layers.1.attn_norm.weight",
+                "entity_layers.1.attn.wqkv.weight",
+                "entity_layers.1.attn.wo.weight",
+                "entity_layers.1.ffn_norm.weight",
+                "entity_layers.1.ffn.w1.weight",
+                "entity_layers.1.ffn.w2.weight",
+                "entity_layers.1.ffn.w3.weight",
+                "entity_layers.2.attn_norm.weight",
+                "entity_layers.2.attn.wqkv.weight",
+                "entity_layers.2.attn.wo.weight",
+                "entity_layers.2.ffn_norm.weight",
+                "entity_layers.2.ffn.w1.weight",
+                "entity_layers.2.ffn.w2.weight",
+                "entity_layers.2.ffn.w3.weight",
+                "entity_layers.3.attn_norm.weight",
+                "entity_layers.3.attn.wqkv.weight",
+                "entity_layers.3.attn.wo.weight",
+                "entity_layers.3.ffn_norm.weight",
+                "entity_layers.3.ffn.w1.weight",
+                "entity_layers.3.ffn.w2.weight",
+                "entity_layers.3.ffn.w3.weight",
+                "time_layers.0.attn_norm.weight",
+                "time_layers.0.attn.wqkv.weight",
+                "time_layers.0.attn.wo.weight",
+                "time_layers.0.ffn_norm.weight",
+                "time_layers.0.ffn.w1.weight",
+                "time_layers.0.ffn.w2.weight",
+                "time_layers.0.ffn.w3.weight",
+                "time_layers.1.attn_norm.weight",
+                "time_layers.1.attn.wqkv.weight",
+                "time_layers.1.attn.wo.weight",
+                "time_layers.1.ffn_norm.weight",
+                "time_layers.1.ffn.w1.weight",
+                "time_layers.1.ffn.w2.weight",
+                "time_layers.1.ffn.w3.weight",
+                "time_layers.2.attn_norm.weight",
+                "time_layers.2.attn.wqkv.weight",
+                "time_layers.2.attn.wo.weight",
+                "time_layers.2.ffn_norm.weight",
+                "time_layers.2.ffn.w1.weight",
+                "time_layers.2.ffn.w2.weight",
+                "time_layers.2.ffn.w3.weight",
+                "time_layers.3.attn_norm.weight",
+                "time_layers.3.attn.wqkv.weight",
+                "time_layers.3.attn.wo.weight",
+                "time_layers.3.ffn_norm.weight",
+                "time_layers.3.ffn.w1.weight",
+                "time_layers.3.ffn.w2.weight",
+                "time_layers.3.ffn.w3.weight",
+                "dino_cross_layers.0.block.q_norm.weight",
+                "dino_cross_layers.0.block.kv_norm.weight",
+                "dino_cross_layers.0.block.attn.wq.weight",
+                "dino_cross_layers.0.block.attn.wk.weight",
+                "dino_cross_layers.0.block.attn.wv.weight",
+                "dino_cross_layers.0.block.attn.wo.weight",
+                "dino_cross_layers.0.block.ffn_norm.weight",
+                "dino_cross_layers.0.block.ffn.w1.weight",
+                "dino_cross_layers.0.block.ffn.w2.weight",
+                "dino_cross_layers.0.block.ffn.w3.weight",
+                "dino_cross_layers.1.block.q_norm.weight",
+                "dino_cross_layers.1.block.kv_norm.weight",
+                "dino_cross_layers.1.block.attn.wq.weight",
+                "dino_cross_layers.1.block.attn.wk.weight",
+                "dino_cross_layers.1.block.attn.wv.weight",
+                "dino_cross_layers.1.block.attn.wo.weight",
+                "dino_cross_layers.1.block.ffn_norm.weight",
+                "dino_cross_layers.1.block.ffn.w1.weight",
+                "dino_cross_layers.1.block.ffn.w2.weight",
+                "dino_cross_layers.1.block.ffn.w3.weight",
+                "dino_cross_layers.2.block.q_norm.weight",
+                "dino_cross_layers.2.block.kv_norm.weight",
+                "dino_cross_layers.2.block.attn.wq.weight",
+                "dino_cross_layers.2.block.attn.wk.weight",
+                "dino_cross_layers.2.block.attn.wv.weight",
+                "dino_cross_layers.2.block.attn.wo.weight",
+                "dino_cross_layers.2.block.ffn_norm.weight",
+                "dino_cross_layers.2.block.ffn.w1.weight",
+                "dino_cross_layers.2.block.ffn.w2.weight",
+                "dino_cross_layers.2.block.ffn.w3.weight",
+                "dino_cross_layers.3.block.q_norm.weight",
+                "dino_cross_layers.3.block.kv_norm.weight",
+                "dino_cross_layers.3.block.attn.wq.weight",
+                "dino_cross_layers.3.block.attn.wk.weight",
+                "dino_cross_layers.3.block.attn.wv.weight",
+                "dino_cross_layers.3.block.attn.wo.weight",
+                "dino_cross_layers.3.block.ffn_norm.weight",
+                "dino_cross_layers.3.block.ffn.w1.weight",
+                "dino_cross_layers.3.block.ffn.w2.weight",
+                "dino_cross_layers.3.block.ffn.w3.weight",
+                "final_norm.weight"
+              ]
+            },
+            "ball_position_head": {
+              "tensor_count": 10,
+              "element_count": 12867,
+              "norms": {
+                "ball_supervised": 4.306711967261313,
+                "ball_smooth": 0.007067722390319212,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 10,
+                  "unused_elements": 12867
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 9.182333542561505e-05,
+                  "cosine": 0.0030166696524527616
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "ball_position_head.mlp.0.weight",
+                "ball_position_head.mlp.0.bias",
+                "ball_position_head.mlp.1.weight",
+                "ball_position_head.mlp.1.bias",
+                "ball_position_head.mlp.4.weight",
+                "ball_position_head.mlp.4.bias",
+                "ball_position_head.mlp.5.weight",
+                "ball_position_head.mlp.5.bias",
+                "ball_position_head.mlp.8.weight",
+                "ball_position_head.mlp.8.bias"
+              ]
+            },
+            "pred_ball_position": {
+              "tensor_count": 1,
+              "element_count": 360,
+              "norms": {
+                "ball_supervised": 0.11695371656190753,
+                "ball_smooth": 0.1244822146713252,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 1,
+                  "unused_elements": 360
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": -3.3053000790059434e-05,
+                  "cosine": -0.0022703329922914247
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "pred_ball_position"
+              ]
+            }
+          },
+          "ball_valid_count": 118,
+          "ball_error_m_mean": 6.787822723388672,
+          "pred_ball_std_m_xyz_population": [
+            0.0037697618827223778,
+            0.003270254237577319,
+            0.002782681258395314
+          ],
+          "target_ball_std_m_xyz_population": [
+            0.5912381410598755,
+            6.583165168762207,
+            0.806995689868927
+          ],
+          "ball_b_normalized_mean": 0.25751999020576477,
+          "smoothness": {
+            "order": 3,
+            "beta": 0.001,
+            "unit": "normalized court coordinates; per-frame differences; no dt division",
+            "valid_stencils": 115,
+            "model_all_real_frames": 7.523425301769748e-05,
+            "model_valid_supported": 7.654247747268528e-05,
+            "target_valid_supported": 0.004004123620688915
+          }
+        },
+        "train_dropout": {
+          "mode": "train_dropout",
+          "seed": 42,
+          "precision": "float32; autocast disabled",
+          "raw_losses": {
+            "player_position": 0.002272943500429392,
+            "player_rotation": 0.11829949170351028,
+            "player_angle": 0.12488862127065659,
+            "ball_position": 0.06483261287212372,
+            "player_position_nll": -1.9565635919570923,
+            "player_rotation_nll": 0.1715000420808792,
+            "ball_position_nll": -0.4681898057460785,
+            "player_position_smoothness": 0.15163986384868622,
+            "ball_position_smoothness": 0.0555349662899971,
+            "ground_penetration": 3.731718607014045e-06,
+            "total": -0.7144737839698792
+          },
+          "weighted_losses": {
+            "player_position": 0.002272943500429392,
+            "player_rotation": 0.11829949170351028,
+            "player_angle": 0.06244431063532829,
+            "ball_position": 0.06483261287212372,
+            "player_position_nll": -0.9782817959785461,
+            "player_rotation_nll": 0.0428750105202198,
+            "ball_position_nll": -0.23409490287303925,
+            "player_position_smoothness": 0.15163986384868622,
+            "ball_position_smoothness": 0.0555349662899971,
+            "ground_penetration": 3.731718607014045e-06
+          },
+          "gradient_objective_values": {
+            "ball_supervised": -0.16926229000091553,
+            "ball_smooth": 0.0555349662899971,
+            "player": -0.600750207901001,
+            "ground": 3.731718607014045e-06
+          },
+          "gradients": {
+            "shared_axial_trunk": {
+              "tensor_count": 97,
+              "element_count": 2559616,
+              "norms": {
+                "ball_supervised": 0.16378626738317975,
+                "ball_smooth": 0.08884360345754864,
+                "player": 1.337314558981775,
+                "ground": 0.0015383547790498873
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": -0.0014352632115030585,
+                  "cosine": -0.0986342854123095
+                },
+                "ball_supervised__player": {
+                  "dot": -0.0128279253905016,
+                  "cosine": -0.05856597354872033
+                },
+                "ball_supervised__ground": {
+                  "dot": 1.6879843869736254e-05,
+                  "cosine": 0.06699377257451072
+                },
+                "ball_smooth__player": {
+                  "dot": -0.003780164475045,
+                  "cosine": -0.03181639418942274
+                },
+                "ball_smooth__ground": {
+                  "dot": -2.3375407919536101e-07,
+                  "cosine": -0.0017103166685271854
+                },
+                "player__ground": {
+                  "dot": 4.8237543896939794e-05,
+                  "cosine": 0.0234474224997374
+                }
+              },
+              "names_in_order": [
+                "entity_layers.0.attn_norm.weight",
+                "entity_layers.0.attn.wqkv.weight",
+                "entity_layers.0.attn.wo.weight",
+                "entity_layers.0.ffn_norm.weight",
+                "entity_layers.0.ffn.w1.weight",
+                "entity_layers.0.ffn.w2.weight",
+                "entity_layers.0.ffn.w3.weight",
+                "entity_layers.1.attn_norm.weight",
+                "entity_layers.1.attn.wqkv.weight",
+                "entity_layers.1.attn.wo.weight",
+                "entity_layers.1.ffn_norm.weight",
+                "entity_layers.1.ffn.w1.weight",
+                "entity_layers.1.ffn.w2.weight",
+                "entity_layers.1.ffn.w3.weight",
+                "entity_layers.2.attn_norm.weight",
+                "entity_layers.2.attn.wqkv.weight",
+                "entity_layers.2.attn.wo.weight",
+                "entity_layers.2.ffn_norm.weight",
+                "entity_layers.2.ffn.w1.weight",
+                "entity_layers.2.ffn.w2.weight",
+                "entity_layers.2.ffn.w3.weight",
+                "entity_layers.3.attn_norm.weight",
+                "entity_layers.3.attn.wqkv.weight",
+                "entity_layers.3.attn.wo.weight",
+                "entity_layers.3.ffn_norm.weight",
+                "entity_layers.3.ffn.w1.weight",
+                "entity_layers.3.ffn.w2.weight",
+                "entity_layers.3.ffn.w3.weight",
+                "time_layers.0.attn_norm.weight",
+                "time_layers.0.attn.wqkv.weight",
+                "time_layers.0.attn.wo.weight",
+                "time_layers.0.ffn_norm.weight",
+                "time_layers.0.ffn.w1.weight",
+                "time_layers.0.ffn.w2.weight",
+                "time_layers.0.ffn.w3.weight",
+                "time_layers.1.attn_norm.weight",
+                "time_layers.1.attn.wqkv.weight",
+                "time_layers.1.attn.wo.weight",
+                "time_layers.1.ffn_norm.weight",
+                "time_layers.1.ffn.w1.weight",
+                "time_layers.1.ffn.w2.weight",
+                "time_layers.1.ffn.w3.weight",
+                "time_layers.2.attn_norm.weight",
+                "time_layers.2.attn.wqkv.weight",
+                "time_layers.2.attn.wo.weight",
+                "time_layers.2.ffn_norm.weight",
+                "time_layers.2.ffn.w1.weight",
+                "time_layers.2.ffn.w2.weight",
+                "time_layers.2.ffn.w3.weight",
+                "time_layers.3.attn_norm.weight",
+                "time_layers.3.attn.wqkv.weight",
+                "time_layers.3.attn.wo.weight",
+                "time_layers.3.ffn_norm.weight",
+                "time_layers.3.ffn.w1.weight",
+                "time_layers.3.ffn.w2.weight",
+                "time_layers.3.ffn.w3.weight",
+                "dino_cross_layers.0.block.q_norm.weight",
+                "dino_cross_layers.0.block.kv_norm.weight",
+                "dino_cross_layers.0.block.attn.wq.weight",
+                "dino_cross_layers.0.block.attn.wk.weight",
+                "dino_cross_layers.0.block.attn.wv.weight",
+                "dino_cross_layers.0.block.attn.wo.weight",
+                "dino_cross_layers.0.block.ffn_norm.weight",
+                "dino_cross_layers.0.block.ffn.w1.weight",
+                "dino_cross_layers.0.block.ffn.w2.weight",
+                "dino_cross_layers.0.block.ffn.w3.weight",
+                "dino_cross_layers.1.block.q_norm.weight",
+                "dino_cross_layers.1.block.kv_norm.weight",
+                "dino_cross_layers.1.block.attn.wq.weight",
+                "dino_cross_layers.1.block.attn.wk.weight",
+                "dino_cross_layers.1.block.attn.wv.weight",
+                "dino_cross_layers.1.block.attn.wo.weight",
+                "dino_cross_layers.1.block.ffn_norm.weight",
+                "dino_cross_layers.1.block.ffn.w1.weight",
+                "dino_cross_layers.1.block.ffn.w2.weight",
+                "dino_cross_layers.1.block.ffn.w3.weight",
+                "dino_cross_layers.2.block.q_norm.weight",
+                "dino_cross_layers.2.block.kv_norm.weight",
+                "dino_cross_layers.2.block.attn.wq.weight",
+                "dino_cross_layers.2.block.attn.wk.weight",
+                "dino_cross_layers.2.block.attn.wv.weight",
+                "dino_cross_layers.2.block.attn.wo.weight",
+                "dino_cross_layers.2.block.ffn_norm.weight",
+                "dino_cross_layers.2.block.ffn.w1.weight",
+                "dino_cross_layers.2.block.ffn.w2.weight",
+                "dino_cross_layers.2.block.ffn.w3.weight",
+                "dino_cross_layers.3.block.q_norm.weight",
+                "dino_cross_layers.3.block.kv_norm.weight",
+                "dino_cross_layers.3.block.attn.wq.weight",
+                "dino_cross_layers.3.block.attn.wk.weight",
+                "dino_cross_layers.3.block.attn.wv.weight",
+                "dino_cross_layers.3.block.attn.wo.weight",
+                "dino_cross_layers.3.block.ffn_norm.weight",
+                "dino_cross_layers.3.block.ffn.w1.weight",
+                "dino_cross_layers.3.block.ffn.w2.weight",
+                "dino_cross_layers.3.block.ffn.w3.weight",
+                "final_norm.weight"
+              ]
+            },
+            "ball_position_head": {
+              "tensor_count": 10,
+              "element_count": 12867,
+              "norms": {
+                "ball_supervised": 4.3596706056902645,
+                "ball_smooth": 0.7557513591224464,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 10,
+                  "unused_elements": 12867
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 1.3649690844464155,
+                  "cosine": 0.41427640674963856
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "ball_position_head.mlp.0.weight",
+                "ball_position_head.mlp.0.bias",
+                "ball_position_head.mlp.1.weight",
+                "ball_position_head.mlp.1.bias",
+                "ball_position_head.mlp.4.weight",
+                "ball_position_head.mlp.4.bias",
+                "ball_position_head.mlp.5.weight",
+                "ball_position_head.mlp.5.bias",
+                "ball_position_head.mlp.8.weight",
+                "ball_position_head.mlp.8.bias"
+              ]
+            },
+            "pred_ball_position": {
+              "tensor_count": 1,
+              "element_count": 360,
+              "norms": {
+                "ball_supervised": 0.12054515895438654,
+                "ball_smooth": 0.3264713528241219,
+                "player": 0.0,
+                "ground": 0.0
+              },
+              "unused_as_zero": {
+                "ball_supervised": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "ball_smooth": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                },
+                "player": {
+                  "unused_tensors": 1,
+                  "unused_elements": 360
+                },
+                "ground": {
+                  "unused_tensors": 0,
+                  "unused_elements": 0
+                }
+              },
+              "pairs": {
+                "ball_supervised__ball_smooth": {
+                  "dot": 0.0020653320289658727,
+                  "cosine": 0.052480145116056545
+                },
+                "ball_supervised__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_supervised__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__player": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "ball_smooth__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                },
+                "player__ground": {
+                  "dot": 0.0,
+                  "cosine": null
+                }
+              },
+              "names_in_order": [
+                "pred_ball_position"
+              ]
+            }
+          },
+          "ball_valid_count": 118,
+          "ball_error_m_mean": 6.786911487579346,
+          "pred_ball_std_m_xyz_population": [
+            0.2134963870048523,
+            0.19522415101528168,
+            0.16373564302921295
+          ],
+          "target_ball_std_m_xyz_population": [
+            0.5912381410598755,
+            6.583165168762207,
+            0.806995689868927
+          ],
+          "ball_b_normalized_mean": 0.25221437215805054,
+          "smoothness": {
+            "order": 3,
+            "beta": 0.001,
+            "unit": "normalized court coordinates; per-frame differences; no dt division",
+            "valid_stencils": 115,
+            "model_all_real_frames": 0.0555349662899971,
+            "model_valid_supported": 0.055592529475688934,
+            "target_valid_supported": 0.004004123620688915
+          }
+        }
+      }
+    }
+  },
+  "state_unchanged": true
+}

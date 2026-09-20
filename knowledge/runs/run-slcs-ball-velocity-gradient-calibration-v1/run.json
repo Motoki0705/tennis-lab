@@ -1,0 +1,16 @@
+{
+  "run_id": "1789795146891692134_184990_slcs-ball-velocity-gradient-calibration-v1",
+  "name": "slcs-ball-velocity-gradient-calibration-v1",
+  "command": "env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -m scripts.analysis.calibrate_slcs_ball_velocity --output-root /home/kamimura/projects/tennis-lab/outputs --training-run slcs/train/real_rgb_no_ball_smooth/s42-takeover-003 --output slcs/analyze/ball_velocity_calibration/s42-001 --device cuda --batch-size 16 --seed 42 --velocity-scale-mps 11.259468485469933 --gradient-ratio 0.1",
+  "provider": "codex",
+  "session": "01a0b71f-c516-75b2-ac58-0c92e8a4f098",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "42b1429268c3e4502071ac09535d466163e9e8a2",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-19T14:19:07+09:00"
+}

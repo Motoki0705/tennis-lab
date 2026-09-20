@@ -1,5 +1,7 @@
 # Ball Detection
 
+出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
+
 `src/tasks/ball_detection` は、RGBフレーム列から各フレーム内のテニスボール位置を推定するタスク実装です。モデル定義・データ取り込み(TrackNet/YouTube/Web統合ストア)・学習・推論・評価・可視化・データセット生成までを一貫して提供します。
 
 ## Modules

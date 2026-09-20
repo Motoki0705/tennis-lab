@@ -1,0 +1,6 @@
+{
+  "stage": "all",
+  "failures": {
+    "video_000/clip_001": "ValueError: Stale person detections: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam1_detections.npz"
+  }
+}

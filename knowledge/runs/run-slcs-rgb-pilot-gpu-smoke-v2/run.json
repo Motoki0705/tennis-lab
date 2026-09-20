@@ -1,0 +1,16 @@
+{
+  "run_id": "1789726444409654583_102955_slcs-rgb-pilot-gpu-smoke-v2",
+  "name": "slcs-rgb-pilot-gpu-smoke-v2",
+  "command": "PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=3 MKL_NUM_THREADS=3 .venv/bin/python -m src.tasks.slcs.scripts.train --config-name train_real_rgb_pilot training.trainer.max_epochs=1 training.warmup_steps=0 run.output_dir=slcs/train/real_rgb_pilot_gpu_smoke/s42-002",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "4348077d8f7a0b35ab58350232cf4ccb607990f1",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T19:15:56+09:00"
+}

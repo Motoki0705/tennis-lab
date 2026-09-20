@@ -1,0 +1,3222 @@
+{
+  "targets": {
+    "video_001/clip_001/P1": {
+      "fidelity": {
+        "max_abs_diff_m": 7.62939453125e-06,
+        "src_match": true
+      },
+      "fps": 59.94006,
+      "n_speed_cur": 24,
+      "n_speed_cand": 30,
+      "new_frames": [
+        168,
+        333,
+        334,
+        337,
+        338,
+        359,
+        360,
+        801,
+        802,
+        810,
+        921,
+        922,
+        923,
+        924,
+        1192,
+        1193,
+        1195,
+        1196
+      ],
+      "resolved_frames": [
+        170,
+        290,
+        291,
+        297,
+        298,
+        315,
+        316,
+        812,
+        1033,
+        1034,
+        1035,
+        1036
+      ],
+      "code6_cur": 12,
+      "code6_cand": 7,
+      "details": [
+        {
+          "frame": 168,
+          "spd_cand_max": 69.57,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "167": 3,
+            "168": 3,
+            "169": 3
+          },
+          "views_cand_win": {
+            "167": 3,
+            "168": 3,
+            "169": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                167,
+                168
+              ],
+              "spd_cur": 0.58,
+              "spd_cand": 0.58,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                168,
+                169
+              ],
+              "spd_cur": 0.52,
+              "spd_cand": 69.57,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 8.88,
+            "cur_cam1": 2.98,
+            "cand_cam0": 8.88,
+            "cand_cam1": 2.98
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.352,
+            15.045,
+            0.844
+          ],
+          "pos_cand": [
+            3.352,
+            15.045,
+            0.844
+          ]
+        },
+        {
+          "frame": 333,
+          "spd_cand_max": 61.9,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "332": 3,
+            "333": 3,
+            "334": 3
+          },
+          "views_cand_win": {
+            "332": 2,
+            "333": 2,
+            "334": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                332,
+                333
+              ],
+              "spd_cur": 0.05,
+              "spd_cand": 0.21,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                333,
+                334
+              ],
+              "spd_cur": 0.2,
+              "spd_cand": 61.9,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.72,
+            "cur_cam1": 3.17,
+            "cand_cam0": 0.71,
+            "cand_cam1": 0.44
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.57,
+            14.724,
+            0.876
+          ],
+          "pos_cand": [
+            3.784,
+            15.727,
+            0.786
+          ]
+        },
+        {
+          "frame": 334,
+          "spd_cand_max": 61.9,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "333": 3,
+            "334": 3,
+            "335": 3
+          },
+          "views_cand_win": {
+            "333": 2,
+            "334": 3,
+            "335": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                333,
+                334
+              ],
+              "spd_cur": 0.2,
+              "spd_cand": 61.9,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                334,
+                335
+              ],
+              "spd_cur": 0.07,
+              "spd_cand": 0.07,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.75,
+            "cur_cam1": 3.12,
+            "cand_cam0": 7.75,
+            "cand_cam1": 3.12
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.571,
+            14.721,
+            0.878
+          ],
+          "pos_cand": [
+            3.571,
+            14.721,
+            0.878
+          ]
+        },
+        {
+          "frame": 337,
+          "spd_cand_max": 61.33,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "336": 3,
+            "337": 3,
+            "338": 3
+          },
+          "views_cand_win": {
+            "336": 3,
+            "337": 3,
+            "338": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                336,
+                337
+              ],
+              "spd_cur": 0.3,
+              "spd_cand": 0.3,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                337,
+                338
+              ],
+              "spd_cur": 0.09,
+              "spd_cand": 61.33,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.75,
+            "cur_cam1": 3.1,
+            "cand_cam0": 7.75,
+            "cand_cam1": 3.1
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.572,
+            14.719,
+            0.881
+          ],
+          "pos_cand": [
+            3.572,
+            14.719,
+            0.881
+          ]
+        },
+        {
+          "frame": 338,
+          "spd_cand_max": 61.33,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "337": 3,
+            "338": 3,
+            "339": 3
+          },
+          "views_cand_win": {
+            "337": 3,
+            "338": 2,
+            "339": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                337,
+                338
+              ],
+              "spd_cur": 0.09,
+              "spd_cand": 61.33,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                338,
+                339
+              ],
+              "spd_cur": 0.45,
+              "spd_cand": 0.32,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.73,
+            "cur_cam1": 3.07,
+            "cand_cam0": 0.87,
+            "cand_cam1": 0.54
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.571,
+            14.719,
+            0.88
+          ],
+          "pos_cand": [
+            3.785,
+            15.716,
+            0.795
+          ]
+        },
+        {
+          "frame": 359,
+          "spd_cand_max": 57.62,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "358": 3,
+            "359": 3,
+            "360": 3
+          },
+          "views_cand_win": {
+            "358": 2,
+            "359": 2,
+            "360": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                358,
+                359
+              ],
+              "spd_cur": 0.2,
+              "spd_cand": 0.34,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                359,
+                360
+              ],
+              "spd_cur": 0.4,
+              "spd_cand": 57.62,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.38,
+            "cur_cam1": 2.81,
+            "cand_cam0": 0.94,
+            "cand_cam1": 0.59
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.552,
+            14.701,
+            0.876
+          ],
+          "pos_cand": [
+            3.758,
+            15.641,
+            0.802
+          ]
+        },
+        {
+          "frame": 360,
+          "spd_cand_max": 57.62,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "359": 3,
+            "360": 3,
+            "361": 3
+          },
+          "views_cand_win": {
+            "359": 2,
+            "360": 3,
+            "361": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                359,
+                360
+              ],
+              "spd_cur": 0.4,
+              "spd_cand": 57.62,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                360,
+                361
+              ],
+              "spd_cur": 0.48,
+              "spd_cand": 0.48,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.41,
+            "cur_cam1": 2.75,
+            "cand_cam0": 7.41,
+            "cand_cam1": 2.75
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.55,
+            14.705,
+            0.871
+          ],
+          "pos_cand": [
+            3.55,
+            14.705,
+            0.871
+          ]
+        },
+        {
+          "frame": 801,
+          "spd_cand_max": 15.94,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "800": 2,
+            "801": 3,
+            "802": 3
+          },
+          "views_cand_win": {
+            "800": 2,
+            "801": 2,
+            "802": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                800,
+                801
+              ],
+              "spd_cur": 1.37,
+              "spd_cand": 1.63,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                2,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                6,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                801,
+                802
+              ],
+              "spd_cur": 2.77,
+              "spd_cand": 15.94,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.35,
+            "cur_cam1": 5.22,
+            "cand_cam0": 10.23,
+            "cand_cam1": 2.74
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            1.224,
+            13.835,
+            0.884
+          ],
+          "pos_cand": [
+            1.161,
+            13.62,
+            0.818
+          ]
+        },
+        {
+          "frame": 802,
+          "spd_cand_max": 15.94,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "801": 3,
+            "802": 3,
+            "803": 3
+          },
+          "views_cand_win": {
+            "801": 2,
+            "802": 3,
+            "803": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                801,
+                802
+              ],
+              "spd_cur": 2.77,
+              "spd_cand": 15.94,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                802,
+                803
+              ],
+              "spd_cur": 2.68,
+              "spd_cand": 2.68,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.66,
+            "cur_cam1": 5.41,
+            "cand_cam0": 7.66,
+            "cand_cam1": 5.41
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            1.203,
+            13.876,
+            0.879
+          ],
+          "pos_cand": [
+            1.203,
+            13.876,
+            0.879
+          ]
+        },
+        {
+          "frame": 810,
+          "spd_cand_max": 22.81,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "809": 3,
+            "810": 3,
+            "811": 3
+          },
+          "views_cand_win": {
+            "809": 3,
+            "810": 3,
+            "811": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                809,
+                810
+              ],
+              "spd_cur": 1.83,
+              "spd_cand": 1.83,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                810,
+                811
+              ],
+              "spd_cur": 3.75,
+              "spd_cand": 22.81,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 11.55,
+            "cur_cam1": 6.01,
+            "cand_cam0": 11.55,
+            "cand_cam1": 6.01
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            1.051,
+            14.173,
+            0.915
+          ],
+          "pos_cand": [
+            1.051,
+            14.173,
+            0.915
+          ]
+        },
+        {
+          "frame": 921,
+          "spd_cand_max": 25.99,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "920": 3,
+            "921": 3,
+            "922": 3
+          },
+          "views_cand_win": {
+            "920": 3,
+            "921": 3,
+            "922": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                920,
+                921
+              ],
+              "spd_cur": 1.58,
+              "spd_cand": 1.58,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                921,
+                922
+              ],
+              "spd_cur": 1.51,
+              "spd_cand": 25.99,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.25,
+            "cur_cam1": 5.59,
+            "cand_cam0": 6.25,
+            "cand_cam1": 5.59
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -1.026,
+            15.614,
+            1.001
+          ],
+          "pos_cand": [
+            -1.026,
+            15.614,
+            1.001
+          ]
+        },
+        {
+          "frame": 922,
+          "spd_cand_max": 25.99,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "921": 3,
+            "922": 3,
+            "923": 3
+          },
+          "views_cand_win": {
+            "921": 3,
+            "922": 2,
+            "923": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                921,
+                922
+              ],
+              "spd_cur": 1.51,
+              "spd_cand": 25.99,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                922,
+                923
+              ],
+              "spd_cur": 1.59,
+              "spd_cand": 1.48,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.55,
+            "cur_cam1": 5.74,
+            "cand_cam0": 11.13,
+            "cand_cam1": 2.53
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -1.005,
+            15.609,
+            0.989
+          ],
+          "pos_cand": [
+            -1.144,
+            15.205,
+            0.919
+          ]
+        },
+        {
+          "frame": 923,
+          "spd_cand_max": 26.28,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "922": 3,
+            "923": 3,
+            "924": 3
+          },
+          "views_cand_win": {
+            "922": 2,
+            "923": 2,
+            "924": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                922,
+                923
+              ],
+              "spd_cur": 1.59,
+              "spd_cand": 1.48,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                923,
+                924
+              ],
+              "spd_cur": 1.39,
+              "spd_cand": 26.28,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.64,
+            "cur_cam1": 5.73,
+            "cand_cam0": 11.31,
+            "cand_cam1": 2.43
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -0.98,
+            15.616,
+            0.984
+          ],
+          "pos_cand": [
+            -1.121,
+            15.205,
+            0.911
+          ]
+        },
+        {
+          "frame": 924,
+          "spd_cand_max": 26.28,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "923": 3,
+            "924": 3,
+            "925": 3
+          },
+          "views_cand_win": {
+            "923": 2,
+            "924": 3,
+            "925": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                923,
+                924
+              ],
+              "spd_cur": 1.39,
+              "spd_cand": 26.28,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                924,
+                925
+              ],
+              "spd_cur": 1.44,
+              "spd_cand": 1.44,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.33,
+            "cur_cam1": 5.42,
+            "cand_cam0": 6.33,
+            "cand_cam1": 5.42
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -0.959,
+            15.607,
+            0.979
+          ],
+          "pos_cand": [
+            -0.959,
+            15.607,
+            0.979
+          ]
+        },
+        {
+          "frame": 1192,
+          "spd_cand_max": 30.55,
+          "class": "S-2view-jitter",
+          "boundary_in_window": false,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "1191": 3,
+            "1192": 3,
+            "1193": 2
+          },
+          "views_cand_win": {
+            "1191": 3,
+            "1192": 3,
+            "1193": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                1191,
+                1192
+              ],
+              "spd_cur": 5.0,
+              "spd_cand": 5.0,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                1192,
+                1193
+              ],
+              "spd_cur": 4.64,
+              "spd_cand": 30.55,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                2
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                6
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 2.84,
+            "cur_cam1": 3.08,
+            "cand_cam0": 2.84,
+            "cand_cam1": 3.08
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -0.441,
+            8.263,
+            0.989
+          ],
+          "pos_cand": [
+            -0.441,
+            8.263,
+            0.989
+          ]
+        },
+        {
+          "frame": 1193,
+          "spd_cand_max": 30.55,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "1192": 3,
+            "1193": 2,
+            "1194": 3
+          },
+          "views_cand_win": {
+            "1192": 3,
+            "1193": 2,
+            "1194": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                1192,
+                1193
+              ],
+              "spd_cur": 4.64,
+              "spd_cand": 30.55,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                2
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                6
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                1193,
+                1194
+              ],
+              "spd_cur": 4.64,
+              "spd_cand": 9.26,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                2,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                6,
+                6
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": null,
+            "cur_cam1": 3.13,
+            "cand_cam0": null,
+            "cand_cam1": 0.75
+          },
+          "src_cur": 2,
+          "src_cand": 1,
+          "pos_cur": [
+            -0.427,
+            8.188,
+            0.977
+          ],
+          "pos_cand": [
+            -0.505,
+            7.759,
+            0.948
+          ]
+        },
+        {
+          "frame": 1195,
+          "spd_cand_max": 26.46,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "1194": 3,
+            "1195": 2,
+            "1196": 3
+          },
+          "views_cand_win": {
+            "1194": 2,
+            "1195": 2,
+            "1196": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                1194,
+                1195
+              ],
+              "spd_cur": 4.64,
+              "spd_cand": 4.44,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                2
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                6,
+                6
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                1195,
+                1196
+              ],
+              "spd_cur": 4.64,
+              "spd_cand": 26.46,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                6,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": null,
+            "cur_cam1": 4.07,
+            "cand_cam0": null,
+            "cand_cam1": 1.47
+          },
+          "src_cur": 2,
+          "src_cand": 1,
+          "pos_cur": [
+            -0.399,
+            8.037,
+            0.952
+          ],
+          "pos_cand": [
+            -0.49,
+            7.534,
+            0.92
+          ]
+        },
+        {
+          "frame": 1196,
+          "spd_cand_max": 26.46,
+          "class": "S-2view-jitter",
+          "boundary_in_window": false,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "1195": 2,
+            "1196": 3,
+            "1197": 3
+          },
+          "views_cand_win": {
+            "1195": 2,
+            "1196": 3,
+            "1197": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                1195,
+                1196
+              ],
+              "spd_cur": 4.64,
+              "spd_cand": 26.46,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                6,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                1196,
+                1197
+              ],
+              "spd_cur": 6.16,
+              "spd_cand": 6.16,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 3.45,
+            "cur_cam1": 4.44,
+            "cand_cam0": 3.45,
+            "cand_cam1": 4.44
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -0.385,
+            7.962,
+            0.94
+          ],
+          "pos_cand": [
+            -0.385,
+            7.962,
+            0.94
+          ]
+        }
+      ]
+    },
+    "video_000/clip_007/P1": {
+      "fidelity": {
+        "max_abs_diff_m": 8.58306884765625e-06,
+        "src_match": true
+      },
+      "fps": 59.94006,
+      "n_speed_cur": 7,
+      "n_speed_cand": 13,
+      "new_frames": [
+        159,
+        160,
+        161,
+        162,
+        171,
+        172,
+        173,
+        222,
+        223
+      ],
+      "resolved_frames": [
+        175,
+        176,
+        228
+      ],
+      "code6_cur": 9,
+      "code6_cand": 9,
+      "details": [
+        {
+          "frame": 159,
+          "spd_cand_max": 64.13,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "158": 3,
+            "159": 3,
+            "160": 3
+          },
+          "views_cand_win": {
+            "158": 3,
+            "159": 3,
+            "160": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                158,
+                159
+              ],
+              "spd_cur": 4.28,
+              "spd_cand": 4.28,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                159,
+                160
+              ],
+              "spd_cur": 4.28,
+              "spd_cand": 64.13,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.55,
+            "cur_cam1": 4.51,
+            "cand_cam0": 6.55,
+            "cand_cam1": 4.51
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -4.985,
+            14.096,
+            0.767
+          ],
+          "pos_cand": [
+            -4.985,
+            14.096,
+            0.767
+          ]
+        },
+        {
+          "frame": 160,
+          "spd_cand_max": 64.13,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "159": 3,
+            "160": 3,
+            "161": 3
+          },
+          "views_cand_win": {
+            "159": 3,
+            "160": 2,
+            "161": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                159,
+                160
+              ],
+              "spd_cur": 4.28,
+              "spd_cand": 64.13,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                160,
+                161
+              ],
+              "spd_cur": 3.47,
+              "spd_cand": 3.64,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.53,
+            "cur_cam1": 4.45,
+            "cand_cam0": 1.76,
+            "cand_cam1": 1.04
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.055,
+            14.083,
+            0.756
+          ],
+          "pos_cand": [
+            -5.084,
+            15.156,
+            0.66
+          ]
+        },
+        {
+          "frame": 161,
+          "spd_cand_max": 66.03,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "160": 3,
+            "161": 3,
+            "162": 3
+          },
+          "views_cand_win": {
+            "160": 2,
+            "161": 2,
+            "162": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                160,
+                161
+              ],
+              "spd_cur": 3.47,
+              "spd_cand": 3.64,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                161,
+                162
+              ],
+              "spd_cur": 4.04,
+              "spd_cand": 66.03,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.58,
+            "cur_cam1": 4.52,
+            "cand_cam0": 2.09,
+            "cand_cam1": 1.23
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.11,
+            14.069,
+            0.751
+          ],
+          "pos_cand": [
+            -5.142,
+            15.138,
+            0.658
+          ]
+        },
+        {
+          "frame": 162,
+          "spd_cand_max": 66.03,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "161": 3,
+            "162": 3,
+            "163": 3
+          },
+          "views_cand_win": {
+            "161": 2,
+            "162": 3,
+            "163": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                161,
+                162
+              ],
+              "spd_cur": 4.04,
+              "spd_cand": 66.03,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                162,
+                163
+              ],
+              "spd_cur": 3.87,
+              "spd_cand": 3.87,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.31,
+            "cur_cam1": 4.32,
+            "cand_cam0": 6.31,
+            "cand_cam1": 4.32
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.171,
+            14.04,
+            0.743
+          ],
+          "pos_cand": [
+            -5.171,
+            14.04,
+            0.743
+          ]
+        },
+        {
+          "frame": 171,
+          "spd_cand_max": 77.48,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "170": 3,
+            "171": 3,
+            "172": 3
+          },
+          "views_cand_win": {
+            "170": 3,
+            "171": 3,
+            "172": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                170,
+                171
+              ],
+              "spd_cur": 2.02,
+              "spd_cand": 2.02,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                171,
+                172
+              ],
+              "spd_cur": 1.58,
+              "spd_cand": 77.48,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.57,
+            "cur_cam1": 5.04,
+            "cand_cam0": 6.57,
+            "cand_cam1": 5.04
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.566,
+            13.82,
+            0.673
+          ],
+          "pos_cand": [
+            -5.566,
+            13.82,
+            0.673
+          ]
+        },
+        {
+          "frame": 172,
+          "spd_cand_max": 77.48,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "171": 3,
+            "172": 3,
+            "173": 3
+          },
+          "views_cand_win": {
+            "171": 3,
+            "172": 2,
+            "173": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                171,
+                172
+              ],
+              "spd_cur": 1.58,
+              "spd_cand": 77.48,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                172,
+                173
+              ],
+              "spd_cur": 3.87,
+              "spd_cand": 14.73,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.63,
+            "cur_cam1": 5.98,
+            "cand_cam0": 1.63,
+            "cand_cam1": 0.97
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.584,
+            13.824,
+            0.653
+          ],
+          "pos_cand": [
+            -5.662,
+            15.107,
+            0.607
+          ]
+        },
+        {
+          "frame": 173,
+          "spd_cand_max": 14.73,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": false,
+          "views_cur_win": {
+            "172": 3,
+            "173": 3,
+            "174": 3
+          },
+          "views_cand_win": {
+            "172": 2,
+            "173": 2,
+            "174": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                172,
+                173
+              ],
+              "spd_cur": 3.87,
+              "spd_cand": 14.73,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                173,
+                174
+              ],
+              "spd_cur": 2.72,
+              "spd_cand": 2.6,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 6.73,
+            "cur_cam1": 5.66,
+            "cand_cam0": 1.94,
+            "cand_cam1": 1.16
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.633,
+            13.783,
+            0.647
+          ],
+          "pos_cand": [
+            -5.711,
+            14.868,
+            0.634
+          ]
+        },
+        {
+          "frame": 222,
+          "spd_cand_max": 13.78,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "221": 2,
+            "222": 2,
+            "223": 2
+          },
+          "views_cand_win": {
+            "221": 1,
+            "222": 2,
+            "223": 1
+          },
+          "segs": [
+            {
+              "seg": [
+                221,
+                222
+              ],
+              "spd_cur": 0.89,
+              "spd_cand": 1.5,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                1,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                1,
+                0
+              ]
+            },
+            {
+              "seg": [
+                222,
+                223
+              ],
+              "spd_cur": 2.95,
+              "spd_cand": 13.78,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                2,
+                1
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                1
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 0.24,
+            "cur_cam1": 0.15,
+            "cand_cam0": 0.24,
+            "cand_cam1": 0.15
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -5.782,
+            14.688,
+            0.714
+          ],
+          "pos_cand": [
+            -5.782,
+            14.688,
+            0.714
+          ]
+        },
+        {
+          "frame": 223,
+          "spd_cand_max": 13.78,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "222": 2,
+            "223": 2,
+            "224": 2
+          },
+          "views_cand_win": {
+            "222": 2,
+            "223": 1,
+            "224": 1
+          },
+          "segs": [
+            {
+              "seg": [
+                222,
+                223
+              ],
+              "spd_cur": 2.95,
+              "spd_cand": 13.78,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                2,
+                1
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                1
+              ]
+            },
+            {
+              "seg": [
+                223,
+                224
+              ],
+              "spd_cur": 2.34,
+              "spd_cand": 13.78,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                1,
+                1
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                1,
+                1
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 0.08,
+            "cur_cam1": 0.05,
+            "cand_cam0": 1.17,
+            "cand_cam1": 0.45
+          },
+          "src_cur": 1,
+          "src_cand": 2,
+          "pos_cur": [
+            -5.774,
+            14.64,
+            0.725
+          ],
+          "pos_cand": [
+            -5.772,
+            14.459,
+            0.735
+          ]
+        }
+      ]
+    },
+    "video_000/clip_009/P1": {
+      "fidelity": {
+        "max_abs_diff_m": 9.5367431640625e-06,
+        "src_match": true
+      },
+      "fps": 59.94006,
+      "n_speed_cur": 10,
+      "n_speed_cand": 16,
+      "new_frames": [
+        241,
+        242,
+        243,
+        244,
+        426,
+        733,
+        741,
+        742
+      ],
+      "resolved_frames": [
+        428,
+        735
+      ],
+      "code6_cur": 2,
+      "code6_cand": 5,
+      "details": [
+        {
+          "frame": 241,
+          "spd_cand_max": 33.45,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "240": 3,
+            "241": 3,
+            "242": 3
+          },
+          "views_cand_win": {
+            "240": 3,
+            "241": 3,
+            "242": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                240,
+                241
+              ],
+              "spd_cur": 2.42,
+              "spd_cand": 2.42,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                241,
+                242
+              ],
+              "spd_cur": 2.32,
+              "spd_cand": 33.45,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 4.79,
+            "cur_cam1": 4.62,
+            "cand_cam0": 4.79,
+            "cand_cam1": 4.62
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -1.926,
+            13.203,
+            0.895
+          ],
+          "pos_cand": [
+            -1.926,
+            13.203,
+            0.895
+          ]
+        },
+        {
+          "frame": 242,
+          "spd_cand_max": 33.45,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "241": 3,
+            "242": 3,
+            "243": 2
+          },
+          "views_cand_win": {
+            "241": 3,
+            "242": 2,
+            "243": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                241,
+                242
+              ],
+              "spd_cur": 2.32,
+              "spd_cand": 33.45,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                242,
+                243
+              ],
+              "spd_cur": 1.94,
+              "spd_cand": 2.15,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                2
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                6
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 5.09,
+            "cur_cam1": 4.82,
+            "cand_cam0": 11.13,
+            "cand_cam1": 0.14
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -1.891,
+            13.189,
+            0.886
+          ],
+          "pos_cand": [
+            -2.029,
+            12.663,
+            0.802
+          ]
+        },
+        {
+          "frame": 243,
+          "spd_cand_max": 31.26,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "242": 3,
+            "243": 2,
+            "244": 3
+          },
+          "views_cand_win": {
+            "242": 2,
+            "243": 2,
+            "244": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                242,
+                243
+              ],
+              "spd_cur": 1.94,
+              "spd_cand": 2.15,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                2
+              ],
+              "views_cand": [
+                2,
+                2
+              ],
+              "codes_cur": [
+                0,
+                6
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                243,
+                244
+              ],
+              "spd_cur": 1.94,
+              "spd_cand": 31.26,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                6,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": null,
+            "cur_cam1": 4.55,
+            "cand_cam0": null,
+            "cand_cam1": 0.5
+          },
+          "src_cur": 2,
+          "src_cand": 1,
+          "pos_cur": [
+            -1.861,
+            13.181,
+            0.877
+          ],
+          "pos_cand": [
+            -2.001,
+            12.684,
+            0.808
+          ]
+        },
+        {
+          "frame": 244,
+          "spd_cand_max": 31.26,
+          "class": "S-2view-jitter",
+          "boundary_in_window": false,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "243": 2,
+            "244": 3,
+            "245": 3
+          },
+          "views_cand_win": {
+            "243": 2,
+            "244": 3,
+            "245": 3
+          },
+          "segs": [
+            {
+              "seg": [
+                243,
+                244
+              ],
+              "spd_cur": 1.94,
+              "spd_cand": 31.26,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                3
+              ],
+              "views_cand": [
+                2,
+                3
+              ],
+              "codes_cur": [
+                6,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                244,
+                245
+              ],
+              "spd_cur": 2.42,
+              "spd_cand": 2.42,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 5.01,
+            "cur_cam1": 4.76,
+            "cand_cam0": 5.01,
+            "cand_cam1": 4.76
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            -1.831,
+            13.173,
+            0.869
+          ],
+          "pos_cand": [
+            -1.831,
+            13.173,
+            0.869
+          ]
+        },
+        {
+          "frame": 426,
+          "spd_cand_max": 64.76,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "425": 3,
+            "426": 3,
+            "427": 3
+          },
+          "views_cand_win": {
+            "425": 3,
+            "426": 3,
+            "427": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                425,
+                426
+              ],
+              "spd_cur": 1.57,
+              "spd_cand": 1.57,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                426,
+                427
+              ],
+              "spd_cur": 1.09,
+              "spd_cand": 64.76,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 8.46,
+            "cur_cam1": 2.84,
+            "cand_cam0": 8.46,
+            "cand_cam1": 2.84
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            3.741,
+            14.503,
+            0.924
+          ],
+          "pos_cand": [
+            3.741,
+            14.503,
+            0.924
+          ]
+        },
+        {
+          "frame": 733,
+          "spd_cand_max": 22.09,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "732": 3,
+            "733": 3,
+            "734": 3
+          },
+          "views_cand_win": {
+            "732": 3,
+            "733": 3,
+            "734": 2
+          },
+          "segs": [
+            {
+              "seg": [
+                732,
+                733
+              ],
+              "spd_cur": 1.6,
+              "spd_cand": 1.6,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                3
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            },
+            {
+              "seg": [
+                733,
+                734
+              ],
+              "spd_cur": 0.92,
+              "spd_cand": 22.09,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                3,
+                3
+              ],
+              "views_cand": [
+                3,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                0
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 7.14,
+            "cur_cam1": 5.95,
+            "cand_cam0": 7.14,
+            "cand_cam1": 5.95
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            0.102,
+            13.741,
+            0.77
+          ],
+          "pos_cand": [
+            0.102,
+            13.741,
+            0.77
+          ]
+        },
+        {
+          "frame": 741,
+          "spd_cand_max": 20.93,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "740": 2,
+            "741": 2,
+            "742": 2
+          },
+          "views_cand_win": {
+            "740": 1,
+            "741": 2,
+            "742": 1
+          },
+          "segs": [
+            {
+              "seg": [
+                740,
+                741
+              ],
+              "spd_cur": 1.17,
+              "spd_cand": 1.22,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                1,
+                2
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                1,
+                0
+              ]
+            },
+            {
+              "seg": [
+                741,
+                742
+              ],
+              "spd_cur": 1.08,
+              "spd_cand": 20.93,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                2,
+                1
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                1
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 4.89,
+            "cur_cam1": null,
+            "cand_cam0": 4.89,
+            "cand_cam1": null
+          },
+          "src_cur": 1,
+          "src_cand": 1,
+          "pos_cur": [
+            0.146,
+            14.077,
+            0.849
+          ],
+          "pos_cand": [
+            0.146,
+            14.077,
+            0.849
+          ]
+        },
+        {
+          "frame": 742,
+          "spd_cand_max": 20.93,
+          "class": "B-boundary-switch",
+          "boundary_in_window": true,
+          "cand_switch_in_window": true,
+          "views_cur_win": {
+            "741": 2,
+            "742": 2,
+            "743": 2
+          },
+          "views_cand_win": {
+            "741": 2,
+            "742": 1,
+            "743": 1
+          },
+          "segs": [
+            {
+              "seg": [
+                741,
+                742
+              ],
+              "spd_cur": 1.08,
+              "spd_cand": 20.93,
+              "fast_cur": false,
+              "fast_cand": true,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                2,
+                1
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                0,
+                1
+              ]
+            },
+            {
+              "seg": [
+                742,
+                743
+              ],
+              "spd_cur": 1.42,
+              "spd_cand": 0.0,
+              "fast_cur": false,
+              "fast_cand": false,
+              "views_cur": [
+                2,
+                2
+              ],
+              "views_cand": [
+                1,
+                1
+              ],
+              "codes_cur": [
+                0,
+                0
+              ],
+              "codes_cand": [
+                1,
+                1
+              ]
+            }
+          ],
+          "hip_res": {
+            "cur_cam0": 4.73,
+            "cur_cam1": null,
+            "cand_cam0": 10.57,
+            "cand_cam1": null
+          },
+          "src_cur": 1,
+          "src_cand": 0,
+          "pos_cur": [
+            0.147,
+            14.086,
+            0.834
+          ],
+          "pos_cand": [
+            -0.191,
+            14.168,
+            0.85
+          ]
+        }
+      ]
+    }
+  }
+}

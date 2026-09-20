@@ -1,0 +1,372 @@
+"""CPU-only saved CourtKP14 geometry audit; no detector, fit, or cache mutation."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+from pathlib import Path
+from typing import Any
+
+import cv2
+import numpy as np
+
+from src.utils.checksum import dual_sha256
+from src.utils.schema.court import COURT_SKELETON, CourtConfig, court_keypoints_3d
+
+CLIPS = ("video_001/clip_003", "video_002/clip_017")
+CAMERAS = ("cam0", "cam1", "cam2")
+CYAN = (255, 255, 0)
+GREEN = (0, 255, 0)
+RED = (0, 0, 255)
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise ValueError(message)
+
+
+def stamp(
+    image: np.ndarray,
+    text: str,
+    xy: tuple[int, int],
+    color: tuple[int, int, int] = (255, 255, 255),
+    scale: float = 0.65,
+) -> None:
+    cv2.putText(
+        image, text, xy, cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), 4, cv2.LINE_AA
+    )
+    cv2.putText(image, text, xy, cv2.FONT_HERSHEY_SIMPLEX, scale, color, 1, cv2.LINE_AA)
+
+
+def save_image(path: Path, image: np.ndarray) -> None:
+    require(bool(cv2.imwrite(str(path), image)), f"Cannot save {path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--project-root", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--samples-root", type=Path, required=True)
+    args = parser.parse_args()
+    require(os.environ.get("CUDA_VISIBLE_DEVICES") == "", "CUDA must be hidden")
+    require(
+        os.environ.get("OMP_NUM_THREADS") == os.environ.get("MKL_NUM_THREADS") == "2",
+        "CPU thread environment must be 2",
+    )
+    cv2.setNumThreads(1)
+    root, output = args.project_root.resolve(), args.output.resolve()
+    source = Path.cwd()
+    bundle = Path(__file__).resolve().parent
+    output.mkdir(parents=True, exist_ok=False)
+    dataset = root / "data/tennis_multivew/processed/meiji_3cam/dataset"
+    observations = root / "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004"
+    samples_root = args.samples_root.resolve()
+    inputs = [dataset / "dataset.json", Path(__file__).resolve(), bundle / "repro.sh"]
+    inputs += [
+        source / name
+        for name in (
+            "src/utils/checksum.py",
+            "src/utils/schema/court.py",
+            "src/tennis_scene/dataset_pipeline/court.py",
+            "src/tennis_scene/configs/build_slcs_dataset.yaml",
+            "src/tennis_scene/configs/build_slcs_dataset_base.yaml",
+        )
+    ]
+    for clip in CLIPS:
+        clip_dir = dataset / "videos" / clip.replace("/", "/clips/")
+        inputs.append(clip_dir / "clip.json")
+        for cache in (observations, samples_root):
+            inputs.extend(cache / clip / name for name in ("court.json", "court.npz"))
+        for camera in CAMERAS:
+            inputs += [
+                clip_dir / "media" / f"{camera}.mp4",
+                samples_root / clip / f"{camera}_court_samples.npz",
+            ]
+    before = {str(path): dual_sha256(path) for path in inputs}
+    results: dict[str, Any] = {
+        "execution_commit": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip(),
+        "project_root": str(root),
+        "source_worktree": str(source),
+        "output": str(output),
+        "observation_root": str(observations),
+        "sample_root": str(samples_root),
+        "sample_source_reason": "s42-004 does not retain raw court samples; s42-001 court.json and court.npz must be byte-identical to s42-004 before use.",
+        "is_measured_calibration": False,
+        "coordinate_system": "view-local court geometry",
+        "human_visual_review": "pending; probe does not inspect images",
+        "display_roi_only": True,
+        "model_loads": 0,
+        "forward_calls": 0,
+        "calibration_refits": 0,
+        "numerical_tolerance_px": 0.0002,
+        "rounding_note": "Projection uses stored float64 H and original float32 physical points; temporal medians cast to float32 exactly as producer. Cached normalized keypoints incur float32 divide/multiply rounding; atol=2e-4 px, rtol=0.",
+        "inlier_note": "Original RANSAC mask is recorded only in court.json. No RANSAC rerun. Independently compare saved mask to supported points whose residual to saved H is <= original ransac_px; mask comparison is diagnostic only, never an acceptance condition; final refit residuals need not reconstruct the original RANSAC mask.",
+        "environment": {
+            key: os.environ[key]
+            for key in ("CUDA_VISIBLE_DEVICES", "OMP_NUM_THREADS", "MKL_NUM_THREADS")
+        },
+        "opencv_threads": cv2.getNumThreads(),
+        "views": [],
+    }
+    physical = court_keypoints_3d(CourtConfig(0.914, None)).numpy()[:14, :2]
+    for clip in CLIPS:
+        clip_dir = dataset / "videos" / clip.replace("/", "/clips/")
+        manifest = json.loads((clip_dir / "clip.json").read_text())
+        receipt = json.loads((observations / clip / "court.json").read_text())
+        require(
+            before[str(clip_dir / "clip.json")] == receipt["identity"]["clip_sha256"],
+            "Clip identity mismatch",
+        )
+        for name in ("court.json", "court.npz"):
+            require(
+                before[str(observations / clip / name)]
+                == before[str(samples_root / clip / name)],
+                "Court source bytes differ",
+            )
+        with np.load(observations / clip / "court.npz", allow_pickle=False) as cache:
+            keypoints, homographies = cache["keypoints"], cache["homographies"]
+        require(tuple(manifest["camera_ids"]) == CAMERAS, "Unexpected camera order")
+        width, height, count = (
+            manifest["width"],
+            manifest["height"],
+            manifest["num_frames"],
+        )
+        require(keypoints.shape == (3, count, 14, 2), "Unexpected court shape")
+        indices = [0, (count - 1) // 2, count - 1]
+        for cam_index, camera in enumerate(CAMERAS):
+            video = clip_dir / "media" / f"{camera}.mp4"
+            require(
+                before[str(video)] == receipt["identity"]["video_sha256"][camera],
+                "Video identity mismatch",
+            )
+            diag = receipt["diagnostics"][cam_index]
+            require(diag["camera_id"] == camera, "Diagnostic camera mismatch")
+            with np.load(
+                samples_root / clip / f"{camera}_court_samples.npz", allow_pickle=False
+            ) as samples:
+                raw, scores, sample_indices = (
+                    samples["keypoints_px"],
+                    samples["scores"],
+                    samples["frame_indices"],
+                )
+            valid = (
+                scores >= receipt["identity"]["settings"]["min_score"]
+            ) & np.isfinite(raw).all(-1)
+            counts = valid.sum(0)
+            supported = counts >= max(1, (len(scores) + 1) // 2)
+            median = np.zeros((14, 2), dtype=np.float32)
+            for point in np.flatnonzero(supported):
+                median[point] = np.median(raw[valid[:, point], point], axis=0)
+            fitted = cv2.perspectiveTransform(physical[None], homographies[cam_index])[
+                0
+            ]
+            require(bool(np.isfinite(fitted).all()), "Nonfinite fitted court")
+            require(
+                bool(
+                    np.allclose(
+                        keypoints[cam_index],
+                        fitted / np.asarray([width, height], np.float32),
+                        atol=1e-7,
+                        rtol=0,
+                    )
+                ),
+                "Cached court differs from H",
+            )
+            errors = np.linalg.norm(fitted - median, axis=-1)
+            median_error = float(np.median(errors[supported]))
+            p95 = float(np.percentile(errors[supported], 95))
+            require(
+                counts.tolist() == diag["support_frames_per_channel"],
+                "Support counts differ",
+            )
+            require(
+                np.flatnonzero(supported).tolist() == diag["supported_channels"],
+                "Supported channels differ",
+            )
+            residual_inliers = np.flatnonzero(
+                supported & (errors <= receipt["identity"]["settings"]["ransac_px"])
+            ).tolist()
+            require(
+                abs(median_error - diag["fit_error_px_median"]) <= 0.0002,
+                "Median error differs",
+            )
+            require(abs(p95 - diag["fit_error_px_p95"]) <= 0.0002, "p95 error differs")
+            inliers = set(diag["inlier_channels"])
+            # ROI includes fitted court and supported observations, plus a visual-only margin.
+            visible_points = np.concatenate([fitted, median[supported]])
+            low = np.maximum(0, np.floor(visible_points.min(0) - 70)).astype(int)
+            high = np.minimum(
+                [width, height], np.ceil(visible_points.max(0) + 70)
+            ).astype(int)
+            x0, y0 = map(int, low)
+            x1, y1 = map(int, high)
+            rows = []
+            frame_paths = []
+            capture = cv2.VideoCapture(str(video))
+            try:
+                require(capture.isOpened(), "Cannot open video")
+                require(
+                    int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) == count,
+                    "Frame count mismatch",
+                )
+                for frame_index in indices:
+                    require(
+                        bool(capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)),
+                        "Frame seek failed",
+                    )
+                    ok, frame = capture.read()
+                    require(
+                        ok and frame.shape[:2] == (height, width), "Frame decode failed"
+                    )
+                    frame_path = (
+                        output
+                        / f"{clip.replace('/', '_')}_{camera}_frame{frame_index:05d}.png"
+                    )
+                    save_image(frame_path, frame)
+                    frame_paths.append(str(frame_path))
+                    annotated = frame.copy()
+                    for first, second in COURT_SKELETON:
+                        if first < 14 and second < 14:
+                            cv2.line(
+                                annotated,
+                                tuple(np.rint(fitted[first]).astype(int)),
+                                tuple(np.rint(fitted[second]).astype(int)),
+                                CYAN,
+                                2,
+                                cv2.LINE_AA,
+                            )
+                    for point in range(14):
+                        xy = tuple(np.rint(fitted[point]).astype(int))
+                        cv2.circle(annotated, xy, 4, CYAN, 1, cv2.LINE_AA)
+                        stamp(
+                            annotated,
+                            str(point),
+                            (int(xy[0]) + 6, int(xy[1]) - 8),
+                            CYAN,
+                            0.45,
+                        )
+                        if supported[point]:
+                            uv = tuple(np.rint(median[point]).astype(int))
+                            color = GREEN if point in inliers else RED
+                            cv2.circle(annotated, uv, 5, color, 2, cv2.LINE_AA)
+                            stamp(
+                                annotated,
+                                str(point),
+                                (int(uv[0]) + 6, int(uv[1]) + 14),
+                                color,
+                                0.45,
+                            )
+                    full = frame.copy()
+                    cv2.rectangle(full, (x0, y0), (x1 - 1, y1 - 1), CYAN, 2)
+                    crop = annotated[y0:y1, x0:x1]
+                    factor = min(width / crop.shape[1], height / crop.shape[0])
+                    enlarged = cv2.resize(
+                        crop,
+                        (round(crop.shape[1] * factor), round(crop.shape[0] * factor)),
+                        interpolation=cv2.INTER_LINEAR,
+                    )
+                    panel = np.zeros_like(frame)
+                    panel[: enlarged.shape[0], : enlarged.shape[1]] = enlarged
+                    row = np.zeros((height + 115, width * 2, 3), np.uint8)
+                    row[115:, :width], row[115:, width:] = full, panel
+                    stamp(
+                        row,
+                        f"{clip} {camera} frame={frame_index} / {count - 1} | FULL FRAME (left) / DISPLAY CROP (right)",
+                        (15, 27),
+                    )
+                    stamp(
+                        row,
+                        f"Display ROI=({x0},{y0},{x1},{y1}); producer ROI={diag['source_roi_xyxy']}; crop scale={factor:.3f}",
+                        (15, 53),
+                    )
+                    stamp(
+                        row,
+                        "CYAN: fitted CourtKP14 + ground edges | GREEN: supported median / inlier | RED: supported median / outlier",
+                        (15, 79),
+                    )
+                    stamp(
+                        row,
+                        "View-local geometry, NOT measured GT. Unsupported medians omitted. Display crop never used for fitting/model.",
+                        (15, 105),
+                    )
+                    rows.append(row)
+            finally:
+                capture.release()
+            sheet = output / f"{clip.replace('/', '_')}_{camera}_contact.png"
+            save_image(sheet, np.concatenate(rows, axis=0))
+            results["views"].append(
+                {
+                    "clip": clip,
+                    "camera": camera,
+                    "frame_indices": indices,
+                    "sample_frame_indices": sample_indices.tolist(),
+                    "display_roi_xyxy": [x0, y0, x1, y1],
+                    "producer_roi_xyxy": diag["source_roi_xyxy"],
+                    "supported_channels": np.flatnonzero(supported).tolist(),
+                    "inlier_channels": sorted(inliers),
+                    "residual_inlier_channels": residual_inliers,
+                    "residual_mask_matches_recorded": residual_inliers
+                    == diag["inlier_channels"],
+                    "fit_error_px_median": median_error,
+                    "fit_error_px_p95": p95,
+                    "median_delta_px": median_error - diag["fit_error_px_median"],
+                    "p95_delta_px": p95 - diag["fit_error_px_p95"],
+                    "points": [
+                        {
+                            "point": point,
+                            "fit_uv_px": fitted[point].tolist(),
+                            "median_uv_px": median[point].tolist()
+                            if supported[point]
+                            else None,
+                            "error_px": float(errors[point])
+                            if supported[point]
+                            else None,
+                            "confidence_support_count": int(counts[point]),
+                            "supported": bool(supported[point]),
+                            "inlier": point in inliers,
+                        }
+                        for point in range(14)
+                    ],
+                    "original_frames": frame_paths,
+                    "contact_sheet": str(sheet),
+                }
+            )
+            print(
+                f"{clip} {camera}: support={int(supported.sum())} inlier={len(inliers)} median={median_error:.8f} p95={p95:.8f}",
+                flush=True,
+            )
+    after = {str(path): dual_sha256(path) for path in inputs}
+    require(before == after, "Input changed during probe")
+    image_hashes = {
+        str(path): dual_sha256(path) for path in sorted(output.glob("*.png"))
+    }
+    frame_count = sum(len(view["original_frames"]) for view in results["views"])
+    require(
+        frame_count == 18 and len(results["views"]) == 6 and len(image_hashes) == 24,
+        "Image count contract failed",
+    )
+    results.update(
+        input_hashes_before=before,
+        input_hashes_after=after,
+        inputs_unchanged=True,
+        image_sha256=image_hashes,
+        original_frame_count=frame_count,
+        contact_sheet_count=6,
+        numerical_contract_passed=True,
+        exit_status=0,
+    )
+    (output / "results.json").write_text(
+        json.dumps(results, indent=2, allow_nan=False) + "\n"
+    )
+    print(
+        f"Completed: 18 original frames, 6 contact sheets; {len(inputs)} inputs dual-hashed before/after",
+        flush=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -8,13 +8,14 @@ evaluate:
   split: test
   device: cpu
   batch_size: 4
+  input_mode: full  # full | no_rgb | detector_gap | rgb_only
   checkpoint_strict: true
   checkpoint_weights_only: false
-  output_dir: slcs/evaluate/${now:%Y-%m-%d_%H-%M-%S}
+  output_dir: ${tennis_output:slcs,evaluate,default,${tennis_run_id:}}
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${evaluate.output_dir}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${evaluate.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "kind": "read-only RGB inventory; no training or model inference",
+  "source": {
+    "data_relative_path": "tennis_multivew/raw/tennis_clip_source/cam0.mp4",
+    "sha256": "8416c3d0ef7fdfef27f888bde3205391fc036938817c9c0382a73da197cd76f5",
+    "size_bytes": 197269594,
+    "width": 640,
+    "height": 360,
+    "fps": "30/1",
+    "frames": 105912,
+    "duration_seconds": 3530.547664
+  },
+  "sampling": {
+    "coarse_seconds": [
+      360,
+      480,
+      600,
+      720,
+      840,
+      960,
+      1080,
+      1200,
+      1320,
+      1440,
+      1560,
+      1680,
+      1800,
+      1920,
+      2040,
+      2160,
+      2280,
+      2400,
+      2520,
+      2640,
+      2760,
+      2880,
+      3000,
+      3120,
+      3240,
+      3360
+    ],
+    "nearby_centers_seconds": [
+      480,
+      1200,
+      1680,
+      1920,
+      3240
+    ],
+    "nearby_offsets_seconds": [
+      -20,
+      -10,
+      0,
+      10,
+      20
+    ],
+    "dense_centers_seconds": [
+      1200,
+      1680,
+      3240
+    ],
+    "dense_offsets_seconds": [
+      -30,
+      -25,
+      -20,
+      -15,
+      -10,
+      -5,
+      0,
+      5,
+      10,
+      15,
+      20,
+      25,
+      30
+    ],
+    "method": "CPU/software decoding of existing video to downscaled stills, then visual inspection. Sparse samples do not prove continuity or camera immobility between samples."
+  },
+  "candidates": [
+    {
+      "venue_hypothesis": "Torino / Nitto ATP Finals",
+      "wide_samples_seconds": [
+        1190,
+        1195,
+        1200,
+        1205
+      ],
+      "evidence": "Nitto ATP Finals signage and TORINO court text; blue-grey indoor court differs from validation indoor court.",
+      "not_quality_verified": true
+    },
+    {
+      "venue_hypothesis": "Halle",
+      "wide_samples_seconds": [
+        1680,
+        1685,
+        1690,
+        1695,
+        1700,
+        1705
+      ],
+      "evidence": "HALLE title and betway/HYLO signage; grass venue distinct from held-out Eastbourne. Same surface alone does not violate venue split.",
+      "not_quality_verified": true
+    },
+    {
+      "venue_hypothesis": "Sydney / United Cup",
+      "wide_samples_seconds": [
+        3235,
+        3240,
+        3245,
+        3250
+      ],
+      "evidence": "SYDNEY court text and United Cup/KIA signage. 3255 is a close-up, not a verified wide view.",
+      "not_quality_verified": true
+    },
+    {
+      "venue_hypothesis": "Chengdu",
+      "wide_samples_seconds": [
+        1920,
+        1930
+      ],
+      "evidence": "CHENGDU court text; only a short sparse candidate, boundaries unverified.",
+      "not_quality_verified": true
+    }
+  ],
+  "excluded_overlaps": [
+    {
+      "seconds": [
+        480,
+        490
+      ],
+      "matching_group": "broadcast_indoor_hard",
+      "split": "val",
+      "evidence": "Haier/Rolex/Veolia boards and green indoor court match curated reference."
+    },
+    {
+      "seconds": [
+        500
+      ],
+      "matching_group": "broadcast_eastbourne",
+      "split": "test",
+      "evidence": "EASTBOURNE title and grass court match curated reference."
+    }
+  ],
+  "correction_log": [
+    "The scout initially grouped 480–500 seconds as Eastbourne; parent inspection of its own strip separates 480/490 indoor validation from 500 Eastbourne test.",
+    "The scout initially included 3255 seconds in Sydney wide views; the dense strip shows a close-up, so it is excluded.",
+    "Production windows are 120 frames (4 seconds at this source FPS), not 128."
+  ],
+  "limitations": [
+    "No new 2D ball annotation exists for these sections.",
+    "Ball readability and detection confidence at original 640x360 remain unverified.",
+    "No continuous clip boundary, within-clip cut/zoom or court drift checks yet.",
+    "No teacher generation, quality acceptance, dataset version or split has been changed.",
+    "No SLCS held-out predictions or model test metrics were read."
+  ],
+  "intended_next_step": "Inspect existing detector-to-annotation and clip export contracts before selecting precise spans and creating a separate dataset version; do not mix unverified candidates into the running fixed-data ablation."
+}

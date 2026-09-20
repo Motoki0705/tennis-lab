@@ -1,0 +1,21 @@
+{
+  "reference_run": "s42-takeover-004",
+  "current_run": "s42-streaming-001",
+  "equal_arrays": {
+    "player_position": true,
+    "player_rotation": true,
+    "player_position_log_b": true,
+    "player_rotation_log_b": true,
+    "ball_position": true,
+    "ball_position_log_b": true,
+    "player_position_meters": true,
+    "player_yaw_radians": true,
+    "ball_position_meters": true,
+    "player_position_sigma_m": true,
+    "player_rotation_sigma_rad": true,
+    "ball_position_sigma_m": true,
+    "coverage": true,
+    "clip_id": true,
+    "camera_id": true
+  }
+}

@@ -1,0 +1,72 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789786079270814627_393657_slcs-pilot-no-ball-smooth-ball8-e60-takeover-v1 (commit=7621307bf292 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type            ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ SLCSFusionModel │  2.7 M │ train │     0 │
+│ 1 │ loss_fn │ SLCSLoss        │      0 │ train │     0 │
+└───┴─────────┴─────────────────┴────────┴───────┴───────┘
+Trainable params: 2.7 M                                                         
+Non-trainable params: 0                                                         
+Total params: 2.7 M                                                             
+Total estimated model params size (MB): 10.932                                  
+Modules in train mode: 230                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py:321: The number of training batches (6) is smaller than the logging interval Trainer(log_every_n_steps=20). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+`Trainer.fit` stopped: `max_epochs=60` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'test_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃             Test metric              ┃             DataLoader 0              ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ test/ball_position_accuracy_0.3m_ep… │                  0.0                  │
+│ test/ball_position_accuracy_0.5m_ep… │                  0.0                  │
+│ test/ball_position_accuracy_1.0m_ep… │          0.07784431427717209          │
+│ test/ball_position_accuracy_2.0m_ep… │          0.19760479032993317          │
+│ test/ball_position_conf_error_corr_… │          0.5252070426940918           │
+│      test/ball_position_error_m      │           4.916261196136475           │
+│   test/ball_position_error_m_epoch   │           4.916261196136475           │
+│ test/ball_position_error_median_m_e… │          4.2617950439453125           │
+│  test/ball_position_pred_b_m_epoch   │           2.438957691192627           │
+│              test/loss               │          0.18807202577590942          │
+│       test/loss_ball_position        │         0.040228646248579025          │
+│     test/loss_ball_position_nll      │          -0.6538038849830627          │
+│  test/loss_ball_position_smoothness  │          0.00979292020201683          │
+│     test/loss_ground_penetration     │                  0.0                  │
+│        test/loss_player_angle        │           0.400509238243103           │
+│      test/loss_player_position       │          0.01627114787697792          │
+│    test/loss_player_position_nll     │          -1.379234790802002           │
+│ test/loss_player_position_smoothness │         0.0033397984225302935         │
+│      test/loss_player_rotation       │           0.372335284948349           │
+│    test/loss_player_rotation_nll     │           1.162245512008667           │
+│ test/player_angle_accuracy_10deg_ep… │          0.0502283088862896           │
+│ test/player_angle_accuracy_15deg_ep… │          0.07990867644548416          │
+│ test/player_angle_accuracy_30deg_ep… │          0.26484018564224243          │
+│    test/player_angular_error_deg     │           47.33381271362305           │
+│ test/player_angular_error_deg_epoch  │           47.33382034301758           │
+│ test/player_angular_error_median_de… │          45.036285400390625           │
+│ test/player_position_accuracy_0.3m_… │                  0.0                  │
+│ test/player_position_accuracy_0.5m_… │         0.006849315017461777          │
+│ test/player_position_accuracy_1.0m_… │          0.09132420271635056          │
+│ test/player_position_accuracy_2.0m_… │          0.49771690368652344          │
+│ test/player_position_conf_error_cor… │          0.4720211625099182           │
+│     test/player_position_error_m     │           3.041473627090454           │
+│  test/player_position_error_m_epoch  │           3.041473865509033           │
+│ test/player_position_error_median_m… │           2.004761219024658           │
+│ test/player_position_pred_b_m_epoch  │           1.093590497970581           │
+│ test/player_rotation_conf_error_cor… │          -0.3613840639591217          │
+│ test/player_rotation_pred_b_deg_epo… │           23.83466148376465           │
+│  test/scene_position_error_m_epoch   │           3.978867530822754           │
+└──────────────────────────────────────┴───────────────────────────────────────┘
+Training complete. Outputs saved to /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth_ball8/s42-takeover-001

@@ -27,6 +27,10 @@ from src.tasks.slcs.data.annotation import (
     SLCSDataIndex,
     load_slcs_annotation,
 )
+from src.tasks.slcs.data.augmentation import (
+    ObservationAugmentationConfig,
+    augment_observations,
+)
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec, load_dino_tokens
 from src.tasks.slcs.data.quality import (
     QualityConfig,
@@ -63,6 +67,7 @@ class SLCSDataConfig:
     on_incomplete: Literal["error", "skip"]
     dino_spec: DinoTokenSpec
     quality: QualityConfig
+    augmentation: ObservationAugmentationConfig | None = None
 
     def __post_init__(self) -> None:
         if self.window_size <= 0:
@@ -173,6 +178,16 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
     player_position = np.asarray(scene.player_position, dtype=np.float32)
     player_yaw = np.asarray(scene.player_yaw, dtype=np.float32)
 
+    for name, visibility in (("human_kp_vis", human_kp_vis), ("court_vis", court_vis)):
+        if (
+            not np.isfinite(visibility).all()
+            or np.any(visibility < 0)
+            or np.any(visibility > 1)
+        ):
+            raise DatasetManifestError(
+                f"{clip_id}: {name} must contain finite values in [0, 1]."
+            )
+
     num_players = player_position.shape[0]
     if num_players != cfg.num_players:
         raise DatasetManifestError(
@@ -200,6 +215,7 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
         player_yaw=player_yaw,
         ball_3d=ball_3d,
         config=cfg.quality,
+        teacher_quality=scene.metadata.get("label_quality"),
     )
     order = _canonical_player_order(
         player_position, masks["player_label_valid"], clip_id=clip_id
@@ -345,11 +361,13 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
         split: str,
         config: SLCSDataConfig,
         stride: int,
+        augment: bool | None = None,
     ) -> None:
         if split not in ("train", "val", "test"):
             raise ValueError(f"split must be train/val/test, got {split!r}.")
         self.config = config
         self.split = split
+        self.apply_augmentation = split == "train" if augment is None else augment
         self.stride = int(stride)
         if self.stride <= 0:
             raise ValueError(f"stride must be positive, got {self.stride}.")
@@ -403,9 +421,10 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
             for e in self._entries
         ]
         # Sample identifiers, consumed by BaseLightningModule test-prediction saving.
-        self.scenes: list[str] = [
+        self.prediction_ids: list[str] = [
             f"{m.clip_id}@{m.camera_id}@{m.window_start:06d}" for m in self.metas
         ]
+        self.scenes = self.prediction_ids
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -475,13 +494,16 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
             if cfg.require_dino
             else None
         )
-        return build_window_sample(
+        sample = build_window_sample(
             clip,
             camera_index=entry.camera_index,
             plan=entry.plan,
             dino_arrays=dino_arrays,
             empty_dino_shape=(spec.num_tokens, spec.embed_dim),
         )
+        if self.apply_augmentation and cfg.augmentation is not None:
+            return augment_observations(sample, cfg.augmentation)
+        return sample
 
 
 def collate_slcs(samples: list[SLCSSample]) -> dict[str, torch.Tensor]:

@@ -1,0 +1,101 @@
+{
+  "reviewer": "parent_codex",
+  "reviewed_sheets": 6,
+  "unique_frame_views": 18,
+  "variant_frame_overlays": 54,
+  "image_receipts": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001/video_000/clip_000/cam0/contact_sheet.jpg",
+      "dual_sha256": "68b910df383cf60433e4cfc05ee32c985c719ed3adda8a5cc096526c6940eb58"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001/video_000/clip_000/cam1/contact_sheet.jpg",
+      "dual_sha256": "5731b2241843e54c8b033e4b346e903feab850b1d461be0cf3aea4dc89edd5b3"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001/video_001/clip_003/cam0/contact_sheet.jpg",
+      "dual_sha256": "04c51a1c37655e309824bcd4851050f07af4f30701d331fa5ca521ce1a61e1aa"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001/video_001/clip_003/cam1/contact_sheet.jpg",
+      "dual_sha256": "b1158fe87b22754c612d719bc6c549343e2f58543f902c286e8b4882d807f0f2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001/video_002/clip_017/cam0/contact_sheet.jpg",
+      "dual_sha256": "5688d62cf90ce9c1b2402f885f99ba9f2ddeef73aa11ce52aaf0636e7d09eeb3"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/meiji_court_crop_probe/s42-001/video_002/clip_017/cam1/contact_sheet.jpg",
+      "dual_sha256": "e6c577943857a39efb330c4662e0bc03fbaab3a081556d3a2cb39523b71e120a"
+    }
+  ],
+  "fixed_pixel_reference": "knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/visual_review.json",
+  "fixed_pixel_reference_sha256": "fa592588749ce27d0929fd18360925a1cc1ab005ef934d300962e4905690818e",
+  "pixel_comparison": [
+    {
+      "variant": "A_margin025",
+      "vertical_differences_px": [
+        22.97402302613159,
+        24.831249785699242,
+        26.688476545266894,
+        22.71724757698405,
+        24.672433619924846,
+        26.627619662865754,
+        22.572385917031625,
+        24.52694617680652,
+        26.481506436581526
+      ],
+      "mean": 24.676876527476892,
+      "min": 22.572385917031625,
+      "max": 26.688476545266894,
+      "max_abs": 26.688476545266894
+    },
+    {
+      "variant": "B_margin050",
+      "vertical_differences_px": [
+        -3.004237376726678,
+        -2.242398914452565,
+        -1.4805604521784517,
+        -3.261012825874218,
+        -2.4012150802269616,
+        -1.5414173345795916,
+        -3.4058744858266436,
+        -2.5467025233452887,
+        -1.68753056086382
+      ],
+      "mean": -2.396772172674913,
+      "min": -3.4058744858266436,
+      "max": -1.4805604521784517,
+      "max_abs": 3.4058744858266436
+    },
+    {
+      "variant": "C_savedH_union20",
+      "vertical_differences_px": [
+        -1.1056499917885958,
+        -0.5250661702725665,
+        0.05551765124346275,
+        -1.3624254409361356,
+        -0.6838823360469632,
+        -0.0053392311576772045,
+        -1.5072871008885613,
+        -0.8293697791652903,
+        -0.1514524574419056
+      ],
+      "mean": -0.6794394284949148,
+      "min": -1.5072871008885613,
+      "max": 0.05551765124346275,
+      "max_abs": 1.5072871008885613
+    }
+  ],
+  "candidate": "C_savedH_union20",
+  "status": "candidate_for_production_equivalence_test",
+  "findings": {
+    "video_000/cam0": "C reduces manual mean and p95; B improves p95 further but worsens median. C chosen as uniform rule across views.",
+    "video_000/cam1": "C improves manual mean and p95 while median rises from 4.66 to 6.49px.",
+    "video_001/cam0": "B rejected with unchanged support threshold; C returns all14 inliers. Reviewed C line overlay is consistent with the visible target court at sparse sampled frames.",
+    "video_001/cam1": "B loses near-baseline inliers and visibly moves left baseline corner. C retains one near inlier and reviewed line overlay; no independent manual GT.",
+    "video_002/cam0": "C restores three near-baseline inliers and agrees with the fixed local white-band reference within 1.51px in nine samples.",
+    "video_002/cam1": "C restores two near-baseline inliers and improves left baseline alignment visually; no independent manual GT."
+  },
+  "limitations": "The pixel reference is local and AI-reviewed, not human GT or measured 3D. Frame review is sparse; scores include rejected RANSAC channels. No test-label model selection occurred; court cropping calibrates observations without altering teacher/model weights. Candidate is not yet adopted into a finished dataset."
+}

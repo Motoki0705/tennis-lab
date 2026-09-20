@@ -1,0 +1,24 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+source_datasets:
+- slcs/meiji_rgb_v9
+- slcs/broadcast_rgb_v4
+dataset_directory: slcs/real_rgb_v1
+dataset_id: real_rgb_v1
+clip_ids: null
+seed: 42
+video_splits:
+  video_000: train
+  video_001: val
+  video_002: test
+  broadcast_shanghai: train
+  broadcast_washington: train
+  broadcast_indoor_hard: val
+  broadcast_eastbourne: test
+output_dir: tennis_scene/generate/assemble_real_rgb/s42-takeover-001

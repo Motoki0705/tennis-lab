@@ -1,0 +1,171 @@
+{
+  "metrics": {
+    "test/loss": 0.0350009985268116,
+    "test/position_error_m": 0.2452688217163086,
+    "test/angular_error_deg": 5.331236362457275,
+    "test/position_accuracy_0.5m": 0.9361119866371155,
+    "test/angle_accuracy_15deg": 0.9721306562423706,
+    "test/canonical_mpjpe_m": 0.14431358873844147,
+    "test/canonical_pck_0.1m": 0.41026803851127625
+  },
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+  "checkpoint_sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+  "precision": "32-true",
+  "terminal_precision": "bf16-mixed",
+  "bundle_alignment": {
+    "target_position": {
+      "terminal_shape": [
+        200,
+        128,
+        3
+      ],
+      "selected_shape": [
+        200,
+        128,
+        3
+      ],
+      "exact_match": true
+    },
+    "target_rotation": {
+      "terminal_shape": [
+        200,
+        128,
+        2
+      ],
+      "selected_shape": [
+        200,
+        128,
+        2
+      ],
+      "exact_match": true
+    },
+    "padding_mask": {
+      "terminal_shape": [
+        200,
+        128
+      ],
+      "selected_shape": [
+        200,
+        128
+      ],
+      "exact_match": true
+    },
+    "target_canonical_pose": {
+      "terminal_shape": [
+        200,
+        128,
+        17,
+        3
+      ],
+      "selected_shape": [
+        200,
+        128,
+        17,
+        3
+      ],
+      "exact_match": true
+    },
+    "target_frame_contract": {
+      "terminal_shape": [
+        200
+      ],
+      "selected_shape": [
+        200
+      ],
+      "exact_match": true
+    },
+    "scene_ids": {
+      "terminal_shape": [
+        200
+      ],
+      "selected_shape": [
+        200
+      ],
+      "exact_match": true
+    },
+    "reference_view_index": {
+      "terminal_shape": [
+        200
+      ],
+      "selected_shape": [
+        200
+      ],
+      "exact_match": true
+    },
+    "view_camera_ids": {
+      "terminal_shape": [
+        200,
+        3
+      ],
+      "selected_shape": [
+        200,
+        3
+      ],
+      "exact_match": true
+    },
+    "reference_camera_id": {
+      "terminal_shape": [
+        200
+      ],
+      "selected_shape": [
+        200
+      ],
+      "exact_match": true
+    },
+    "reference_camera_id_string": {
+      "terminal_shape": [
+        200
+      ],
+      "selected_shape": [
+        200
+      ],
+      "exact_match": true
+    },
+    "view_camera_id_strings": {
+      "terminal_shape": [
+        200,
+        3
+      ],
+      "selected_shape": [
+        200,
+        3
+      ],
+      "exact_match": true
+    },
+    "reference_from_physical": {
+      "terminal_shape": [
+        200,
+        3,
+        3
+      ],
+      "selected_shape": [
+        200,
+        3,
+        3
+      ],
+      "exact_match": true
+    },
+    "physical_from_reference": {
+      "terminal_shape": [
+        200,
+        3,
+        3
+      ],
+      "selected_shape": [
+        200,
+        3,
+        3
+      ],
+      "exact_match": true
+    }
+  },
+  "terminal_bundle_sha256": "0f6565c2afe4b7bff787a2a933b0a4efa8cf3dda9751a237b309808bd87192a3",
+  "selected_bundle_sha256": "729867d4480c452a8754a1f15fec76c78983cea5ab716d437b675e3880cf1af6",
+  "interpretation": "Synthetic source-motion-disjoint target agreement; not independent measured 3D accuracy. Test not used for checkpoint selection.",
+  "dataset_artifacts_sha256": {
+    "test.txt": "415a9d6635b3df4bf87641251ee850c75ee0c412cd8f70cd7f3588567098498e",
+    "split_info.json": "73615616aeb8d02cb9bdd5c4818b230c51bf5395d81df9e620b222159cc81e05",
+    "dataset_version.json": "0f53d1c7f425a8e24c66a9f811c092f05f51d23a817f16f553ca3394549e29b1",
+    "config.yaml": "1359edf796bc795ae6d8c14b9362e0494272e5a2b25cb76fe69a27454517f94a"
+  }
+}

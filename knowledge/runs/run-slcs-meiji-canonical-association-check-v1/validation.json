@@ -1,0 +1,12 @@
+{
+  "ruff_check": "passed",
+  "ruff_format": "passed",
+  "mypy_follow_imports_silent": "passed; no issues found in 1 source file",
+  "kg_curves": "0 written, 1 skipped; no event dir matched metrics or path hints",
+  "kg_validate": "250 nodes (222 run, 28 group); 0 errors, 90 advisory warnings (missing issue)",
+  "production_probe": "single exclusive-output run; exit 0; no retries",
+  "numerical_checks": "10 clips: exact full array equality, shapes/finite, expected per-camera raw index order; 3 historical raw count and NPZ hash comparisons passed",
+  "source_checks": "60 file pre/post dual_sha256 matches; production source identical to execution commit; saved probe hash equals executed probe",
+  "validator_evaluations": 0,
+  "reproduction_patch": "git read-tree execution commit in temporary index; git apply --cached --check and apply succeeded; executed probe and required review-v4 input snapshot restored byte-for-byte"
+}

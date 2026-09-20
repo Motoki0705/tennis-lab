@@ -27,7 +27,7 @@ run:
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/extract_gvhmr_motions}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:plcs,generate,extract_gvhmr_motions,${tennis_run_id:}},hydra}
   output_subdir: .hydra
   job:
     chdir: false

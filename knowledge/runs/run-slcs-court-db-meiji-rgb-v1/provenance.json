@@ -1,0 +1,173 @@
+{
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/clip.json": {
+    "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138",
+    "size": 1730
+  },
+  "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_000/court.npz": {
+    "sha256": "6f619c095c2344f99578972eb9e4668490785129caa389d67b5467026f6394a0",
+    "size": 2201
+  },
+  "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_000/court.json": {
+    "sha256": "a917baaffc7e54d3e742dd51f6000a26443d0b4edddeacc4e2f8e5f6bb146e3b",
+    "size": 4199
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4": {
+    "size": 11850811,
+    "mtime_ns": 1783986150139353670
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4": {
+    "size": 19479451,
+    "mtime_ns": 1783986193305373964
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4": {
+    "size": 19787313,
+    "mtime_ns": 1783986233424260400
+  },
+  "video_000/clip_000/cache_identity": {
+    "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "clip_sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138",
+    "video_sha256": {
+      "cam0": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+      "cam1": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+      "cam2": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+    },
+    "ball_annotation_sha256": {
+      "cam0": "d87f2f100afb82badd555b3cfb3b9d2a1015cfe40a06af7b51a9001c0c2f2979",
+      "cam1": "6f7b89b591ae6bbc097317e78b8c43384b78eef52f2070d9a67b17dd916a2cc0",
+      "cam2": "c624cc007c068a8ada161bad0aa9e4ba2e266219a8f7c83ef1a05a1e9930b3e1"
+    },
+    "settings": {
+      "checkpoint": "court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt",
+      "samples_per_clip": 9,
+      "min_score": 0.15,
+      "min_points": 10,
+      "ransac_px": 20.0,
+      "max_fit_error_px": 15.0,
+      "ball_crop_margins": {
+        "cam0": 0.25,
+        "cam1": 0.25,
+        "cam2": null
+      },
+      "crop_refinement_padding_px": 20.0
+    }
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/clip.json": {
+    "sha256": "e0d2d5cf08ae13bc90fe90cbee8f553c2cc70758afe0f77bfb598e1be18cee33",
+    "size": 1696
+  },
+  "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_001/clip_003/court.npz": {
+    "sha256": "49561c08530091e10db04e500c8613b880d7227b003b9dcb568c1567a943ad4e",
+    "size": 2881
+  },
+  "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_001/clip_003/court.json": {
+    "sha256": "9d6ceeb27ab8873a56d621b952943b0a0648759ec4b53909c934d325de070c0e",
+    "size": 4230
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam0.mp4": {
+    "size": 17942605,
+    "mtime_ns": 1789017237386642307
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam1.mp4": {
+    "size": 29356075,
+    "mtime_ns": 1789017307486452216
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/media/cam2.mp4": {
+    "size": 33573391,
+    "mtime_ns": 1789017380946154790
+  },
+  "video_001/clip_003/cache_identity": {
+    "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "clip_sha256": "e0d2d5cf08ae13bc90fe90cbee8f553c2cc70758afe0f77bfb598e1be18cee33",
+    "video_sha256": {
+      "cam0": "b0b39721ddafc8d8f213248ab4ed8b760a6b045c362a64a248000059b1ed3347",
+      "cam1": "62fde482261753e703f70b6a99890dea04c667ca533c818975bf1f115bd49039",
+      "cam2": "e153e8b1346c76bf840d6eb0ed5a5fc18852c5f0018b3c47a0f8632f55ac489b"
+    },
+    "ball_annotation_sha256": {
+      "cam0": "fc4634e220f5f32f1cf27c0a4c2d3c9dc138036a360e4750a86050f52e14d991",
+      "cam1": "62d4c1041986ee189a1a3c4c637885a3eda6aef78940cd4a610c9949128a20d0",
+      "cam2": "f26d84fa4f1e6249b2d2d2bdc50a4d9d6c4c01157a92e63650d4bde0ee4add7f"
+    },
+    "settings": {
+      "checkpoint": "court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt",
+      "samples_per_clip": 9,
+      "min_score": 0.15,
+      "min_points": 10,
+      "ransac_px": 20.0,
+      "max_fit_error_px": 15.0,
+      "ball_crop_margins": {
+        "cam0": 0.25,
+        "cam1": 0.25,
+        "cam2": null
+      },
+      "crop_refinement_padding_px": 20.0
+    }
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/clip.json": {
+    "sha256": "8e512609371a04f7a965e59c3c5b4234dfd2035a7af97267bfd2f249a1475bd9",
+    "size": 1748
+  },
+  "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_002/clip_017/court.npz": {
+    "sha256": "70bdbde41446b16b92d28d3fd9798097f6aa33069ce4980288998dbaa195661d",
+    "size": 2085
+  },
+  "outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_002/clip_017/court.json": {
+    "sha256": "4241dad3e39bf51b96d5bf2e7879dc16855eb97a01de84f40c4c6655c8bcb5a9",
+    "size": 4233
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam0.mp4": {
+    "size": 11961843,
+    "mtime_ns": 1789127485483652465
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam1.mp4": {
+    "size": 17181312,
+    "mtime_ns": 1789127540187650692
+  },
+  "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_017/media/cam2.mp4": {
+    "size": 19905234,
+    "mtime_ns": 1789127592127650681
+  },
+  "video_002/clip_017/cache_identity": {
+    "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "clip_sha256": "8e512609371a04f7a965e59c3c5b4234dfd2035a7af97267bfd2f249a1475bd9",
+    "video_sha256": {
+      "cam0": "273951307f6499abb8a1168746b407a84b8db6d056492f9b7249768de827f7a1",
+      "cam1": "918024125f31410c4fab3452512b881584dc470bf460d36f60414f16ae209fd4",
+      "cam2": "a3c0e779c3fcd8ae4f3ebbeea70f4714c3b15e833b3643009aa753fe6a01e105"
+    },
+    "ball_annotation_sha256": {
+      "cam0": "8b9e0d60eb7e1c277ac58b0dea5758445e08064ed0d273a577718aec78c64e23",
+      "cam1": "b98871a82730ac7ac35e815ac46fe54e0800c6393ac74773025deb3f90de1f2d",
+      "cam2": "d47bb658a0ed4ef6a5afadcbac9471514ee48b7bdb35e9e832e54baa4c4a728f"
+    },
+    "settings": {
+      "checkpoint": "court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt",
+      "samples_per_clip": 9,
+      "min_score": 0.15,
+      "min_points": 10,
+      "ransac_px": 20.0,
+      "max_fit_error_px": 15.0,
+      "ball_crop_margins": {
+        "cam0": 0.25,
+        "cam1": 0.25,
+        "cam2": null
+      },
+      "crop_refinement_padding_px": 20.0
+    }
+  },
+  "knowledge/runs/run-slcs-court-db-meiji-rgb-v1/probe.py": {
+    "sha256": "85a38b69f71fbd8b913040dad9483465d1b1c7be86c4d4aa1386a3ccb16f0e31"
+  },
+  "knowledge/runs/run-slcs-court-db-meiji-rgb-v1/repro.sh": {
+    "sha256": "3753fa30d5503c2b3f4facfb000b820258756867688eb7f6a33714de9208e928"
+  },
+  "knowledge/runs/run-slcs-court-db-meiji-rgb-v1/summarize.py": {
+    "sha256": "1676fd5e7fd3eba7a085f06e7f800af3c1c819f1334c650815914329a3d2e0ed"
+  },
+  "src/synthetic_data_generation/court_calibration/database.py": {
+    "sha256": "71fa8316dd9e82cd53f49bd897fc23fc9d711d5cbc311d0895e485f24ec2182f"
+  },
+  "src/synthetic_data_generation/court_calibration/matching.py": {
+    "sha256": "22e23ea958bb8ce5f6d0f21006747f94ee043daf663493030b0121ef224ba4bf"
+  }
+}

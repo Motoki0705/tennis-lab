@@ -1,0 +1,15 @@
+{
+  "exit_code": 1,
+  "stage": "verify_checkpoint_integrity before dataset preparation",
+  "published_clips": 0,
+  "path": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+  "expected_sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+  "observed_sha256": "78ef9815c8752c8d262cb2340a72c3c46ef53723ae2252d3c9d17bf20ce9f9ca",
+  "source_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3/checkpoints/plcs-epoch=57.ckpt",
+  "source_sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+  "verified_recovery_copy": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.restore-20260919.ckpt",
+  "verified_recovery_sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+  "source_size_bytes": 940592845,
+  "pin_changed": false,
+  "checkpoint_warning_roles_extended": false
+}

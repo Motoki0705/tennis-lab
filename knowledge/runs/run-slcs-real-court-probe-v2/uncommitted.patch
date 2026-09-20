@@ -1,0 +1,2829 @@
+diff --git a/README.md b/README.md
+index d38b2455..64963b45 100644
+--- a/README.md
++++ b/README.md
+@@ -104,6 +104,8 @@ Video
+ 
+ ### ディレクトリの役割
+ 
++学習・データ生成・可視化と実験ごとのパス設定は [タスク出力規約](src/tasks/OUTPUTS.md) を参照。
++
+ - `src/`: タスク実装（各タスクは `configs/` + `scripts/` + `training/` などを持つ）
+ - `third_party/`: 外部モジュール（例: GVHMR）。vendor codeは隔離
+ - `data/`: データセット/入力（大きなデータやモデルはコミットしない）
+diff --git a/scripts/analysis/meiji_court_probe.py b/scripts/analysis/meiji_court_probe.py
+new file mode 100644
+index 00000000..e8b5989e
+--- /dev/null
++++ b/scripts/analysis/meiji_court_probe.py
+@@ -0,0 +1,116 @@
++"""Compare configured Court checkpoints/ball-guided crops on a labelled clip.
++
++Manual court annotations are evaluation targets only. Crop proposals use only
++outsourced observed ball centres, never court labels. Run through training queue.
++"""
++from __future__ import annotations
++
++import argparse
++import json
++from dataclasses import replace
++from pathlib import Path
++
++import cv2
++import numpy as np
++import torch
++from hydra import compose, initialize_config_dir
++from omegaconf import OmegaConf
++
++from src.tasks.court_detection.geometry.pose import (
++    canonical_semantic_court_points_batched,
++    project_predicted_canonical_points,
++)
++from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
++from src.tasks.court_detection.model_io.images import prepare_court_input
++from src.tennis_scene.dataset_pipeline.configuration import DatasetBuildConfig
++from src.tennis_scene.dataset_pipeline.court import fit_static_court
++from src.tennis_scene.generate_dataset.manifest import ClipManifest
++from src.tennis_scene.reference_pipeline.observations import court_homographies
++from src.utils.configuration import PathResolver
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--config', type=Path, required=True)
++    args = parser.parse_args()
++    spec = OmegaConf.load(args.config)
++    config_directory = Path(__file__).resolve().parents[2] / 'src/tennis_scene/configs'
++    with initialize_config_dir(config_dir=str(config_directory), version_base=None):
++        cfg = compose(config_name='build_slcs_dataset', overrides=list(spec.overrides))
++    runtime = DatasetBuildConfig.from_config(cfg)
++    runtime.output.mkdir(parents=True, exist_ok=False)
++    OmegaConf.save(spec, runtime.output / 'probe_config.yaml', resolve=True)
++    OmegaConf.save(cfg, runtime.output / 'build_config.yaml', resolve=True)
++    clip_dir = runtime.source / 'videos' / runtime.clip_ids[0].replace('/', '/clips/', 1)
++    clip = ClipManifest.load(clip_dir)
++    targets, _ = court_homographies(clip_dir)
++    pixels = np.asarray([clip.width, clip.height])
++    frames = {}
++    rois = {}
++    indices = np.unique(np.linspace(0, clip.num_frames - 1, int(spec.samples)).round().astype(int))
++    for camera in clip.camera_ids:
++        cap = cv2.VideoCapture(str(clip.media_path(camera)))
++        frames[camera] = []
++        for index in indices:
++            cap.set(cv2.CAP_PROP_POS_FRAMES, int(index))
++            ok, image = cap.read()
++            if not ok:
++                raise ValueError(f'Cannot read {camera}:{index}')
++            frames[camera].append(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
++        cap.release()
++        source = json.loads((clip_dir / 'outsource' / f'{camera}_annotations.json').read_text())
++        points = np.asarray([[item['center_px']['x'], item['center_px']['y']] for item in source['frames'] if item['status'] == 'observed'])
++        low, high = np.percentile(points, [1, 99], axis=0)
++        span = high - low
++        rois[camera] = {'full': (0, 0, clip.width, clip.height)}
++        for margin in spec.margins:
++            start = np.maximum(0, np.floor(low - float(margin) * span)).astype(int)
++            end = np.minimum(pixels, np.ceil(high + float(margin) * span)).astype(int)
++            rois[camera][f'ball_context_{margin}'] = (*start, *end)
++    rows = []
++    resolver = PathResolver(replace(runtime.resolver.roots, checkpoint_root=runtime.resolver.roots.output_root))
++    for checkpoint_index, checkpoint in enumerate(spec.checkpoints):
++        predictor = CourtKeypointPredictor.load_from_checkpoint(checkpoint, resolver=resolver, device=str(cfg.device), subpixel_refine=True, peak_threshold=runtime.court.min_score)
++        for view, camera in enumerate(clip.camera_ids):
++            for variant, (x0, y0, x1, y1) in rois[camera].items():
++                raw, scores, projected_poses = [], [], []
++                for image in frames[camera]:
++                    crop = image[y0:y1, x0:x1]
++                    prediction = predictor.predict(crop)
++                    raw.append(prediction.keypoints[:, 0].cpu().numpy() + [x0, y0])
++                    scores.append(prediction.scores[:, 0].cpu().numpy())
++                    prepared = prepare_court_input(crop, spec=predictor.adapter.spec, device=predictor.device)
++                    images = prepared.images
++                    with torch.no_grad():
++                        call = predictor.adapter.prepare_images(images)
++                        output = predictor.model(*call.model_args)
++                        if getattr(output, 'pose', None) is not None:
++                            decoded = predictor.adapter.decode_output(output)
++                            points = canonical_semantic_court_points_batched(torch.arange(14, device=predictor.device)[None])
++                            ih, iw = images.shape[-2:]
++                            projection = project_predicted_canonical_points(decoded.pose, points, points.new_tensor([[iw / 2, ih / 2]]))
++                            projected_poses.append(projection.points_xy[0].cpu().numpy() * prepared.source_from_model_xy + [x0, y0])
++                raw, scores = np.asarray(raw), np.asarray(scores)
++                row = dict(checkpoint=str(checkpoint), camera=camera, variant=variant, roi=[int(x) for x in (x0, y0, x1, y1)])
++                errors = np.linalg.norm(raw - targets[view, :1] * pixels, axis=-1)
++                supported = scores >= runtime.court.min_score
++                row.update(raw_error_px_median=float(np.median(errors[supported])), detected_fraction=float(supported.mean()))
++                if projected_poses:
++                    row['pose_error_px_median'] = float(np.median(np.linalg.norm(np.asarray(projected_poses) - targets[view, :1] * pixels, axis=-1)))
++                try:
++                    fitted, _, diagnostic = fit_static_court(raw, scores, size=(clip.width, clip.height), settings=runtime.court)
++                    fitted_errors = np.linalg.norm((fitted - targets[view, 0]) * pixels, axis=-1)
++                    row.update(fit_error_to_manual_px_median=float(np.median(fitted_errors)), fit_error_to_manual_px_max=float(np.max(fitted_errors)), **diagnostic)
++                except ValueError as error:
++                    row['rejected'] = str(error)
++                prefix = f'{checkpoint_index}_{camera}_{variant}'
++                np.savez_compressed(runtime.output / f'{prefix}.npz', keypoints_px=raw, scores=scores, pose_px=projected_poses, target_px=targets[view, 0] * pixels, indices=indices)
++                rows.append(row)
++                (runtime.output / 'metrics.json').write_text(json.dumps(rows, indent=2))
++                print(json.dumps(row), flush=True)
++        del predictor
++        torch.cuda.empty_cache()
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/scripts/analysis/meiji_court_probe.yaml b/scripts/analysis/meiji_court_probe.yaml
+new file mode 100644
+index 00000000..e53429f0
+--- /dev/null
++++ b/scripts/analysis/meiji_court_probe.yaml
+@@ -0,0 +1,10 @@
++overrides:
++  - clip_ids=[video_000/clip_000]
++  - paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party
++  - output_dir=tennis_scene/evaluate/court_meiji/probe-v2-validation-geometry
++samples: 3
++margins: [0.1, 0.25]
++checkpoints:
++  - court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
++  - court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1/logs/version_0/checkpoints/court-detection-epoch=17.ckpt
++  - court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0/checkpoints/court-detection-epoch=05.ckpt
+diff --git a/src/tasks/OUTPUTS.md b/src/tasks/OUTPUTS.md
+new file mode 100644
+index 00000000..462d5256
+--- /dev/null
++++ b/src/tasks/OUTPUTS.md
+@@ -0,0 +1,95 @@
++# タスクの出力パス
++
++この文書を `src/tasks` の学習・生成・評価・可視化の配置規約の正本とする。
++パスのroot検証は `src/utils/configuration/paths.py`、名前の組み立ては
++`src/utils/configuration/output_layout.py` が所有する。
++
++## 実験とデータの配置
++
++| 種類 | 設定するroot | root相対の配置 |
++|---|---|---|
++| 学習 | `paths.output_root` | `<task>/train/<experiment>/<run-id>/` |
++| 定量評価 | `paths.output_root` | `<task>/evaluate/<experiment>/<run-id>/` |
++| 可視化・preview | `paths.artifact_root` または `paths.output_root` | `<task>/visualize/<experiment>/<run-id>/` |
++| 分布・予測解析 | `paths.output_root` | `<task>/analyze/<experiment>/<run-id>/` |
++| 生成処理のログ | `paths.output_root` | `<task>/generate/<recipe>/<run-id>/hydra/` |
++| 特徴抽出のログ | `paths.output_root` | `<task>/precompute/<recipe>/<run-id>/hydra/` |
++| BLCS/PLCS合成データ | `paths.data_root` | `<task>/<dataset-version>/` |
++| 抽出モーション | `paths.data_root` | `plcs/motions/<source>/<collection-version>/` |
++| 実クリップの教師データ・RGB特徴 | `paths.data_root` | `<dataset-version>/<manifestで指定したclip>/annotations/<producer>/` |
++
++各タスクの既定 `output_root` と `artifact_root` はともに `outputs`。
++README掲載用に選別した成果物だけを `assets` へ公開する。
++入力データ・配布checkpoint・外部モデルのrootは用途ごとの `paths` 設定を使う。
++別rootの入力を使うときは対応するrootを明示し、相対fragmentへ `data/`、
++`outputs/`、`ckpt/` を重ねて書かない。絶対パスはrootに設定する。
++
++学習runの内部構造は全タスク共通である。
++
++```text
++outputs/<task>/train/<experiment>/<run-id>/
++  config.yaml                      # 解決済み設定・絶対root・固定run-id
++  hydra/                           # CLIログ
++  logs/version_0/                   # TensorBoard（resume時は次のversion）
++    checkpoints/                   # validationで選んだckpt、last.ckpt
++    qualitative/epoch_XXXX/         # validation可視化
++    repro/output_dir.txt           # queue外実行のcheckpoint位置
++  predictions/
++    pred_test.npz
++    metrics.json
++    diagnostic_metrics.json
++```
++
++queue実行は予測を共有queueの `repro/<job-id>/predictions/` にも保存する。
++実験登録時に `knowledge-control` が再現情報・評価を `knowledge/runs/` へ昇格する。
++queue・checkpoint削除規約は training-queue スキルを参照する。
++各worktreeは元repoのqueueを共有する。
++
++## 新しい実験の設定
++
++通常の設定は次のresolverで名前を組み立てる。
++
++```yaml
++run:
++  output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
++```
++
++`tennis_run_id` はUTC時刻とランダムsuffixからなり、一つの合成設定内で固定される。
++task・用途・実験名・run-idはそれぞれ一つのpath component。`/`、空文字、
++親への移動は許可しない。`tennis_dataset:<task>,<version>` は日時を加えない。
++生成データは後の学習から安定して参照する必要があるため、意味のある版名で固定する。
++
++新しい施策にはタスクの `configs/train_<experiment>.yaml` で既存設定を継承し、
++変える条件と名前だけを記述する。例えば:
++
++```yaml
++defaults:
++  - train
++  - _self_
++run:
++  seed: 42
++  output_dir: ${tennis_output:slcs,train,meiji_rgb_v1,s42-001}
++training:
++  trainer:
++    max_epochs: 60
++```
++
++実験名はデータ・施策の比較単位、run-idはseed・試行の識別子とする。
++異なる設定・seedの実行には新しいrun-idを割り当てる。
++CLIで指定する場合も `run.output_dir=slcs/train/meiji_rgb_v1/s43-001` の同じ階層を守る。
++可視化は `visualization.save`、previewは `preview.output_dir`、評価は
++`evaluate.output_dir` / `evaluation.output_dir` / `run.output_dir` の各入口で同じ規約を使う。
++ファイル出力にはこの階層の下に `scene.gif` 等のファイル名を付ける。
++`--cfg job --resolve` で実行前に確認できる。
++
++新規学習は既存の `config.yaml` があるrunへ書き込めない。
++継続学習は `run.resume` と既存の `run.output_dir` を明示する。
++別施策への重み継承は、新しいrun-idと `run.init_weights` を指定する。
++staged ball trainingは `train/staged/phase1`〜`phase4` を明示的なrun-idとして使い、
++前phaseのcheckpointを次phaseが参照する。別のstaged実験では4つの出力と入力参照を
++同じ新しい実験名に揃える。
++
++データ内容・split・座標契約・教師checkpoint・生成seedを変える場合は新しい
++dataset-versionを作る。再開は同一設定・入力hashを照合し、完成マーカーを最後に書く。
++配布元データや過去の結果を新規runの都合で改名・移動しない。
++旧成果物の利用は入力rootと旧相対パスを明示する。
+diff --git a/src/tasks/ball_detection/README.md b/src/tasks/ball_detection/README.md
+index 8248c006..cf6ac24f 100644
+--- a/src/tasks/ball_detection/README.md
++++ b/src/tasks/ball_detection/README.md
+@@ -1,5 +1,7 @@
+ # Ball Detection
+ 
++出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
++
+ `src/tasks/ball_detection` は、RGBフレーム列から各フレーム内のテニスボール位置を推定するタスク実装です。モデル定義・データ取り込み(TrackNet/YouTube/Web統合ストア)・学習・推論・評価・可視化・データセット生成までを一貫して提供します。
+ 
+ ## Modules
+diff --git a/src/tasks/ball_detection/configs/analyze_web_bbox_ratio.yaml b/src/tasks/ball_detection/configs/analyze_web_bbox_ratio.yaml
+index 775bd52f..7a767056 100644
+--- a/src/tasks/ball_detection/configs/analyze_web_bbox_ratio.yaml
++++ b/src/tasks/ball_detection/configs/analyze_web_bbox_ratio.yaml
+@@ -6,7 +6,7 @@
+ #   python -m src.tasks.ball_detection.scripts.analyze_web_bbox_ratio analyze.samples_per_bin=64
+ analyze:
+   web_root: tennis/web
+-  output_dir: web_bbox_ratio_sweep
++  output_dir: ${tennis_output:ball_detection,analyze,web_bbox_ratio,${tennis_run_id:}}
+ 
+   # Which bbox-bearing sources to analyze. The temporal point-only sources
+   # (racketvision, kaggle) carry no bbox and are skipped by construction.
+@@ -32,7 +32,7 @@ analyze:
+   jpeg_quality: 90
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${analyze.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${analyze.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/annotate_youtube_ball.yaml b/src/tasks/ball_detection/configs/annotate_youtube_ball.yaml
+index b42003e8..385b645d 100644
+--- a/src/tasks/ball_detection/configs/annotate_youtube_ball.yaml
++++ b/src/tasks/ball_detection/configs/annotate_youtube_ball.yaml
+@@ -1,6 +1,6 @@
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/annotate_youtube_ball,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,annotate_youtube_ball,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/clip_and_predict_youtube_dataset.yaml b/src/tasks/ball_detection/configs/clip_and_predict_youtube_dataset.yaml
+index 733e04f0..abcbc8b6 100644
+--- a/src/tasks/ball_detection/configs/clip_and_predict_youtube_dataset.yaml
++++ b/src/tasks/ball_detection/configs/clip_and_predict_youtube_dataset.yaml
+@@ -1,6 +1,6 @@
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/clip_and_predict_youtube_dataset,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,clip_and_predict_youtube_dataset,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/convert_web_dataset.yaml b/src/tasks/ball_detection/configs/convert_web_dataset.yaml
+index 5f483f62..ea3d3bd9 100644
+--- a/src/tasks/ball_detection/configs/convert_web_dataset.yaml
++++ b/src/tasks/ball_detection/configs/convert_web_dataset.yaml
+@@ -41,7 +41,7 @@ convert:
+     ball_yolo: true
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/convert_web_dataset,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,convert_web_dataset,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/eval.yaml b/src/tasks/ball_detection/configs/eval.yaml
+index 35189bb7..684347a4 100644
+--- a/src/tasks/ball_detection/configs/eval.yaml
++++ b/src/tasks/ball_detection/configs/eval.yaml
+@@ -17,7 +17,7 @@ evaluation:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/evaluation/3dgs_blcs_real_v1.yaml b/src/tasks/ball_detection/configs/evaluation/3dgs_blcs_real_v1.yaml
+index f51ddd71..0e387e63 100644
+--- a/src/tasks/ball_detection/configs/evaluation/3dgs_blcs_real_v1.yaml
++++ b/src/tasks/ball_detection/configs/evaluation/3dgs_blcs_real_v1.yaml
+@@ -1,5 +1,5 @@
+ schema: ball_detection_evaluation_manifest_v1
+-output_dir: ball_detection/3dgs_blcs/evaluation_real_v1
++output_dir: ${tennis_output:ball_detection,evaluate,3dgs_blcs_real_v1,${tennis_run_id:}}
+ device: auto
+ resume: true
+ fail_fast: true
+diff --git a/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml b/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+index 30f5a87d..622831f4 100644
+--- a/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
++++ b/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+@@ -1,6 +1,6 @@
+ schema: ball_detection_evaluation_manifest_v1
+ # evaluation/ holds pre-#618 legacy-protocol results; keep them separate.
+-output_dir: ball_detection/evaluation_native
++output_dir: ${tennis_output:ball_detection,evaluate,detector_comparison,${tennis_run_id:}}
+ device: auto
+ resume: true
+ fail_fast: false
+diff --git a/src/tasks/ball_detection/configs/paths/default.yaml b/src/tasks/ball_detection/configs/paths/default.yaml
+index 2be5e7b4..0d720687 100644
+--- a/src/tasks/ball_detection/configs/paths/default.yaml
++++ b/src/tasks/ball_detection/configs/paths/default.yaml
+@@ -1,7 +1,7 @@
+ project_root: .
+ data_root: data
+ checkpoint_root: outputs
+-artifact_root: assets
++artifact_root: outputs
+ output_root: outputs
+ cache_root: .cache
+ external_asset_root: third_party
+diff --git a/src/tasks/ball_detection/configs/prepare_dinov3_ssl_images.yaml b/src/tasks/ball_detection/configs/prepare_dinov3_ssl_images.yaml
+index 637b3a08..f3942eac 100644
+--- a/src/tasks/ball_detection/configs/prepare_dinov3_ssl_images.yaml
++++ b/src/tasks/ball_detection/configs/prepare_dinov3_ssl_images.yaml
+@@ -1,6 +1,6 @@
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/prepare_dinov3_ssl_images,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,prepare_dinov3_ssl_images,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/prepare_youtube_dataset.yaml b/src/tasks/ball_detection/configs/prepare_youtube_dataset.yaml
+index b6bba68b..d4d63402 100644
+--- a/src/tasks/ball_detection/configs/prepare_youtube_dataset.yaml
++++ b/src/tasks/ball_detection/configs/prepare_youtube_dataset.yaml
+@@ -1,6 +1,6 @@
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/prepare_youtube_dataset,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,prepare_youtube_dataset,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/preview_augmentation.yaml b/src/tasks/ball_detection/configs/preview_augmentation.yaml
+index 5de0b516..3c1d94cc 100644
+--- a/src/tasks/ball_detection/configs/preview_augmentation.yaml
++++ b/src/tasks/ball_detection/configs/preview_augmentation.yaml
+@@ -6,7 +6,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -16,7 +16,7 @@ preview:
+   sample_indices: [0]
+   max_samples: 4
+   seed: 42
+-  output_dir: ball_detection/augmentation_preview
++  output_dir: ${tennis_output:ball_detection,visualize,augmentation,${tennis_run_id:}}
+   draw:
+     radius: 5
+     thickness: 2
+diff --git a/src/tasks/ball_detection/configs/preview_heatmaps.yaml b/src/tasks/ball_detection/configs/preview_heatmaps.yaml
+index 873e2699..85a852ee 100644
+--- a/src/tasks/ball_detection/configs/preview_heatmaps.yaml
++++ b/src/tasks/ball_detection/configs/preview_heatmaps.yaml
+@@ -6,7 +6,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -16,7 +16,7 @@ preview:
+   sample_indices: [0, 4, 8]
+   max_samples: 3
+   ratios: [0.003, 0.006, 0.012, 0.024]
+-  output_dir: ball_detection/heatmap_preview
++  output_dir: ${tennis_output:ball_detection,visualize,heatmaps,${tennis_run_id:}}
+   layout:
+     tile_gap: 12
+     header_height: 30
+diff --git a/src/tasks/ball_detection/configs/run/eval.yaml b/src/tasks/ball_detection/configs/run/eval.yaml
+index 311bb123..78cca567 100644
+--- a/src/tasks/ball_detection/configs/run/eval.yaml
++++ b/src/tasks/ball_detection/configs/run/eval.yaml
+@@ -1,4 +1,4 @@
+-output_dir: ball_detection/eval/${model.name}
++output_dir: ${tennis_output:ball_detection,evaluate,${model.name},${tennis_run_id:}}
+ seed: 42
+ gpus: 1
+ checkpoint_path: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+diff --git a/src/tasks/ball_detection/configs/run/train.yaml b/src/tasks/ball_detection/configs/run/train.yaml
+index b72613d8..2df4af91 100644
+--- a/src/tasks/ball_detection/configs/run/train.yaml
++++ b/src/tasks/ball_detection/configs/run/train.yaml
+@@ -1,4 +1,4 @@
+-output_dir: ball_detection/${model.name}
++output_dir: ${tennis_output:ball_detection,train,${model.name},${tennis_run_id:}}
+ seed: 42
+ gpus: 1
+ resume: null
+diff --git a/src/tasks/ball_detection/configs/run/visualize.yaml b/src/tasks/ball_detection/configs/run/visualize.yaml
+index 699f8ea1..935680e0 100644
+--- a/src/tasks/ball_detection/configs/run/visualize.yaml
++++ b/src/tasks/ball_detection/configs/run/visualize.yaml
+@@ -1,2 +1,2 @@
+-output_dir: ball_detection/visualization
++output_dir: ${tennis_output:ball_detection,visualize,default,${tennis_run_id:}}
+ device: auto
+diff --git a/src/tasks/ball_detection/configs/staged_phase1.yaml b/src/tasks/ball_detection/configs/staged_phase1.yaml
+index 5d81498c..c8889b96 100644
+--- a/src/tasks/ball_detection/configs/staged_phase1.yaml
++++ b/src/tasks/ball_detection/configs/staged_phase1.yaml
+@@ -17,5 +17,5 @@ training:
+     max_epochs: 5
+ 
+ run:
+-  output_dir: ball_detection/staged/phase1
++  output_dir: ${tennis_output:ball_detection,train,staged,phase1}
+   init_weights: null
+diff --git a/src/tasks/ball_detection/configs/staged_phase2.yaml b/src/tasks/ball_detection/configs/staged_phase2.yaml
+index 54d5e2e7..a2a54935 100644
+--- a/src/tasks/ball_detection/configs/staged_phase2.yaml
++++ b/src/tasks/ball_detection/configs/staged_phase2.yaml
+@@ -17,5 +17,5 @@ training:
+     max_epochs: 5
+ 
+ run:
+-  output_dir: ball_detection/staged/phase2
+-  init_weights: ball_detection/staged/phase1/logs/run/checkpoints/last.ckpt
++  output_dir: ${tennis_output:ball_detection,train,staged,phase2}
++  init_weights: ball_detection/train/staged/phase1/logs/run/checkpoints/last.ckpt
+diff --git a/src/tasks/ball_detection/configs/staged_phase3.yaml b/src/tasks/ball_detection/configs/staged_phase3.yaml
+index ee4088d6..f84312e5 100644
+--- a/src/tasks/ball_detection/configs/staged_phase3.yaml
++++ b/src/tasks/ball_detection/configs/staged_phase3.yaml
+@@ -19,5 +19,5 @@ training:
+     max_epochs: 10
+ 
+ run:
+-  output_dir: ball_detection/staged/phase3
+-  init_weights: ball_detection/staged/phase2/logs/run/checkpoints/last.ckpt
++  output_dir: ${tennis_output:ball_detection,train,staged,phase3}
++  init_weights: ball_detection/train/staged/phase2/logs/run/checkpoints/last.ckpt
+diff --git a/src/tasks/ball_detection/configs/staged_phase4.yaml b/src/tasks/ball_detection/configs/staged_phase4.yaml
+index 100361f6..32fc001a 100644
+--- a/src/tasks/ball_detection/configs/staged_phase4.yaml
++++ b/src/tasks/ball_detection/configs/staged_phase4.yaml
+@@ -19,5 +19,5 @@ training:
+     max_epochs: 10
+ 
+ run:
+-  output_dir: ball_detection/staged/phase4
+-  init_weights: ball_detection/staged/phase3/logs/run/checkpoints/last.ckpt
++  output_dir: ${tennis_output:ball_detection,train,staged,phase4}
++  init_weights: ball_detection/train/staged/phase3/logs/run/checkpoints/last.ckpt
+diff --git a/src/tasks/ball_detection/configs/train.yaml b/src/tasks/ball_detection/configs/train.yaml
+index 73695c86..41319a3c 100644
+--- a/src/tasks/ball_detection/configs/train.yaml
++++ b/src/tasks/ball_detection/configs/train.yaml
+@@ -10,7 +10,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/train_3dgs_blcs_v1.yaml b/src/tasks/ball_detection/configs/train_3dgs_blcs_v1.yaml
+index 36ef4532..881bcb6c 100644
+--- a/src/tasks/ball_detection/configs/train_3dgs_blcs_v1.yaml
++++ b/src/tasks/ball_detection/configs/train_3dgs_blcs_v1.yaml
+@@ -30,14 +30,14 @@ training:
+     enabled: false
+ 
+ run:
+-  output_dir: ball_detection/3dgs_blcs_paired_v1/treatment/seed_${run.seed}
++  output_dir: ${tennis_output:ball_detection,train,3dgs_blcs_paired_v1,seed_${run.seed}-${tennis_run_id:}}
+   seed: 731
+   init_weights: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+   test_after_fit: false
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/train_staged.yaml b/src/tasks/ball_detection/configs/train_staged.yaml
+index 0a85520e..8d38385f 100644
+--- a/src/tasks/ball_detection/configs/train_staged.yaml
++++ b/src/tasks/ball_detection/configs/train_staged.yaml
+@@ -10,7 +10,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/ball_detection/configs/visualization/default.yaml b/src/tasks/ball_detection/configs/visualization/default.yaml
+index 6d3c075a..cedbd6f6 100644
+--- a/src/tasks/ball_detection/configs/visualization/default.yaml
++++ b/src/tasks/ball_detection/configs/visualization/default.yaml
+@@ -1,6 +1,6 @@
+ clip_dir: tennis/tracknet/game1/Clip1
+ checkpoint: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+-save: ball_detection/game1_clip1_prediction.gif
++save: ${run.output_dir}/game1_clip1_prediction.gif
+ fps: 12
+ window_stride: 1
+ inference_batch_size: 4
+diff --git a/src/tasks/ball_detection/configs/visualize.yaml b/src/tasks/ball_detection/configs/visualize.yaml
+index 6e57c0f9..7c6403f2 100644
+--- a/src/tasks/ball_detection/configs/visualize.yaml
++++ b/src/tasks/ball_detection/configs/visualize.yaml
+@@ -9,7 +9,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/base/README.md b/src/tasks/base/README.md
+index 69f8789b..fa975e22 100644
+--- a/src/tasks/base/README.md
++++ b/src/tasks/base/README.md
+@@ -1,5 +1,7 @@
+ # `src/tasks/base`
+ 
++出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
++
+ 各 task パッケージ (`plcs`, `blcs` 等) が再利用する学習・データ入出力・推論・可視化の共通基盤です。抽象クラスは共通のライフサイクル/検証ロジックを持ち、task 固有の部分だけをサブクラスの override ポイントへ委譲する設計です。
+ 
+ ## Modules
+diff --git a/src/tasks/base/training/lightning_module.py b/src/tasks/base/training/lightning_module.py
+index db9b96f9..8f7cf902 100644
+--- a/src/tasks/base/training/lightning_module.py
++++ b/src/tasks/base/training/lightning_module.py
+@@ -3,6 +3,7 @@
+ from __future__ import annotations
+ 
+ import json
++import shutil
+ from collections import defaultdict
+ from pathlib import Path
+ from typing import Any, Protocol, cast
+@@ -24,6 +25,7 @@ from src.tasks.base.configuration import (
+     BaseTrainingConfig,
+     as_config_mapping,
+     require_config_mapping,
++    require_config_value,
+ )
+ from src.tasks.base.training.batch_transfer import (
+     move_batch_to_device_preserving_frozen_metadata,
+@@ -38,7 +40,9 @@ class _SavezCompressed(Protocol):
+     def __call__(self, file: str | Path, **arrays: np.ndarray) -> None: ...
+ 
+ 
+-def _concat_padded(chunks: list[np.ndarray]) -> np.ndarray:
++def _concat_padded(
++    chunks: list[np.ndarray], *, padding_value: int | bool = 0
++) -> np.ndarray:
+     """Concatenate per-batch arrays along axis 0, padding the time axis (1).
+ 
+     Test batches can have different sequence lengths, so ``(b, T_i, ...)`` arrays
+@@ -54,7 +58,7 @@ def _concat_padded(chunks: list[np.ndarray]) -> np.ndarray:
+             if c.shape[1] < max_t:
+                 pad_width = [(0, 0)] * c.ndim
+                 pad_width[1] = (0, max_t - c.shape[1])
+-                c = np.pad(c, pad_width)
++                c = np.pad(c, pad_width, constant_values=padding_value)
+             padded.append(c)
+         chunks = padded
+     concatenated: np.ndarray = np.asarray(np.concatenate(chunks, axis=0))
+@@ -295,10 +299,13 @@ class BaseLightningModule(pl.LightningModule):
+         queue_repro_dir: Path | None = resolve_queue_repro_dir()
+         if queue_repro_dir is not None:
+             return queue_repro_dir / "predictions"
+-        resolved: Path = self.path_resolver.resolve(
+-            PathRole.ARTIFACT, "test_predictions"
+-        )
+-        return resolved
++        return self._run_predictions_dir()
++
++    def _run_predictions_dir(self) -> Path:
++        root = as_config_mapping(self.config, path="configuration")
++        run = require_config_mapping(root, "run", path="configuration")
++        output = cast(str, require_config_value(run, "output_dir", str, path="run"))
++        return self.path_resolver.resolve(PathRole.OUTPUT, output, "predictions")
+ 
+     def save_test_predictions(
+         self,
+@@ -308,9 +315,9 @@ class BaseLightningModule(pl.LightningModule):
+         """Write predictions plus separated headline/diagnostic metric artifacts.
+ 
+         Queue jobs write below their isolated
+-        ``$TENNIS_REPRO_DIR/predictions`` directory. Non-queue runs retain the
+-        configured artifact-root location. Invalid queue paths fail before any
+-        files are written.
++        ``$TENNIS_REPRO_DIR/predictions`` directory and copy the same files to
++        ``run.output_dir/predictions``. Non-queue runs use that run directory
++        directly. Invalid queue paths fail before any files are written.
+ 
+         Returns the npz path, or ``None`` if there is nothing to save.
+         """
+@@ -324,9 +331,10 @@ class BaseLightningModule(pl.LightningModule):
+         if not hasattr(self, "_test_pred_arrays") or not self._test_pred_arrays:
+             return None
+         out_dir = self._test_predictions_dir()
++        run_predictions = self._run_predictions_dir()
+         out_dir.mkdir(parents=True, exist_ok=True)
+         arrays: dict[str, np.ndarray] = {
+-            key: _concat_padded(chunks)
++            key: _concat_padded(chunks, padding_value=key == "padding_mask")
+             for key, chunks in self._test_pred_arrays.items()
+         }
+         # Fixed-width unicode (not object) so np.load works without allow_pickle.
+@@ -342,6 +350,12 @@ class BaseLightningModule(pl.LightningModule):
+                 json.dumps(diagnostic_metrics, indent=2, ensure_ascii=False),
+                 encoding="utf-8",
+             )
++        if run_predictions != out_dir:
++            run_predictions.mkdir(parents=True, exist_ok=True)
++            for name in ("pred_test.npz", "metrics.json", "diagnostic_metrics.json"):
++                source = out_dir / name
++                if source.is_file():
++                    shutil.copy2(source, run_predictions / name)
+         return npz_path
+ 
+     def _estimate_total_steps(self) -> int:
+diff --git a/src/tasks/base/training/runner.py b/src/tasks/base/training/runner.py
+index 0b94ce4b..dba61fdd 100644
+--- a/src/tasks/base/training/runner.py
++++ b/src/tasks/base/training/runner.py
+@@ -63,6 +63,12 @@ class BaseTrainingRunner:
+ 
+         output_dir = self.prepare_output_dir(runtime)
+         output_dir.mkdir(parents=True, exist_ok=True)
++        if (output_dir / "config.yaml").exists() and runtime.run.resume is None:
++            raise FileExistsError(
++                f"Training output already exists: {output_dir}. "
++                "Choose a new run.output_dir for a new experiment, or explicitly "
++                "set run.resume for a continuation."
++            )
+         self.save_config(config, output_dir)
+ 
+         if self.is_dry_run(config):
+@@ -303,7 +309,11 @@ class BaseTrainingRunner:
+             output_dir,
+             "config.yaml",
+         )
+-        OmegaConf.save(config, config_path)
++        # Persist resolved run IDs and explicit roots: reloading this file must
++        # not select a new output tree or reinterpret shared assets in another CWD.
++        saved = OmegaConf.create(OmegaConf.to_container(config, resolve=True))
++        saved.paths = dict(runtime.resolver.roots.as_mapping())
++        OmegaConf.save(saved, config_path, resolve=True)
+ 
+     def build_logger(self, config: Any, output_dir: Path) -> TensorBoardLogger:
+         """Build TensorBoard logger."""
+@@ -327,7 +337,7 @@ class BaseTrainingRunner:
+         """
+         queue_repro_dir = resolve_queue_repro_dir()
+         target = (
+-            resolver.resolve(PathRole.ARTIFACT, "repro")
++            resolver.validate(PathRole.OUTPUT, checkpoint_dir.parent / "repro")
+             if queue_repro_dir is None
+             else queue_repro_dir
+         )
+diff --git a/src/tasks/blcs/README.md b/src/tasks/blcs/README.md
+index 0d7559b9..652cb1b8 100644
+--- a/src/tasks/blcs/README.md
++++ b/src/tasks/blcs/README.md
+@@ -1,5 +1,7 @@
+ # BLCS (Ball Localization in Court System)
+ 
++出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
++
+ 2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。合成データ生成（物理シミュレーション + マルチカメラ投影）、学習、推論、可視化までを一貫して提供します。
+ 
+ CourtKP20 の version 選択、disk 上の camera-local semantics、model の
+diff --git a/src/tasks/blcs/configs/api_server.yaml b/src/tasks/blcs/configs/api_server.yaml
+index c74f2131..3a58fd8d 100644
+--- a/src/tasks/blcs/configs/api_server.yaml
++++ b/src/tasks/blcs/configs/api_server.yaml
+@@ -15,7 +15,7 @@ server:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/api_server}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:blcs,generate,api_server,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/generate_dataset.yaml b/src/tasks/blcs/configs/generate_dataset.yaml
+index 09352a6e..eb233d66 100644
+--- a/src/tasks/blcs/configs/generate_dataset.yaml
++++ b/src/tasks/blcs/configs/generate_dataset.yaml
+@@ -12,7 +12,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/generate_dataset}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:blcs,generate,generate_dataset,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/generate_dataset_camera_view_v2.yaml b/src/tasks/blcs/configs/generate_dataset_camera_view_v2.yaml
+index f21462e2..a85cec04 100644
+--- a/src/tasks/blcs/configs/generate_dataset_camera_view_v2.yaml
++++ b/src/tasks/blcs/configs/generate_dataset_camera_view_v2.yaml
+@@ -7,6 +7,6 @@ defaults:
+ generator:
+   num_scenes: 10000
+ run:
+-  output_dir: blcs/single_object_camera_view_v2
++  output_dir: ${tennis_dataset:blcs,single_object_camera_view_v2}
+   seed: 42
+   num_workers: 8
+diff --git a/src/tasks/blcs/configs/generate_dataset_samples.yaml b/src/tasks/blcs/configs/generate_dataset_samples.yaml
+index f4e28f9e..a00088f2 100644
+--- a/src/tasks/blcs/configs/generate_dataset_samples.yaml
++++ b/src/tasks/blcs/configs/generate_dataset_samples.yaml
+@@ -29,7 +29,7 @@ samples:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/generate_dataset_samples}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:blcs,generate,generate_dataset_samples,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/paths/default.yaml b/src/tasks/blcs/configs/paths/default.yaml
+index 728fb720..119c5af3 100644
+--- a/src/tasks/blcs/configs/paths/default.yaml
++++ b/src/tasks/blcs/configs/paths/default.yaml
+@@ -1,7 +1,7 @@
+ project_root: .
+ data_root: data
+ checkpoint_root: ckpt
+-artifact_root: artifacts
++artifact_root: outputs
+ output_root: outputs
+ cache_root: .cache
+ external_asset_root: third_party
+diff --git a/src/tasks/blcs/configs/preview_augmentation.yaml b/src/tasks/blcs/configs/preview_augmentation.yaml
+index 6ff7df19..60aab655 100644
+--- a/src/tasks/blcs/configs/preview_augmentation.yaml
++++ b/src/tasks/blcs/configs/preview_augmentation.yaml
+@@ -6,7 +6,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -18,7 +18,7 @@ preview:
+   num_augmented: 2
+   seed: 42
+   max_cameras: 4
+-  output_dir: blcs/augmentation_preview
++  output_dir: ${tennis_output:blcs,visualize,augmentation,${tennis_run_id:}}
+   figure:
+     panel_width: 4.0
+     panel_height: 3.0
+diff --git a/src/tasks/blcs/configs/run/generate_dataset.yaml b/src/tasks/blcs/configs/run/generate_dataset.yaml
+index fd988f5b..8190fa20 100644
+--- a/src/tasks/blcs/configs/run/generate_dataset.yaml
++++ b/src/tasks/blcs/configs/run/generate_dataset.yaml
+@@ -1,4 +1,4 @@
+-output_dir: blcs/single_object
++output_dir: ${tennis_dataset:blcs,single_object}
+ seed: 42
+ device: cpu
+ num_workers: 4
+diff --git a/src/tasks/blcs/configs/run/train.yaml b/src/tasks/blcs/configs/run/train.yaml
+index c99333e7..22506be9 100644
+--- a/src/tasks/blcs/configs/run/train.yaml
++++ b/src/tasks/blcs/configs/run/train.yaml
+@@ -1,4 +1,4 @@
+-output_dir: blcs/${model.name}
++output_dir: ${tennis_output:blcs,train,${model.name},${tennis_run_id:}}
+ seed: 42
+ gpus: 1
+ resume: null
+diff --git a/src/tasks/blcs/configs/train.yaml b/src/tasks/blcs/configs/train.yaml
+index 940623ad..76d635fa 100644
+--- a/src/tasks/blcs/configs/train.yaml
++++ b/src/tasks/blcs/configs/train.yaml
+@@ -16,7 +16,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/train_axial_reference.yaml b/src/tasks/blcs/configs/train_axial_reference.yaml
+index a2e279b1..6e829bc2 100644
+--- a/src/tasks/blcs/configs/train_axial_reference.yaml
++++ b/src/tasks/blcs/configs/train_axial_reference.yaml
+@@ -17,4 +17,4 @@ training:
+     monitor: val/position_error_m
+ run:
+   seed: 42
+-  output_dir: blcs/axial_reference_kp14_corners_v3-4_t128
++  output_dir: ${tennis_output:blcs,train,axial_reference_kp14_corners_v3-4_t128,${tennis_run_id:}}
+diff --git a/src/tasks/blcs/configs/train_chunked.yaml b/src/tasks/blcs/configs/train_chunked.yaml
+index 6861c2c8..725a06e2 100644
+--- a/src/tasks/blcs/configs/train_chunked.yaml
++++ b/src/tasks/blcs/configs/train_chunked.yaml
+@@ -16,7 +16,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/train_chunked_gan.yaml b/src/tasks/blcs/configs/train_chunked_gan.yaml
+index 9b4b06e9..41a2709a 100644
+--- a/src/tasks/blcs/configs/train_chunked_gan.yaml
++++ b/src/tasks/blcs/configs/train_chunked_gan.yaml
+@@ -16,7 +16,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/train_tracking.yaml b/src/tasks/blcs/configs/train_tracking.yaml
+index 5387d2e8..9a25aa8e 100644
+--- a/src/tasks/blcs/configs/train_tracking.yaml
++++ b/src/tasks/blcs/configs/train_tracking.yaml
+@@ -24,7 +24,7 @@ training:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/train_tracking_chunked.yaml b/src/tasks/blcs/configs/train_tracking_chunked.yaml
+index 8d9fc6c8..c3695f65 100644
+--- a/src/tasks/blcs/configs/train_tracking_chunked.yaml
++++ b/src/tasks/blcs/configs/train_tracking_chunked.yaml
+@@ -33,7 +33,7 @@ training:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/blcs/configs/visualization/multiview.yaml b/src/tasks/blcs/configs/visualization/multiview.yaml
+index 203bab65..3875f4af 100644
+--- a/src/tasks/blcs/configs/visualization/multiview.yaml
++++ b/src/tasks/blcs/configs/visualization/multiview.yaml
+@@ -7,7 +7,7 @@ reference_camera_id: null
+ device: auto
+ animation_view: 3d   # 3d | 2d (create_comparison_animation)
+ fps: 30.0
+-save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
++save: ${tennis_output:blcs,visualize,${visualization.mode},${tennis_run_id:}}/scene.gif
+ info: false
+ checkpoint: blcs/multiview/logs/version_0/checkpoints/last.ckpt
+ 
+diff --git a/src/tasks/blcs/configs/visualization/single.yaml b/src/tasks/blcs/configs/visualization/single.yaml
+index c80f4d9c..0cb992b2 100644
+--- a/src/tasks/blcs/configs/visualization/single.yaml
++++ b/src/tasks/blcs/configs/visualization/single.yaml
+@@ -7,7 +7,7 @@ reference_camera_id: null
+ device: auto
+ animation_view: 3d   # 3d | 2d (create_comparison_animation)
+ fps: 30.0
+-save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
++save: ${tennis_output:blcs,visualize,${visualization.mode},${tennis_run_id:}}/scene.gif
+ info: false
+ checkpoint: blcs/single/logs/version_0/last.ckpt
+ # Shared scene style for animation_view=3d (parsed by
+diff --git a/src/tasks/blcs/configs/visualize.yaml b/src/tasks/blcs/configs/visualize.yaml
+index 73d5989f..fae057a3 100644
+--- a/src/tasks/blcs/configs/visualize.yaml
++++ b/src/tasks/blcs/configs/visualize.yaml
+@@ -6,7 +6,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/visualize}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:blcs,visualize,visualize,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/README.md b/src/tasks/court_detection/README.md
+index f662e442..826cef63 100644
+--- a/src/tasks/court_detection/README.md
++++ b/src/tasks/court_detection/README.md
+@@ -1,5 +1,7 @@
+ # Court Detection
+ 
++出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
++
+ テニス映像から `kp / seg / line / semantic_line` を推定します。データsourceとtarget集合は独立に選択し、単一の `CourtDetectionDataset` / `CourtDetectionDataModule` が任意の非空target subsetを処理します。
+ 
+ ## Data composition
+diff --git a/src/tasks/court_detection/configs/annotate_youtube_keypoints.yaml b/src/tasks/court_detection/configs/annotate_youtube_keypoints.yaml
+index 5a4a244b..26f6e16b 100644
+--- a/src/tasks/court_detection/configs/annotate_youtube_keypoints.yaml
++++ b/src/tasks/court_detection/configs/annotate_youtube_keypoints.yaml
+@@ -4,7 +4,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/annotate_youtube_keypoints,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:court_detection,generate,annotate_youtube_keypoints,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/configs/generate_line_masks.yaml b/src/tasks/court_detection/configs/generate_line_masks.yaml
+index 54ccdf7f..0e70b73f 100644
+--- a/src/tasks/court_detection/configs/generate_line_masks.yaml
++++ b/src/tasks/court_detection/configs/generate_line_masks.yaml
+@@ -4,7 +4,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/generate_line_masks,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:court_detection,generate,generate_line_masks,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/configs/generate_masks.yaml b/src/tasks/court_detection/configs/generate_masks.yaml
+index 9d553d73..d05bb609 100644
+--- a/src/tasks/court_detection/configs/generate_masks.yaml
++++ b/src/tasks/court_detection/configs/generate_masks.yaml
+@@ -4,7 +4,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/generate_masks,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:court_detection,generate,generate_masks,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/configs/paths/default.yaml b/src/tasks/court_detection/configs/paths/default.yaml
+index 2be5e7b4..0d720687 100644
+--- a/src/tasks/court_detection/configs/paths/default.yaml
++++ b/src/tasks/court_detection/configs/paths/default.yaml
+@@ -1,7 +1,7 @@
+ project_root: .
+ data_root: data
+ checkpoint_root: outputs
+-artifact_root: assets
++artifact_root: outputs
+ output_root: outputs
+ cache_root: .cache
+ external_asset_root: third_party
+diff --git a/src/tasks/court_detection/configs/prepare_youtube_dataset.yaml b/src/tasks/court_detection/configs/prepare_youtube_dataset.yaml
+index bd3c05ef..13c0d446 100644
+--- a/src/tasks/court_detection/configs/prepare_youtube_dataset.yaml
++++ b/src/tasks/court_detection/configs/prepare_youtube_dataset.yaml
+@@ -4,7 +4,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/prepare_youtube_dataset,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:court_detection,generate,prepare_youtube_dataset,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -130,7 +130,7 @@ workflow:
+     sigma_ratios: [0.005, 0.01, 0.02]
+     line_width_metres: [0.025, 0.05, 0.075]
+     baseline_width_multiplier: 2.0
+-    output_dir: court_detection/youtube_target_preview
++    output_dir: ${tennis_output:court_detection,visualize,youtube_targets,${tennis_run_id:}}
+     display_width: 480
+     heatmap_alpha: 0.55
+     mask_alpha: 0.45
+diff --git a/src/tasks/court_detection/configs/preview_augmentation.yaml b/src/tasks/court_detection/configs/preview_augmentation.yaml
+index 76f81204..30521849 100644
+--- a/src/tasks/court_detection/configs/preview_augmentation.yaml
++++ b/src/tasks/court_detection/configs/preview_augmentation.yaml
+@@ -5,7 +5,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -17,7 +17,7 @@ preview:
+   max_samples: 4
+   num_augmented: 3
+   seed: 42
+-  output_dir: court_detection/augmentation_preview
++  output_dir: ${tennis_output:court_detection,visualize,augmentation,${tennis_run_id:}}
+   draw:
+     mask_alpha: 0.45
+     heatmap_alpha: 0.55
+diff --git a/src/tasks/court_detection/configs/preview_heatmaps.yaml b/src/tasks/court_detection/configs/preview_heatmaps.yaml
+index 8540b7d0..c25dea46 100644
+--- a/src/tasks/court_detection/configs/preview_heatmaps.yaml
++++ b/src/tasks/court_detection/configs/preview_heatmaps.yaml
+@@ -5,7 +5,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -15,7 +15,7 @@ preview:
+   sample_indices: [0, 8, 16]
+   max_samples: 3
+   ratios: [0.003, 0.006, 0.012, 0.024]
+-  output_dir: court_detection/heatmap_preview
++  output_dir: ${tennis_output:court_detection,visualize,heatmaps,${tennis_run_id:}}
+   layout:
+     tile_gap: 12
+     header_height: 30
+diff --git a/src/tasks/court_detection/configs/run/train.yaml b/src/tasks/court_detection/configs/run/train.yaml
+index 5fd9ca1b..9bb4c511 100644
+--- a/src/tasks/court_detection/configs/run/train.yaml
++++ b/src/tasks/court_detection/configs/run/train.yaml
+@@ -2,4 +2,4 @@ defaults:
+   - train_base
+   - _self_
+ 
+-output_dir: court_detection/${data.source.kind}
++output_dir: ${tennis_output:court_detection,train,${data.source.kind},${tennis_run_id:}}
+diff --git a/src/tasks/court_detection/configs/run/train_mixed.yaml b/src/tasks/court_detection/configs/run/train_mixed.yaml
+index 474d875b..2531b82b 100644
+--- a/src/tasks/court_detection/configs/run/train_mixed.yaml
++++ b/src/tasks/court_detection/configs/run/train_mixed.yaml
+@@ -2,4 +2,4 @@ defaults:
+   - train_base
+   - _self_
+ 
+-output_dir: ???
++output_dir: ${tennis_output:court_detection,train,mixed_source,${tennis_run_id:}}
+diff --git a/src/tasks/court_detection/configs/run/visualize.yaml b/src/tasks/court_detection/configs/run/visualize.yaml
+index 96e295f2..d59e997a 100644
+--- a/src/tasks/court_detection/configs/run/visualize.yaml
++++ b/src/tasks/court_detection/configs/run/visualize.yaml
+@@ -1,2 +1,2 @@
+-output_dir: court_detection/visualization
++output_dir: ${tennis_output:court_detection,visualize,default,${tennis_run_id:}}
+ device: auto
+diff --git a/src/tasks/court_detection/configs/train.yaml b/src/tasks/court_detection/configs/train.yaml
+index 00d91c26..93461258 100644
+--- a/src/tasks/court_detection/configs/train.yaml
++++ b/src/tasks/court_detection/configs/train.yaml
+@@ -10,7 +10,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/configs/train_mixed.yaml b/src/tasks/court_detection/configs/train_mixed.yaml
+index fcc6ddd2..020becaa 100644
+--- a/src/tasks/court_detection/configs/train_mixed.yaml
++++ b/src/tasks/court_detection/configs/train_mixed.yaml
+@@ -25,7 +25,7 @@ data:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/configs/visualization/kp.yaml b/src/tasks/court_detection/configs/visualization/kp.yaml
+index e99bdc60..70e42fe7 100644
+--- a/src/tasks/court_detection/configs/visualization/kp.yaml
++++ b/src/tasks/court_detection/configs/visualization/kp.yaml
+@@ -1,7 +1,7 @@
+ task: kp
+ image_source: court/images
+ checkpoint: court_detection/kp/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+-save: court_detection/kp.gif
++save: ${run.output_dir}/kp.gif
+ fps: 6
+ max_frames: 24
+ info: false
+diff --git a/src/tasks/court_detection/configs/visualization/line.yaml b/src/tasks/court_detection/configs/visualization/line.yaml
+index 73d92a67..5ceb88e2 100644
+--- a/src/tasks/court_detection/configs/visualization/line.yaml
++++ b/src/tasks/court_detection/configs/visualization/line.yaml
+@@ -1,7 +1,7 @@
+ task: line
+ image_source: court/images
+ checkpoint: court_detection/line/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+-save: court_detection/line.gif
++save: ${run.output_dir}/line.gif
+ fps: 6
+ max_frames: 24
+ info: false
+diff --git a/src/tasks/court_detection/configs/visualization/seg.yaml b/src/tasks/court_detection/configs/visualization/seg.yaml
+index 45d77e51..11039ee4 100644
+--- a/src/tasks/court_detection/configs/visualization/seg.yaml
++++ b/src/tasks/court_detection/configs/visualization/seg.yaml
+@@ -1,7 +1,7 @@
+ task: seg
+ image_source: court/images
+ checkpoint: court_detection/seg/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+-save: court_detection/seg.gif
++save: ${run.output_dir}/seg.gif
+ fps: 6
+ max_frames: 24
+ info: false
+diff --git a/src/tasks/court_detection/configs/visualization/semantic_line.yaml b/src/tasks/court_detection/configs/visualization/semantic_line.yaml
+index 63cdc131..13e56f07 100644
+--- a/src/tasks/court_detection/configs/visualization/semantic_line.yaml
++++ b/src/tasks/court_detection/configs/visualization/semantic_line.yaml
+@@ -1,7 +1,7 @@
+ task: semantic_line
+ image_source: court/images
+ checkpoint: court_detection/semantic_line/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+-save: court_detection/semantic_line.gif
++save: ${run.output_dir}/semantic_line.gif
+ fps: 6
+ max_frames: 24
+ info: false
+diff --git a/src/tasks/court_detection/configs/visualize.yaml b/src/tasks/court_detection/configs/visualize.yaml
+index 408ff5f2..429c0df6 100644
+--- a/src/tasks/court_detection/configs/visualize.yaml
++++ b/src/tasks/court_detection/configs/visualize.yaml
+@@ -7,7 +7,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/court_detection/configuration.py b/src/tasks/court_detection/configuration.py
+index 5a7b6a61..2d9a4618 100644
+--- a/src/tasks/court_detection/configuration.py
++++ b/src/tasks/court_detection/configuration.py
+@@ -1559,6 +1559,41 @@ class CourtLossConfig:
+ CourtAnyLossConfig: TypeAlias = CourtLossConfig
+ 
+ 
++@dataclass(frozen=True, slots=True)
++class CourtInferenceConfig:
++    """The serialized architecture and validation transform needed at inference.
++
++    Optimizer, training augmentation, and artifact-store settings do not affect
++    inference. Their historical schemas must not prevent loading exact weights.
++    """
++
++    model: CourtModelConfig
++    loss: CourtLossConfig
++    short_side: int
++    pose_long_side: bool
++    patch_size: int
++
++    @classmethod
++    def from_config(cls, value: object, *, resolver: PathResolver) -> CourtInferenceConfig:
++        config = as_config_mapping(value, path="checkpoint.config")
++        data = require_config_mapping(config, "data", path="checkpoint.config")
++        augmentation = require_config_mapping(data, "augmentation", path="data")
++        short_side = _integer(augmentation, "val_short_side", path="data.augmentation")
++        if short_side <= 0:
++            raise SemanticConfigurationError("Validation image size must be positive")
++        loss = CourtLossConfig.from_mapping(require_config_mapping(config, "loss", path="checkpoint.config"))
++        patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
++        if patch_size <= 0:
++            raise SemanticConfigurationError("Validation patch size must be positive")
++        if loss.pose.enabled and not _bool(augmentation, "preserve_fx_fy", path="data.augmentation"):
++            raise SemanticConfigurationError("Pose inference requires preserve_fx_fy=true")
++        return cls(
++            CourtModelConfig.from_mapping(require_config_mapping(config, "model", path="checkpoint.config"), resolver=resolver),
++            loss,
++            short_side, loss.pose.enabled, patch_size,
++        )
++
++
+ @dataclass(frozen=True, slots=True)
+ class CourtTrainingConfig:
+     shared: TrainingRuntimeConfig
+diff --git a/src/tasks/court_detection/inference/checkpoint.py b/src/tasks/court_detection/inference/checkpoint.py
+new file mode 100644
+index 00000000..34f0bad1
+--- /dev/null
++++ b/src/tasks/court_detection/inference/checkpoint.py
+@@ -0,0 +1,33 @@
++"""Strict model-only loading of Court training checkpoints."""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++import torch
++
++from src.tasks.court_detection.data.bundle_state import deserialize_target_bundle
++from src.tasks.court_detection.model_io.factory import (
++    CourtDetectionBoundModelIO,
++    build_court_inference_pair,
++)
++from src.utils.configuration import PathResolver
++
++
++def load_court_pair(path: Path, *, resolver: PathResolver, strict: bool = True,
++                    weights_only: bool = False) -> CourtDetectionBoundModelIO:
++    """Load every model tensor exactly; training-only state is not instantiated."""
++    if not strict:
++        raise ValueError("Court inference requires strict checkpoint loading")
++    checkpoint = torch.load(path, map_location="cpu", weights_only=weights_only)
++    hyperparameters = checkpoint["hyper_parameters"]
++    bundle = deserialize_target_bundle(hyperparameters["target_bundle_state"])
++    pair = build_court_inference_pair(hyperparameters["config"], resolver=resolver, target_bundle=bundle)
++    model_weights = {
++        key.removeprefix("model."): value
++        for key, value in checkpoint["state_dict"].items() if key.startswith("model.")
++    }
++    if not model_weights:
++        raise ValueError("Court checkpoint contains no model state")
++    pair.model.load_state_dict(model_weights, strict=True)
++    return pair
+diff --git a/src/tasks/court_detection/inference/predictor.py b/src/tasks/court_detection/inference/predictor.py
+index 64c0a4f6..e94c4ecd 100644
+--- a/src/tasks/court_detection/inference/predictor.py
++++ b/src/tasks/court_detection/inference/predictor.py
+@@ -12,8 +12,9 @@ from PIL import Image
+ from torch import Tensor
+ 
+ from src.tasks.base.inference.predictor import BasePredictor
+-from src.tasks.base.model_io import BoundModelIO, bind_model_io
++from src.tasks.base.model_io import BoundModelIO
+ from src.tasks.court_detection.data.contracts import CourtTargetKind
++from src.tasks.court_detection.inference.checkpoint import load_court_pair
+ from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
+ from src.tasks.court_detection.model_io.contracts import (
+     CourtDecodedOutput,
+@@ -22,15 +23,13 @@ from src.tasks.court_detection.model_io.contracts import (
+     CourtModelIOError,
+     CourtModelOutput,
+ )
+-from src.tasks.court_detection.model_io.images import prepare_court_image
++from src.tasks.court_detection.model_io.images import prepare_court_input
+ from src.tasks.court_detection.model_io.keypoint_decoder import (
+     CourtKeypointDecoderConfig,
+     decode_court_keypoint_logits,
+ )
+-from src.tasks.court_detection.training.lightning_module import (
+-    CourtDetectionLightningModule,
+-)
+ from src.utils.configuration import PathResolver
++from src.utils.device import resolve_device
+ 
+ CourtBoundModelIO: TypeAlias = BoundModelIO[
+     Mapping[str, object],
+@@ -94,21 +93,13 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
+         **kwargs: Any,
+     ) -> Self:
+         """Load one checkpoint and preserve its serialized target bundle."""
+-        lightning_module, resolved_device = cls._load_single_lightning_module(
+-            checkpoint_path,
+-            CourtDetectionLightningModule,
+-            resolver=resolver,
+-            device=device,
+-            weights_only=False,
+-            **kwargs,
+-        )
+-        adapter = lightning_module.model_io
+-        adapter.validate_model_pair(lightning_module.model)
++        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
++        if len(checkpoints) != 1:
++            raise ValueError("Court inference requires exactly one checkpoint")
++        pair = load_court_pair(checkpoints[0], resolver=resolver, **kwargs)
++        resolved_device = resolve_device(device)
+         return cls(
+-            cast(
+-                CourtBoundModelIO,
+-                bind_model_io(lightning_module.model, adapter),
+-            ),
++            pair,
+             resolved_device,
+             subpixel_refine=subpixel_refine,
+             peak_threshold=peak_threshold,
+@@ -121,6 +112,7 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
+         image: np.ndarray | Image.Image | Tensor,
+     ) -> CourtKeypointPrediction:
+         """Return multi-peak KP channels, scores, validity, and heatmaps."""
++        source_from_model_xy = (1.0, 1.0)
+         if isinstance(image, Tensor):
+             if image.ndim not in {3, 4}:
+                 raise CourtModelIOError(
+@@ -135,12 +127,10 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
+                 )
+             images = images.to(self.device)
+         else:
+-            images, original_height, original_width = prepare_court_image(
+-                image,
+-                short_side=self.adapter.spec.short_side,
+-                device=self.device,
+-            )
+-            original_size_hw = (original_height, original_width)
++            prepared = prepare_court_input(image, spec=self.adapter.spec, device=self.device)
++            images = prepared.images
++            original_size_hw = prepared.original_size_hw
++            source_from_model_xy = prepared.source_from_model_xy
+ 
+         with torch.no_grad():
+             call = self.adapter.prepare_images(images)
+@@ -149,13 +139,19 @@ class CourtKeypointPredictor(BasePredictor[CourtKeypointPrediction]):
+             logits = (
+                 output.dense_logits if isinstance(output, CourtModelOutput) else output
+             )
+-        return decode_court_keypoint_logits(
++        decoded = decode_court_keypoint_logits(
+             logits["kp"],
+-            original_size_hw=original_size_hw,
++            original_size_hw=(images.shape[-2], images.shape[-1]),
+             subpixel_refine=self.subpixel_refine,
+             config=self.decoder_config,
+         )
+ 
++        points = decoded.keypoints * decoded.keypoints.new_tensor(source_from_model_xy)
++        height, width = original_size_hw
++        inside = (points[..., 0] >= 0) & (points[..., 0] < width) & (points[..., 1] >= 0) & (points[..., 1] < height)
++        valid = decoded.valid & inside
++        return CourtKeypointPrediction(points, decoded.scores * valid, valid, decoded.heatmaps)
++
+     @property
+     def task(self) -> CourtTargetKind:
+         return "kp"
+diff --git a/src/tasks/court_detection/model_io/contracts.py b/src/tasks/court_detection/model_io/contracts.py
+index 8759fffb..4a908024 100644
+--- a/src/tasks/court_detection/model_io/contracts.py
++++ b/src/tasks/court_detection/model_io/contracts.py
+@@ -41,6 +41,8 @@ class CourtModelSpec:
+     in_channels: int
+     short_side: int
+     encoder_kind: CourtEncoderKind = "default"
++    pose_long_side: bool = False
++    patch_size: int = 16
+ 
+ 
+ @dataclass(frozen=True, slots=True)
+diff --git a/src/tasks/court_detection/model_io/factory.py b/src/tasks/court_detection/model_io/factory.py
+index f5a7ec7d..f3aa331c 100644
+--- a/src/tasks/court_detection/model_io/factory.py
++++ b/src/tasks/court_detection/model_io/factory.py
+@@ -7,6 +7,7 @@ from typing import TypeAlias, cast
+ 
+ from src.tasks.base.model_io import BoundModelIO, bind_model_io
+ from src.tasks.court_detection.configuration import (
++    CourtInferenceConfig,
+     CourtModelConfig,
+     CourtTrainingConfig,
+ )
+@@ -24,6 +25,7 @@ from src.tasks.court_detection.model_io.contracts import (
+     CourtModelSpec,
+ )
+ from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
++from src.utils.configuration import PathResolver
+ 
+ CourtDetectionRawOutput: TypeAlias = CourtLogits | CourtModelOutput
+ CourtDetectionBoundModelIO: TypeAlias = BoundModelIO[
+@@ -46,6 +48,8 @@ def build_court_detection_pair(
+         target_bundle=target_bundle,
+         in_channels=runtime.model.in_channels,
+         short_side=runtime.data.augmentation.val_short_side,
++        pose_long_side=runtime.loss.pose.enabled,
++        patch_size=runtime.data.augmentation.patch_size,
+         encoder_kind=cast(CourtEncoderKind, runtime.model.encoder.name),
+     )
+     model = CourtHierarchicalModel.from_config(runtime.model, target_bundle)
+@@ -57,7 +61,7 @@ def build_court_detection_pair(
+ def build_court_model_io(
+     spec: CourtModelSpec,
+     *,
+-    runtime: CourtTrainingConfig,
++    runtime: CourtTrainingConfig | CourtInferenceConfig,
+ ) -> CourtModelIOAdapter | CourtPoseModelIOAdapter:
+     """Build the one bundle-aware adapter from a validated runtime contract."""
+     if not isinstance(runtime.model, CourtModelConfig):
+@@ -87,6 +91,23 @@ def build_court_model_io(
+     )
+ 
+ 
++def build_court_inference_pair(
++    config: object, *, resolver: PathResolver, target_bundle: CourtTargetBundleSpec
++) -> CourtDetectionBoundModelIO:
++    """Build the exact checkpoint model without constructing training services."""
++    runtime = CourtInferenceConfig.from_config(config, resolver=resolver)
++    spec = CourtModelSpec(
++        target_bundle=target_bundle,
++        in_channels=runtime.model.in_channels,
++        short_side=runtime.short_side,
++        pose_long_side=runtime.pose_long_side,
++        patch_size=runtime.patch_size,
++        encoder_kind=cast(CourtEncoderKind, runtime.model.encoder.name),
++    )
++    model = CourtHierarchicalModel.from_config(runtime.model, target_bundle)
++    return cast(CourtDetectionBoundModelIO, bind_model_io(model, build_court_model_io(spec, runtime=runtime)))
++
++
+ __all__ = [
+     "CourtDetectionBoundModelIO",
+     "CourtDetectionRawOutput",
+diff --git a/src/tasks/court_detection/model_io/images.py b/src/tasks/court_detection/model_io/images.py
+index 05a7aa3d..7ff0e0ca 100644
+--- a/src/tasks/court_detection/model_io/images.py
++++ b/src/tasks/court_detection/model_io/images.py
+@@ -2,8 +2,10 @@
+ 
+ from __future__ import annotations
+ 
++from dataclasses import dataclass
+ from typing import cast
+ 
++import cv2
+ import numpy as np
+ import torch
+ import torchvision.transforms.functional as TF
+@@ -11,7 +13,10 @@ from PIL import Image
+ from torch import Tensor
+ 
+ from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
+-from src.tasks.court_detection.model_io.contracts import CourtModelIOError
++from src.tasks.court_detection.model_io.contracts import (
++    CourtModelIOError,
++    CourtModelSpec,
++)
+ from src.utils.geometry.image_size import resize_short_side_aligned
+ 
+ 
+@@ -52,3 +57,43 @@ def prepare_court_image(
+ 
+ 
+ __all__ = ["prepare_court_image"]
++
++
++@dataclass(frozen=True)
++class PreparedCourtImage:
++    images: Tensor
++    original_size_hw: tuple[int, int]
++    source_from_model_xy: tuple[float, float]
++    content_size_hw: tuple[int, int]
++
++
++def prepare_court_input(image: np.ndarray | Image.Image, *, spec: CourtModelSpec,
++                        device: torch.device) -> PreparedCourtImage:
++    """Match the checkpoint's validation geometry, including pose patch padding."""
++    if not spec.pose_long_side:
++        images, height, width = prepare_court_image(image, short_side=spec.short_side, device=device)
++        model_height, model_width = images.shape[-2:]
++        return PreparedCourtImage(images, (height, width),
++                                  ((width - 1) / max(model_width - 1, 1),
++                                   (height - 1) / max(model_height - 1, 1)),
++                                  (model_height, model_width))
++    if isinstance(image, Image.Image):
++        if image.mode != "RGB":
++            raise CourtModelIOError("Court PIL images must use RGB mode")
++        image = np.asarray(image)
++    if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
++        raise CourtModelIOError("Court numpy images must be uint8 RGB (H,W,3)")
++    height, width = image.shape[:2]
++    if min(height, width, spec.short_side, spec.patch_size) <= 0:
++        raise CourtModelIOError("Court image and configured sizes must be positive")
++    scale = spec.short_side / max(height, width)
++    content_height = max(1, round(height * scale))
++    content_width = max(1, round(width * scale))
++    matrix = np.diag([scale, scale, 1.0])
++    content = cv2.warpPerspective(image, matrix, (content_width, content_height), flags=cv2.INTER_LINEAR,
++                                  borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
++    padded = cv2.copyMakeBorder(content, 0, (-content_height) % spec.patch_size,
++                               0, (-content_width) % spec.patch_size, cv2.BORDER_REPLICATE)
++    tensor = TF.normalize(TF.to_tensor(padded), IMAGENET_MEAN, IMAGENET_STD)
++    return PreparedCourtImage(tensor[None].to(device), (height, width), (1 / scale, 1 / scale),
++                              (content_height, content_width))
+diff --git a/src/tasks/plcs/README.md b/src/tasks/plcs/README.md
+index f1623054..3065dd91 100644
+--- a/src/tasks/plcs/README.md
++++ b/src/tasks/plcs/README.md
+@@ -1,5 +1,7 @@
+ # PLCS
+ 
++出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
++
+ 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。ACCAD (AMASS/SMPL-H) または GVHMR モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
+ 
+ ## Court keypoint contract
+diff --git a/src/tasks/plcs/configs/analyze_angle_velocity.yaml b/src/tasks/plcs/configs/analyze_angle_velocity.yaml
+index 931cb4f8..fe7164ba 100644
+--- a/src/tasks/plcs/configs/analyze_angle_velocity.yaml
++++ b/src/tasks/plcs/configs/analyze_angle_velocity.yaml
+@@ -14,12 +14,12 @@ analysis:
+   output_filename: angle_velocity_dominance.json
+ 
+ run:
+-  output_dir: plcs/analysis/angle_velocity
++  output_dir: ${tennis_output:plcs,analyze,angle_velocity,${tennis_run_id:}}
+   seed: 42
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/analyze_dataset_distribution.yaml b/src/tasks/plcs/configs/analyze_dataset_distribution.yaml
+index bacb1429..85a4067f 100644
+--- a/src/tasks/plcs/configs/analyze_dataset_distribution.yaml
++++ b/src/tasks/plcs/configs/analyze_dataset_distribution.yaml
+@@ -30,7 +30,7 @@ plots:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/analyze_loss_dominance.yaml b/src/tasks/plcs/configs/analyze_loss_dominance.yaml
+index c51567fc..14e3cff1 100644
+--- a/src/tasks/plcs/configs/analyze_loss_dominance.yaml
++++ b/src/tasks/plcs/configs/analyze_loss_dominance.yaml
+@@ -22,7 +22,7 @@ analysis:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/analyze_rotation_error_samples.yaml b/src/tasks/plcs/configs/analyze_rotation_error_samples.yaml
+index 821e0499..46050116 100644
+--- a/src/tasks/plcs/configs/analyze_rotation_error_samples.yaml
++++ b/src/tasks/plcs/configs/analyze_rotation_error_samples.yaml
+@@ -35,7 +35,7 @@ visualization:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/extract_gvhmr_motions.yaml b/src/tasks/plcs/configs/extract_gvhmr_motions.yaml
+index dd4e5887..22685039 100644
+--- a/src/tasks/plcs/configs/extract_gvhmr_motions.yaml
++++ b/src/tasks/plcs/configs/extract_gvhmr_motions.yaml
+@@ -27,7 +27,7 @@ run:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/extract_gvhmr_motions}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:plcs,generate,extract_gvhmr_motions,${tennis_run_id:}},hydra}
+   output_subdir: .hydra
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/generate_dataset.yaml b/src/tasks/plcs/configs/generate_dataset.yaml
+index c0e9f87f..d1c74504 100644
+--- a/src/tasks/plcs/configs/generate_dataset.yaml
++++ b/src/tasks/plcs/configs/generate_dataset.yaml
+@@ -14,7 +14,7 @@ external_assets:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/generate_dataset}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:plcs,generate,generate_dataset,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/generate_dataset_camera_view_v2.yaml b/src/tasks/plcs/configs/generate_dataset_camera_view_v2.yaml
+index 0c07aaf3..b2a1f080 100644
+--- a/src/tasks/plcs/configs/generate_dataset_camera_view_v2.yaml
++++ b/src/tasks/plcs/configs/generate_dataset_camera_view_v2.yaml
+@@ -7,7 +7,7 @@ defaults:
+ simulation:
+   num_scenes: 10000
+ run:
+-  output_dir: plcs/single_object_camera_view_v2
++  output_dir: ${tennis_dataset:plcs,single_object_camera_view_v2}
+   seed: 42
+   num_workers: 4
+   split_group: motion_source
+diff --git a/src/tasks/plcs/configs/generate_dataset_samples.yaml b/src/tasks/plcs/configs/generate_dataset_samples.yaml
+index 51f6a1f4..4ca57008 100644
+--- a/src/tasks/plcs/configs/generate_dataset_samples.yaml
++++ b/src/tasks/plcs/configs/generate_dataset_samples.yaml
+@@ -29,7 +29,7 @@ samples:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/generate_dataset_samples}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:plcs,generate,generate_dataset_samples,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/preview_augmentation.yaml b/src/tasks/plcs/configs/preview_augmentation.yaml
+index 2a3d4ada..50fdd42c 100644
+--- a/src/tasks/plcs/configs/preview_augmentation.yaml
++++ b/src/tasks/plcs/configs/preview_augmentation.yaml
+@@ -6,7 +6,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+@@ -19,7 +19,7 @@ preview:
+   seed: 42
+   max_cameras: 4
+   pose_frames: 6
+-  output_dir: plcs/augmentation_preview
++  output_dir: ${tennis_output:plcs,visualize,augmentation,${tennis_run_id:}}
+   figure:
+     panel_width: 4.0
+     panel_height: 3.0
+diff --git a/src/tasks/plcs/configs/run/analyze_dataset_distribution.yaml b/src/tasks/plcs/configs/run/analyze_dataset_distribution.yaml
+index 4e539a82..9959eb71 100644
+--- a/src/tasks/plcs/configs/run/analyze_dataset_distribution.yaml
++++ b/src/tasks/plcs/configs/run/analyze_dataset_distribution.yaml
+@@ -1,2 +1,2 @@
+-output_dir: plcs/analysis/dataset_distribution
++output_dir: ${tennis_output:plcs,analyze,dataset_distribution,${tennis_run_id:}}
+ seed: 42
+diff --git a/src/tasks/plcs/configs/run/analyze_loss_dominance.yaml b/src/tasks/plcs/configs/run/analyze_loss_dominance.yaml
+index 6518b60c..23399060 100644
+--- a/src/tasks/plcs/configs/run/analyze_loss_dominance.yaml
++++ b/src/tasks/plcs/configs/run/analyze_loss_dominance.yaml
+@@ -1,5 +1,5 @@
+ # Checkpoint + hparams of the trained run to analyze, and where to write the report.
+ checkpoint: plcs/plcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
+ hparams: plcs/plcs_multiview_axial/logs/version_2/hparams.yaml
+-output_dir: plcs/plcs_multiview_axial/logs/version_2
++output_dir: ${tennis_output:plcs,analyze,loss_dominance,${tennis_run_id:}}
+ seed: 42
+diff --git a/src/tasks/plcs/configs/run/analyze_rotation_error_samples.yaml b/src/tasks/plcs/configs/run/analyze_rotation_error_samples.yaml
+index 249663ae..9fda236e 100644
+--- a/src/tasks/plcs/configs/run/analyze_rotation_error_samples.yaml
++++ b/src/tasks/plcs/configs/run/analyze_rotation_error_samples.yaml
+@@ -1,5 +1,5 @@
+ # Checkpoint and dataset root for rotation-error sample visualization.
+ checkpoint: plcs/plcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
+ scene_dir: plcs/single_object
+-output_dir: plcs/plcs_multiview_axial/logs/version_2/rotation_error_samples
++output_dir: ${tennis_output:plcs,analyze,rotation_errors,${tennis_run_id:}}
+ seed: 42
+diff --git a/src/tasks/plcs/configs/run/generate_dataset.yaml b/src/tasks/plcs/configs/run/generate_dataset.yaml
+index b7ecc71a..da941780 100644
+--- a/src/tasks/plcs/configs/run/generate_dataset.yaml
++++ b/src/tasks/plcs/configs/run/generate_dataset.yaml
+@@ -1,4 +1,4 @@
+-output_dir: plcs/single_object
++output_dir: ${tennis_dataset:plcs,single_object}
+ seed: 42
+ device: cpu
+ num_workers: 8
+diff --git a/src/tasks/plcs/configs/run/generate_dataset_athlete_pose.yaml b/src/tasks/plcs/configs/run/generate_dataset_athlete_pose.yaml
+index 82fd4b79..444374c0 100644
+--- a/src/tasks/plcs/configs/run/generate_dataset_athlete_pose.yaml
++++ b/src/tasks/plcs/configs/run/generate_dataset_athlete_pose.yaml
+@@ -1,3 +1,3 @@
+-output_dir: plcs_athlete_pose
++output_dir: ${tennis_dataset:plcs,athlete_pose_v1}
+ seed: 42
+ device: cpu
+diff --git a/src/tasks/plcs/configs/run/train.yaml b/src/tasks/plcs/configs/run/train.yaml
+index 78c7ab07..846feb93 100644
+--- a/src/tasks/plcs/configs/run/train.yaml
++++ b/src/tasks/plcs/configs/run/train.yaml
+@@ -1,4 +1,4 @@
+-output_dir: plcs/${model.name}
++output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
+ seed: 42
+ gpus: 1
+ resume: null
+diff --git a/src/tasks/plcs/configs/train.yaml b/src/tasks/plcs/configs/train.yaml
+index 9cab9656..ccc39078 100644
+--- a/src/tasks/plcs/configs/train.yaml
++++ b/src/tasks/plcs/configs/train.yaml
+@@ -15,7 +15,7 @@ external_assets:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/train_axial_reference.yaml b/src/tasks/plcs/configs/train_axial_reference.yaml
+index f7f8430e..881e5153 100644
+--- a/src/tasks/plcs/configs/train_axial_reference.yaml
++++ b/src/tasks/plcs/configs/train_axial_reference.yaml
+@@ -12,4 +12,4 @@ training:
+     enabled: true
+ run:
+   seed: 42
+-  output_dir: plcs/axial_reference_corners_v3-4_t128
++  output_dir: ${tennis_output:plcs,train,axial_reference_corners_v3-4_t128,${tennis_run_id:}}
+diff --git a/src/tasks/plcs/configs/train_chunked.yaml b/src/tasks/plcs/configs/train_chunked.yaml
+index 165cbfc8..537a64bc 100644
+--- a/src/tasks/plcs/configs/train_chunked.yaml
++++ b/src/tasks/plcs/configs/train_chunked.yaml
+@@ -19,7 +19,7 @@ external_assets:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/train_chunked_gan.yaml b/src/tasks/plcs/configs/train_chunked_gan.yaml
+index 20e49699..1be6ec44 100644
+--- a/src/tasks/plcs/configs/train_chunked_gan.yaml
++++ b/src/tasks/plcs/configs/train_chunked_gan.yaml
+@@ -19,7 +19,7 @@ external_assets:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/train_tracking.yaml b/src/tasks/plcs/configs/train_tracking.yaml
+index b52de224..6ddc7d1a 100644
+--- a/src/tasks/plcs/configs/train_tracking.yaml
++++ b/src/tasks/plcs/configs/train_tracking.yaml
+@@ -27,7 +27,7 @@ training:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/train_tracking_chunked.yaml b/src/tasks/plcs/configs/train_tracking_chunked.yaml
+index 1d9f139c..6c1e7100 100644
+--- a/src/tasks/plcs/configs/train_tracking_chunked.yaml
++++ b/src/tasks/plcs/configs/train_tracking_chunked.yaml
+@@ -34,7 +34,7 @@ training:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/plcs/configs/visualization/default.yaml b/src/tasks/plcs/configs/visualization/default.yaml
+index 4b17b8f2..86b926ca 100644
+--- a/src/tasks/plcs/configs/visualization/default.yaml
++++ b/src/tasks/plcs/configs/visualization/default.yaml
+@@ -7,7 +7,7 @@ cameras: [0]
+ reference_camera_id: null
+ animation_view: 3d  # 3d | 2d_topdown | camera
+ fps: 30.0
+-save: plcs/gt.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
++save: ${tennis_output:plcs,visualize,${visualization.mode},${tennis_run_id:}}/scene.gif
+ info: false
+ checkpoint: plcs/frame/last.ckpt
+ device: ${run.device}
+diff --git a/src/tasks/plcs/configs/visualization/multiview.yaml b/src/tasks/plcs/configs/visualization/multiview.yaml
+index bc6841bf..4cc9c08b 100644
+--- a/src/tasks/plcs/configs/visualization/multiview.yaml
++++ b/src/tasks/plcs/configs/visualization/multiview.yaml
+@@ -5,7 +5,7 @@ cameras: [0, 1, 2, 3, 4, 5]
+ reference_camera_id: null
+ animation_view: 3d  # 3d | 2d_topdown | camera
+ fps: 30.0
+-save: null
++save: ${tennis_output:plcs,visualize,${visualization.mode},${tennis_run_id:}}/scene.gif
+ info: false
+ checkpoint: plcs/multiview/logs/version_0/checkpoints/last.ckpt
+ device: ${run.device}
+diff --git a/src/tasks/plcs/configs/visualize.yaml b/src/tasks/plcs/configs/visualize.yaml
+index 806021c2..94d8f2a8 100644
+--- a/src/tasks/plcs/configs/visualize.yaml
++++ b/src/tasks/plcs/configs/visualize.yaml
+@@ -7,7 +7,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/visualize}/${now:%Y-%m-%d}/${now:%H-%M-%S}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:plcs,visualize,visualize,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/slcs/README.md b/src/tasks/slcs/README.md
+index 99860ffd..116b7a27 100644
+--- a/src/tasks/slcs/README.md
++++ b/src/tasks/slcs/README.md
+@@ -1,5 +1,7 @@
+ # SLCS: Scene Localization in Court System
+ 
++出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
++
+ SLCS は Issue #634 の構造化実動画データセットを読み、単眼の player pose、ball UV、court keypoints と、10フレーム間隔の DINOv3 patch tokens を融合して、コート座標系の player/ball 3D 時系列を同時推定するタスクです。BLCS と PLCS を直列接続せず、frame 内の entity attention と entity ごとの temporal attention を交互に適用します。dataset/clip manifest の正本は `src.tennis_scene.generate_dataset.manifest`、scene schema/archive の正本は `src.tennis_scene.{schema,archive}` です。SLCS 固有の completion marker・必須配列検証だけを `data.annotation` が担当し、foreign schema や error を再exportしません。
+ 
+ ## 入出力契約
+diff --git a/src/tasks/slcs/configs/analyze_predictions.yaml b/src/tasks/slcs/configs/analyze_predictions.yaml
+index 89b0c808..5ba08499 100644
+--- a/src/tasks/slcs/configs/analyze_predictions.yaml
++++ b/src/tasks/slcs/configs/analyze_predictions.yaml
+@@ -5,11 +5,11 @@ defaults:
+ analysis:
+   arrays: REQUIRED/eval_arrays.npz
+   calibration_bins: 10
+-  output_dir: slcs/analysis/${now:%Y-%m-%d_%H-%M-%S}
++  output_dir: ${tennis_output:slcs,analyze,predictions,${tennis_run_id:}}
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${analysis.output_dir}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${analysis.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/slcs/configs/evaluate.yaml b/src/tasks/slcs/configs/evaluate.yaml
+index decde286..876d3ae2 100644
+--- a/src/tasks/slcs/configs/evaluate.yaml
++++ b/src/tasks/slcs/configs/evaluate.yaml
+@@ -10,11 +10,11 @@ evaluate:
+   batch_size: 4
+   checkpoint_strict: true
+   checkpoint_weights_only: false
+-  output_dir: slcs/evaluate/${now:%Y-%m-%d_%H-%M-%S}
++  output_dir: ${tennis_output:slcs,evaluate,default,${tennis_run_id:}}
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${evaluate.output_dir}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${evaluate.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/slcs/configs/make_splits.yaml b/src/tasks/slcs/configs/make_splits.yaml
+index c529d30b..6816c47c 100644
+--- a/src/tasks/slcs/configs/make_splits.yaml
++++ b/src/tasks/slcs/configs/make_splits.yaml
+@@ -13,7 +13,7 @@ splits:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},slcs/make_splits,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:slcs,generate,make_splits,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/slcs/configs/paths/default.yaml b/src/tasks/slcs/configs/paths/default.yaml
+index aa89992e..ce65004b 100644
+--- a/src/tasks/slcs/configs/paths/default.yaml
++++ b/src/tasks/slcs/configs/paths/default.yaml
+@@ -1,7 +1,7 @@
+ project_root: .
+ data_root: data
+ checkpoint_root: checkpoints
+-artifact_root: artifacts
++artifact_root: outputs
+ output_root: outputs
+ cache_root: .cache
+ external_asset_root: third_party
+diff --git a/src/tasks/slcs/configs/precompute_dino_tokens.yaml b/src/tasks/slcs/configs/precompute_dino_tokens.yaml
+index f4bd6253..d68c25e4 100644
+--- a/src/tasks/slcs/configs/precompute_dino_tokens.yaml
++++ b/src/tasks/slcs/configs/precompute_dino_tokens.yaml
+@@ -13,7 +13,7 @@ precompute:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},slcs/precompute_dino_tokens,${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:slcs,precompute,precompute_dino_tokens,${tennis_run_id:}},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/slcs/configs/predict_clip.yaml b/src/tasks/slcs/configs/predict_clip.yaml
+index 020b381a..6e8f396e 100644
+--- a/src/tasks/slcs/configs/predict_clip.yaml
++++ b/src/tasks/slcs/configs/predict_clip.yaml
+@@ -14,7 +14,7 @@ predict:
+   frame_step: 1
+   render_3d: true
+   render_overlay: true
+-  output_dir: slcs/predict_clip/${now:%Y-%m-%d_%H-%M-%S}
++  output_dir: ${tennis_output:slcs,visualize,clip,${tennis_run_id:}}
+ 
+ visualization:
+   figure_width: 12.0
+@@ -26,7 +26,7 @@ visualization:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${predict.output_dir}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${predict.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tasks/slcs/configs/run/train.yaml b/src/tasks/slcs/configs/run/train.yaml
+index bcad11b5..3e1b764c 100644
+--- a/src/tasks/slcs/configs/run/train.yaml
++++ b/src/tasks/slcs/configs/run/train.yaml
+@@ -1,4 +1,4 @@
+-output_dir: slcs/${model.name}
++output_dir: ${tennis_output:slcs,train,${model.name},${tennis_run_id:}}
+ seed: 42
+ gpus: 1
+ resume: null
+diff --git a/src/tasks/slcs/configs/train.yaml b/src/tasks/slcs/configs/train.yaml
+index ed047617..0e7d7c50 100644
+--- a/src/tasks/slcs/configs/train.yaml
++++ b/src/tasks/slcs/configs/train.yaml
+@@ -9,7 +9,7 @@ defaults:
+ 
+ hydra:
+   run:
+-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+   output_subdir: null
+   job:
+     chdir: false
+diff --git a/src/tennis_scene/configs/build_slcs_dataset.yaml b/src/tennis_scene/configs/build_slcs_dataset.yaml
+new file mode 100644
+index 00000000..fb1dfdda
+--- /dev/null
++++ b/src/tennis_scene/configs/build_slcs_dataset.yaml
+@@ -0,0 +1,30 @@
++defaults:
++  - reference_clip
++  - _self_
++
++dataset_directory: tennis_multivew/processed/meiji_3cam/dataset
++dataset_output_directory: slcs/meiji_rgb_v1
++clip_ids: null
++output_dir: ${tennis_output:tennis_scene,generate,meiji_rgb_v1,s42-001}
++stage: all
++seed: 42
++
++court:
++  # Relative to paths.output_root; never use the obsolete deploy KP checkpoint.
++  checkpoint: court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
++  samples_per_clip: 9
++  min_score: 0.15
++  min_points: 6
++  ransac_px: 20.0
++  max_fit_error_px: 30.0
++
++features:
++  enabled: true
++  checkpoint: dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
++
++hydra:
++  run:
++    dir: ${tennis_lab_path:output,${paths.output_root},${output_dir},hydra}
++  output_subdir: null
++  job:
++    chdir: false
+diff --git a/src/tennis_scene/dataset_pipeline/__init__.py b/src/tennis_scene/dataset_pipeline/__init__.py
+new file mode 100644
+index 00000000..6e746c53
+--- /dev/null
++++ b/src/tennis_scene/dataset_pipeline/__init__.py
+@@ -0,0 +1 @@
++"""Reproducible real-video teacher generation and quality measurements."""
+diff --git a/src/tennis_scene/dataset_pipeline/build.py b/src/tennis_scene/dataset_pipeline/build.py
+new file mode 100644
+index 00000000..89943ade
+--- /dev/null
++++ b/src/tennis_scene/dataset_pipeline/build.py
+@@ -0,0 +1,174 @@
++"""Run observation, reconstruction, publication, and RGB feature stages."""
++
++from __future__ import annotations
++
++import json
++import os
++import shutil
++from collections.abc import Sequence
++from pathlib import Path
++
++import cv2
++import numpy as np
++import torch
++from omegaconf import DictConfig, OmegaConf
++
++from src.tennis_scene.configuration import ReferenceClipPaths
++from src.tennis_scene.dataset_pipeline.configuration import (
++    DatasetBuildConfig,
++    resolved_recipe,
++)
++from src.tennis_scene.dataset_pipeline.court import observe_static_court
++from src.tennis_scene.generate_dataset.manifest import (
++    ClipManifest,
++    load_dataset_manifest,
++)
++from src.tennis_scene.generate_dataset.pseudo_annotation import (
++    SceneRunner,
++    generate_pseudo_annotations,
++)
++from src.tennis_scene.reference_pipeline.observations import (
++    import_ball,
++    observe_people,
++    sha256,
++)
++from src.tennis_scene.reference_pipeline.reconstruction import reconstruct
++from src.tennis_scene.schema import SceneResult
++from src.utils.io import save_json_atomic
++
++
++def materialize_dataset(source: Path, destination: Path) -> None:
++    """Copy manifests and hard-link immutable media into an independent version."""
++    manifest = load_dataset_manifest(source)
++    destination.mkdir(parents=True, exist_ok=True)
++    for record in manifest.clips.values():
++        clip = ClipManifest.load(source / record.path)
++        target = destination / record.path
++        target.mkdir(parents=True, exist_ok=True)
++        source_manifest, target_manifest = source / record.path / "clip.json", target / "clip.json"
++        if target_manifest.exists():
++            if sha256(source_manifest) != sha256(target_manifest):
++                raise ValueError(f"Input manifest changed: {record.clip_id}")
++        else:
++            shutil.copy2(source_manifest, target_manifest)
++        for camera, relative in zip(clip.camera_ids, clip.video_paths, strict=True):
++            media = clip.media_path(camera)
++            linked = target / relative
++            linked.parent.mkdir(parents=True, exist_ok=True)
++            if linked.exists():
++                if not os.path.samefile(linked, media) and sha256(linked) != sha256(media):
++                    raise ValueError(f"Input video changed: {media}")
++            else:
++                os.link(media, linked)
++    target_index = destination / "dataset.json"
++    if target_index.exists():
++        if json.loads(target_index.read_text()) != manifest.to_dict():
++            raise ValueError("Input dataset inventory changed; choose a new dataset version")
++    else:
++        manifest.save(destination)
++
++
++def _court(cfg: DictConfig, runtime: DatasetBuildConfig, clip: ClipManifest, output: Path) -> tuple[np.ndarray, np.ndarray]:
++    cache, receipt = output / "court.npz", output / "court.json"
++    identity = {
++        "checkpoint_sha256": sha256(runtime.court.checkpoint),
++        "clip_sha256": sha256(clip.clip_dir / "clip.json"),
++        "video_sha256": {cam: sha256(clip.media_path(cam)) for cam in clip.camera_ids},
++        "settings": OmegaConf.to_container(cfg.court, resolve=True),
++    }
++    if cache.exists():
++        saved = json.loads(receipt.read_text())
++        if saved["identity"] != identity:
++            raise ValueError(f"Stale court observations at {output}")
++        with np.load(cache) as arrays:
++            return arrays["keypoints"], arrays["homographies"]
++    kp, homographies, diagnostics = observe_static_court(
++        clip, output, resolver=runtime.resolver, settings=runtime.court, device=str(cfg.device)
++    )
++    np.savez_compressed(cache, keypoints=kp, homographies=homographies)
++    save_json_atomic({"identity": identity, "diagnostics": diagnostics}, receipt)
++    torch.cuda.empty_cache()
++    return kp, homographies
++
++
++def build_dataset(cfg: DictConfig) -> None:
++    runtime = DatasetBuildConfig.from_config(cfg)
++    cv2.setRNGSeed(runtime.seed)
++    np.random.seed(runtime.seed)
++    torch.manual_seed(runtime.seed)
++    runtime.output.mkdir(parents=True, exist_ok=True)
++    recipe = resolved_recipe(cfg, runtime)
++    recipe_file = runtime.output / "recipe.json"
++    if recipe_file.exists() and json.loads(recipe_file.read_text()) != recipe:
++        raise ValueError("Generation recipe changed; choose a new output_dir and dataset version")
++    save_json_atomic(recipe, recipe_file)
++    OmegaConf.save(OmegaConf.create(recipe), runtime.output / "config.yaml", resolve=True)
++    manifest = load_dataset_manifest(runtime.source)
++    for clip_id in runtime.clip_ids:
++        record = manifest.clips[clip_id]
++        clip = ClipManifest.load(runtime.source / record.path)
++        output = runtime.output / clip_id
++        output.mkdir(parents=True, exist_ok=True)
++        if runtime.stage == "features":
++            break
++        kp, homographies = _court(cfg, runtime, clip, output)
++        if runtime.stage == "court":
++            continue
++        local = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
++        if not isinstance(local, DictConfig):
++            raise TypeError("Dataset configuration must be a mapping")
++        local.clip_dir = str(clip.clip_dir.relative_to(runtime.resolver.roots.data_root))
++        local.output_dir = str(output.relative_to(runtime.resolver.roots.output_root))
++        paths = ReferenceClipPaths.from_config(local)
++        import_ball(clip.clip_dir, output)
++        if runtime.stage in {"all", "observe"}:
++            observe_people(local, paths, clip.clip_dir, output, homographies=homographies)
++        if runtime.stage == "observe":
++            continue
++        materialize_dataset(runtime.source, runtime.destination)
++
++        outcomes = generate_pseudo_annotations(
++            runtime.destination, _scene_runner(local, paths, clip, output, kp, homographies),
++            pipeline_config_yaml=OmegaConf.to_yaml(local, resolve=True),
++            clip_ids=[clip_id], overwrite=False, continue_on_error=False,
++        )
++        print(f"Published {clip_id}: {outcomes[0].status}", flush=True)
++    if runtime.stage in {"all", "features"} and runtime.features_enabled:
++        _precompute_features(cfg, runtime)
++
++
++def _scene_runner(cfg: DictConfig, paths: ReferenceClipPaths, clip: ClipManifest,
++                  output: Path, kp: np.ndarray, homographies: np.ndarray) -> SceneRunner:
++    def runner(videos: Sequence[Path], cameras: Sequence[str]) -> SceneResult:
++        if tuple(cameras) != clip.camera_ids or len(videos) != len(clip.camera_ids):
++            raise ValueError("Publication inputs differ from the reconstructed clip")
++        scene = reconstruct(cfg, paths, clip.clip_dir, output, court_observations=(kp, homographies))
++        scene.metadata["court_model"] = json.loads((output / "court.json").read_text())
++        return scene
++
++    return runner
++
++
++def _precompute_features(cfg: DictConfig, runtime: DatasetBuildConfig) -> None:
++    from hydra import compose, initialize_config_dir
++    from hydra.core.global_hydra import GlobalHydra
++
++    from src.tasks.slcs.scripts.precompute_dino_tokens import run
++    from src.utils.paths import PROJECT_ROOT
++
++    # Hydra's application singleton is already active in a CLI invocation.
++    # Compose from the SLCS config directory in a temporary context and restore it.
++    state = GlobalHydra.instance().hydra
++    GlobalHydra.instance().clear()
++    try:
++        with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tasks/slcs/configs")):
++            settings = compose(config_name="precompute_dino_tokens")
++    finally:
++        GlobalHydra.instance().hydra = state
++    settings.paths = dict(runtime.resolver.roots.as_mapping())
++    settings.paths.checkpoint_root = str(runtime.resolver.roots.external_asset_root)
++    settings.data.dataset_root = str(runtime.destination.relative_to(runtime.resolver.roots.data_root))
++    settings.precompute.checkpoint_path = str(runtime.feature_checkpoint.relative_to(runtime.resolver.roots.external_asset_root))
++    settings.precompute.device = cfg.device
++    if run(settings) != 0:
++        raise RuntimeError("RGB feature precompute failed; inspect per-clip failures")
+diff --git a/src/tennis_scene/dataset_pipeline/configuration.py b/src/tennis_scene/dataset_pipeline/configuration.py
+new file mode 100644
+index 00000000..e560b32b
+--- /dev/null
++++ b/src/tennis_scene/dataset_pipeline/configuration.py
+@@ -0,0 +1,88 @@
++"""Strict configuration for producing a versioned SLCS real-video dataset."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from pathlib import Path
++from typing import cast
++
++from omegaconf import DictConfig, OmegaConf
++
++from src.tasks.base.configuration import exact_config_mapping
++from src.tennis_scene.configuration import ReferenceClipPaths
++from src.tennis_scene.dataset_pipeline.court import StaticCourtSettings
++from src.tennis_scene.generate_dataset.manifest import load_dataset_manifest
++from src.utils.configuration import PathResolver, PathRole
++
++_KEYS = frozenset({
++    "paths", "clip_dir", "output_dir", "device", "stage", "reference_camera",
++    "view_half_turns", "people", "plcs_checkpoint", "blcs_checkpoint", "window_size",
++    "window_overlap", "sample_stride", "pose_visibility_threshold", "dataset_directory",
++    "dataset_output_directory", "clip_ids", "seed", "court", "features",
++})
++
++
++@dataclass(frozen=True)
++class DatasetBuildConfig:
++    resolver: PathResolver
++    source: Path
++    destination: Path
++    output: Path
++    clip_ids: tuple[str, ...]
++    stage: str
++    seed: int
++    court: StaticCourtSettings
++    features_enabled: bool
++    feature_checkpoint: Path
++
++    @classmethod
++    def from_config(cls, cfg: DictConfig) -> DatasetBuildConfig:
++        exact_config_mapping(cfg, path="configuration", required_keys=_KEYS)
++        paths = ReferenceClipPaths.from_config(cfg)
++        resolver = paths.resolver
++        source = resolver.resolve(PathRole.DATA, str(cfg.dataset_directory))
++        destination = resolver.resolve(PathRole.DATA, str(cfg.dataset_output_directory))
++        if source == destination or destination.is_relative_to(source):
++            raise ValueError("Use a separate versioned output dataset directory")
++        manifest = load_dataset_manifest(source)
++        clips = tuple(sorted(manifest.clips) if cfg.clip_ids is None else cfg.clip_ids)
++        if not clips or len(set(clips)) != len(clips) or set(clips) - manifest.clips.keys():
++            raise ValueError("clip_ids must be unique known dataset clip IDs")
++        stage = str(cfg.stage)
++        if stage not in {"all", "court", "observe", "infer", "features"}:
++            raise ValueError(f"Unsupported dataset stage {stage!r}")
++        if type(cfg.seed) is not int:
++            raise TypeError("seed must be an integer")
++        raw = exact_config_mapping(cfg.court, path="court", required_keys={"checkpoint", "samples_per_clip", "min_score", "min_points", "ransac_px", "max_fit_error_px"})
++        for name in ("samples_per_clip", "min_points"):
++            if type(raw[name]) is not int or cast(int, raw[name]) <= 0:
++                raise ValueError(f"court.{name} must be a positive integer")
++        if not 4 <= cfg.court.min_points <= 14 or not 0 < cfg.court.min_score <= 1:
++            raise ValueError("Invalid minimum court evidence")
++        if cfg.court.ransac_px <= 0 or cfg.court.max_fit_error_px <= 0:
++            raise ValueError("Court fit tolerances must be positive")
++        court = StaticCourtSettings(
++            resolver.resolve(PathRole.OUTPUT, str(cfg.court.checkpoint)),
++            int(cfg.court.samples_per_clip), float(cfg.court.min_score),
++            int(cfg.court.min_points), float(cfg.court.ransac_px),
++            float(cfg.court.max_fit_error_px),
++        )
++        exact_config_mapping(cfg.features, path="features", required_keys={"enabled", "checkpoint"})
++        if type(cfg.features.enabled) is not bool:
++            raise TypeError("features.enabled must be boolean")
++        return cls(resolver, source, destination, paths.output_dir, clips, stage,
++                   int(cfg.seed), court, bool(cfg.features.enabled),
++                   resolver.resolve(PathRole.EXTERNAL_ASSET, str(cfg.features.checkpoint)))
++
++
++def validate_build_config(cfg: DictConfig) -> None:
++    DatasetBuildConfig.from_config(cfg)
++
++
++def resolved_recipe(cfg: DictConfig, runtime: DatasetBuildConfig) -> dict[str, object]:
++    """Stage and subset are execution selectors, not dataset content identity."""
++    result = cast(dict[str, object], OmegaConf.to_container(cfg, resolve=True))
++    for name in ("stage", "clip_ids", "clip_dir"):
++        result.pop(name)
++    result["paths"] = dict(runtime.resolver.roots.as_mapping())
++    return result
+diff --git a/src/tennis_scene/dataset_pipeline/court.py b/src/tennis_scene/dataset_pipeline/court.py
+new file mode 100644
+index 00000000..de8a5a6d
+--- /dev/null
++++ b/src/tennis_scene/dataset_pipeline/court.py
+@@ -0,0 +1,116 @@
++"""Explicit static-camera court estimation from a learned KP checkpoint."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass, replace
++from pathlib import Path
++from typing import Any
++
++import cv2
++import numpy as np
++
++from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
++from src.tennis_scene.generate_dataset.manifest import ClipManifest
++from src.utils.configuration import PathResolver
++from src.utils.schema.court import CourtConfig, court_keypoints_3d
++
++
++@dataclass(frozen=True)
++class StaticCourtSettings:
++    checkpoint: Path
++    samples_per_clip: int
++    min_score: float
++    min_points: int
++    ransac_px: float
++    max_fit_error_px: float
++
++
++def fit_static_court(
++    keypoints_px: np.ndarray,
++    scores: np.ndarray,
++    *,
++    size: tuple[int, int],
++    settings: StaticCourtSettings,
++) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
++    """Fit a RANSAC homography to temporal median observations; reject poor fits.
++
++    Missing channels are completed by the fitted court geometry, with their
++    support explicitly recorded. They are not counted as detector observations.
++    """
++    if keypoints_px.ndim != 3 or keypoints_px.shape[1:] != (14, 2):
++        raise ValueError("Expected sampled CourtKP14 observations (F,14,2)")
++    if scores.shape != keypoints_px.shape[:-1]:
++        raise ValueError("Court scores must match (F,14)")
++    valid = (scores >= settings.min_score) & np.isfinite(keypoints_px).all(-1)
++    counts = valid.sum(axis=0)
++    supported = counts >= max(1, (len(scores) + 1) // 2)
++    if int(supported.sum()) < settings.min_points:
++        raise ValueError(f"Only {supported.sum()}/14 court channels have temporal support")
++    median = np.zeros((14, 2), np.float32)
++    for index in np.flatnonzero(supported):
++        median[index] = np.median(keypoints_px[valid[:, index], index], axis=0)
++    physical = court_keypoints_3d(CourtConfig(0.914, None)).numpy()[:14, :2]
++    homography, inliers = cv2.findHomography(
++        physical[supported], median[supported], cv2.RANSAC, settings.ransac_px
++    )
++    if homography is None or inliers is None or int(inliers.sum()) < settings.min_points:
++        raise ValueError("Static court homography has insufficient inlier support")
++    projected = cv2.perspectiveTransform(physical[None], homography)[0]
++    errors = np.linalg.norm(projected[supported] - median[supported], axis=-1)
++    median_error = float(np.median(errors))
++    if not np.isfinite(projected).all() or median_error > settings.max_fit_error_px:
++        raise ValueError(f"Static court fit error too large: {median_error:.2f}px")
++    normalized = projected / np.asarray(size, np.float32)
++    if ((normalized < 0) | (normalized > 1)).any():
++        raise ValueError("Fitted CourtKP14 is outside the source image")
++    return normalized.astype(np.float32), homography, {
++        "method": "static_temporal_median_ransac_homography",
++        "support_frames_per_channel": counts.tolist(),
++        "supported_channels": np.flatnonzero(supported).tolist(),
++        "inlier_channels": np.flatnonzero(supported)[inliers.ravel().astype(bool)].tolist(),
++        "fit_error_px_median": median_error,
++        "fit_error_px_p95": float(np.percentile(errors, 95)),
++        "is_measured_calibration": False,
++    }
++
++
++def observe_static_court(
++    clip: ClipManifest,
++    output: Path,
++    *,
++    resolver: PathResolver,
++    settings: StaticCourtSettings,
++    device: str,
++) -> tuple[np.ndarray, np.ndarray, list[dict[str, Any]]]:
++    """Run the configured outputs/court_detection checkpoint on sampled RGB."""
++    # Court training checkpoints live under output_root, while PLCS/BLCS
++    # deployment checkpoints use checkpoint_root. The input role is explicit.
++    court_resolver = PathResolver(replace(resolver.roots, checkpoint_root=resolver.roots.output_root))
++    predictor = CourtKeypointPredictor.load_from_checkpoint(
++        settings.checkpoint, resolver=court_resolver, device=device,
++        subpixel_refine=True, peak_threshold=settings.min_score,
++    )
++    indices = np.unique(np.linspace(0, clip.num_frames - 1, settings.samples_per_clip).round().astype(int))
++    observations, homographies, diagnostics = [], [], []
++    for camera in clip.camera_ids:
++        capture = cv2.VideoCapture(str(clip.media_path(camera)))
++        keypoints, scores = [], []
++        try:
++            for index in indices:
++                capture.set(cv2.CAP_PROP_POS_FRAMES, int(index))
++                ok, frame = capture.read()
++                if not ok:
++                    raise ValueError(f"Cannot read {camera} frame {index}")
++                pred = predictor.predict(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
++                keypoints.append(pred.keypoints[:, 0].cpu().numpy())
++                scores.append(pred.scores[:, 0].cpu().numpy())
++        finally:
++            capture.release()
++        raw, confidence = np.stack(keypoints), np.stack(scores)
++        np.savez_compressed(output / f"{camera}_court_samples.npz", keypoints_px=raw, scores=confidence, frame_indices=indices)
++        kp, h, diagnostic = fit_static_court(raw, confidence, size=(clip.width, clip.height), settings=settings)
++        observations.append(np.repeat(kp[None], clip.num_frames, axis=0))
++        homographies.append(h)
++        diagnostics.append({"camera_id": camera, **diagnostic})
++        print(f"Court {camera}: {diagnostic}", flush=True)
++    return np.stack(observations), np.stack(homographies), diagnostics
+diff --git a/src/tennis_scene/reference_pipeline/observations.py b/src/tennis_scene/reference_pipeline/observations.py
+index aae0087d..b8695308 100644
+--- a/src/tennis_scene/reference_pipeline/observations.py
++++ b/src/tennis_scene/reference_pipeline/observations.py
+@@ -143,7 +143,8 @@ def court_homographies(clip_dir: Path) -> tuple[np.ndarray, np.ndarray]:
+ 
+ 
+ def observe_people(
+-    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path
++    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path,
++    *, homographies: np.ndarray | None = None,
+ ) -> None:
+     """Run DINO/BoT-SORT within the playing area, then ViTPose; cache each camera."""
+     import torch
+@@ -157,7 +158,10 @@ def observe_people(
+     )
+ 
+     clip = read_clip(clip_dir)
+-    _, hs = court_homographies(clip_dir)
++    if homographies is None:
++        _, hs = court_homographies(clip_dir)
++    else:
++        hs = homographies
+     head = ViTPoseHeadConfig(1280, 17, 2, (256, 256), (4, 4), 1, 0, ())
+     for camera, video_name, h in zip(
+         clip["camera_ids"], clip["video_paths"], hs, strict=True
+@@ -169,6 +173,9 @@ def observe_people(
+             "tracker": "DINO+BoT-SORT",
+             "pose": "ViTPose-H",
+             "settings": str(cfg.people),
++            "court_homography": h.tolist(),
++            "detector_sha256": sha256(paths.dino_checkpoint),
++            "pose_sha256": sha256(paths.vitpose_checkpoint),
+         }
+         if cache.exists():
+             if json.loads(cache.with_suffix(".metadata.json").read_text()) != signature:
+diff --git a/src/tennis_scene/reference_pipeline/reconstruction.py b/src/tennis_scene/reference_pipeline/reconstruction.py
+index 6a1173f1..653b2b7c 100644
+--- a/src/tennis_scene/reference_pipeline/reconstruction.py
++++ b/src/tennis_scene/reference_pipeline/reconstruction.py
+@@ -77,10 +77,11 @@ def restore_frames(values: np.ndarray, indices: np.ndarray, total: int) -> np.nd
+ 
+ 
+ def reconstruct(
+-    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path
+-) -> None:
++    cfg: DictConfig, paths: ReferenceClipPaths, clip_dir: Path, output: Path,
++    *, court_observations: tuple[np.ndarray, np.ndarray] | None = None,
++) -> SceneResult:
+     clip = read_clip(clip_dir)
+-    kp, hs = court_homographies(clip_dir)
++    kp, hs = court_homographies(clip_dir) if court_observations is None else court_observations
+     aligned, selection, document = build_reference(
+         clip["camera_ids"],
+         kp,
+@@ -198,7 +199,8 @@ def reconstruct(
+         "pose_source": "PLCS TemporalDecomposedCanonicalPoseHead",
+         "smpl_available": False,
+         "court_observations": {
+-            "manual_slots": 14,
++            "source": "manual" if court_observations is None else "configured_static_court_model",
++            "observed_slots": 14,
+             "plcs_slots": 14,
+             "blcs_slots": 14,
+             "blcs_unobserved_slots": [],
+@@ -236,3 +238,4 @@ def reconstruct(
+     )
+     save_scene_result(result, output / "scene.npz")
+     print("Saved scene.npz", flush=True)
++    return result
+diff --git a/src/tennis_scene/scripts/build_slcs_dataset.py b/src/tennis_scene/scripts/build_slcs_dataset.py
+new file mode 100644
+index 00000000..e0e77c52
+--- /dev/null
++++ b/src/tennis_scene/scripts/build_slcs_dataset.py
+@@ -0,0 +1,19 @@
++"""Build a versioned real-RGB SLCS dataset from clips with one command."""
++
++from omegaconf import DictConfig
++
++from src.tennis_scene.dataset_pipeline.configuration import validate_build_config
++from src.utils.hydra import hydra_main, register_boundary_validator
++
++register_boundary_validator("tennis_scene.build_slcs_dataset", validate_build_config)
++
++
++@hydra_main(config_path="../configs", config_name="build_slcs_dataset", version_base="1.3", validation_boundary="tennis_scene.build_slcs_dataset")
++def main(cfg: DictConfig) -> None:
++    from src.tennis_scene.dataset_pipeline.build import build_dataset
++
++    build_dataset(cfg)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/utils/configuration/inventory.py b/src/utils/configuration/inventory.py
+index c2b5b64b..68152c1a 100644
+--- a/src/utils/configuration/inventory.py
++++ b/src/utils/configuration/inventory.py
+@@ -188,6 +188,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
+     "src.tennis_scene.scripts.export_clips": "tennis_scene.export_clips",
+     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
++    "src.tennis_scene.scripts.build_slcs_dataset": "tennis_scene.build_slcs_dataset",
+     "src.tennis_scene.scripts.reconstruct_reference_clip": "tennis_scene.reference_clip",
+     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
+     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
+@@ -255,6 +256,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
+     "src.tennis_scene.scripts.export_clips": "src.tennis_scene.configuration.validate_export_clips_boundary",
+     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
++    "src.tennis_scene.scripts.build_slcs_dataset": "src.tennis_scene.dataset_pipeline.configuration.validate_build_config",
+     "src.tennis_scene.scripts.reconstruct_reference_clip": "src.tennis_scene.configuration.validate_reference_clip_boundary",
+     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
+     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
+@@ -538,6 +540,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
+     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_clips"),
+     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
++    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.build_slcs_dataset"),
+     _runtime_boundary(
+         "tennis_scene", "src.tennis_scene.scripts.reconstruct_reference_clip"
+     ),
+diff --git a/src/utils/configuration/output_layout.py b/src/utils/configuration/output_layout.py
+new file mode 100644
+index 00000000..cc4fdcbd
+--- /dev/null
++++ b/src/utils/configuration/output_layout.py
+@@ -0,0 +1,40 @@
++"""Names for task artifacts; root authority remains owned by PathResolver."""
++
++from __future__ import annotations
++
++import re
++from datetime import UTC, datetime
++from uuid import uuid4
++
++from src.utils.configuration.errors import PathContractError
++
++_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
++OUTPUT_KINDS = frozenset(
++    {"train", "evaluate", "visualize", "analyze", "generate", "precompute"}
++)
++
++
++def _component(value: str) -> str:
++    if type(value) is not str or _COMPONENT.fullmatch(value) is None:
++        raise PathContractError(
++            "Output identity must be one non-empty path component using "
++            f"letters, digits, '_', '-' or '.': {value!r}."
++        )
++    return value
++
++
++def task_output_path(task: str, kind: str, experiment: str, run_id: str) -> str:
++    """Return the configured role-relative task/kind/experiment/run hierarchy."""
++    if kind not in OUTPUT_KINDS:
++        raise PathContractError(f"Unsupported task output kind: {kind!r}.")
++    return "/".join(_component(value) for value in (task, kind, experiment, run_id))
++
++
++def dataset_output_path(task: str, version: str) -> str:
++    """Name a durable, versioned dataset below the explicit data root."""
++    return "/".join(_component(value) for value in (task, version))
++
++
++def new_run_id() -> str:
++    """Generate an identity once per composed config (OmegaConf caches it)."""
++    return f"{datetime.now(UTC):%Y%m%dT%H%M%S.%fZ}-{uuid4().hex[:8]}"
+diff --git a/src/utils/hydra.py b/src/utils/hydra.py
+index d704fc1a..0db0e474 100644
+--- a/src/utils/hydra.py
++++ b/src/utils/hydra.py
+@@ -17,6 +17,11 @@ from typing import Any, TypeVar, cast
+ import hydra
+ from omegaconf import DictConfig, OmegaConf
+ 
++from src.utils.configuration.output_layout import (
++    dataset_output_path,
++    new_run_id,
++    task_output_path,
++)
+ from src.utils.configuration.paths import PathResolver, PathRole, RuntimePathRoots
+ from src.utils.paths import PROJECT_ROOT
+ 
+@@ -177,3 +182,6 @@ def resolve_hydra_path(role: str, *parts: str) -> str:
+ 
+ 
+ OmegaConf.register_new_resolver(HYDRA_PATH_RESOLVER, resolve_hydra_path)
++OmegaConf.register_new_resolver("tennis_output", task_output_path)
++OmegaConf.register_new_resolver("tennis_dataset", dataset_output_path)
++OmegaConf.register_new_resolver("tennis_run_id", new_run_id, use_cache=True)
+diff --git a/tests/unit/tasks/base/training/test_lightning_module.py b/tests/unit/tasks/base/training/test_lightning_module.py
+index ddeaa6f4..ea2d55a2 100644
+--- a/tests/unit/tasks/base/training/test_lightning_module.py
++++ b/tests/unit/tasks/base/training/test_lightning_module.py
+@@ -86,10 +86,11 @@ def _config(
+             "data_root": "data",
+             "checkpoint_root": "checkpoints",
+             "artifact_root": str(artifact_root),
+-            "output_root": "outputs",
++            "output_root": str(artifact_root / "outputs"),
+             "cache_root": ".cache",
+             "external_asset_root": "external",
+         },
++        "run": {"output_dir": "tiny/train/default/run-1"},
+         "training": {
+             "trainer": {
+                 "max_epochs": max_epochs,
+@@ -349,7 +350,7 @@ def test_default_payload_empty_and_collect_noop() -> None:
+     assert not getattr(m, "_test_pred_arrays", None)
+ 
+ 
+-def test_save_test_predictions_preserves_legacy_artifact_location(
++def test_save_test_predictions_uses_configured_run_location(
+     tmp_path: Path,
+     monkeypatch: pytest.MonkeyPatch,
+ ) -> None:
+@@ -370,7 +371,7 @@ def test_save_test_predictions_preserves_legacy_artifact_location(
+         diagnostic_metrics={"x_error_m": 0.05, "loss_position": 0.01},
+     )
+     assert npz_path is not None
+-    assert npz_path == tmp_path / "test_predictions" / "pred_test.npz"
++    assert npz_path == tmp_path / "outputs/tiny/train/default/run-1/predictions/pred_test.npz"
+     loaded = np.load(npz_path)
+     assert loaded["position"].shape == (3, 5, 3)  # batch 2+1, T padded to 5
+     assert loaded["scene_ids"].shape == (3,)
+@@ -451,3 +452,22 @@ def test_save_test_predictions_rejects_invalid_queue_dir_before_writes(
+ def test_save_test_predictions_none_when_empty(tmp_path: Path) -> None:
+     m = _TinyModule(_config(artifact_root=tmp_path))
+     assert m.save_test_predictions() is None  # nothing collected
++
++
++def test_saved_padding_excludes_short_batch_tail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
++    class PredModule(_TinyModule):
++        def test_prediction_payload(self, batch: Any, result: dict[str, Any]) -> dict[str, torch.Tensor]:
++            return result
++
++    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
++    module = PredModule(_config(artifact_root=tmp_path))
++    for length in (2, 4):
++        module.collect_test_predictions(None, {
++            "position": torch.ones(1, length, 3),
++            "padding_mask": torch.zeros(1, length, dtype=torch.bool),
++        })
++    saved = module.save_test_predictions()
++    assert saved is not None
++    with np.load(saved) as payload:
++        assert payload["padding_mask"].tolist() == [[False, False, True, True], [False, False, False, False]]
++        assert (~payload["padding_mask"]).sum() == 6
+diff --git a/tests/unit/tasks/base/training/test_runner.py b/tests/unit/tasks/base/training/test_runner.py
+index 2a426e30..cde6812d 100644
+--- a/tests/unit/tasks/base/training/test_runner.py
++++ b/tests/unit/tasks/base/training/test_runner.py
+@@ -285,7 +285,7 @@ def test_checkpoint_callbacks_omit_true_last_when_disabled(
+     assert checkpoints[0].save_last is False
+ 
+ 
+-def test_checkpoint_pointer_preserves_legacy_artifact_location_without_queue(
++def test_checkpoint_pointer_stays_with_training_run_without_queue(
+     make_training_config: Any,
+     monkeypatch: pytest.MonkeyPatch,
+ ) -> None:
+@@ -296,7 +296,7 @@ def test_checkpoint_pointer_preserves_legacy_artifact_location_without_queue(
+ 
+     runner._record_ckpt_dir_pointer(checkpoint_dir, runtime.resolver)
+ 
+-    pointer = runtime.resolver.roots.artifact_root / "repro" / "output_dir.txt"
++    pointer = checkpoint_dir.parent / "repro" / "output_dir.txt"
+     assert pointer.read_text(encoding="utf-8") == f"{checkpoint_dir.resolve()}\n"
+ 
+ 
+@@ -349,3 +349,15 @@ def test_checkpoint_dir_rejects_logger_parent_outside_output_role(
+             datamodule=cast(Any, object()),
+             logger=cast(Any, SimpleNamespace(log_dir=str(tmp_path / "outside"))),
+         )
++
++
++def test_fresh_training_rejects_existing_run_before_config_overwrite(make_training_config: Any) -> None:
++    config = OmegaConf.create(make_training_config())
++    runner = BaseTrainingRunner()
++    runtime = runner.validate_runtime_config(config)
++    runtime.run.output_dir.mkdir(parents=True)
++    saved = runtime.run.output_dir / "config.yaml"
++    saved.write_text("original: true\n")
++    with pytest.raises(FileExistsError, match="Choose a new run.output_dir"):
++        runner.run(config)
++    assert saved.read_text() == "original: true\n"
+diff --git a/tests/unit/tasks/plcs/test_configuration.py b/tests/unit/tasks/plcs/test_configuration.py
+index d0f26c61..33de8c83 100644
+--- a/tests/unit/tasks/plcs/test_configuration.py
++++ b/tests/unit/tasks/plcs/test_configuration.py
+@@ -57,7 +57,7 @@ def test_analysis_output_is_explicitly_output_root_relative() -> None:
+     )
+ 
+     assert runtime.OUTPUT_ROLE is PathRole.OUTPUT
+-    assert runtime.output_dir == PROJECT_ROOT / "outputs/plcs/analysis/angle_velocity"
++    assert runtime.output_dir.parent == (PROJECT_ROOT / "outputs/plcs/analyze/angle_velocity").resolve()
+     assert runtime.result_path is not None
+     assert runtime.result_path.parent == runtime.output_dir
+ 
+diff --git a/tests/unit/tennis_scene/dataset_pipeline/test_court.py b/tests/unit/tennis_scene/dataset_pipeline/test_court.py
+new file mode 100644
+index 00000000..a49a345b
+--- /dev/null
++++ b/tests/unit/tennis_scene/dataset_pipeline/test_court.py
+@@ -0,0 +1,33 @@
++"""Static court fitting rejects insufficient evidence and resists outliers."""
++
++from pathlib import Path
++
++import cv2
++import numpy as np
++import pytest
++
++from src.tennis_scene.dataset_pipeline.court import (
++    StaticCourtSettings,
++    fit_static_court,
++)
++from src.utils.schema.court import CourtConfig, court_keypoints_3d
++
++
++def test_static_fit_rejects_an_outlier_without_moving_the_court() -> None:
++    world = court_keypoints_3d(CourtConfig(0.914, None)).numpy()[:14, :2]
++    h = np.array([[35, 0, 960], [0, 20, 540], [0, 0.01, 1]], np.float64)
++    expected = cv2.perspectiveTransform(world[None], h)[0]
++    raw = np.repeat(expected[None], 5, axis=0)
++    raw[:, 3] += [300, -100]
++    scores = np.ones((5, 14), np.float32)
++    settings = StaticCourtSettings(Path("model.ckpt"), 5, 0.3, 6, 10, 5)
++    fitted, _, receipt = fit_static_court(raw, scores, size=(1920, 1080), settings=settings)
++    assert 3 not in receipt["inlier_channels"]
++    np.testing.assert_allclose(fitted * [1920, 1080], expected, atol=1e-3)
++    assert receipt["is_measured_calibration"] is False
++
++
++def test_static_fit_refuses_unobserved_court_channels() -> None:
++    settings = StaticCourtSettings(Path("model.ckpt"), 5, 0.3, 6, 10, 5)
++    with pytest.raises(ValueError, match="temporal support"):
++        fit_static_court(np.zeros((5, 14, 2)), np.zeros((5, 14)), size=(1920, 1080), settings=settings)
+diff --git a/tests/unit/utils/test_output_layout.py b/tests/unit/utils/test_output_layout.py
+new file mode 100644
+index 00000000..d5230497
+--- /dev/null
++++ b/tests/unit/utils/test_output_layout.py
+@@ -0,0 +1,41 @@
++"""Output identities remain isolated and survive resolved config round-trips."""
++
++from pathlib import Path
++
++import pytest
++from hydra import compose, initialize_config_dir
++from omegaconf import OmegaConf
++
++import src.utils.hydra  # noqa: F401 -- registers the public YAML resolvers
++from src.utils.configuration.errors import PathContractError
++from src.utils.configuration.output_layout import dataset_output_path, task_output_path
++from src.utils.paths import PROJECT_ROOT
++
++
++@pytest.mark.parametrize("component", ["../escape", "/tmp", "a/b", "", ".", " a", "x\\y"])
++def test_output_identity_rejects_path_components(component: str) -> None:
++    with pytest.raises(PathContractError):
++        task_output_path("slcs", "train", component, "seed42-v1")
++    with pytest.raises(PathContractError):
++        dataset_output_path("slcs", component)
++
++
++def test_run_identity_is_cached_per_config_and_frozen_when_saved(tmp_path: Path) -> None:
++    yaml = "a: ${tennis_run_id:}\nb: ${tennis_run_id:}\n"
++    first, second = OmegaConf.create(yaml), OmegaConf.create(yaml)
++    assert first.a == first.b
++    assert first.a != second.a
++    saved = tmp_path / "config.yaml"
++    OmegaConf.save(first, saved, resolve=True)
++    assert OmegaConf.load(saved).a == first.a
++
++
++@pytest.mark.parametrize("task", ["plcs", "blcs", "court_detection", "ball_detection", "slcs"])
++def test_training_config_uses_one_named_run_for_artifacts_and_hydra(task: str) -> None:
++    with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tasks" / task / "configs")):
++        cfg = compose(config_name="train", return_hydra_config=True)
++    parts = cfg.run.output_dir.split("/")
++    assert len(parts) == 4
++    assert parts[:2] == [task, "train"]
++    assert cfg.paths.artifact_root == cfg.paths.output_root
++    assert Path(cfg.hydra.run.dir) == (PROJECT_ROOT / cfg.paths.output_root / cfg.run.output_dir / "hydra").resolve()

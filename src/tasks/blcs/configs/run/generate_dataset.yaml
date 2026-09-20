@@ -1,4 +1,4 @@
-output_dir: blcs/single_object
+output_dir: ${tennis_dataset:blcs,single_object}
 seed: 42
 device: cpu
 num_workers: 4

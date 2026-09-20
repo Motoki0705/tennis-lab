@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "image_count": 81,
+  "contact_sheet_count": 9,
+  "min_per_view_stats": {
+    "detection_sample_coverage": {
+      "value": 0.891566265060241,
+      "locations": [
+        {
+          "clip_id": "video_002/clip_009",
+          "camera": "cam2",
+          "raw_local_player": 1
+        }
+      ]
+    },
+    "pose_supported_fraction": {
+      "value": 0.89209726443769,
+      "locations": [
+        {
+          "clip_id": "video_002/clip_009",
+          "camera": "cam2",
+          "raw_local_player": 1
+        }
+      ]
+    },
+    "hips_confident_fraction": {
+      "value": 0.89209726443769,
+      "locations": [
+        {
+          "clip_id": "video_002/clip_009",
+          "camera": "cam2",
+          "raw_local_player": 1
+        }
+      ]
+    },
+    "hips_and_shoulders_confident_fraction": {
+      "value": 0.7942386831275721,
+      "locations": [
+        {
+          "clip_id": "video_002/clip_008",
+          "camera": "cam0",
+          "raw_local_player": 1
+        }
+      ]
+    }
+  },
+  "hashes_reverified_after_bundle_creation": true,
+  "hash_inventory_count": 48,
+  "source_run_exit_code": 0,
+  "support_attempts": 1,
+  "ruff_check": "passed",
+  "ruff_format_check": "passed",
+  "mypy_follow_imports_silent": "passed",
+  "bash_n": "passed",
+  "temporary_git_index_patch_apply_byte_identity": "passed",
+  "visual_review": "Not performed by bundle author; see parent run node for visual findings."
+}

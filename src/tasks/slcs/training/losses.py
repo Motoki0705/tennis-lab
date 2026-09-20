@@ -26,6 +26,7 @@ Loss terms follow the PLCS registry pattern: uniform signature
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
@@ -40,6 +41,7 @@ from src.tasks.slcs.model_io.contracts import (
 )
 from src.utils.geometry.angles import wrapped_angle_diff
 from src.utils.losses.temporal import TemporalSmoothnessPenalty
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 from src.utils.tensor_utils import masked_mean
 
 
@@ -58,6 +60,20 @@ class SLCSLossConfig:
     ball_position_smoothness_weight: float
     ground_penetration_weight: float
     smoothness_order: int
+    ball_velocity_weight: float = 0.0
+    ball_velocity_scale_mps: float = 1.0
+
+    def __post_init__(self) -> None:
+        if (
+            not math.isfinite(self.ball_velocity_weight)
+            or self.ball_velocity_weight < 0
+        ):
+            raise ValueError("ball_velocity_weight must be finite and non-negative.")
+        if (
+            not math.isfinite(self.ball_velocity_scale_mps)
+            or self.ball_velocity_scale_mps <= 0
+        ):
+            raise ValueError("ball_velocity_scale_mps must be finite and positive.")
 
 
 @dataclass(frozen=True)
@@ -83,6 +99,8 @@ class SLCSLossInputs:
     ball_mask: Tensor  # (B, T) bool: ~padding_mask & target_ball_valid
     ball_weight: Tensor  # (B, T) float
     padding_mask: Tensor  # (B, T) bool, True for padding
+    frame_idx: Tensor | None = None  # (B, T) int64, absolute clip frame
+    timestamp: Tensor | None = None  # (B, T) float32, seconds at actual clip FPS
 
     @property
     def zero(self) -> Tensor:
@@ -136,6 +154,59 @@ def ball_position_loss_term(inputs: SLCSLossInputs) -> Tensor:
         inputs.pred_ball_position, inputs.target_ball_position, reduction="none"
     ).mean(dim=-1)
     return _weighted_mean(per_frame, inputs.ball_mask, inputs.ball_weight)
+
+
+def make_ball_velocity_term(scale_mps: float) -> Callable[[SLCSLossInputs], Tensor]:
+    """Supervise physical first differences, including missing input observations."""
+
+    def term(inputs: SLCSLossInputs) -> Tensor:
+        pred = inputs.pred_ball_position
+        indices, timestamp = inputs.frame_idx, inputs.timestamp
+        if indices is None or timestamp is None:
+            raise ValueError("ball_velocity requires frame_idx and timestamp metadata.")
+        for name, value, dtype in (
+            ("frame_idx", indices, torch.int64),
+            ("timestamp", timestamp, torch.float32),
+        ):
+            if value.shape != pred.shape[:2] or value.dtype != dtype:
+                raise ValueError(
+                    f"ball_velocity {name} must have shape (B,T) and dtype {dtype}."
+                )
+            if value.device != pred.device:
+                raise ValueError(
+                    f"ball_velocity {name} must be on the prediction device."
+                )
+        valid = inputs.ball_mask & ~inputs.padding_mask
+        pair = valid[:, 1:] & valid[:, :-1] & (indices[:, 1:] - indices[:, :-1] == 1)
+        dt = timestamp[:, 1:][pair] - timestamp[:, :-1][pair]
+        if bool((~torch.isfinite(dt) | (dt <= 0)).any()):
+            raise ValueError(
+                "ball_velocity timestamp must give finite positive dt on valid consecutive pairs."
+            )
+        # Select before arithmetic: invalid/padded coordinates may contain NaN.
+        residual = (pred[:, 1:][pair] - pred[:, :-1][pair]) - (
+            inputs.target_ball_position[:, 1:][pair]
+            - inputs.target_ball_position[:, :-1][pair]
+        )
+        residual = (
+            residual
+            * pred.new_tensor(COURT_COORD_SCALE_XYZ)
+            / dt.unsqueeze(-1)
+            / scale_mps
+        )
+        per_pair = nn.functional.smooth_l1_loss(
+            residual, torch.zeros_like(residual), reduction="none"
+        ).mean(dim=-1)
+        confidence = torch.minimum(
+            inputs.ball_weight[:, 1:][pair], inputs.ball_weight[:, :-1][pair]
+        )
+        denominator = confidence.sum()
+        # The empty selection retains the prediction graph for zero.backward().
+        return (per_pair * confidence).sum() / torch.where(
+            denominator > 0, denominator, torch.ones_like(denominator)
+        )
+
+    return term
 
 
 def _laplace_nll(l1_error: Tensor, log_b: Tensor) -> Tensor:
@@ -267,6 +338,16 @@ class SLCSLoss(nn.Module):
                 config.ground_penetration_weight,
             ),
         )
+        # Keep legacy terms (including zero-weight logging) exactly as before.
+        # Disabled velocity needs no temporal metadata, including old checkpoints.
+        if config.ball_velocity_weight > 0:
+            self.weighted_terms += (
+                (
+                    "ball_velocity",
+                    make_ball_velocity_term(config.ball_velocity_scale_mps),
+                    config.ball_velocity_weight,
+                ),
+            )
 
     def forward(
         self,
@@ -302,6 +383,8 @@ def build_slcs_loss_inputs(
         ball_mask=targets.ball_mask,
         ball_weight=targets.ball_weight,
         padding_mask=targets.padding_mask,
+        frame_idx=targets.frame_idx,
+        timestamp=targets.timestamp,
     )
 
 
@@ -314,6 +397,7 @@ __all__ = [
     "ball_position_nll_loss_term",
     "ground_penetration_loss_term",
     "make_ball_position_smoothness_term",
+    "make_ball_velocity_term",
     "make_player_position_smoothness_term",
     "player_angle_loss_term",
     "player_position_loss_term",

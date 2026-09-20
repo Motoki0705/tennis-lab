@@ -1,0 +1,651 @@
+{
+  "status": "done",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "git_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "commit": "f94f61dd0b16a32867b02de92781d3dfaf7fac3d",
+  "production_source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/reference_pipeline/reconstruction.py",
+  "command": [
+    "knowledge/runs/run-slcs-meiji-observation-review-v5/support_probe.py",
+    "--project-root",
+    "/home/kamimura/projects/tennis-lab",
+    "--observation-report",
+    "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/results.json",
+    "--output",
+    "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/support_checks.json"
+  ],
+  "device": "cpu",
+  "clips": [
+    {
+      "clip_id": "video_002/clip_007",
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "frames": 343,
+      "court_keys_shapes": {
+        "keypoints": [
+          3,
+          343,
+          14,
+          2
+        ],
+        "homographies": [
+          3,
+          3,
+          3
+        ]
+      },
+      "raw_track_ids": {
+        "cam0": [
+          0,
+          1
+        ],
+        "cam1": [
+          0,
+          1
+        ],
+        "cam2": [
+          0,
+          1
+        ]
+      },
+      "canonical_raw_indices": {
+        "cam0": [
+          0,
+          1
+        ],
+        "cam1": [
+          0,
+          1
+        ],
+        "cam2": [
+          1,
+          0
+        ]
+      },
+      "assignments": {
+        "cam0": {
+          "track_ids_near_far_cam0": [
+            0,
+            1
+          ],
+          "median_ground_y_m": [
+            -12.964747428894043,
+            14.479939460754395
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        },
+        "cam1": {
+          "track_ids_near_far_cam0": [
+            0,
+            1
+          ],
+          "median_ground_y_m": [
+            -13.764045715332031,
+            13.537062644958496
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        },
+        "cam2": {
+          "track_ids_near_far_cam0": [
+            1,
+            0
+          ],
+          "median_ground_y_m": [
+            -17.676326751708984,
+            11.406925201416016
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        }
+      },
+      "array_equal_after_support_mask_and_reorder": true,
+      "shape_finite_checks_passed": true,
+      "raw_two_view_support_frames": [
+        343,
+        342
+      ],
+      "canonical_two_view_support_frames": [
+        343,
+        342
+      ],
+      "canonical_two_view_support_fraction": [
+        1.0,
+        0.9970845481049563
+      ],
+      "delta_frames_canonical_minus_raw": [
+        0,
+        0
+      ],
+      "changed_players": [],
+      "local_diagnostics": [
+        {
+          "camera": "cam0",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.546875,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam0",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.03759765625,
+          "torso_supported_fraction": 0.8950437317784257
+        },
+        {
+          "camera": "cam1",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.5625,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam1",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.2734375,
+          "torso_supported_fraction": 0.9912536443148688
+        },
+        {
+          "camera": "cam2",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.69140625,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam2",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.328125,
+          "torso_supported_fraction": 1.0
+        }
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "frames": 243,
+      "court_keys_shapes": {
+        "keypoints": [
+          3,
+          243,
+          14,
+          2
+        ],
+        "homographies": [
+          3,
+          3,
+          3
+        ]
+      },
+      "raw_track_ids": {
+        "cam0": [
+          0,
+          1
+        ],
+        "cam1": [
+          0,
+          1
+        ],
+        "cam2": [
+          0,
+          1
+        ]
+      },
+      "canonical_raw_indices": {
+        "cam0": [
+          0,
+          1
+        ],
+        "cam1": [
+          0,
+          1
+        ],
+        "cam2": [
+          1,
+          0
+        ]
+      },
+      "assignments": {
+        "cam0": {
+          "track_ids_near_far_cam0": [
+            0,
+            1
+          ],
+          "median_ground_y_m": [
+            -13.181293487548828,
+            14.502381324768066
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        },
+        "cam1": {
+          "track_ids_near_far_cam0": [
+            0,
+            1
+          ],
+          "median_ground_y_m": [
+            -14.04702091217041,
+            13.962125778198242
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        },
+        "cam2": {
+          "track_ids_near_far_cam0": [
+            1,
+            0
+          ],
+          "median_ground_y_m": [
+            -17.783472061157227,
+            10.436607360839844
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        }
+      },
+      "array_equal_after_support_mask_and_reorder": true,
+      "shape_finite_checks_passed": true,
+      "raw_two_view_support_frames": [
+        243,
+        243
+      ],
+      "canonical_two_view_support_frames": [
+        243,
+        243
+      ],
+      "canonical_two_view_support_fraction": [
+        1.0,
+        1.0
+      ],
+      "delta_frames_canonical_minus_raw": [
+        0,
+        0
+      ],
+      "changed_players": [],
+      "local_diagnostics": [
+        {
+          "camera": "cam0",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.7109375,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam0",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.087890625,
+          "torso_supported_fraction": 0.7942386831275721
+        },
+        {
+          "camera": "cam1",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.43359375,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam1",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.322265625,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam2",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.5234375,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam2",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.35546875,
+          "torso_supported_fraction": 1.0
+        }
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "frames": 658,
+      "court_keys_shapes": {
+        "keypoints": [
+          3,
+          658,
+          14,
+          2
+        ],
+        "homographies": [
+          3,
+          3,
+          3
+        ]
+      },
+      "raw_track_ids": {
+        "cam0": [
+          0,
+          1
+        ],
+        "cam1": [
+          0,
+          1
+        ],
+        "cam2": [
+          0,
+          1
+        ]
+      },
+      "canonical_raw_indices": {
+        "cam0": [
+          0,
+          1
+        ],
+        "cam1": [
+          0,
+          1
+        ],
+        "cam2": [
+          1,
+          0
+        ]
+      },
+      "assignments": {
+        "cam0": {
+          "track_ids_near_far_cam0": [
+            0,
+            1
+          ],
+          "median_ground_y_m": [
+            -13.188305854797363,
+            14.368764877319336
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        },
+        "cam1": {
+          "track_ids_near_far_cam0": [
+            0,
+            1
+          ],
+          "median_ground_y_m": [
+            -13.970046997070312,
+            13.798675537109375
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        },
+        "cam2": {
+          "track_ids_near_far_cam0": [
+            1,
+            0
+          ],
+          "median_ground_y_m": [
+            -17.164596557617188,
+            11.181249618530273
+          ],
+          "policy": "fixed singles identity by median cam0-court end"
+        }
+      },
+      "array_equal_after_support_mask_and_reorder": true,
+      "shape_finite_checks_passed": true,
+      "raw_two_view_support_frames": [
+        658,
+        656
+      ],
+      "canonical_two_view_support_frames": [
+        658,
+        658
+      ],
+      "canonical_two_view_support_fraction": [
+        1.0,
+        1.0
+      ],
+      "delta_frames_canonical_minus_raw": [
+        0,
+        2
+      ],
+      "changed_players": [
+        1
+      ],
+      "local_diagnostics": [
+        {
+          "camera": "cam0",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.45703125,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam0",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.0673828125,
+          "torso_supported_fraction": 0.8844984802431611
+        },
+        {
+          "camera": "cam1",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.59375,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam1",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.2890625,
+          "torso_supported_fraction": 0.9984802431610942
+        },
+        {
+          "camera": "cam2",
+          "raw_local_player": 0,
+          "raw_track_id": 0,
+          "canonical_player": 1,
+          "pose_supported_false_intervals_inclusive": [],
+          "pose_supported_false_frames": 0,
+          "pose_supported_fraction": 1.0,
+          "torso_confidence_min_after_mask": 0.5703125,
+          "torso_supported_fraction": 1.0
+        },
+        {
+          "camera": "cam2",
+          "raw_local_player": 1,
+          "raw_track_id": 1,
+          "canonical_player": 0,
+          "pose_supported_false_intervals_inclusive": [
+            [
+              425,
+              495
+            ]
+          ],
+          "pose_supported_false_frames": 71,
+          "pose_supported_fraction": 0.89209726443769,
+          "torso_confidence_min_after_mask": 0.0,
+          "torso_supported_fraction": 0.89209726443769
+        }
+      ]
+    }
+  ],
+  "definition": "After production fixed singles association, cameras with all shoulders 5,6 and hips 11,12 >= 0.3; at least two cameras per frame. Not final teacher coverage: excludes geometry, reprojection, speed and quality weights.",
+  "view_half_turns": [
+    false,
+    false,
+    true
+  ],
+  "reference_camera": "cam0",
+  "observation_report_hashes_and_support_match": true,
+  "pre_dual_sha256": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-observation-review-v5/support_probe.py": "9d5fb648dda61150122652fc6feedeea266e52d92a925fb10e7c12a22dd53cda",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam0.jpg": "12fea4da1c264636a31d12e3064442229afcecdbd29c595cad7c787d05b4cbaf",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam1.jpg": "92659c45215dca425fc8a05063989a110c809e02748ec8f9b3a57541bcf9a960",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam2.jpg": "17180899158093d71fc5fb61a4735e8dc63094f18f9a94a8c04bc5f7b77fe88e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam0.jpg": "40f8d59b7f01c80d1c61a17f21e9a12914563156af14864d3e454b5e004d02d3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam1.jpg": "8d1be18e5097252bbf64f1854ee7ee711aac910b48e0227dcde5183fae6b5be3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam2.jpg": "b1662700fe9fe6d7c370bf4351ee45c8bec482b1a2209e439a823a03a1615eb7",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam0.jpg": "3a2da998b93d0ca2a854af9acc42b00e05ea7d2334d89a48fbc19e89491dce32",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam1.jpg": "3d3838f9c0b2b211b79907a83eb1acdbd4f85fef5e4dd28573ef5d840abcb974",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam2.jpg": "2ac38d0f36e30c9eac1aedeb20ffaac41ac87ad684a709e23a9edf5313e8729d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/reference_pipeline/observations.py": "d316f5541803fc023ab3c047223e681d17e95e5777b7ada11880548c8b34fff9",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/reference_pipeline/reconstruction.py": "3883e41ae6605b9a1c171a903d389e1271805c0f6e05dfbb1bca791600fe9434",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/checksum.py": "9f13bfba37316d4d26d7d882f53ec905ee7cc69379c8dcc0db68960a439962a3",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/clip.json": "a10d5661ba883fc0b4f62604a2742b43b7734a1deac48a9905fe0b5b07955772",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/media/cam0.mp4": "ea98539e546ef4a5bdfa419c5657e7aacaeb02231d2f6d22ddbce919025b88fe",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/media/cam1.mp4": "f03410bde1580da7798fda61f99f9fa372d2002e840bc49873210ae5e4206fe3",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/media/cam2.mp4": "0ca6aeb589e092a907aed1dc19c9358326262dc2a788eead9400b0f923b62f30",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/clip.json": "a59ae9d968fb392e700707bca48731edf48b17b843599fe3cfe437ffb364ff7c",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/media/cam0.mp4": "b9a4e04941f190a12b118ca977e6fa750289550f156b2a6ebea3d4496f567c4e",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/media/cam1.mp4": "400e58b6582112aa488f88f53e2f4b1551e3d675a5341a12c7c3a4e9197fa1cd",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/media/cam2.mp4": "ff9513e269c21acbf71d18313991ad0a4d55db8cc896882c3310792ac398af15",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/clip.json": "a9d30e09c8b7ff25b1e3d74248a5c18e81a04ba20de6421da82ee18e8aa04c6c",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/media/cam0.mp4": "d8434abe396d38e08f2e6ae30d95ca15e4d444b27d6dbdb357ac7ca28e695c01",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/media/cam1.mp4": "9c149a399def866df17180f9dcb65e22d0edfa9969529553974d24bb8d66227f",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/media/cam2.mp4": "6e5e89c0d274bf9fb513581a4f8c3b5419b100d78985d55558613f2c149d01b8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/results.json": "48a14e0fa0b1dbe95759826296e8e93926fb5e0a05c9482333edb444bd33f22e",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v8/s42-001/config.yaml": "68e177b9bf6674ef1d00fbecd640807484d8b76b4df7277f8b78d76a5a969d47",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam0_people.metadata.json": "4e924215140d388201e486b5938b2c3a91cc868f884a73f794184d688d94abd1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam0_people.npz": "1f40d8c8218d777cb8138e920dcc89bd852032881227ed74149aca80f28dbce9",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam1_people.metadata.json": "f00fdde680b3a4047889e1a0ddc97e741188abf53a10b48617b93af817342579",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam1_people.npz": "35bc562941c66f40071031cdffbc2c7c0e9adc915546474f3bbd63bd92b9f114",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam2_people.metadata.json": "02f678e84bb02be29d8cdb1a8c8ba21facf9b9a72a07e51bf433a8232d97afcf",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam2_people.npz": "3b9126552ba372636451b0cfb74a92f26e993827c656ed78195168d62dd8992b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/court.npz": "047ecfafa9efa989db8e7eb27a0826966027392df72dac5e8d6c3195fbd895f7",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam0_people.metadata.json": "1682226f6a931aaaa1a1239d4992df80ffd0322c73037d49e1a8bf2eb4e261f8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam0_people.npz": "bc6299594424acd5b03e43318725b5688cafbd33fc7b059de4cc51cb988f85ae",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam1_people.metadata.json": "c5acead3fbc44c3e2db3f7ec1f09381649caf2ad54d61c6660ff0f00f003da3c",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam1_people.npz": "e2e6e83ba952d13a0be4b61fc3a90b82377aabfdf3224a4421cd050af019c65e",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam2_people.metadata.json": "1a602746ab907698ed63a00087de890d8fcfa3e956395c1f1dda445914202a60",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam2_people.npz": "ab6dc81cd49eceba888885a94c05e1d21f9875a1df10b9622a5b9095b27acf23",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/court.npz": "f8971e1b6ac231647f891145979f8dd1b2cf9da4422dfbb1d5f6c175d49f70d8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam0_people.metadata.json": "8d4315f2c3b02dc355c8097f280e986e450032d04101efd52399aeed0ea0e8fb",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam0_people.npz": "faab9c4643cf15cbbfea819baad4fce8e55350477ecddfcec6d6a09f907bf0f3",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam1_people.metadata.json": "39ee86adfe4dab86b8d2fabc42e5b6b4ba421dea1cf6c779a8225472f8101999",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam1_people.npz": "00257144b47798058644e79038577a52745b664a94e31690dbb7972904f5d388",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam2_people.metadata.json": "e3e58e44ae1f8c6a42e539891a77aab5962aa032714c119df1a6b7f799650c16",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam2_people.npz": "b4f31d455fe99b126fe27c80989276354400aa9178877a87b71a5da5fdfab67b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/court.npz": "3a6c8bd74054a4bfb08849f3bb98c48a6f55fb7ed0ad15d8f58627a386cd7a9d"
+  },
+  "post_dual_sha256": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-observation-review-v5/support_probe.py": "9d5fb648dda61150122652fc6feedeea266e52d92a925fb10e7c12a22dd53cda",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam0.jpg": "12fea4da1c264636a31d12e3064442229afcecdbd29c595cad7c787d05b4cbaf",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam1.jpg": "92659c45215dca425fc8a05063989a110c809e02748ec8f9b3a57541bcf9a960",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam2.jpg": "17180899158093d71fc5fb61a4735e8dc63094f18f9a94a8c04bc5f7b77fe88e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam0.jpg": "40f8d59b7f01c80d1c61a17f21e9a12914563156af14864d3e454b5e004d02d3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam1.jpg": "8d1be18e5097252bbf64f1854ee7ee711aac910b48e0227dcde5183fae6b5be3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam2.jpg": "b1662700fe9fe6d7c370bf4351ee45c8bec482b1a2209e439a823a03a1615eb7",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam0.jpg": "3a2da998b93d0ca2a854af9acc42b00e05ea7d2334d89a48fbc19e89491dce32",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam1.jpg": "3d3838f9c0b2b211b79907a83eb1acdbd4f85fef5e4dd28573ef5d840abcb974",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam2.jpg": "2ac38d0f36e30c9eac1aedeb20ffaac41ac87ad684a709e23a9edf5313e8729d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/reference_pipeline/observations.py": "d316f5541803fc023ab3c047223e681d17e95e5777b7ada11880548c8b34fff9",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/reference_pipeline/reconstruction.py": "3883e41ae6605b9a1c171a903d389e1271805c0f6e05dfbb1bca791600fe9434",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/checksum.py": "9f13bfba37316d4d26d7d882f53ec905ee7cc69379c8dcc0db68960a439962a3",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/clip.json": "a10d5661ba883fc0b4f62604a2742b43b7734a1deac48a9905fe0b5b07955772",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/media/cam0.mp4": "ea98539e546ef4a5bdfa419c5657e7aacaeb02231d2f6d22ddbce919025b88fe",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/media/cam1.mp4": "f03410bde1580da7798fda61f99f9fa372d2002e840bc49873210ae5e4206fe3",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_007/media/cam2.mp4": "0ca6aeb589e092a907aed1dc19c9358326262dc2a788eead9400b0f923b62f30",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/clip.json": "a59ae9d968fb392e700707bca48731edf48b17b843599fe3cfe437ffb364ff7c",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/media/cam0.mp4": "b9a4e04941f190a12b118ca977e6fa750289550f156b2a6ebea3d4496f567c4e",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/media/cam1.mp4": "400e58b6582112aa488f88f53e2f4b1551e3d675a5341a12c7c3a4e9197fa1cd",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_008/media/cam2.mp4": "ff9513e269c21acbf71d18313991ad0a4d55db8cc896882c3310792ac398af15",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/clip.json": "a9d30e09c8b7ff25b1e3d74248a5c18e81a04ba20de6421da82ee18e8aa04c6c",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/media/cam0.mp4": "d8434abe396d38e08f2e6ae30d95ca15e4d444b27d6dbdb357ac7ca28e695c01",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/media/cam1.mp4": "9c149a399def866df17180f9dcb65e22d0edfa9969529553974d24bb8d66227f",
+    "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_009/media/cam2.mp4": "6e5e89c0d274bf9fb513581a4f8c3b5419b100d78985d55558613f2c149d01b8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_review/s42-005/results.json": "48a14e0fa0b1dbe95759826296e8e93926fb5e0a05c9482333edb444bd33f22e",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v8/s42-001/config.yaml": "68e177b9bf6674ef1d00fbecd640807484d8b76b4df7277f8b78d76a5a969d47",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam0_people.metadata.json": "4e924215140d388201e486b5938b2c3a91cc868f884a73f794184d688d94abd1",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam0_people.npz": "1f40d8c8218d777cb8138e920dcc89bd852032881227ed74149aca80f28dbce9",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam1_people.metadata.json": "f00fdde680b3a4047889e1a0ddc97e741188abf53a10b48617b93af817342579",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam1_people.npz": "35bc562941c66f40071031cdffbc2c7c0e9adc915546474f3bbd63bd92b9f114",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam2_people.metadata.json": "02f678e84bb02be29d8cdb1a8c8ba21facf9b9a72a07e51bf433a8232d97afcf",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/cam2_people.npz": "3b9126552ba372636451b0cfb74a92f26e993827c656ed78195168d62dd8992b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_007/court.npz": "047ecfafa9efa989db8e7eb27a0826966027392df72dac5e8d6c3195fbd895f7",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam0_people.metadata.json": "1682226f6a931aaaa1a1239d4992df80ffd0322c73037d49e1a8bf2eb4e261f8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam0_people.npz": "bc6299594424acd5b03e43318725b5688cafbd33fc7b059de4cc51cb988f85ae",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam1_people.metadata.json": "c5acead3fbc44c3e2db3f7ec1f09381649caf2ad54d61c6660ff0f00f003da3c",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam1_people.npz": "e2e6e83ba952d13a0be4b61fc3a90b82377aabfdf3224a4421cd050af019c65e",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam2_people.metadata.json": "1a602746ab907698ed63a00087de890d8fcfa3e956395c1f1dda445914202a60",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/cam2_people.npz": "ab6dc81cd49eceba888885a94c05e1d21f9875a1df10b9622a5b9095b27acf23",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_008/court.npz": "f8971e1b6ac231647f891145979f8dd1b2cf9da4422dfbb1d5f6c175d49f70d8",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam0_people.metadata.json": "8d4315f2c3b02dc355c8097f280e986e450032d04101efd52399aeed0ea0e8fb",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam0_people.npz": "faab9c4643cf15cbbfea819baad4fce8e55350477ecddfcec6d6a09f907bf0f3",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam1_people.metadata.json": "39ee86adfe4dab86b8d2fabc42e5b6b4ba421dea1cf6c779a8225472f8101999",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam1_people.npz": "00257144b47798058644e79038577a52745b664a94e31690dbb7972904f5d388",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam2_people.metadata.json": "e3e58e44ae1f8c6a42e539891a77aab5962aa032714c119df1a6b7f799650c16",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/cam2_people.npz": "b4f31d455fe99b126fe27c80989276354400aa9178877a87b71a5da5fdfab67b",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_002/clip_009/court.npz": "3a6c8bd74054a4bfb08849f3bb98c48a6f55fb7ed0ad15d8f58627a386cd7a9d"
+  },
+  "input_and_source_hashes_unchanged": true
+}

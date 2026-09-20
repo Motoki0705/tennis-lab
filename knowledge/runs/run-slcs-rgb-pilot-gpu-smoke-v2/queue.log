@@ -1,0 +1,63 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789726444409654583_102955_slcs-rgb-pilot-gpu-smoke-v2 (commit=4348077d8f7a provider=codex session=01a0b314-89b5-7902-b0a1-3141a9323ea9)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type            ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ SLCSFusionModel │  2.7 M │ train │     0 │
+│ 1 │ loss_fn │ SLCSLoss        │      0 │ train │     0 │
+└───┴─────────┴─────────────────┴────────┴───────┴───────┘
+Trainable params: 2.7 M                                                         
+Non-trainable params: 0                                                         
+Total params: 2.7 M                                                             
+Total estimated model params size (MB): 10.932                                  
+Modules in train mode: 230                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py:321: The number of training batches (6) is smaller than the logging interval Trainer(log_every_n_steps=20). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+Error executing job with overrides: ['training.trainer.max_epochs=1', 'training.warmup_steps=0', 'run.output_dir=slcs/train/real_rgb_pilot_gpu_smoke/s42-002']
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/hydra.py", line 115, in validated
+    return function(config)
+           ^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/scripts/train.py", line 41, in main
+    run_training(config)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/scripts/train.py", line 30, in run_training
+    runner.run(config)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/base/training/runner.py", line 107, in run
+    trainer.fit(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1123, in _run_stage
+    self.fit_loop.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 218, in run
+    self.on_advance_end()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 484, in on_advance_end
+    call._call_callback_hooks(trainer, "on_train_epoch_end", monitoring_callbacks=True)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 228, in _call_callback_hooks
+    fn(trainer, trainer.lightning_module, *args, **kwargs)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/callbacks/model_checkpoint.py", line 493, in on_train_epoch_end
+    self._save_topk_checkpoint(trainer, monitor_candidates)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/pytorch_lightning/callbacks/model_checkpoint.py", line 587, in _save_topk_checkpoint
+    raise MisconfigurationException(m)
+lightning_fabric.utilities.exceptions.MisconfigurationException: `ModelCheckpoint(monitor='val/scene_position_error_m')` could not find the monitored key in the returned metrics: ['train/loss', 'train/loss_step', 'val/loss', 'val/loss_player_position', 'val/loss_player_rotation', 'val/loss_player_angle', 'val/loss_ball_position', 'val/loss_player_position_nll', 'val/loss_player_rotation_nll', 'val/loss_ball_position_nll', 'val/loss_player_position_smoothness', 'val/loss_ball_position_smoothness', 'val/loss_ground_penetration', 'val/player_position_error_m', 'val/player_angular_error_deg', 'val/ball_position_error_m', 'val/player_position_error_m_epoch', 'val/player_position_error_median_m_epoch', 'val/player_angular_error_deg_epoch', 'val/player_angular_error_median_deg_epoch', 'val/player_position_accuracy_0.3m_epoch', 'val/player_position_accuracy_0.5m_epoch', 'val/player_position_accuracy_1.0m_epoch', 'val/player_position_accuracy_2.0m_epoch', 'val/player_angle_accuracy_10deg_epoch', 'val/player_angle_accuracy_15deg_epoch', 'val/player_angle_accuracy_30deg_epoch', 'val/player_position_pred_b_m_epoch', 'val/player_rotation_pred_b_deg_epoch', 'val/player_position_conf_error_corr_epoch', 'val/player_rotation_conf_error_corr_epoch', 'val/ball_position_error_m_epoch', 'val/ball_position_error_median_m_epoch', 'val/ball_position_accuracy_0.3m_epoch', 'val/ball_position_accuracy_0.5m_epoch', 'val/ball_position_accuracy_1.0m_epoch', 'val/ball_position_accuracy_2.0m_epoch', 'val/ball_position_pred_b_m_epoch', 'val/ball_position_conf_error_corr_epoch', 'val/scene_position_error_m_epoch', 'train/loss_epoch', 'train/loss_player_position', 'train/loss_player_rotation', 'train/loss_player_angle', 'train/loss_ball_position', 'train/loss_player_position_nll', 'train/loss_player_rotation_nll', 'train/loss_ball_position_nll', 'train/loss_player_position_smoothness', 'train/loss_ball_position_smoothness', 'train/loss_ground_penetration', 'train/player_position_error_m', 'train/player_angular_error_deg', 'train/ball_position_error_m', 'train/player_position_error_m_epoch', 'train/player_position_error_median_m_epoch', 'train/player_angular_error_deg_epoch', 'train/player_angular_error_median_deg_epoch', 'train/player_position_accuracy_0.3m_epoch', 'train/player_position_accuracy_0.5m_epoch', 'train/player_position_accuracy_1.0m_epoch', 'train/player_position_accuracy_2.0m_epoch', 'train/player_angle_accuracy_10deg_epoch', 'train/player_angle_accuracy_15deg_epoch', 'train/player_angle_accuracy_30deg_epoch', 'train/player_position_pred_b_m_epoch', 'train/player_rotation_pred_b_deg_epoch', 'train/player_position_conf_error_corr_epoch', 'train/player_rotation_conf_error_corr_epoch', 'train/ball_position_error_m_epoch', 'train/ball_position_error_median_m_epoch', 'train/ball_position_accuracy_0.3m_epoch', 'train/ball_position_accuracy_0.5m_epoch', 'train/ball_position_accuracy_1.0m_epoch', 'train/ball_position_accuracy_2.0m_epoch', 'train/ball_position_pred_b_m_epoch', 'train/ball_position_conf_error_corr_epoch', 'train/scene_position_error_m_epoch', 'epoch', 'step']. HINT: Did you call `log('val/scene_position_error_m', value)` in the `LightningModule`?
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+exit_code=1

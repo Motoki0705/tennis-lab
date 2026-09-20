@@ -1,0 +1,28 @@
+{
+  "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+  "monitor": "val/scene_position_error_m_epoch",
+  "mode": "min",
+  "candidates": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_gap48/s42-takeover-001/logs/version_1/checkpoints/slcs-epoch=55.ckpt",
+      "validation_score": 1.9005093574523926
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_gap48/s42-takeover-001/logs/version_1/checkpoints/slcs-epoch=53.ckpt",
+      "validation_score": 1.9051718711853027
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_gap48/s42-takeover-001/logs/version_1/checkpoints/slcs-epoch=56.ckpt",
+      "validation_score": 1.905486822128296
+    }
+  ],
+  "selected": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_gap48/s42-takeover-001/logs/version_1/checkpoints/slcs-epoch=55.ckpt",
+    "validation_score": 1.9005093574523926,
+    "epoch_zero_based": 55
+  },
+  "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_gap48/s42-takeover-001/logs/version_1/checkpoints/last.ckpt",
+  "last_epoch_zero_based": 59,
+  "requested_last_checkpoint": "logs/version_1/checkpoints/last.ckpt",
+  "checkpoint_sha256": "7db8540a709cf143a83685d6fe983d616fbe8746c0f821a4ac792b3774a6a407"
+}

@@ -1,0 +1,37 @@
+{
+  "execution_commit": "4d24a2144680cace5af825659b8909aecd19e15e",
+  "command": "bash knowledge/runs/run-slcs-meiji-court-visual-qc-v1/repro.sh",
+  "expanded_command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=\"$PWD\" .venv/bin/python knowledge/runs/run-slcs-meiji-court-visual-qc-v1/probe.py --project-root /home/kamimura/projects/tennis-lab --samples-root /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001 --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "exit_status": 0,
+  "execution_attempts": 1,
+  "patch_verification": {
+    "temporary_index_base": "4d24a2144680cace5af825659b8909aecd19e15e",
+    "git_apply_cached": true,
+    "restored_bytes_match": [
+      "knowledge/runs/run-slcs-meiji-court-visual-qc-v1/probe.py",
+      "knowledge/runs/run-slcs-meiji-court-visual-qc-v1/repro.sh"
+    ]
+  },
+  "external_inputs": "Video/manifest/court cache files are external immutable inputs; paths and dual SHA-256 before/after are in results.json. They are not embedded in the patch.",
+  "reproduction": "Checkout execution_commit in a worktree, apply uncommitted.patch, supply original external inputs, then bash repro.sh /new/unique/output/path. Existing output is refused.",
+  "checks": {
+    "ruff": "passed",
+    "mypy_follow_imports_silent": "passed",
+    "bash_n": "passed",
+    "numerical_contract": "passed",
+    "input_dual_sha256_before_after": 30,
+    "video_receipt_sha256_matches": 6,
+    "cache_source_byte_matches": 4,
+    "frames": 18,
+    "contact_sheets": 6
+  },
+  "bundle_sha256": {
+    "probe.py": "c2c8a402eaa1d982376a905c14b5d6874d00b04b149282329b6b293ecbdcbbe9",
+    "repro.sh": "70767819ea08fdbee04f8e904d9cc46965097d90a5979ca9f6c10832dac8069e",
+    "uncommitted.patch": "6095741b5c66003ec95d0e5709223bd26ece1d15b377f24ffe8432ed4c09259c",
+    "results.json": "eb7e773ca420c4882428b1e04cb9cae3e3790ffa8dc56a79d20516e386996ecc",
+    "run.log": "62edbbb8e60d9b6d6d4668df791d98dbc6607c76aa0c92afc6b0a0a5cec49122"
+  },
+  "human_visual_review": "pending; parent will inspect images"
+}

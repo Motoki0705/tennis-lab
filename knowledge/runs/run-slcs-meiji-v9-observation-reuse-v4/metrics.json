@@ -1,0 +1,19 @@
+{
+  "elapsed_seconds": 134.96623973200622,
+  "attempts": 1,
+  "clips": 56,
+  "raw_cameras": 168,
+  "reused_people_cameras": 142,
+  "recompute_cameras": 26,
+  "recompute_clips": 20,
+  "audited_inputs": 2064,
+  "inputs_before_prepublication_after_equal": true,
+  "checkpoint_warnings": 0,
+  "published_file_counts": {
+    "*_detections.npz": 168,
+    "*_detections.metadata.json": 168,
+    "*_people.npz": 142,
+    "*_people.metadata.json": 142,
+    "*_people.reuse.json": 142
+  }
+}

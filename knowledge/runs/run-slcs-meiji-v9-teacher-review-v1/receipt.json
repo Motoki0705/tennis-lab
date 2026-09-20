@@ -1,0 +1,286 @@
+{
+  "is_ground_truth": false,
+  "dataset_root": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+  "run_root": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v9/s42-002",
+  "quality": {
+    "min_player_confidence": 0.3,
+    "min_ball_cameras": 1,
+    "label_weight_power": 1.0,
+    "min_window_label_ratio": 0.5
+  },
+  "clips": {
+    "video_000/clip_000": {
+      "frames": [
+        {
+          "frame": 0,
+          "time_sec": 0.0,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 221,
+          "time_sec": 3.6870166629796497,
+          "reasons": [
+            "max_refined_ball_residual_on_positive_teacher_weight"
+          ]
+        },
+        {
+          "frame": 252,
+          "time_sec": 4.2041999957958,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 504,
+          "time_sec": 8.4083999915916,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 623,
+          "time_sec": 10.39371665627295,
+          "reasons": [
+            "max_raw_ball_residual_on_positive_teacher_weight"
+          ]
+        },
+        {
+          "frame": 682,
+          "time_sec": 11.3780333219553,
+          "reasons": [
+            "max_refined_root_frame_step"
+          ]
+        },
+        {
+          "frame": 756,
+          "time_sec": 12.6125999873874,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 810,
+          "time_sec": 13.513499986486499,
+          "reasons": [
+            "max_raw_to_refined_root_displacement"
+          ]
+        },
+        {
+          "frame": 1008,
+          "time_sec": 16.8167999831832,
+          "reasons": [
+            "minimum_total_teacher_weight"
+          ]
+        },
+        {
+          "frame": 1009,
+          "time_sec": 16.833483316499848,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        }
+      ],
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "videos": [
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_000/media/cam0.mp4",
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_000/media/cam1.mp4",
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_000/media/cam2.mp4"
+      ],
+      "raw_scene": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v9/s42-002/video_000/clip_000/scene.npz",
+      "refined_scene": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.npz",
+      "positive_ball_frames": 1007,
+      "positive_player_frames": [
+        1010,
+        1008
+      ]
+    },
+    "video_000/clip_009": {
+      "frames": [
+        {
+          "frame": 0,
+          "time_sec": 0.0,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 185,
+          "time_sec": 3.0864166635802497,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 371,
+          "time_sec": 6.18951666047715,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 437,
+          "time_sec": 7.29061665937605,
+          "reasons": [
+            "max_raw_ball_residual_on_positive_teacher_weight"
+          ]
+        },
+        {
+          "frame": 531,
+          "time_sec": 8.858849991141149,
+          "reasons": [
+            "minimum_total_teacher_weight"
+          ]
+        },
+        {
+          "frame": 532,
+          "time_sec": 8.8755333244578,
+          "reasons": [
+            "max_refined_root_frame_step"
+          ]
+        },
+        {
+          "frame": 534,
+          "time_sec": 8.908899991091099,
+          "reasons": [
+            "max_raw_to_refined_root_displacement"
+          ]
+        },
+        {
+          "frame": 544,
+          "time_sec": 9.0757333242576,
+          "reasons": [
+            "max_refined_ball_residual_on_positive_teacher_weight"
+          ]
+        },
+        {
+          "frame": 557,
+          "time_sec": 9.29261665737405,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 743,
+          "time_sec": 12.395716654270949,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        }
+      ],
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "videos": [
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_009/media/cam0.mp4",
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_009/media/cam1.mp4",
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_009/media/cam2.mp4"
+      ],
+      "raw_scene": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v9/s42-002/video_000/clip_009/scene.npz",
+      "refined_scene": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_000/clips/clip_009/annotations/tennis_scene/scene.npz",
+      "positive_ball_frames": 649,
+      "positive_player_frames": [
+        744,
+        715
+      ]
+    },
+    "video_001/clip_000": {
+      "frames": [
+        {
+          "frame": 0,
+          "time_sec": 0.0,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 99,
+          "time_sec": 1.65164999834835,
+          "reasons": [
+            "max_refined_ball_residual_on_positive_teacher_weight"
+          ]
+        },
+        {
+          "frame": 186,
+          "time_sec": 3.1030999968969,
+          "reasons": [
+            "max_raw_ball_residual_on_positive_teacher_weight"
+          ]
+        },
+        {
+          "frame": 328,
+          "time_sec": 5.4721333278612,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 657,
+          "time_sec": 10.96094998903905,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 740,
+          "time_sec": 12.345666654320999,
+          "reasons": [
+            "minimum_total_teacher_weight"
+          ]
+        },
+        {
+          "frame": 986,
+          "time_sec": 16.449766650216898,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        },
+        {
+          "frame": 1309,
+          "time_sec": 21.838483311494848,
+          "reasons": [
+            "max_refined_root_frame_step"
+          ]
+        },
+        {
+          "frame": 1314,
+          "time_sec": 21.9218999780781,
+          "reasons": [
+            "max_raw_to_refined_root_displacement"
+          ]
+        },
+        {
+          "frame": 1315,
+          "time_sec": 21.938583311394748,
+          "reasons": [
+            "evenly_spaced"
+          ]
+        }
+      ],
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "videos": [
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_001/clips/clip_000/media/cam0.mp4",
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_001/clips/clip_000/media/cam1.mp4",
+        "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_001/clips/clip_000/media/cam2.mp4"
+      ],
+      "raw_scene": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v9/s42-002/video_001/clip_000/scene.npz",
+      "refined_scene": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9/videos/video_001/clips/clip_000/annotations/tennis_scene/scene.npz",
+      "positive_ball_frames": 1074,
+      "positive_player_frames": [
+        1310,
+        1290
+      ]
+    }
+  }
+}

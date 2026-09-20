@@ -1,0 +1,166 @@
+{
+  "reproduction_commit": "28ec0ae0bb0fd456e2a417ba9129c2a6f21696fa",
+  "production_base_at_execution": "01ca134be8bc26689c443231a8439f4b713c28a7",
+  "script_untracked_at_execution": true,
+  "script_sha256": "170370a9c3abc271d0a3abdd336af2b9a48caa7d179ccabf7ac9fab31fabde42",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-meiji-observation-review-v1/probe.py --project-root /home/kamimura/projects/tennis-lab --observation-root /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004 --clip video_000/clip_000 --clip video_000/clip_001 --clip video_000/clip_002 --output-dir outputs/tennis_scene/analyze/meiji_observation_review/REPRO_NEW_RUN_ID",
+  "device": "cpu",
+  "gpu_used": false,
+  "exit_code": 0,
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_review/s42-001",
+  "sampling": "five evenly spaced frames plus endpoints of maximum per-player box-center/previous-box-diagonal jump; duplicates removed",
+  "reviewed_contact_sheets": [
+    {
+      "clip_id": "video_000/clip_000",
+      "camera": "cam0",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_000/cam0.jpg",
+      "sha256": "28a5bc697a7d2a666edb5c65ced34e3f447d7bff392e8dbf40de41bc4897029c",
+      "frame_indices": [
+        0,
+        252,
+        321,
+        322,
+        504,
+        756,
+        893,
+        894,
+        1009
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_000",
+      "camera": "cam1",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_000/cam1.jpg",
+      "sha256": "02d21c5169c88e6ef02fba29d8dfb3a4b731acf1c47e4c5e2745fb74476c7735",
+      "frame_indices": [
+        0,
+        252,
+        284,
+        285,
+        504,
+        756,
+        872,
+        873,
+        1009
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_000",
+      "camera": "cam2",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_000/cam2.jpg",
+      "sha256": "a0e61ee2716cee067c185f7b2f1db19671b63f39a0c86944d0cddbbaae5e6d5d",
+      "frame_indices": [
+        0,
+        33,
+        34,
+        252,
+        253,
+        504,
+        756,
+        1009
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "camera": "cam0",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_001/cam0.jpg",
+      "sha256": "ccb3c2bdc0459905bffe91b0e05255f39c7b54cf277625de416c26a836a49f07",
+      "frame_indices": [
+        0,
+        144,
+        145,
+        223,
+        224,
+        254,
+        508,
+        762,
+        1016
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "camera": "cam1",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_001/cam1.jpg",
+      "sha256": "4de1f99c6b1320f5d4ac188b18a1f52a4cf1ff491d81f2ba3862f5ed610326f1",
+      "frame_indices": [
+        0,
+        254,
+        301,
+        302,
+        508,
+        762,
+        985,
+        986,
+        1016
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "camera": "cam2",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_001/cam2.jpg",
+      "sha256": "bf70b72fc20c4f586e729f950830dc66b3a7c2e35f042aa1d9ac14c83bb73d50",
+      "frame_indices": [
+        0,
+        241,
+        242,
+        254,
+        508,
+        762,
+        985,
+        986,
+        1016
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_002",
+      "camera": "cam0",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_002/cam0.jpg",
+      "sha256": "a557d10f7a56eb5d66ac75509b4b03ea022bfbef28336789ee4c57e447a5def2",
+      "frame_indices": [
+        0,
+        338,
+        677,
+        1015,
+        1088,
+        1089,
+        1163,
+        1164,
+        1354
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_002",
+      "camera": "cam1",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_002/cam1.jpg",
+      "sha256": "5a266257546b9680f06d623b24c7fa046b1fd2c57e727020ee7163ea0324f48e",
+      "frame_indices": [
+        0,
+        338,
+        637,
+        638,
+        677,
+        1015,
+        1291,
+        1292,
+        1354
+      ]
+    },
+    {
+      "clip_id": "video_000/clip_002",
+      "camera": "cam2",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-001/video_000/clip_002/cam2.jpg",
+      "sha256": "5746c43d214fc398c0a865ef8d337dc9cab9e29acc1e5b55124f9ece3630f701",
+      "frame_indices": [
+        0,
+        338,
+        677,
+        1015,
+        1165,
+        1166,
+        1292,
+        1293,
+        1354
+      ]
+    }
+  ]
+}

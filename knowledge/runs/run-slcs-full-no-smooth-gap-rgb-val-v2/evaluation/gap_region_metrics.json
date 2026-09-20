@@ -1,0 +1,203 @@
+{
+  "interpretation": "Pseudo-teacher agreement, unweighted valid window occurrences; all 343 windows have 120 real frames; condition_inputs deletes [40:80). Same checkpoint/targets/masks. Diagnostic only, no test selection.",
+  "rows": [
+    {
+      "domain": "all",
+      "region": "gap_40_80",
+      "condition": "detector_gap",
+      "ball_valid_count": 11791,
+      "ball_mean_m": 3.7014848732052794,
+      "ball_p95_m": 9.477091789245605,
+      "player_valid_count": 26897,
+      "player_mean_m": 1.5696992845882773,
+      "player_p95_m": 4.631123161315914
+    },
+    {
+      "domain": "all",
+      "region": "gap_40_80",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 11791,
+      "ball_mean_m": 3.8975350501989046,
+      "ball_p95_m": 9.914615631103516,
+      "player_valid_count": 26897,
+      "player_mean_m": 1.7732723742035041,
+      "player_p95_m": 5.2600145339965705
+    },
+    {
+      "domain": "all",
+      "region": "outside_before",
+      "condition": "detector_gap",
+      "ball_valid_count": 10867,
+      "ball_mean_m": 2.633139510323029,
+      "ball_p95_m": 8.359510135650634,
+      "player_valid_count": 26958,
+      "player_mean_m": 1.353387629216817,
+      "player_p95_m": 3.912823009490965
+    },
+    {
+      "domain": "all",
+      "region": "outside_before",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 10867,
+      "ball_mean_m": 2.826709936564651,
+      "ball_p95_m": 8.80991401672363,
+      "player_valid_count": 26958,
+      "player_mean_m": 1.4582935799471108,
+      "player_p95_m": 4.446825695037842
+    },
+    {
+      "domain": "all",
+      "region": "outside_after",
+      "condition": "detector_gap",
+      "ball_valid_count": 11580,
+      "ball_mean_m": 2.9176107058742295,
+      "ball_p95_m": 8.329427146911621,
+      "player_valid_count": 26644,
+      "player_mean_m": 1.466464126457299,
+      "player_p95_m": 4.534600615501402
+    },
+    {
+      "domain": "all",
+      "region": "outside_after",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 11580,
+      "ball_mean_m": 3.110933442386623,
+      "ball_p95_m": 8.690534543991088,
+      "player_valid_count": 26644,
+      "player_mean_m": 1.6146358767857965,
+      "player_p95_m": 4.7425007820129395
+    },
+    {
+      "domain": "meiji",
+      "region": "gap_40_80",
+      "condition": "detector_gap",
+      "ball_valid_count": 11457,
+      "ball_mean_m": 3.6424645726065252,
+      "ball_p95_m": 9.400001335144038,
+      "player_valid_count": 26121,
+      "player_mean_m": 1.532633851963614,
+      "player_p95_m": 4.554924011230469
+    },
+    {
+      "domain": "meiji",
+      "region": "gap_40_80",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 11457,
+      "ball_mean_m": 3.8150326580347644,
+      "ball_p95_m": 9.676636505126943,
+      "player_valid_count": 26121,
+      "player_mean_m": 1.7413244919799653,
+      "player_p95_m": 5.148083686828613
+    },
+    {
+      "domain": "meiji",
+      "region": "outside_before",
+      "condition": "detector_gap",
+      "ball_valid_count": 10548,
+      "ball_mean_m": 2.6441174484542147,
+      "ball_p95_m": 8.456116437911986,
+      "player_valid_count": 26178,
+      "player_mean_m": 1.3235351745355428,
+      "player_p95_m": 3.8810945153236385
+    },
+    {
+      "domain": "meiji",
+      "region": "outside_before",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 10548,
+      "ball_mean_m": 2.813806353904523,
+      "ball_p95_m": 9.00559983253479,
+      "player_valid_count": 26178,
+      "player_mean_m": 1.4282451207054452,
+      "player_p95_m": 4.399307775497431
+    },
+    {
+      "domain": "meiji",
+      "region": "outside_after",
+      "condition": "detector_gap",
+      "ball_valid_count": 11211,
+      "ball_mean_m": 2.920556900373333,
+      "ball_p95_m": 8.38843584060669,
+      "player_valid_count": 25884,
+      "player_mean_m": 1.4380518383300587,
+      "player_p95_m": 4.537045383453369
+    },
+    {
+      "domain": "meiji",
+      "region": "outside_after",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 11211,
+      "ball_mean_m": 3.067624389185396,
+      "ball_p95_m": 8.623084545135498,
+      "player_valid_count": 25884,
+      "player_mean_m": 1.5894452165098398,
+      "player_p95_m": 4.743512248992918
+    },
+    {
+      "domain": "broadcast",
+      "region": "gap_40_80",
+      "condition": "detector_gap",
+      "ball_valid_count": 334,
+      "ball_mean_m": 5.7260225497320025,
+      "ball_p95_m": 16.0131806373596,
+      "player_valid_count": 776,
+      "player_mean_m": 2.817361869109967,
+      "player_p95_m": 6.83503520488739
+    },
+    {
+      "domain": "broadcast",
+      "region": "gap_40_80",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 334,
+      "ball_mean_m": 6.727564711949069,
+      "ball_p95_m": 13.558939313888542,
+      "player_valid_count": 776,
+      "player_mean_m": 2.848672672606928,
+      "player_p95_m": 7.149093270301819
+    },
+    {
+      "domain": "broadcast",
+      "region": "outside_before",
+      "condition": "detector_gap",
+      "ball_valid_count": 319,
+      "ball_mean_m": 2.270144866411589,
+      "ball_p95_m": 4.545527458190918,
+      "player_valid_count": 780,
+      "player_mean_m": 2.3552819351737315,
+      "player_p95_m": 5.171769547462462
+    },
+    {
+      "domain": "broadcast",
+      "region": "outside_before",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 319,
+      "ball_mean_m": 3.2533776164989114,
+      "ball_p95_m": 6.324757385253904,
+      "player_valid_count": 780,
+      "player_mean_m": 2.466766100496245,
+      "player_p95_m": 5.623876738548278
+    },
+    {
+      "domain": "broadcast",
+      "region": "outside_after",
+      "condition": "detector_gap",
+      "ball_valid_count": 369,
+      "ball_mean_m": 2.8280990892632545,
+      "ball_p95_m": 6.705412769317625,
+      "player_valid_count": 760,
+      "player_mean_m": 2.4341268447276794,
+      "player_p95_m": 4.467246484756469
+    },
+    {
+      "domain": "broadcast",
+      "region": "outside_after",
+      "condition": "detector_gap_no_rgb",
+      "ball_valid_count": 369,
+      "ball_mean_m": 4.42675402623205,
+      "ball_p95_m": 9.524912452697752,
+      "player_valid_count": 760,
+      "player_mean_m": 2.4725767328158805,
+      "player_p95_m": 4.7191792726516715
+    }
+  ]
+}

@@ -21,3 +21,6 @@ dino_patch_downsample_factor: 1
 dino_cross_attn_every: 2
 log_b_min: -6.0
 log_b_max: 3.0
+missing_ball_court_context: false
+missing_ball_temporal_context: false
+missing_ball_one_sided_context: false

@@ -137,6 +137,9 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+    "src.tasks.blcs.scripts.evaluate_real": "blcs.evaluate_real",
+    "src.tennis_scene.scripts.import_broadcast_ball": "tennis_scene.import_broadcast_ball",
+    "src.tennis_scene.scripts.prepare_blcs_real_dataset": "tennis_scene.prepare_blcs_real_dataset",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
@@ -189,6 +192,9 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_clips": "tennis_scene.export_clips",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
+    "src.tennis_scene.scripts.build_slcs_dataset": "tennis_scene.build_slcs_dataset",
+    "src.tennis_scene.scripts.assemble_slcs_dataset": "tennis_scene.assemble_slcs_dataset",
+    "src.tennis_scene.scripts.report_slcs_dataset_quality": "tennis_scene.report_slcs_dataset_quality",
     "src.tennis_scene.scripts.reconstruct_reference_clip": "tennis_scene.reference_clip",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
@@ -197,6 +203,9 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+    "src.tasks.blcs.scripts.evaluate_real": "src.tasks.blcs.evaluation.configuration.validate_real_evaluation",
+    "src.tennis_scene.scripts.import_broadcast_ball": "src.tennis_scene.dataset_pipeline.preparation.validate_broadcast_import_config",
+    "src.tennis_scene.scripts.prepare_blcs_real_dataset": "src.tennis_scene.dataset_pipeline.preparation.validate_blcs_preparation_config",
     "src.synthetic_data_generation.scripts.run_appearance_variant": (
         "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary"
     ),
@@ -259,6 +268,9 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_clips": "src.tennis_scene.configuration.validate_export_clips_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
+    "src.tennis_scene.scripts.build_slcs_dataset": "src.tennis_scene.dataset_pipeline.configuration.validate_build_config",
+    "src.tennis_scene.scripts.assemble_slcs_dataset": "src.tennis_scene.dataset_pipeline.assemble.validate_assembly_config",
+    "src.tennis_scene.scripts.report_slcs_dataset_quality": "src.tennis_scene.dataset_pipeline.quality_report.validate_quality_report_config",
     "src.tennis_scene.scripts.reconstruct_reference_clip": "src.tennis_scene.configuration.validate_reference_clip_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
@@ -294,7 +306,29 @@ def _runtime_boundary(
     )
 
 
+_SLCS_REAL_RGB_ENTRYPOINTS = (
+    "evaluate_run",
+)
+
+
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tennis_scene.scripts.build_real_rgb": (
+        "tennis_scene.build_real_rgb",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.scripts.render_reconstruction_review": (
+        "tennis_scene.reconstruction_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    **{
+        f"src.tasks.slcs.scripts.{script}": (
+            f"slcs.{script}",
+            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+        )
+        for script in _SLCS_REAL_RGB_ENTRYPOINTS
+    },
+
+
     "src.tasks.court_detection.scripts.audit_hybrid_inference": (
         "court_detection.hybrid_inference_audit",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -560,6 +594,11 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_clips"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.build_slcs_dataset"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.assemble_slcs_dataset"),
+    _runtime_boundary(
+        "tennis_scene", "src.tennis_scene.scripts.report_slcs_dataset_quality"
+    ),
     _runtime_boundary(
         "tennis_scene", "src.tennis_scene.scripts.reconstruct_reference_clip"
     ),
@@ -579,6 +618,36 @@ _RUNTIME_BOUNDARIES += tuple(
     )
     for task in ("ball_detection", "court_detection")
     for script in ("review_dataset", "inference_ui")
+)
+
+_RUNTIME_BOUNDARIES += tuple(
+    _non_hydra_boundary(
+        f"src.tasks.slcs.scripts.{script}",
+        "main",
+        domain="slcs",
+        executable_module=True,
+    )
+    for script in _SLCS_REAL_RGB_ENTRYPOINTS
+)
+
+_RUNTIME_BOUNDARIES += (
+    _runtime_boundary("blcs", "src.tasks.blcs.scripts.evaluate_real"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.import_broadcast_ball"),
+    _runtime_boundary(
+        "tennis_scene", "src.tennis_scene.scripts.prepare_blcs_real_dataset"
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.build_real_rgb",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.render_reconstruction_review",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
 )
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES

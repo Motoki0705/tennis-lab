@@ -1,0 +1,23 @@
+{
+  "source": "Parent exec_command stdout and /usr/bin/time -v output; selected fields, not a complete log",
+  "exit_code": 0,
+  "cpu_only": true,
+  "train_batches": 1,
+  "trainer_max_epochs": 1,
+  "checkpointing": false,
+  "logger": false,
+  "elapsed_seconds": 135.09,
+  "max_rss_kib": 18370148,
+  "swaps": 0,
+  "batch_shapes": {
+    "player_kp": [16, 2, 120, 17, 2],
+    "ball_uv": [16, 120, 2],
+    "court_kp": [16, 120, 14, 2],
+    "padding_mask": [16, 120],
+    "target_player_position": [16, 2, 120, 3],
+    "target_ball_position": [16, 120, 3],
+    "dino_tokens": [16, 12, 448, 768],
+    "dino_frame_idx": [16, 12],
+    "dino_padding_mask": [16, 12]
+  }
+}

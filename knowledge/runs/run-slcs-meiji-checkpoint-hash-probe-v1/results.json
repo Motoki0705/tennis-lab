@@ -1,0 +1,131 @@
+{
+  "read_checks": [
+    {
+      "phase": "before_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "expected": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "file_digest": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "manual": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "sha256sum": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "before_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "file_digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "manual": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "sha256sum": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "before_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "expected": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "file_digest": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "manual": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "sha256sum": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "before_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_001/media/cam1.mp4",
+      "expected": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "file_digest": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "manual": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "sha256sum": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "expected": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "file_digest": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "manual": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "sha256sum": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "file_digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "manual": "64115ceb8fc84bce3bad9a137ac84eccc5d0fe2d408afd464eb0809694ecc899",
+      "sha256sum": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": false,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "expected": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "file_digest": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "manual": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "sha256sum": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_cuda_pose",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_001/media/cam1.mp4",
+      "expected": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "file_digest": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "manual": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "sha256sum": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_unload",
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "expected": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "file_digest": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "manual": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "sha256sum": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_unload",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "file_digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "manual": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "sha256sum": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_unload",
+      "path": "/home/kamimura/projects/tennis-lab/third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "expected": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "file_digest": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "manual": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "sha256sum": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "match": true,
+      "stat_unchanged": true
+    },
+    {
+      "phase": "after_unload",
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_001/media/cam1.mp4",
+      "expected": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "file_digest": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "manual": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "sha256sum": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+      "match": true,
+      "stat_unchanged": true
+    }
+  ],
+  "errors": [
+    {
+      "phase": "after_cuda_pose",
+      "detection_identity_error": "ValueError(\"Stale person detections: /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_001/cam1_detections.npz; changed identity fields: checkpoint_sha256: saved='e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5', expected='e1dfce8556a5e478927683640394c5c8ace42b5b22945322cd30249b373e221d'\")"
+    }
+  ],
+  "scope": "same files read by three methods before/after real CUDA inference; stable results cannot establish historical failure cause"
+}

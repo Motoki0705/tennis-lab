@@ -1,0 +1,74 @@
+{
+  "constant_normalized": [
+    0.0073378854735289085,
+    0.07931749198015724,
+    0.15340682558114332
+  ],
+  "constant_m": [
+    0.08721076885289107,
+    0.9426883921841688,
+    1.8232401220318883
+  ],
+  "unique_nonpadding_count": 29430,
+  "unique_valid_count": 25913,
+  "positive_weight_count": 25913,
+  "weight_sum": 22912.000081554055,
+  "train_video_ids": [
+    "broadcast_shanghai",
+    "broadcast_washington",
+    "video_000"
+  ],
+  "train_windows": 466,
+  "schema_version": 1,
+  "fit_split": "train",
+  "dataset_root": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1",
+  "split_file": "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1/splits.json",
+  "assignments": {
+    "video_000": "train",
+    "video_001": "val",
+    "video_002": "test",
+    "broadcast_shanghai": "train",
+    "broadcast_washington": "train",
+    "broadcast_indoor_hard": "val",
+    "broadcast_eastbourne": "test"
+  },
+  "data_pipeline": {
+    "window_size": 120,
+    "train_stride": 60,
+    "eval_stride": 120,
+    "num_players": 2,
+    "num_court_kp": 14,
+    "require_dino": true,
+    "cache_dino_tokens": true,
+    "on_incomplete": "error",
+    "dino_spec": {
+      "backbone": "dinov3_vitb16",
+      "patch_size": 16,
+      "image_height": 256,
+      "image_width": 448,
+      "embed_dim": 768,
+      "frame_stride": 10
+    },
+    "quality": {
+      "min_player_confidence": 0.3,
+      "min_ball_cameras": 1,
+      "label_weight_power": 1.0,
+      "min_window_label_ratio": 0.5
+    },
+    "augmentation": {
+      "enabled": false,
+      "joint_dropout": 0.1,
+      "ball_dropout": 0.15,
+      "uv_std": 0.003,
+      "burst_probability": 0.5,
+      "burst_max_frames": 24,
+      "rgb_only_probability": 0.15,
+      "rgb_dropout_probability": 0.1
+    }
+  },
+  "label_view_overrides": {
+    "require_dino": false,
+    "augment": false
+  },
+  "interpretation": "Pseudo-teacher agreement, not measured 3D accuracy. Confidence-weighted arithmetic mean minimizes weighted squared distance, not mean Euclidean distance. Fit deduplicates (video, clip, camera, frame); cameras remain distinct. CPU label view does not read or validate DINO caches."
+}

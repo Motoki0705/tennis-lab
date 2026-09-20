@@ -1,2 +1,2 @@
-output_dir: ball_detection/visualization
+output_dir: ${tennis_output:ball_detection,visualize,default,${tennis_run_id:}}
 device: auto

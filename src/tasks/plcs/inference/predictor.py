@@ -26,6 +26,7 @@ from src.tasks.plcs.court_keypoint_contract import (
     headings_target_to_physical,
     normalized_points_target_to_physical,
 )
+from src.tasks.plcs.inference.checkpoint import load_plcs_pair
 from src.tasks.plcs.model_io import (
     PLCSDecodedPrediction,
     PLCSInputProfile,
@@ -37,8 +38,8 @@ from src.tasks.plcs.model_io import (
     bind_plcs_model_io,
     prepare_plcs_checkpoint_court_keypoint_config,
 )
-from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.utils.configuration import PathResolver
+from src.utils.device import resolve_device
 from src.utils.schema.court_normalization import load_and_validate_checkpoint
 
 
@@ -95,7 +96,13 @@ class PLCSPredictor(BasePredictor):
             raise TypeError(
                 "PLCSPredictor restores checkpoint config internally; do not pass config."
             )
-        checkpoint = load_and_validate_checkpoint(checkpoints[0])
+        strict = kwargs.pop("strict", True)
+        weights_only = kwargs.pop("weights_only", False)
+        if strict is not True:
+            raise ValueError("PLCS inference requires strict checkpoint loading")
+        if type(weights_only) is not bool or kwargs:
+            raise TypeError(f"Unsupported PLCS checkpoint options: {kwargs}")
+        checkpoint = load_and_validate_checkpoint(checkpoints[0], weights_only=weights_only)
         checkpoint_config, keypoint_contract = (
             prepare_plcs_checkpoint_court_keypoint_config(
                 checkpoint,
@@ -103,23 +110,15 @@ class PLCSPredictor(BasePredictor):
                 location=str(checkpoints[0]),
             )
         )
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoints[0],
-            PLCSLightningModule,
-            resolver=resolver,
-            device=device,
-            config=checkpoint_config,
-            strict=bool(kwargs.pop("strict", True)),
-            weights_only=bool(kwargs.pop("weights_only", False)),
-            **kwargs,
-        )
-        adapter = lightning_module.io_adapter
+        pair = load_plcs_pair(checkpoint, checkpoint_config, keypoint_contract)
+        resolved_device = resolve_device(device)
+        adapter = pair.adapter
         if not isinstance(adapter, PLCSModelIOAdapter):
             raise ModelInputContractError(
                 "Loaded checkpoint does not contain a standard PLCS I/O adapter."
             )
         return cls(
-            model=lightning_module.model,
+            model=pair.model,
             adapter=adapter,
             device=resolved_device,
             court_keypoint_contract=keypoint_contract,

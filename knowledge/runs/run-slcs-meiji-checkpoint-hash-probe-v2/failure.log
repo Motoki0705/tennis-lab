@@ -1,0 +1,16 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789733935690362918_818639_slcs-meiji-checkpoint-hash-probe-v2 (commit=9450fff0345e provider=codex session=01a0b314-89b5-7902-b0a1-3141a9323ea9)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v2/probe.py", line 329, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v2/probe.py", line 292, in main
+    probe = Probe(args.output_dir, args.cpu_only)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v2/probe.py", line 86, in __init__
+    "modules": {
+               ^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v2/probe.py", line 87, in <dictcomp>
+    m.__name__: m.__file__ for m in (_hashlib, _sha256, hashlib)
+                ^^^^^^^^^^
+AttributeError: module '_hashlib' has no attribute '__file__'. Did you mean: '__name__'?
+exit_code=1

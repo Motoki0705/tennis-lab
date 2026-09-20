@@ -1,0 +1,3091 @@
+{
+  "clips": {
+    "video_000/clip_007": {
+      "W": 1920,
+      "H": 1080,
+      "shape": [
+        2,
+        3,
+        652,
+        17
+      ],
+      "counted": 63982,
+      "large100": 904,
+      "cats": {
+        "A_obsIn_teaIn": {
+          "count": 537,
+          "frac_of_large": 0.5940265486725663,
+          "mean": 120.32226937816307,
+          "max": 166.66814572587828
+        },
+        "B_obsIn_teaOut": {
+          "count": 367,
+          "frac_of_large": 0.4059734513274336,
+          "mean": 294.1855949491384,
+          "max": 530.1035825840623
+        },
+        "C_obsOut_teaIn": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        },
+        "D_bothOut": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        }
+      },
+      "both_inside": {
+        "frac_retained": 0.9928573661342253,
+        "overall": {
+          "count": 63525,
+          "mean": 17.778059392653137,
+          "median": 10.093578419737922,
+          "p95": 58.47589439810093,
+          "max": 166.66814572587828
+        },
+        "by_camera": {
+          "cam0": {
+            "count": 20785,
+            "mean": 14.581940625409128,
+            "median": 9.583453052690073,
+            "p95": 46.95843539284313,
+            "max": 93.57194483681411
+          },
+          "cam1": {
+            "count": 21856,
+            "mean": 12.906761382113606,
+            "median": 8.544339468203932,
+            "p95": 39.04699438564974,
+            "max": 118.21393669641222
+          },
+          "cam2": {
+            "count": 20884,
+            "mean": 26.057048949036915,
+            "median": 14.369911990737576,
+            "p95": 82.82871491233284,
+            "max": 166.66814572587828
+          }
+        },
+        "by_player": {
+          "player0": {
+            "count": 33090,
+            "mean": 16.343409670745828,
+            "median": 11.157911870380083,
+            "p95": 47.266617478202846,
+            "max": 118.21393669641222
+          },
+          "player1": {
+            "count": 30435,
+            "mean": 19.337860913859416,
+            "median": 8.693608722895947,
+            "p95": 71.38439459260744,
+            "max": 166.66814572587828
+          }
+        }
+      },
+      "large100_cam_dist": {
+        "cam0": 0,
+        "cam1": 51,
+        "cam2": 853
+      },
+      "large100_player_dist": {
+        "player0": 51,
+        "player1": 853
+      }
+    },
+    "video_000/clip_009": {
+      "W": 1920,
+      "H": 1080,
+      "shape": [
+        2,
+        3,
+        744,
+        17
+      ],
+      "counted": 71268,
+      "large100": 403,
+      "cats": {
+        "A_obsIn_teaIn": {
+          "count": 343,
+          "frac_of_large": 0.8511166253101737,
+          "mean": 118.93213086204722,
+          "max": 192.6378394939294
+        },
+        "B_obsIn_teaOut": {
+          "count": 60,
+          "frac_of_large": 0.1488833746898263,
+          "mean": 297.4848357775115,
+          "max": 661.9831783410742
+        },
+        "C_obsOut_teaIn": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        },
+        "D_bothOut": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        }
+      },
+      "both_inside": {
+        "frac_retained": 0.998161867878992,
+        "overall": {
+          "count": 71137,
+          "mean": 14.200545242457467,
+          "median": 8.383732698700223,
+          "p95": 49.96995494329073,
+          "max": 192.6378394939294
+        },
+        "by_camera": {
+          "cam0": {
+            "count": 23581,
+            "mean": 9.421769032551687,
+            "median": 8.01187745003045,
+            "p95": 20.671630075440554,
+            "max": 68.44948685186574
+          },
+          "cam1": {
+            "count": 24345,
+            "mean": 10.177864954886953,
+            "median": 6.945613743782375,
+            "p95": 27.909212189230445,
+            "max": 102.91856750379557
+          },
+          "cam2": {
+            "count": 23211,
+            "mean": 23.274711517356977,
+            "median": 11.840221610668973,
+            "p95": 70.74105806465975,
+            "max": 192.6378394939294
+          }
+        },
+        "by_player": {
+          "player0": {
+            "count": 37717,
+            "mean": 11.714909735049048,
+            "median": 8.961043304436757,
+            "p95": 28.39059116119772,
+            "max": 102.91856750379557
+          },
+          "player1": {
+            "count": 33420,
+            "mean": 17.005773083059605,
+            "median": 7.363609168431974,
+            "p95": 63.69252554176114,
+            "max": 192.6378394939294
+          }
+        }
+      },
+      "large100_cam_dist": {
+        "cam0": 0,
+        "cam1": 7,
+        "cam2": 396
+      },
+      "large100_player_dist": {
+        "player0": 7,
+        "player1": 396
+      }
+    },
+    "video_001/clip_000": {
+      "W": 1920,
+      "H": 1080,
+      "shape": [
+        2,
+        3,
+        1316,
+        17
+      ],
+      "counted": 127608,
+      "large100": 657,
+      "cats": {
+        "A_obsIn_teaIn": {
+          "count": 657,
+          "frac_of_large": 1.0,
+          "mean": 119.441855151998,
+          "max": 180.40137630002104
+        },
+        "B_obsIn_teaOut": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        },
+        "C_obsOut_teaIn": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        },
+        "D_bothOut": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        }
+      },
+      "both_inside": {
+        "frac_retained": 1.0,
+        "overall": {
+          "count": 127608,
+          "mean": 16.308071568858704,
+          "median": 11.19363585052048,
+          "p95": 50.6388359315763,
+          "max": 180.40137630002104
+        },
+        "by_camera": {
+          "cam0": {
+            "count": 40576,
+            "mean": 12.310449763099857,
+            "median": 11.426478260393168,
+            "p95": 26.17889490368552,
+            "max": 75.01197638559856
+          },
+          "cam1": {
+            "count": 43327,
+            "mean": 11.912133463970575,
+            "median": 8.309194407054097,
+            "p95": 35.08477703978969,
+            "max": 102.64505257163846
+          },
+          "cam2": {
+            "count": 43705,
+            "mean": 24.377407174875383,
+            "median": 15.916983263829742,
+            "p95": 72.79881822131777,
+            "max": 180.40137630002104
+          }
+        },
+        "by_player": {
+          "player0": {
+            "count": 66242,
+            "mean": 14.277710981533053,
+            "median": 12.145592238849797,
+            "p95": 33.920505309160276,
+            "max": 102.64505257163846
+          },
+          "player1": {
+            "count": 61366,
+            "mean": 18.499759898318437,
+            "median": 9.526076786561923,
+            "p95": 65.4519594483339,
+            "max": 180.40137630002104
+          }
+        }
+      },
+      "large100_cam_dist": {
+        "cam0": 0,
+        "cam1": 11,
+        "cam2": 646
+      },
+      "large100_player_dist": {
+        "player0": 11,
+        "player1": 646
+      }
+    },
+    "video_001/clip_001": {
+      "W": 1920,
+      "H": 1080,
+      "shape": [
+        2,
+        3,
+        1300,
+        17
+      ],
+      "counted": 126206,
+      "large100": 1197,
+      "cats": {
+        "A_obsIn_teaIn": {
+          "count": 595,
+          "frac_of_large": 0.49707602339181284,
+          "mean": 123.25333277557958,
+          "max": 257.67230180791796
+        },
+        "B_obsIn_teaOut": {
+          "count": 602,
+          "frac_of_large": 0.5029239766081871,
+          "mean": 303.0563619982462,
+          "max": 697.5246281674614
+        },
+        "C_obsOut_teaIn": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        },
+        "D_bothOut": {
+          "count": 0,
+          "frac_of_large": 0.0,
+          "mean": null,
+          "max": null
+        }
+      },
+      "both_inside": {
+        "frac_retained": 0.9695577072405432,
+        "overall": {
+          "count": 122364,
+          "mean": 14.65137476259186,
+          "median": 8.944019068245968,
+          "p95": 49.77521010741499,
+          "max": 257.67230180791796
+        },
+        "by_camera": {
+          "cam0": {
+            "count": 41978,
+            "mean": 9.611521319042163,
+            "median": 8.195300543362865,
+            "p95": 20.754169321805914,
+            "max": 62.3485199263034
+          },
+          "cam1": {
+            "count": 43241,
+            "mean": 14.313953985559438,
+            "median": 9.290051976962722,
+            "p95": 42.85771374252433,
+            "max": 124.21212126379884
+          },
+          "cam2": {
+            "count": 37145,
+            "mean": 20.73976834646555,
+            "median": 10.121594694432513,
+            "p95": 70.50449161852795,
+            "max": 257.67230180791796
+          }
+        },
+        "by_player": {
+          "player0": {
+            "count": 65832,
+            "mean": 14.439519462646436,
+            "median": 10.971314710558868,
+            "p95": 38.410490915213316,
+            "max": 124.21212126379884
+          },
+          "player1": {
+            "count": 56532,
+            "mean": 14.89808208067732,
+            "median": 6.5330459278115445,
+            "p95": 62.24470460809927,
+            "max": 257.67230180791796
+          }
+        }
+      },
+      "large100_cam_dist": {
+        "cam0": 0,
+        "cam1": 180,
+        "cam2": 1017
+      },
+      "large100_player_dist": {
+        "player0": 180,
+        "player1": 1017
+      }
+    }
+  },
+  "top40": [
+    {
+      "clip": "video_001/clip_001",
+      "frame": 182,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 697.5246281674614,
+      "vis": 0.52734375,
+      "obs_px": [
+        20.623172521591187,
+        980.301775932312
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -674.6608047423358,
+        1036.165877645401
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4508463442325592,
+      "player_conf": 0.4508463541666667
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 181,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 678.2532780598859,
+      "vis": 0.56640625,
+      "obs_px": [
+        25.602997541427612,
+        980.4536962509155
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -651.4171510353103,
+        1021.3343471766613
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4378829598426819,
+      "player_conf": 0.4378829656862745
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 183,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 673.0988462045495,
+      "vis": 0.5,
+      "obs_px": [
+        14.017444252967834,
+        979.2559719085693
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -657.8045690289559,
+        1020.6955572312834
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4450061321258545,
+      "player_conf": 0.4450061274509804
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 177,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 672.589327385597,
+      "vis": 0.6640625,
+      "obs_px": [
+        43.98953318595886,
+        981.7214584350586
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -627.6752384583316,
+        1016.9753638220214
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4482230246067047,
+      "player_conf": 0.4482230392156863
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 176,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 671.9108721742381,
+      "vis": 0.6875,
+      "obs_px": [
+        47.85017251968384,
+        981.3185477256775
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -623.1209543313237,
+        1016.8427236940867
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.44154030084609985,
+      "player_conf": 0.44154028799019607
+    },
+    {
+      "clip": "video_000/clip_009",
+      "frame": 528,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 661.9831783410742,
+      "vis": 0.7109375,
+      "obs_px": [
+        15.191116333007812,
+        819.5913219451904
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -599.119080179216,
+        1066.2585286583314
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.3675130307674408,
+      "player_conf": 0.3675130208333333
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 178,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 660.1461661449028,
+      "vis": 0.59375,
+      "obs_px": [
+        38.94441604614258,
+        981.8669414520264
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -620.6435967227916,
+        1009.0075768046121
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4084711968898773,
+      "player_conf": 0.40847120098039214
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 179,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 648.0102822983112,
+      "vis": 0.6171875,
+      "obs_px": [
+        34.44025754928589,
+        981.4991140365601
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -613.2712705413019,
+        1001.174030628321
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.44383808970451355,
+      "player_conf": 0.44383808210784315
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 171,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "left_wrist",
+      "joint_id": 9,
+      "residual_px": 643.9774962179828,
+      "vis": 0.609375,
+      "obs_px": [
+        70.50886631011963,
+        975.7702374458313
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -570.1628681670308,
+        1040.9372864600516
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.48261335492134094,
+      "player_conf": 0.48261335784313725
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 175,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 628.008258148073,
+      "vis": 0.66015625,
+      "obs_px": [
+        52.64394521713257,
+        981.1118459701538
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -575.0262452765788,
+        1001.7153473173704
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4867302477359772,
+      "player_conf": 0.48673023897058826
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 173,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "left_wrist",
+      "joint_id": 9,
+      "residual_px": 623.3532355484642,
+      "vis": 0.62109375,
+      "obs_px": [
+        60.403053760528564,
+        979.3313527107239
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -560.208875647081,
+        1037.7273229972386
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4439912736415863,
+      "player_conf": 0.4439912683823529
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 277,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 618.9818631357424,
+      "vis": 0.39453125,
+      "obs_px": [
+        1.307418867945671,
+        773.3603596687317
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -579.4916285537603,
+        987.3954348434187
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5737400650978088,
+      "player_conf": 0.5737400428921569
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 180,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 614.774295434994,
+      "vis": 0.59375,
+      "obs_px": [
+        29.918037056922913,
+        980.7753038406372
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -584.7871160417126,
+        989.9953408024063
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.43179380893707275,
+      "player_conf": 0.43179381127450983
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 279,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 613.7707736625844,
+      "vis": 0.578125,
+      "obs_px": [
+        1.6608810424804688,
+        766.6966581344604
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -570.9139643218243,
+        987.7681602744011
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5778952240943909,
+      "player_conf": 0.5778952205882353
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 175,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "left_wrist",
+      "joint_id": 9,
+      "residual_px": 611.3710250286055,
+      "vis": 0.671875,
+      "obs_px": [
+        51.283332109451294,
+        979.9272537231445
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -556.8189070182066,
+        1043.063590427585
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4867302477359772,
+      "player_conf": 0.48673023897058826
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 278,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 609.0910988125864,
+      "vis": 0.486328125,
+      "obs_px": [
+        1.5350951626896858,
+        769.7977638244629
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -568.8608780887082,
+        983.4339039115617
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5735485553741455,
+      "player_conf": 0.5735485600490197
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 172,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "left_wrist",
+      "joint_id": 9,
+      "residual_px": 609.079304320352,
+      "vis": 0.6640625,
+      "obs_px": [
+        65.17871618270874,
+        978.0727314949036
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -541.6212418309465,
+        1030.7169135665265
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.47384345531463623,
+      "player_conf": 0.47384344362745096
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 280,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 604.4044876464385,
+      "vis": 0.62890625,
+      "obs_px": [
+        2.3723450303077698,
+        763.8675284385681
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -560.5588098963797,
+        983.8977524989448
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5813419222831726,
+      "player_conf": 0.5813419117647058
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 174,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "left_wrist",
+      "joint_id": 9,
+      "residual_px": 603.0158374295597,
+      "vis": 0.640625,
+      "obs_px": [
+        55.49556612968445,
+        979.0571236610413
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -545.5020340799191,
+        1028.3519989846557
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.43966376781463623,
+      "player_conf": 0.43966375612745096
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 172,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 601.8054606968318,
+      "vis": 0.6640625,
+      "obs_px": [
+        66.36250734329224,
+        980.0872850418091
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -535.4218745458911,
+        985.1241728487374
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.47384345531463623,
+      "player_conf": 0.47384344362745096
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 281,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 600.2881784995687,
+      "vis": 0.671875,
+      "obs_px": [
+        2.2349777072668076,
+        761.266987323761
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -555.3271929312978,
+        983.6862381073707
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5885990858078003,
+      "player_conf": 0.5885991115196079
+    },
+    {
+      "clip": "video_000/clip_009",
+      "frame": 431,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 597.0083814421708,
+      "vis": 0.6640625,
+      "obs_px": [
+        22.790599465370178,
+        879.7482919692993
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -574.0505209730179,
+        893.8792673797252
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5062806606292725,
+      "player_conf": 0.5062806372549019
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 176,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_knee",
+      "joint_id": 14,
+      "residual_px": 596.2607353018899,
+      "vis": 0.5,
+      "obs_px": [
+        2.090652510523796,
+        907.1576142311096
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -520.6654825286417,
+        1193.955256727808
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.44154030084609985,
+      "player_conf": 0.44154028799019607
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 282,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 593.3715436864165,
+      "vis": 0.72265625,
+      "obs_px": [
+        1.8340911716222763,
+        759.2257189750671
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -548.6230494577168,
+        980.7809608155005
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5884459018707275,
+      "player_conf": 0.5884459252450981
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 177,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 592.9438765777076,
+      "vis": 0.4296875,
+      "obs_px": [
+        3.4402160346508026,
+        918.0545496940613
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -588.529426295571,
+        952.0307668235317
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4482230246067047,
+      "player_conf": 0.4482230392156863
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 184,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 592.4996702024049,
+      "vis": 0.439453125,
+      "obs_px": [
+        8.460270166397095,
+        977.6454877853394
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -583.9712530249135,
+        986.6315614096881
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4442784786224365,
+      "player_conf": 0.4442784926470588
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 173,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 591.0394196028283,
+      "vis": 0.63671875,
+      "obs_px": [
+        61.515727043151855,
+        980.7465291023254
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -529.5119660360966,
+        984.4696377321916
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4439912736415863,
+      "player_conf": 0.4439912683823529
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 283,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 590.8383107190782,
+      "vis": 0.7578125,
+      "obs_px": [
+        2.2364044189453125,
+        758.2271003723145
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -545.4870525853971,
+        979.7873045168906
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5871055722236633,
+      "player_conf": 0.5871055453431373
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 276,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_ankle",
+      "joint_id": 16,
+      "residual_px": 590.7164938659354,
+      "vis": 0.6796875,
+      "obs_px": [
+        2.074546739459038,
+        988.0880784988403
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -516.3016345455079,
+        1271.340811586588
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5575405955314636,
+      "player_conf": 0.5575405943627451
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 175,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_knee",
+      "joint_id": 14,
+      "residual_px": 590.2489514718394,
+      "vis": 0.5625,
+      "obs_px": [
+        2.4800263345241547,
+        903.8276624679565
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -512.9995999852375,
+        1191.359538201491
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4867302477359772,
+      "player_conf": 0.48673023897058826
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 171,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_knee",
+      "joint_id": 14,
+      "residual_px": 590.1914970518338,
+      "vis": 0.78125,
+      "obs_px": [
+        11.878250241279602,
+        897.3593974113464
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -502.35293855318855,
+        1187.001051293023
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.48261335492134094,
+      "player_conf": 0.48261335784313725
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 176,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 589.5586717543875,
+      "vis": 0.36328125,
+      "obs_px": [
+        3.411666825413704,
+        910.8880949020386
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -584.7025436178487,
+        952.1325238045663
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.44154030084609985,
+      "player_conf": 0.44154028799019607
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 279,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_ankle",
+      "joint_id": 16,
+      "residual_px": 589.1557052870071,
+      "vis": 0.66015625,
+      "obs_px": [
+        1.2451247870922089,
+        988.3274173736572
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -515.3533945813095,
+        1271.5771567532474
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5778952240943909,
+      "player_conf": 0.5778952205882353
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 277,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_ankle",
+      "joint_id": 16,
+      "residual_px": 587.9436542998649,
+      "vis": 0.6875,
+      "obs_px": [
+        1.5413818135857582,
+        988.1686091423035
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -514.4531190704893,
+        1269.9973083354007
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5737400650978088,
+      "player_conf": 0.5737400428921569
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 171,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 587.8067066578329,
+      "vis": 0.6015625,
+      "obs_px": [
+        71.66947603225708,
+        978.959469795227
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -516.1205031041932,
+        983.3939730029175
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.48261335492134094,
+      "player_conf": 0.48261335784313725
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 178,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 585.9976246550322,
+      "vis": 0.45703125,
+      "obs_px": [
+        3.7531663477420807,
+        921.8566131591797
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -581.7964237482533,
+        944.7671705454958
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4084711968898773,
+      "player_conf": 0.40847120098039214
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 177,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_knee",
+      "joint_id": 14,
+      "residual_px": 585.2482371992786,
+      "vis": 0.498046875,
+      "obs_px": [
+        2.0454979687929153,
+        913.329119682312
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -513.9599991426551,
+        1189.4700729935341
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4482230246067047,
+      "player_conf": 0.4482230392156863
+    },
+    {
+      "clip": "video_000/clip_009",
+      "frame": 430,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_wrist",
+      "joint_id": 10,
+      "residual_px": 584.0106938371035,
+      "vis": 0.578125,
+      "obs_px": [
+        32.821422815322876,
+        876.2283754348755
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -550.8747866646711,
+        895.3915055232005
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.4716222286224365,
+      "player_conf": 0.4716222426470588
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 280,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_ankle",
+      "joint_id": 16,
+      "residual_px": 583.1288663947073,
+      "vis": 0.67578125,
+      "obs_px": [
+        1.7613677680492401,
+        988.5032200813293
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -510.3302714712866,
+        1267.4322932234927
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5813419222831726,
+      "player_conf": 0.5813419117647058
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 284,
+      "player": 1,
+      "camera": "cam2",
+      "joint": "right_elbow",
+      "joint_id": 8,
+      "residual_px": 581.8824048349746,
+      "vis": 0.75390625,
+      "obs_px": [
+        2.5255507975816727,
+        757.1359777450562
+      ],
+      "obs_inside": true,
+      "tea_px": [
+        -536.4242520714138,
+        976.4992450529724
+      ],
+      "tea_inside": false,
+      "tea_infront": true,
+      "hip_vis_L": 0.0,
+      "hip_vis_R": 0.0,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "slcs_weight": 0.5813227891921997,
+      "player_conf": 0.5813227634803921
+    }
+  ],
+  "top40_detail": [
+    {
+      "clip": "video_001/clip_001",
+      "frame": 182,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.096738815307617,
+        16.157503128051758,
+        16.154172897338867,
+        16.181957244873047,
+        16.145313262939453
+      ],
+      "speed_win": [
+        3.898621082305908,
+        0.6418517827987671,
+        1.7449208498001099,
+        2.2370543479919434,
+        0.9668299555778503
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.66796875,
+          "hipR": 0.6484375,
+          "root_proj": [
+            1185.7070168793807,
+            326.0323851641751
+          ],
+          "root_vs_hipcenter_px": 0.9899399139469756,
+          "n_counted_joints": 17,
+          "mean_resid": 4.3926666483059895,
+          "max_resid": 10.586671520418056
+        },
+        "cam1": {
+          "hipL": 0.578125,
+          "hipR": 0.6640625,
+          "root_proj": [
+            652.1313733111255,
+            470.38373672212157
+          ],
+          "root_vs_hipcenter_px": 0.6199854927804269,
+          "n_counted_joints": 17,
+          "mean_resid": 6.325421300681356,
+          "max_resid": 22.46074377708722
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -503.0754741716955,
+            1040.4048636504735
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 4,
+          "mean_resid": 519.6160473607642,
+          "max_resid": 697.5246281674614
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 181,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.153093338012695,
+        16.096738815307617,
+        16.157503128051758,
+        16.154172897338867,
+        16.181957244873047
+      ],
+      "speed_win": [
+        3.511039972305298,
+        3.898621082305908,
+        0.6418517827987671,
+        1.7449208498001099,
+        2.2370543479919434
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.60546875,
+          "hipR": 0.6015625,
+          "root_proj": [
+            1185.522012497708,
+            325.9833517713819
+          ],
+          "root_vs_hipcenter_px": 0.9734882074359673,
+          "n_counted_joints": 16,
+          "mean_resid": 4.594221504610857,
+          "max_resid": 11.096739165990249
+        },
+        "cam1": {
+          "hipL": 0.53515625,
+          "hipR": 0.65234375,
+          "root_proj": [
+            651.8045698668966,
+            470.3105308036856
+          ],
+          "root_vs_hipcenter_px": 0.6098410379283618,
+          "n_counted_joints": 17,
+          "mean_resid": 6.421837661214539,
+          "max_resid": 22.89720298124757
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -501.3482834801892,
+            1040.1552414870694
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 4,
+          "mean_resid": 517.8776271576346,
+          "max_resid": 678.2532780598859
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 183,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.157503128051758,
+        16.154172897338867,
+        16.181957244873047,
+        16.145313262939453,
+        16.14281463623047
+      ],
+      "speed_win": [
+        0.6418517827987671,
+        1.7449208498001099,
+        2.2370543479919434,
+        0.9668299555778503,
+        3.1429684162139893
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.57421875,
+          "hipR": 0.578125,
+          "root_proj": [
+            1185.9651394609639,
+            325.9899864801692
+          ],
+          "root_vs_hipcenter_px": 1.0681016676837225,
+          "n_counted_joints": 16,
+          "mean_resid": 4.4473741028445914,
+          "max_resid": 10.52222707654311
+        },
+        "cam1": {
+          "hipL": 0.765625,
+          "hipR": 0.7578125,
+          "root_proj": [
+            652.1302800515788,
+            470.3651168896472
+          ],
+          "root_vs_hipcenter_px": 0.6687747369533757,
+          "n_counted_joints": 17,
+          "mean_resid": 6.708172206145939,
+          "max_resid": 22.851055782856168
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -519.5650043412944,
+            1047.787231612751
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 4,
+          "mean_resid": 523.0962657259051,
+          "max_resid": 673.0988462045495
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 177,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.236303329467773,
+        16.248519897460938,
+        16.232894897460938,
+        16.185529708862305,
+        16.153093338012695
+      ],
+      "speed_win": [
+        0.9794650673866272,
+        0.9555753469467163,
+        3.034031391143799,
+        2.1072723865509033,
+        3.511039972305298
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.52734375,
+          "hipR": 0.5390625,
+          "root_proj": [
+            1185.1520264415417,
+            326.1661846665125
+          ],
+          "root_vs_hipcenter_px": 0.7132860726381555,
+          "n_counted_joints": 17,
+          "mean_resid": 4.693703525913973,
+          "max_resid": 11.872004047913716
+        },
+        "cam1": {
+          "hipL": 0.71875,
+          "hipR": 0.73828125,
+          "root_proj": [
+            650.2422278512737,
+            470.678452716972
+          ],
+          "root_vs_hipcenter_px": 0.44728749578412363,
+          "n_counted_joints": 16,
+          "mean_resid": 4.5528661293638475,
+          "max_resid": 14.614893641594417
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -524.9847861149523,
+            1063.0484049888978
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 546.475427067641,
+          "max_resid": 672.589327385597
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 176,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.16363525390625,
+        16.236303329467773,
+        16.248519897460938,
+        16.232894897460938,
+        16.185529708862305
+      ],
+      "speed_win": [
+        4.643296241760254,
+        0.9794650673866272,
+        0.9555753469467163,
+        3.034031391143799,
+        2.1072723865509033
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.498046875,
+          "hipR": 0.51171875,
+          "root_proj": [
+            1185.1376104011042,
+            326.1537682653415
+          ],
+          "root_vs_hipcenter_px": 0.6491069126571676,
+          "n_counted_joints": 17,
+          "mean_resid": 4.804829090441118,
+          "max_resid": 12.074466650095987
+        },
+        "cam1": {
+          "hipL": 0.703125,
+          "hipR": 0.73828125,
+          "root_proj": [
+            650.0058073241909,
+            470.6810331400937
+          ],
+          "root_vs_hipcenter_px": 0.40707405668464985,
+          "n_counted_joints": 16,
+          "mean_resid": 4.462364248164697,
+          "max_resid": 14.507657413587792
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -531.5023225493982,
+            1067.2592234718613
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 555.5159655613121,
+          "max_resid": 671.9108721742381
+        }
+      }
+    },
+    {
+      "clip": "video_000/clip_009",
+      "frame": 528,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.355226516723633,
+        16.208419799804688,
+        16.216032028198242,
+        16.2554988861084,
+        15.932730674743652
+      ],
+      "speed_win": [
+        9.416906356811523,
+        2.198551654815674,
+        2.870758295059204,
+        20.723730087280273,
+        20.723678588867188
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.474609375,
+          "hipR": 0.54296875,
+          "root_proj": [
+            1181.7301641800425,
+            332.12203588166955
+          ],
+          "root_vs_hipcenter_px": 2.382010824459195,
+          "n_counted_joints": 15,
+          "mean_resid": 3.82897277498255,
+          "max_resid": 7.158493015765387
+        },
+        "cam1": {
+          "hipL": 0.578125,
+          "hipR": 0.60546875,
+          "root_proj": [
+            645.857084369111,
+            471.44678544912125
+          ],
+          "root_vs_hipcenter_px": 1.0821853648977942,
+          "n_counted_joints": 16,
+          "mean_resid": 4.620002021516534,
+          "max_resid": 8.806984309137354
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -438.43177589297517,
+            1067.8091623325959
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 4,
+          "mean_resid": 534.993484257395,
+          "max_resid": 661.9831783410742
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 178,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.248519897460938,
+        16.232894897460938,
+        16.185529708862305,
+        16.153093338012695,
+        16.096738815307617
+      ],
+      "speed_win": [
+        0.9555753469467163,
+        3.034031391143799,
+        2.1072723865509033,
+        3.511039972305298,
+        3.898621082305908
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.3359375,
+          "hipR": 0.3671875,
+          "root_proj": [
+            1185.3613682807675,
+            326.1773406406595
+          ],
+          "root_vs_hipcenter_px": 0.6993916558639098,
+          "n_counted_joints": 17,
+          "mean_resid": 3.7639696795155904,
+          "max_resid": 11.512330801294475
+        },
+        "cam1": {
+          "hipL": 0.4609375,
+          "hipR": 0.65625,
+          "root_proj": [
+            651.2036685813657,
+            470.6349890168679
+          ],
+          "root_vs_hipcenter_px": 0.43832094638368563,
+          "n_counted_joints": 17,
+          "mean_resid": 6.283183243698895,
+          "max_resid": 20.65449603472456
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -508.8466044563551,
+            1050.473990880352
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 526.5407162135879,
+          "max_resid": 660.1461661449028
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 179,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.232894897460938,
+        16.185529708862305,
+        16.153093338012695,
+        16.096738815307617,
+        16.157503128051758
+      ],
+      "speed_win": [
+        3.034031391143799,
+        2.1072723865509033,
+        3.511039972305298,
+        3.898621082305908,
+        0.6418517827987671
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.45703125,
+          "hipR": 0.46875,
+          "root_proj": [
+            1185.36546013653,
+            325.97589694361005
+          ],
+          "root_vs_hipcenter_px": 0.8039384839553773,
+          "n_counted_joints": 17,
+          "mean_resid": 4.469075431598048,
+          "max_resid": 12.007425933736263
+        },
+        "cam1": {
+          "hipL": 0.640625,
+          "hipR": 0.71875,
+          "root_proj": [
+            651.6309050810925,
+            470.2894272989544
+          ],
+          "root_vs_hipcenter_px": 0.5037375992368385,
+          "n_counted_joints": 17,
+          "mean_resid": 6.556330626175725,
+          "max_resid": 22.223616800205956
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -496.73464696513867,
+            1038.538482032687
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 510.7739193643317,
+          "max_resid": 648.0102822983112
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 171,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        15.051251411437988,
+        16.021215438842773,
+        16.210832595825195,
+        16.194738388061523,
+        16.20412826538086
+      ],
+      "speed_win": [
+        59.65542221069336,
+        11.86301326751709,
+        1.1622867584228516,
+        0.6677276492118835,
+        2.5614867210388184
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.4765625,
+          "hipR": 0.53125,
+          "root_proj": [
+            1184.3427376086538,
+            326.45249042312076
+          ],
+          "root_vs_hipcenter_px": 0.8921193925566031,
+          "n_counted_joints": 17,
+          "mean_resid": 4.502859870461705,
+          "max_resid": 8.107271428406587
+        },
+        "cam1": {
+          "hipL": 0.71875,
+          "hipR": 0.7265625,
+          "root_proj": [
+            649.3678469773282,
+            471.05676418496626
+          ],
+          "root_vs_hipcenter_px": 0.5599976074048272,
+          "n_counted_joints": 17,
+          "mean_resid": 3.633471393057481,
+          "max_resid": 6.061688314390362
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -498.8947201092155,
+            1059.71802346169
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 538.5187408818549,
+          "max_resid": 643.9774962179828
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 175,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.20412826538086,
+        16.16363525390625,
+        16.236303329467773,
+        16.248519897460938,
+        16.232894897460938
+      ],
+      "speed_win": [
+        2.5614867210388184,
+        4.643296241760254,
+        0.9794650673866272,
+        0.9555753469467163,
+        3.034031391143799
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.578125,
+          "hipR": 0.609375,
+          "root_proj": [
+            1184.9046937949508,
+            326.2879334727214
+          ],
+          "root_vs_hipcenter_px": 0.6573697639409402,
+          "n_counted_joints": 17,
+          "mean_resid": 4.66902865105079,
+          "max_resid": 10.815998896821242
+        },
+        "cam1": {
+          "hipL": 0.7265625,
+          "hipR": 0.7421875,
+          "root_proj": [
+            649.8403831295077,
+            470.85918198620493
+          ],
+          "root_vs_hipcenter_px": 0.41239583377675654,
+          "n_counted_joints": 16,
+          "mean_resid": 4.569990738657223,
+          "max_resid": 15.27780472821856
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -521.0722706476926,
+            1065.4404891545373
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 546.1589865071439,
+          "max_resid": 628.008258148073
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 173,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.210832595825195,
+        16.194738388061523,
+        16.20412826538086,
+        16.16363525390625,
+        16.236303329467773
+      ],
+      "speed_win": [
+        1.1622867584228516,
+        0.6677276492118835,
+        2.5614867210388184,
+        4.643296241760254,
+        0.9794650673866272
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.404296875,
+          "hipR": 0.4609375,
+          "root_proj": [
+            1184.5489313732608,
+            326.2988751028322
+          ],
+          "root_vs_hipcenter_px": 0.6271420075680157,
+          "n_counted_joints": 14,
+          "mean_resid": 4.569682880781151,
+          "max_resid": 7.645474125386224
+        },
+        "cam1": {
+          "hipL": 0.7109375,
+          "hipR": 0.7421875,
+          "root_proj": [
+            649.750251637145,
+            470.82260328966254
+          ],
+          "root_vs_hipcenter_px": 0.39356113531751924,
+          "n_counted_joints": 17,
+          "mean_resid": 3.5873200304713144,
+          "max_resid": 6.4045790565937715
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -500.8405371523099,
+            1055.8455559698355
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 531.1609231228497,
+          "max_resid": 623.3532355484642
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 277,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.05028533935547,
+        16.053281784057617,
+        16.04759979248047,
+        16.03312873840332,
+        16.044267654418945
+      ],
+      "speed_win": [
+        0.26992881298065186,
+        0.4790046811103821,
+        0.888232946395874,
+        0.7703130841255188,
+        0.915051281452179
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.78515625,
+          "hipR": 0.80078125,
+          "root_proj": [
+            1186.3025834843725,
+            326.14674149181684
+          ],
+          "root_vs_hipcenter_px": 0.9847944336897474,
+          "n_counted_joints": 17,
+          "mean_resid": 3.582071592384329,
+          "max_resid": 8.810220159589075
+        },
+        "cam1": {
+          "hipL": 0.8046875,
+          "hipR": 0.7734375,
+          "root_proj": [
+            654.4929506079178,
+            470.42168408994075
+          ],
+          "root_vs_hipcenter_px": 0.6158568974461093,
+          "n_counted_joints": 17,
+          "mean_resid": 3.398500343321581,
+          "max_resid": 7.632028734001173
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -470.6962396236967,
+            1015.6815344407228
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 539.0848056457417,
+          "max_resid": 618.9818631357424
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 180,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.185529708862305,
+        16.153093338012695,
+        16.096738815307617,
+        16.157503128051758,
+        16.154172897338867
+      ],
+      "speed_win": [
+        2.1072723865509033,
+        3.511039972305298,
+        3.898621082305908,
+        0.6418517827987671,
+        1.7449208498001099
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.609375,
+          "hipR": 0.5546875,
+          "root_proj": [
+            1184.8866555787154,
+            326.0046785514168
+          ],
+          "root_vs_hipcenter_px": 0.7863956180183759,
+          "n_counted_joints": 13,
+          "mean_resid": 2.306287655661044,
+          "max_resid": 9.465920374342636
+        },
+        "cam1": {
+          "hipL": 0.59375,
+          "hipR": 0.6953125,
+          "root_proj": [
+            651.6942588537029,
+            470.24268388199744
+          ],
+          "root_vs_hipcenter_px": 0.49294656696045763,
+          "n_counted_joints": 17,
+          "mean_resid": 6.566039366220198,
+          "max_resid": 22.705485301870432
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -465.4737859968172,
+            1023.2275786101593
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 477.10557183721403,
+          "max_resid": 614.774295434994
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 279,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.04759979248047,
+        16.03312873840332,
+        16.044267654418945,
+        16.029129028320312,
+        16.024822235107422
+      ],
+      "speed_win": [
+        0.888232946395874,
+        0.7703130841255188,
+        0.915051281452179,
+        0.4244735538959503,
+        0.6229220032691956
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.7890625,
+          "hipR": 0.8125,
+          "root_proj": [
+            1186.1594493712655,
+            326.25258825532825
+          ],
+          "root_vs_hipcenter_px": 0.9310414446842692,
+          "n_counted_joints": 17,
+          "mean_resid": 3.58312709092144,
+          "max_resid": 8.971757503332434
+        },
+        "cam1": {
+          "hipL": 0.8125,
+          "hipR": 0.78125,
+          "root_proj": [
+            654.338474205578,
+            470.57140997873967
+          ],
+          "root_vs_hipcenter_px": 0.5823998728837413,
+          "n_counted_joints": 17,
+          "mean_resid": 3.4529520771576525,
+          "max_resid": 7.6951943013291775
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -466.3356374625743,
+            1016.1659578333285
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 539.0822894860113,
+          "max_resid": 613.7707736625844
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 278,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.053281784057617,
+        16.04759979248047,
+        16.03312873840332,
+        16.044267654418945,
+        16.029129028320312
+      ],
+      "speed_win": [
+        0.4790046811103821,
+        0.888232946395874,
+        0.7703130841255188,
+        0.915051281452179,
+        0.4244735538959503
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.78125,
+          "hipR": 0.8046875,
+          "root_proj": [
+            1186.1968190144771,
+            326.1592512677436
+          ],
+          "root_vs_hipcenter_px": 0.9364042928675034,
+          "n_counted_joints": 17,
+          "mean_resid": 3.5620143089459213,
+          "max_resid": 8.933069810349323
+        },
+        "cam1": {
+          "hipL": 0.796875,
+          "hipR": 0.765625,
+          "root_proj": [
+            654.5364927210463,
+            470.4176806188659
+          ],
+          "root_vs_hipcenter_px": 0.585654542880428,
+          "n_counted_joints": 17,
+          "mean_resid": 3.3784112002383724,
+          "max_resid": 7.557880899084647
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -463.2243183038808,
+            1012.044244485837
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 532.7505482552264,
+          "max_resid": 609.0910988125864
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 172,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.021215438842773,
+        16.210832595825195,
+        16.194738388061523,
+        16.20412826538086,
+        16.16363525390625
+      ],
+      "speed_win": [
+        11.86301326751709,
+        1.1622867584228516,
+        0.6677276492118835,
+        2.5614867210388184,
+        4.643296241760254
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.46484375,
+          "hipR": 0.5234375,
+          "root_proj": [
+            1184.4061670840244,
+            326.28746966581787
+          ],
+          "root_vs_hipcenter_px": 0.6573660747229646,
+          "n_counted_joints": 17,
+          "mean_resid": 4.716337299334201,
+          "max_resid": 8.641115963787637
+        },
+        "cam1": {
+          "hipL": 0.7265625,
+          "hipR": 0.734375,
+          "root_proj": [
+            649.6641463560173,
+            470.7891272818104
+          ],
+          "root_vs_hipcenter_px": 0.4125847132604527,
+          "n_counted_joints": 17,
+          "mean_resid": 3.7508981033985833,
+          "max_resid": 6.113103100292302
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -494.38454495130287,
+            1052.7735319216386
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 528.9044110469669,
+          "max_resid": 609.079304320352
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 280,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.03312873840332,
+        16.044267654418945,
+        16.029129028320312,
+        16.024822235107422,
+        16.015092849731445
+      ],
+      "speed_win": [
+        0.7703130841255188,
+        0.915051281452179,
+        0.4244735538959503,
+        0.6229220032691956,
+        0.289478063583374
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.7890625,
+          "hipR": 0.8125,
+          "root_proj": [
+            1186.0740872478566,
+            326.2756064443606
+          ],
+          "root_vs_hipcenter_px": 0.9431963948133214,
+          "n_counted_joints": 17,
+          "mean_resid": 3.5972821809493913,
+          "max_resid": 9.06114439999008
+        },
+        "cam1": {
+          "hipL": 0.8046875,
+          "hipR": 0.78125,
+          "root_proj": [
+            654.422717976094,
+            470.5826591162522
+          ],
+          "root_vs_hipcenter_px": 0.5899828301058094,
+          "n_counted_joints": 17,
+          "mean_resid": 3.4607621604693595,
+          "max_resid": 7.49071241305022
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -458.9415132356087,
+            1012.5628535498497
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 532.5586591328159,
+          "max_resid": 604.4044876464385
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 174,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.194738388061523,
+        16.20412826538086,
+        16.16363525390625,
+        16.236303329467773,
+        16.248519897460938
+      ],
+      "speed_win": [
+        0.6677276492118835,
+        2.5614867210388184,
+        4.643296241760254,
+        0.9794650673866272,
+        0.9555753469467163
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.404296875,
+          "hipR": 0.38671875,
+          "root_proj": [
+            1184.1754221704523,
+            326.27878519304977
+          ],
+          "root_vs_hipcenter_px": 0.6234119639678009,
+          "n_counted_joints": 16,
+          "mean_resid": 3.3761219498741,
+          "max_resid": 8.436000911020356
+        },
+        "cam1": {
+          "hipL": 0.74609375,
+          "hipR": 0.75390625,
+          "root_proj": [
+            649.7446513655702,
+            470.7275794659781
+          ],
+          "root_vs_hipcenter_px": 0.39135207415314993,
+          "n_counted_joints": 16,
+          "mean_resid": 4.474864133988408,
+          "max_resid": 14.89326423494974
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -477.5528306306356,
+            1043.6832815649943
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 8,
+          "mean_resid": 502.8863248610642,
+          "max_resid": 603.0158374295597
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 281,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.044267654418945,
+        16.029129028320312,
+        16.024822235107422,
+        16.015092849731445,
+        16.011098861694336
+      ],
+      "speed_win": [
+        0.915051281452179,
+        0.4244735538959503,
+        0.6229220032691956,
+        0.289478063583374,
+        0.8989129662513733
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.796875,
+          "hipR": 0.8125,
+          "root_proj": [
+            1185.958719820252,
+            326.3414157758134
+          ],
+          "root_vs_hipcenter_px": 0.993538669149474,
+          "n_counted_joints": 17,
+          "mean_resid": 3.626425670425341,
+          "max_resid": 9.241322344608426
+        },
+        "cam1": {
+          "hipL": 0.828125,
+          "hipR": 0.80078125,
+          "root_proj": [
+            654.3182515593471,
+            470.6720459176462
+          ],
+          "root_vs_hipcenter_px": 0.6215783855420898,
+          "n_counted_joints": 17,
+          "mean_resid": 3.4342420407001617,
+          "max_resid": 7.616346024429232
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -454.9530861498728,
+            1012.2584646950233
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 530.0279033157564,
+          "max_resid": 600.2881784995687
+        }
+      }
+    },
+    {
+      "clip": "video_000/clip_009",
+      "frame": 431,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        15.665216445922852,
+        15.654751777648926,
+        15.684370040893555,
+        15.622443199157715,
+        15.657958030700684
+      ],
+      "speed_win": [
+        1.3700075149536133,
+        2.5608296394348145,
+        3.82102370262146,
+        2.4144606590270996,
+        8.689102172851562
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.5546875,
+          "hipR": 0.66796875,
+          "root_proj": [
+            1192.3864923433337,
+            328.39387458917867
+          ],
+          "root_vs_hipcenter_px": 1.8037108149841035,
+          "n_counted_joints": 17,
+          "mean_resid": 5.406604695206512,
+          "max_resid": 16.000095360430638
+        },
+        "cam1": {
+          "hipL": 0.75,
+          "hipR": 0.7734375,
+          "root_proj": [
+            668.5498675728392,
+            465.6789193696111
+          ],
+          "root_vs_hipcenter_px": 0.8034981959628205,
+          "n_counted_joints": 17,
+          "mean_resid": 4.017566986196993,
+          "max_resid": 15.685376253840012
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -435.9250990927484,
+            907.9286255426804
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 10,
+          "mean_resid": 459.78078401872506,
+          "max_resid": 597.0083814421708
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 282,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.029129028320312,
+        16.024822235107422,
+        16.015092849731445,
+        16.011098861694336,
+        15.996709823608398
+      ],
+      "speed_win": [
+        0.4244735538959503,
+        0.6229220032691956,
+        0.289478063583374,
+        0.8989129662513733,
+        0.7281991839408875
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.7890625,
+          "hipR": 0.80078125,
+          "root_proj": [
+            1185.8657527631885,
+            326.3267350901563
+          ],
+          "root_vs_hipcenter_px": 0.940636678481538,
+          "n_counted_joints": 17,
+          "mean_resid": 3.6040255359928417,
+          "max_resid": 9.140177636944218
+        },
+        "cam1": {
+          "hipL": 0.8203125,
+          "hipR": 0.80078125,
+          "root_proj": [
+            654.3124955163305,
+            470.63437810974614
+          ],
+          "root_vs_hipcenter_px": 0.5885559517437247,
+          "n_counted_joints": 17,
+          "mean_resid": 3.411887662735547,
+          "max_resid": 7.623722275047039
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -449.7546535288552,
+            1009.4506097855141
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 524.9074752794525,
+          "max_resid": 593.3715436864165
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 184,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.154172897338867,
+        16.181957244873047,
+        16.145313262939453,
+        16.14281463623047,
+        16.190462112426758
+      ],
+      "speed_win": [
+        1.7449208498001099,
+        2.2370543479919434,
+        0.9668299555778503,
+        3.1429684162139893,
+        3.3532352447509766
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.515625,
+          "hipR": 0.515625,
+          "root_proj": [
+            1185.744945258203,
+            325.973275840266
+          ],
+          "root_vs_hipcenter_px": 1.156497577373781,
+          "n_counted_joints": 17,
+          "mean_resid": 3.2914177599194767,
+          "max_resid": 10.795114901694173
+        },
+        "cam1": {
+          "hipL": 0.734375,
+          "hipR": 0.75,
+          "root_proj": [
+            652.302434189837,
+            470.2842121177419
+          ],
+          "root_vs_hipcenter_px": 0.7241758193077785,
+          "n_counted_joints": 17,
+          "mean_resid": 6.6997688122818815,
+          "max_resid": 22.325236498901564
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -500.4807682793988,
+            1037.19155836326
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 4,
+          "mean_resid": 494.98567202271585,
+          "max_resid": 592.4996702024049
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 283,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.024822235107422,
+        16.015092849731445,
+        16.011098861694336,
+        15.996709823608398,
+        15.984932899475098
+      ],
+      "speed_win": [
+        0.6229220032691956,
+        0.289478063583374,
+        0.8989129662513733,
+        0.7281991839408875,
+        0.3244909942150116
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.78515625,
+          "hipR": 0.796875,
+          "root_proj": [
+            1185.7992403295164,
+            326.3312914491913
+          ],
+          "root_vs_hipcenter_px": 1.0172675593118152,
+          "n_counted_joints": 17,
+          "mean_resid": 3.561027264129242,
+          "max_resid": 9.171623446126175
+        },
+        "cam1": {
+          "hipL": 0.80859375,
+          "hipR": 0.796875,
+          "root_proj": [
+            654.2692456772736,
+            470.6340141740753
+          ],
+          "root_vs_hipcenter_px": 0.6365219862913847,
+          "n_counted_joints": 17,
+          "mean_resid": 3.405422266620569,
+          "max_resid": 7.636790861737574
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -447.0836370422801,
+            1008.4067698365392
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 523.482303700336,
+          "max_resid": 590.8383107190782
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 276,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.057525634765625,
+        16.05028533935547,
+        16.053281784057617,
+        16.04759979248047,
+        16.03312873840332
+      ],
+      "speed_win": [
+        0.4485359191894531,
+        0.26992881298065186,
+        0.4790046811103821,
+        0.888232946395874,
+        0.7703130841255188
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.7734375,
+          "hipR": 0.78515625,
+          "root_proj": [
+            1186.4318471957768,
+            326.1442371115918
+          ],
+          "root_vs_hipcenter_px": 1.0164121111205213,
+          "n_counted_joints": 17,
+          "mean_resid": 3.5657974219959874,
+          "max_resid": 8.712239016134074
+        },
+        "cam1": {
+          "hipL": 0.78515625,
+          "hipR": 0.765625,
+          "root_proj": [
+            654.6063785757015,
+            470.4289940301096
+          ],
+          "root_vs_hipcenter_px": 0.6355435056559652,
+          "n_counted_joints": 17,
+          "mean_resid": 3.527560914346666,
+          "max_resid": 8.215792623407703
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -475.1774022517658,
+            1017.3269846430735
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 5,
+          "mean_resid": 525.3782726035184,
+          "max_resid": 590.7164938659354
+        }
+      }
+    },
+    {
+      "clip": "video_000/clip_009",
+      "frame": 430,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        15.57983684539795,
+        15.665216445922852,
+        15.654751777648926,
+        15.684370040893555,
+        15.622443199157715
+      ],
+      "speed_win": [
+        5.791741371154785,
+        1.3700075149536133,
+        2.5608296394348145,
+        3.82102370262146,
+        2.4144606590270996
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.427734375,
+          "hipR": 0.578125,
+          "root_proj": [
+            1191.8059323943655,
+            328.86706202873916
+          ],
+          "root_vs_hipcenter_px": 1.8547071637738086,
+          "n_counted_joints": 17,
+          "mean_resid": 4.657197013162277,
+          "max_resid": 11.350723616358161
+        },
+        "cam1": {
+          "hipL": 0.7421875,
+          "hipR": 0.8125,
+          "root_proj": [
+            668.1477276795684,
+            466.3673444144373
+          ],
+          "root_vs_hipcenter_px": 0.8267244618943111,
+          "n_counted_joints": 16,
+          "mean_resid": 3.195581752253145,
+          "max_resid": 6.344346600283681
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -414.81600191149244,
+            908.025323757087
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 440.6006747831404,
+          "max_resid": 584.0106938371035
+        }
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "frame": 284,
+      "player": 1,
+      "focus_camera": "cam2",
+      "hip_views_both_ge03": 2,
+      "triangulatable_ge2": true,
+      "teacher_source": 1,
+      "teacher_weight": 1.0,
+      "Y_traj_win": [
+        16.015092849731445,
+        16.011098861694336,
+        15.996709823608398,
+        15.984932899475098,
+        15.98051643371582
+      ],
+      "speed_win": [
+        0.289478063583374,
+        0.8989129662513733,
+        0.7281991839408875,
+        0.3244909942150116,
+        0.3636963665485382
+      ],
+      "perview": {
+        "cam0": {
+          "hipL": 0.7890625,
+          "hipR": 0.7890625,
+          "root_proj": [
+            1185.6697028675298,
+            326.3670230279278
+          ],
+          "root_vs_hipcenter_px": 0.9840806820230079,
+          "n_counted_joints": 17,
+          "mean_resid": 3.5869225642354734,
+          "max_resid": 9.11584349278357
+        },
+        "cam1": {
+          "hipL": 0.796875,
+          "hipR": 0.78515625,
+          "root_proj": [
+            654.2792789444559,
+            470.6641855002816
+          ],
+          "root_vs_hipcenter_px": 0.615821527357038,
+          "n_counted_joints": 17,
+          "mean_resid": 3.3916195374628026,
+          "max_resid": 7.502361696321485
+        },
+        "cam2": {
+          "hipL": 0.0,
+          "hipR": 0.0,
+          "root_proj": [
+            -439.3142086043694,
+            1005.1668311420881
+          ],
+          "root_vs_hipcenter_px": NaN,
+          "n_counted_joints": 6,
+          "mean_resid": 515.6558612863035,
+          "max_resid": 581.8824048349746
+        }
+      }
+    }
+  ],
+  "both_inside_pooled": {
+    "count": 384634,
+    "mean": 15.63402254621198,
+    "median": 9.718857644812573,
+    "p95": 51.84423269688302,
+    "max": 257.67230180791796
+  }
+}

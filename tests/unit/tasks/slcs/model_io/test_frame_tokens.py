@@ -27,6 +27,7 @@ from src.tasks.slcs.model_io.frame_tokens import (
 )
 from src.utils.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
 from src.utils.device import DeviceSelectionError
+from src.utils.models.loading.dinov3 import DINOv3BackboneAdapter
 
 
 class _FakeBackbone(nn.Module):
@@ -173,9 +174,9 @@ def test_factory_selects_and_binds_backbone_before_execution(
     model = _FakeBackbone(frame_spec)
     calls: list[dict[str, object]] = []
 
-    def load(**kwargs: object) -> _FakeBackbone:
+    def load(**kwargs: object) -> DINOv3BackboneAdapter:
         calls.append(kwargs)
-        return model
+        return DINOv3BackboneAdapter(model)
 
     monkeypatch.setattr("src.tasks.slcs.model_io.factory.load_dinov3_backbone", load)
 
@@ -201,7 +202,7 @@ def test_factory_rejects_backbone_spec_mismatch_before_execution(
     model = _FakeBackbone(frame_spec, embed_dim=frame_spec.embed_dim + 1)
     monkeypatch.setattr(
         "src.tasks.slcs.model_io.factory.load_dinov3_backbone",
-        lambda **_: model,
+        lambda **_: DINOv3BackboneAdapter(model),
     )
 
     with pytest.raises(ModelAdapterMismatchError, match="expects backbone"):

@@ -1,0 +1,78 @@
+{
+  "completed_epochs": 60,
+  "global_step": 1800,
+  "selection": {
+    "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+    "monitor": "val/scene_position_error_m_epoch",
+    "mode": "min",
+    "candidates": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+        "validation_score": 1.973695993423462
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001/logs/version_0/checkpoints/slcs-epoch=54.ckpt",
+        "validation_score": 1.9905149936676025
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+        "validation_score": 1.9951069355010986
+      }
+    ],
+    "selected": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt",
+      "validation_score": 1.973695993423462,
+      "epoch_zero_based": 49
+    },
+    "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_missing_ball_court/s42-001/logs/version_0/checkpoints/last.ckpt",
+    "last_epoch_zero_based": 59
+  },
+  "checkpoint_sha256": "3e59feda9f3f5ba1a52d85716c658f22546a8c8f3b9eff01aeb9cdbf4887f6a4",
+  "series": {
+    "train/ball_position_error_m_epoch": {
+      "count": 60,
+      "first": 9.209146499633789,
+      "last": 2.452094316482544,
+      "last_step": 1799
+    },
+    "train/player_position_error_m_epoch": {
+      "count": 60,
+      "first": 12.113165855407715,
+      "last": 1.31745445728302,
+      "last_step": 1799
+    },
+    "val/scene_position_error_m_epoch": {
+      "count": 60,
+      "first": 7.038281440734863,
+      "last": 2.0044984817504883,
+      "last_step": 1799
+    },
+    "val/ball_position_error_m_epoch": {
+      "count": 60,
+      "first": 7.694142818450928,
+      "last": 2.570133686065674,
+      "last_step": 1799
+    },
+    "val/player_position_error_m_epoch": {
+      "count": 60,
+      "first": 6.382420539855957,
+      "last": 1.4388635158538818,
+      "last_step": 1799
+    },
+    "val/loss": {
+      "count": 60,
+      "first": 0.8063621520996094,
+      "last": -0.9995809197425842,
+      "last_step": 1799
+    },
+    "train/loss_epoch": {
+      "count": 60,
+      "first": 2.983231782913208,
+      "last": -1.4068374633789062,
+      "last_step": 1799
+    }
+  },
+  "context_weight_norm": 0.7447413802146912,
+  "context_weight_nonzero": 5376,
+  "training_leader_exists": false
+}

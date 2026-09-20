@@ -1,0 +1,79 @@
+{
+  "status": "completed_with_open_quality_concern",
+  "reviewer": "parent_codex",
+  "date": "2026-09-19",
+  "reviewed_contact_sheets": 6,
+  "reviewed_frame_camera_images": 18,
+  "images": [
+    {
+      "clip_id": "video_001/clip_003",
+      "camera": "cam0",
+      "frame_indices": [
+        0,
+        803,
+        1606
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam0_contact.png"
+    },
+    {
+      "clip_id": "video_001/clip_003",
+      "camera": "cam1",
+      "frame_indices": [
+        0,
+        803,
+        1606
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam1_contact.png"
+    },
+    {
+      "clip_id": "video_001/clip_003",
+      "camera": "cam2",
+      "frame_indices": [
+        0,
+        803,
+        1606
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_001_clip_003_cam2_contact.png"
+    },
+    {
+      "clip_id": "video_002/clip_017",
+      "camera": "cam0",
+      "frame_indices": [
+        0,
+        453,
+        907
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam0_contact.png"
+    },
+    {
+      "clip_id": "video_002/clip_017",
+      "camera": "cam1",
+      "frame_indices": [
+        0,
+        453,
+        907
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam1_contact.png"
+    },
+    {
+      "clip_id": "video_002/clip_017",
+      "camera": "cam2",
+      "frame_indices": [
+        0,
+        453,
+        907
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001/video_002_clip_017_cam2_contact.png"
+    }
+  ],
+  "findings": [
+    "2clip・3cameraの開始/中間/終了の選定画像で、推定Courtは対象コートを指す。明白な隣接コートへの取り違えやカメラ移動は見えない。未確認frameの正しさは主張しない。",
+    "video_001/clip_003 cam0では近側baseline左側に小さなずれが見える。除外されたchannel5の観測は外側corner付近に重なり、singles/doubles点の混同と整合する。cam1の除外channel0もchannel4付近に重なる。混同の原因は確定していない。",
+    "video_002/clip_017 cam0では、近側baselineの右側ほど推定線が実画像の白線よりカメラ側へずれて見える。選定した3時刻で見えるが、手動GTによるpixel誤差は未計測。",
+    "同cam0の近側baseline点2/3/5/7には採用inlierが無い。2/3/7は支持不足、5はRANSAC除外であり、近側baselineは他の点からの外挿になる。外挿がずれの原因であるという説明は仮説。",
+    "video_002/clip_017 cam1にも近側baselineが実白線よりコート内側へ寄るように見える箇所がある。両clipのcam2では14点がinlierで、選定画像の線は比較的よく対応して見える。独立した定量精度の比較ではない。",
+    "保存p95はRANSAC除外点を含む支持点の残差である。63.62/65.12pxというp95だけを、採用Court全体の実測誤差や不合格の根拠とは扱わない。画像で見えた線ずれは別の品質懸念として残す。"
+  ],
+  "limitations": "選定18画像の定性的確認。独立Court GT、実測3D、全frame、最終3D教師の再投影・速度・coverageは未検証。数値契約一致は校正精度や教師採用の合格を意味しない。",
+  "next_action": "生成した3D教師の残差・支持率と校正の白線対応を確認し、近側baselineの独立2D基準でずれを定量化する。現在のcache・recipe・閾値はこの診断で変更しない。"
+}
