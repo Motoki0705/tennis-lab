@@ -1,0 +1,46 @@
+{
+  "scope": "CPU strict load and controlled tensor API smoke; no real-clip accuracy measured",
+  "models": [
+    {
+      "task": "plcs",
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+      "sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+      "load_seconds": 2.824663387000328,
+      "forward_seconds": 0.055615066001337254,
+      "model": "PLCSMultiViewAxialFootResidualModel",
+      "contract": {
+        "selector": "camera_view_v2",
+        "contract_id": "camera_view_courtkp20_rzpi_v1",
+        "target_frame_id": "reference_camera_court_rzpi_v1"
+      },
+      "output_shape": [
+        1,
+        4,
+        3
+      ],
+      "finite_outputs": true,
+      "court_visibility_preserved": true,
+      "masked_frame_count": 1
+    },
+    {
+      "task": "blcs",
+      "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/blcs/real-rgb-meiji-e60-v1.ckpt",
+      "sha256": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32",
+      "load_seconds": 0.39814429599937284,
+      "forward_seconds": 0.02416896800059476,
+      "model": "BLCSMultiViewAxialReferenceModel",
+      "contract": {
+        "selector": "camera_view_v2",
+        "contract_id": "camera_view_courtkp20_rzpi_v1",
+        "target_frame_id": "reference_camera_court_rzpi_v1"
+      },
+      "output_shape": [
+        4,
+        3
+      ],
+      "finite_outputs": true,
+      "court_visibility_preserved": true,
+      "masked_frame_count": 1
+    }
+  ]
+}

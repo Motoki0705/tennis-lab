@@ -1,0 +1,8 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/outputs/court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1/logs/version_0/checkpoints/court-detection-epoch=17.ckpt",
+  "destination": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt",
+  "sha256": "dd3a396841097e60ff1bc0eabcf7b911e97685e251bf8cc441c100b17276e816",
+  "bytes": 1328218364,
+  "planning_sha256": "f90332fb8563121391095e11a627c0fba330601e5612bd02c2ebe8d8d1071cc6",
+  "model_contract": "epoch17, step29844, short_side256, kp14+seg7+line1+pose10; current named source rechecked before copying"
+}
