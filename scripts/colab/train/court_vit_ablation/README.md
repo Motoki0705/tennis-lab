@@ -1,5 +1,9 @@
 # Court DINOv3 size ablation on Colab L4
 
+2026-09-20の[事前検証](../../../../knowledge/nodes/run-court-vit-l4-preflight-20260920.md)で、
+既存Drive入力が別モデルのcheckpointと判明し、学習前に停止した。基準checkpointを
+確定してinput manifestへ反映するまで、現在の既定入力ではresume検証が拒否される。
+
 実行入口は `scripts/colab/train/court_vit_ablation.sh`。Colab/Driveの認証、入力stage、
 固定git commit取得、GPU作成、進捗取得、終了処理は [共通workflow](../../README.md) が所有する。
 ローカルGPUでは実行しない。
