@@ -217,3 +217,27 @@ def test_archive_data_prefix_materializes_at_repository_root(tmp_path: Path) -> 
     assert not (tmp_path / "data/data").exists()
     with pytest.raises(ValueError, match="Unsafe"):
         validate_member(tarfile.TarInfo("src/overwrite.py"))
+
+
+@pytest.mark.parametrize("smoke", [False, True])
+def test_suite_starts_production_by_default_and_smoke_only_explicitly(
+    monkeypatch: pytest.MonkeyPatch, smoke: bool
+) -> None:
+    from scripts.colab.train.court_vit_ablation import run
+
+    calls: list[list[str]] = []
+    argv = ["run", "--continuation"] + (["--smoke"] if smoke else [])
+    monkeypatch.setattr(run.sys, "argv", argv)
+    monkeypatch.setattr(
+        run.subprocess, "run", lambda command, **kwargs: calls.append(command)
+    )
+    run.main()
+    assert len(calls) == 4
+    assert [call[call.index("--size") + 1] for call in calls] == [
+        "b",
+        "s",
+        "splus",
+        "l",
+    ]
+    assert all(("--smoke" in call) == smoke for call in calls)
+    assert all("--continuation" in call for call in calls)

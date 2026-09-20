@@ -49,8 +49,9 @@ bash scripts/colab/run.sh logs court-vit-l4-20260920 --tail 40
 
 6個のarchiveをDrive manifestおよび固定SHA-256と照合して一度だけ展開する。
 古い `SHA256SUMS.txt` は現行court archiveと一致しないため使用しない。
-展開後は全4サイズについて実データ・512px・batch 8のforward/backwardを
-`fast_dev_run` で確認する。その後B→S→S+→Lを同じL4で逐次学習する。
+展開後はB→S→S+→Lを同じL4で逐次学習する。各モデルは学習前に全Syntheticの
+pose・教師データを検証する。明示的な`--smoke`は512px・batch 8の
+`fast_dev_run`専用であり、本学習の前に4回の全件検証を追加する既定動作にはしない。
 smokeは本学習checkpointを更新せず、productionのseed/optimizerを消費しない。
 L4以外・容量不足・入力不一致・Drive同期失敗は停止する。
 
