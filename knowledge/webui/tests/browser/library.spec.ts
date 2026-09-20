@@ -103,3 +103,24 @@ test("selected paper and experiment paper filter survive reload independently", 
     "paper-2024-gvhmr",
   );
 });
+
+test("nested and boolean measurements render in list, details, comparison and graph", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?query=run-court-b00-alignment-v14");
+  const booleanRow = page.locator(".experiment-row").filter({
+    has: page.getByLabel("run-court-b00-alignment-v14 を比較", { exact: true }),
+  });
+  await expect(booleanRow.locator(".row-metric strong").first()).toHaveText("true");
+  const id = "run-court-b00-canonical-sfm";
+  await page.goto(`/?query=${id}&node=${id}`);
+  const panel = page.getByRole("complementary", { name: "実験の詳細" });
+  await expect(panel).toContainText('{"test":238,"train":1718,"validation":220}');
+  await page.keyboard.press("Escape");
+  await page.getByLabel(`${id} を比較`, { exact: true }).check();
+  await page.getByRole("button", { name: "実験比較 (1)" }).click();
+  await expect(page.locator(".comparison-table")).toContainText('{"test":238,"train":1718,"validation":220}');
+  await page.getByRole("button", { name: "知識グラフ", exact: true }).click();
+  await expect(page.locator(".react-flow")).toBeVisible();
+  expect(errors).toEqual([]);
+});

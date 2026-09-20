@@ -61,7 +61,7 @@ export function metricsCsv(nodes: KnowledgeNode[]): string {
     new Set(nodes.flatMap((n) => Object.keys(n.metrics ?? {}))),
   ).sort();
   const cell = (value: unknown) => {
-    let text = String(value ?? "");
+    let text = formatValue(value, "");
     if (/^[=+@\-\t\r]/.test(text)) text = `'${text}`;
     return `"${text.replace(/"/g, '""')}"`;
   };
@@ -77,4 +77,10 @@ export function metricsCsv(nodes: KnowledgeNode[]): string {
   ]
     .map((row) => row.map(cell).join(","))
     .join("\r\n");
+}
+
+/** Preserve structured measurements and booleans at every display/export boundary. */
+export function formatValue(value: unknown, missing = "—"): string {
+  if (value == null) return missing;
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
 }

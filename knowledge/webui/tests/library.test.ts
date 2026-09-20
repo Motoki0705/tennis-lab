@@ -3,7 +3,7 @@ import test from "node:test";
 import path from "node:path";
 import { getGraph } from "../src/lib/nodes";
 import { renderMarkdown } from "../src/lib/content";
-import { EMPTY_FILTERS, filterNodes, metricsCsv } from "../src/lib/explorer";
+import { EMPTY_FILTERS, filterNodes, formatValue, metricsCsv } from "../src/lib/explorer";
 
 test("real library loads task nodes, stable ids, papers and linked summary", async () => {
   const graph = await getGraph();
@@ -76,4 +76,23 @@ test("CSV retains metric union and escapes formula injection", async () => {
   const csv = metricsCsv([node]);
   assert.ok(csv.includes('"\'=1+1"'));
   assert.ok(csv.includes('"a,""b"'));
+});
+
+test("schema-compatible structured metrics preserve values in display and CSV", async () => {
+  const graph = await getGraph();
+  const metrics = {
+    position_error_m: { mean: 0.25, std: 0.03 },
+    slices: [0.1, { error: 0.2 }],
+    passed: false,
+    missing: null,
+  };
+  assert.equal(formatValue(metrics.position_error_m), '{"mean":0.25,"std":0.03}');
+  assert.equal(formatValue(metrics.slices), '[0.1,{"error":0.2}]');
+  assert.equal(formatValue(metrics.passed), "false");
+  assert.equal(formatValue(metrics.missing), "—");
+  const csv = metricsCsv([{ ...graph.nodes[0], metrics }]);
+  assert.ok(csv.includes('"{""mean"":0.25,""std"":0.03}"'));
+  assert.ok(csv.includes('"[0.1,{""error"":0.2}]"'));
+  assert.ok(csv.includes('"false"'));
+  assert.ok(!csv.includes('[object Object]'));
 });

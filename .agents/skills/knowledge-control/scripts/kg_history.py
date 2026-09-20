@@ -43,7 +43,12 @@ def validate_history(nodes: list[Node], base_ref: str) -> list[str]:
         before_node = previous.get(node.id)
         if before_node:
             for key in ("task", "sequence", "recorded_at"):
-                if before_node.meta.get(key) != node.meta.get(key):
+                before_value, after_value = before_node.meta.get(key), node.meta.get(key)
+                # SafeLoader parses unquoted dates as date objects; quoting an
+                # unchanged calendar day is a formatting change, not a new identity.
+                if key == "recorded_at":
+                    before_value, after_value = str(before_value), str(after_value)
+                if before_value != after_value:
                     errors.append(f"{node.id}: {key} is immutable relative to {base_ref}")
         else:
             task, sequence = node.meta.get("task"), node.meta.get("sequence")

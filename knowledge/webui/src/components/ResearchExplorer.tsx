@@ -4,6 +4,7 @@ import type { KnowledgeGraph } from "@/lib/types";
 import {
   EMPTY_FILTERS,
   filterNodes,
+  formatValue,
   metricsCsv,
   type Filters,
 } from "@/lib/explorer";
@@ -332,7 +333,7 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
                                 ? value.toLocaleString(undefined, {
                                     maximumFractionDigits: 4,
                                   })
-                                : value}
+                                : formatValue(value)}
                             </strong>
                           </div>
                         ))}
@@ -521,7 +522,7 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
                         <tr key={key}>
                           <th>{key}</th>
                           {compared.map((n) => (
-                            <td key={n.id}>{n.metrics?.[key] ?? "—"}</td>
+                            <td key={n.id}>{formatValue(n.metrics?.[key])}</td>
                           ))}
                         </tr>
                       ))}

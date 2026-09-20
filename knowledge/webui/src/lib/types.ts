@@ -1,4 +1,5 @@
 export type NodeType = "run" | "group";
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export type Relation = { to: string; rel?: string };
 
@@ -17,9 +18,9 @@ export interface KnowledgeNode {
   provider?: string;
   date?: string;
   status?: string;
-  config?: Record<string, unknown>;
-  metrics?: Record<string, number | string>;
-  artifacts?: Record<string, string>;
+  config?: Record<string, JsonValue>;
+  metrics?: Record<string, JsonValue>;
+  artifacts?: Record<string, JsonValue>;
   parents: string[];
   members: string[];
   relations: Relation[];

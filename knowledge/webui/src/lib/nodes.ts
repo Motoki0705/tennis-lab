@@ -10,7 +10,7 @@ import {
   markdownFiles,
   renderMarkdown,
 } from "./content";
-import type { Paper } from "./types";
+import type { Paper, JsonValue } from "./types";
 
 import type {
   KnowledgeEdge,
@@ -69,9 +69,9 @@ async function parseFile(
     provider: data.provider ? String(data.provider) : undefined,
     date: data.date ? isoDay(data.date) : undefined,
     status: data.status ? String(data.status) : undefined,
-    config: (data.config as Record<string, unknown>) ?? undefined,
-    metrics: (data.metrics as Record<string, number | string>) ?? undefined,
-    artifacts: (data.artifacts as Record<string, string>) ?? undefined,
+    config: (data.config as Record<string, JsonValue>) ?? undefined,
+    metrics: (data.metrics as Record<string, JsonValue>) ?? undefined,
+    artifacts: (data.artifacts as Record<string, JsonValue>) ?? undefined,
     parents: asStringArray(data.parents),
     members: asStringArray(data.members),
     relations: asRelations(data.relations),
