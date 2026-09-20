@@ -6,7 +6,7 @@
 #   python -m src.tasks.ball_detection.scripts.analyze_web_bbox_ratio analyze.samples_per_bin=64
 analyze:
   web_root: tennis/web
-  output_dir: web_bbox_ratio_sweep
+  output_dir: ${tennis_output:ball_detection,analyze,web_bbox_ratio,${tennis_run_id:}}
 
   # Which bbox-bearing sources to analyze. The temporal point-only sources
   # (racketvision, kaggle) carry no bbox and are skipped by construction.
@@ -32,7 +32,7 @@ analyze:
   jpeg_quality: 90
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${analyze.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${analyze.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

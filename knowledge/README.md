@@ -3,6 +3,8 @@
 実験の結果・考察・関連研究をgitで共有する。**1 run = 1ノード**。実験群はgroupで束ね、前提・比較・反証の関係はIDで繋ぐ。
 現在の判断は [summary.md](summary.md)、閲覧は [Web UI](webui/README.md)、登録・更新の手順は [knowledge-control skill](../.agents/skills/knowledge-control/SKILL.md) を起点にする。このREADMEが保存形式の正本。
 
+実RGB SLCSの教師・学習結果・採否の総括は [結果レポート](reports/slcs-real-rgb.md) を参照。
+
 ## 保存構造
 
 ```text

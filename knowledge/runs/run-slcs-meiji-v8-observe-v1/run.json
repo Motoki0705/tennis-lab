@@ -1,0 +1,16 @@
+{
+  "run_id": "1789739458621952459_956621_slcs-meiji-v8-observe-v1",
+  "name": "slcs-meiji-v8-observe-v1",
+  "command": "env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -m src.tennis_scene.scripts.build_slcs_dataset stage=observe paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "fdb6aa99580a0b5e92c68bd4254a91457ce3f950",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T22:50:58+09:00"
+}

@@ -1,0 +1,16 @@
+{
+  "run_id": "1789736608602469082_904530_slcs-known-memory-cpu-audit-v1",
+  "name": "slcs-known-memory-cpu-audit-v1",
+  "command": "timeout --kill-after=5s 300s env PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -B knowledge/runs/run-slcs-known-memory-cpu-audit-v1/probe.py --output-dir outputs/tennis_scene/analyze/known_memory_cpu_audit/s42-001",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "892b02c481e368d3357c1d77a446ea368126f4a0",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T22:03:28+09:00"
+}

@@ -1,0 +1,18 @@
+{
+  "commit": "bc2e8e00e1dff7746ac8c099dcf791e9431146fc",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-ball-gradient-probe-v1/probe.py --output-dir outputs/slcs/analyze/ball_gradient_probe/REPRO_NEW_RUN_ID",
+  "exit_code": 0,
+  "exact_executed_script": "executed_probe.py",
+  "executed_script_sha256": "1742e3777d378ae02f0238ecc3259502d22cd954d5e007e41eefd7a83af9d7e3",
+  "input_tensor_bundles_kept_at_output": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/analyze/ball_gradient_probe/s42-001/broadcast_inputs.npz",
+      "sha256": "0bd783a11c0ba8632c68634f12e4e494880eecc1899194af841a280526457870"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/analyze/ball_gradient_probe/s42-001/meiji_inputs.npz",
+      "sha256": "3714944378912363e451176bbecace411606262c5e7202fab2e6d6f84857b2de"
+    }
+  ],
+  "note": "Large DINO input tensors remain in the output artifact; file and tensor hashes plus selected dataset IDs are in results.json. Four compact loss input/prediction archives are promoted."
+}

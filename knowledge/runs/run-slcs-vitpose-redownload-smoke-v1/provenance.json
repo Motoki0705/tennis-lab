@@ -1,0 +1,116 @@
+{
+  "video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+  "video_stat": {
+    "inode": 79525,
+    "size": 11850811,
+    "mtime_ns": 1783986150139353670,
+    "device": 2096
+  },
+  "frame_index": 0,
+  "frame_rgb_sha256": "58360997cd9a18aa6ae90aa955779a6a875a1ce96fca288fb2ca67d10271ebb4",
+  "frame_shape": [
+    1080,
+    1920,
+    3
+  ],
+  "observations": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004/video_000/clip_000/cam0_people.npz",
+  "observations_sha256": "a64899890444f663b0674c7484d228efaf255094a7dde9f9c30ef32e3a2fc463",
+  "boxes_xyxy": [
+    [
+      [
+        569.7845458984375,
+        456.56195068359375,
+        607.9716186523438,
+        542.7832641601562
+      ]
+    ],
+    [
+      [
+        1117.2735595703125,
+        315.7714538574219,
+        1137.1650390625,
+        354.2784118652344
+      ]
+    ]
+  ],
+  "boxes_xys_enlarged": [
+    [
+      [
+        588.8780517578125,
+        499.672607421875,
+        103.46558380126953
+      ]
+    ],
+    [
+      [
+        1127.21923828125,
+        335.0249328613281,
+        46.208351135253906
+      ]
+    ]
+  ],
+  "track_ids": [
+    0,
+    1
+  ],
+  "detection_ids": [
+    0,
+    2
+  ],
+  "observed_masks": [
+    true,
+    true
+  ],
+  "pose_supported_mask": [
+    true,
+    true
+  ],
+  "checkpoint": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+  "checkpoint_before": {
+    "inode": 276740,
+    "size": 2549075546,
+    "mtime_ns": 1789774418063218101,
+    "device": 2096
+  },
+  "installation_record": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload/s42-001/installation.json",
+  "installation_sha256": "187e1ef55bbfdd29aee286f54d010bdcf786b390a80fc7c913e1a42076632613",
+  "checkpoint_expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "checkpoint_hash_policy": "reference completed redownload validation; no checkpoint reread hash",
+  "head_config": {
+    "in_channels": 1280,
+    "out_channels": 17,
+    "num_deconv_layers": 2,
+    "num_deconv_filters": [
+      256,
+      256
+    ],
+    "num_deconv_kernels": [
+      4,
+      4
+    ],
+    "final_conv_kernel": 1,
+    "num_conv_layers": 0,
+    "num_conv_kernels": []
+  },
+  "precision": "bfloat16",
+  "flip_test": true,
+  "batch_size": 1,
+  "device": "cuda:0",
+  "driver_sha256": "925a6b10c02c0acca82c9783a3af3097e2d4a64e2913602a3864293e5cb90eb6",
+  "driver_untracked_at_execution": true,
+  "execution_base_commit": "3bebe44d52f4a2cc2a77f2bc2dba1eea31be306e",
+  "source_sha256": {
+    "src/submodules/models/vitpose/pose2d.py": "01e647cd72fe9b22cc49d28056dbd21f51b37d950812b8e0854d29d77651ceb8",
+    "src/submodules/vendor/gvhmr/vitpose/__init__.py": "ab8fc9f3119b8b35361c0eb554b1215abe94e91da18fdac820f1c17d52aa326e",
+    "src/submodules/vendor/gvhmr/hmr2/preproc.py": "9962b70288f0a9f88862cea1ff1655c1ab65955873df3aff02999901ee0ef0c2",
+    "src/submodules/vendor/gvhmr/hmr2/vit.py": "fadf83bb9a2697c79868ce95d42f35f0ab6db78bec07ea377b4e0605f85c1ade",
+    "src/submodules/vendor/gvhmr/vitpose/heatmap_head.py": "6d16f6bd59035c88d03e834d30e242f98d141a33fdde7f206c1e1f3c32334cb1",
+    "src/tennis_scene/configs/build_slcs_dataset_base.yaml": "fa524a62bb03edd45f0435c2e093c4fc0a42be0321c6934f5b52d94ae5c974b1"
+  },
+  "python": "3.11.15",
+  "torch": "2.13.0+cu130",
+  "numpy": "2.3.5",
+  "opencv": "5.0.0",
+  "queue_id": "1789775189411271550_3174748_slcs-vitpose-redownload-smoke-v1",
+  "queue_repro_dir": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1789775189411271550_3174748_slcs-vitpose-redownload-smoke-v1"
+}

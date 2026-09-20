@@ -1,0 +1,1420 @@
+{
+  "schema_version": 1,
+  "dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9_repair_clip009_v1",
+  "expected_dataset": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset",
+  "quality_config": {
+    "min_player_confidence": 0.3,
+    "min_ball_cameras": 1,
+    "label_weight_power": 1.0,
+    "min_window_label_ratio": 0.5
+  },
+  "allow_incomplete": true,
+  "clips": {
+    "video_000/clip_000": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_001": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_002": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_003": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_004": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_005": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_006": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_007": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_008": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_009": {
+      "status": "completed",
+      "people_producer": {
+        "schema_version": 4,
+        "policy": "temporal_continuity_v2; largest seed; fixed IoU and incumbent-diagonal center gates; bounded median velocity prediction; no gap reset",
+        "settings_sha256": "9215dc135aaba83f4976e4c84c691033f5f60894be3cba432239d51901841bad",
+        "detector_declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+        "pose_declared_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "observed_people_checkpoint_digests": {
+        "cam0": {
+          "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        },
+        "cam1": {
+          "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        },
+        "cam2": {
+          "detector_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "pose_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+        }
+      },
+      "court_producer": {
+        "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+        "settings_sha256": "aa185e5bf80e06756e94c7dd7aed1c183d87037383d27a29d3dc7e632c3351bb"
+      },
+      "producer_verification": "recorded producer identities and bound observation bytes only; detector/pose/court checkpoint files are not authenticated",
+      "checkpoint_warning_roles": [
+        "dino",
+        "vitpose"
+      ],
+      "checkpoint_warnings": [
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam0_detections.metadata.json",
+          "context": "receipt digest validation; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam1_people.metadata.json",
+          "context": "infer people receipt; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "vitpose",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam1_people.metadata.json",
+          "context": "infer people receipt; legacy receipt declared pin assumed",
+          "observed_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "declared_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam1_detections.metadata.json",
+          "context": "receipt digest validation; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam2_people.metadata.json",
+          "context": "infer people receipt; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "vitpose",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam2_people.metadata.json",
+          "context": "infer people receipt; legacy receipt declared pin assumed",
+          "observed_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "declared_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam2_detections.metadata.json",
+          "context": "receipt digest validation; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam1_people.metadata.json",
+          "context": "quality report producer comparison; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "vitpose",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam1_people.metadata.json",
+          "context": "quality report producer comparison; legacy receipt declared pin assumed",
+          "observed_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "declared_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "dino",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam2_people.metadata.json",
+          "context": "quality report producer comparison; legacy receipt declared pin assumed",
+          "observed_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "expected_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "declared_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        },
+        {
+          "role": "vitpose",
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009/cam2_people.metadata.json",
+          "context": "quality report producer comparison; legacy receipt declared pin assumed",
+          "observed_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "expected_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "declared_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+          "decision": "continue_using_declared_model_identity",
+          "limitation": "checkpoint bytes are not authenticated against the declared pin"
+        }
+      ],
+      "generation_checkpoint_warning_source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v9_repair_clip009/s42-001/checkpoint_warnings.jsonl",
+      "generation_checkpoint_warning_scope": "run-wide evidence reference, not attributed to this clip; checkpoint_warnings above are this clip audit only",
+      "checkpoint_verification_limitation": "Allowlisted checkpoint bytes are not authenticated; declared model identity is assumed",
+      "source_manifest_sha256": "69603ba816d1092ad90d42b7db1259ec1565417c2320c611e7fa012a7e9bc403",
+      "manifest_sha256": "69603ba816d1092ad90d42b7db1259ec1565417c2320c611e7fa012a7e9bc403",
+      "raw_provenance_verification": "checkpoint SHA, reference/ball receipt and exact observed arrays verified; raw archive has no complete producer identity, so all execution settings cannot be authenticated",
+      "observation_sha256": {
+        "court.npz": "87586516f54e6f00b97036b9b8b8c559904c2819e278dca03c34df9fedf06f44",
+        "court.json": "e898466ffc921c5dd2abe08a2dc6406c50443e30a639f61150c221c93d216989",
+        "ball_detection_result.json": "d8e9210b41770513028597d3693a18bae94b496c938ee13531c3450a7ab331b3",
+        "ball_import.metadata.json": "d2cba92d439a8acda4ab930779db318f8baba68c65efaa39655ff8c50f7ec907",
+        "cam0_people.npz": "b1c0725d0689be174f0748723ec6cd68b1adb11c888528ce7a62ca96e50c9840",
+        "cam0_people.metadata.json": "c32788ae67c82bfae81f4cc8bf29ac4d2b098fbecdb1c87944b5c82ec6606acb",
+        "cam1_people.npz": "f6ab784c69cce4420e528bd305640479fe6dc3b3ee22d4b86b047feb6e604b9b",
+        "cam1_people.metadata.json": "048a895a442db763e698eba483eeb58595d4330549ec0a485bd32e23babf2ad0",
+        "cam2_people.npz": "fd34c6f2c9a19f92ea2ca4b9d74b3ba0ff0da6d461c08bb3c5073e6b08b2343e",
+        "cam2_people.metadata.json": "e4102b79c8e3ca60abc88ce3f629a8ffeb54ad552e8f91f1177071d20ece8023"
+      },
+      "run_artifact_sha256": {
+        "scene.npz": "a19745f1922270eb62eea1c35d5528173f477202b3421b567b27b06b0945a20c",
+        "scene.metadata.json": "60ac14ccb4f75b368d039d9d2c4351624ccb85bcbed2e6723c71223f8eb14698",
+        "raw_model_quality.json": "1c48f3124f3305683703755ac333b2a5d649f9cf8d80187dec398a3f638dbf83",
+        "quality.json": "5aeed7aabf54bce6e933ed45b3fadbc4e4cef1313a8fe2f0850803be285657a6",
+        "label_evidence.json": "36b6dd1fe5d9852400b3043794035f9379220cbb354bf3904eac5cee136c80d9",
+        "quality_arrays.npz": "5ff0ba31ced6f3114eebdb96f406c6c2145d447e2baaa8ad3af2ce6f9cee3e1a"
+      },
+      "fps": 59.94006,
+      "frames": 744,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "teacher_checkpoints": {
+        "plcs": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+        "blcs": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32"
+      },
+      "teacher_settings_sha256": "8242e2d9eb2879b12f13f908e560699cb4f916485b7d8d5b730ec7c8ef7a68a8",
+      "dino_checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "dino_spec": {
+        "backbone": "dinov3_vitb16",
+        "patch_size": 16,
+        "image_height": 256,
+        "image_width": 448,
+        "embed_dim": 768,
+        "frame_stride": 10
+      },
+      "scene_sha256": "f5b2a322475c3c3140e4531886079eb0bbde49fb3579c5e3d575627cbddd3e9e",
+      "run_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/meiji_rgb_v9_repair_clip009/s42-001/video_000/clip_009",
+      "observation_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-005/video_000/clip_009",
+      "coverage": {
+        "player": [
+          1.0,
+          0.9610215053763441
+        ],
+        "ball": 0.8723118279569892
+      },
+      "unsupported_longest_gap_frames": {
+        "player": [
+          0,
+          5
+        ],
+        "ball": 56
+      },
+      "sources": {
+        "player": {
+          "0": {
+            "all": 2,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 1470,
+            "slcs_positive_weight": 1450
+          },
+          "2": {
+            "all": 16,
+            "slcs_positive_weight": 9
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        },
+        "ball": {
+          "0": {
+            "all": 93,
+            "slcs_positive_weight": 0
+          },
+          "1": {
+            "all": 649,
+            "slcs_positive_weight": 647
+          },
+          "2": {
+            "all": 2,
+            "slcs_positive_weight": 2
+          },
+          "3": {
+            "all": 0,
+            "slcs_positive_weight": 0
+          }
+        }
+      },
+      "observations": {
+        "cam0": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              1.0
+            ],
+            "longest_gap_frames": [
+              0,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2513440860215054,
+              0.23387096774193547
+            ],
+            "longest_gap_frames": [
+              3,
+              31
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.030913978494623656,
+            "observed": 0.8884408602150538,
+            "occlusion_estimated": 0.008064516129032258,
+            "unresolved": 0.07258064516129033
+          }
+        },
+        "cam1": {
+          "pose_supported_mask": {
+            "fraction": [
+              1.0,
+              0.9905913978494624
+            ],
+            "longest_gap_frames": [
+              0,
+              7
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.2513440860215054,
+              0.24865591397849462
+            ],
+            "longest_gap_frames": [
+              3,
+              7
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.013440860215053764,
+            "observed": 0.9220430107526881,
+            "occlusion_estimated": 0.0013440860215053765,
+            "unresolved": 0.06317204301075269
+          }
+        },
+        "cam2": {
+          "pose_supported_mask": {
+            "fraction": [
+              0.8723118279569892,
+              1.0
+            ],
+            "longest_gap_frames": [
+              95,
+              0
+            ]
+          },
+          "observed_masks": {
+            "fraction": [
+              0.22043010752688172,
+              0.2513440860215054
+            ],
+            "longest_gap_frames": [
+              95,
+              3
+            ]
+          },
+          "ball_status_fraction": {
+            "interpolated": 0.005376344086021506,
+            "observed": 0.7325268817204301,
+            "occlusion_estimated": 0.013440860215053764,
+            "unresolved": 0.24865591397849462
+          }
+        }
+      },
+      "stages": {
+        "raw": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 1486,
+              "mean": 1.9459980726242065,
+              "median": 1.375058650970459,
+              "p95": 5.163018226623535,
+              "max": 18.243459701538086
+            },
+            "ball_speed_mps": {
+              "count": 743,
+              "mean": 11.445834159851074,
+              "median": 9.900923728942871,
+              "p95": 26.274391174316406,
+              "max": 39.597599029541016
+            },
+            "ball_height_m": {
+              "count": 744,
+              "mean": 2.6789982318878174,
+              "median": 1.9783744812011719,
+              "p95": 7.466385364532471,
+              "max": 7.747305870056152
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1946,
+              "mean": 19.775554909939963,
+              "median": 8.116203547093942,
+              "p95": 79.5749716714111,
+              "max": 289.49458791929584
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 72040,
+              "mean": 30.625672071353502,
+              "median": 9.910940905114298,
+              "p95": 181.10102371015483,
+              "max": 941.8950495798969
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 1446,
+              "mean": 1.858527421951294,
+              "median": 1.3361473083496094,
+              "p95": 4.705536842346191,
+              "max": 18.243459701538086
+            },
+            "ball_speed_mps": {
+              "count": 647,
+              "mean": 11.9047269821167,
+              "median": 10.339466094970703,
+              "p95": 26.70349884033203,
+              "max": 39.597599029541016
+            },
+            "ball_height_m": {
+              "count": 649,
+              "mean": 2.335205554962158,
+              "median": 1.797692060470581,
+              "p95": 6.091385364532471,
+              "max": 7.469902515411377
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1821,
+              "mean": 14.920834094323938,
+              "median": 7.491420854508585,
+              "p95": 54.59986437716052,
+              "max": 289.49458791929584
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 71091,
+              "mean": 30.45145334821999,
+              "median": 9.901548218375412,
+              "p95": 181.1358263933376,
+              "max": 941.8950495798969
+            }
+          }
+        },
+        "refined": {
+          "all_trajectory": {
+            "player_speed_mps": {
+              "count": 1486,
+              "mean": 1.9104355573654175,
+              "median": 1.427389144897461,
+              "p95": 4.135055065155029,
+              "max": 51.426292419433594
+            },
+            "ball_speed_mps": {
+              "count": 743,
+              "mean": 12.685012817382812,
+              "median": 10.337496757507324,
+              "p95": 30.85549545288086,
+              "max": 139.5224609375
+            },
+            "ball_height_m": {
+              "count": 744,
+              "mean": 2.733346700668335,
+              "median": 1.8720202445983887,
+              "p95": 7.683839797973633,
+              "max": 8.972566604614258
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1946,
+              "mean": 9.591299573035792,
+              "median": 2.7731135720361193,
+              "p95": 46.844221766054076,
+              "max": 150.8421811669892
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 72040,
+              "mean": 13.544364454480364,
+              "median": 7.173078121576927,
+              "p95": 49.07528522549028,
+              "max": 560.7161376405571
+            }
+          },
+          "slcs_positive_weight": {
+            "player_speed_mps": {
+              "count": 1446,
+              "mean": 1.734270691871643,
+              "median": 1.4086743593215942,
+              "p95": 4.04679012298584,
+              "max": 8.416019439697266
+            },
+            "ball_speed_mps": {
+              "count": 647,
+              "mean": 12.957956314086914,
+              "median": 10.805133819580078,
+              "p95": 31.46845817565918,
+              "max": 61.464561462402344
+            },
+            "ball_height_m": {
+              "count": 649,
+              "mean": 2.3935201168060303,
+              "median": 1.696389079093933,
+              "p95": 6.954286098480225,
+              "max": 8.933517456054688
+            },
+            "ball_negative_height_fraction_below_minus_0_1m": 0.0,
+            "ball_reprojection_px": {
+              "count": 1821,
+              "mean": 4.192707020530974,
+              "median": 2.6023232568486225,
+              "p95": 16.09981515122328,
+              "max": 40.069878898302505
+            },
+            "pose_all_joint_reprojection_px": {
+              "count": 71091,
+              "mean": 13.424041898507214,
+              "median": 7.192042341750116,
+              "p95": 48.640723374111715,
+              "max": 560.7161376405571
+            }
+          }
+        }
+      },
+      "pose_reprojection_diagnostics": {
+        "raw": {
+          "interpretation": "positive-weight pseudo-label consistency; image support is diagnostic only; NOT measured 3D accuracy",
+          "per_camera": {
+            "cam0": {
+              "0": {
+                "all_confident": {
+                  "count": 12509,
+                  "mean": 9.186815076564471,
+                  "median": 7.599225543355157,
+                  "p95": 22.168973347051004,
+                  "max": 61.21828525230053
+                },
+                "both_inside_image": {
+                  "count": 12509,
+                  "mean": 9.186815076564471,
+                  "median": 7.599225543355157,
+                  "p95": 22.168973347051004,
+                  "max": 61.21828525230053
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 744,
+                  "mean": 7.31191434745729,
+                  "median": 7.255776506470243,
+                  "p95": 12.879559128332378,
+                  "max": 17.8241983178486
+                }
+              },
+              "1": {
+                "all_confident": {
+                  "count": 11032,
+                  "mean": 6.913269556450189,
+                  "median": 6.537370743185702,
+                  "p95": 13.104473741701556,
+                  "max": 18.211650464380384
+                },
+                "both_inside_image": {
+                  "count": 11032,
+                  "mean": 6.913269556450189,
+                  "median": 6.537370743185702,
+                  "p95": 13.104473741701556,
+                  "max": 18.211650464380384
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 693,
+                  "mean": 5.992305753789227,
+                  "median": 6.602715553207737,
+                  "p95": 8.55156417527004,
+                  "max": 10.489897859628545
+                }
+              }
+            },
+            "cam1": {
+              "0": {
+                "all_confident": {
+                  "count": 12630,
+                  "mean": 18.185046721535162,
+                  "median": 15.10002519459918,
+                  "p95": 44.11785429538367,
+                  "max": 113.63952831977353
+                },
+                "both_inside_image": {
+                  "count": 12630,
+                  "mean": 18.185046721535162,
+                  "median": 15.10002519459918,
+                  "p95": 44.11785429538367,
+                  "max": 113.63952831977353
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 744,
+                  "mean": 8.98411354081311,
+                  "median": 7.701289552399395,
+                  "p95": 19.998584145743557,
+                  "max": 33.60776658804049
+                }
+              },
+              "1": {
+                "all_confident": {
+                  "count": 11689,
+                  "mean": 10.365126771412507,
+                  "median": 9.86137414605788,
+                  "p95": 19.700503911563292,
+                  "max": 37.62949898995344
+                },
+                "both_inside_image": {
+                  "count": 11689,
+                  "mean": 10.365126771412507,
+                  "median": 9.86137414605788,
+                  "p95": 19.700503911563292,
+                  "max": 37.62949898995344
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 711,
+                  "mean": 9.306543541759632,
+                  "median": 9.249791235132102,
+                  "p95": 14.907556896679575,
+                  "max": 18.27844399717341
+                }
+              }
+            },
+            "cam2": {
+              "0": {
+                "all_confident": {
+                  "count": 12578,
+                  "mean": 8.804141116463557,
+                  "median": 7.454600899451259,
+                  "p95": 21.585500932733638,
+                  "max": 46.957016008365365
+                },
+                "both_inside_image": {
+                  "count": 12578,
+                  "mean": 8.804141116463557,
+                  "median": 7.454600899451259,
+                  "p95": 21.585500932733638,
+                  "max": 46.957016008365365
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 744,
+                  "mean": 5.067988156809091,
+                  "median": 4.730072781677578,
+                  "p95": 9.280305907489264,
+                  "max": 15.93080279499439
+                }
+              },
+              "1": {
+                "all_confident": {
+                  "count": 10653,
+                  "mean": 141.93800962657423,
+                  "median": 131.40772300688505,
+                  "p95": 286.07376236413955,
+                  "max": 941.8950495798969
+                },
+                "both_inside_image": {
+                  "count": 9914,
+                  "mean": 126.46274670515453,
+                  "median": 121.15334448283679,
+                  "p95": 248.85707523322827,
+                  "max": 394.89666555634125
+                },
+                "either_outside_image": {
+                  "count": 739,
+                  "mean": 349.5452580744158,
+                  "median": 349.45484428875614,
+                  "p95": 625.5853926556346,
+                  "max": 941.8950495798969
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 626,
+                  "mean": 124.90091107301353,
+                  "median": 108.51939845459927,
+                  "p95": 211.2674415886758,
+                  "max": 705.5088238978728
+                }
+              }
+            }
+          }
+        },
+        "refined": {
+          "interpretation": "positive-weight pseudo-label consistency; image support is diagnostic only; NOT measured 3D accuracy",
+          "per_camera": {
+            "cam0": {
+              "0": {
+                "all_confident": {
+                  "count": 12509,
+                  "mean": 8.071090393670241,
+                  "median": 6.233634356830017,
+                  "p95": 20.863469103526196,
+                  "max": 58.71383622686667
+                },
+                "both_inside_image": {
+                  "count": 12509,
+                  "mean": 8.071090393670241,
+                  "median": 6.233634356830017,
+                  "p95": 20.863469103526196,
+                  "max": 58.71383622686667
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 744,
+                  "mean": 5.58242129383544,
+                  "median": 5.678817298293961,
+                  "p95": 8.88003170299843,
+                  "max": 10.559207173540843
+                }
+              },
+              "1": {
+                "all_confident": {
+                  "count": 11032,
+                  "mean": 6.186881069756727,
+                  "median": 5.74407598295122,
+                  "p95": 11.695426148603119,
+                  "max": 18.982630187536962
+                },
+                "both_inside_image": {
+                  "count": 11032,
+                  "mean": 6.186881069756727,
+                  "median": 5.74407598295122,
+                  "p95": 11.695426148603119,
+                  "max": 18.982630187536962
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 693,
+                  "mean": 4.831899590949318,
+                  "median": 5.362924203535645,
+                  "p95": 6.275915212467812,
+                  "max": 7.235976504534955
+                }
+              }
+            },
+            "cam1": {
+              "0": {
+                "all_confident": {
+                  "count": 12630,
+                  "mean": 15.252524077659626,
+                  "median": 11.765783378344018,
+                  "p95": 39.56662658681309,
+                  "max": 104.95802651490244
+                },
+                "both_inside_image": {
+                  "count": 12630,
+                  "mean": 15.252524077659626,
+                  "median": 11.765783378344018,
+                  "p95": 39.56662658681309,
+                  "max": 104.95802651490244
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 744,
+                  "mean": 2.2025729875189968,
+                  "median": 1.6893899465107713,
+                  "p95": 4.92799583084755,
+                  "max": 5.684569811001037
+                }
+              },
+              "1": {
+                "all_confident": {
+                  "count": 11689,
+                  "mean": 5.516828257184865,
+                  "median": 4.421963826984763,
+                  "p95": 14.423711126389236,
+                  "max": 31.147532214862643
+                },
+                "both_inside_image": {
+                  "count": 11689,
+                  "mean": 5.516828257184865,
+                  "median": 4.421963826984763,
+                  "p95": 14.423711126389236,
+                  "max": 31.147532214862643
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 711,
+                  "mean": 3.7258873959615397,
+                  "median": 4.205636241283771,
+                  "p95": 5.9553946774830155,
+                  "max": 7.274058822601898
+                }
+              }
+            },
+            "cam2": {
+              "0": {
+                "all_confident": {
+                  "count": 12578,
+                  "mean": 7.2143232490155045,
+                  "median": 5.546671029071003,
+                  "p95": 18.83805117389149,
+                  "max": 40.998332762259736
+                },
+                "both_inside_image": {
+                  "count": 12578,
+                  "mean": 7.2143232490155045,
+                  "median": 5.546671029071003,
+                  "p95": 18.83805117389149,
+                  "max": 40.998332762259736
+                },
+                "either_outside_image": {
+                  "count": 0,
+                  "mean": null,
+                  "median": null,
+                  "p95": null,
+                  "max": null
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 744,
+                  "mean": 1.8104746585139513,
+                  "median": 1.7544700271613232,
+                  "p95": 3.0757584956713013,
+                  "max": 3.4368279726609456
+                }
+              },
+              "1": {
+                "all_confident": {
+                  "count": 10653,
+                  "mean": 41.04442677983734,
+                  "median": 33.297227384882305,
+                  "p95": 89.91046125154509,
+                  "max": 560.7161376405571
+                },
+                "both_inside_image": {
+                  "count": 10512,
+                  "mean": 39.28224838692268,
+                  "median": 33.05966578331359,
+                  "p95": 86.85483576622751,
+                  "max": 190.4997703215826
+                },
+                "either_outside_image": {
+                  "count": 141,
+                  "mean": 172.42044994521908,
+                  "median": 110.55793447516517,
+                  "p95": 467.34138014746827,
+                  "max": 560.7161376405571
+                },
+                "root_to_observed_hip_center_px": {
+                  "count": 626,
+                  "mean": 14.025408992070528,
+                  "median": 15.093150914029493,
+                  "p95": 19.798650008152133,
+                  "max": 24.931560332322224
+                }
+              }
+            }
+          }
+        }
+      },
+      "court_image_homography_fit": [
+        {
+          "camera_id": "cam0",
+          "source_roi_xyxy": [
+            424,
+            178,
+            1312,
+            579
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            3,
+            9,
+            9,
+            2,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 4.3482160568237305,
+          "fit_error_px_p95": 7.75425386428833,
+          "is_measured_calibration": false,
+          "crop_refinement_padding_px": 20.0,
+          "initial_pass_diagnostics": "cam0_court_initial.json",
+          "refined_pass_diagnostics": "cam0_court_refined.json"
+        },
+        {
+          "camera_id": "cam1",
+          "source_roi_xyxy": [
+            260,
+            189,
+            1648,
+            849
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            8,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 4.712965965270996,
+          "fit_error_px_p95": 128.83522033691406,
+          "is_measured_calibration": false,
+          "crop_refinement_padding_px": 20.0,
+          "initial_pass_diagnostics": "cam1_court_initial.json",
+          "refined_pass_diagnostics": "cam1_court_refined.json"
+        },
+        {
+          "camera_id": "cam2",
+          "source_roi_xyxy": [
+            0,
+            0,
+            1920,
+            1080
+          ],
+          "method": "static_temporal_median_ransac_homography",
+          "support_frames_per_channel": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "supported_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "inlier_channels": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "fit_error_px_median": 3.153531789779663,
+          "fit_error_px_p95": 7.421823978424072,
+          "is_measured_calibration": false
+        }
+      ],
+      "approximate_pinhole_fit_rmse_px": [
+        1.9941084092426244,
+        1.6902133292203838,
+        0.19445953779135
+      ],
+      "review_flags": [
+        "observable_consistency_not_measured_3d_accuracy",
+        "all_joint_reprojection_has_no_triangulation_acceptance_threshold"
+      ]
+    },
+    "video_000/clip_010": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_000/clip_011": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_000": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_001": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_002": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_003": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_004": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_005": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_006": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_007": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_008": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_009": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_010": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_011": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_012": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_013": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_014": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_015": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_016": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_017": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_018": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_019": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_001/clip_020": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_000": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_001": {
+      "status": "excluded",
+      "reason": "Explicit exclusion in build_slcs_dataset.yaml (insufficient outsourced multiview ball coverage)."
+    },
+    "video_002/clip_002": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_003": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_004": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_005": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_006": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_007": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_008": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_009": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_010": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_011": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_012": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_013": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_014": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_015": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_016": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_017": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_018": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_019": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_020": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_021": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_022": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    },
+    "video_002/clip_023": {
+      "status": "missing",
+      "reason": "missing dataset manifest record"
+    }
+  },
+  "errors": [],
+  "counts": {
+    "completed": 1,
+    "missing": 55,
+    "error": 0,
+    "excluded": 1
+  },
+  "expected_count": 57,
+  "complete": false,
+  "status": "incomplete",
+  "metric_interpretation": "Raw and refined use the SAME final SLCS positive frame weights; frame eligibility only, before training window selection. Reprojection is observable consistency, not independent 3D accuracy.",
+  "aggregate_sample_weighted_metrics": {
+    "raw.all_trajectory.player_speed_mps": {
+      "count": 1486,
+      "max": 18.243459701538086,
+      "mean": 1.9459980726242065
+    },
+    "raw.all_trajectory.ball_speed_mps": {
+      "count": 743,
+      "max": 39.597599029541016,
+      "mean": 11.445834159851074
+    },
+    "raw.all_trajectory.ball_height_m": {
+      "count": 744,
+      "max": 7.747305870056152,
+      "mean": 2.6789982318878174
+    },
+    "raw.all_trajectory.ball_reprojection_px": {
+      "count": 1946,
+      "max": 289.49458791929584,
+      "mean": 19.775554909939963
+    },
+    "raw.all_trajectory.pose_all_joint_reprojection_px": {
+      "count": 72040,
+      "max": 941.8950495798969,
+      "mean": 30.625672071353502
+    },
+    "raw.slcs_positive_weight.player_speed_mps": {
+      "count": 1446,
+      "max": 18.243459701538086,
+      "mean": 1.858527421951294
+    },
+    "raw.slcs_positive_weight.ball_speed_mps": {
+      "count": 647,
+      "max": 39.597599029541016,
+      "mean": 11.9047269821167
+    },
+    "raw.slcs_positive_weight.ball_height_m": {
+      "count": 649,
+      "max": 7.469902515411377,
+      "mean": 2.335205554962158
+    },
+    "raw.slcs_positive_weight.ball_reprojection_px": {
+      "count": 1821,
+      "max": 289.49458791929584,
+      "mean": 14.920834094323938
+    },
+    "raw.slcs_positive_weight.pose_all_joint_reprojection_px": {
+      "count": 71091,
+      "max": 941.8950495798969,
+      "mean": 30.45145334821999
+    },
+    "refined.all_trajectory.player_speed_mps": {
+      "count": 1486,
+      "max": 51.426292419433594,
+      "mean": 1.9104355573654175
+    },
+    "refined.all_trajectory.ball_speed_mps": {
+      "count": 743,
+      "max": 139.5224609375,
+      "mean": 12.685012817382812
+    },
+    "refined.all_trajectory.ball_height_m": {
+      "count": 744,
+      "max": 8.972566604614258,
+      "mean": 2.733346700668335
+    },
+    "refined.all_trajectory.ball_reprojection_px": {
+      "count": 1946,
+      "max": 150.8421811669892,
+      "mean": 9.591299573035792
+    },
+    "refined.all_trajectory.pose_all_joint_reprojection_px": {
+      "count": 72040,
+      "max": 560.7161376405571,
+      "mean": 13.544364454480364
+    },
+    "refined.slcs_positive_weight.player_speed_mps": {
+      "count": 1446,
+      "max": 8.416019439697266,
+      "mean": 1.734270691871643
+    },
+    "refined.slcs_positive_weight.ball_speed_mps": {
+      "count": 647,
+      "max": 61.464561462402344,
+      "mean": 12.957956314086914
+    },
+    "refined.slcs_positive_weight.ball_height_m": {
+      "count": 649,
+      "max": 8.933517456054688,
+      "mean": 2.3935201168060303
+    },
+    "refined.slcs_positive_weight.ball_reprojection_px": {
+      "count": 1821,
+      "max": 40.069878898302505,
+      "mean": 4.192707020530974
+    },
+    "refined.slcs_positive_weight.pose_all_joint_reprojection_px": {
+      "count": 71091,
+      "max": 560.7161376405571,
+      "mean": 13.424041898507214
+    }
+  }
+}

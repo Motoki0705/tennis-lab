@@ -1,0 +1,178 @@
+{
+  "status": "parent_reviewed_local_pixel_reference",
+  "reviewer": "parent_codex",
+  "date": "2026-09-19",
+  "clip": "video_002/clip_017",
+  "camera": "cam0",
+  "selected_pair_ids": {
+    "0": 0,
+    "453": 0,
+    "907": 1
+  },
+  "selection_reason": "In all three edge-pair sheets the chosen pair brackets the visible bright near-baseline stripe on the right side, without player occlusion. Original frame crops and full frames were also inspected. Dark shadow pairs were not selected.",
+  "not_blind_to_H": true,
+  "selection_did_not_minimize_H_residual": true,
+  "H_slope_dtype": "float32, matching the executed probe",
+  "selected_center_endpoints_px": [
+    {
+      "frame_index": 0,
+      "endpoints": [
+        [
+          835.5702819824219,
+          525.3487287888149
+        ],
+        [
+          993.0827026367188,
+          532.1052766303252
+        ]
+      ]
+    },
+    {
+      "frame_index": 453,
+      "endpoints": [
+        [
+          939.4347229003906,
+          530.0608040878338
+        ],
+        [
+          991.8217163085938,
+          532.112021852829
+        ]
+      ]
+    },
+    {
+      "frame_index": 907,
+      "endpoints": [
+        [
+          938.1796264648438,
+          530.156492337662
+        ],
+        [
+          991.8160400390625,
+          532.2579128242338
+        ]
+      ]
+    }
+  ],
+  "common_x_interval_px": [
+    939.4347229003906,
+    991.8160400390625
+  ],
+  "samples": [
+    {
+      "frame_index": 0,
+      "pair_id": 0,
+      "edge_segment_ids": [
+        3,
+        17
+      ],
+      "x_px": 939.4347229003906,
+      "white_band_center_y_px": 529.8040286386863,
+      "H_minus_white_band_vertical_px": 22.97402302613159,
+      "distance_to_H_line_px": 22.826672356312255
+    },
+    {
+      "frame_index": 0,
+      "pair_id": 0,
+      "edge_segment_ids": [
+        3,
+        17
+      ],
+      "x_px": 965.6253814697266,
+      "white_band_center_y_px": 530.9274856771174,
+      "H_minus_white_band_vertical_px": 24.831249785699242,
+      "distance_to_H_line_px": 24.671987244514696
+    },
+    {
+      "frame_index": 0,
+      "pair_id": 0,
+      "edge_segment_ids": [
+        3,
+        17
+      ],
+      "x_px": 991.8160400390625,
+      "white_band_center_y_px": 532.0509427155484,
+      "H_minus_white_band_vertical_px": 26.688476545266894,
+      "distance_to_H_line_px": 26.517302132717134
+    },
+    {
+      "frame_index": 453,
+      "pair_id": 0,
+      "edge_segment_ids": [
+        3,
+        23
+      ],
+      "x_px": 939.4347229003906,
+      "white_band_center_y_px": 530.0608040878338,
+      "H_minus_white_band_vertical_px": 22.71724757698405,
+      "distance_to_H_line_px": 22.571543812209686
+    },
+    {
+      "frame_index": 453,
+      "pair_id": 0,
+      "edge_segment_ids": [
+        3,
+        23
+      ],
+      "x_px": 965.6253814697266,
+      "white_band_center_y_px": 531.0863018428918,
+      "H_minus_white_band_vertical_px": 24.672433619924846,
+      "distance_to_H_line_px": 24.51418969304126
+    },
+    {
+      "frame_index": 453,
+      "pair_id": 0,
+      "edge_segment_ids": [
+        3,
+        23
+      ],
+      "x_px": 991.8160400390625,
+      "white_band_center_y_px": 532.1117995979496,
+      "H_minus_white_band_vertical_px": 26.627619662865754,
+      "distance_to_H_line_px": 26.456835573872944
+    },
+    {
+      "frame_index": 907,
+      "pair_id": 1,
+      "edge_segment_ids": [
+        6,
+        20
+      ],
+      "x_px": 939.4347229003906,
+      "white_band_center_y_px": 530.2056657477863,
+      "H_minus_white_band_vertical_px": 22.572385917031625,
+      "distance_to_H_line_px": 22.427611265221103
+    },
+    {
+      "frame_index": 907,
+      "pair_id": 1,
+      "edge_segment_ids": [
+        6,
+        20
+      ],
+      "x_px": 965.6253814697266,
+      "white_band_center_y_px": 531.2317892860101,
+      "H_minus_white_band_vertical_px": 24.52694617680652,
+      "distance_to_H_line_px": 24.369635376531598
+    },
+    {
+      "frame_index": 907,
+      "pair_id": 1,
+      "edge_segment_ids": [
+        6,
+        20
+      ],
+      "x_px": 991.8160400390625,
+      "white_band_center_y_px": 532.2579128242338,
+      "H_minus_white_band_vertical_px": 26.481506436581526,
+      "distance_to_H_line_px": 26.311659487842206
+    }
+  ],
+  "vertical_difference_min_px": 22.572385917031625,
+  "vertical_difference_max_px": 26.688476545266894,
+  "vertical_difference_mean_px": 24.676876527476892,
+  "interpretation": "Positive difference means the saved projected baseline lies below the visible white-band center. This is a local RGB pixel diagnostic, not human ground truth, full-court error, or measured 3D accuracy.",
+  "limitations": "One camera, three frames, and the common right-side segment only. Edge extraction and stripe thickness introduce uncertainty; no calibrated uncertainty interval is claimed. No calibration or dataset was changed. Candidate generation did not use H; the parent review saw its overlay.",
+  "results_sha256": "5a94d512e68bc300c5588788999cb10d5953ee09935f24dd837c36c15785f067",
+  "review_script_sha256": "e9c2251dee9f2ea3853446db6586f21b3ec533887a6ae1d972810953fb57dee2"
+}

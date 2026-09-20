@@ -1,0 +1,13 @@
+{
+  "atomic_replacement": true,
+  "timestamp_utc": "2026-09-18T23:34:37.636011+00:00",
+  "target": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+  "backup": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth.before-redownload-s42-001.bak",
+  "verified_download": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/vitpose_redownload/s42-001/vitpose-h-multi-coco.pth",
+  "old_inode": 71274,
+  "backup_inode": 71274,
+  "new_inode": 276740,
+  "verified_download_inode": 276740,
+  "backup_method": "hardlink to old inode before os.replace",
+  "size": 2549075546
+}

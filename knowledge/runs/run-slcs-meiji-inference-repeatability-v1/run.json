@@ -1,0 +1,16 @@
+{
+  "run_id": "1789738243551028343_927831_slcs-meiji-inference-repeatability-v1",
+  "name": "slcs-meiji-inference-repeatability-v1",
+  "command": "timeout --kill-after=5s 590s env PYTHONPATH=. CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -B knowledge/runs/run-slcs-meiji-inference-repeatability-v1/probe.py --output-dir outputs/tennis_scene/analyze/meiji_inference_repeatability/s42-001",
+  "provider": "codex",
+  "session": "01a0b314-89b5-7902-b0a1-3141a9323ea9",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "777d339101e162739c12e37cf52dbb4fe75cce6a",
+  "branch": "codex/slcs-real-rgb",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "captured_at": "2026-09-18T22:30:44+09:00"
+}

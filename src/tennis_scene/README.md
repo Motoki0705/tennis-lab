@@ -18,6 +18,11 @@ GVHMRワールドモーションの整合もパイプライン内で常に実行
 
 ## Modules
 
+### dataset_pipeline/
+実RGB clipから品質重み付き3D教師・DINOv3特徴・固定splitを作る経路。
+1コマンド生成、入力と重み、品質判定、再開と再学習は
+[`dataset_pipeline/README.md`](dataset_pipeline/README.md)を参照。
+
 ### clip_studio/
 長時間・非同期のマルチカメラ動画を同期してラリークリップを切り出し、追記可能な構造化データセットへエクスポートするGUI。詳細は `clip_studio/README.md`。
 

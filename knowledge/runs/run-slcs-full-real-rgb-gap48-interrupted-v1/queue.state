@@ -1,0 +1,6 @@
+state=failed
+resource=all
+slot=all
+pid=139704
+pgid=139704
+wait=signal

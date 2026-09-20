@@ -1,0 +1,12 @@
+diff --git a/knowledge/nodes/group-slcs-real-rgb.md b/knowledge/nodes/group-slcs-real-rgb.md
+index 71af0da2..bb268013 100644
+--- a/knowledge/nodes/group-slcs-real-rgb.md
++++ b/knowledge/nodes/group-slcs-real-rgb.md
+@@ -3,6 +3,7 @@ id: group-slcs-real-rgb
+ type: group
+ title: '実RGBのSLCS: Meiji・broadcast教師と入力欠損比較'
+ members:
++- run-slcs-meiji-one-clip-repro-takeover-v1
+ - run-slcs-blcs-broadcast-e60-v1
+ - run-slcs-blcs-meiji-baseline-eval
+ - run-slcs-blcs-meiji-e60-v1

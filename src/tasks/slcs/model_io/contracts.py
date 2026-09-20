@@ -66,6 +66,8 @@ class SLCSTrainingTargets:
     ball_mask: Tensor
     ball_weight: Tensor
     padding_mask: Tensor
+    frame_idx: Tensor | None = None
+    timestamp: Tensor | None = None
 
     def detached_cpu(self) -> SLCSTrainingTargets:
         """Detach every prepared target and transfer it to CPU."""
@@ -78,6 +80,8 @@ class SLCSTrainingTargets:
             ball_mask=self.ball_mask.detach().cpu(),
             ball_weight=self.ball_weight.detach().cpu(),
             padding_mask=self.padding_mask.detach().cpu(),
+            frame_idx=None if self.frame_idx is None else self.frame_idx.detach().cpu(),
+            timestamp=None if self.timestamp is None else self.timestamp.detach().cpu(),
         )
 
 

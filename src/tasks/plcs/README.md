@@ -1,5 +1,7 @@
 # PLCS
 
+出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
+
 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。ACCAD (AMASS/SMPL-H) または GVHMR モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
 ## Court keypoint contract

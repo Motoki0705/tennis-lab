@@ -1,0 +1,27 @@
+{
+  "selection": "minimum retained validation monitor; ties resolved by path; no test selection",
+  "monitor": "val/scene_position_error_m_epoch",
+  "mode": "min",
+  "candidates": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+      "validation_score": 4.851169109344482
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=56.ckpt",
+      "validation_score": 4.851702690124512
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=57.ckpt",
+      "validation_score": 4.8632378578186035
+    }
+  ],
+  "selected": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/slcs-epoch=55.ckpt",
+    "validation_score": 4.851169109344482,
+    "epoch_zero_based": 55
+  },
+  "last_checkpoint": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0/checkpoints/last.ckpt",
+  "last_epoch_zero_based": 59,
+  "checkpoint_sha256": "b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c"
+}

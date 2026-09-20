@@ -1,0 +1,1162 @@
+{
+  "inputs": {
+    "schema_version": 1,
+    "dataset_id": "real_rgb_v1",
+    "seed": 42,
+    "video_splits": {
+      "video_000": "train",
+      "video_001": "val",
+      "video_002": "test",
+      "broadcast_shanghai": "train",
+      "broadcast_washington": "train",
+      "broadcast_indoor_hard": "val",
+      "broadcast_eastbourne": "test"
+    },
+    "clips": {
+      "video_000/clip_000": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_000",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "66f7dc2f9d983d59c2bd73e9e3eac7ccb41facd893e09e392e636ffe710137a3",
+          "annotations/dino_v3/cam0.npz": "67f2fe18b8ac413b80e77d166e8223d0379fe7b5e0505db552d35188e48e7b07",
+          "annotations/dino_v3/cam1.npz": "a8f530cd917cb44d52e565628ef5448e1367346f265fe3d23e39e134b5a7d443",
+          "annotations/dino_v3/cam2.npz": "5ff0573225be56732c864d7098e59406cba4da628970017b2fec66545efc830e",
+          "annotations/tennis_scene/annotation.json": "c6ebb1d6ee4aa9070e8005b24049a6a6a25fcea0c8a5b642101f7475e23e023f",
+          "annotations/tennis_scene/pipeline_config.yaml": "7d46728057f0a4671c971e85ebb8b00d3c9f89afaea7b9e9543882182a10c0ca",
+          "annotations/tennis_scene/scene.metadata.json": "c4ea6db8af66ce6ec098afbdeac95bd82a9c4930e79395caa55edb01ab5e32c9",
+          "annotations/tennis_scene/scene.npz": "480bcd7d0ffc589a71f884538416e7e0443f0187a93c976ed45b1876877d0601",
+          "media/cam0.mp4": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+          "media/cam1.mp4": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+          "media/cam2.mp4": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+          "clip.json": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+        }
+      },
+      "video_000/clip_001": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_001",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "43a6aba194ffcdaa4369f63313a04aac610fd59f4b6149983a2f4b8e8c8a7254",
+          "annotations/dino_v3/cam0.npz": "0ad0f46802e2e4c7114fe35977d08d58b8bb1dc9c8be86284a00d107f692cd11",
+          "annotations/dino_v3/cam1.npz": "f56d5c32d2adfeea4f43c5e9503e4586fcd7b2056f0bdef40c5b6ccb128ae1ce",
+          "annotations/dino_v3/cam2.npz": "430f25bd6783a9d50234cf61f6ae1f1dbe0631725dca7eba75d112289d436a5b",
+          "annotations/tennis_scene/annotation.json": "d91fe658d7a7a584ae60596ac2fb38d0a300820c1abcb06ae7c3d83848dd16c6",
+          "annotations/tennis_scene/pipeline_config.yaml": "7b334b6a72d16494dad04109b48d2ab84ddbae94c5687c21317b97b20a40d8a7",
+          "annotations/tennis_scene/scene.metadata.json": "c983d29ece8cad5dd27e0c48e1ae2c0480c506b8000acc9f2f7215e6f0b35c1f",
+          "annotations/tennis_scene/scene.npz": "4464c8bc639836e1b0221012896d20b93a96e3044a63516f5f11f487fbac0396",
+          "media/cam0.mp4": "ed9163e2e20a469bdf6edb553561e52b7b53d496cb6c9c31c8165fa0f293daa5",
+          "media/cam1.mp4": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+          "media/cam2.mp4": "790f2ed13079454aa89c9bfae4c0ad02e3df2067e82f5cc38cc1f420c95a4fa3",
+          "clip.json": "b4c36f5012e80eee698649d6dac9bbdba322c4c0c2cad7c411497830a244af5a"
+        }
+      },
+      "video_000/clip_002": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_002",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "affae27b0225f67aff89ac0d3c2d34a70b7ceb214fdc8afb0781ab13cdbd59a7",
+          "annotations/dino_v3/cam0.npz": "652b8ea3732cb409a424326651b67914b5153906a30e0324112848e3ae5e567a",
+          "annotations/dino_v3/cam1.npz": "59fc64d82fed3a705517c8dfab032a1316081d74fef1cc89ee37a740d4dd9713",
+          "annotations/dino_v3/cam2.npz": "5359eb04c2dffa30813723bce31b5690208b54ff6c8c3568a6ac2f3dc7c91217",
+          "annotations/tennis_scene/annotation.json": "2024d45f0a84bae617509fd68d701adb64d998a407d12abdef26160263315253",
+          "annotations/tennis_scene/pipeline_config.yaml": "62918be70fe1d1305a9223f00209131a7d4f1c2c47a0714bf26f99e90c820ad0",
+          "annotations/tennis_scene/scene.metadata.json": "07bd30156eecc88bd6d13d307c0a77bd1ddbdcefa2c48235e89c1cb834c89e9b",
+          "annotations/tennis_scene/scene.npz": "33834fa1fe307f5cf4e46a758e03b0fe0d3376d3c3231013d3dd3fb2394a189b",
+          "media/cam0.mp4": "8ea60ed6a762bef326105c570e994a1e3e5627f5201418b21a409a4f93a0d85c",
+          "media/cam1.mp4": "04d9cb55c29c00ae6dd1b06361b9f407a4cd83d61d30c2b8dac4064a61c9efb0",
+          "media/cam2.mp4": "0124b35a958d1f6d911aa007fea613b6f280924e4b8cbcc2f7ae144af2c3db7c",
+          "clip.json": "f781cd997c6faf11de07aa80c81536928ccdb7d5deef49ff488b0b8ac5e268a0"
+        }
+      },
+      "video_000/clip_003": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_003",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "fbcb44afd79b707ef4e25b33df694f92570da4b134549bff75d0c8230db447e5",
+          "annotations/dino_v3/cam0.npz": "00f5fdd58f35aa00c034a7d2b935b288f71d3b19ac63f638e9a1ffadf37cab29",
+          "annotations/dino_v3/cam1.npz": "c6b9091588fe758d5eb3ac9770590b1a3d15c5293d3a6d154440a24728fd7aae",
+          "annotations/dino_v3/cam2.npz": "351077c16d0e8fee80bc2533be1a5804b3b752888df740ae2aaa8308a201da6e",
+          "annotations/tennis_scene/annotation.json": "984b736b090f0ba5d0250d50684d510685693e515cd23ee164cd783cf38d115c",
+          "annotations/tennis_scene/pipeline_config.yaml": "56564ef38710b9d52c49e8777fe089438654835dbfe4a89b7b8815ce24f87fca",
+          "annotations/tennis_scene/scene.metadata.json": "e67b27d45a03d164104537ddb120a7df1d0e1b7b3e79d95fe441db3d3d6d9d03",
+          "annotations/tennis_scene/scene.npz": "e741b741d2f6970dd56dd19b1fa0363c265d659943770ef03ef9c7401d2554a0",
+          "media/cam0.mp4": "892658bdc0f2f54ca5d0e209333248b346631c54992fde82d80b9ad54ef5bfe0",
+          "media/cam1.mp4": "3907797d53cc644e7181b8c99c9f9cb419437442ac28289be07ef9aedff76912",
+          "media/cam2.mp4": "962e5402e8210d96709744dd65122383471d47ca5079ace418b7a7268781dc88",
+          "clip.json": "661823119c291ed3a010fdcc31af40070288618191a29f0d4f5a6bde5f51263e"
+        }
+      },
+      "video_000/clip_004": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_004",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "ad214126a6617f2f521dfcadecc5fa63bef660247e952205667d80f6e1ed3d3b",
+          "annotations/dino_v3/cam0.npz": "7dd309eb841706839d430dfb580993339aef3e0ede1cf626226ad35badb00a0b",
+          "annotations/dino_v3/cam1.npz": "df3587bad9c30b117975ea4eae905ed5f693b98957a10ae67cc09e7e742fb1f3",
+          "annotations/dino_v3/cam2.npz": "737feba2f0dbac9260cc48a7d314eb4a40f962e1a67d5855f83b6f12a7500726",
+          "annotations/tennis_scene/annotation.json": "4e81bcf4844ca430fe13581aa545c3c46e738bd94152d2d708334d90ffd4353c",
+          "annotations/tennis_scene/pipeline_config.yaml": "d080433f47919f755491099aba1f72ca58fea7dcd453ba1f3a9c442058681b59",
+          "annotations/tennis_scene/scene.metadata.json": "535b1703806fb7eb3cbda43ec645fa5cbfc181a7cd22fcc710ed788e035b867b",
+          "annotations/tennis_scene/scene.npz": "4e272f88008bf5012fd28b1c8b7415b104e6265218be4373a40cee04dcad5631",
+          "media/cam0.mp4": "6238e767d979c6dd91cca2948efd39cbf0e268f79d06db4f1b4d9a7c9a70b155",
+          "media/cam1.mp4": "91bec202eeccbf8722c043d5c89e8fd7692effeec11718f9f0d2f911c67f76db",
+          "media/cam2.mp4": "0cd0bf44fb1fc6b60fa0d97a8a6f08eb45f1d5bd7828a54b915901806d13169a",
+          "clip.json": "f95cb6ffde57add271c7208aef65e02c6a859403928d45e3980eeb048bf60791"
+        }
+      },
+      "video_000/clip_005": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_005",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "525e942a6e75ae97c575ee74092e9efe995999d25e46aa034ea279d45486cd96",
+          "annotations/dino_v3/cam0.npz": "f1acdce49b3aa8c57936d4e2bfddcb5beccbbc2c1642e3d2662f6407c43ef102",
+          "annotations/dino_v3/cam1.npz": "d8fefbd1124dace6297baaf309d0bdd85c891736f2a43f7ffd8ea6cdce31945b",
+          "annotations/dino_v3/cam2.npz": "44a7d0980ed9fd2679d5ad53cbf703447566240a27e432988da94675dd3acf2f",
+          "annotations/tennis_scene/annotation.json": "2b8857596ef52ab2478eece5f619d10c4ac42ba1fe581bfe7ca4089f8bb4301c",
+          "annotations/tennis_scene/pipeline_config.yaml": "cb776b647cb2622abed92a239abdf5bc571e992a8484a88bb1d9bd6f6cf9484a",
+          "annotations/tennis_scene/scene.metadata.json": "fb527c5dfad5a3fd3f0ddc61dbc0825b31f52c1f93db168a1c68c40c8788e01d",
+          "annotations/tennis_scene/scene.npz": "c1088a0831d07d5a26a645707b05152a927d36547ef2a155b3ea5ef604f25fad",
+          "media/cam0.mp4": "e1a43e5bbcf872aa128c7d5d5a704873f4b14fd0d30a619b1809fce635969410",
+          "media/cam1.mp4": "f969ddb5ab2539bd9ae24807db3aa1b52601fe86e7824d16d1393faa7db543f9",
+          "media/cam2.mp4": "1c722cec5bd038f01a3b973714c312f653225e7692b2fc3a82976ef287ae7224",
+          "clip.json": "7b46bd0e56e12eeb220bf712a5b9be3d306cc6de0d7db79e853385d4e731427e"
+        }
+      },
+      "video_000/clip_006": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_006",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "155c65fa81984d08ff2bbb8bed3aaeef6e887eff0a5dc8242ea625b2eb238347",
+          "annotations/dino_v3/cam0.npz": "2a32f1b6aa600348f3f2f1172c641a26b2fc733606881b97d33c9d428f854d3d",
+          "annotations/dino_v3/cam1.npz": "3c2e84682036fa9ebbf9ca106ff2a77cf27f358fc6d3976456246654d2662967",
+          "annotations/dino_v3/cam2.npz": "133174a3aff6f015d03f0ef56cb58a3b5bc6d59be078988da604618ef332c200",
+          "annotations/tennis_scene/annotation.json": "577ff3b6928506e57c2b222d1583f128d96f99392025eb2bfe95e1c3433182da",
+          "annotations/tennis_scene/pipeline_config.yaml": "0ca2856435c6914db19855f72c40eccf156a73a2155e63d41f6ba8bc4af5f827",
+          "annotations/tennis_scene/scene.metadata.json": "a4e7949ca8d6549124ea66483c8060d69f065f042ec4246edca9bd1cd1313db1",
+          "annotations/tennis_scene/scene.npz": "0e47d28f06da65de073a9e5cf24174c2ad6a5b99e315f3237fd3a59d41ca01d8",
+          "media/cam0.mp4": "5b14fffd46fb5945bc6be6b0f50f99bbdc280757a016c4785c81eac635618fbd",
+          "media/cam1.mp4": "3d577a98ac28a6d7a055f7f99fab10119d4ecaf9d6712ed9b9c4d3ae2db66367",
+          "media/cam2.mp4": "2a5986746c7e7c0909ffb761e9dfc40c928d8bcb608f04b05603eb882363a133",
+          "clip.json": "1c1ac9f5377f6c6e0c62805a78b23a9e5f7cd90329748af4be2ddad10ae8bbf0"
+        }
+      },
+      "video_000/clip_007": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_007",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "56876a6e76a77e2bdcb971f6f2041f419d360a6f703f6b9312d04e4913d8678d",
+          "annotations/dino_v3/cam0.npz": "7614bb3d027f62748998997f60a40de0caa125f121c024b9930318becc2a4664",
+          "annotations/dino_v3/cam1.npz": "e327a51d0c881feb49ca9d50d5cb98911c8725f11147a68f569b5b583fb49a0a",
+          "annotations/dino_v3/cam2.npz": "d75efee2c14b14ca0ca88c772938500417cef505594f74f7c933fd6061b63360",
+          "annotations/tennis_scene/annotation.json": "85d291ba0bc0e3200d9859a84452087e1ef6eea236fc4acef1caccc2348066a1",
+          "annotations/tennis_scene/pipeline_config.yaml": "754fd266b863e35091f3ce7f0ec335d5ef3f09b69bc25f01d3219fa0a10f43fc",
+          "annotations/tennis_scene/scene.metadata.json": "266a65dd7394f312cce17af5c7f7b5d632891eb2b09142b976b26662f3b25fc9",
+          "annotations/tennis_scene/scene.npz": "a2debc47e7f88e76a9ceb39b5def5a602872a9fda32407f6ef81901e3c37ef21",
+          "media/cam0.mp4": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+          "media/cam1.mp4": "3c6fd4ff6429584ddd4f6ea5ab633a097cf0655fe28eefac2fb36254a18a872b",
+          "media/cam2.mp4": "72b4c445c7adffbd27895fadd7ea00974aab4f7eb27032a46e3cdff97b039d05",
+          "clip.json": "280d6032b3eb9ac701332f1b9a619343ed6d293a4c96a81b9ad1070f3d122b1f"
+        }
+      },
+      "video_000/clip_008": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_008",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "f306dc728ad5be24934f5505c62d61325a6bfa209c3a45b0ecd9b008d9980bec",
+          "annotations/dino_v3/cam0.npz": "36fd8b7091e080d8d71ddce3aac667a7e16ef4cacad6f38a07849bd53709e2b9",
+          "annotations/dino_v3/cam1.npz": "3f4b867be430a6f64011409d0758b6cf14ffd77787a7079351311be3ac71545e",
+          "annotations/dino_v3/cam2.npz": "7ed9ace44b585d29605bd4a11a2cd51b2d8cff23399457c34ccf9ccac4813d80",
+          "annotations/tennis_scene/annotation.json": "c3b9adcf306ca0fe00af4ae45f0ad734fe7afbfdae038d70cb3a67eefbbd290e",
+          "annotations/tennis_scene/pipeline_config.yaml": "0d866ae3de6c0b559256baf31d52e303e348149f9a05d8bd4061314f79f15577",
+          "annotations/tennis_scene/scene.metadata.json": "bdc26de265e7a353c06e134f948a5796d98632922098562e39b1e3c70053bf61",
+          "annotations/tennis_scene/scene.npz": "a73b80384f51663c1ce932641c53ce8f2a1470a94e37b9c1af4fbcd31db2d4e4",
+          "media/cam0.mp4": "cd285b8acbc50bc87b9b3823945554f507358d8444b228f3dd35c30dbf4b1011",
+          "media/cam1.mp4": "dddf51177cfdfe13a5be7f8a02acc2c895600394b9035456e9115ae2bec34700",
+          "media/cam2.mp4": "df37d0e618d51750f586b116b946f13ca7f0ceb594b693e45ee0a3fdd476aaba",
+          "clip.json": "4bb1f63472e1ef9a45d8fc7422fa079a4778adf70aa160b52054224941dc5ba1"
+        }
+      },
+      "video_000/clip_009": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_009",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "e9b754e25c6bfe5457cddca1b1b001b95a741201d92ba0fce711f273ea0ad547",
+          "annotations/dino_v3/cam0.npz": "a2302d818c56b6267e1734c12b5086b694e8fa045eeca81a67de2c534f5dfc39",
+          "annotations/dino_v3/cam1.npz": "67949c92aff570325c3a3622512220e22fa69d454054044110d6b8b01606bb80",
+          "annotations/dino_v3/cam2.npz": "aae860588005f64a4e4b3facedd7da6272c76786ddaae948018092e9802f4196",
+          "annotations/tennis_scene/annotation.json": "2e0c11aad4bc45a57706efc0f39d4fbdf3c0232098c5f711a08055cd9dccea07",
+          "annotations/tennis_scene/pipeline_config.yaml": "5041028b8bdedacd5364083d3b77f77d58d6b60fa21dde4a821dd7f226cc5100",
+          "annotations/tennis_scene/scene.metadata.json": "205ac1b9265a76a5d0ac0f6aa65ebeec9f949ef7529036a2681e97fb251aaa2b",
+          "annotations/tennis_scene/scene.npz": "f5b2a322475c3c3140e4531886079eb0bbde49fb3579c5e3d575627cbddd3e9e",
+          "media/cam0.mp4": "f890ff8c194faac8d64ce65c6ecdcff6a14a880a62643a6d7ae9ce5208f28c42",
+          "media/cam1.mp4": "d6ba31d4be3f98a349366ab6310154b89d8344cd6ac88778e80c33887c361433",
+          "media/cam2.mp4": "ed36c53662f32b7b3f037d1ce9e00486b3361140d1e76163dd29d4468a53b5cc",
+          "clip.json": "69603ba816d1092ad90d42b7db1259ec1565417c2320c611e7fa012a7e9bc403"
+        }
+      },
+      "video_000/clip_010": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_010",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "da93abd9b1a23fc78b5aae7bbc7d8af2b29cea18ed615c402650df4548efca21",
+          "annotations/dino_v3/cam0.npz": "e1a03e558bc67a16cb49c13ac2809e7d7f6eaeb4c8de9c613ca3b0d51e023176",
+          "annotations/dino_v3/cam1.npz": "6a83fd552a616114fd89b4cb52f7d3d372a9153404a4fab34597041dd0dc38f4",
+          "annotations/dino_v3/cam2.npz": "f15c7b4c83de5e7bab1f152ccb77e2afd21c8660c22b2cc117250ce35e6ba3c1",
+          "annotations/tennis_scene/annotation.json": "17b6d133d85a7e609e7f4529b32436bfab809873a512b10f2c817e4f774c3842",
+          "annotations/tennis_scene/pipeline_config.yaml": "dec88fe640b3c16f2023a5ee25006507b9fec3bd3ef13c84ecf33d84ccdc2f27",
+          "annotations/tennis_scene/scene.metadata.json": "cb98f67c096d59be984325dce2cc2f86c7551498e5fa1b05015b883b2b691898",
+          "annotations/tennis_scene/scene.npz": "a7853460ff23789f79cdc2196e02b7c093e349e1b2bf67004b85fb32d714b3b3",
+          "media/cam0.mp4": "0ac292acd91aa8f0fda4082c0ec3c85c3240b958b89f65fc5c3cafb170f8f26b",
+          "media/cam1.mp4": "f0a5aea865e1fe6053daa3f0a08c67f4810451b2c2007a12aca0d4b700a1b834",
+          "media/cam2.mp4": "e1b7b18bfb48a43bd865f4ae8aa1c324fe20a5a54c6730466ee1342ae5fd1170",
+          "clip.json": "27de622ae6036ec9c8be411184bf8eac01a9f1bbf8fca9a9366b1ca041b21a27"
+        }
+      },
+      "video_000/clip_011": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_000/clips/clip_011",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "bd9178e001440b959df484aa0a69f32d1a183d09f3f65d13a45341321f48d694",
+          "annotations/dino_v3/cam0.npz": "1d8559be76a7aee7889743a6c32f081f0973fc8efcfbf7bad4762849e4d499e8",
+          "annotations/dino_v3/cam1.npz": "4f436c9c0befb3d41b53d3ca3ecd65bf6c2aa7605d098142fab3ead9c3238442",
+          "annotations/dino_v3/cam2.npz": "356f177d8dd117af9b488bff48ca48425192825c2f45182a86fe4b47d53af493",
+          "annotations/tennis_scene/annotation.json": "369032f0b9d13cf2fe79e147e5424c355fbe98cd831433df82e5a462dab02969",
+          "annotations/tennis_scene/pipeline_config.yaml": "646961ed01874a2e2514d3274360ef8b51067cf155c485795211df8e175bbf45",
+          "annotations/tennis_scene/scene.metadata.json": "738f69fc4d4e01c875f93cd09e87061ca2ca0e554386e35a61f499db33ff8a72",
+          "annotations/tennis_scene/scene.npz": "fbcbc8a91c7a1810268ab81d2149e2a0f0dd1caec2c83af955212165e6b23c4e",
+          "media/cam0.mp4": "1331e1b5f22dad79c3373263086886191b8904f6564883d809a01de9195807ce",
+          "media/cam1.mp4": "5020a6f380b0d3ced50139d7bcf6b1c1d1ec0b8d524d1314c0141eb1f3b4f92a",
+          "media/cam2.mp4": "403a5f63d4a576afd890d22fbbd062df74da6b90006d632a5fbbe6f20d4572a0",
+          "clip.json": "4c9b5194aec21b9d566dbad8a30903a4033577a8f313f4d83ddf9b92458008ed"
+        }
+      },
+      "video_001/clip_000": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_000",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "c7412acfcec928facf399905574351ef03eb80e590d9b9f9eb1ece263b063676",
+          "annotations/dino_v3/cam0.npz": "2948d437771bd726c0eb0b275c2ee063a1ee4d6be2a150ce9568484b15a36e80",
+          "annotations/dino_v3/cam1.npz": "0b98e675817ae20a38549943335cd4490bcff25eab0b6a159969344d5c48cf83",
+          "annotations/dino_v3/cam2.npz": "10c50363c5d5633f0f18da108bb1f1881052aac2986a8046f69d208d20fe35c3",
+          "annotations/tennis_scene/annotation.json": "9604930c63b3424dbadbbddca643ef6f52fc208427feb960b793a52920eef3e6",
+          "annotations/tennis_scene/pipeline_config.yaml": "efcba8976c73a0e7a25146bf0456df3622924ba2e6effc80bba623ca45c47c9d",
+          "annotations/tennis_scene/scene.metadata.json": "77c792dcaa79171e436477358d45cbcca5e8dc296c4e6b84816a702f0b129dd2",
+          "annotations/tennis_scene/scene.npz": "e9c5c243bcf64e813a24c7233806578bb39535b135630cff9e6dc4b8b4b694d3",
+          "media/cam0.mp4": "e34f7083db31aa4884fb9cf86267b8c0a946cf09f4f09a7ec6e6737c39d9d24e",
+          "media/cam1.mp4": "6ed83bfbcae8d6ccf2463ee3757dba6f1dc02b0de52d24a173cf00c272f39bdd",
+          "media/cam2.mp4": "b8552d7f4373bfa5aa04c8a670d50108259b944ce635d4e7b4ed76fcd810513c",
+          "clip.json": "c2f417ca07956c53ab2ec87116c0f8c42b6c1884b1f36f2686183f016e7da407"
+        }
+      },
+      "video_001/clip_001": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_001",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "d12197f48976ab997c83596741d67a5c570e5a1097831a996d311d7789d77444",
+          "annotations/dino_v3/cam0.npz": "6a09b423e9fba58c343d8eb109c61656be08142532916f1c53280c0957461c2a",
+          "annotations/dino_v3/cam1.npz": "2f2b520821bf06812b12fde0eaacd6c1d69911e10820b45ed608ba9cb280ae4b",
+          "annotations/dino_v3/cam2.npz": "0c1e73c9633281b3c3c2b25f62cf8335cccdebcf3d6a8785ba83653e3bc549a9",
+          "annotations/tennis_scene/annotation.json": "b620905e7f588813ec9508eb1b738dfa20196c7bbbb4706d29b3686e500bf8a9",
+          "annotations/tennis_scene/pipeline_config.yaml": "c720601c91cb3918e4ff82a8094747960eb9723544604ab878e65945426513da",
+          "annotations/tennis_scene/scene.metadata.json": "fb50a3174aac043ced96fde5e22ca1007387d95c8632f577e2b378cf159b56bc",
+          "annotations/tennis_scene/scene.npz": "008fa962d6fcc239bb9fd83ce43a156ab8296428809b58435bd72a22156a6f20",
+          "media/cam0.mp4": "2af67b3720887e9b75918f6c09be893709d9ad383a9d2846dd832df90cb2a478",
+          "media/cam1.mp4": "945838cf381c7a93f3cd0ff03457ebe44f6a6ef64dc9b9abb760934bbcf434e2",
+          "media/cam2.mp4": "b123b6429cc7e4037ee90c6c89d15b915227568f0e07922f98214e080321ce95",
+          "clip.json": "36af0f219298b616cbef39bd57428c01be0ca6d08886fe1ad77b294162a2a6a1"
+        }
+      },
+      "video_001/clip_002": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_002",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "2bad1d47a8c548f8630983562cf0364b36f214bf9363e18625e28e96a696be82",
+          "annotations/dino_v3/cam0.npz": "c0238af83a6ef2e097e30fde97c91473223a83a8c139a490dec1fbb9a19cebf8",
+          "annotations/dino_v3/cam1.npz": "fbafd1780fc5f96370e7c7b9d25a03a23b86902c09e5d5be714b28ee39c79aad",
+          "annotations/dino_v3/cam2.npz": "431112278855476edcad46ebbc42de7bac2889e70e89b7bc6f7310aa829ac5f5",
+          "annotations/tennis_scene/annotation.json": "13a213664066aa40b1df10caedb306c85cde2f34cf1eafe0ab21a793d8ccb5b1",
+          "annotations/tennis_scene/pipeline_config.yaml": "8ba279a2dda2abcd2cd3c4937181259f44811983c147895c4092a8751e979c78",
+          "annotations/tennis_scene/scene.metadata.json": "7bdc65d590b0899211e9a7ef788822c4788573af650b312b24567187e9d94b15",
+          "annotations/tennis_scene/scene.npz": "9a498fac0b94a02abde908673a8afab410327dc5dd5412300805b35ecd768db3",
+          "media/cam0.mp4": "7576480f6403a6a1215856419f8140870bff85c2d4deb2b37ea388eaa9e08a01",
+          "media/cam1.mp4": "aaa0a497dfa169caaf5cc766bd00a400bec509246975ad41b66cac878fa2f786",
+          "media/cam2.mp4": "dd423dd26937aca3ac83c438e28f277442fcad9e28fba273d07fc146600e4a5d",
+          "clip.json": "52313d89d55ece00921ce6f15e3705f7a9d5e304d4ef2c42132cfea3ec2cc545"
+        }
+      },
+      "video_001/clip_003": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_003",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "928c93411bdef068a49d881cf104e21d77eb2f8f33b380c913a6a229c93bcad0",
+          "annotations/dino_v3/cam0.npz": "8e0b46dee438f0f4b9a3d46c17343a0cb5fa07ec178c1a5176fa6d2c62dac0e8",
+          "annotations/dino_v3/cam1.npz": "39f9e5be3471167edaade595345d21e0430c53eca3ae566d0dee384bba60258c",
+          "annotations/dino_v3/cam2.npz": "74abaa2313c4b96f95b88394a4a342ac69a8bcf0371a406112692fc90b80cbd5",
+          "annotations/tennis_scene/annotation.json": "6332cac128c09155454a99bff38dc9d1be52c8d69e3e01f84bf31488676b72ae",
+          "annotations/tennis_scene/pipeline_config.yaml": "86aa31dda4fd5d9896362a78990b68b0fad8626510dd8fdaa9fbb77cc347b613",
+          "annotations/tennis_scene/scene.metadata.json": "db04f62746ab03598461d7a1e8f6e3ccabb1dbe10fbd973179515c41437ea273",
+          "annotations/tennis_scene/scene.npz": "fee776525ac4470344548afb37eaa4539a08080d79dff689a30b968849748aa1",
+          "media/cam0.mp4": "b0b39721ddafc8d8f213248ab4ed8b760a6b045c362a64a248000059b1ed3347",
+          "media/cam1.mp4": "62fde482261753e703f70b6a99890dea04c667ca533c818975bf1f115bd49039",
+          "media/cam2.mp4": "e153e8b1346c76bf840d6eb0ed5a5fc18852c5f0018b3c47a0f8632f55ac489b",
+          "clip.json": "e0d2d5cf08ae13bc90fe90cbee8f553c2cc70758afe0f77bfb598e1be18cee33"
+        }
+      },
+      "video_001/clip_004": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_004",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "d3bf303275f6a541971e5ae0efa9d6f176e8dc25084c69ba7c918d3b257ae4da",
+          "annotations/dino_v3/cam0.npz": "73678b762a16a041844eef51b6454af91780309e7ffb2ec5b161b1e0b61849aa",
+          "annotations/dino_v3/cam1.npz": "e8e1d00fe49e6ce56157271b06b20f46b92baa05b1fa68fc5d1a13790f66f2a5",
+          "annotations/dino_v3/cam2.npz": "4f0cd91c0a5086cbd91c4ff4dd191b706b95e4bf25a68ce882aee540893e4673",
+          "annotations/tennis_scene/annotation.json": "14533539dd091f57b25455d15eab62726e9d2710ea1ccbe7474b1f21f3b7726a",
+          "annotations/tennis_scene/pipeline_config.yaml": "cc8e7c279b5eb7fdc1eda44d5cb7d23e7fc9d9a5de3a221c25faec9ea89c90b9",
+          "annotations/tennis_scene/scene.metadata.json": "892eeb95cf1bb894ed3e95de29dab911f1daeae05921df4f234ae9194e149976",
+          "annotations/tennis_scene/scene.npz": "ca661ee85c9a620163aa2d1e1f0ccd03b4223edf504864a954fb161217148e81",
+          "media/cam0.mp4": "7233cae48aa45b2fbcb704ccc0f3008d4c93e4dc0028ca3bdcdc75ea6b241b02",
+          "media/cam1.mp4": "7ff30151b0f6bd3463dee84c53366f970534ffefe4533ad91301972911279080",
+          "media/cam2.mp4": "2d030fb1efe6510f6a6e1ac15803550de54b35502ebe11368e24c22f4aa4d2cb",
+          "clip.json": "69d6bcc516b5bff0ef13793215c369c27375a59f43cc3801261519e539f697db"
+        }
+      },
+      "video_001/clip_005": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_005",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "81b17b28aa20d2487e611b3533497fa38c649e4f2a22a1d63ce1e81d978bf0df",
+          "annotations/dino_v3/cam0.npz": "7110fa74bb5f378e127128fca020f7689776bfc3e2648415c6e57f42d1e60008",
+          "annotations/dino_v3/cam1.npz": "3e330ad199c7f3c172ee81886894ce7ba1a8d8a43c3e1773de7380b6c50bf981",
+          "annotations/dino_v3/cam2.npz": "ed7012875daf8f8d12c9cc76a1cb925529769a251884ecab5c916f65b89b604e",
+          "annotations/tennis_scene/annotation.json": "ea496ec94651d4ed8e4eb9defae49df142365c6f4046c3379caeec8165b7d94f",
+          "annotations/tennis_scene/pipeline_config.yaml": "af6df1246291805803b3995fc6f5b985e2f12bb7f04036141a3040f4fa522253",
+          "annotations/tennis_scene/scene.metadata.json": "5ecc9d1d6c29e7bf174731bbf791ed153725929ff7814f91ba77aaeb97813ce0",
+          "annotations/tennis_scene/scene.npz": "d264df1d557b1d56704a6e45968560bfc430ea54632963ce9fc46d55158c73fb",
+          "media/cam0.mp4": "bd7d707d1dcce379506b9cf77b2cd0079bc9acdeecd191720d2bfd555bc0b626",
+          "media/cam1.mp4": "72062206002cc5a1456114abd31ef3905650eef20bf2a50de7f0163cf8fa2c92",
+          "media/cam2.mp4": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636",
+          "clip.json": "9ec048e9da71402881227d0464dd35d53061d5dbbb6533dc56c156821484816c"
+        }
+      },
+      "video_001/clip_006": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_006",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "b16d27ba544208c4c3fbdb7d0edd8becdf4cdcac0b2c66f1302aad91d73d156c",
+          "annotations/dino_v3/cam0.npz": "58045a79dca22faac0d78dc2e08800323c5c3ad084c213f546c58b480b62436b",
+          "annotations/dino_v3/cam1.npz": "b6fc1471aeb7283e7f2da90dcb392c2180ee4a1e57c3fc102394f9f15b5e7bbd",
+          "annotations/dino_v3/cam2.npz": "d6400c718b5af80584ce55b5632ac5758d63b2a3f7f0624bf17e4129c44a2782",
+          "annotations/tennis_scene/annotation.json": "0dbefa8e92e623a121b892e14223d09ec2c78c816752563e32a947cc4ed04daa",
+          "annotations/tennis_scene/pipeline_config.yaml": "d3b7138f2c7c160e748409c2ce453c7323cef507a8942b37330da410eda4bc98",
+          "annotations/tennis_scene/scene.metadata.json": "8726cce74703c065f28b14c4cd3671e948763bb907b43e886e594ce52a38aaa7",
+          "annotations/tennis_scene/scene.npz": "c5bc66f5e2b776b943bc0799b05cc4dbc1b109a78c70594b5c44494541df8c51",
+          "media/cam0.mp4": "a815425585e384e93b2a9045f2b86798013e731afa2ac914c9788b0ef8e29c1b",
+          "media/cam1.mp4": "a9603bb11707b948f999bcfb8ae40fba0e933ec2bf3fcf9490fa02df28da5be3",
+          "media/cam2.mp4": "76f83ba9c61b23662b2c91f087c62099e8cae8354c3f4dfad823cc0930b3c94b",
+          "clip.json": "f5bc42b040b332bcc61e193b4c624547527fe69df297ea5a63c3fa5b0b1706c9"
+        }
+      },
+      "video_001/clip_007": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_007",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "fceff3d65b5c88e798e5dfcbfbb92808d767c60c514636fb80f0034ad9d2bb9a",
+          "annotations/dino_v3/cam0.npz": "92cbc7851386dd82887743077fc415edcf84f480f6e35e3f839e958e08b7aa1b",
+          "annotations/dino_v3/cam1.npz": "dd614fccad3f8222b644c78a4fdc436b87f571d3d6ffc10ccea2e33572aad4e3",
+          "annotations/dino_v3/cam2.npz": "951c2e157147aa5bceecb5dd867f66d6faf35db4504dd43660cb3b81199f0042",
+          "annotations/tennis_scene/annotation.json": "2ec6751cb25ebcd7347ea7f32b5ea571705b6050ca3b1fc5b837bc3104090b70",
+          "annotations/tennis_scene/pipeline_config.yaml": "c097b88d26a8b9a957e7f6e63a26a98c6e76158e7ae2dc3467df7f2e93542249",
+          "annotations/tennis_scene/scene.metadata.json": "bf41cde013e9f0f82620f51bfdada6518dc2daf5a99db90e4eb56608786da116",
+          "annotations/tennis_scene/scene.npz": "64ab8c8a4dc693dfae832a818d458d07cb06691416671ae3690e43e7e253314e",
+          "media/cam0.mp4": "e9d5f8fb106dc191c216a67a53e9dc5b41bc612d17fc10f28200eb61576ac475",
+          "media/cam1.mp4": "a9b1693108f782cbc441874abd643a64f00dbb692fad669c8c00a5e46693ca99",
+          "media/cam2.mp4": "c34e8f5de976def4731a29b5449f40375b871072fe811dae4e9f1874af3f1a7c",
+          "clip.json": "425a950c5f93b1404b9baa17fe6ff866811e6cdd32a3f4879857af2ccbc0b324"
+        }
+      },
+      "video_001/clip_008": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_008",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "78b9a496430834fea0c52ee6738ad67abda613135600562e9b404a383a990108",
+          "annotations/dino_v3/cam0.npz": "5b0ed2791a38b413085900eb85fde4fb6d2d90735874371384dd0e337b142ae4",
+          "annotations/dino_v3/cam1.npz": "ea0d4f79581e4798d16b2ae77c9eafe9ecee951c1c94040c393a686e1b7302ed",
+          "annotations/dino_v3/cam2.npz": "a7364b8901620d35666127f687f6b62b46cd71f65a3c19226b990344ff4f5df0",
+          "annotations/tennis_scene/annotation.json": "80fa9ca51b9d4c6e4d0d1a08b29743c8390a88fd5a8a4a79e1030b51e278153b",
+          "annotations/tennis_scene/pipeline_config.yaml": "f02be1b452e746abbf5a74d0b98f1eee69ac2fcd056eb91bd8d739cdb539138e",
+          "annotations/tennis_scene/scene.metadata.json": "c95af2f4ec44ce4275217ac66224a144651c4622f0c1f3d21f68b8b664d16b6f",
+          "annotations/tennis_scene/scene.npz": "497d71c13159006c134b3733868d334ea21cdebc3e6d1adfa7e98244ab51a0dc",
+          "media/cam0.mp4": "dc9fe3b40f424c828f73ea78ef148bc5105d0fc7c55058566ec553c2bf03f575",
+          "media/cam1.mp4": "22405d9dc7cefd689678a2739a29272365ad3cdd05cdf0bce697dab413cf6f3a",
+          "media/cam2.mp4": "b6b659aed7765de0c21491fcc3f2b64d5bb6f4d61698302b86bdea8eceec0524",
+          "clip.json": "f98c98cd5651877638944c388b6eb9525bb2f3ee9459ee76b9b2774e7526d1e5"
+        }
+      },
+      "video_001/clip_009": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_009",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "61d804345ef4d59ac52870990d706a1f66f56634e0d120c0da7b448bc69ffc62",
+          "annotations/dino_v3/cam0.npz": "792b8c9be816e1cfce16269676a0c30304090d9191f3443932c9c9b33ac95cd4",
+          "annotations/dino_v3/cam1.npz": "4db12961dfcf35689c0ab9106d681c55f239a25804568b5b542261ce39d99651",
+          "annotations/dino_v3/cam2.npz": "b866921192e287367960fe22271bd06fdee6d43776b158eb330bc371071d5460",
+          "annotations/tennis_scene/annotation.json": "47664fefb5fd0f76af7fa41fcbbb27ef2fff6053b374a1208d1da43f10b97941",
+          "annotations/tennis_scene/pipeline_config.yaml": "18d7f5829e3cd45ad24bfe9086c3b834436908bcdc0bd1045ffc61367b3be7ab",
+          "annotations/tennis_scene/scene.metadata.json": "7792d521eb2c96eedda83dd2226439413975bba974ca5c20fcede0bece56c139",
+          "annotations/tennis_scene/scene.npz": "d22d8055ceb1cdeb4507bc2639ee3a598b5e07079861661561eee4cf544d14b0",
+          "media/cam0.mp4": "f98844abef82b9249ec109f1ae20c87b331290113cc21cd616b1cfbdc527a96d",
+          "media/cam1.mp4": "9e486057f5b9354cddd3515a5f9c61f7819d5b8a9fd3843b3a3aa37fd99b7def",
+          "media/cam2.mp4": "c1cbdaf10b7797e6546808c0c47d199e4400f1f644b03ba96a40e65c88f70fd6",
+          "clip.json": "b0c57dc011e59067ca81a52ee7ab414b7e68b2552a6668144f98204ea981c76f"
+        }
+      },
+      "video_001/clip_010": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_010",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "eb2e34997b7f098f1bcca79df7d62673566a8d35cddb3d21f6e804897ba9fa0b",
+          "annotations/dino_v3/cam0.npz": "7fb6351576e097188369f2ec744b5f60686c2dd5df332c25a1a24b8282d10dc9",
+          "annotations/dino_v3/cam1.npz": "8ba77ad58845fcf592129785e1bd0aed0ee3cbcbc509a0324a92ab923e520ed0",
+          "annotations/dino_v3/cam2.npz": "7f7012f1c8b9f8475779509af1fc9728c9b4b0781defdcfadcf79b29bb1d4e0a",
+          "annotations/tennis_scene/annotation.json": "961f0be457ef788ec845a6d4c5ec92678afc40559b8a97b215af207f3245e003",
+          "annotations/tennis_scene/pipeline_config.yaml": "4334942b7e1d27fa61d0f39a077f724aaa0ba453c145a3bda30de31885c559fe",
+          "annotations/tennis_scene/scene.metadata.json": "8e8e03d25ea517261bff312daa8a8201af13c7fd90d6fe6566cc0ace06749dc2",
+          "annotations/tennis_scene/scene.npz": "f7bfdeb0317cc3eeeec6e19e0dfa76aba3a981c02653298e08b08322154fb2a7",
+          "media/cam0.mp4": "204fd11ada514a7f8d64e9966ae212eb75463c5bb0bbb05192573a64db1d94a4",
+          "media/cam1.mp4": "4743db3d32dfb887b36a8a831a2fe2bda19d3e8d466af7f6d4790759fd552275",
+          "media/cam2.mp4": "e96f40bcf99b7cd8a5d09e6f8e80e2a32785d3c2e8ce4c3adbe56585248f7601",
+          "clip.json": "548271424da6fceab57f8129094c9be42fd2bc96434e4d5638d19e1b630b6eaf"
+        }
+      },
+      "video_001/clip_011": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_011",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "63eaf1b24b6cd90752680c810077c4805470b8bcfb5ccdd678057fc548374da1",
+          "annotations/dino_v3/cam0.npz": "c05a4487822752d27ac5ea84fe91801334f8047eab28d472be03e83d6473d001",
+          "annotations/dino_v3/cam1.npz": "64fe6c0e9a23f5ebe9c5d9996edf29f258f844d75785e673b8535ca87e252f12",
+          "annotations/dino_v3/cam2.npz": "1c125606c0fd6f22e3ac0f7e4950855fdce8c5ac489b688f2cf811df8297d6bf",
+          "annotations/tennis_scene/annotation.json": "130fbfb43b5c040ca1099cbfcde7e6447c5b77e8ebcaa6f1e5707bbf642cef05",
+          "annotations/tennis_scene/pipeline_config.yaml": "c02dce012e852b3f99d5b5c8de6faed413614652d1d786923df72e3c9a10802a",
+          "annotations/tennis_scene/scene.metadata.json": "b9e1aa05bb9bddce0f90707301f65497c29fa27592e844312f4ff5f30b53d2a0",
+          "annotations/tennis_scene/scene.npz": "99cbe1d5398da2d14da4fd5348b2cb2213b80cb73851c025040b2514bb68cebb",
+          "media/cam0.mp4": "9f2ca65ea4442320180e863e50e8bf833f1d6d72cf21e3451df92c1cb6fb7635",
+          "media/cam1.mp4": "a893095d4e2833d4a519c355d67027fd270a64fe5d0a315b73053d8012e4bf77",
+          "media/cam2.mp4": "35b2138a3a9753c206770516d83363441855275ed2ba05bba708f10a5f18fbdb",
+          "clip.json": "3e9ad19aa88a4ed2f347cdb66d1d10be6bdf426d3b5867914ffe51664a1292d4"
+        }
+      },
+      "video_001/clip_012": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_012",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "63362f6ca9c7ed76a3226b993721bedd88deee90681bb19dee2bef4ddbe24afd",
+          "annotations/dino_v3/cam0.npz": "fbca2f2a88ac73a9ca30d0309ff4f55c31328fb5c6a7aa4d938510004dfc5eed",
+          "annotations/dino_v3/cam1.npz": "ac5f595cf018dafac6a3a3f8dcb71c5761fb5426b2b980948b03922afe6b11e2",
+          "annotations/dino_v3/cam2.npz": "971971fd01cffc3438b5b640e34b43300192663cfce742b53677583cc3b1bdeb",
+          "annotations/tennis_scene/annotation.json": "f6d1170d4e1030d6a62e799c2d2b5f6c5c3c5874d1dbdba2b4b8e6e74a53948b",
+          "annotations/tennis_scene/pipeline_config.yaml": "bc4717a388617a524d8787a15374734fe2a2d44608fd46c4a56e346b96b04824",
+          "annotations/tennis_scene/scene.metadata.json": "368cc07c03f91632862452b90e2d1bc4d067f39330286a24e384f8ae294dfa66",
+          "annotations/tennis_scene/scene.npz": "f25b21d4365f85aaa9fedcf031f43ee94ff8e0a06c79c808b8400f813eb5fff4",
+          "media/cam0.mp4": "5bfe54ee9950cff4c959462aaaa39325878b785012f2fa75b63ab0ae4ee86f54",
+          "media/cam1.mp4": "2619f2d9c32163d46ccb25ba16e87d020beba2ddb7a9c19eaf3e7d247e1385f8",
+          "media/cam2.mp4": "88c8ffe753935a738006de8c1ca38043c89cb38f3ad0a0faf1f7cd8b1b2f83d7",
+          "clip.json": "580823374d0ffeb7b3f3c974a71855b24b48985a5ad00d14fddc313a6bee7153"
+        }
+      },
+      "video_001/clip_013": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_013",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "6623618dff1a528d3f4ad143a7eba620a6ec4d19e1fe05fa41f9aee3430b4116",
+          "annotations/dino_v3/cam0.npz": "243795a1fee0828191703d1dfb677087440537ddc458ddf20bb908a45ba28f4f",
+          "annotations/dino_v3/cam1.npz": "651469a3323b35ee0185558d4565fa4e1c0b07b7ed69e9bfeed021ff6569d7e3",
+          "annotations/dino_v3/cam2.npz": "0312daba382723e4c7b3ca73da081ec4e22536c7bdc0accecdfb22951969ee4e",
+          "annotations/tennis_scene/annotation.json": "ede83f61558e7096c950020d974d73af258c25f5823b76d95f4353351a251971",
+          "annotations/tennis_scene/pipeline_config.yaml": "446bd20004235a7bdf07d25b44792c7421438e4a3a3c0c615df8c62301d2728c",
+          "annotations/tennis_scene/scene.metadata.json": "e8ba43f1c6984789e62700b1fa4c70c8f95437726f7b5c035d88983913a6ae05",
+          "annotations/tennis_scene/scene.npz": "3e52461697a279a056dd8b6349d66127b5893a1412ef6edf62a37f5e9e2fc9c7",
+          "media/cam0.mp4": "882c618bab087b1528bcdf16e0c61ae4e6b7f967b4d6debc43a1a6478ad6f698",
+          "media/cam1.mp4": "0432f1caebb9a915548878f3ab5a3cf3f51ca58a3ee790f5bfb21b015cbb92df",
+          "media/cam2.mp4": "1e563eeefeb1933a7380ee1b0a8e7c9afc6edf107c1b05f610aaa7a6ad73dcb1",
+          "clip.json": "d7e3ba492321b17ddf66250e5852c320944389b53c42a4ccfaa40cd2b20cb1d0"
+        }
+      },
+      "video_001/clip_014": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_014",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "f932a53b02acd5165641b17b9a706c3494dface441f9cbd56524f948b19b62c9",
+          "annotations/dino_v3/cam0.npz": "d586e5fe45b5bc55ac6818cad38d14f679f796bfcbd4b2ec46430f31cda4a491",
+          "annotations/dino_v3/cam1.npz": "b0fbee26d7b0f72be0795e6160ed0731903fa8188790a928be66f9ffc39c5217",
+          "annotations/dino_v3/cam2.npz": "f9f43e456808de990f09d209aa652bf2d13afdbaab625666c68034ea337e6e94",
+          "annotations/tennis_scene/annotation.json": "1e3149d04015d910111357765d2cbcf7c6cb264ac2dc2cc8aec6f7404651e1cd",
+          "annotations/tennis_scene/pipeline_config.yaml": "d9fc680ac2fb58c56c6655ec7b716ca56c1bd12aeb7dde1e8324b6285436d02e",
+          "annotations/tennis_scene/scene.metadata.json": "fd288475245535c8bce9e0177c134b66f974805e974a40f830f323a3abf0c7b4",
+          "annotations/tennis_scene/scene.npz": "84ff1ca19862b1548a9aef4e15e425e866322ce0c9aeb2c2f2bc71c96370e94c",
+          "media/cam0.mp4": "8f0f9d20c0313c3010c4ca0b2b4715d9b97432fd28502059cc35c075b88e8dbe",
+          "media/cam1.mp4": "fd70ce2a4ed99e9d9f1da8481646ff6e1c2cb284b5d1de4edd1cca1ff93a35b2",
+          "media/cam2.mp4": "7b92f257679611391cef5952053fc4a0c68666f5ad4b630dd01ed5b64e195523",
+          "clip.json": "954d41059ee5d608b3b97b3d178f26ebd58dd241711167145bf1480281d99193"
+        }
+      },
+      "video_001/clip_015": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_015",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "3312968a8ae6117c62f69e301e4894ee307e0c4a5bdcb70c750cfdbd4aa7c61d",
+          "annotations/dino_v3/cam0.npz": "6e720b1d936d2701c8a2df038ad56b5d334d21b5d6f5df5d93847de5af8c8065",
+          "annotations/dino_v3/cam1.npz": "1423e21667ffb22460803b3d2113b31559db0d0c2cf204911072f7af468c1b3c",
+          "annotations/dino_v3/cam2.npz": "fc2c2335657260df1839992075f1be079f0f6f11c2eebd92c064619f6a281d60",
+          "annotations/tennis_scene/annotation.json": "e0755a47e7c88b7ad175dd6b1ff58feca7cc99d7a3b75ac5ecab0b52751888ab",
+          "annotations/tennis_scene/pipeline_config.yaml": "88d21d04fdea854f4d82c342c0e0cdb4958c5a40382e3b90d80d3ea7ab78a2ea",
+          "annotations/tennis_scene/scene.metadata.json": "81784019976fc92023a061ad58028a1b3a40573cb55b6a55cbad86d3ed5e9908",
+          "annotations/tennis_scene/scene.npz": "88898377eaf4dddabc414e824792acc3e2357e8bcd421fed8c4e722457c69cf0",
+          "media/cam0.mp4": "c70ac550a0b485f03168b73958bf767be56e1c20ecd3f6d29bdd36a95e169989",
+          "media/cam1.mp4": "3490f1281580650c617b7c75219f3f6e7f4aa839a4022f1cb7b1f203234c282d",
+          "media/cam2.mp4": "6851c04ff3638e28ef77c10a4a2475fd7fb9d844730ad8b26f160bbe3484b3f8",
+          "clip.json": "85991d437e762c1327f6774f9699799f1be94bf76c5cf4578c3db6ad138d606f"
+        }
+      },
+      "video_001/clip_016": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_016",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "125b04d55c8f1e6b46ef6f6aff32821cde4441d9f8608bf4c36e8fbf35b98343",
+          "annotations/dino_v3/cam0.npz": "4dcfef6c4020bd103a5fcfc3dbaf538094f07ca77452926e8e0b94af95912698",
+          "annotations/dino_v3/cam1.npz": "517ff8cebf446c688557cbf744e0ff25d8a8426d2ec983659f84b0c7518ced87",
+          "annotations/dino_v3/cam2.npz": "8c5db1145b3cf2c8d76dd65071690ae632067debc49e77e0ea7abf904ff46aaa",
+          "annotations/tennis_scene/annotation.json": "3b7e3426739a8f0eb2040f596514f815b218bc8e72a6a0be9072e074bc873997",
+          "annotations/tennis_scene/pipeline_config.yaml": "72da969c6410856442a33f1f4b0318587581f7e43366277d712d0c9847ea3720",
+          "annotations/tennis_scene/scene.metadata.json": "89946a483deac191b97d8db64529a97d54cdc44eb6e907ed34d18392f607e608",
+          "annotations/tennis_scene/scene.npz": "f95785cb77f2acf52b098e50f2888b90fa7906bd57fcc44b24842edbf12213fd",
+          "media/cam0.mp4": "b7d98e5998b85f76e6602bbb87606a92900642936f352bf682be1fa24df7956c",
+          "media/cam1.mp4": "6917fa52728918e484a05ef1f00a8b558a0628a4303fd4313a562fbbe870df55",
+          "media/cam2.mp4": "560c76818ae3bf2385b32400c0a096b139c9e03029e63c56c36ba7454cfc3b97",
+          "clip.json": "61165cbdfe9d58c6b4b01cadffed45f9e86894533aa0610b88b43b2b89cfa72f"
+        }
+      },
+      "video_001/clip_017": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_017",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "7a4a280329f09ab8acd9a86d7e9ad61a40dc751e35c01a518e2ef5ec47da2aa8",
+          "annotations/dino_v3/cam0.npz": "3025e9f2b1b70b2a52e7009eecdf790edcd93d5c58cb0a6664fbff99ba027343",
+          "annotations/dino_v3/cam1.npz": "d8efb0afb4c0a1530dad93533859e9be53ab5762fb967fb747c12680f7084db2",
+          "annotations/dino_v3/cam2.npz": "2517799d0ab208a4941c0ddeffbc55a921007fc5a33032e41171e937a82ff197",
+          "annotations/tennis_scene/annotation.json": "d466de47476f1b5bcfb5a034bf8130b335a9ddb774e905eb9dfec53132d66dbb",
+          "annotations/tennis_scene/pipeline_config.yaml": "63b0d5fcdf0a6c38c0f967c2411691b8f54a2fa34d928778fe51752ed8bfa48f",
+          "annotations/tennis_scene/scene.metadata.json": "058a39466d1c9fface14de2dfb5bbb9d126467a615f51fc6299e0bbc3906ae70",
+          "annotations/tennis_scene/scene.npz": "95dccb480a1d74f362b16b0614d8867eddc59920fd3feb57707799b6a6196668",
+          "media/cam0.mp4": "124727df7c91799fcc6c35407cd2fbac5ec35a708021c6bf26f8226a54e45cc2",
+          "media/cam1.mp4": "fb4b1fab0ac129ca2c8bc31eae47d99effad9e43affff171007aed2f6e4a0122",
+          "media/cam2.mp4": "0827155f4b69472f70907ce6b6dc131a65bddb1395083aaa8afd767bb535f6e9",
+          "clip.json": "8aa2b68da66838ab8701fc14c45a571865382de6176fee72c5e0a601e1f335c0"
+        }
+      },
+      "video_001/clip_018": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_018",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "fb3c72122a9ea8f8084fadcec3a7742d5c7e3f30e7af1c512719e67f9aa125ae",
+          "annotations/dino_v3/cam0.npz": "7610795b6e958c514280625ab3c1782eec58b0903bd91904fbe47adeb561efb3",
+          "annotations/dino_v3/cam1.npz": "978d954358cd753416a7a75a8016d156600a696ff01058881c6271ab768e92e8",
+          "annotations/dino_v3/cam2.npz": "38eaed871aa8d07fe8752dbbb2c9ccea41bae440622ffd5f6ef2fee9979c4d4b",
+          "annotations/tennis_scene/annotation.json": "76aa0d8db430246168c42c354d2877514aa4e0490173fd22ed249f2ee5dec38d",
+          "annotations/tennis_scene/pipeline_config.yaml": "f34d624723702d244b55d54a98b4f30f5172d69a2a56d43328d58df2233e2330",
+          "annotations/tennis_scene/scene.metadata.json": "af6c1b1c763058eff8dd1626a76c80bda11ceaabd2109309adaa4411ffa2bdca",
+          "annotations/tennis_scene/scene.npz": "51a9c3ce89a9e6eaaf6c77a68ff58daa2b09a878431d965ac950188ceb11acc5",
+          "media/cam0.mp4": "9695eb31105b04377b830dc1e11f79dacb7a84e4a75b34fdf4ad88d550493150",
+          "media/cam1.mp4": "59cf2901347f51ed4aad07923870cbfe3b54709e846e7cbb014aedf6d05b6c9e",
+          "media/cam2.mp4": "73dffc91498bc68a2d0a4d5a0d27bf53ab3d2d2d64e81a6e0285c427eff5db03",
+          "clip.json": "d8fd6cceb6c10dd90f3f574ea79251b9a188e9eea73ae03e24c5475f772bc181"
+        }
+      },
+      "video_001/clip_019": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_019",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "5ed207d122ef99957a8111a85d2262d647a84403e4875ea119f3dd7ec2ae613b",
+          "annotations/dino_v3/cam0.npz": "1a198d04a9fc55376365af2092fbb73d06f345e0c5ba126f531be8bbfd7e9203",
+          "annotations/dino_v3/cam1.npz": "15be063a43a4ec4bb1608e02049d4b3d723068fac783d3ab0d19235619095f9d",
+          "annotations/dino_v3/cam2.npz": "b136cfb366c7f74b729e410bd70a120607857dd8d658ce9763b05195e6ded942",
+          "annotations/tennis_scene/annotation.json": "dd3fe8ea7d8e1b61b3a70b3427e12dd7a2f305e2edf1596105713e65aa5b0e14",
+          "annotations/tennis_scene/pipeline_config.yaml": "a03be02e092ea220f77b96d59d06a2d70f190edc9c93b36ec2ecbe7beb90b518",
+          "annotations/tennis_scene/scene.metadata.json": "0340369aab1b1d9540e68b935b32f2cdeec9550b219322d740e71266f2dd77f8",
+          "annotations/tennis_scene/scene.npz": "659d3b2e09e552cf0d259e369c5b0583689fa78c583971a3d38c5f41241fed4b",
+          "media/cam0.mp4": "5cb6fd0e0876ad6ee3b7ef65d995eb4f1ded5a07a11af19dd159920ca2fccd52",
+          "media/cam1.mp4": "0b24a25ede2d5ab3c60c626252bd30216b9690503264fc5caf947d2ebe89d925",
+          "media/cam2.mp4": "a6f55b8e689b1f528a7d7005f50184a5359b3a007343931fd909a8d82b3a4d9e",
+          "clip.json": "825236ed8870a5ba66130cdd1876621dae8cf1aa60058fe44348b798147652d1"
+        }
+      },
+      "video_001/clip_020": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_001/clips/clip_020",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "16ffc54e094942e32d91dd7aa25f2b652561bb15548d6c7626a8492a621af448",
+          "annotations/dino_v3/cam0.npz": "be53c16ec459a1c98136e0388217dccbf3b773c296619db91fa3cd5171f923f0",
+          "annotations/dino_v3/cam1.npz": "6c55752cfc849bb6e9a8fc5a599156f957c202899722eb641a7fd1301b27235f",
+          "annotations/dino_v3/cam2.npz": "98d7abd364154309a3df3d973c37f7e8c7a854dac1389ed0c376a5a0ddb3aedd",
+          "annotations/tennis_scene/annotation.json": "ef2efe03469d319806eebf2c66092626fd71223940eb76e4fd1a7848a6a62ef5",
+          "annotations/tennis_scene/pipeline_config.yaml": "5cb04c1f37f1aac62025d80a83ec8d9d565115a92de3c77e6f71c1afa76958f1",
+          "annotations/tennis_scene/scene.metadata.json": "28329acc51fc724dc0979e9e9e13ecc790ed950860ceed59787cd4d276cde15c",
+          "annotations/tennis_scene/scene.npz": "4598b3890523df36f0c315f5d7fd33cbb7d514e221a1e91b9d2c69cdba0c4bc1",
+          "media/cam0.mp4": "c4a95d2667cde7dc62226d61edefa108910ce94b501c58e4c04ca79e20b1ccfb",
+          "media/cam1.mp4": "c146369c44f36ae54c295475abbf38e690f412d0a4980c0c52d90893d9590983",
+          "media/cam2.mp4": "c1c633c75c1ea67c038b9e5fc0bdef78a164e2124daac41a4d1bba8c5990da57",
+          "clip.json": "3c649aaa71e26e4cab8fd4c30fc9f644dc2c8916c16e0fce21bb8f4727d61efa"
+        }
+      },
+      "video_002/clip_000": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_000",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "655ee38efc2524c527e7c621f9f2d988c13e7aeeb5ad711f73b45904407b3b1c",
+          "annotations/dino_v3/cam0.npz": "38cb39114c1140c41fdac3e97ed2b57546fdcd9064965cff3c70b43c1a43cfd9",
+          "annotations/dino_v3/cam1.npz": "1398542b8f3f206136cd9bd5fd8f1e597d16474d341d3f4caced817dab2b97bf",
+          "annotations/dino_v3/cam2.npz": "37327828e58d56b534d0cdd65c98d1f7ac78dec0ce78eb3f628beb39d197fbc4",
+          "annotations/tennis_scene/annotation.json": "dfb0271d76d122ca3bd6cf5a14aaf5423739b57bd9f461bb87e238bdd93e3914",
+          "annotations/tennis_scene/pipeline_config.yaml": "86fd77664484a96d13c05fc5456d17f368b7d1a0500383b6feafbc98d9e794cc",
+          "annotations/tennis_scene/scene.metadata.json": "51133a480d87db667322caaaa712d8bddfc05a53af4ae139972a6b25b9e259e1",
+          "annotations/tennis_scene/scene.npz": "940b4c0797d2df4da0f863b86286721f68ba83f4348b52d8603c7c1a01736db9",
+          "media/cam0.mp4": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
+          "media/cam1.mp4": "864409b986146f10fa0ee16f49ae9d287716f56cec472fa154e4b3919770e1d5",
+          "media/cam2.mp4": "bf6c06a5d51a725a8dd26cf6078c068415e6ca11b1d1b209bf49dafabcfcf74a",
+          "clip.json": "04e62272def35c1edfe3104d535713628f0e49bae43c1dc57eb597b747a35b5a"
+        }
+      },
+      "video_002/clip_002": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_002",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "d9a4224e3b0a9fe73ff796ea21fe4858ed1881b165fe07531882a3e96c741e50",
+          "annotations/dino_v3/cam0.npz": "6d6d9d50a764a862feb503556f7e873566730825095939499ecf7c78d897327c",
+          "annotations/dino_v3/cam1.npz": "60e7c992c73b1aade82dea567a0d21eadc8dc94e6898d6cd26e31fcc5e66204f",
+          "annotations/dino_v3/cam2.npz": "9efb6cad77f48aaee17b874e54763e0973425b080f2078b0b5c18b570aad43ca",
+          "annotations/tennis_scene/annotation.json": "1d289f4ea305a986a1ddd93716706c9cdca72110089959e58991a734198ac540",
+          "annotations/tennis_scene/pipeline_config.yaml": "4f941c06f5766581b3b50749702543ea4c3152d1c58074f94a88c7c855320808",
+          "annotations/tennis_scene/scene.metadata.json": "5c7796a825a94c48c9915f6549636970d8b24041a4e21b5cf0d73e1ef11742ce",
+          "annotations/tennis_scene/scene.npz": "b39c7f12f1cdb4683ac6534af56e6e0a6b52469cf69cab32dcc9a0d310c4a9f1",
+          "media/cam0.mp4": "4f91ade097c4c13a5398b843d6ce0dc7796f7431c3ea46df43d59f153e57f93d",
+          "media/cam1.mp4": "8ac1a75da8bfa870f7b4d9c8a92bffe60d45ea93289ae455a66a608720fecc53",
+          "media/cam2.mp4": "c857aa8b5cb1848b4b0d1c312489a082e8068854d2d515d5e77a8727aafc3d88",
+          "clip.json": "aa71cefd7d5f02bba6e1cd48332ac397754a50c36b1b4bc2caa2cc6c796ab173"
+        }
+      },
+      "video_002/clip_003": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_003",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "fad282db3c856d2daf5f8820fd39f4da9b9d82b6c097c5b2160c47887a3faf41",
+          "annotations/dino_v3/cam0.npz": "2d81686699073397a687616a877525fea52396bfe80be96a54691c2f13e59641",
+          "annotations/dino_v3/cam1.npz": "d8a8cec5e8d811eb849f96e1bceb38a53ab5885aa3bf7a3e7811ff73c45442cd",
+          "annotations/dino_v3/cam2.npz": "2cca9b52fae6dd7d236e3a5988aa60404ae25b895f0b4890e9c5d1fd31b9b2e2",
+          "annotations/tennis_scene/annotation.json": "e76b73a88cd7ee5308eba9915cb97e51a105387eebab9c1cc9120df298d14ed2",
+          "annotations/tennis_scene/pipeline_config.yaml": "e9cfe9e9aa5e53be652f14f1bd813dffb2e7729e58673c73656e2fafe1a3870e",
+          "annotations/tennis_scene/scene.metadata.json": "b45e138be63737b844f490fdf753c812b306c0c6b575d8ad72a7110ef8628e23",
+          "annotations/tennis_scene/scene.npz": "beb61d9818150c157b93ff735e158354c6dc1076aea936bfc147b15604879f9c",
+          "media/cam0.mp4": "b5f5dcf6771c178c9bd9d58429f33ce9d279c078264f3a4da16044619e86ca60",
+          "media/cam1.mp4": "e1c13acce2b8a4af7e2b4d5bef9de4bb6f01576c785b00f3b24a3bf98c060f17",
+          "media/cam2.mp4": "213520ec0b34c86e0dd1fb17109b3b63ec817269ae4038cebab03d317cd1992b",
+          "clip.json": "4fa3216381080a06d23ae0c3ca80cbe277453fd407fe3d9ac6d95b09c845f940"
+        }
+      },
+      "video_002/clip_004": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_004",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "a215be6bf32de8f017096c1e29fed22e3caa7784385ae0f54cdacfda4a7d68c1",
+          "annotations/dino_v3/cam0.npz": "107c700efb378b95b9aeff5ac6f00e4ac84a13f665c7815c285914884b607056",
+          "annotations/dino_v3/cam1.npz": "5151d6b85cec8ca58444257d8e70ab28a01b372b62ec450be5edfd4055bef0f3",
+          "annotations/dino_v3/cam2.npz": "4ed53f966a1057b724208d5bae9e3a164d9ca6326bed595a8a8ff7adb311351b",
+          "annotations/tennis_scene/annotation.json": "994edea43d84f42f6b5159302c7efefc6f10b7cc63b5973b9ef80a39113c361b",
+          "annotations/tennis_scene/pipeline_config.yaml": "c305e46f462dd26caca97cbcfae425eb0e704832b3945f74f757366882ce5475",
+          "annotations/tennis_scene/scene.metadata.json": "fa498377e457b5a0ce706b725ae32993673f368c8be38e125581319b2279493a",
+          "annotations/tennis_scene/scene.npz": "0111b9cd303ce4df4a1c5bd04387ff4add0791961b2e7e93e34b6a4d9b0bb04e",
+          "media/cam0.mp4": "4b5b11a0ecd0bab6ac695a0407f23a59479096f33829a60b07fb186a4d1c8fa8",
+          "media/cam1.mp4": "b80474c6e2d7a57c98fc41c65ab1ae48eb227460ad68cd08010308e3a8e30bf1",
+          "media/cam2.mp4": "11ac8f82089a489ea8c66ba50d436226c5c9d0eafd881e331cfd90d8c836c710",
+          "clip.json": "9ed2ea8aa8be2f14ac7372c4e039ac3a7716838981a3c04744346014eefaeb27"
+        }
+      },
+      "video_002/clip_005": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_005",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "e2a3e417853789ce6431c0d2a6fecc95fab8aac357cded71d11dd62e002e0263",
+          "annotations/dino_v3/cam0.npz": "8eeb902887034e02f5655eff9ff95c6552ccf3972172513d7dd4d8a6000265f2",
+          "annotations/dino_v3/cam1.npz": "cdbcdf675627e143ec1edbbfd0d356e64ecfd888f993b816b69629509fedfb04",
+          "annotations/dino_v3/cam2.npz": "f47bee8b58ec7363057f2e699dbdb4a8ba0b32fa2a03c9884b2102528714b257",
+          "annotations/tennis_scene/annotation.json": "9aeb8f04fe8b1c976a7b4d4ab7e0f5db5176a3108d4cabc206da5131c581be4c",
+          "annotations/tennis_scene/pipeline_config.yaml": "b2aa072a760ebd8c120e5dfb6ad2d7e68b26ee3286a90d21084a2332532eeb30",
+          "annotations/tennis_scene/scene.metadata.json": "4f78b42202d71b3cae999f790604976f687c36faf706c263c7048e84130cf2ba",
+          "annotations/tennis_scene/scene.npz": "4a83863e31b4bbaa0557455e663b59ca0ff37f11c6800bb25b772e92bdc4cdb2",
+          "media/cam0.mp4": "3b65bdd08ce8da00f04e5ab355a3694850e6cd93b1077a796d01e3d5a6bfbb42",
+          "media/cam1.mp4": "f34fd749cdaefa72d05b3533a6354ed946037464285181250a11d39331969c8d",
+          "media/cam2.mp4": "a0acfeb0ea4536117e05c23cbf150abcbb764c078c766825e0e811bf1a1ebe47",
+          "clip.json": "70f56977a31ca02531fc2e0669ef9f0b64211d4dcb2fa0de7c2d7d7cf2c84cd4"
+        }
+      },
+      "video_002/clip_006": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_006",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "19fc3563871f44f49f98a9c0620be757ed0e1b4b90dff76bb91694890c0dda92",
+          "annotations/dino_v3/cam0.npz": "0e41f4ea0ae39b561eff1fec272d27a138369718131e36f43f545129f9a1b85f",
+          "annotations/dino_v3/cam1.npz": "347c19cba8c6d69551bfda6bb671a92309e2f90db76e6f60c61e497ed91c28af",
+          "annotations/dino_v3/cam2.npz": "e70342cca04777db6b1a8dc72f997a9355874198b35bf7181fd6f5993999bffb",
+          "annotations/tennis_scene/annotation.json": "91a95223801f5ade6d8782ea8effeb8ea8cdb1a087df6558ddae19769cd18112",
+          "annotations/tennis_scene/pipeline_config.yaml": "626857fb47c633eb1daf9299724a4e83bad76c5ca24637e6099108ce33fe6c7e",
+          "annotations/tennis_scene/scene.metadata.json": "c9f3c287816eabb38ce6783662817de1f6ee34d5bd80c2d5f0696933774e8d7a",
+          "annotations/tennis_scene/scene.npz": "301cd3da34e2622c35cbb6311ed9ecd2c3c9627d03855e87ba2f4c50aaa4e348",
+          "media/cam0.mp4": "ed7c39b8ab95c71c90b00c28bc9e45f9426bb3653862512b6b5e952504ebb883",
+          "media/cam1.mp4": "e6114ee3f1408b000b5f404ca1bca9cfa913867c11693af2aacaf9eca0a3c7df",
+          "media/cam2.mp4": "772f444ea1e3cf9f94de2115de9511dab0e50a2e332fa1d7ff91b198667b164e",
+          "clip.json": "483d17fa9103d50a950bba119b1127cf5ff8b98b85feaef43e8281325aa24557"
+        }
+      },
+      "video_002/clip_007": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_007",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "b112fbd840de068854d9b580b0d94a7f69ffba8b8d83eea7dba7fe39bf8d79a5",
+          "annotations/dino_v3/cam0.npz": "3577d951937b2b07cf516f7a8a284bad565514815fa1bd937c00d40bfabb5070",
+          "annotations/dino_v3/cam1.npz": "49ba20ca68bdf1e711e4a83c7d59dfc739b46b06162b98a3d20513790c3fd30c",
+          "annotations/dino_v3/cam2.npz": "c3a44d84e53f54de1d4c99fe855371e3ed2678874044a4d51b41948b42a15f12",
+          "annotations/tennis_scene/annotation.json": "6e843daf5149f832a3300d7866b8e59a27eb03efb338b4dbf34cd3963095488a",
+          "annotations/tennis_scene/pipeline_config.yaml": "d15935bcefad597deb1dba10725620051b4bfbe5e34b39bf036e391efe9291d2",
+          "annotations/tennis_scene/scene.metadata.json": "d8dce7ce3571c682778e2902703c6c684d9c8b0dec7beb75e88c35b2105d0408",
+          "annotations/tennis_scene/scene.npz": "2325f06587e2258c0c6d75d0098326d7612b7ed5a09e71c39097905cc996c601",
+          "media/cam0.mp4": "ea98539e546ef4a5bdfa419c5657e7aacaeb02231d2f6d22ddbce919025b88fe",
+          "media/cam1.mp4": "f03410bde1580da7798fda61f99f9fa372d2002e840bc49873210ae5e4206fe3",
+          "media/cam2.mp4": "0ca6aeb589e092a907aed1dc19c9358326262dc2a788eead9400b0f923b62f30",
+          "clip.json": "a10d5661ba883fc0b4f62604a2742b43b7734a1deac48a9905fe0b5b07955772"
+        }
+      },
+      "video_002/clip_008": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_008",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "48446994fc54407ff21df2059d9b10cf4597093ec6c95db133640d0460607395",
+          "annotations/dino_v3/cam0.npz": "a215f87cded93a289b07909178cab0bb60f8e2f7f2657f1e9eee435ae4662c8f",
+          "annotations/dino_v3/cam1.npz": "ee8c4102d3f9cebe72c4a6162274a84b9d780c53681f2751eb78ab637e643422",
+          "annotations/dino_v3/cam2.npz": "051f0bb2b45ba4d328243c8eb89a20ef88a9ae57dfb5a158762899e260a5c1a7",
+          "annotations/tennis_scene/annotation.json": "1b532e8d166a4074801844d6487630417540f73afba0f4c02347c6ef3c413466",
+          "annotations/tennis_scene/pipeline_config.yaml": "ef699ef0409f62c0c1cad13bdd669312c233320b64c2f736d776657b74e8f7b4",
+          "annotations/tennis_scene/scene.metadata.json": "cc5011b29fd4b473e9ef05edc0a826915ea668c7097821e71360222d5cd45971",
+          "annotations/tennis_scene/scene.npz": "394d7d0cefbfb4f2aefed7bcdc58a863678cce746fb63db857f27fa1f001a58c",
+          "media/cam0.mp4": "b9a4e04941f190a12b118ca977e6fa750289550f156b2a6ebea3d4496f567c4e",
+          "media/cam1.mp4": "400e58b6582112aa488f88f53e2f4b1551e3d675a5341a12c7c3a4e9197fa1cd",
+          "media/cam2.mp4": "ff9513e269c21acbf71d18313991ad0a4d55db8cc896882c3310792ac398af15",
+          "clip.json": "a59ae9d968fb392e700707bca48731edf48b17b843599fe3cfe437ffb364ff7c"
+        }
+      },
+      "video_002/clip_009": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_009",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "66aa5030a1f1c0c03e74c8ab1f39e5bf2ce9adf13e517ad08f0b6b0a201bedb2",
+          "annotations/dino_v3/cam0.npz": "7d1e48c5845c98ee89616234945a8b116ee022557355250c3e7f9982ef1e780b",
+          "annotations/dino_v3/cam1.npz": "a24cc03f3d21c77807c47425cf29063b71522bde7cdda677e0604c33f3b69354",
+          "annotations/dino_v3/cam2.npz": "9b53408a1d6a541d2a89a26c65e7772a6848310e25bf736d04757a3084ba3064",
+          "annotations/tennis_scene/annotation.json": "8fe6ab4fa5523fd6449ae486d41b993d1b637886da4bdfbf803814ee108b3013",
+          "annotations/tennis_scene/pipeline_config.yaml": "99b25467e86c7190c433015c700c60a5f937ca1acb9e7598fc45082303fd3bb0",
+          "annotations/tennis_scene/scene.metadata.json": "4564fd8527e7ef942e620302f80e625e74a832c3e674bd311cf95218587ab442",
+          "annotations/tennis_scene/scene.npz": "e6e1d65969191aeada6d2c5dfa3814538ab27eaa8c72855108c48800cfb31cbd",
+          "media/cam0.mp4": "d8434abe396d38e08f2e6ae30d95ca15e4d444b27d6dbdb357ac7ca28e695c01",
+          "media/cam1.mp4": "9c149a399def866df17180f9dcb65e22d0edfa9969529553974d24bb8d66227f",
+          "media/cam2.mp4": "6e5e89c0d274bf9fb513581a4f8c3b5419b100d78985d55558613f2c149d01b8",
+          "clip.json": "a9d30e09c8b7ff25b1e3d74248a5c18e81a04ba20de6421da82ee18e8aa04c6c"
+        }
+      },
+      "video_002/clip_010": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_010",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "4a9c291490db01c8d74750fe3a7cbfa76d9764fb88887b611fea1b3a3f23ebbf",
+          "annotations/dino_v3/cam0.npz": "3806e42f726b996b7a52d3bd327a1bddbfef15dcf078711df616d82efa1c9984",
+          "annotations/dino_v3/cam1.npz": "10f6602307d761853c4a00adf75104b429b698ba83549fc9de1d75165041bda0",
+          "annotations/dino_v3/cam2.npz": "d359b55465f0b557618403c11435ae9ecc69b234691c98e61f549cad85048f23",
+          "annotations/tennis_scene/annotation.json": "0a5d5a48d5c52bc319ca23f9a18f335dd91c818bfde7aa86dca47dbdc5a78d47",
+          "annotations/tennis_scene/pipeline_config.yaml": "1ce0e58cf5100f01cf862494faca399f7fbef054b36376fe0d57952ea671bdac",
+          "annotations/tennis_scene/scene.metadata.json": "7b94c0fd240c78957efc83b2093cedaac63c4950362a54706a690cc8fe7451d9",
+          "annotations/tennis_scene/scene.npz": "ad4ad81a7c7de786ac86f550208b9f714e552a7ff8d7c9d3190f4c56a6de0809",
+          "media/cam0.mp4": "0d684dc5f4cf586257aba4a62b19e4427feba4bd3751e3b8b977e667502d463e",
+          "media/cam1.mp4": "a973020812d1b476075cd650ff4cf653c3716dac44c0315be2694f73e14aa94c",
+          "media/cam2.mp4": "662b89f730bd004fc1ab742b25943e333b5afd822444703a2666f0027358eb4b",
+          "clip.json": "e3ab8e4c5308c2baf8e53f78fabf4a631a111bd49a62ae05df356674c667b38e"
+        }
+      },
+      "video_002/clip_011": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_011",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "6a095785215a0b63ba07f8d1fae24aa01222d2d8c2c8ccff217b0837237b5205",
+          "annotations/dino_v3/cam0.npz": "c26330c756fc619ec6b5e71d2054e3b45eea658be7b31c81414b2de6add6bca5",
+          "annotations/dino_v3/cam1.npz": "6bf613a099653c52b9f36681a148dedc6e4b403cdff104a424c766fcf85cb7e7",
+          "annotations/dino_v3/cam2.npz": "1d21feea881e7a90bcdc76840a5ee65e9f6c1a8e3de8b5ec5bc64601f8a2426e",
+          "annotations/tennis_scene/annotation.json": "fb1f863c6a880cc091d3aed0b00aeee9e94b8246500e11628438f2bd4340ebf6",
+          "annotations/tennis_scene/pipeline_config.yaml": "4434173be264b1e2b297720e0ae01cff074cac9416e0716c0ab371dd08d469d0",
+          "annotations/tennis_scene/scene.metadata.json": "564a79c45a9a3e66098de610c474a070c506455bf6be7774387aeae8bdf8a90c",
+          "annotations/tennis_scene/scene.npz": "81ecb5ba793cdee6782cb87d91958a56ab5bd6b24ddf99720094bd6e95efef13",
+          "media/cam0.mp4": "f293010b9a9d92b5ee0c11241499e9fedaa8a4e6c2396e98903e3d29824bc437",
+          "media/cam1.mp4": "4f73cfaf2fc0bbe3a91d29e3b3b51c7ea7557beb9fc0ce466e6bcae9c5c95b28",
+          "media/cam2.mp4": "70f88daacce74545af6e253ee181c5e8b3a312ca3f994e1a3b71963919e179ac",
+          "clip.json": "208484603425302a28d0ba1230594f6de94884ddb86c1c6efc50ee363613a9ae"
+        }
+      },
+      "video_002/clip_012": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_012",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "4e4e3a95a8721344c0049eed26cdc172bd2b3df67f4b91a6040517e2dc1c9c70",
+          "annotations/dino_v3/cam0.npz": "ebc8b3f6f7107bf5373edc4f7140fbd29c5441051cf2289025d23d7e89fade0c",
+          "annotations/dino_v3/cam1.npz": "d42d0c67b034809b9c75434259c837fb2dc2e50aa8b0f9a36331fefaa2cd30cb",
+          "annotations/dino_v3/cam2.npz": "2174aa6960a2a584641b5391005d9f11fefa603878e8309eb0dcbf7ee8c0bb55",
+          "annotations/tennis_scene/annotation.json": "8d6e2823dc934726e71c8fe8b36afef9869032179f46bc12fd94b668e61aab75",
+          "annotations/tennis_scene/pipeline_config.yaml": "4f1e34d71b7cf2fce795a6b39cf28c099e88bcba6435d850b16caf9d6546b68c",
+          "annotations/tennis_scene/scene.metadata.json": "3afeee2ad2e0f6e378fd7db4cce17243ade1aa5784895d545e8a5ee8caa213da",
+          "annotations/tennis_scene/scene.npz": "80db91a7a12d20c1209eefb9177daac18402e0ffa9c1c2cc5a1a58d261567955",
+          "media/cam0.mp4": "08c5d7e8d4e9e5756841de4e23c2facd2ef57ee25bc8c799e3a29e9fd3f06711",
+          "media/cam1.mp4": "3f0298f9637a79bc9f885fff54945198f4ebbdec5a0463e76e48414aadd9db80",
+          "media/cam2.mp4": "c88b65bc239c102554f4d0b1ee92882b30522f70f846c8e3251927ea613f8f3e",
+          "clip.json": "ac2bc5bfb8331dd9f32b986758bc14f40836a8f9a92dfa08e6805557c33f9739"
+        }
+      },
+      "video_002/clip_013": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_013",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "9582781e8f25860f9fe02d1d0bdb1cf64a868dc15686925d8e8e3602e997468d",
+          "annotations/dino_v3/cam0.npz": "6d1982aff8792f54fd6ad678ebc881e1c3b6f8ceab7b9a1419c63a193db7daa4",
+          "annotations/dino_v3/cam1.npz": "4a05ce1e5feab23258161f260c1fe69dc03665b78319f7de250d182610f5716d",
+          "annotations/dino_v3/cam2.npz": "65557da025733d65a2d3aa36638fc632940b35811f6b102fa21931415584b990",
+          "annotations/tennis_scene/annotation.json": "5fafa76dd891ee860752a2c9d5d783b6782711c62a5302529575d56a084f671a",
+          "annotations/tennis_scene/pipeline_config.yaml": "e1f8b99e770d62495d4545f726316d4915b55dbfc3b2553c553c32912e17b616",
+          "annotations/tennis_scene/scene.metadata.json": "116aba15ce058fd3d0caa08d0e98cf381051e1aa3a9de0bc6090edad8ef8dd2b",
+          "annotations/tennis_scene/scene.npz": "b3e438cee6e734f4e3479b3af199dbb0011f7077c9465c3a2868058bc45b0e96",
+          "media/cam0.mp4": "4f2e7cd91ff9f661feaeb9d3b987336c48dcec55ec99e41f9f7d55b1f646acc3",
+          "media/cam1.mp4": "12ad6a441ee2381324df1e2d412d73742a7f6d677d8cfe62b9d0323527111075",
+          "media/cam2.mp4": "1ab899862573d0c4c72d0b1e0d8583eb2fc0200b1df57d2b43441113c88abf8c",
+          "clip.json": "e0c13299719434c50b2eeaad18453afaba704e9b76c34ac01ab06846c01e91d5"
+        }
+      },
+      "video_002/clip_014": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_014",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "4f81bf9f3e2f6e97e9fa2237668f21b59bd34e9506b642f651f38948a0d1cd6c",
+          "annotations/dino_v3/cam0.npz": "c782cdfaee36fae481ca56bb973de95224680a10325d6165fef07c3375070787",
+          "annotations/dino_v3/cam1.npz": "575f179ce629a9e0c2c3fdc185179ec38792734945f883c94bb5c71b0a0c6b7c",
+          "annotations/dino_v3/cam2.npz": "ee5b655e58c849adbbeebfb56d5b060a0b2d9cb39433e337e56dc1430f179266",
+          "annotations/tennis_scene/annotation.json": "04053d35e6fb2ed5e73a49921c4f082fe1a0c1c021389f09946ac5c1aabd44a7",
+          "annotations/tennis_scene/pipeline_config.yaml": "41604f4161b97c554f4fa735aef42b7e4f9d394849790ee0d87fe1ae3c3df2d7",
+          "annotations/tennis_scene/scene.metadata.json": "e7d45f691ef939af8c1013bf913f648009f4b602ce91dd344e1b9ef1c32e51c5",
+          "annotations/tennis_scene/scene.npz": "8733cbeeb076e2b9bef7ea871d175ce633523db6e6c88fc85f284e2ad8252e1d",
+          "media/cam0.mp4": "276f5649159f159e7697b9d30a3c264bc0963f54adaf2af13e3751b6e5149316",
+          "media/cam1.mp4": "c78e21316f290d799855920d3800e0e0a7f17f927bb039f3f5aaac0e1686b071",
+          "media/cam2.mp4": "46ae1265662d1bc475bc1f74244ffd2064bf6a9d9f1dd67ea7f499dfdf356d0f",
+          "clip.json": "f2751c49eceaecc4e9c9ea78b128c6e3f281d9be181e0b3e4bbcc46cb223fe41"
+        }
+      },
+      "video_002/clip_015": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_015",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "15c6b59ac9de1c9e1f92f3a6cf01596e1ac496927fbb69c5a812ae82ab84cd1a",
+          "annotations/dino_v3/cam0.npz": "7c89f32763f26a7b4a1318733b6b3e41b8b3ba64e244bfcae5012e6f43f16d20",
+          "annotations/dino_v3/cam1.npz": "cc5840f5cd156e2a39a8ff713616eeeba0dc3dbd7eed22b0db2a7ad87d3655fa",
+          "annotations/dino_v3/cam2.npz": "2cdce53bf6f7f8c7d3c6f84b05a12c800c29a3672791c73aa9e215faf4c02b6a",
+          "annotations/tennis_scene/annotation.json": "6db94acde905c2e8cab0c1c7217c0946a7c576d785add2130162877a1598784d",
+          "annotations/tennis_scene/pipeline_config.yaml": "ea1eeb072761ac0d59b9c98cb29e1caeecf61a5e92162570441982ddfa56166f",
+          "annotations/tennis_scene/scene.metadata.json": "7b906b9a827cad3b5a088cbf841ca351749898e2f11c5d27ff74393c92f6e7e1",
+          "annotations/tennis_scene/scene.npz": "6776d841b8b661286dfa7034786f8a2c2888e0f1aac6f46a2e32f9cf2379549c",
+          "media/cam0.mp4": "12ad323bc32077d6c3f94236faff05f9da8e8bebd10d71b57e86b1b3fae31744",
+          "media/cam1.mp4": "43563f4f7d667a6671abc22c3c7408c9f884522e15524e5bcc883b2dc54ab263",
+          "media/cam2.mp4": "8add6adf33396662b78abc2be1f0415d782965c269f4af5cd78fa9e2ecd6e843",
+          "clip.json": "c161194f84f71f1107a730a3ce8ea3894dfcf9739495196aba350cd4abcf4c29"
+        }
+      },
+      "video_002/clip_016": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_016",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "467063db07e074fde76231e916f007ddcc264e83fe4a087b91642b77ca55a633",
+          "annotations/dino_v3/cam0.npz": "a68534043de3ae3dcb60403cf74f598b3ed45fc63655a56c67944dd4393c4154",
+          "annotations/dino_v3/cam1.npz": "55441dcb12b0b868de8217b50fc809790bf0ab158d40f3fcdc835b999567657b",
+          "annotations/dino_v3/cam2.npz": "93059f215c97ade44a9c187e1ab1147ae68d5f8c01a01295417f542de013bd71",
+          "annotations/tennis_scene/annotation.json": "364f4fd7301667324f8a1f17b36af54e81ab73a61e14c22bc861c8dc09b26ca5",
+          "annotations/tennis_scene/pipeline_config.yaml": "c7cdf3c722b9ff9ed5a6a2a2d8055b12ae83b9a9f2a5e85e89980420074c1324",
+          "annotations/tennis_scene/scene.metadata.json": "9a817b39e23454a708860471a767b571869b8f0fc3eec1548af3411e987f7e53",
+          "annotations/tennis_scene/scene.npz": "ee560f5b81a861fa5d417553099e43e02e54f9834eecc6177ead2ca0b2e4924c",
+          "media/cam0.mp4": "3cff7230a2cd05f9403979142f86cfafc3b23fbd0a6b888bad4f24e03e40deb8",
+          "media/cam1.mp4": "a7ca7951846c4a68fab1d4c50c070d9ccc6dc20ee6a0b473e3f3ad641d466f3d",
+          "media/cam2.mp4": "6dc3dffae8a95c05dd7589ba24e664adaf1ffb7f5d5f2e69c28ff52da8eb6735",
+          "clip.json": "62073481a6b495d947fd1c2a4c7c5c70e67bbde19df1920aa8b741b8c76886dc"
+        }
+      },
+      "video_002/clip_017": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_017",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "69f7935c9239ad6db18b3bcb8f0a0edb7093854f26ff161eae7a60ef49469e28",
+          "annotations/dino_v3/cam0.npz": "14ef5ac14902057d0aa07639a7e69748508a60c130c688049a8f8676e829d8d1",
+          "annotations/dino_v3/cam1.npz": "2fe7034ccda3725297d6ed54abf54ec7daa8b5c019e607f259c70759f491c862",
+          "annotations/dino_v3/cam2.npz": "4cdd383438e396bbe23df7870a3b9a8b855595e4d131ea42d85759be04530664",
+          "annotations/tennis_scene/annotation.json": "91d1c8d38daf4f7b6bff17385b3cfdbcbb155f2cf163600eec870e490f7fa868",
+          "annotations/tennis_scene/pipeline_config.yaml": "e6d505fe5b10c72f8201c2388a4330b26b20e2be536ffb6ecfea96e6ca465bb7",
+          "annotations/tennis_scene/scene.metadata.json": "d45cbbd52200d2079c982a42576ecca07fae87ac3af9fa5bf279d46c862fe31b",
+          "annotations/tennis_scene/scene.npz": "a9831d1970764084294e613d64f323195dcf21e83830c027d359741e506e49fb",
+          "media/cam0.mp4": "273951307f6499abb8a1168746b407a84b8db6d056492f9b7249768de827f7a1",
+          "media/cam1.mp4": "918024125f31410c4fab3452512b881584dc470bf460d36f60414f16ae209fd4",
+          "media/cam2.mp4": "a3c0e779c3fcd8ae4f3ebbeea70f4714c3b15e833b3643009aa753fe6a01e105",
+          "clip.json": "8e512609371a04f7a965e59c3c5b4234dfd2035a7af97267bfd2f249a1475bd9"
+        }
+      },
+      "video_002/clip_018": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_018",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "372b6a4920798a677a9ffd4b8bc86cfef34061f071da6fe9490f62769b0daa2f",
+          "annotations/dino_v3/cam0.npz": "b1674ba167da8127f99f96a961fdd723067001078a5b5fcbadc84a063b7abf38",
+          "annotations/dino_v3/cam1.npz": "c542f39f192de3cca9ddf85da9e75fb3c20c5485a9ea873380835558ae2bfbc4",
+          "annotations/dino_v3/cam2.npz": "ce47723ff3d816b1e548a7506bfc491e0090b9cc4caff1c374b7bb3c7269559c",
+          "annotations/tennis_scene/annotation.json": "7e82f3d5e26d82da2748c9cb7e5a131b13109a6f8bd1f93744f67cb9162bea60",
+          "annotations/tennis_scene/pipeline_config.yaml": "d962dfe2c37ca063789cd6b493bdb735fb8354cb9412f95174f54b3b9dd3b277",
+          "annotations/tennis_scene/scene.metadata.json": "231ff98127237077d8a3eb207d88aa1ad21e7fe293b7348463b3c82fb7dcbc2b",
+          "annotations/tennis_scene/scene.npz": "38c09653c6adc7b1e5a5e39c56709799eabfc881db1aee5d7da3970e719e5da5",
+          "media/cam0.mp4": "ac4f424b805d71f2560b064de95b528900c01dbbba8ea79264c272a64a84d1aa",
+          "media/cam1.mp4": "2a9f3ab27def2d2d75e2590f6ae5512f65422f877c168921438a62d3d96a6ec0",
+          "media/cam2.mp4": "20a2a10797ece2526be74946ea66d7c69031451ec0d0d5eefc30822288b60b9d",
+          "clip.json": "7ea2f547730e3529d388444efb5bed85c3ececd58e4e33ebd8f446e607495e5c"
+        }
+      },
+      "video_002/clip_019": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_019",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "e5ff02a69daffc2852ec0da03908e76dbb0224aa916132101c80ff4777e4e3b1",
+          "annotations/dino_v3/cam0.npz": "ca2d9642a80c821b2be4f111f3cc9fd88a472ee6af7d535cc0ef3b680d933719",
+          "annotations/dino_v3/cam1.npz": "23df1c4cd2d8a78a9f1fbf9449af4fd68478a5d95f5138c8c355a028f657711d",
+          "annotations/dino_v3/cam2.npz": "b14792e32466e12a5f1acb74c3ed53704867f683e1babb3ebce062dd8f35e093",
+          "annotations/tennis_scene/annotation.json": "214d38198ced779ca7f60deb414293db6a5bb05c69b36857371abf82b4d64e9f",
+          "annotations/tennis_scene/pipeline_config.yaml": "9857b2476e572f133aecf609fcfdc9b1b00c15f3b3ff34a8157a02d9557d543a",
+          "annotations/tennis_scene/scene.metadata.json": "369352476527531d8bdc1fcca007bdbed2413fd77e918390d7bf717303dc9e15",
+          "annotations/tennis_scene/scene.npz": "b902abdf83b82c7a4a9fe59b0a09b9b9049cf449bfac2c3884a7dae8c4283b0f",
+          "media/cam0.mp4": "3b1593e67e469a9077c011fd2adf35d351383054448f525d941f2ac5be0f4335",
+          "media/cam1.mp4": "94bd30a643bf7634fa6319946544e4b248caae108f89324d01c11a1d0c6b2d3c",
+          "media/cam2.mp4": "bbcfb3303874f263de15055fdbe255193dcaf0697b719808e3784797919e991a",
+          "clip.json": "1d073eb6382d66fe9ef95e36faac0389b39e79005d5e852cada2d4afcffcbc30"
+        }
+      },
+      "video_002/clip_020": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_020",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "ab416352ad586bed3129571f6df6176c4804700b705aed736e93383fab2ae2c9",
+          "annotations/dino_v3/cam0.npz": "030dc05f786751cf713e9f6de5cb00e0807d508262aaf3524af2df56c268185a",
+          "annotations/dino_v3/cam1.npz": "6d7acd70839fd022da865fc9e09809c89204aef10a8dcc6e047464ff3878f5b6",
+          "annotations/dino_v3/cam2.npz": "0aeb98e117e1b77c906615381eb6449a6fa62515853f2241ee4709a3a38bb2be",
+          "annotations/tennis_scene/annotation.json": "b2fea17cf21024117497dedd4ad9a54131338f032d91eb1724c8576c83f390cf",
+          "annotations/tennis_scene/pipeline_config.yaml": "29d40b87c26c258dc01c9f1b3af2672ce6d594d0900270f1be3ac722ff1a3214",
+          "annotations/tennis_scene/scene.metadata.json": "e787355339f5dc2fdbebcd1faaff15731eeb3d57a8237fa7522bb52df35cb487",
+          "annotations/tennis_scene/scene.npz": "05909e7a9aa7b187ed1e347a183ddbc825200939d37e2035bacc2d12f6c7f154",
+          "media/cam0.mp4": "5878cc463c882c1f78e966abc1a3692407a42a5ea929fc30d34575f9e769842b",
+          "media/cam1.mp4": "6a2c0b0d24f4624b60d1b81716c465babc25640803680801851656131f9ef5d7",
+          "media/cam2.mp4": "18149dde801ddc5b819874222e9ba806b5f6cbe887a06a69812982507c11db82",
+          "clip.json": "88271ff096882f82fe6f9f08774646ac8b74f544a71b9e7c21d76f2df45e5add"
+        }
+      },
+      "video_002/clip_021": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_021",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "13469cb0ec93b1cbce3028ac6de8c3035401c81a53dd80dcf95364ad117118e1",
+          "annotations/dino_v3/cam0.npz": "ec647d8f645ffaf97be819bcf956a2f291f55edfbca3878ef679acf05d812e38",
+          "annotations/dino_v3/cam1.npz": "55771fa6efc374c3191ba9bc8fc07e4ddfa9b7eb4e97a4af1413accbd98a2f12",
+          "annotations/dino_v3/cam2.npz": "34e7efa03a10d2efbb2cd47c11985b9a4c5b87821fea58470d1acf23df583898",
+          "annotations/tennis_scene/annotation.json": "2e8fec344f9fef565659eb7d54dd3c7b7e09b4ad45790a8b11723c9d718e69c8",
+          "annotations/tennis_scene/pipeline_config.yaml": "7f075331d7f414294ab4daf6f8c102d2790c5baffbe589802315ff4d2fee0645",
+          "annotations/tennis_scene/scene.metadata.json": "37f345771d27c0723bb78cd501e1849ccabd8e2491e111a36af0b7498fe2c8ef",
+          "annotations/tennis_scene/scene.npz": "4b37886d9c444366cfee1d156500a7920c2f96d5b32a37c3a59170fbe107bf30",
+          "media/cam0.mp4": "9b49e05a2122f420437ea4068081b3e21f22a92a847b9058ac484b3e6f905672",
+          "media/cam1.mp4": "40bf6633881fec8d09999e38fd46ad512eaf3b26c76142cbec36755fce3df403",
+          "media/cam2.mp4": "e2cd204a239336df15657793d673d1dcb3b29299823de983952eeb7787c4e826",
+          "clip.json": "77f0d15d02d0ff4b364c69aff0e9c3c9c5667c3dda8a1bee7117251045d63529"
+        }
+      },
+      "video_002/clip_022": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_022",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "981d9b883185d57b14c9bbee22b53ede15cf7b47c8519c21fda8d7e713a7f856",
+          "annotations/dino_v3/cam0.npz": "b4123039781edce757fd80cf3bef64d019c3334f137dbb1b0e2907a798d89fe1",
+          "annotations/dino_v3/cam1.npz": "b9b16553d0a9a8b92ce9eca6b04b34e5eb9a7197ed2215ac788ce503af854eeb",
+          "annotations/dino_v3/cam2.npz": "500df01b1cefc39d0962b681152dadcc00e3ce4ef58350b4389649dea31fde83",
+          "annotations/tennis_scene/annotation.json": "b7ee86acbfab97e62c7d5cd97ff2aa0695d28b46bcf406a5538c3e3f4ec5b434",
+          "annotations/tennis_scene/pipeline_config.yaml": "257452ea88f579ecf0d74b525dfa24f0cf61ef4004ebba16e263a569342be628",
+          "annotations/tennis_scene/scene.metadata.json": "54eff594ef288cbb6a8b3822f53afd6d8728a2db1842b111acd5dc025d0b1402",
+          "annotations/tennis_scene/scene.npz": "58fbfac8aca6baeae9e3e49a84562221401d381c54cfdc73dbe531682d9b0e7f",
+          "media/cam0.mp4": "ff230125f22b2e9592f108f3880ce4b6b50a6cc71a5e54376b1338457ad2776f",
+          "media/cam1.mp4": "696e9de4421587d5f3900d07cc6fc274668fa020c830172b1dfad04641b94117",
+          "media/cam2.mp4": "dff0009a7b8949ab69c42854fb2ecc857266a69613a7ea031b637a95cc635093",
+          "clip.json": "c77fb9f86b0877a6b986e75467e34c6b7c3ca81931373a3db9421816f041044e"
+        }
+      },
+      "video_002/clip_023": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v9",
+        "path": "videos/video_002/clips/clip_023",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "516e2127d5da761e0c337357321ce1088c5695ba1bd8bed05bb96f0098a770c6",
+          "annotations/dino_v3/cam0.npz": "c872a804a016d943ca57792416f49ddcf7dc2510ffa4389f2beffc388a900f62",
+          "annotations/dino_v3/cam1.npz": "023271896b8d01b27aa04a950502281d7fac607224c97bd58fd61219fc45e40a",
+          "annotations/dino_v3/cam2.npz": "8c3d5644f19e588249ef13273429c3d46ffa3c26c466b53ab1b34e3090e0cc9d",
+          "annotations/tennis_scene/annotation.json": "1c82e85c62f6048d6ffba71f032b841ff93e443dbdceab88c6b5987cf86f74a0",
+          "annotations/tennis_scene/pipeline_config.yaml": "b68143f23e3e38ac914970a8de8c06fe3e6feb719dc93a6a7c8243da306f8e67",
+          "annotations/tennis_scene/scene.metadata.json": "8488a27ae281d85a86a6858ef09d6b7e05e049a957085eaedc3aa186c6ee3059",
+          "annotations/tennis_scene/scene.npz": "0d8d7f9fe8e786b82d20d1d730c756128b85b8d9276071228341b4d87e9bfdbe",
+          "media/cam0.mp4": "b91ccb9d3cc220b380d48bfba52adb4fc1d0ec938e44a86916f237e966097656",
+          "media/cam1.mp4": "ae4fcb90c3712bb66620799f0ed400c47a1f50b7416bf428f13da57583e0fce0",
+          "media/cam2.mp4": "1cd329ec77f2f9fc941a157f9089744520f18cb9176926a3e6db570d5b67c909",
+          "clip.json": "cfa9ea55b3e014a8d7bb8bbfcefe6fca7ba373a0bb440603697db5d08c4d9ea4"
+        }
+      },
+      "broadcast_eastbourne/clip_002": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_eastbourne/clips/clip_002",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "0ec5c6c36e5db123adc5f41904fe81d5b8e3390e044bbf3ca924331f72fa2804",
+          "annotations/dino_v3/cam0.npz": "731257bde8c685b8c14c33c2f539b10871b5edf4f8db11b7d61430ba58e20f5b",
+          "annotations/tennis_scene/annotation.json": "5805f47fe9b4e39dbddc3229bb6ffd5c1fb1ea60ca60ca8358fe9fb6d1d2dbea",
+          "annotations/tennis_scene/pipeline_config.yaml": "67b8abb243579182008fbe9266ff3227b9eb6f1a94dd7c862d7b964a3d517f4e",
+          "annotations/tennis_scene/scene.metadata.json": "b2f3fde2f039dec6d46f927d60d8b5861059e6713d39fc2b065663bcd4336f76",
+          "annotations/tennis_scene/scene.npz": "84a77816016e30e43265eb1658dccca1029cf8634d25025aa5c6ebaa0926a8b9",
+          "media/cam0.mp4": "00099bb4ff19b02e2c895bcdcf833959447ce3e571ade150f5c3686b05b134c4",
+          "clip.json": "d99b0997e0ad1ed155b262015c7a0295b7724e98e6bda7cd5455d5690f483a74"
+        }
+      },
+      "broadcast_indoor_hard/clip_001": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_indoor_hard/clips/clip_001",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "0387ceed5a69dfde94f7fd0bbca3ede24007eeaa83201a6b539eef3568bee582",
+          "annotations/dino_v3/cam0.npz": "92b31a9c35681ad3b3b442d4c3dd1ef56dec92436975bcec7090c8f4c96c39f5",
+          "annotations/tennis_scene/annotation.json": "0cd411ac973912800605d7ae76e5c79f674b106c86c7a29a4eef4a5d672c3010",
+          "annotations/tennis_scene/pipeline_config.yaml": "ea69fadff6bc41f242d95a4ca779141541ddc698bae64d7779bf0efcaa226c28",
+          "annotations/tennis_scene/scene.metadata.json": "b1d64c1fe826752115ed7bc1548f8ef5dd0c5278544de8ca3e6fadc3e890518f",
+          "annotations/tennis_scene/scene.npz": "a028b2add922a2bb7366ac8c02a9546b8e12aedd82173e93e439616bf552436b",
+          "media/cam0.mp4": "175436ee0f24b24822e4ded4757f749efc9e10ffa8e56ebc6950debc53181d2d",
+          "clip.json": "5b162666bb98bab1df285fdeae13c04737eed6b7ec4fedc45979f6f3f4d19262"
+        }
+      },
+      "broadcast_shanghai/clip_004": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_shanghai/clips/clip_004",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "3c55cf3e6e90c4d9d8af2e455b925a86eade54ad1c860ff4f0d47a282a2adc32",
+          "annotations/dino_v3/cam0.npz": "550932b665c3d3db8ce63a40eabc30d5c6b0e9a3cc7aa727f71b5f1e40e85538",
+          "annotations/tennis_scene/annotation.json": "79f2e17c75b6f91a38d9b73776a9840a63ac099336d1e48f1faf45a34ff97086",
+          "annotations/tennis_scene/pipeline_config.yaml": "690279c07828d9c433141433ab2e3a3fcc7d94d8defa146e86a47a719142810d",
+          "annotations/tennis_scene/scene.metadata.json": "b159889df9c0f8d6e56a044fbbe1790954ed1c9cdc7fcb4ff1f00dccc6e6ef9c",
+          "annotations/tennis_scene/scene.npz": "f36dce8be5a2bf780f1bdf900f38c32491f36d0a386147dba33c2fd003aea482",
+          "media/cam0.mp4": "6c0cba27225148e92e31c9545a20fb05361af1e496a4801526b8209bc2ef6f93",
+          "clip.json": "6a969c4f457e8e04423f17c7bdc2fd8f524b3ecec57805919a6d179c9d30eb54"
+        }
+      },
+      "broadcast_shanghai/clip_006": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_shanghai/clips/clip_006",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "263bf7b378d68ad7b5bfc4c5faf17010211c22cf92df29c570bf3c3610a1964e",
+          "annotations/dino_v3/cam0.npz": "376eaadd9dcef3678890f8efe94cfdf83ae138e1834f6137b3f0e1d39049c5e4",
+          "annotations/tennis_scene/annotation.json": "a9dca018f670d6621bce8eab1347d12dca647210676618f8d6bfb1265c3a78b6",
+          "annotations/tennis_scene/pipeline_config.yaml": "c9d6813a3b685bb71bff16241e14b9ee2573421db5bc4f94ba96330b0041b472",
+          "annotations/tennis_scene/scene.metadata.json": "b9d881dada78f672f995f75febd561b21a10351598bb5049c4288e06a500f7be",
+          "annotations/tennis_scene/scene.npz": "bb977c26521ad569bfcd3e92fc718f196be3f88a2c0a68468c002d3233da8d1c",
+          "media/cam0.mp4": "023ab52875a6d72954593cbc0a880418fedfa1931458d8b233e0ca8109eca54b",
+          "clip.json": "bf3db438247a3229830c75870d915d652a0c965d5ad1fcd4eba051ad7340c115"
+        }
+      },
+      "broadcast_washington/clip_005": {
+        "source": "/home/kamimura/projects/tennis-lab/data/slcs/broadcast_rgb_v4",
+        "path": "videos/broadcast_washington/clips/clip_005",
+        "sha256": {
+          "annotations/dino_v3/annotation.json": "ae865d638b815da065fe6b1e713f51ee1409cd5c5d1bbd06ad606e288448df7c",
+          "annotations/dino_v3/cam0.npz": "44d12a0e341954d2116ba10b8f9996ecf14cabc585162dac3dcf9ef9a1706eab",
+          "annotations/tennis_scene/annotation.json": "fd7e51f4b9805ed1ff957d62a91bd8aa8c10fcaed5acde614ae55dcce4b0b93b",
+          "annotations/tennis_scene/pipeline_config.yaml": "77f0483181e3853d481f62ebfe1cd9f5c3245e440622344d722a12ae9ad94f34",
+          "annotations/tennis_scene/scene.metadata.json": "66e785460b229fa9564346a632d177e8b4aebd056f7303e32b580adf71fdddfd",
+          "annotations/tennis_scene/scene.npz": "c592153df2c6ef82b1205e69daf4c9d96c303956e22ce6f43427f849bcbb7463",
+          "media/cam0.mp4": "7839297b382063c7f4c4a44634d0404d00a118a62cc8cb2a1c20320bd28b2aa0",
+          "clip.json": "8eb16cd737897310a305cfb7923a5d2f80a755d9c769a37ef8ab5a6b0f3d7d14"
+        }
+      }
+    }
+  },
+  "derived_manifest_sha256": {
+    "video_000/clip_000": "f763cdcd4cd761b306c57e8fd0879f9853951e6a142b3765a56b3ffcf195aa2c",
+    "video_000/clip_001": "662a6f60b94f66e23485de83ae6182a357f1e570e2ebf23775bc3cccc8cfde7c",
+    "video_000/clip_002": "ad1c183ee327d74f467dd316e3bcadca1e75e9d4fa5ac32eb207de983c26c5bb",
+    "video_000/clip_003": "681bedfebe335777ccabeaa552a1c2c1471b4adbc2901eb4eaadff2369e695ef",
+    "video_000/clip_004": "b3b15edb3bfba520691582d8abf43d26b2021ff842a32870dfdb9dd68138448f",
+    "video_000/clip_005": "e301daf354516b8cc5cba1c17fac9ccb9be9f1026e84bb4b656e59e94d34c937",
+    "video_000/clip_006": "4c39740d6032c511245f3f9406ce09233a0dfa592bd3969a1eb4d517ebc7b72f",
+    "video_000/clip_007": "cfecc0f30e45e3df30c41aeaa51f092e089221ac2c1a79848c02241c1ed96102",
+    "video_000/clip_008": "f4952a6ff1ae908a99a7d98ebf60219128488aa283ca32ab1af2036edf222b08",
+    "video_000/clip_009": "c4a0632ab0463d7f475d3d8532e3e6e3afaee54057d9736ba4b0a3f1acb12fb9",
+    "video_000/clip_010": "e0fb44dbc055cb74f366608030b675fbcfe55d22e876fe400b1d5acc76ac6436",
+    "video_000/clip_011": "fc69f13ad5ec7071b41f6640e6183c2dde29e4d3a6d0036c219b0a67a509003d",
+    "video_001/clip_000": "055e22acb0618de0b669f5dfee75a12a0374261d3557a287fe9d6963327d23c0",
+    "video_001/clip_001": "2dd77d4bd72d46b6eb62de0011c14897e7ba019e2cda6d01e7e0274dd9361061",
+    "video_001/clip_002": "0cb09f27ba862348ff44ab13edb9f86492bfdc899f3815d2b12ffe2ccf2adb43",
+    "video_001/clip_003": "0f615cf5d2e11b563c3fe40be46d6cd0a5ce539d0a7ad932c75b3c65504aa097",
+    "video_001/clip_004": "c9173f6fa9b5cc4a77b9cb874623d7c0b2d6e13df1ef3ec0596cbac2b8831bf7",
+    "video_001/clip_005": "c62b4d5230259486fe2984f328af32f9a522e3f0c05eca172bc72350ec06dca8",
+    "video_001/clip_006": "c90b83de21869c33e3f4e7ec4a25135bd38300c1ae744018a6f0ab3029b54f62",
+    "video_001/clip_007": "05a618add065ea97ec9696084e515a13249ff2474ab07547a1e31dad8e33e583",
+    "video_001/clip_008": "13483255d0e2c33f9ae2c191ef84630f297abc7162ecb48f1bfceb4f68d66e9b",
+    "video_001/clip_009": "dc2995adbb4c9119cc115469e27d867f6d7722b80701093f1bfec5a01e08000b",
+    "video_001/clip_010": "61e080411a1f1570d64768acb84b1ade81fe8a047db9b74a9a9374e7c1da62ac",
+    "video_001/clip_011": "aa8dac22f543251aae82a6fa0cad3b8ad348e79c51a14c6c14d6b40aa110fb19",
+    "video_001/clip_012": "af21a7a328f52894b3226351ecdaf38a63ad4a73a7913e99ca14bdc364a05466",
+    "video_001/clip_013": "a5d8f97a372903d51c56a31f852b8d46856524b09fa67045edc2aeaca7e66658",
+    "video_001/clip_014": "4f32cacb7da6ea5ead8e0dfb9aa148780113143a602ce2d6ec70247d550bf90c",
+    "video_001/clip_015": "56581afda0c10fc8bdcdfb089caefddb348e606a8670d5374adfd9231f0741ce",
+    "video_001/clip_016": "bf2d4c6772607442d01548fd06707e2cf1bf29d332b8426cdd14bfc042ccf852",
+    "video_001/clip_017": "8278635645bb11d18cb03ae5758a7b63d35789adc714e9dd0b55c5319ad6b488",
+    "video_001/clip_018": "b9ee049e3c9c96b4e662ff2dcbdc715f13a722806a63fb8610809e46edacc102",
+    "video_001/clip_019": "cbc116f067a08dc43b1636e5aa11230f061d7574bdce992f938cfc67e2d3b702",
+    "video_001/clip_020": "4f1e659685c7fd782d6bcfbb1c8923ab62ac89e924f84fc459fd06ce79bb7de1",
+    "video_002/clip_000": "5cd33ced504bc4e4e96ecfcd6ce6cd2edf2c815b5ce074b3b87fd885dfe0c2c5",
+    "video_002/clip_002": "9e9a6e76cc5581107bb4e6ac2f1ee08d5e9fc28f6ac929fedd73984514ae594c",
+    "video_002/clip_003": "cf0d99a91ca517f3315877e677f247876820cf297d78e84aafdad67d38b02a2a",
+    "video_002/clip_004": "91f5ade8df17d6e4e472fa5c541697984c238a5f819848eda3e634cbee132ea1",
+    "video_002/clip_005": "a2ea6c415ba23b1f2c26c3a93544c1174eb7b88044fd23bb194d9551f4e5c9e3",
+    "video_002/clip_006": "ecd1485981e06f2f8332b4c135ecf42e093e63379429804197a1e7d5bcfa0c2f",
+    "video_002/clip_007": "5d3b2c3ce613f11f434c67fbaa3cb7cbb70f95724692750f9e3ae6dee23e0486",
+    "video_002/clip_008": "ff0f5c696a45a46d9a0e1cc64eb6e7d4c21433d9581d32b1c479dc5eab5f4868",
+    "video_002/clip_009": "32d88de1ddbf8b3fd0a7f59cf99bff5217440a81bf2b26df35c31df96de32a95",
+    "video_002/clip_010": "491f034b4057973dec57d10b9cd9528a53aa142c7b79242542da619ecf8b4509",
+    "video_002/clip_011": "168f1ce065349ee8bb94e8356754edf579d58420f60fa08993044462609fd1c8",
+    "video_002/clip_012": "874f4cf49103c3b6f2fb2baa9d2e797b8efc5b9ba1177f936ba4def6edea2214",
+    "video_002/clip_013": "93af89a2b355b91d4b410dfbab5a2a9087b3201a8ddc6dbe558a22c8ddaeb4c1",
+    "video_002/clip_014": "c3900de5f8a931bf5310284b8af9a885e6ff1266621369adb7935fb8ad06a8d6",
+    "video_002/clip_015": "7f30987686c1a2c9978aa14bf02f22365fc6a68cc671c2836caf11f3cbb70a5c",
+    "video_002/clip_016": "d02f8dd4408bd7f6a07a25d68d9e98489359c2ddf471ae245386bfaff1065cbb",
+    "video_002/clip_017": "64b541509672ec091b11627fa5828bd3e868a46b0c5b5a8a740868f1e5e7877a",
+    "video_002/clip_018": "66e6e5342806738ee14476384be89b4af12859f646770945442aeb199a3072c7",
+    "video_002/clip_019": "f3508b2b18d042788ff853c06fde2e8c72741c7c159c993f4317cf0aef240e48",
+    "video_002/clip_020": "6f3ebc3c4c1e5980ee77335cef519022d97efed2d7a1b6383bf2464dc0565b62",
+    "video_002/clip_021": "afa5e20a3d394981b5682f4e1c9b1bf9dedae19302d111ae83c9d5e7a9c2dcb0",
+    "video_002/clip_022": "6049c1d5665e0b52966c9a74aeaaede3433caeb986888bf8d5ff001609651968",
+    "video_002/clip_023": "5b6a1f836a5b74349a86d65c3783027f4d9078b959738361b55e7fd3ba86ea18",
+    "broadcast_eastbourne/clip_002": "7a1b97d983e9f15880c5f0a52882fd5f54d9104fc098d0f684e0e6b07ae45113",
+    "broadcast_indoor_hard/clip_001": "d4dbf4229db9ebfd9de7381fd3dc685b7736264127bf28da4a295519165e1ca8",
+    "broadcast_shanghai/clip_004": "f1ec1b8c837ce514666cb76ba84764e0f26ab8ff3689188fac6bf1193f48901f",
+    "broadcast_shanghai/clip_006": "0de0efcc2a7d872d04f082246a4727dedd169212b453e32c788aeb89267cba09",
+    "broadcast_washington/clip_005": "aac9ea5bf78771015a865e566f8842873fb02d600987c81582930313185df2de"
+  },
+  "split_unit": "source recording / curated broadcast venue",
+  "num_clips": 61,
+  "split_sha256": "3d6882d988e5bfed9e67d8950829060a8eee1a44551ef2316c4e94815efa69c0"
+}

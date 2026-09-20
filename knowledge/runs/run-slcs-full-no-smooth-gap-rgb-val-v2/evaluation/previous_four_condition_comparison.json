@@ -1,0 +1,28 @@
+{
+  "full": {
+    "all_arrays_identical": true,
+    "differing_keys": []
+  },
+  "no_rgb": {
+    "all_arrays_identical": true,
+    "differing_keys": []
+  },
+  "detector_gap": {
+    "all_arrays_identical": false,
+    "differing_keys": [
+      "pred_player_position",
+      "pred_player_rotation",
+      "pred_ball_position",
+      "player_pos_error_m",
+      "player_ang_error_deg",
+      "ball_pos_error_m",
+      "player_sigma_m",
+      "player_rot_sigma_deg",
+      "ball_sigma_m"
+    ]
+  },
+  "rgb_only": {
+    "all_arrays_identical": true,
+    "differing_keys": []
+  }
+}

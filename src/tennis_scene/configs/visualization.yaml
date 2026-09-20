@@ -5,8 +5,8 @@ assets:
   smpl_faces: smplh/neutral/model.npz
   smpl_joint_regressor: GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt
 input: tennis_scene/tennis_clip.npz
-output: tennis_scene/tennis_clip.gif
-preview_output: tennis_scene/preview.png
+output: ${tennis_output:tennis_scene,visualize,visualization,${tennis_run_id:}}/tennis_clip.gif
+preview_output: ${tennis_output:tennis_scene,visualize,visualization,${tennis_run_id:}}/preview.png
 display: false
 start_frame: 0
 end_frame: null
@@ -37,7 +37,7 @@ camera:
   keyframes: null
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},visualization/hydra,${now:%Y-%m-%d_%H-%M-%S}}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,visualize,visualization,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

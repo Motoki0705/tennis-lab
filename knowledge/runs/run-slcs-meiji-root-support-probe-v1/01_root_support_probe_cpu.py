@@ -1,0 +1,160 @@
+"""CPU-only probe: hip-root triangulation stability, current vs shoulder-gated candidate.
+
+Reads (read-only): per-clip run dirs scene.npz (raw prior) + scene.metadata.json
+  (fits) + refined_scene.npz + refined_scene.metadata.json (recorded teacher).
+Writes only OUT dir. No GPU (numpy only), no threshold value changes (0.3 kept),
+no edits to reports/raw/teacher/weights. Observational-consistency comparison only.
+"""
+import json, csv, sys
+from pathlib import Path
+import numpy as np
+
+WT = Path("/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb")
+sys.path.insert(0, str(WT))
+from src.tennis_scene.dataset_pipeline.geometry import (  # noqa: E402
+    TriangulationSettings, triangulate_ball, fill_triangulation_gaps)
+from src.tennis_scene.dataset_pipeline.quality import project  # noqa: E402
+
+QR = json.load(open(WT/"outputs/tennis_scene/analyze/meiji_rgb_v7_quality/s42-probe-001/quality_report.json"))
+OUT = WT/"outputs/tennis_scene/analyze/meiji_root_support_probe/s42-001"
+OUT.mkdir(parents=True, exist_ok=True)
+HIP=(11,12); SHO=(5,6); CONF=0.3
+SETTINGS = dict(max_reprojection_px=40.0, max_speed_mps=12.0, max_abs_xy_m=(12.0,25.0), height_range_m=(0.25,1.8))
+
+def speed_zeroed(pos, fps, thr=12.0):
+    spd = np.linalg.norm(np.diff(pos, axis=0), axis=-1)*fps
+    fast = spd > thr
+    mask = np.r_[fast, False] | np.r_[False, fast]
+    return mask, spd
+
+clips = sorted(k for k,v in QR['clips'].items() if v.get('status')=='completed')
+summary={"clips":{}}; tables={}
+for clip_id in clips:
+    run = Path(QR['clips'][clip_id]['run_directory'])
+    raw = np.load(run/'scene.npz'); rmeta = json.load(open(run/'scene.metadata.json'))
+    ref = np.load(run/'refined_scene.npz'); fmeta = json.load(open(run/'refined_scene.metadata.json'))
+    W,H = int(raw['width']), int(raw['height']); fps=float(raw['fps'])
+    fits = rmeta['reference']['camera_fits']
+    uv = np.asarray(raw['human_kp_2d'],np.float64)      # P,N,T,J,2
+    vis = np.asarray(raw['human_kp_vis'],np.float64)
+    prior = np.asarray(raw['player_position'],np.float64)  # P,T,3
+    P,N,T,J = vis.shape
+    gap = round(0.1*fps)
+    rec_src = np.asarray(fmeta['label_quality']['player_source'],np.uint8)
+    rec_w = np.asarray(fmeta['label_quality']['player_weight'],np.float32)
+    rec_pos = np.asarray(ref['player_position'],np.float64)
+    clip_res={"players":{},"participation":{}}
+    for p in range(P):
+        hips = np.take(uv[p],[11,12],axis=2).mean(axis=2)          # N,T,2
+        vis_hip = (np.take(vis[p],[11,12],axis=2)>=CONF).all(axis=2)  # N,T
+        vis_sho = (np.take(vis[p],[5,6],axis=2)>=CONF).all(axis=2)
+        vis_cur = vis_hip
+        vis_cand = vis_hip & vis_sho
+        kw = dict(size=(W,H), fps=fps, settings=TriangulationSettings(**SETTINGS))
+        tri_cur = triangulate_ball(hips, vis_cur, fits, **kw)
+        tri_cand = triangulate_ball(hips, vis_cand, fits, **kw)
+        pos_cur, src_cur = fill_triangulation_gaps(tri_cur, prior[p], max_gap_frames=gap)
+        pos_cand, src_cand = fill_triangulation_gaps(tri_cand, prior[p], max_gap_frames=gap)
+        w_cur = np.where(src_cur==1,1.0,np.where(src_cur==2,0.4,0.0)).astype(np.float32)
+        w_cand = np.where(src_cand==1,1.0,np.where(src_cand==2,0.4,0.0)).astype(np.float32)
+        zm_cur,_ = speed_zeroed(pos_cur, fps); zm_cand,_ = speed_zeroed(pos_cand, fps)
+        n_spd_cur = int(zm_cur.sum()); n_spd_cand = int(zm_cand.sum())
+        w_cur[zm_cur]=0; w_cand[zm_cand]=0
+        n_code6_cur = int((tri_cur.rejection_code==6).sum()); n_code6_cand = int((tri_cand.rejection_code==6).sum())
+        # replica fidelity vs recorded refined
+        dpos = np.abs(pos_cur-rec_pos[p]).max()
+        src_match = bool((src_cur==rec_src[p]).all())
+        w_match = bool((w_cur==rec_w[p]).all())
+        # displacement candidate vs current(replica) and vs recorded
+        disp = np.linalg.norm(pos_cand-pos_cur,axis=-1)  # T
+        disp_rec = np.linalg.norm(pos_cand-rec_pos[p],axis=-1)
+        # participation counts
+        cnt_cur = vis_cur.sum(0); cnt_cand = vis_cand.sum(0)
+        def dist(c): return {k:int((c==k).sum()) for k in [0,1,2,3]}
+        # unnecessarily discarded: current 3-view but candidate <2 (non-triangulatable) and 3->2
+        m32 = int(((cnt_cur==3)&(cnt_cand<2)).sum()); m32b = int(((cnt_cur==3)&(cnt_cand==2)).sum())
+        # cam0/1 hip-center reprojection for current vs candidate
+        hip_res={}
+        for tag,pp in [("current",pos_cur),("candidate",pos_cand)]:
+            rr={}
+            for n in [0,1]:
+                ok = vis_hip[n]  # both hips>=0.3 in that view
+                pj,_ = project(pp, fits[n])
+                hc = np.take(uv[p,n],[11,12],axis=1).mean(axis=1)*np.array([W,H])
+                valid = ok & np.isfinite(pj).all(-1) & np.isfinite(hc).all(-1)
+                r = np.linalg.norm(pj-hc,axis=-1)[valid]
+                r = r[np.isfinite(r)]
+                rr[f"cam{n}"]={"count":int(r.size),
+                    "mean":float(r.mean()) if r.size else None,
+                    "p95":float(np.percentile(r,95)) if r.size else None,
+                    "max":float(r.max()) if r.size else None}
+            hip_res[tag]=rr
+        def counts(s): return {str(k):int((s==k).sum()) for k in [0,1,2]}
+        clip_res["players"][f"player{p}"]={
+            "frames":T,
+            "replica_fidelity":{"max_abs_pos_diff_m":float(dpos),"sources_match":src_match,"weights_match":w_match},
+            "current":{"label_fraction":float((w_cur>0).mean()),"sources":counts(src_cur),
+                "speed12_zeroed_frames":n_spd_cur,"tri_code6_frames":n_code6_cur,"hip_reproj_cam01":hip_res["current"]},
+            "candidate":{"label_fraction":float((w_cand>0).mean()),"sources":counts(src_cand),
+                "speed12_zeroed_frames":n_spd_cand,"tri_code6_frames":n_code6_cand,"hip_reproj_cam01":hip_res["candidate"]},
+            "participation":{"current_viewcount_dist":dist(cnt_cur),"candidate_viewcount_dist":dist(cnt_cand),
+                "frames_3view_to_nontriangulatable":m32,"frames_3view_to_2view":m32b,
+                "frac_3view_lost":float((m32+m32b)/max(1,int((cnt_cur==3).sum())))},
+            "displacement_cand_vs_current":{"n_gt_0_1m":int((disp>0.1).sum()),"n_gt_0_5m":int((disp>0.5).sum()),"n_gt_1_0m":int((disp>1.0).sum()),
+                "max_m":float(disp.max()),"top_frames":[{"frame":int(t),"disp_m":float(disp[t]),"src_cur":int(src_cur[t]),"src_cand":int(src_cand[t]),"w_cur":float(w_cur[t]),"w_cand":float(w_cand[t])} for t in np.argsort(disp)[-8:][::-1] if disp[t]>0.01]},
+        }
+        # frame table 290-315 for P1 (do for both players, parent filters)
+        if clip_id=="video_001/clip_001":
+            for pp in range(P):
+                hips2 = np.take(uv[pp],[11,12],axis=2).mean(axis=2)
+                vh = (np.take(vis[pp],[11,12],axis=2)>=CONF).all(axis=2)
+                vs = (np.take(vis[pp],[5,6],axis=2)>=CONF).all(axis=2)
+                pc,_ = fill_triangulation_gaps(triangulate_ball(hips2, vh, fits, **kw), prior[pp], max_gap_frames=gap) if False else (None,None)
+            # (recompute per player below in dedicated block)
+    summary["clips"][clip_id]=clip_res
+
+# dedicated frame 290-315 P1 table for video_001/clip_001 (recompute cleanly)
+clip_id="video_001/clip_001"; run=Path(QR['clips'][clip_id]['run_directory'])
+raw=np.load(run/'scene.npz'); rmeta=json.load(open(run/'scene.metadata.json'))
+ref=np.load(run/'refined_scene.npz'); fmeta=json.load(open(run/'refined_scene.metadata.json'))
+W,H=int(raw['width']),int(raw['height']); fps=float(raw['fps']); fits=rmeta['reference']['camera_fits']
+uv=np.asarray(raw['human_kp_2d'],np.float64); vis=np.asarray(raw['human_kp_vis'],np.float64)
+prior=np.asarray(raw['player_position'],np.float64); rec_pos=np.asarray(ref['player_position'],np.float64)
+rec_src=np.asarray(fmeta['label_quality']['player_source'],np.uint8); rec_w=np.asarray(fmeta['label_quality']['player_weight'],np.float32)
+gap=round(0.1*fps); kw=dict(size=(W,H),fps=fps,settings=TriangulationSettings(**SETTINGS)); p=1
+hips=np.take(uv[p],[11,12],axis=2).mean(axis=2)
+vh=(np.take(vis[p],[11,12],axis=2)>=CONF).all(axis=2); vs=(np.take(vis[p],[5,6],axis=2)>=CONF).all(axis=2)
+pos_cur,src_cur=fill_triangulation_gaps(triangulate_ball(hips,vh,fits,**kw),prior[p],max_gap_frames=gap)
+pos_cand,src_cand=fill_triangulation_gaps(triangulate_ball(hips,vh&vs,fits,**kw),prior[p],max_gap_frames=gap)
+w_cur=np.where(src_cur==1,1.0,np.where(src_cur==2,0.4,0.0)).astype(np.float32)
+w_cand=np.where(src_cand==1,1.0,np.where(src_cand==2,0.4,0.0)).astype(np.float32)
+zc,_=speed_zeroed(pos_cur,fps); za,_=speed_zeroed(pos_cand,fps); w_cur[zc]=0; w_cand[za]=0
+rows=[]
+for t in range(290,316):
+    pj_cur0,_=project(pos_cur[t][None],fits[0]); pj_cur1,_=project(pos_cur[t][None],fits[1])
+    pj_ca0,_=project(pos_cand[t][None],fits[0]); pj_ca1,_=project(pos_cand[t][None],fits[1])
+    def hc(n): return (uv[p,n,t,11]+uv[p,n,t,12])/2*np.array([W,H])
+    def rn(pj,n):
+        h=hc(n); return float(np.linalg.norm(pj[0]-h)) if (vis[p,n,t,11]>=CONF and vis[p,n,t,12]>=CONF and np.isfinite(pj).all() and np.isfinite(h).all()) else None
+    rows.append({"frame":t,
+        "cam2_hipL":round(float(vis[p,2,t,11]),4),"cam2_hipR":round(float(vis[p,2,t,12]),4),
+        "cam2_shoL":round(float(vis[p,2,t,5]),4),"cam2_shoR":round(float(vis[p,2,t,6]),4),
+        "cam2_obs_hipx_px":round(float(hips[2,t,0]*W),2),
+        "views_cur":int(vh[:,t].sum()),"views_cand":int((vh&vs)[:,t].sum()),
+        "rootY_raw":round(float(prior[p,t,1]),3),"rootY_cur":round(float(pos_cur[t,1]),3),"rootY_cand":round(float(pos_cand[t,1]),3),
+        "disp_cand_cur_m":round(float(np.linalg.norm(pos_cand[t]-pos_cur[t])),3),
+        "src_cur":int(src_cur[t]),"w_cur":float(w_cur[t]),"src_cand":int(src_cand[t]),"w_cand":float(w_cand[t]),
+        "src_rec":int(rec_src[p,t]),"w_rec":float(rec_w[p,t]),
+        "cam0_hipres_cur":rn(pj_cur0,0) and round(rn(pj_cur0,0),2),"cam1_hipres_cur":rn(pj_cur1,1) and round(rn(pj_cur1,1),2),
+        "cam0_hipres_cand":rn(pj_ca0,0) and round(rn(pj_ca0,0),2),"cam1_hipres_cand":rn(pj_ca1,1) and round(rn(pj_ca1,1),2)})
+tables["video_001/clip_001/player1/frames290-315"]=rows
+json.dump(summary,open(OUT/"root_support_probe.json","w"),indent=2)
+with open(OUT/"frame290_315_P1.csv","w",newline="") as f:
+    w=csv.DictWriter(f,fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
+print("saved",OUT)
+for cid,cr in summary["clips"].items():
+    for pl,pr in cr["players"].items():
+        print(cid,pl,"fid",{k:(round(v,4) if isinstance(v,float) else v) for k,v in pr["replica_fidelity"].items()},
+            "cur",pr["current"]["label_fraction"],pr["current"]["sources"],"spd",pr["current"]["speed12_zeroed_frames"],"c6",pr["current"]["tri_code6_frames"],
+            "| cand",pr["candidate"]["label_fraction"],pr["candidate"]["sources"],"spd",pr["candidate"]["speed12_zeroed_frames"],"c6",pr["candidate"]["tri_code6_frames"],
+            "| part",pr["participation"],"| disp",{k:v for k,v in pr["displacement_cand_vs_current"].items() if not isinstance(v,list)},"maxHipCur",pr["current"]["hip_reproj_cam01"],"maxHipCand",pr["candidate"]["hip_reproj_cam01"])

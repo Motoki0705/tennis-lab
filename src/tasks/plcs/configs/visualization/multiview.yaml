@@ -5,7 +5,7 @@ cameras: [0, 1, 2, 3, 4, 5]
 reference_camera_id: null
 animation_view: 3d  # 3d | 2d_topdown | camera
 fps: 30.0
-save: null
+save: ${tennis_output:plcs,visualize,${visualization.mode},${tennis_run_id:}}/scene.gif
 info: false
 checkpoint: plcs/multiview/logs/version_0/checkpoints/last.ckpt
 device: ${run.device}

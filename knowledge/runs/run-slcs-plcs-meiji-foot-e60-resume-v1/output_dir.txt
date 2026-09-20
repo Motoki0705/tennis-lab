@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_1/checkpoints

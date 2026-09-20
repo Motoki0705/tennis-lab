@@ -140,8 +140,8 @@ class BLCSSceneMeta:
 
     shots: list[dict]  # List of BLCSShotEventMeta.to_dict() results
 
-    fps_out: int
-    sim_fps: int
+    fps_out: float
+    sim_fps: float
     num_frames: int
     num_cameras_sampled: int
     num_cameras: int

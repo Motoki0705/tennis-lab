@@ -1,0 +1,28 @@
+# Single observed broadcast view with trajectory physics augmentation.
+defaults:
+  - train
+  - override model: multiview_axial_small
+  - override data: multiview_sequence_broadcast
+  - _self_
+model:
+  max_num_cameras: 2
+  max_seq_len: 128
+data:
+  num_views_range: [1, 1]
+  seq_len_range: [128, 128]
+  batch_size: 16
+training:
+  trainer:
+    max_epochs: 60
+    check_val_every_n_epoch: 1
+    enable_progress_bar: false
+  checkpoint:
+    monitor: val/position_error_m
+  weight_decay: 0.1
+  warmup_steps: 200
+  compile:
+    enabled: false
+  qualitative_logging:
+    enabled: false
+run:
+  output_dir: ${tennis_output:blcs,train,broadcast_real_rgb,${tennis_run_id:}}

@@ -34,7 +34,8 @@ class SLCSTrainingRunner(BaseTrainingRunner):
         return SLCSTrainingRuntimeConfig.from_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
-        return SLCSDataModule(self._typed(config).data)
+        runtime = self._typed(config)
+        return SLCSDataModule(runtime.data, seed=runtime.run.seed)
 
     def build_lightning_module(
         self,
@@ -62,9 +63,7 @@ class SLCSTrainingRunner(BaseTrainingRunner):
         if not isinstance(train_loader, Sized):
             raise TypeError("SLCS train loader must expose a finite batch count.")
         batches = len(train_loader)
-        accumulate = int(
-            self._typed(config).training.trainer.accumulate_grad_batches
-        )
+        accumulate = int(self._typed(config).training.trainer.accumulate_grad_batches)
         return max((batches + accumulate - 1) // accumulate, 1)
 
 

@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "source_commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+  "device": "cpu",
+  "profile": "train_real_rgb_one_sided_context",
+  "control_profile": "train_real_rgb_ball_temporal_context",
+  "composed_changes": [
+    "model.missing_ball_one_sided_context",
+    "run.output_dir"
+  ],
+  "saved_control_config_sha256": "9e5f2cae26340f98936226a9c313fdbde09db286fd99d17aaa28978e600fb5d8",
+  "explicit_legacy_migrations": {
+    "model.missing_ball_one_sided_context": false,
+    "data.domain_sampling": {
+      "enabled": false,
+      "video_domains": {}
+    }
+  },
+  "saved_control_matches_after_explicit_migrations": true,
+  "root_comparison_uses_runner_absolute_serialization": true,
+  "dataset_sha256": "49b5b661b270034ac18e11cb2bfa43ecaf058f0d57957295d3bc27d612e1f0a3",
+  "split_sha256": "3d6882d988e5bfed9e67d8950829060a8eee1a44551ef2316c4e94815efa69c0",
+  "train_windows": 466,
+  "epochs": 60,
+  "batches_per_epoch": 30,
+  "total_steps": 1800,
+  "sampling_balanced": false,
+  "require_dino": true,
+  "cache_dino_tokens_for_preflight": false,
+  "augmentation_for_preflight": false,
+  "test_read": false,
+  "build_report": {
+    "clips_in_split": 15,
+    "clips_loaded": 15,
+    "clips_skipped_incomplete": 0,
+    "windows_total": 466,
+    "windows_dropped_low_label": 0
+  },
+  "frame_counts": {
+    "all": {
+      "windows": 466,
+      "real_frame_occurrences": 55920,
+      "observed": 49732,
+      "left_only": 847,
+      "right_only": 2106,
+      "both_sides_missing": 2635,
+      "no_anchor_missing": 600,
+      "windows_with_one_sided": 114
+    },
+    "broadcast": {
+      "windows": 40,
+      "real_frame_occurrences": 4800,
+      "observed": 4518,
+      "left_only": 14,
+      "right_only": 3,
+      "both_sides_missing": 265,
+      "no_anchor_missing": 0,
+      "windows_with_one_sided": 6
+    },
+    "meiji": {
+      "windows": 426,
+      "real_frame_occurrences": 51120,
+      "observed": 45214,
+      "left_only": 833,
+      "right_only": 2103,
+      "both_sides_missing": 2370,
+      "no_anchor_missing": 600,
+      "windows_with_one_sided": 108
+    }
+  },
+  "one_sided_distance_frames": {
+    "all": {
+      "count": 2953,
+      "median": 22,
+      "p95": 86,
+      "max": 119
+    },
+    "broadcast": {
+      "count": 17,
+      "median": 2,
+      "p95": 8.2,
+      "max": 9
+    },
+    "meiji": {
+      "count": 2936,
+      "median": 22,
+      "p95": 86,
+      "max": 119
+    }
+  },
+  "real_forward_backward": {
+    "sample_index": 6,
+    "meta": {
+      "clip_id": "broadcast_shanghai/clip_004",
+      "video_id": "broadcast_shanghai",
+      "camera_id": "cam0",
+      "window_start": 360,
+      "window_length": 120
+    },
+    "equal_initial_output_fields": {
+      "player_position": true,
+      "player_rotation": true,
+      "player_position_log_b": true,
+      "player_rotation_log_b": true,
+      "ball_position": true,
+      "ball_position_log_b": true
+    },
+    "equal_initial_rng": true,
+    "all_shared_parameters_equal": true,
+    "added_parameters": 16768,
+    "losses": {
+      "player_position": 0.19061459600925446,
+      "player_rotation": 0.9818956851959229,
+      "player_angle": 1.059349775314331,
+      "ball_position": 0.05890863016247749,
+      "player_position_nll": 0.4216415286064148,
+      "player_rotation_nll": 2.0869529247283936,
+      "ball_position_nll": 0.08120593428611755,
+      "player_position_smoothness": 0.021564649417996407,
+      "ball_position_smoothness": 0.03367789462208748,
+      "ground_penetration": 0.0005770251154899597,
+      "total": 2.5563974380493164
+    },
+    "one_sided_gradient_l1": 1.4801262617111206,
+    "one_sided_gradient_finite": true
+  },
+  "ordinary_verification": {
+    "commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+    "cpu_tests": {
+      "passed": 797,
+      "warnings": 10,
+      "seconds": 143.51,
+      "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m pytest tests/unit/tasks/slcs tests/integration/tasks/slcs tests/unit/utils/configuration tests/e2e/development/test_configuration_audit.py tests/e2e/development/test_architecture_boundaries.py -q -n 2 --tb=short"
+    },
+    "ruff": "passed",
+    "mypy": {
+      "follow_imports": "silent",
+      "files": 7,
+      "result": "passed"
+    }
+  },
+  "initial_probe": {
+    "exit_code": 1,
+    "error": "Raw saved-vs-composed control config assertion compared persisted absolute path roots with equivalent relative composition roots.",
+    "diagnosis": "runner.save_config explicitly persists runtime.resolver.roots.as_mapping(). Use that same public serialization for exact saved-control equality; do not omit path comparison.",
+    "dataset_or_model_work_started": false
+  }
+}

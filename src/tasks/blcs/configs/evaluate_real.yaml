@@ -1,0 +1,18 @@
+defaults:
+  - train_meiji_real_rgb
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+evaluation:
+  checkpoint: ???
+  device: cpu
+data:
+  num_workers: 0
+run:
+  output_dir: ${tennis_output:blcs,evaluate,meiji_real_rgb,${tennis_run_id:}}
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

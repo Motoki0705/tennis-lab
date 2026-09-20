@@ -64,6 +64,42 @@ def test_court_footpoint_filter_requires_dino_detector() -> None:
         )
 
 
+def test_pipeline_outputs_share_identity_across_distinct_roots(tmp_path: Path) -> None:
+    runtime = _runtime(
+        [
+            "court_reference.view_half_turns=[false,false,true]",
+            f"paths.output_root={tmp_path / 'runs'}",
+            f"paths.artifact_root={tmp_path / 'stage-artifacts'}",
+            "output_directory=tennis_scene/generate/smoke/seed42",
+            "output_name=clip",
+        ]
+    )
+    relative = Path("tennis_scene/generate/smoke/seed42")
+    assert runtime.output_path == tmp_path / "runs" / relative / "clip.npz"
+    for stage in (
+        runtime.court_kp,
+        runtime.gvhmr,
+        runtime.player_association,
+        runtime.ball_detection,
+        runtime.plcs,
+        runtime.blcs,
+    ):
+        assert stage.output_path.parent == tmp_path / "stage-artifacts" / relative
+
+
+@pytest.mark.parametrize("fragment", ["../escape", "/tmp/escape", "outputs/repeated"])
+def test_pipeline_rejects_invalid_output_directory(fragment: str) -> None:
+    from src.utils.configuration.errors import PathContractError
+
+    with pytest.raises(PathContractError):
+        _runtime(
+            [
+                "court_reference.view_half_turns=[false,false,true]",
+                f"output_directory={fragment}",
+            ]
+        )
+
+
 @pytest.mark.parametrize(
     "overrides",
     [

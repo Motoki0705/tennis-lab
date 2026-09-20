@@ -32,6 +32,7 @@ from src.tasks.court_detection.model_io.contracts import (
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+from src.utils.configuration import PathResolver, RuntimePathRoots
 
 _CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
@@ -203,9 +204,24 @@ def test_test_prediction_payload_flattens_every_selected_head(
     monkeypatch: pytest.MonkeyPatch,
     point_capacity: int,
 ) -> None:
+    monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
     bundle = _bundle()
     module = object.__new__(CourtDetectionLightningModule)
     torch.nn.Module.__init__(module)
+    module.config = {
+        "run": {"output_dir": "court_detection/train/test-payload/run-1"}
+    }
+    module.path_resolver = PathResolver(
+        RuntimePathRoots(
+            project_root=tmp_path,
+            data_root=tmp_path / "data",
+            checkpoint_root=tmp_path / "checkpoints",
+            artifact_root=tmp_path / "artifacts",
+            output_root=tmp_path / "outputs",
+            cache_root=tmp_path / "cache",
+            external_asset_root=tmp_path / "external",
+        )
+    )
     module.model_io = _adapter(bundle)
     logits = {
         "kp": torch.zeros(2, 2, 4, 5),
@@ -258,11 +274,13 @@ def test_test_prediction_payload_flattens_every_selected_head(
     np.testing.assert_array_equal(payload["line_logits"], np.zeros((2, 1, 4, 5)))
 
     module._reset_test_prediction_buffer()
-    monkeypatch.setattr(module, "_test_predictions_dir", lambda: tmp_path)
     module.collect_test_predictions(batch, {"logits": logits})
     saved = module.save_test_predictions()
 
-    assert saved == tmp_path / "pred_test.npz"
+    assert saved == (
+        tmp_path
+        / "outputs/court_detection/train/test-payload/run-1/predictions/pred_test.npz"
+    )
     with np.load(saved, allow_pickle=False) as archive:
         assert set(archive.files) == {*expected_shapes, "scene_ids"}
         assert {key: archive[key].shape for key in expected_shapes} == expected_shapes
@@ -282,7 +300,7 @@ def test_test_prediction_payload_requires_supervised_kp_targets() -> None:
         "seg": torch.zeros(2, 3, 4, 5),
         "line": torch.zeros(2, 1, 4, 5),
     }
-    batch = {"image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)}
+    batch: dict[str, object] = {"image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)}
 
     with pytest.raises(CourtModelIOError, match="targets mapping"):
         module.test_prediction_payload(batch, {"logits": logits})

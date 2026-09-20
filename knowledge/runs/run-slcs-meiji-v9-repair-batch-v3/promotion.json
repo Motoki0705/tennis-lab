@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-19",
+  "repair_run": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-005",
+  "repair_dataset": "data/slcs/meiji_rgb_v9_repair_batch_v3",
+  "target_run": "outputs/tennis_scene/generate/meiji_rgb_v9/s42-002",
+  "target_dataset": "data/slcs/meiji_rgb_v9",
+  "backup_root": "outputs/tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-005/quarantine",
+  "procedure": "Audited annotation and generation directories were copied to fresh sibling staging directories. Original annotation and generation directories were moved to backup_root/<clip>/{published_annotation,generation}. Staged generation and annotation were renamed into place. diff -qr confirmed all annotation files match the repair source. repair_generation_recipe.json preserves the CPU recipe and explicit restored checkpoint locations.",
+  "metadata_edited": false,
+  "old_artifacts_deleted": false,
+  "clips": {
+    "video_002/clip_017": {
+      "old_scene_sha256": "e974416445cff4eb990bf1e4f2c90122aa4221640fabaaf54a2b0c5f41336d8c",
+      "replacement_scene_sha256": "a9831d1970764084294e613d64f323195dcf21e83830c027d359741e506e49fb"
+    },
+    "video_002/clip_018": {
+      "old_scene_sha256": "0fd3f0f1849a53dec528f272e4402ad289162541f4d014f807113dfc720c2879",
+      "replacement_scene_sha256": "38c09653c6adc7b1e5a5e39c56709799eabfc881db1aee5d7da3970e719e5da5"
+    },
+    "video_002/clip_020": {
+      "old_scene_sha256": "ca4d71517ea0b5801dd6a57c469ca6ef870385a64d59eb74651c86cac853477d",
+      "replacement_scene_sha256": "05909e7a9aa7b187ed1e347a183ddbc825200939d37e2035bacc2d12f6c7f154"
+    }
+  },
+  "qc_command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tennis_scene.scripts.report_slcs_dataset_quality dataset_directory=slcs/meiji_rgb_v9_repair_batch_v3 generation_directories=[tennis_scene/generate/meiji_rgb_v9_repair_batch/s42-005] allow_incomplete=true output_dir=tennis_scene/analyze/meiji_rgb_v9_repair_batch_quality/s42-003",
+  "qc_counts": {"completed": 3, "missing": 53, "error": 0, "excluded": 1}
+}

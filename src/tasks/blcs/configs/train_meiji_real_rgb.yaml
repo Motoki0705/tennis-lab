@@ -1,0 +1,23 @@
+defaults:
+  - train_axial_reference
+  - _self_
+data:
+  scene_dir: blcs/meiji_geometry_replay_v1
+  camera_candidates: [0, 1, 2]
+  num_views_range: [3, 3]
+  seq_len_range: [32, 128]
+  batch_size: 4
+training:
+  trainer:
+    max_epochs: 60
+    check_val_every_n_epoch: 1
+    enable_progress_bar: false
+  learning_rate: 0.00003
+  warmup_steps: 100
+  compile:
+    enabled: false
+  qualitative_logging:
+    enabled: false
+run:
+  init_weights: blcs/blcs-axial-reference-kp14-corners-v3-4-t128-seed42-best.ckpt
+  output_dir: ${tennis_output:blcs,train,meiji_real_rgb,${tennis_run_id:}}

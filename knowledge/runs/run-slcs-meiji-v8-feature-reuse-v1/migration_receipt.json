@@ -1,0 +1,1191 @@
+{
+  "script": "knowledge/runs/run-slcs-meiji-v8-feature-reuse-v1/reuse_features.py",
+  "started_at": "2026-09-18T17:55:23.719521+00:00",
+  "status": "complete",
+  "clips": {
+    "video_000/clip_000": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_000",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_000",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+          "cam1": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+          "cam2": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "66f7dc2f9d983d59c2bd73e9e3eac7ccb41facd893e09e392e636ffe710137a3",
+        "cam0.npz": "67f2fe18b8ac413b80e77d166e8223d0379fe7b5e0505db552d35188e48e7b07",
+        "cam1.npz": "a8f530cd917cb44d52e565628ef5448e1367346f265fe3d23e39e134b5a7d443",
+        "cam2.npz": "5ff0573225be56732c864d7098e59406cba4da628970017b2fec66545efc830e"
+      }
+    },
+    "video_000/clip_001": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_001",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_001",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "ed9163e2e20a469bdf6edb553561e52b7b53d496cb6c9c31c8165fa0f293daa5",
+          "cam1": "02a0699dab1760ded362ff1e05e6005425b11c4da9ab7dcd9049635aa480c928",
+          "cam2": "790f2ed13079454aa89c9bfae4c0ad02e3df2067e82f5cc38cc1f420c95a4fa3"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "43a6aba194ffcdaa4369f63313a04aac610fd59f4b6149983a2f4b8e8c8a7254",
+        "cam0.npz": "0ad0f46802e2e4c7114fe35977d08d58b8bb1dc9c8be86284a00d107f692cd11",
+        "cam1.npz": "f56d5c32d2adfeea4f43c5e9503e4586fcd7b2056f0bdef40c5b6ccb128ae1ce",
+        "cam2.npz": "430f25bd6783a9d50234cf61f6ae1f1dbe0631725dca7eba75d112289d436a5b"
+      }
+    },
+    "video_000/clip_002": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_002",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_002",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "8ea60ed6a762bef326105c570e994a1e3e5627f5201418b21a409a4f93a0d85c",
+          "cam1": "04d9cb55c29c00ae6dd1b06361b9f407a4cd83d61d30c2b8dac4064a61c9efb0",
+          "cam2": "0124b35a958d1f6d911aa007fea613b6f280924e4b8cbcc2f7ae144af2c3db7c"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "affae27b0225f67aff89ac0d3c2d34a70b7ceb214fdc8afb0781ab13cdbd59a7",
+        "cam0.npz": "652b8ea3732cb409a424326651b67914b5153906a30e0324112848e3ae5e567a",
+        "cam1.npz": "59fc64d82fed3a705517c8dfab032a1316081d74fef1cc89ee37a740d4dd9713",
+        "cam2.npz": "5359eb04c2dffa30813723bce31b5690208b54ff6c8c3568a6ac2f3dc7c91217"
+      }
+    },
+    "video_000/clip_003": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_003",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_003",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "892658bdc0f2f54ca5d0e209333248b346631c54992fde82d80b9ad54ef5bfe0",
+          "cam1": "3907797d53cc644e7181b8c99c9f9cb419437442ac28289be07ef9aedff76912",
+          "cam2": "962e5402e8210d96709744dd65122383471d47ca5079ace418b7a7268781dc88"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "fbcb44afd79b707ef4e25b33df694f92570da4b134549bff75d0c8230db447e5",
+        "cam0.npz": "00f5fdd58f35aa00c034a7d2b935b288f71d3b19ac63f638e9a1ffadf37cab29",
+        "cam1.npz": "c6b9091588fe758d5eb3ac9770590b1a3d15c5293d3a6d154440a24728fd7aae",
+        "cam2.npz": "351077c16d0e8fee80bc2533be1a5804b3b752888df740ae2aaa8308a201da6e"
+      }
+    },
+    "video_000/clip_004": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_004",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_004",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "6238e767d979c6dd91cca2948efd39cbf0e268f79d06db4f1b4d9a7c9a70b155",
+          "cam1": "91bec202eeccbf8722c043d5c89e8fd7692effeec11718f9f0d2f911c67f76db",
+          "cam2": "0cd0bf44fb1fc6b60fa0d97a8a6f08eb45f1d5bd7828a54b915901806d13169a"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "ad214126a6617f2f521dfcadecc5fa63bef660247e952205667d80f6e1ed3d3b",
+        "cam0.npz": "7dd309eb841706839d430dfb580993339aef3e0ede1cf626226ad35badb00a0b",
+        "cam1.npz": "df3587bad9c30b117975ea4eae905ed5f693b98957a10ae67cc09e7e742fb1f3",
+        "cam2.npz": "737feba2f0dbac9260cc48a7d314eb4a40f962e1a67d5855f83b6f12a7500726"
+      }
+    },
+    "video_000/clip_005": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_005",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_005",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "e1a43e5bbcf872aa128c7d5d5a704873f4b14fd0d30a619b1809fce635969410",
+          "cam1": "f969ddb5ab2539bd9ae24807db3aa1b52601fe86e7824d16d1393faa7db543f9",
+          "cam2": "1c722cec5bd038f01a3b973714c312f653225e7692b2fc3a82976ef287ae7224"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "525e942a6e75ae97c575ee74092e9efe995999d25e46aa034ea279d45486cd96",
+        "cam0.npz": "f1acdce49b3aa8c57936d4e2bfddcb5beccbbc2c1642e3d2662f6407c43ef102",
+        "cam1.npz": "d8fefbd1124dace6297baaf309d0bdd85c891736f2a43f7ffd8ea6cdce31945b",
+        "cam2.npz": "44a7d0980ed9fd2679d5ad53cbf703447566240a27e432988da94675dd3acf2f"
+      }
+    },
+    "video_000/clip_006": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_006",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_006",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "5b14fffd46fb5945bc6be6b0f50f99bbdc280757a016c4785c81eac635618fbd",
+          "cam1": "3d577a98ac28a6d7a055f7f99fab10119d4ecaf9d6712ed9b9c4d3ae2db66367",
+          "cam2": "2a5986746c7e7c0909ffb761e9dfc40c928d8bcb608f04b05603eb882363a133"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "155c65fa81984d08ff2bbb8bed3aaeef6e887eff0a5dc8242ea625b2eb238347",
+        "cam0.npz": "2a32f1b6aa600348f3f2f1172c641a26b2fc733606881b97d33c9d428f854d3d",
+        "cam1.npz": "3c2e84682036fa9ebbf9ca106ff2a77cf27f358fc6d3976456246654d2662967",
+        "cam2.npz": "133174a3aff6f015d03f0ef56cb58a3b5bc6d59be078988da604618ef332c200"
+      }
+    },
+    "video_000/clip_007": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_007",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_007",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+          "cam1": "3c6fd4ff6429584ddd4f6ea5ab633a097cf0655fe28eefac2fb36254a18a872b",
+          "cam2": "72b4c445c7adffbd27895fadd7ea00974aab4f7eb27032a46e3cdff97b039d05"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "56876a6e76a77e2bdcb971f6f2041f419d360a6f703f6b9312d04e4913d8678d",
+        "cam0.npz": "7614bb3d027f62748998997f60a40de0caa125f121c024b9930318becc2a4664",
+        "cam1.npz": "e327a51d0c881feb49ca9d50d5cb98911c8725f11147a68f569b5b583fb49a0a",
+        "cam2.npz": "d75efee2c14b14ca0ca88c772938500417cef505594f74f7c933fd6061b63360"
+      }
+    },
+    "video_000/clip_008": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_008",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_008",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "cd285b8acbc50bc87b9b3823945554f507358d8444b228f3dd35c30dbf4b1011",
+          "cam1": "dddf51177cfdfe13a5be7f8a02acc2c895600394b9035456e9115ae2bec34700",
+          "cam2": "df37d0e618d51750f586b116b946f13ca7f0ceb594b693e45ee0a3fdd476aaba"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "f306dc728ad5be24934f5505c62d61325a6bfa209c3a45b0ecd9b008d9980bec",
+        "cam0.npz": "36fd8b7091e080d8d71ddce3aac667a7e16ef4cacad6f38a07849bd53709e2b9",
+        "cam1.npz": "3f4b867be430a6f64011409d0758b6cf14ffd77787a7079351311be3ac71545e",
+        "cam2.npz": "7ed9ace44b585d29605bd4a11a2cd51b2d8cff23399457c34ccf9ccac4813d80"
+      }
+    },
+    "video_000/clip_009": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_009",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_009",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "f890ff8c194faac8d64ce65c6ecdcff6a14a880a62643a6d7ae9ce5208f28c42",
+          "cam1": "d6ba31d4be3f98a349366ab6310154b89d8344cd6ac88778e80c33887c361433",
+          "cam2": "ed36c53662f32b7b3f037d1ce9e00486b3361140d1e76163dd29d4468a53b5cc"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "e9b754e25c6bfe5457cddca1b1b001b95a741201d92ba0fce711f273ea0ad547",
+        "cam0.npz": "a2302d818c56b6267e1734c12b5086b694e8fa045eeca81a67de2c534f5dfc39",
+        "cam1.npz": "67949c92aff570325c3a3622512220e22fa69d454054044110d6b8b01606bb80",
+        "cam2.npz": "aae860588005f64a4e4b3facedd7da6272c76786ddaae948018092e9802f4196"
+      }
+    },
+    "video_000/clip_010": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_010",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_010",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "0ac292acd91aa8f0fda4082c0ec3c85c3240b958b89f65fc5c3cafb170f8f26b",
+          "cam1": "f0a5aea865e1fe6053daa3f0a08c67f4810451b2c2007a12aca0d4b700a1b834",
+          "cam2": "e1b7b18bfb48a43bd865f4ae8aa1c324fe20a5a54c6730466ee1342ae5fd1170"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "da93abd9b1a23fc78b5aae7bbc7d8af2b29cea18ed615c402650df4548efca21",
+        "cam0.npz": "e1a03e558bc67a16cb49c13ac2809e7d7f6eaeb4c8de9c613ca3b0d51e023176",
+        "cam1.npz": "6a83fd552a616114fd89b4cb52f7d3d372a9153404a4fab34597041dd0dc38f4",
+        "cam2.npz": "f15c7b4c83de5e7bab1f152ccb77e2afd21c8660c22b2cc117250ce35e6ba3c1"
+      }
+    },
+    "video_000/clip_011": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_000/clips/clip_011",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_000/clips/clip_011",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "1331e1b5f22dad79c3373263086886191b8904f6564883d809a01de9195807ce",
+          "cam1": "5020a6f380b0d3ced50139d7bcf6b1c1d1ec0b8d524d1314c0141eb1f3b4f92a",
+          "cam2": "403a5f63d4a576afd890d22fbbd062df74da6b90006d632a5fbbe6f20d4572a0"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "bd9178e001440b959df484aa0a69f32d1a183d09f3f65d13a45341321f48d694",
+        "cam0.npz": "1d8559be76a7aee7889743a6c32f081f0973fc8efcfbf7bad4762849e4d499e8",
+        "cam1.npz": "4f436c9c0befb3d41b53d3ca3ecd65bf6c2aa7605d098142fab3ead9c3238442",
+        "cam2.npz": "356f177d8dd117af9b488bff48ca48425192825c2f45182a86fe4b47d53af493"
+      }
+    },
+    "video_001/clip_000": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_000",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_000",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "e34f7083db31aa4884fb9cf86267b8c0a946cf09f4f09a7ec6e6737c39d9d24e",
+          "cam1": "6ed83bfbcae8d6ccf2463ee3757dba6f1dc02b0de52d24a173cf00c272f39bdd",
+          "cam2": "b8552d7f4373bfa5aa04c8a670d50108259b944ce635d4e7b4ed76fcd810513c"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "c7412acfcec928facf399905574351ef03eb80e590d9b9f9eb1ece263b063676",
+        "cam0.npz": "2948d437771bd726c0eb0b275c2ee063a1ee4d6be2a150ce9568484b15a36e80",
+        "cam1.npz": "0b98e675817ae20a38549943335cd4490bcff25eab0b6a159969344d5c48cf83",
+        "cam2.npz": "10c50363c5d5633f0f18da108bb1f1881052aac2986a8046f69d208d20fe35c3"
+      }
+    },
+    "video_001/clip_001": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_001",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_001",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "2af67b3720887e9b75918f6c09be893709d9ad383a9d2846dd832df90cb2a478",
+          "cam1": "945838cf381c7a93f3cd0ff03457ebe44f6a6ef64dc9b9abb760934bbcf434e2",
+          "cam2": "b123b6429cc7e4037ee90c6c89d15b915227568f0e07922f98214e080321ce95"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "d12197f48976ab997c83596741d67a5c570e5a1097831a996d311d7789d77444",
+        "cam0.npz": "6a09b423e9fba58c343d8eb109c61656be08142532916f1c53280c0957461c2a",
+        "cam1.npz": "2f2b520821bf06812b12fde0eaacd6c1d69911e10820b45ed608ba9cb280ae4b",
+        "cam2.npz": "0c1e73c9633281b3c3c2b25f62cf8335cccdebcf3d6a8785ba83653e3bc549a9"
+      }
+    },
+    "video_001/clip_002": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_002",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_002",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "7576480f6403a6a1215856419f8140870bff85c2d4deb2b37ea388eaa9e08a01",
+          "cam1": "aaa0a497dfa169caaf5cc766bd00a400bec509246975ad41b66cac878fa2f786",
+          "cam2": "dd423dd26937aca3ac83c438e28f277442fcad9e28fba273d07fc146600e4a5d"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "2bad1d47a8c548f8630983562cf0364b36f214bf9363e18625e28e96a696be82",
+        "cam0.npz": "c0238af83a6ef2e097e30fde97c91473223a83a8c139a490dec1fbb9a19cebf8",
+        "cam1.npz": "fbafd1780fc5f96370e7c7b9d25a03a23b86902c09e5d5be714b28ee39c79aad",
+        "cam2.npz": "431112278855476edcad46ebbc42de7bac2889e70e89b7bc6f7310aa829ac5f5"
+      }
+    },
+    "video_001/clip_003": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_003",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_003",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "b0b39721ddafc8d8f213248ab4ed8b760a6b045c362a64a248000059b1ed3347",
+          "cam1": "62fde482261753e703f70b6a99890dea04c667ca533c818975bf1f115bd49039",
+          "cam2": "e153e8b1346c76bf840d6eb0ed5a5fc18852c5f0018b3c47a0f8632f55ac489b"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "928c93411bdef068a49d881cf104e21d77eb2f8f33b380c913a6a229c93bcad0",
+        "cam0.npz": "8e0b46dee438f0f4b9a3d46c17343a0cb5fa07ec178c1a5176fa6d2c62dac0e8",
+        "cam1.npz": "39f9e5be3471167edaade595345d21e0430c53eca3ae566d0dee384bba60258c",
+        "cam2.npz": "74abaa2313c4b96f95b88394a4a342ac69a8bcf0371a406112692fc90b80cbd5"
+      }
+    },
+    "video_001/clip_004": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_004",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_004",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "7233cae48aa45b2fbcb704ccc0f3008d4c93e4dc0028ca3bdcdc75ea6b241b02",
+          "cam1": "7ff30151b0f6bd3463dee84c53366f970534ffefe4533ad91301972911279080",
+          "cam2": "2d030fb1efe6510f6a6e1ac15803550de54b35502ebe11368e24c22f4aa4d2cb"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "d3bf303275f6a541971e5ae0efa9d6f176e8dc25084c69ba7c918d3b257ae4da",
+        "cam0.npz": "73678b762a16a041844eef51b6454af91780309e7ffb2ec5b161b1e0b61849aa",
+        "cam1.npz": "e8e1d00fe49e6ce56157271b06b20f46b92baa05b1fa68fc5d1a13790f66f2a5",
+        "cam2.npz": "4f0cd91c0a5086cbd91c4ff4dd191b706b95e4bf25a68ce882aee540893e4673"
+      }
+    },
+    "video_001/clip_005": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_005",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_005",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "bd7d707d1dcce379506b9cf77b2cd0079bc9acdeecd191720d2bfd555bc0b626",
+          "cam1": "72062206002cc5a1456114abd31ef3905650eef20bf2a50de7f0163cf8fa2c92",
+          "cam2": "43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "81b17b28aa20d2487e611b3533497fa38c649e4f2a22a1d63ce1e81d978bf0df",
+        "cam0.npz": "7110fa74bb5f378e127128fca020f7689776bfc3e2648415c6e57f42d1e60008",
+        "cam1.npz": "3e330ad199c7f3c172ee81886894ce7ba1a8d8a43c3e1773de7380b6c50bf981",
+        "cam2.npz": "ed7012875daf8f8d12c9cc76a1cb925529769a251884ecab5c916f65b89b604e"
+      }
+    },
+    "video_001/clip_006": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_006",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_006",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "a815425585e384e93b2a9045f2b86798013e731afa2ac914c9788b0ef8e29c1b",
+          "cam1": "a9603bb11707b948f999bcfb8ae40fba0e933ec2bf3fcf9490fa02df28da5be3",
+          "cam2": "76f83ba9c61b23662b2c91f087c62099e8cae8354c3f4dfad823cc0930b3c94b"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "b16d27ba544208c4c3fbdb7d0edd8becdf4cdcac0b2c66f1302aad91d73d156c",
+        "cam0.npz": "58045a79dca22faac0d78dc2e08800323c5c3ad084c213f546c58b480b62436b",
+        "cam1.npz": "b6fc1471aeb7283e7f2da90dcb392c2180ee4a1e57c3fc102394f9f15b5e7bbd",
+        "cam2.npz": "d6400c718b5af80584ce55b5632ac5758d63b2a3f7f0624bf17e4129c44a2782"
+      }
+    },
+    "video_001/clip_007": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_007",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_007",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "e9d5f8fb106dc191c216a67a53e9dc5b41bc612d17fc10f28200eb61576ac475",
+          "cam1": "a9b1693108f782cbc441874abd643a64f00dbb692fad669c8c00a5e46693ca99",
+          "cam2": "c34e8f5de976def4731a29b5449f40375b871072fe811dae4e9f1874af3f1a7c"
+        }
+      },
+      "status": "skipped",
+      "reason": "Source RGB completion marker missing"
+    },
+    "video_001/clip_008": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_008",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_008",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "dc9fe3b40f424c828f73ea78ef148bc5105d0fc7c55058566ec553c2bf03f575",
+          "cam1": "22405d9dc7cefd689678a2739a29272365ad3cdd05cdf0bce697dab413cf6f3a",
+          "cam2": "b6b659aed7765de0c21491fcc3f2b64d5bb6f4d61698302b86bdea8eceec0524"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "78b9a496430834fea0c52ee6738ad67abda613135600562e9b404a383a990108",
+        "cam0.npz": "5b0ed2791a38b413085900eb85fde4fb6d2d90735874371384dd0e337b142ae4",
+        "cam1.npz": "ea0d4f79581e4798d16b2ae77c9eafe9ecee951c1c94040c393a686e1b7302ed",
+        "cam2.npz": "a7364b8901620d35666127f687f6b62b46cd71f65a3c19226b990344ff4f5df0"
+      }
+    },
+    "video_001/clip_009": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_009",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_009",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "f98844abef82b9249ec109f1ae20c87b331290113cc21cd616b1cfbdc527a96d",
+          "cam1": "9e486057f5b9354cddd3515a5f9c61f7819d5b8a9fd3843b3a3aa37fd99b7def",
+          "cam2": "c1cbdaf10b7797e6546808c0c47d199e4400f1f644b03ba96a40e65c88f70fd6"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "61d804345ef4d59ac52870990d706a1f66f56634e0d120c0da7b448bc69ffc62",
+        "cam0.npz": "792b8c9be816e1cfce16269676a0c30304090d9191f3443932c9c9b33ac95cd4",
+        "cam1.npz": "4db12961dfcf35689c0ab9106d681c55f239a25804568b5b542261ce39d99651",
+        "cam2.npz": "b866921192e287367960fe22271bd06fdee6d43776b158eb330bc371071d5460"
+      }
+    },
+    "video_001/clip_010": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_010",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_010",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "204fd11ada514a7f8d64e9966ae212eb75463c5bb0bbb05192573a64db1d94a4",
+          "cam1": "4743db3d32dfb887b36a8a831a2fe2bda19d3e8d466af7f6d4790759fd552275",
+          "cam2": "e96f40bcf99b7cd8a5d09e6f8e80e2a32785d3c2e8ce4c3adbe56585248f7601"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "eb2e34997b7f098f1bcca79df7d62673566a8d35cddb3d21f6e804897ba9fa0b",
+        "cam0.npz": "7fb6351576e097188369f2ec744b5f60686c2dd5df332c25a1a24b8282d10dc9",
+        "cam1.npz": "8ba77ad58845fcf592129785e1bd0aed0ee3cbcbc509a0324a92ab923e520ed0",
+        "cam2.npz": "7f7012f1c8b9f8475779509af1fc9728c9b4b0781defdcfadcf79b29bb1d4e0a"
+      }
+    },
+    "video_001/clip_011": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_011",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_011",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "9f2ca65ea4442320180e863e50e8bf833f1d6d72cf21e3451df92c1cb6fb7635",
+          "cam1": "a893095d4e2833d4a519c355d67027fd270a64fe5d0a315b73053d8012e4bf77",
+          "cam2": "35b2138a3a9753c206770516d83363441855275ed2ba05bba708f10a5f18fbdb"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "63eaf1b24b6cd90752680c810077c4805470b8bcfb5ccdd678057fc548374da1",
+        "cam0.npz": "c05a4487822752d27ac5ea84fe91801334f8047eab28d472be03e83d6473d001",
+        "cam1.npz": "64fe6c0e9a23f5ebe9c5d9996edf29f258f844d75785e673b8535ca87e252f12",
+        "cam2.npz": "1c125606c0fd6f22e3ac0f7e4950855fdce8c5ac489b688f2cf811df8297d6bf"
+      }
+    },
+    "video_001/clip_012": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_012",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_012",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "5bfe54ee9950cff4c959462aaaa39325878b785012f2fa75b63ab0ae4ee86f54",
+          "cam1": "2619f2d9c32163d46ccb25ba16e87d020beba2ddb7a9c19eaf3e7d247e1385f8",
+          "cam2": "88c8ffe753935a738006de8c1ca38043c89cb38f3ad0a0faf1f7cd8b1b2f83d7"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "63362f6ca9c7ed76a3226b993721bedd88deee90681bb19dee2bef4ddbe24afd",
+        "cam0.npz": "fbca2f2a88ac73a9ca30d0309ff4f55c31328fb5c6a7aa4d938510004dfc5eed",
+        "cam1.npz": "ac5f595cf018dafac6a3a3f8dcb71c5761fb5426b2b980948b03922afe6b11e2",
+        "cam2.npz": "971971fd01cffc3438b5b640e34b43300192663cfce742b53677583cc3b1bdeb"
+      }
+    },
+    "video_001/clip_013": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_013",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_013",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "882c618bab087b1528bcdf16e0c61ae4e6b7f967b4d6debc43a1a6478ad6f698",
+          "cam1": "0432f1caebb9a915548878f3ab5a3cf3f51ca58a3ee790f5bfb21b015cbb92df",
+          "cam2": "1e563eeefeb1933a7380ee1b0a8e7c9afc6edf107c1b05f610aaa7a6ad73dcb1"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "6623618dff1a528d3f4ad143a7eba620a6ec4d19e1fe05fa41f9aee3430b4116",
+        "cam0.npz": "243795a1fee0828191703d1dfb677087440537ddc458ddf20bb908a45ba28f4f",
+        "cam1.npz": "651469a3323b35ee0185558d4565fa4e1c0b07b7ed69e9bfeed021ff6569d7e3",
+        "cam2.npz": "0312daba382723e4c7b3ca73da081ec4e22536c7bdc0accecdfb22951969ee4e"
+      }
+    },
+    "video_001/clip_014": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_014",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_014",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "8f0f9d20c0313c3010c4ca0b2b4715d9b97432fd28502059cc35c075b88e8dbe",
+          "cam1": "fd70ce2a4ed99e9d9f1da8481646ff6e1c2cb284b5d1de4edd1cca1ff93a35b2",
+          "cam2": "7b92f257679611391cef5952053fc4a0c68666f5ad4b630dd01ed5b64e195523"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "f932a53b02acd5165641b17b9a706c3494dface441f9cbd56524f948b19b62c9",
+        "cam0.npz": "d586e5fe45b5bc55ac6818cad38d14f679f796bfcbd4b2ec46430f31cda4a491",
+        "cam1.npz": "b0fbee26d7b0f72be0795e6160ed0731903fa8188790a928be66f9ffc39c5217",
+        "cam2.npz": "f9f43e456808de990f09d209aa652bf2d13afdbaab625666c68034ea337e6e94"
+      }
+    },
+    "video_001/clip_015": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_015",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_015",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "c70ac550a0b485f03168b73958bf767be56e1c20ecd3f6d29bdd36a95e169989",
+          "cam1": "3490f1281580650c617b7c75219f3f6e7f4aa839a4022f1cb7b1f203234c282d",
+          "cam2": "6851c04ff3638e28ef77c10a4a2475fd7fb9d844730ad8b26f160bbe3484b3f8"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "3312968a8ae6117c62f69e301e4894ee307e0c4a5bdcb70c750cfdbd4aa7c61d",
+        "cam0.npz": "6e720b1d936d2701c8a2df038ad56b5d334d21b5d6f5df5d93847de5af8c8065",
+        "cam1.npz": "1423e21667ffb22460803b3d2113b31559db0d0c2cf204911072f7af468c1b3c",
+        "cam2.npz": "fc2c2335657260df1839992075f1be079f0f6f11c2eebd92c064619f6a281d60"
+      }
+    },
+    "video_001/clip_016": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_016",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_016",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "b7d98e5998b85f76e6602bbb87606a92900642936f352bf682be1fa24df7956c",
+          "cam1": "6917fa52728918e484a05ef1f00a8b558a0628a4303fd4313a562fbbe870df55",
+          "cam2": "560c76818ae3bf2385b32400c0a096b139c9e03029e63c56c36ba7454cfc3b97"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "125b04d55c8f1e6b46ef6f6aff32821cde4441d9f8608bf4c36e8fbf35b98343",
+        "cam0.npz": "4dcfef6c4020bd103a5fcfc3dbaf538094f07ca77452926e8e0b94af95912698",
+        "cam1.npz": "517ff8cebf446c688557cbf744e0ff25d8a8426d2ec983659f84b0c7518ced87",
+        "cam2.npz": "8c5db1145b3cf2c8d76dd65071690ae632067debc49e77e0ea7abf904ff46aaa"
+      }
+    },
+    "video_001/clip_017": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_017",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_017",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "124727df7c91799fcc6c35407cd2fbac5ec35a708021c6bf26f8226a54e45cc2",
+          "cam1": "fb4b1fab0ac129ca2c8bc31eae47d99effad9e43affff171007aed2f6e4a0122",
+          "cam2": "0827155f4b69472f70907ce6b6dc131a65bddb1395083aaa8afd767bb535f6e9"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "7a4a280329f09ab8acd9a86d7e9ad61a40dc751e35c01a518e2ef5ec47da2aa8",
+        "cam0.npz": "3025e9f2b1b70b2a52e7009eecdf790edcd93d5c58cb0a6664fbff99ba027343",
+        "cam1.npz": "d8efb0afb4c0a1530dad93533859e9be53ab5762fb967fb747c12680f7084db2",
+        "cam2.npz": "2517799d0ab208a4941c0ddeffbc55a921007fc5a33032e41171e937a82ff197"
+      }
+    },
+    "video_001/clip_018": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_018",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_018",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "9695eb31105b04377b830dc1e11f79dacb7a84e4a75b34fdf4ad88d550493150",
+          "cam1": "59cf2901347f51ed4aad07923870cbfe3b54709e846e7cbb014aedf6d05b6c9e",
+          "cam2": "73dffc91498bc68a2d0a4d5a0d27bf53ab3d2d2d64e81a6e0285c427eff5db03"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "fb3c72122a9ea8f8084fadcec3a7742d5c7e3f30e7af1c512719e67f9aa125ae",
+        "cam0.npz": "7610795b6e958c514280625ab3c1782eec58b0903bd91904fbe47adeb561efb3",
+        "cam1.npz": "978d954358cd753416a7a75a8016d156600a696ff01058881c6271ab768e92e8",
+        "cam2.npz": "38eaed871aa8d07fe8752dbbb2c9ccea41bae440622ffd5f6ef2fee9979c4d4b"
+      }
+    },
+    "video_001/clip_019": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_019",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_019",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "5cb6fd0e0876ad6ee3b7ef65d995eb4f1ded5a07a11af19dd159920ca2fccd52",
+          "cam1": "0b24a25ede2d5ab3c60c626252bd30216b9690503264fc5caf947d2ebe89d925",
+          "cam2": "a6f55b8e689b1f528a7d7005f50184a5359b3a007343931fd909a8d82b3a4d9e"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "5ed207d122ef99957a8111a85d2262d647a84403e4875ea119f3dd7ec2ae613b",
+        "cam0.npz": "1a198d04a9fc55376365af2092fbb73d06f345e0c5ba126f531be8bbfd7e9203",
+        "cam1.npz": "15be063a43a4ec4bb1608e02049d4b3d723068fac783d3ab0d19235619095f9d",
+        "cam2.npz": "b136cfb366c7f74b729e410bd70a120607857dd8d658ce9763b05195e6ded942"
+      }
+    },
+    "video_001/clip_020": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_001/clips/clip_020",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_001/clips/clip_020",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "c4a95d2667cde7dc62226d61edefa108910ce94b501c58e4c04ca79e20b1ccfb",
+          "cam1": "c146369c44f36ae54c295475abbf38e690f412d0a4980c0c52d90893d9590983",
+          "cam2": "c1c633c75c1ea67c038b9e5fc0bdef78a164e2124daac41a4d1bba8c5990da57"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "16ffc54e094942e32d91dd7aa25f2b652561bb15548d6c7626a8492a621af448",
+        "cam0.npz": "be53c16ec459a1c98136e0388217dccbf3b773c296619db91fa3cd5171f923f0",
+        "cam1.npz": "6c55752cfc849bb6e9a8fc5a599156f957c202899722eb641a7fd1301b27235f",
+        "cam2.npz": "98d7abd364154309a3df3d973c37f7e8c7a854dac1389ed0c376a5a0ddb3aedd"
+      }
+    },
+    "video_002/clip_000": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_000",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_000",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
+          "cam1": "864409b986146f10fa0ee16f49ae9d287716f56cec472fa154e4b3919770e1d5",
+          "cam2": "bf6c06a5d51a725a8dd26cf6078c068415e6ca11b1d1b209bf49dafabcfcf74a"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "655ee38efc2524c527e7c621f9f2d988c13e7aeeb5ad711f73b45904407b3b1c",
+        "cam0.npz": "38cb39114c1140c41fdac3e97ed2b57546fdcd9064965cff3c70b43c1a43cfd9",
+        "cam1.npz": "1398542b8f3f206136cd9bd5fd8f1e597d16474d341d3f4caced817dab2b97bf",
+        "cam2.npz": "37327828e58d56b534d0cdd65c98d1f7ac78dec0ce78eb3f628beb39d197fbc4"
+      }
+    },
+    "video_002/clip_002": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_002",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_002",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "4f91ade097c4c13a5398b843d6ce0dc7796f7431c3ea46df43d59f153e57f93d",
+          "cam1": "8ac1a75da8bfa870f7b4d9c8a92bffe60d45ea93289ae455a66a608720fecc53",
+          "cam2": "c857aa8b5cb1848b4b0d1c312489a082e8068854d2d515d5e77a8727aafc3d88"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "d9a4224e3b0a9fe73ff796ea21fe4858ed1881b165fe07531882a3e96c741e50",
+        "cam0.npz": "6d6d9d50a764a862feb503556f7e873566730825095939499ecf7c78d897327c",
+        "cam1.npz": "60e7c992c73b1aade82dea567a0d21eadc8dc94e6898d6cd26e31fcc5e66204f",
+        "cam2.npz": "9efb6cad77f48aaee17b874e54763e0973425b080f2078b0b5c18b570aad43ca"
+      }
+    },
+    "video_002/clip_003": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_003",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_003",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "b5f5dcf6771c178c9bd9d58429f33ce9d279c078264f3a4da16044619e86ca60",
+          "cam1": "e1c13acce2b8a4af7e2b4d5bef9de4bb6f01576c785b00f3b24a3bf98c060f17",
+          "cam2": "213520ec0b34c86e0dd1fb17109b3b63ec817269ae4038cebab03d317cd1992b"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "fad282db3c856d2daf5f8820fd39f4da9b9d82b6c097c5b2160c47887a3faf41",
+        "cam0.npz": "2d81686699073397a687616a877525fea52396bfe80be96a54691c2f13e59641",
+        "cam1.npz": "d8a8cec5e8d811eb849f96e1bceb38a53ab5885aa3bf7a3e7811ff73c45442cd",
+        "cam2.npz": "2cca9b52fae6dd7d236e3a5988aa60404ae25b895f0b4890e9c5d1fd31b9b2e2"
+      }
+    },
+    "video_002/clip_004": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_004",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_004",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "4b5b11a0ecd0bab6ac695a0407f23a59479096f33829a60b07fb186a4d1c8fa8",
+          "cam1": "b80474c6e2d7a57c98fc41c65ab1ae48eb227460ad68cd08010308e3a8e30bf1",
+          "cam2": "11ac8f82089a489ea8c66ba50d436226c5c9d0eafd881e331cfd90d8c836c710"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "a215be6bf32de8f017096c1e29fed22e3caa7784385ae0f54cdacfda4a7d68c1",
+        "cam0.npz": "107c700efb378b95b9aeff5ac6f00e4ac84a13f665c7815c285914884b607056",
+        "cam1.npz": "5151d6b85cec8ca58444257d8e70ab28a01b372b62ec450be5edfd4055bef0f3",
+        "cam2.npz": "4ed53f966a1057b724208d5bae9e3a164d9ca6326bed595a8a8ff7adb311351b"
+      }
+    },
+    "video_002/clip_005": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_005",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_005",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "3b65bdd08ce8da00f04e5ab355a3694850e6cd93b1077a796d01e3d5a6bfbb42",
+          "cam1": "f34fd749cdaefa72d05b3533a6354ed946037464285181250a11d39331969c8d",
+          "cam2": "a0acfeb0ea4536117e05c23cbf150abcbb764c078c766825e0e811bf1a1ebe47"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "e2a3e417853789ce6431c0d2a6fecc95fab8aac357cded71d11dd62e002e0263",
+        "cam0.npz": "8eeb902887034e02f5655eff9ff95c6552ccf3972172513d7dd4d8a6000265f2",
+        "cam1.npz": "cdbcdf675627e143ec1edbbfd0d356e64ecfd888f993b816b69629509fedfb04",
+        "cam2.npz": "f47bee8b58ec7363057f2e699dbdb4a8ba0b32fa2a03c9884b2102528714b257"
+      }
+    },
+    "video_002/clip_006": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_006",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_006",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "ed7c39b8ab95c71c90b00c28bc9e45f9426bb3653862512b6b5e952504ebb883",
+          "cam1": "e6114ee3f1408b000b5f404ca1bca9cfa913867c11693af2aacaf9eca0a3c7df",
+          "cam2": "772f444ea1e3cf9f94de2115de9511dab0e50a2e332fa1d7ff91b198667b164e"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "19fc3563871f44f49f98a9c0620be757ed0e1b4b90dff76bb91694890c0dda92",
+        "cam0.npz": "0e41f4ea0ae39b561eff1fec272d27a138369718131e36f43f545129f9a1b85f",
+        "cam1.npz": "347c19cba8c6d69551bfda6bb671a92309e2f90db76e6f60c61e497ed91c28af",
+        "cam2.npz": "e70342cca04777db6b1a8dc72f997a9355874198b35bf7181fd6f5993999bffb"
+      }
+    },
+    "video_002/clip_007": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_007",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_007",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "ea98539e546ef4a5bdfa419c5657e7aacaeb02231d2f6d22ddbce919025b88fe",
+          "cam1": "f03410bde1580da7798fda61f99f9fa372d2002e840bc49873210ae5e4206fe3",
+          "cam2": "0ca6aeb589e092a907aed1dc19c9358326262dc2a788eead9400b0f923b62f30"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "b112fbd840de068854d9b580b0d94a7f69ffba8b8d83eea7dba7fe39bf8d79a5",
+        "cam0.npz": "3577d951937b2b07cf516f7a8a284bad565514815fa1bd937c00d40bfabb5070",
+        "cam1.npz": "49ba20ca68bdf1e711e4a83c7d59dfc739b46b06162b98a3d20513790c3fd30c",
+        "cam2.npz": "c3a44d84e53f54de1d4c99fe855371e3ed2678874044a4d51b41948b42a15f12"
+      }
+    },
+    "video_002/clip_008": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_008",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_008",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "b9a4e04941f190a12b118ca977e6fa750289550f156b2a6ebea3d4496f567c4e",
+          "cam1": "400e58b6582112aa488f88f53e2f4b1551e3d675a5341a12c7c3a4e9197fa1cd",
+          "cam2": "ff9513e269c21acbf71d18313991ad0a4d55db8cc896882c3310792ac398af15"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "48446994fc54407ff21df2059d9b10cf4597093ec6c95db133640d0460607395",
+        "cam0.npz": "a215f87cded93a289b07909178cab0bb60f8e2f7f2657f1e9eee435ae4662c8f",
+        "cam1.npz": "ee8c4102d3f9cebe72c4a6162274a84b9d780c53681f2751eb78ab637e643422",
+        "cam2.npz": "051f0bb2b45ba4d328243c8eb89a20ef88a9ae57dfb5a158762899e260a5c1a7"
+      }
+    },
+    "video_002/clip_009": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_009",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_009",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "d8434abe396d38e08f2e6ae30d95ca15e4d444b27d6dbdb357ac7ca28e695c01",
+          "cam1": "9c149a399def866df17180f9dcb65e22d0edfa9969529553974d24bb8d66227f",
+          "cam2": "6e5e89c0d274bf9fb513581a4f8c3b5419b100d78985d55558613f2c149d01b8"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "66aa5030a1f1c0c03e74c8ab1f39e5bf2ce9adf13e517ad08f0b6b0a201bedb2",
+        "cam0.npz": "7d1e48c5845c98ee89616234945a8b116ee022557355250c3e7f9982ef1e780b",
+        "cam1.npz": "a24cc03f3d21c77807c47425cf29063b71522bde7cdda677e0604c33f3b69354",
+        "cam2.npz": "9b53408a1d6a541d2a89a26c65e7772a6848310e25bf736d04757a3084ba3064"
+      }
+    },
+    "video_002/clip_010": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_010",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_010",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "0d684dc5f4cf586257aba4a62b19e4427feba4bd3751e3b8b977e667502d463e",
+          "cam1": "a973020812d1b476075cd650ff4cf653c3716dac44c0315be2694f73e14aa94c",
+          "cam2": "662b89f730bd004fc1ab742b25943e333b5afd822444703a2666f0027358eb4b"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "4a9c291490db01c8d74750fe3a7cbfa76d9764fb88887b611fea1b3a3f23ebbf",
+        "cam0.npz": "3806e42f726b996b7a52d3bd327a1bddbfef15dcf078711df616d82efa1c9984",
+        "cam1.npz": "10f6602307d761853c4a00adf75104b429b698ba83549fc9de1d75165041bda0",
+        "cam2.npz": "d359b55465f0b557618403c11435ae9ecc69b234691c98e61f549cad85048f23"
+      }
+    },
+    "video_002/clip_011": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_011",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_011",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "f293010b9a9d92b5ee0c11241499e9fedaa8a4e6c2396e98903e3d29824bc437",
+          "cam1": "4f73cfaf2fc0bbe3a91d29e3b3b51c7ea7557beb9fc0ce466e6bcae9c5c95b28",
+          "cam2": "70f88daacce74545af6e253ee181c5e8b3a312ca3f994e1a3b71963919e179ac"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "6a095785215a0b63ba07f8d1fae24aa01222d2d8c2c8ccff217b0837237b5205",
+        "cam0.npz": "c26330c756fc619ec6b5e71d2054e3b45eea658be7b31c81414b2de6add6bca5",
+        "cam1.npz": "6bf613a099653c52b9f36681a148dedc6e4b403cdff104a424c766fcf85cb7e7",
+        "cam2.npz": "1d21feea881e7a90bcdc76840a5ee65e9f6c1a8e3de8b5ec5bc64601f8a2426e"
+      }
+    },
+    "video_002/clip_012": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_012",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_012",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "08c5d7e8d4e9e5756841de4e23c2facd2ef57ee25bc8c799e3a29e9fd3f06711",
+          "cam1": "3f0298f9637a79bc9f885fff54945198f4ebbdec5a0463e76e48414aadd9db80",
+          "cam2": "c88b65bc239c102554f4d0b1ee92882b30522f70f846c8e3251927ea613f8f3e"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "4e4e3a95a8721344c0049eed26cdc172bd2b3df67f4b91a6040517e2dc1c9c70",
+        "cam0.npz": "ebc8b3f6f7107bf5373edc4f7140fbd29c5441051cf2289025d23d7e89fade0c",
+        "cam1.npz": "d42d0c67b034809b9c75434259c837fb2dc2e50aa8b0f9a36331fefaa2cd30cb",
+        "cam2.npz": "2174aa6960a2a584641b5391005d9f11fefa603878e8309eb0dcbf7ee8c0bb55"
+      }
+    },
+    "video_002/clip_013": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_013",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_013",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "4f2e7cd91ff9f661feaeb9d3b987336c48dcec55ec99e41f9f7d55b1f646acc3",
+          "cam1": "12ad6a441ee2381324df1e2d412d73742a7f6d677d8cfe62b9d0323527111075",
+          "cam2": "1ab899862573d0c4c72d0b1e0d8583eb2fc0200b1df57d2b43441113c88abf8c"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "9582781e8f25860f9fe02d1d0bdb1cf64a868dc15686925d8e8e3602e997468d",
+        "cam0.npz": "6d1982aff8792f54fd6ad678ebc881e1c3b6f8ceab7b9a1419c63a193db7daa4",
+        "cam1.npz": "4a05ce1e5feab23258161f260c1fe69dc03665b78319f7de250d182610f5716d",
+        "cam2.npz": "65557da025733d65a2d3aa36638fc632940b35811f6b102fa21931415584b990"
+      }
+    },
+    "video_002/clip_014": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_014",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_014",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "276f5649159f159e7697b9d30a3c264bc0963f54adaf2af13e3751b6e5149316",
+          "cam1": "c78e21316f290d799855920d3800e0e0a7f17f927bb039f3f5aaac0e1686b071",
+          "cam2": "46ae1265662d1bc475bc1f74244ffd2064bf6a9d9f1dd67ea7f499dfdf356d0f"
+        }
+      },
+      "status": "skipped",
+      "reason": "Source RGB completion marker missing"
+    },
+    "video_002/clip_015": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_015",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_015",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "12ad323bc32077d6c3f94236faff05f9da8e8bebd10d71b57e86b1b3fae31744",
+          "cam1": "43563f4f7d667a6671abc22c3c7408c9f884522e15524e5bcc883b2dc54ab263",
+          "cam2": "8add6adf33396662b78abc2be1f0415d782965c269f4af5cd78fa9e2ecd6e843"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "15c6b59ac9de1c9e1f92f3a6cf01596e1ac496927fbb69c5a812ae82ab84cd1a",
+        "cam0.npz": "7c89f32763f26a7b4a1318733b6b3e41b8b3ba64e244bfcae5012e6f43f16d20",
+        "cam1.npz": "cc5840f5cd156e2a39a8ff713616eeeba0dc3dbd7eed22b0db2a7ad87d3655fa",
+        "cam2.npz": "2cdce53bf6f7f8c7d3c6f84b05a12c800c29a3672791c73aa9e215faf4c02b6a"
+      }
+    },
+    "video_002/clip_016": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_016",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_016",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "3cff7230a2cd05f9403979142f86cfafc3b23fbd0a6b888bad4f24e03e40deb8",
+          "cam1": "a7ca7951846c4a68fab1d4c50c070d9ccc6dc20ee6a0b473e3f3ad641d466f3d",
+          "cam2": "6dc3dffae8a95c05dd7589ba24e664adaf1ffb7f5d5f2e69c28ff52da8eb6735"
+        }
+      },
+      "status": "skipped",
+      "reason": "Source RGB completion marker missing"
+    },
+    "video_002/clip_017": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_017",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_017",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "273951307f6499abb8a1168746b407a84b8db6d056492f9b7249768de827f7a1",
+          "cam1": "918024125f31410c4fab3452512b881584dc470bf460d36f60414f16ae209fd4",
+          "cam2": "a3c0e779c3fcd8ae4f3ebbeea70f4714c3b15e833b3643009aa753fe6a01e105"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "69f7935c9239ad6db18b3bcb8f0a0edb7093854f26ff161eae7a60ef49469e28",
+        "cam0.npz": "14ef5ac14902057d0aa07639a7e69748508a60c130c688049a8f8676e829d8d1",
+        "cam1.npz": "2fe7034ccda3725297d6ed54abf54ec7daa8b5c019e607f259c70759f491c862",
+        "cam2.npz": "4cdd383438e396bbe23df7870a3b9a8b855595e4d131ea42d85759be04530664"
+      }
+    },
+    "video_002/clip_018": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_018",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_018",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "ac4f424b805d71f2560b064de95b528900c01dbbba8ea79264c272a64a84d1aa",
+          "cam1": "2a9f3ab27def2d2d75e2590f6ae5512f65422f877c168921438a62d3d96a6ec0",
+          "cam2": "20a2a10797ece2526be74946ea66d7c69031451ec0d0d5eefc30822288b60b9d"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "372b6a4920798a677a9ffd4b8bc86cfef34061f071da6fe9490f62769b0daa2f",
+        "cam0.npz": "b1674ba167da8127f99f96a961fdd723067001078a5b5fcbadc84a063b7abf38",
+        "cam1.npz": "c542f39f192de3cca9ddf85da9e75fb3c20c5485a9ea873380835558ae2bfbc4",
+        "cam2.npz": "ce47723ff3d816b1e548a7506bfc491e0090b9cc4caff1c374b7bb3c7269559c"
+      }
+    },
+    "video_002/clip_019": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_019",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_019",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "3b1593e67e469a9077c011fd2adf35d351383054448f525d941f2ac5be0f4335",
+          "cam1": "94bd30a643bf7634fa6319946544e4b248caae108f89324d01c11a1d0c6b2d3c",
+          "cam2": "bbcfb3303874f263de15055fdbe255193dcaf0697b719808e3784797919e991a"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "e5ff02a69daffc2852ec0da03908e76dbb0224aa916132101c80ff4777e4e3b1",
+        "cam0.npz": "ca2d9642a80c821b2be4f111f3cc9fd88a472ee6af7d535cc0ef3b680d933719",
+        "cam1.npz": "23df1c4cd2d8a78a9f1fbf9449af4fd68478a5d95f5138c8c355a028f657711d",
+        "cam2.npz": "b14792e32466e12a5f1acb74c3ed53704867f683e1babb3ebce062dd8f35e093"
+      }
+    },
+    "video_002/clip_020": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_020",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_020",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "5878cc463c882c1f78e966abc1a3692407a42a5ea929fc30d34575f9e769842b",
+          "cam1": "6a2c0b0d24f4624b60d1b81716c465babc25640803680801851656131f9ef5d7",
+          "cam2": "18149dde801ddc5b819874222e9ba806b5f6cbe887a06a69812982507c11db82"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "ab416352ad586bed3129571f6df6176c4804700b705aed736e93383fab2ae2c9",
+        "cam0.npz": "030dc05f786751cf713e9f6de5cb00e0807d508262aaf3524af2df56c268185a",
+        "cam1.npz": "6d7acd70839fd022da865fc9e09809c89204aef10a8dcc6e047464ff3878f5b6",
+        "cam2.npz": "0aeb98e117e1b77c906615381eb6449a6fa62515853f2241ee4709a3a38bb2be"
+      }
+    },
+    "video_002/clip_021": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_021",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_021",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "9b49e05a2122f420437ea4068081b3e21f22a92a847b9058ac484b3e6f905672",
+          "cam1": "40bf6633881fec8d09999e38fd46ad512eaf3b26c76142cbec36755fce3df403",
+          "cam2": "e2cd204a239336df15657793d673d1dcb3b29299823de983952eeb7787c4e826"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "13469cb0ec93b1cbce3028ac6de8c3035401c81a53dd80dcf95364ad117118e1",
+        "cam0.npz": "ec647d8f645ffaf97be819bcf956a2f291f55edfbca3878ef679acf05d812e38",
+        "cam1.npz": "55771fa6efc374c3191ba9bc8fc07e4ddfa9b7eb4e97a4af1413accbd98a2f12",
+        "cam2.npz": "34e7efa03a10d2efbb2cd47c11985b9a4c5b87821fea58470d1acf23df583898"
+      }
+    },
+    "video_002/clip_022": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_022",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_022",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "ff230125f22b2e9592f108f3880ce4b6b50a6cc71a5e54376b1338457ad2776f",
+          "cam1": "696e9de4421587d5f3900d07cc6fc274668fa020c830172b1dfad04641b94117",
+          "cam2": "dff0009a7b8949ab69c42854fb2ecc857266a69613a7ea031b637a95cc635093"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "981d9b883185d57b14c9bbee22b53ede15cf7b47c8519c21fda8d7e713a7f856",
+        "cam0.npz": "b4123039781edce757fd80cf3bef64d019c3334f137dbb1b0e2907a798d89fe1",
+        "cam1.npz": "b9b16553d0a9a8b92ce9eca6b04b34e5eb9a7197ed2215ac788ce503af854eeb",
+        "cam2.npz": "500df01b1cefc39d0962b681152dadcc00e3ce4ef58350b4389649dea31fde83"
+      }
+    },
+    "video_002/clip_023": {
+      "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7/videos/video_002/clips/clip_023",
+      "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8/videos/video_002/clips/clip_023",
+      "generator": {
+        "script": "src/tennis_scene/scripts/build_slcs_dataset.py",
+        "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+        "video_sha256": {
+          "cam0": "b91ccb9d3cc220b380d48bfba52adb4fc1d0ec938e44a86916f237e966097656",
+          "cam1": "ae4fcb90c3712bb66620799f0ed400c47a1f50b7416bf428f13da57583e0fce0",
+          "cam2": "1cd329ec77f2f9fc941a157f9089744520f18cb9176926a3e6db570d5b67c909"
+        }
+      },
+      "status": "linked",
+      "feature_sha256": {
+        "annotation.json": "516e2127d5da761e0c337357321ce1088c5695ba1bd8bed05bb96f0098a770c6",
+        "cam0.npz": "c872a804a016d943ca57792416f49ddcf7dc2510ffa4389f2beffc388a900f62",
+        "cam1.npz": "023271896b8d01b27aa04a950502281d7fac607224c97bd58fd61219fc45e40a",
+        "cam2.npz": "8c3d5644f19e588249ef13273429c3d46ffa3c26c466b53ab1b34e3090e0cc9d"
+      }
+    }
+  },
+  "counts": {
+    "linked": 53,
+    "skipped": 3
+  },
+  "source": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v7",
+  "target": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_rgb_v8",
+  "original_dataset": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset",
+  "spec": {
+    "backbone": "dinov3_vitb16",
+    "patch_size": 16,
+    "image_height": 256,
+    "image_width": 448,
+    "embed_dim": 768,
+    "frame_stride": 10
+  },
+  "checkpoint": "/home/kamimura/projects/tennis-lab/third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+  "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+  "excluded_clips": {
+    "video_002/clip_001": "Only 15 of 476 frames have outsourced ball observations in two cameras (3.15%); insufficient for the fixed 30% ball-label acceptance threshold."
+  },
+  "selected_clips": [
+    "video_000/clip_000",
+    "video_000/clip_001",
+    "video_000/clip_002",
+    "video_000/clip_003",
+    "video_000/clip_004",
+    "video_000/clip_005",
+    "video_000/clip_006",
+    "video_000/clip_007",
+    "video_000/clip_008",
+    "video_000/clip_009",
+    "video_000/clip_010",
+    "video_000/clip_011",
+    "video_001/clip_000",
+    "video_001/clip_001",
+    "video_001/clip_002",
+    "video_001/clip_003",
+    "video_001/clip_004",
+    "video_001/clip_005",
+    "video_001/clip_006",
+    "video_001/clip_007",
+    "video_001/clip_008",
+    "video_001/clip_009",
+    "video_001/clip_010",
+    "video_001/clip_011",
+    "video_001/clip_012",
+    "video_001/clip_013",
+    "video_001/clip_014",
+    "video_001/clip_015",
+    "video_001/clip_016",
+    "video_001/clip_017",
+    "video_001/clip_018",
+    "video_001/clip_019",
+    "video_001/clip_020",
+    "video_002/clip_000",
+    "video_002/clip_002",
+    "video_002/clip_003",
+    "video_002/clip_004",
+    "video_002/clip_005",
+    "video_002/clip_006",
+    "video_002/clip_007",
+    "video_002/clip_008",
+    "video_002/clip_009",
+    "video_002/clip_010",
+    "video_002/clip_011",
+    "video_002/clip_012",
+    "video_002/clip_013",
+    "video_002/clip_014",
+    "video_002/clip_015",
+    "video_002/clip_016",
+    "video_002/clip_017",
+    "video_002/clip_018",
+    "video_002/clip_019",
+    "video_002/clip_020",
+    "video_002/clip_021",
+    "video_002/clip_022",
+    "video_002/clip_023"
+  ],
+  "checkpoint_verified": true
+}

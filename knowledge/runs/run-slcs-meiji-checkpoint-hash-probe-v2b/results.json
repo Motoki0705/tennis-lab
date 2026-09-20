@@ -1,0 +1,384 @@
+{
+  "status": "passed",
+  "cpu_only": false,
+  "rows": [
+    {
+      "phase": "load",
+      "method": "file_stat",
+      "iteration": 0,
+      "before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "checkpoint_memory",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "checkpoint_memory",
+      "iteration": 1,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "checkpoint_memory_sha256sum_stdin",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "known_64mib",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "known_64mib",
+      "iteration": 1,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "known_64mib_sha256sum_stdin",
+      "iteration": 0,
+      "digest": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "disk_same_chunk_dual_hash",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "block_count": 2431,
+      "mismatched_blocks": [],
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "disk_sha256sum",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "before_imports_and_cuda",
+      "method": "file_stat",
+      "iteration": 0,
+      "before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true,
+      "phase_seconds": 57.627396165999016
+    },
+    {
+      "phase": "after_imports_before_cuda_pose",
+      "method": "known_64mib",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "sha256sum_stdin": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "checkpoint_memory",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "checkpoint_memory",
+      "iteration": 1,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "checkpoint_memory_sha256sum_stdin",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "known_64mib",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "known_64mib",
+      "iteration": 1,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "known_64mib_sha256sum_stdin",
+      "iteration": 0,
+      "digest": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "disk_same_chunk_dual_hash",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "block_count": 2431,
+      "mismatched_blocks": [],
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "disk_sha256sum",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_cuda_pose_synchronized",
+      "method": "file_stat",
+      "iteration": 0,
+      "before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true,
+      "phase_seconds": 57.68384812499971
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "checkpoint_memory",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "checkpoint_memory",
+      "iteration": 1,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "checkpoint_memory_sha256sum_stdin",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "known_64mib",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "known_64mib",
+      "iteration": 1,
+      "digests": {
+        "hashlib": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "_sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+      },
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "known_64mib_sha256sum_stdin",
+      "iteration": 0,
+      "digest": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "disk_same_chunk_dual_hash",
+      "iteration": 0,
+      "digests": {
+        "hashlib": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+        "_sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "block_count": 2431,
+      "mismatched_blocks": [],
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "disk_sha256sum",
+      "iteration": 0,
+      "digest": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "match": true
+    },
+    {
+      "phase": "after_unload_synchronized",
+      "method": "file_stat",
+      "iteration": 0,
+      "before": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "after": {
+        "st_dev": 2096,
+        "st_ino": 71274,
+        "st_size": 2549075546,
+        "st_mtime_ns": 1779091833671210124,
+        "st_ctime_ns": 1788991599915204724
+      },
+      "match": true,
+      "phase_seconds": 57.50926036400051
+    }
+  ],
+  "checkpoint": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+  "expected": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+  "chunk_bytes": 1048576,
+  "memory_iterations": 2,
+  "provenance": {
+    "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+    "executable": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/bin/python",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "openssl": "OpenSSL 3.5.5 27 Jan 2026",
+    "hashlib_sha256_type": "<class '_hashlib.HASH'>",
+    "hashlib_sha256_module": "_hashlib",
+    "software_sha256_type": "<class '_sha256.sha256'>",
+    "modules": {
+      "_hashlib": "built-in",
+      "_sha256": "built-in",
+      "hashlib": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/hashlib.py"
+    },
+    "environment": {
+      "PYTHONPATH": ".",
+      "CUDA_VISIBLE_DEVICES": "0",
+      "OMP_NUM_THREADS": "4",
+      "MKL_NUM_THREADS": "4"
+    },
+    "sha256sum": "sha256sum (GNU coreutils) 9.4",
+    "torch": "2.13.0+cu130",
+    "torch_cuda": "13.0",
+    "cuda_initialized_after_imports": false,
+    "gpu": "NVIDIA GeForce RTX 5060 Ti"
+  },
+  "elapsed_seconds": 207.3279926059986,
+  "initial_stat": {
+    "st_dev": 2096,
+    "st_ino": 71274,
+    "st_size": 2549075546,
+    "st_mtime_ns": 1779091833671210124,
+    "st_ctime_ns": 1788991599915204724
+  },
+  "known_pattern": "bytes(range(256)) repeated to 64 MiB",
+  "known_expected": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+  "inference_seconds": 25.147090390000812
+}

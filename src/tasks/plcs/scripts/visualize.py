@@ -2,7 +2,7 @@
 
 Usage:
     python -m src.tasks.plcs.scripts.visualize
-    python -m src.tasks.plcs.scripts.visualize run.output_dir=plcs/visualization
+    python -m src.tasks.plcs.scripts.visualize visualization.animation_view=camera
 
 Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/visualize.yaml`.

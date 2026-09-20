@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "interpretation": "observable consistency of pseudo labels; NOT measured 3D accuracy",
+  "calibration": "learned planar court, approximate pinhole, no measured lens distortion",
+  "plcs": {
+    "ground_foot_to_root_xy_m": {
+      "count": 7539,
+      "mean": 2.0133772605318567,
+      "median": 1.8518024271360127,
+      "p95": 4.064811205930947,
+      "max": 12.010694364898365
+    },
+    "pose_reprojection_px": {
+      "count": 127420,
+      "mean": 48.14466456317597,
+      "median": 15.490563572742934,
+      "p95": 301.35389754532935,
+      "max": 655.7435082715218
+    },
+    "foot_ground_cross_view_distance_m": {
+      "count": 7220,
+      "mean": 3.14407502167327,
+      "median": 3.1144642953818726,
+      "p95": 5.8749153377098455,
+      "max": 12.582910941481497
+    },
+    "speed_mps": {
+      "count": 2630,
+      "mean": 2.188547372817993,
+      "median": 1.3528664112091064,
+      "p95": 6.0560383796691895,
+      "max": 30.325881958007812
+    }
+  },
+  "blcs": {
+    "reprojection_px": {
+      "count": 3185,
+      "mean": 14.688852004533501,
+      "median": 10.781303987314576,
+      "p95": 41.743569407647485,
+      "max": 288.5327864658306
+    },
+    "speed_mps": {
+      "count": 1315,
+      "mean": 12.6277494430542,
+      "median": 11.864252090454102,
+      "p95": 24.70432472229004,
+      "max": 35.22747802734375
+    },
+    "negative_height_fraction": 0.0,
+    "height_m": {
+      "count": 1316,
+      "mean": 2.0465903282165527,
+      "median": 1.744187831878662,
+      "p95": 5.4554219245910645,
+      "max": 6.922600746154785
+    },
+    "observed_in_two_views_fraction": 0.8183890577507599
+  },
+  "per_camera": {
+    "cam0": {
+      "ball_reprojection_px": {
+        "count": 954,
+        "mean": 9.8650193374437,
+        "median": 8.613129509052747,
+        "p95": 19.431538249291574,
+        "max": 66.67411716331078
+      },
+      "pose_reprojection_px": {
+        "count": 39868,
+        "mean": 38.57182954693526,
+        "median": 11.78524440696809,
+        "p95": 314.04215940347893,
+        "max": 421.90997380340576
+      },
+      "ground_foot_to_root_xy_m": {
+        "count": 2438,
+        "mean": 2.448372234790696,
+        "median": 2.4260917367926296,
+        "p95": 4.552069068232344,
+        "max": 12.010694364898365
+      },
+      "ball_coverage": 0.7249240121580547,
+      "pose_coverage_at_0.3": 0.8910244949043448,
+      "court_fit_rmse_px": 3.1293416925786226
+    },
+    "cam1": {
+      "ball_reprojection_px": {
+        "count": 1220,
+        "mean": 19.34813502759527,
+        "median": 14.945276735020935,
+        "p95": 53.42325353941159,
+        "max": 288.5327864658306
+      },
+      "pose_reprojection_px": {
+        "count": 43221,
+        "mean": 43.971863466474936,
+        "median": 12.139180430496387,
+        "p95": 352.5209810134196,
+        "max": 655.7435082715218
+      },
+      "ground_foot_to_root_xy_m": {
+        "count": 2474,
+        "mean": 1.6010872865344847,
+        "median": 1.5736654402407315,
+        "p95": 3.081172818530197,
+        "max": 7.235425521869597
+      },
+      "ball_coverage": 0.9270516717325228,
+      "pose_coverage_at_0.3": 0.9659619166815663,
+      "court_fit_rmse_px": 2.683550354777812
+    },
+    "cam2": {
+      "ball_reprojection_px": {
+        "count": 1011,
+        "mean": 13.618239814887916,
+        "median": 9.708278432395248,
+        "p95": 35.88148977889123,
+        "max": 149.22136648399103
+      },
+      "pose_reprojection_px": {
+        "count": 44331,
+        "mean": 60.822078170538774,
+        "median": 28.842931077107806,
+        "p95": 249.2638781835443,
+        "max": 459.16145637148054
+      },
+      "ground_foot_to_root_xy_m": {
+        "count": 2627,
+        "mean": 1.9979557334768308,
+        "median": 1.8000316387401283,
+        "p95": 3.201683695935358,
+        "max": 4.50484225917089
+      },
+      "ball_coverage": 0.7682370820668692,
+      "pose_coverage_at_0.3": 0.9907697121401752,
+      "court_fit_rmse_px": 0.8691530656535787
+    }
+  }
+}

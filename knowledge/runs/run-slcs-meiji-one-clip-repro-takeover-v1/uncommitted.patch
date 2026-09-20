@@ -1,0 +1,13 @@
+diff --git a/knowledge/nodes/run-slcs-meiji-v9-repair-start-failure-v1.md b/knowledge/nodes/run-slcs-meiji-v9-repair-start-failure-v1.md
+index dbc286a9..3c6d8ed8 100644
+--- a/knowledge/nodes/run-slcs-meiji-v9-repair-start-failure-v1.md
++++ b/knowledge/nodes/run-slcs-meiji-v9-repair-start-failure-v1.md
+@@ -62,3 +62,8 @@ PLCS/BLCSへの例外拡大や固定pin変更はしていない。
+ 
+ 検証済みの別パス復元候補を明示指定し、新しいrun出力先で3clipを再生成する。
+ 実行中の全体生成とcheckpoint差し替えを競合させず、旧ファイルを保存してから復元する。
++
++後続処理で56clipのPLCS/BLCS推論終了を確認し、RGB特徴検証段階に入ってから、固定pinを
++別途照合した新しいコピーを通常パスへatomic renameした。旧2ファイルは削除せず退避先へ保存。
++未開始だった再現性jobを取り下げ、復元後に同じ未使用の実験出力先で再投入した。
++詳細は `checkpoint_restore.json`。復旧操作の完了であり、根本原因の解決や次の実験成功を意味しない。

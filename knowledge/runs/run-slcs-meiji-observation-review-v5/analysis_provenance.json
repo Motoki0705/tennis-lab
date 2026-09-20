@@ -1,0 +1,198 @@
+{
+  "reproduction_commit": "f94f61dd0b16a32867b02de92781d3dfaf7fac3d",
+  "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "script_sha256": "b994de6b6a6ea91992ebe89720367cba596cec4affe8659ee2e61de32e640710",
+  "results_sha256": "48a14e0fa0b1dbe95759826296e8e93926fb5e0a05c9482333edb444bd33f22e",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-meiji-observation-review-v1/probe.py --project-root /home/kamimura/projects/tennis-lab --observation-root /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004 --clip video_002/clip_007 --clip video_002/clip_008 --clip video_002/clip_009 --output-dir outputs/tennis_scene/analyze/meiji_observation_review/s42-005",
+  "device": "cpu",
+  "gpu_used": false,
+  "exit_code": 0,
+  "observation_exit_code_source": "Parent executed observation probe and reported exit 0; status done report verified here",
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_observation_review/s42-005",
+  "exclusive_output": true,
+  "sampling": "Targeted diagnostics from the ten completed video_002 clips: clip_007 maximum relative box step (~0.0484843); clip_008 cam0 local P1 minimum torso support (~0.7942387); clip_009 cam2 local P1 low pose support (~0.8920973). Five evenly spaced frames plus endpoints of each local player largest adjacent box-center step. No acceptance threshold/model/split changes.",
+  "visual_review_status": "Parent reviewed all 9 contact sheets / 81 sampled frame-camera images; bundle author did not inspect images. Findings: visual_review.json and the run node.",
+  "generated_contact_sheets": [
+    {
+      "clip_id": "video_002/clip_007",
+      "camera": "cam0",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam0.jpg",
+      "sha256": "12fea4da1c264636a31d12e3064442229afcecdbd29c595cad7c787d05b4cbaf",
+      "frame_indices": [
+        0,
+        85,
+        89,
+        90,
+        171,
+        256,
+        305,
+        306,
+        342
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_007",
+      "camera": "cam1",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam1.jpg",
+      "sha256": "92659c45215dca425fc8a05063989a110c809e02748ec8f9b3a57541bcf9a960",
+      "frame_indices": [
+        0,
+        85,
+        91,
+        92,
+        171,
+        182,
+        183,
+        256,
+        342
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_007",
+      "camera": "cam2",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_007/cam2.jpg",
+      "sha256": "17180899158093d71fc5fb61a4735e8dc63094f18f9a94a8c04bc5f7b77fe88e",
+      "frame_indices": [
+        0,
+        85,
+        102,
+        103,
+        171,
+        232,
+        233,
+        256,
+        342
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera": "cam0",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam0.jpg",
+      "sha256": "40f8d59b7f01c80d1c61a17f21e9a12914563156af14864d3e454b5e004d02d3",
+      "frame_indices": [
+        0,
+        60,
+        66,
+        67,
+        121,
+        172,
+        173,
+        181,
+        242
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera": "cam1",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam1.jpg",
+      "sha256": "8d1be18e5097252bbf64f1854ee7ee711aac910b48e0227dcde5183fae6b5be3",
+      "frame_indices": [
+        0,
+        60,
+        118,
+        119,
+        121,
+        179,
+        180,
+        181,
+        242
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_008",
+      "camera": "cam2",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_008/cam2.jpg",
+      "sha256": "b1662700fe9fe6d7c370bf4351ee45c8bec482b1a2209e439a823a03a1615eb7",
+      "frame_indices": [
+        0,
+        60,
+        121,
+        128,
+        129,
+        179,
+        180,
+        181,
+        242
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera": "cam0",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam0.jpg",
+      "sha256": "3a2da998b93d0ca2a854af9acc42b00e05ea7d2334d89a48fbc19e89491dce32",
+      "frame_indices": [
+        0,
+        26,
+        27,
+        164,
+        328,
+        492,
+        611,
+        612,
+        657
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera": "cam1",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam1.jpg",
+      "sha256": "3d3838f9c0b2b211b79907a83eb1acdbd4f85fef5e4dd28573ef5d840abcb974",
+      "frame_indices": [
+        0,
+        164,
+        169,
+        170,
+        311,
+        312,
+        328,
+        492,
+        657
+      ]
+    },
+    {
+      "clip_id": "video_002/clip_009",
+      "camera": "cam2",
+      "path": "outputs/tennis_scene/analyze/meiji_observation_review/s42-005/video_002/clip_009/cam2.jpg",
+      "sha256": "2ac38d0f36e30c9eac1aedeb20ffaac41ac87ad684a709e23a9edf5313e8729d",
+      "frame_indices": [
+        0,
+        164,
+        187,
+        188,
+        328,
+        492,
+        563,
+        564,
+        657
+      ]
+    }
+  ],
+  "contact_sheet_count": 9,
+  "sampled_image_count": 81,
+  "support_command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-meiji-observation-review-v5/support_probe.py --project-root /home/kamimura/projects/tennis-lab --observation-report outputs/tennis_scene/analyze/meiji_observation_review/s42-005/results.json --output outputs/tennis_scene/analyze/meiji_observation_review/s42-005/support_checks.json",
+  "support_script_sha256": "9d5fb648dda61150122652fc6feedeea266e52d92a925fb10e7c12a22dd53cda",
+  "support_results_sha256": "787b21c8b1efaba44f57ba7eb2ee2a16d7b10560eae1ac356e6e3b0b39887cf7",
+  "support_exit_code": 0,
+  "support_output_exclusive": true,
+  "limitations": "CPU saved-observation diagnostic, not final teacher coverage: no reprojection/speed/geometry gates or quality weights, no model loads/forwards.",
+  "reproduction_patch": {
+    "path": "knowledge/runs/run-slcs-meiji-observation-review-v5/uncommitted.patch",
+    "sha256": "0c9d6f056e146656b8ab52da43d9249ff579b6a8f770191ba15566a6382e409e",
+    "files": [
+      "knowledge/runs/run-slcs-meiji-observation-review-v5/support_probe.py",
+      "knowledge/runs/run-slcs-meiji-observation-review-v5/results.json",
+      "knowledge/runs/run-slcs-meiji-observation-review-v5/repro.sh"
+    ],
+    "temporary_index_at_execution_commit_apply_and_byte_match": true
+  },
+  "validation": {
+    "ruff": true,
+    "targeted_mypy_follow_imports_silent": true,
+    "bash_n": true,
+    "source_input_pre_post_dual_sha256_unchanged": true,
+    "observation_copy_byte_exact": true,
+    "support_copy_byte_exact": true,
+    "observed_report_metrics_hashes_match": true
+  },
+  "visual_review_artifact": "knowledge/runs/run-slcs-meiji-observation-review-v5/visual_review.json"
+}

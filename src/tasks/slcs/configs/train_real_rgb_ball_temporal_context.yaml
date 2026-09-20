@@ -1,0 +1,16 @@
+# Single input feature context intervention; no court residual or velocity loss.
+defaults:
+  - train_real_rgb_no_ball_smooth
+  - _self_
+model:
+  missing_ball_temporal_context: true
+  missing_ball_court_context: false
+training:
+  trainer:
+    max_epochs: 60
+loss:
+  ball_velocity_weight: 0.0
+  ball_position_smoothness_weight: 0.0
+run:
+  test_after_fit: false
+  output_dir: ${tennis_output:slcs,train,real_rgb_ball_temporal_context,${tennis_run_id:}}

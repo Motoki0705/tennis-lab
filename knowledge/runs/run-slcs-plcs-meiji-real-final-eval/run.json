@@ -1,0 +1,143 @@
+{
+  "name": "run-slcs-plcs-meiji-real-final-eval",
+  "provider": "codex",
+  "status": "done",
+  "device": "cpu",
+  "queue_used": false,
+  "commit": "4348077d8f7a0b35ab58350232cf4ccb607990f1",
+  "branch": "codex/slcs-real-rgb",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
+  "command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=3 MKL_NUM_THREADS=3 .venv/bin/python -m src.tennis_scene.scripts.build_slcs_dataset stage=infer device=cpu paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party 'dataset_clip_ids=[video_000/clip_000,video_001/clip_000]' 'clip_ids=[video_000/clip_000,video_001/clip_000]' dataset_output_directory=slcs/meiji_teacher_comparison_v1 output_dir=tennis_scene/generate/meiji_teacher_comparison/s42-001 observation_directory=tennis_scene/precompute/meiji_dino_vitpose/s42-002 people.court_half_width_m=5.8 people.long_gap_policy=error features.enabled=false",
+  "evaluation_scope": "current dev/val two clips only; no independent measured 3D ground truth",
+  "comparison_source": "outputs/plcs/analyze/meiji_teacher_comparison/s42-001/comparison.json",
+  "artifacts": {
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/scene.metadata.json": {
+      "sha256": "f8d7ebdcc4901e8158ce1da2b73db16254b89c4580bf01692c248cbfb5293b6a",
+      "bytes": 71743
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/refined_scene.metadata.json": {
+      "sha256": "79661820d4610e94d6523c8e7bf4aa0bc039bb7b573526a2a01b9bc6c21890d3",
+      "bytes": 148150
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/reference_context.json": {
+      "sha256": "db60c2949defc6781813723039b7434aa63bfe7e7f5e6d14595d1f6449d10298",
+      "bytes": 6385
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/raw_model_quality.json": {
+      "sha256": "70f827556466156d4420a2a6cac139f9e840091dfedd6d141f0798e237ccf9a8",
+      "bytes": 3995
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/quality.json": {
+      "sha256": "0d4cb4a41bb4d6eca073108a3fa4d72853e6943ab740c54e24801d6d662ef583",
+      "bytes": 3999
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/label_evidence.json": {
+      "sha256": "41f4b182c93a4e78291986bb81b711d34c93caabc903956ea0029747b10a7923",
+      "bytes": 318
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/scene.npz": {
+      "sha256": "ed03ea716652bd8191860896d8384277554da06352001e3aaaa888fa7e2c0613",
+      "bytes": 1625606
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_000/clip_000/refined_scene.npz": {
+      "sha256": "b9e8c90cd0664ffe72ffa0acbf3d71cfda367a3db61033a0bb7b18506ffa68fd",
+      "bytes": 1627026
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/scene.metadata.json": {
+      "sha256": "c556f256e5a5078b4392ac2b399d9f860cc203965e2ebd3d942040fa35f5aaaa",
+      "bytes": 91114
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/refined_scene.metadata.json": {
+      "sha256": "0e1b210d88801b8e992581177ba7e4d31e40ff4d865339a8eecc35598413d34f",
+      "bytes": 188931
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/reference_context.json": {
+      "sha256": "da0beafe6c79387ee65272e58e5cac255b249c8eb1846b0d8e8cdfc33fd1f841",
+      "bytes": 6379
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/raw_model_quality.json": {
+      "sha256": "f53b0eccfbb9c37486c8c45fccf480139eeae5efb8c19630670f941da738ab53",
+      "bytes": 4003
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/quality.json": {
+      "sha256": "13b61e4539456a97ab78aea019a8430c6e8f688f58f2a039f5c9fade8c091498",
+      "bytes": 3998
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/label_evidence.json": {
+      "sha256": "104c5418c072f1add7eb03cf13cf5e453d8c5ef44fafcd0f8df88dc1b8f0da44",
+      "bytes": 350
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/scene.npz": {
+      "sha256": "a133e0aaf73f510889ed2eaf27523697906eec899c99e21cfc1b97c5cb31efa1",
+      "bytes": 2102813
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_probe/s42-003/video_001/clip_000/refined_scene.npz": {
+      "sha256": "73a185c290491a45e94b7934d923f49d32b960712b564ab14c2945bc93556777",
+      "bytes": 2105046
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/scene.metadata.json": {
+      "sha256": "9fa0222e70ee0216ec4c4ad3af86c9f28ccca4b37d7f180ccf14b4ac79f6488f",
+      "bytes": 71735
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/refined_scene.metadata.json": {
+      "sha256": "12a03fd4819627287dcb92dedac4dfe41dc597f6f8371661ae57178f159d7037",
+      "bytes": 148142
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/reference_context.json": {
+      "sha256": "db60c2949defc6781813723039b7434aa63bfe7e7f5e6d14595d1f6449d10298",
+      "bytes": 6385
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/raw_model_quality.json": {
+      "sha256": "9f0614e9a207871b8bb1589c6ced54419eff0549175cd97e628f8dfacb572534",
+      "bytes": 4003
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/quality.json": {
+      "sha256": "4356d4802e085c4bf56c80a8a851dd49d9e7d017663d44b37d00fd0d3b3438b0",
+      "bytes": 3999
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/label_evidence.json": {
+      "sha256": "f91e91c1aad14a1ccac6b874e40e15f39a2248a2d459d58f821e92ec229e86c2",
+      "bytes": 318
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/scene.npz": {
+      "sha256": "fc5b80cebbf37961fffcff710afb1ee92c94f868f50ab001809fb57d6d1336da",
+      "bytes": 1625344
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_000/clip_000/refined_scene.npz": {
+      "sha256": "e2d2eedabc6fbbce5bc8b5288ebe05d1f4905e8104bcd77c5c84c88a0e8bfffa",
+      "bytes": 1626964
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/scene.metadata.json": {
+      "sha256": "2ba623a5fe6ff0a03fb2c3daece5c8be4281369ea024447113e24677f383eedc",
+      "bytes": 91106
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/refined_scene.metadata.json": {
+      "sha256": "8bddb052c89444423d287ab127723f9193fff1d98ef10c75eb687bf56d5c3637",
+      "bytes": 188923
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/reference_context.json": {
+      "sha256": "da0beafe6c79387ee65272e58e5cac255b249c8eb1846b0d8e8cdfc33fd1f841",
+      "bytes": 6379
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/raw_model_quality.json": {
+      "sha256": "9143e305f19a59a081948e1c7a03d63a13e9b485cd0cb1ed94a5348374b9ac9b",
+      "bytes": 4007
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/quality.json": {
+      "sha256": "643a747b7b94d7dc0c5fd1f5c9b362c93158ed2f651eb5cff48d81ff1666311e",
+      "bytes": 4005
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/label_evidence.json": {
+      "sha256": "104c5418c072f1add7eb03cf13cf5e453d8c5ef44fafcd0f8df88dc1b8f0da44",
+      "bytes": 350
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/scene.npz": {
+      "sha256": "53783bab270f38dae7ac8f7b9fe66863896038799b620602b6f39c07b63519c5",
+      "bytes": 2102903
+    },
+    "outputs/tennis_scene/generate/meiji_teacher_comparison/s42-001/video_001/clip_000/refined_scene.npz": {
+      "sha256": "57e02b5b43ee8bc50b209dce220e2bb2fcbe8bf81d980ff48686b645fef8f5b2",
+      "bytes": 2105550
+    }
+  }
+}

@@ -2,7 +2,7 @@ manifest_path: src/tasks/ball_detection/configs/evaluation/ball_detector_compari
 
 hydra:
   run:
-    dir: ${tennis_lab_path:project}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,evaluate,manifest,${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

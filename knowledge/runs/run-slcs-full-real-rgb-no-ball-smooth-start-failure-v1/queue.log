@@ -1,0 +1,52 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789786382137727204_422715_slcs-full-real-rgb-no-ball-smooth-e60-takeover-v1 (commit=e454473c28e5 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+Seed set to 42
+Error executing job with overrides: ['loss.ball_position_smoothness_weight=0.0', 'run.output_dir=slcs/train/real_rgb_no_ball_smooth/s42-takeover-001']
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/utils/hydra.py", line 115, in validated
+    return function(config)
+           ^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/scripts/train.py", line 41, in main
+    run_training(config)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/scripts/train.py", line 30, in run_training
+    runner.run(config)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/base/training/runner.py", line 82, in run
+    steps_per_epoch = self.resolve_steps_per_epoch(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/training/runner.py", line 60, in resolve_steps_per_epoch
+    datamodule.setup(stage="fit")
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/datamodule.py", line 40, in setup
+    self.val_dataset = self._build_dataset("val")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/datamodule.py", line 48, in _build_dataset
+    return SLCSWindowDataset(
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dataset.py", line 405, in __init__
+    self._plan_clip_windows(clip)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dataset.py", line 444, in _plan_clip_windows
+    self._dino_arrays(clip.manifest, camera_id)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dataset.py", line 472, in _dino_arrays
+    tokens, frame_idx, _spec = load_dino_tokens(
+                               ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dino_tokens.py", line 292, in load_dino_tokens
+    tokens = np.asarray(data["tokens"], dtype=np.float16)
+                        ~~~~^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/numpy/lib/_npyio_impl.py", line 257, in __getitem__
+    return format.read_array(
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/numpy/lib/_format_impl.py", line 869, in read_array
+    data = _read_bytes(fp, read_size, "array data")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/.venv/lib/python3.11/site-packages/numpy/lib/_format_impl.py", line 1013, in _read_bytes
+    r = fp.read(size - len(data))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/zipfile.py", line 982, in read
+    data = self._read1(n)
+           ^^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/zipfile.py", line 1072, in _read1
+    self._update_crc(data)
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/zipfile.py", line 1000, in _update_crc
+    raise BadZipFile("Bad CRC-32 for file %r" % self.name)
+zipfile.BadZipFile: Bad CRC-32 for file 'tokens.npy'
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+exit_code=1

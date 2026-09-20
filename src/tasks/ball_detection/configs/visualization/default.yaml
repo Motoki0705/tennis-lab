@@ -1,6 +1,6 @@
 clip_dir: tennis/tracknet/game1/Clip1
 checkpoint: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
-save: ball_detection/game1_clip1_prediction.gif
+save: ${run.output_dir}/game1_clip1_prediction.gif
 fps: 12
 window_stride: 1
 inference_batch_size: 4

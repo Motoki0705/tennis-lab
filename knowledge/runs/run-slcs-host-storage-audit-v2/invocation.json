@@ -1,0 +1,9 @@
+{
+  "script": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-host-storage-audit-v1/collect_storage.ps1",
+  "script_sha256": "a102fab22e926a04e26f92e7fb47d9837d47382b96d2fbeeeba4a10c054f847c",
+  "commit": "0b3ccdb1e77de23a9c6644dc072c61f7661a1c04",
+  "query_days": 1,
+  "include_reliability": false,
+  "access": "current Windows user token; no elevation",
+  "purpose": "correlate captured read anomaly time with host events and verify readonly collector"
+}

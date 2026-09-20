@@ -17,15 +17,16 @@ from src.submodules.models.vitpose.pose2d import (
 
 
 class _FakePose(torch.nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, dtype: torch.dtype = torch.float32) -> None:
         super().__init__()
         self.batch_shapes: list[tuple[int, ...]] = []
+        self.dtype = dtype
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         self.batch_shapes.append(tuple(images.shape))
         return torch.zeros(
             (images.shape[0], 17, 64, 48),
-            dtype=images.dtype,
+            dtype=self.dtype,
             device=images.device,
         )
 
@@ -43,9 +44,11 @@ def _head_config() -> ViTPoseHeadConfig:
     )
 
 
+@pytest.mark.parametrize("precision", ["float32", "bfloat16"])
 def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    precision,
 ) -> None:
     completed_track = TrackResult(
         tracks={
@@ -82,6 +85,7 @@ def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
         use_udp: bool,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         assert heatmaps.shape[1:] == (17, 64, 48)
+        assert heatmaps.dtype == np.float32
         assert use_udp
         decoder_calls.append((center.copy(), scale.copy()))
         predictions = np.repeat(center[:, None, :], 17, axis=1)
@@ -99,13 +103,14 @@ def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
         "keypoints_from_heatmaps",
         _fake_keypoints_from_heatmaps,
     )
-    fake_pose = _FakePose()
+    fake_pose = _FakePose(torch.bfloat16 if precision == "bfloat16" else torch.float32)
     model = ViTPosePose2D(
         checkpoint=tmp_path / "unused.ckpt",
         device="cpu",
         flip_test=False,
         batch_size=2,
         head_config=_head_config(),
+        precision=precision,
     )
     model._pose = fake_pose
     model._loaded = True
@@ -117,9 +122,7 @@ def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
     assert result.keypoints.shape == (3, 17, 3)
     assert result.keypoints.dtype == torch.float32
     torch.testing.assert_close(result.keypoints[:, 0, :2], completed_boxes[:, :2])
-    torch.testing.assert_close(
-        result.keypoints[..., 2], torch.full((3, 17), 0.75)
-    )
+    torch.testing.assert_close(result.keypoints[..., 2], torch.full((3, 17), 0.75))
     assert [call[0].shape for call in decoder_calls] == [(2, 2), (1, 2)]
     assert set(vars(request)) == {"video_path", "bbx_xys"}
     assert set(vars(result)) == {"keypoints"}
