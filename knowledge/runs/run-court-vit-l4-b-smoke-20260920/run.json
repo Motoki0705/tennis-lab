@@ -1,0 +1,15 @@
+{
+  "run_id": "court-vit-l4-20260920-r6",
+  "variant": "b",
+  "mode": "smoke",
+  "source_commit": "ab824a635182d878c5523a564d833809bde2e124",
+  "gpu": "NVIDIA L4",
+  "precision": "bf16-mixed",
+  "batch_size": 8,
+  "max_steps": 1,
+  "peak_allocated_bytes": 19865299456,
+  "console_train_loss_rounded": 80.9,
+  "console_val_loss_rounded": 41.9,
+  "production_resume": false,
+  "note": "Full epoch-17 checkpoint validated, then run.resume=None for disposable smoke; no production checkpoint written. Outer suite stopped after B smoke to avoid repeated full preflight scans."
+}
