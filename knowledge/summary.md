@@ -1,4 +1,4 @@
-<!-- knowledge-review: 31ecfb5b9c5c9b492cf8af2b68510fdf58505507ae87a2bff8cd4a124e269aa7 on 2026-09-21 -->
+<!-- knowledge-review: edf1021ee4cd25283a699ec671f114960740d2b80d5497e022b881f35f56242f on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
@@ -17,6 +17,8 @@
 
 - **Court detection / 実写homography postprocess**: [指定4写真の保存予測](nodes/court_detection/000028-run-court-supplied-photos-paper-20260918.md)に対し、[PROSAC](nodes/court_detection/000029-run-court-prosac-paper-20260920.md)と[KP・LINE共同推定](nodes/court_detection/000030-run-court-kp-line-hybrid-20260920.md)はいずれも4枚でHを生成した。共同推定はKPのみより予測LINEとの双方向内部整合を高めたが、人手GTがなく、段階間で採用KPも異なるため、実コートへの精度向上率や4写真外への汎化は未確認である。写真CのLINE欠落・対応の曖昧さも残る。次は会場分離の人手GTと固定モデル・解像度で旧H／PROSAC／共同推定の誤差、失敗率、棄却率、処理時間、下流E2Eを同条件比較する。保存出力による再検証は可能だが、ニューラル再推論には[記録済みのcheckpointハッシュ不一致](../paper/court_robustness/README.md)の解消が必要である。
 - **Synthetic data / SfM幾何**: [B00の保存トラック診断](nodes/synthetic_data_generation/000022-run-court-sfm-ground-drift-20260919.md)に続き、[B00〜B03の共通2区間診断](nodes/synthetic_data_generation/000023-run-court-sfm-all-scenes-drift-20260920.md)でも、時間分割した共通地面セルに高さ不整合を観測した。SfM driftと整合する兆候だが絶対ドリフト誤差ではなく、符号はシーンごとに異なり、B01の偏りは小さく、B03は支持セルが少ない。地面凹凸・特徴点誤差・三角測量誤差も分離できないため、合成教師の幾何的不確実性として扱う。次は再訪で十分に重なる地面観測と独立地面基準を用意し、長距離構造制約・loop closureの有無を同条件で比較して下流court精度への影響を測る。
+
+[PLCS・BLCSの三角測量残差モデル初回検証](nodes/plcs/000105-group-geometric-residual-v1.md)では、合成testの幾何初期値に対してPLCSの平均3D誤差が約20%、BLCSが約1%減った。一方、Meijiの同一実clipでは両taskとも再投影誤差が増え、PLCSの大きな骨長異常とBLCSのほぼ一定の微小補正が残った。独立3D正解はなく、実映像の精度改善・production置換を支持する根拠は得られていないため、追加profileは実験用とする。合成camera摂動とCourt14からの推定誤差構造の差は原因候補だが未分離であり、次は同一splitでcamera再推定と独立摂動を比較し、clean caseの不要補正・実clipの持続外れ値を別に確認する。従来PLCSのSMPL-root/yawとは出力契約が異なるため、既存deployの指標と直接順位付けしない。
 
 ## 2026-09-20の追加確認
 

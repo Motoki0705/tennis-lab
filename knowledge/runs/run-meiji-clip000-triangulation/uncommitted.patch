@@ -1,0 +1,1118 @@
+diff --git a/src/utils/README.md b/src/utils/README.md
+index 0d859d49..48aff06f 100644
+--- a/src/utils/README.md
++++ b/src/utils/README.md
+@@ -40,6 +40,7 @@
+ - **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp。
+ - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
+ - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
++- **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。明示された同一座標系のカメラ行列と対応済み2D観測から3D点・valid maskを返す。カメラ推定・人物対応・時間平滑化は行わない。
+ 
+ ### `projection/`
+ - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
+diff --git a/src/utils/geometry/triangulation.py b/src/utils/geometry/triangulation.py
+new file mode 100644
+index 00000000..21535dfc
+--- /dev/null
++++ b/src/utils/geometry/triangulation.py
+@@ -0,0 +1,134 @@
++"""CPU multi-view triangulation in the coordinate system of supplied cameras.
++
++Cameras are fixed OpenCV pinhole matrices ``P = K [R | t]`` with positive
++camera-Z in front. Observations must be undistorted pixel coordinates. This
++module does not estimate calibration, associate people, or smooth time.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++
++import numpy as np
++from numpy.typing import NDArray
++
++FloatArray = NDArray[np.float64]
++
++
++@dataclass(frozen=True)
++class TriangulationResult:
++    """Invalid 3D points/reprojections are NaN; ``used_views`` records input use."""
++
++    points: FloatArray
++    valid: NDArray[np.bool_]
++    used_views: NDArray[np.bool_]
++    reprojected: FloatArray
++    depths: FloatArray
++
++
++def project_multiview(
++    points: FloatArray, cameras: FloatArray
++) -> tuple[FloatArray, FloatArray]:
++    """Project ``(..., 3)`` points through ``(V, 3, 4)`` matrices, in pixels."""
++    homogeneous = np.concatenate((points, np.ones((*points.shape[:-1], 1))), axis=-1)
++    image = np.einsum("vij,...j->...vi", cameras, homogeneous)
++    depth = image[..., 2]
++    with np.errstate(divide="ignore", invalid="ignore"):
++        uv = image[..., :2] / depth[..., None]
++    uv = np.where((np.abs(depth) > 1e-12)[..., None], uv, np.nan)
++    return uv, depth
++
++
++def triangulate_multiview(
++    observations: FloatArray,
++    scores: FloatArray,
++    cameras: FloatArray,
++    *,
++    min_score: float = 0.3,
++    refinement_steps: int = 12,
++) -> TriangulationResult:
++    """Weighted DLT followed by weighted pixel reprojection minimization.
++
++    ``observations``: (..., V, 2); ``scores``: (..., V). At least two finite
++    observations with score >= min_score and score > 0 are required. Weights
++    are clipped detector scores, not calibrated uncertainty probabilities.
++    Missing views, degenerate DLT and negative depth in any used view produce
++    explicit invalid points. No outlier rejection or anatomical prior is used.
++    """
++    uv = np.asarray(observations, dtype=np.float64)
++    score = np.asarray(scores, dtype=np.float64)
++    p = np.asarray(cameras, dtype=np.float64)
++    if p.ndim != 3 or p.shape[1:] != (3, 4) or len(p) < 2:
++        raise ValueError("cameras must have shape (V>=2, 3, 4)")
++    if uv.shape[-2:] != (len(p), 2) or score.shape != uv.shape[:-1]:
++        raise ValueError(
++            "observations/scores must have matching (..., V, 2)/(..., V) shapes"
++        )
++    if (
++        not np.isfinite(p).all()
++        or not np.isfinite(min_score)
++        or min_score < 0
++        or refinement_steps < 0
++    ):
++        raise ValueError("invalid camera, threshold, or refinement_steps")
++    leading = uv.shape[:-2]
++    uv = uv.reshape(-1, len(p), 2)
++    score = score.reshape(-1, len(p))
++    used = (
++        np.isfinite(uv).all(-1)
++        & np.isfinite(score)
++        & (score >= min_score)
++        & (score > 0)
++    )
++    weight = np.where(used, np.clip(score, 0, 1), 0)
++    uv = np.where(used[..., None], uv, 0)
++    a = uv[..., None] * p[None, :, 2:3, :] - p[None, :, :2, :]
++    a = (a * np.sqrt(weight)[..., None, None]).reshape(-1, 2 * len(p), 4)
++    _, singular, vh = np.linalg.svd(a, full_matrices=False)
++    h = vh[:, -1]
++    valid = (used.sum(-1) >= 2) & (np.abs(h[:, 3]) > 1e-10)
++    valid &= singular[:, -2] > np.maximum(singular[:, 0] * 1e-10, 1e-12)
++    x = np.full((len(uv), 3), np.nan)
++    x[valid] = h[valid, :3] / h[valid, 3:4]
++
++    indices = np.flatnonzero(valid)
++    if len(indices) and refinement_steps:
++        y = x[indices].copy()
++        target = uv[indices]
++        w = weight[indices]
++        for _ in range(refinement_steps):
++            pred, depth = project_multiview(y, p)
++            # A missing camera may have zero depth: 0 * NaN is still NaN.
++            pred = np.where(w[..., None] > 0, pred, 0)
++            safe_depth = np.where(np.abs(depth) > 1e-8, depth, 1e-8)
++            jac = p[None, :, :2, :3] - pred[..., None] * p[None, :, 2:3, :3]
++            jac /= safe_depth[..., None, None]
++            residual = pred - target
++            normal = np.einsum("nvai,nvaj,nv->nij", jac, jac, w)
++            gradient = np.einsum("nvai,nva,nv->ni", jac, residual, w)
++            damping = np.maximum(np.trace(normal, axis1=-2, axis2=-1), 1) * 1e-8
++            normal += damping[:, None, None] * np.eye(3)
++            step = np.linalg.solve(normal, gradient[..., None])[..., 0]
++            cost = np.sum(residual**2 * w[..., None], axis=(1, 2))
++            accepted = np.zeros(len(y), dtype=bool)
++            for scale in (1.0, 0.5, 0.25, 0.125):
++                candidate = y - scale * step
++                trial, _ = project_multiview(candidate, p)
++                trial = np.where(w[..., None] > 0, trial, 0)
++                trial_cost = np.sum((trial - target) ** 2 * w[..., None], axis=(1, 2))
++                take = (~accepted) & np.isfinite(trial_cost) & (trial_cost <= cost)
++                y[take] = candidate[take]
++                accepted |= take
++        x[indices] = y
++    projected, depths = project_multiview(x, p)
++    valid &= np.isfinite(x).all(-1) & ((depths > 1e-6) | ~used).all(-1)
++    x[~valid] = np.nan
++    projected[~valid] = np.nan
++    depths[~valid] = np.nan
++    return TriangulationResult(
++        points=x.reshape(*leading, 3),
++        valid=valid.reshape(leading),
++        used_views=used.reshape(*leading, len(p)),
++        reprojected=projected.reshape(*leading, len(p), 2),
++        depths=depths.reshape(*leading, len(p)),
++    )
+diff --git a/tests/unit/utils/geometry/test_triangulation.py b/tests/unit/utils/geometry/test_triangulation.py
+new file mode 100644
+index 00000000..17079e82
+--- /dev/null
++++ b/tests/unit/utils/geometry/test_triangulation.py
+@@ -0,0 +1,82 @@
++"""Synthetic ground-truth checks for the geometric initializer."""
++
++import numpy as np
++from numpy.testing import assert_allclose
++
++from src.utils.geometry.triangulation import project_multiview, triangulate_multiview
++
++
++def fixture_scene():
++    k = np.array([[1000.0, 0.0, 960.0], [0.0, 1000.0, 540.0], [0.0, 0.0, 1.0]])
++    p = np.stack(
++        [
++            k @ np.column_stack((np.eye(3), -np.array(c)))
++            for c in [(-2.0, 0.0, 0.0), (2.0, 0.0, 0.0), (0.0, 2.0, 0.0)]
++        ]
++    )
++    x = np.random.default_rng(19).uniform(
++        [-1.0, -1.0, 4.0], [1.0, 1.0, 8.0], (2, 17, 3)
++    )
++    uv, _ = project_multiview(x, p)
++    return x, uv, p
++
++
++def test_recovers_world_coordinates_with_missing_and_corrupt_view():
++    x, uv, p = fixture_scene()
++    score = np.ones(uv.shape[:-1])
++    uv[0, 0, 0] = np.nan
++    uv[0, 1, 1] += 200
++    score[0, 1, 1] = 0.01
++    result = triangulate_multiview(uv, score, p)
++    assert result.valid.all()
++    assert_allclose(result.points, x, atol=1e-8)
++    assert not result.used_views[0, 0, 0]
++    assert not result.used_views[0, 1, 1]
++
++
++def test_refinement_reduces_weighted_pixel_error():
++    _, uv, p = fixture_scene()
++    uv += np.random.default_rng(31).normal(0, 5, uv.shape)
++    score = np.random.default_rng(12).uniform(0.4, 1, uv.shape[:-1])
++    initial = triangulate_multiview(uv, score, p, refinement_steps=0)
++    refined = triangulate_multiview(uv, score, p)
++    before = np.sum((initial.reprojected - uv) ** 2 * score[..., None], axis=(-1, -2))
++    after = np.sum((refined.reprojected - uv) ** 2 * score[..., None], axis=(-1, -2))
++    assert np.all(after <= before + 1e-7)
++    assert np.any(after < before - 1e-5)
++
++
++def test_rejects_missing_degenerate_and_behind_camera():
++    x, uv, p = fixture_scene()
++    score = np.ones(uv.shape[:-1])
++    score[0, 0, :2] = 0
++    result = triangulate_multiview(uv, score, p)
++    assert not result.valid[0, 0]
++    assert np.isnan(result.points[0, 0]).all()
++    repeated = np.repeat(p[:1], 3, axis=0)
++    repeated_uv, _ = project_multiview(x, repeated)
++    assert not triangulate_multiview(
++        repeated_uv, np.ones_like(score), repeated
++    ).valid.any()
++    x[..., 2] *= -1
++    behind, _ = project_multiview(x, p)
++    assert not triangulate_multiview(behind, np.ones_like(score), p).valid.any()
++
++
++def test_missing_camera_on_projection_plane_does_not_poison_visible_pair():
++    x = np.array([[0.0, 0.0, 6.0]])
++    p = np.stack(
++        [
++            np.column_stack((np.eye(3), t))
++            for t in [
++                np.array([2.0, 0.0, 0.0]),
++                np.array([-2.0, 0.0, 0.0]),
++                np.array([0.0, -2.0, -6.0]),
++            ]
++        ]
++    )
++    uv, _ = project_multiview(x, p)
++    score = np.array([[1.0, 1.0, 0.0]])
++    result = triangulate_multiview(uv, score, p)
++    assert result.valid.all()
++    assert_allclose(result.points, x, atol=1e-8)
+diff --git a/scripts/analysis/triangulation/evaluate.py b/scripts/analysis/triangulation/evaluate.py
+new file mode 100644
+index 00000000..03866bef
+--- /dev/null
++++ b/scripts/analysis/triangulation/evaluate.py
+@@ -0,0 +1,287 @@
++"""Evaluate a saved, associated SceneResult without model inference or GPU use."""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++from itertools import combinations
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++
++from src.utils.geometry.triangulation import project_multiview, triangulate_multiview
++from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
++from src.utils.schema.player import COCO17_BONE_LENGTH_EDGES, COCO_KP_NAMES
++
++
++def stats(values: np.ndarray) -> dict[str, float | int | None]:
++    values = np.asarray(values)
++    values = values[np.isfinite(values)]
++    if not len(values):
++        return {"n": 0, "mean": None, "median": None, "p95": None}
++    return {
++        "n": len(values),
++        "mean": float(values.mean()),
++        "median": float(np.median(values)),
++        "p05": float(np.quantile(values, 0.05)),
++        "p95": float(np.quantile(values, 0.95)),
++        "max": float(values.max()),
++    }
++
++
++def sha256(path: Path) -> str:
++    result = hashlib.sha256()
++    with path.open("rb") as stream:
++        for block in iter(lambda: stream.read(1024 * 1024), b""):
++            result.update(block)
++    return result.hexdigest()
++
++
++def evaluate(clip: Path, output: Path, min_score: float) -> dict[str, Any]:
++    scene_path = clip / "annotations/tennis_scene/scene.npz"
++    metadata_path = scene_path.with_suffix(".metadata.json")
++    metadata = json.loads(metadata_path.read_text())
++    manifest = json.loads((clip / "clip.json").read_text())
++    reference = metadata["court_reference"]
++    cameras = reference["camera_fits"]
++    ids = metadata["camera_ids"]
++    assert ids == manifest["camera_ids"] == reference["camera_ids"]
++    assert len(cameras) == 3, "This diagnostic reports three-view leave-one-camera-out."
++    association = json.loads(
++        (clip / "annotations/player_association_result.json").read_text()
++    )
++    assert metadata["player_association"] == association
++    p = np.array(
++        [np.array(c["K"]) @ np.column_stack((c["R"], c["t"])) for c in cameras]
++    )
++    centers = np.array([c["camera_center_court_m"] for c in cameras])
++    for c in cameras:
++        r, t = np.array(c["R"]), np.array(c["t"])
++        np.testing.assert_allclose(r.T @ r, np.eye(3), atol=1e-7)
++        np.testing.assert_allclose(-r.T @ t, c["camera_center_court_m"], atol=1e-7)
++    with np.load(scene_path, allow_pickle=False) as z:
++        width, height, fps = int(z["width"]), int(z["height"]), float(z["fps"])
++        uv = z["human_kp_2d"].transpose(0, 2, 3, 1, 4).astype(float) * [width, height]
++        scores = z["human_kp_vis"].transpose(0, 2, 3, 1).astype(float)
++        court = z["court_kp"][:, 0].astype(float) * [width, height]
++        assert int(z["num_frames"]) == manifest["num_frames"] == uv.shape[1]
++    result = triangulate_multiview(uv, scores, p, min_score=min_score)
++    residual = uv - result.reprojected
++    errors = np.linalg.norm(residual, axis=-1)
++    observed = result.used_views & result.valid[..., None]
++    errors_masked = np.where(observed, errors, np.nan)
++    physical_court = court_keypoints_3d(STANDARD_COURT_CONFIG).numpy().astype(float)
++    manual = json.loads((clip / "annotations/manual_court_kp_result.json").read_text())
++    court_fits = []
++    for v, camera in enumerate(cameras):
++        mapping = reference["court_keypoint_views"][v]["semantic_to_physical"][:14]
++        # SceneResult stores reference/physical order; raw manual JSON is view order.
++        raw_court = np.array(manual["keypoints"][v][0]) * [width, height]
++        np.testing.assert_allclose(court[v], raw_court[mapping], atol=1e-4)
++        projected, _ = project_multiview(physical_court[:14], p[v : v + 1])
++        delta = projected[:, 0] - court[v]
++        court_fits.append(
++            {
++                "camera": ids[v],
++                "stored_coordinate_rmse_px": camera["rmse_px"],
++                "recomputed_coordinate_rmse_px": float(np.sqrt(np.mean(delta**2))),
++                "euclidean_error_px": stats(np.linalg.norm(delta, axis=-1)),
++                "center_court_m": camera["camera_center_court_m"],
++                "focal_px": camera["K"][0][0],
++            }
++        )
++        np.testing.assert_allclose(
++            np.sqrt(np.mean(delta**2)), camera["rmse_px"], atol=1e-4
++        )
++    metrics: dict[str, Any] = {
++        "clip": str(clip),
++        "frames": uv.shape[1],
++        "players": uv.shape[0],
++        "fps": fps,
++        "width": width,
++        "height": height,
++        "camera_ids": ids,
++        "independent_3d_ground_truth": False,
++        "method": "score-weighted DLT + 12 Gauss-Newton steps minimizing weighted pixel SSE",
++        "min_score": min_score,
++        "score_weight": "clip(score,0,1), not calibrated probabilities",
++        "temporal_smoothing": False,
++        "anatomical_prior": False,
++        "calibration": "saved CourtKP14-only pinhole, fixed centered principal point, fx=fy, zero distortion",
++        "coordinate_frame": "physical court, metres, XY ground, Z up",
++        "association": association,
++        "calibration_fits": court_fits,
++        "joint_coverage_percent": float(100 * result.valid.mean()),
++        "reprojection_px": stats(errors_masked),
++        "per_camera_reprojection_px": {
++            name: stats(errors_masked[..., i]) for i, name in enumerate(ids)
++        },
++        "per_joint_reprojection_px": {
++            name: stats(errors_masked[:, :, j]) for j, name in enumerate(COCO_KP_NAMES)
++        },
++        "players_detail": [],
++        "leave_one_camera_out": {},
++        "source_sha256": {
++            str(path.relative_to(clip)): sha256(path)
++            for path in [
++                scene_path,
++                metadata_path,
++                clip / "clip.json",
++                clip / "annotations/manual_court_kp_result.json",
++                clip / "annotations/player_association_result.json",
++            ]
++        },
++    }
++    bones = np.array(COCO17_BONE_LENGTH_EDGES)
++    lengths = np.linalg.norm(
++        result.points[..., bones[:, 0], :] - result.points[..., bones[:, 1], :], axis=-1
++    )
++    extreme = np.argwhere(lengths[:, :, 4:] > 1.0)
++    worst = np.unravel_index(np.nanargmax(lengths), lengths.shape)
++    wp, wt, wb = (int(i) for i in worst)
++    metrics["limb_length_diagnostics"] = {
++        "limb_instances_over_1m": len(extreme),
++        "person_frames_with_limb_over_1m": len(np.unique(extreme[:, :2], axis=0)),
++        "worst": {
++            "player": wp,
++            "frame": wt,
++            "edge": [COCO_KP_NAMES[j] for j in bones[wb]],
++            "length_m": float(lengths[worst]),
++            "joint_scores": scores[wp, wt, bones[wb]].tolist(),
++            "joint_used_views": result.used_views[wp, wt, bones[wb]].tolist(),
++        },
++    }
++    for person in range(uv.shape[0]):
++        median_lengths = np.nanmedian(lengths[person], axis=0)
++        hip = result.points[person][:, [11, 12], :].mean(axis=1)
++        metrics["players_detail"].append(
++            {
++                "player": person,
++                "coverage_percent": float(100 * result.valid[person].mean()),
++                "complete_17_joint_frames_percent": float(
++                    100 * result.valid[person].all(-1).mean()
++                ),
++                "per_joint_coverage_percent": {
++                    n: float(result.valid[person, :, j].mean() * 100)
++                    for j, n in enumerate(COCO_KP_NAMES)
++                },
++                "reprojection_px": stats(errors_masked[person]),
++                "limb_bone_absolute_deviation_from_own_temporal_median_m": stats(
++                    np.abs(lengths[person, :, 4:] - median_lengths[4:])
++                ),
++                "bones": {
++                    f"{COCO_KP_NAMES[a]}-{COCO_KP_NAMES[b]}": {
++                        "length_m": stats(lengths[person, :, i]),
++                        "temporal_std_m": float(np.nanstd(lengths[person, :, i])),
++                    }
++                    for i, (a, b) in enumerate(bones)
++                },
++                "ankle_height_m": stats(result.points[person, :, 15:17, 2]),
++                "ankle_below_minus_10cm_percent": float(
++                    np.mean(result.points[person, :, 15:17, 2] < -0.1) * 100
++                ),
++                "hip_height_m": stats(hip[:, 2]),
++            }
++        )
++    pair_points = []
++    for dropped in range(3):
++        keep = [v for v in range(3) if v != dropped]
++        pair = triangulate_multiview(
++            uv[..., keep, :], scores[..., keep], p[keep], min_score=min_score
++        )
++        predicted, depth = project_multiview(pair.points, p)
++        eval_mask = (
++            pair.valid & (scores[..., dropped] >= min_score) & (depth[..., dropped] > 0)
++        )
++        heldout_error = np.linalg.norm(
++            predicted[..., dropped, :] - uv[..., dropped, :], axis=-1
++        )
++        displacement = np.linalg.norm(pair.points - result.points, axis=-1)
++        metrics["leave_one_camera_out"][ids[dropped]] = {
++            "triangulation_cameras": [ids[k] for k in keep],
++            "coverage_percent": float(100 * pair.valid.mean()),
++            "heldout_reprojection_px": stats(heldout_error[eval_mask]),
++            "difference_to_three_view_m_not_ground_truth_error": stats(displacement),
++        }
++        pair_points.append(pair.points)
++    pair_points_array = np.stack(pair_points)
++    pair_disagreements = np.stack(
++        [
++            np.linalg.norm(pair_points_array[a] - pair_points_array[b], axis=-1)
++            for a, b in combinations(range(3), 2)
++        ]
++    )
++    metrics["pair_solution_disagreement_m_not_ground_truth_error"] = stats(
++        pair_disagreements
++    )
++    rays = result.points[..., None, :] - centers
++    rays /= np.linalg.norm(rays, axis=-1, keepdims=True)
++    angles = []
++    for a, b in combinations(range(3), 2):
++        # Acute line angle: antiparallel rays are also ill-conditioned.
++        angle = np.rad2deg(
++            np.arccos(
++                np.clip(
++                    np.abs(np.sum(rays[..., a, :] * rays[..., b, :], axis=-1)), 0, 1
++                )
++            )
++        )
++        angles.append(
++            np.where(
++                result.used_views[..., a] & result.used_views[..., b], angle, np.nan
++            )
++        )
++    with np.errstate(invalid="ignore"):
++        max_angle = np.max(np.where(np.isfinite(angles), angles, -np.inf), axis=0)
++    max_angle[~result.valid] = np.nan
++    metrics["best_available_ray_angle_deg"] = stats(max_angle)
++    output.mkdir(parents=True, exist_ok=True)
++    np.savez_compressed(
++        output / "triangulation.npz",
++        X_init=result.points,
++        valid=result.valid,
++        observations_px=uv,
++        scores=scores,
++        used_views=result.used_views,
++        projections=p,
++        camera_centers=centers,
++        reprojected_px=result.reprojected,
++        reprojection_residual_px=residual,
++        pair_points=pair_points_array,
++        bone_lengths_m=lengths,
++        fps=fps,
++        max_ray_angle_deg=max_angle,
++    )
++    (output / "metrics.json").write_text(
++        json.dumps(metrics, ensure_ascii=False, indent=2, allow_nan=False)
++    )
++    print(
++        json.dumps(
++            {
++                k: metrics[k]
++                for k in [
++                    "joint_coverage_percent",
++                    "reprojection_px",
++                    "leave_one_camera_out",
++                    "pair_solution_disagreement_m_not_ground_truth_error",
++                ]
++            },
++            indent=2,
++        )
++    )
++    return metrics
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--clip", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--min-score", type=float, default=0.3)
++    args = parser.parse_args()
++    evaluate(args.clip.resolve(), args.output.resolve(), args.min_score)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/analysis/triangulation/render.py b/scripts/analysis/triangulation/render.py
+new file mode 100644
+index 00000000..1177cb76
+--- /dev/null
++++ b/scripts/analysis/triangulation/render.py
+@@ -0,0 +1,487 @@
++"""Video, figures and an offline interactive viewer for triangulation diagnostics."""
++
++from __future__ import annotations
++
++import argparse
++import json
++from pathlib import Path
++from typing import Any
++
++import cv2
++import matplotlib
++
++matplotlib.use("Agg")
++import matplotlib.pyplot as plt
++import numpy as np
++from matplotlib.backends.backend_agg import FigureCanvasAgg
++from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
++
++from src.utils.rendering.court_renderer import CourtLines, CourtRenderer, CourtStyle
++from src.utils.rendering.layers import SceneLayer, enable_explicit_layering
++from src.utils.schema.player import (
++    COCO17_SKELETON,
++)
++from src.utils.video.writer import VideoWriter
++
++BG = "#101a2b"
++COLORS = ("#35d9cf", "#ffb45e")
++BGR = ((207, 217, 53), (94, 180, 255))
++EDGES = np.array(COCO17_SKELETON)
++
++
++def cv_text(
++    img: np.ndarray,
++    text: str,
++    xy: tuple[int, int],
++    scale: float = 0.7,
++    color: tuple[int, int, int] = (235, 239, 245),
++) -> None:
++    cv2.putText(img, text, xy, cv2.FONT_HERSHEY_SIMPLEX, scale, color, 2, cv2.LINE_AA)
++
++
++def overlay(
++    image: np.ndarray,
++    obs: np.ndarray,
++    reproj: np.ndarray,
++    scores: np.ndarray,
++    color: tuple[int, int, int],
++    threshold: float,
++    scale: float = 1,
++) -> np.ndarray:
++    out = image.copy()
++    observed = (scores >= threshold) & np.isfinite(obs).all(-1)
++    predicted = np.isfinite(reproj).all(-1)
++    a = np.rint(np.nan_to_num(obs) * scale).astype(int)
++    b = np.rint(np.nan_to_num(reproj) * scale).astype(int)
++    for i, j in EDGES:
++        if predicted[i] and predicted[j]:
++            cv2.line(out, tuple(b[i]), tuple(b[j]), color, 2, cv2.LINE_AA)
++    for j in range(17):
++        if observed[j] and predicted[j]:
++            cv2.line(out, tuple(a[j]), tuple(b[j]), (190, 80, 255), 1, cv2.LINE_AA)
++        if observed[j]:
++            cv2.circle(out, tuple(a[j]), 3, (255, 255, 255), 1, cv2.LINE_AA)
++        if predicted[j]:
++            cv2.circle(out, tuple(b[j]), 2, color, -1, cv2.LINE_AA)
++    return out
++
++
++class PoseFigure:
++    def __init__(self, centers: np.ndarray) -> None:
++        self.fig = plt.figure(figsize=(19.2, 5.6), dpi=100, facecolor=BG)
++        self.axes: list[Any] = [
++            self.fig.add_axes(pos, projection="3d")
++            for pos in [
++                (0.00, 0.03, 0.48, 0.94),
++                (0.48, 0.04, 0.26, 0.91),
++                (0.74, 0.04, 0.26, 0.91),
++            ]
++        ]
++        for ax in self.axes:
++            enable_explicit_layering(ax)
++            ax.set_facecolor(BG)
++            for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
++                axis.set_pane_color((0.06, 0.10, 0.16, 1))
++                axis._axinfo["grid"]["color"] = (0.3, 0.38, 0.47, 0.25)
++                axis.label.set_color("#a8b9cc")
++            ax.tick_params(colors="#9dacbd", labelsize=8)
++        world = self.axes[0]
++        CourtRenderer(
++            CourtStyle(
++                court_color="#183f43",
++                apron_color="#183039",
++                line_color="#9cb7ba",
++                line_width=0.8,
++            )
++        ).render_3d(
++            world, show_net=True, set_limits=False, apron_bounds=(-10, 10, -20, 20)
++        )
++        world.set(
++            xlim=(-10, 10),
++            ylim=(-20, 20),
++            zlim=(-0.15, 4),
++            xlabel="X [m]",
++            ylabel="Y [m]",
++            zlabel="Z [m]",
++        )
++        world.set_box_aspect((20, 40, 6))
++        world.view_init(elev=53, azim=-42)
++        world.set_title(
++            "COURT FRAME  |  3 cameras, no temporal smoothing",
++            color="white",
++            fontsize=13,
++            y=1.00,
++        )
++        world.scatter(*centers.T, c="#879bb5", s=28, marker="^")
++        for c, point in enumerate(centers):
++            world.text(*point, f" cam{c}", color="#b8c6d7", fontsize=9)
++        for person, ax in enumerate(self.axes[1:]):
++            ax.set(
++                xlim=(-1.25, 1.25),
++                ylim=(-1.25, 1.25),
++                zlim=(-0.2, 2.3),
++                xlabel="relative X [m]",
++                ylabel="relative Y [m]",
++                zlabel="court Z [m]",
++            )
++            ax.set_box_aspect((2.5, 2.5, 2.5))
++            ax.view_init(elev=12, azim=-65)
++            ax.add_collection3d(
++                Poly3DCollection(
++                    [
++                        [
++                            [-1.25, -1.25, 0],
++                            [1.25, -1.25, 0],
++                            [1.25, 1.25, 0],
++                            [-1.25, 1.25, 0],
++                        ]
++                    ],
++                    facecolor="#183f43",
++                    alpha=0.6,
++                    zorder=SceneLayer.SURFACE,
++                )
++            )
++            ax.set_title(
++                f"P{person}  |  XY centered, actual height",
++                color=COLORS[person],
++                fontsize=12,
++            )
++        self.bones, self.dots, self.trails = [], [], []
++        for person in range(2):
++            bone_pair, dot_pair = [], []
++            for ax in [world, self.axes[person + 1]]:
++                bone = Line3DCollection(
++                    [], colors=COLORS[person], linewidths=2.8, zorder=SceneLayer.PLAYER
++                )
++                ax.add_collection3d(bone, autolim=False)
++                dot = ax.scatter(
++                    [],
++                    [],
++                    [],
++                    c=COLORS[person],
++                    s=13,
++                    depthshade=False,
++                    zorder=SceneLayer.MARKER,
++                )
++                bone_pair.append(bone)
++                dot_pair.append(dot)
++            self.bones.append(bone_pair)
++            self.dots.append(dot_pair)
++            (trail,) = world.plot(
++                [], [], [], color=COLORS[person], alpha=0.45, linewidth=1
++            )
++            self.trails.append(trail)
++
++    def render(self, points: np.ndarray, t: int) -> np.ndarray:
++        for person in range(2):
++            raw = points[person, t]
++            center = np.nanmean(raw[[11, 12]], axis=0)
++            local = raw.copy()
++            local[:, :2] -= center[:2]
++            for j, pose in enumerate((raw, local)):
++                segments = pose[EDGES]
++                self.bones[person][j].set_segments(
++                    segments[np.isfinite(segments).all(axis=(1, 2))]
++                )
++                good = pose[np.isfinite(pose).all(-1)]
++                self.dots[person][j]._offsets3d = good.T
++            hips = np.nanmean(points[person, max(0, t - 100) : t + 1, 11:13], axis=1)
++            self.trails[person].set_data_3d(hips[:, 0], hips[:, 1], np.zeros(len(hips)))
++        self.fig.canvas.draw()
++        assert isinstance(self.fig.canvas, FigureCanvasAgg)
++        return np.asarray(self.fig.canvas.buffer_rgba())[..., :3].copy()
++
++
++def diagnostic_plot(data: dict[str, np.ndarray], metrics: dict, output: Path) -> None:
++    err = np.linalg.norm(data["reprojection_residual_px"], axis=-1)
++    err = np.where(data["used_views"] & data["valid"][..., None], err, np.nan)
++    plt.rcParams.update({"font.size": 10})
++    fig, axes = plt.subplots(2, 2, figsize=(15, 9), constrained_layout=True)
++    for c, color in enumerate(["#119d92", "#cf8731", "#4f68ba"]):
++        values = np.sort(err[..., c][np.isfinite(err[..., c])])
++        axes[0, 0].plot(
++            values,
++            np.arange(1, len(values) + 1) / len(values),
++            color=color,
++            label=f"cam{c}",
++        )
++    axes[0, 0].set(
++        xlim=(0, 25),
++        ylim=(0, 1),
++        xlabel="Euclidean reprojection error [px]",
++        ylabel="Fraction",
++        title="3-view fit: agreement with the same observations",
++    )
++    axes[0, 0].legend()
++    time = np.arange(data["X_init"].shape[1]) / metrics["fps"]
++    for player, color in enumerate(COLORS):
++        values = np.nanmean(err[player], axis=(1, 2))
++        axes[0, 1].plot(time, values, label=f"P{player}", color=color)
++    axes[0, 1].set(
++        xlabel="Time [s]",
++        ylabel="Mean reprojection error [px]",
++        title="All 1,010 frames, raw initializer",
++    )
++    axes[0, 1].legend()
++    entries = list(metrics["leave_one_camera_out"].values())
++    axes[1, 0].bar(
++        np.arange(3) - 0.18,
++        [a["heldout_reprojection_px"]["median"] for a in entries],
++        0.36,
++        label="Median",
++    )
++    axes[1, 0].bar(
++        np.arange(3) + 0.18,
++        [a["heldout_reprojection_px"]["p95"] for a in entries],
++        0.36,
++        label="95th percentile",
++    )
++    axes[1, 0].set(
++        xticks=range(3),
++        xticklabels=["cam1+2 -> cam0", "cam0+2 -> cam1", "cam0+1 -> cam2"],
++        ylabel="Held-out camera error [px]",
++        title="Triangulate in two views; test in the unused view",
++    )
++    axes[1, 0].legend()
++    limbs = data["bone_lengths_m"][:, :, 4:]
++    means = np.nanmedian(limbs, axis=1)
++    deviation = np.abs(limbs - means[:, None])
++    for player, color in enumerate(COLORS):
++        values = np.sort(deviation[player][np.isfinite(deviation[player])])
++        axes[1, 1].plot(
++            values * 100,
++            np.arange(1, len(values) + 1) / len(values),
++            label=f"P{player}",
++            color=color,
++        )
++    axes[1, 1].set(
++        xlim=(0, 50),
++        ylim=(0, 1),
++        xlabel="Absolute deviation from own median limb length [cm]",
++        ylabel="Fraction",
++        title="Bone-length stability (not ground-truth pose error)",
++    )
++    axes[1, 1].legend()
++    for ax in axes.flat:
++        ax.grid(alpha=0.2)
++    fig.suptitle(
++        "Meiji clip_000 | No independent 3D ground truth is available", fontsize=16
++    )
++    fig.savefig(output / "diagnostics.png", dpi=140)
++    plt.close(fig)
++
++
++def crop_sheet(
++    frames: list[np.ndarray],
++    data: dict[str, np.ndarray],
++    t: int,
++    threshold: float,
++    output: Path,
++) -> None:
++    sheet = np.full((910, 1440, 3), (43, 26, 16), np.uint8)
++    cv_text(
++        sheet,
++        f"Frame {t} | white: input 2D | colored: 3D reprojection | magenta: residual",
++        (25, 36),
++        0.8,
++    )
++    for person in range(2):
++        for camera in range(3):
++            obs = data["observations_px"][person, t, :, camera]
++            pred = data["reprojected_px"][person, t, :, camera]
++            score = data["scores"][person, t, :, camera]
++            good = obs[np.isfinite(obs).all(-1) & (score >= threshold)]
++            margin = max(15, np.ptp(good[:, 1]) * 0.25)
++            lo = np.floor(good.min(0) - margin).astype(int)
++            hi = np.ceil(good.max(0) + margin).astype(int)
++            lo = np.maximum(lo, 0)
++            hi = np.minimum(hi, [1920, 1080])
++            crop = frames[camera][lo[1] : hi[1], lo[0] : hi[0]]
++            scale = min(440 / crop.shape[1], 370 / crop.shape[0])
++            crop = cv2.resize(
++                crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC
++            )
++            crop = overlay(
++                crop,
++                (obs - lo) * scale,
++                (pred - lo) * scale,
++                score,
++                BGR[person],
++                threshold,
++            )
++            x = camera * 480 + (480 - crop.shape[1]) // 2
++            y = 95 + person * 405
++            sheet[y : y + crop.shape[0], x : x + crop.shape[1]] = crop
++            cv_text(
++                sheet,
++                f"cam{camera} / P{person}  ({scale:.1f}x)",
++                (camera * 480 + 25, y - 15),
++                0.7,
++                BGR[person],
++            )
++    cv2.imwrite(str(output / f"crops_frame_{t:04d}.png"), sheet)
++
++
++def write_viewer(data: dict[str, np.ndarray], metrics: dict, output: Path) -> None:
++    def serial(a: np.ndarray) -> object:
++        b = np.round(a, 4).astype(object)
++        b[~np.isfinite(a)] = None
++        return b.tolist()
++
++    content = {
++        "points": serial(data["X_init"]),
++        "pairs": serial(data["pair_points"]),
++        "edges": EDGES.tolist(),
++        "court": CourtLines().lines,
++        "centers": data["camera_centers"].tolist(),
++        "fps": metrics["fps"],
++        "frames": metrics["frames"],
++    }
++    template = Path(__file__).with_name("viewer.html").read_text()
++    html = template.replace(
++        "__DATA__", json.dumps(content, separators=(",", ":"), allow_nan=False)
++    )
++    (output / "index.html").write_text(html)
++    node = (
++        Path(__file__).resolve().parents[3]
++        / "knowledge/nodes/run-meiji-clip000-triangulation.md"
++    )
++    body = node.read_text().split("---", 2)[2].lstrip()
++    (output / "report.md").write_text(
++        "# Meiji clip_000 初期3Dポーズの検証\n\n"
++        "このレポートはknowledge node本文から生成した閲覧用コピーです。\n\n" + body
++    )
++
++
++def render(clip: Path, output: Path, stride: int) -> None:
++    metrics = json.loads((output / "metrics.json").read_text())
++    with np.load(output / "triangulation.npz") as archive:
++        data = {name: archive[name] for name in archive.files}
++    diagnostic_plot(data, metrics, output)
++    write_viewer(data, metrics, output)
++    threshold = metrics["min_score"]
++    captures = [cv2.VideoCapture(str(clip / "media" / f"cam{c}.mp4")) for c in range(3)]
++    figure = PoseFigure(data["camera_centers"])
++    err = np.linalg.norm(data["reprojection_residual_px"], axis=-1)
++    err = np.where(data["used_views"] & data["valid"][..., None], err, np.nan)
++    frame_mean = np.nanmean(err, axis=(0, 2, 3))
++    median_t = int(np.argmin(np.abs(frame_mean - np.median(frame_mean))))
++    high_t = int(np.argmin(np.abs(frame_mean - np.quantile(frame_mean, 0.95))))
++    worst_bone = np.unravel_index(
++        np.nanargmax(data["bone_lengths_m"]), data["bone_lengths_m"].shape
++    )
++    worst_bone_t = int(worst_bone[1])
++    selected = {0, 300, 700, 900, median_t, high_t, worst_bone_t}
++    overview_t = median_t - median_t % stride
++    with VideoWriter(
++        output / "triangulation.mp4", fps=metrics["fps"] / stride, crf=20
++    ) as writer:
++        for t in range(metrics["frames"]):
++            needed = t % stride == 0 or t in selected
++            frames = []
++            for camera, cap in enumerate(captures):
++                if needed:
++                    ok, frame = cap.read()
++                    if not ok:
++                        raise RuntimeError(f"Failed to decode cam{camera} frame {t}")
++                    frames.append(frame)
++                elif not cap.grab():
++                    raise RuntimeError(f"Failed to advance cam{camera} frame {t}")
++            if t in selected:
++                crop_sheet(frames, data, t, threshold, output)
++            if t % stride:
++                continue
++            canvas = np.full((1080, 1920, 3), (43, 26, 16), np.uint8)
++            cv_text(canvas, "MULTI-VIEW TRIANGULATION / X_init", (24, 38), 1.05)
++            cv_text(
++                canvas,
++                f"frame {t:04d}/1009  |  {t / metrics['fps']:.2f}s  |  3-view residual {frame_mean[t]:.2f}px",
++                (1000, 36),
++                0.75,
++            )
++            cv_text(
++                canvas,
++                "WHITE: observed 2D   TEAL: P0 reprojection   ORANGE: P1 reprojection   MAGENTA: residual",
++                (24, 76),
++                0.7,
++            )
++            for camera, frame in enumerate(frames):
++                tile = cv2.resize(frame, (640, 360), interpolation=cv2.INTER_AREA)
++                for person in range(2):
++                    tile = overlay(
++                        tile,
++                        data["observations_px"][person, t, :, camera],
++                        data["reprojected_px"][person, t, :, camera],
++                        data["scores"][person, t, :, camera],
++                        BGR[person],
++                        threshold,
++                        scale=1 / 3,
++                    )
++                cv_text(tile, f"cam{camera}", (12, 28), 0.8)
++                canvas[96:456, camera * 640 : (camera + 1) * 640] = tile
++            canvas[475:1035] = figure.render(data["X_init"], t)[..., ::-1]
++            cv_text(
++                canvas,
++                "Court-only approximate calibration, zero lens distortion | No 3D ground truth | Missing joints are not filled",
++                (24, 1062),
++                0.68,
++            )
++            longest_limb = np.nanmax(data["bone_lengths_m"][:, t, 4:])
++            if longest_limb > 1:
++                cv_text(
++                    canvas,
++                    f"OUTLIER: limb length {longest_limb:.2f}m",
++                    (1100, 465),
++                    0.72,
++                    (110, 110, 255),
++                )
++            writer.write_frame(
++                np.asarray(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB), dtype=np.uint8)
++            )
++            if t == overview_t:
++                cv2.imwrite(str(output / "overview.png"), canvas)
++            if t == worst_bone_t:
++                cv2.imwrite(str(output / "outlier.png"), canvas)
++            if t % 100 == 0:
++                print(f"Rendered {t}/{metrics['frames']} frames", flush=True)
++    for cap in captures:
++        cap.release()
++    plt.close(figure.fig)
++    print(
++        json.dumps(
++            {
++                "median_error_frame": median_t,
++                "p95_error_frame": high_t,
++                "overview_frame": overview_t,
++                "video_stride": stride,
++                "video_frames": len(range(0, metrics["frames"], stride)),
++            }
++        ),
++        flush=True,
++    )
++    (output / "render_metadata.json").write_text(
++        json.dumps(
++            {
++                "median_error_frame": median_t,
++                "p95_error_frame": high_t,
++                "overview_frame": overview_t,
++                "video_stride": stride,
++            },
++            indent=2,
++        )
++    )
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--clip", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--stride", type=int, default=2)
++    args = parser.parse_args()
++    if args.stride < 1:
++        raise ValueError("stride must be positive")
++    render(args.clip, args.output, args.stride)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/scripts/analysis/triangulation/viewer.html b/scripts/analysis/triangulation/viewer.html
+new file mode 100644
+index 00000000..c3eddc26
+--- /dev/null
++++ b/scripts/analysis/triangulation/viewer.html
+@@ -0,0 +1,62 @@
++<!doctype html>
++<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
++<title>Meiji clip_000 — 初期3Dポーズ</title>
++<style>
++:root{font:16px system-ui,sans-serif;color:#e6edf5;background:#0d1523}body{max-width:1280px;margin:auto;padding:28px}
++h1{font-size:28px;margin:8px 0}p{line-height:1.8;color:#c0ccdc}h2{font-size:20px;margin-top:30px}
++.tag{font-size:12px;color:#51d9cc;letter-spacing:.16em}canvas,video,img{width:100%;border:1px solid #344253;border-radius:10px;box-sizing:border-box}
++canvas{height:560px;touch-action:none}.controls{display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:16px 0}
++button,select{background:#26364b;color:white;border:1px solid #425672;border-radius:6px;padding:8px 14px;cursor:pointer}
++input[type=range]{flex:1;min-width:250px;accent-color:#35d9cf}table{border-collapse:collapse;width:100%;margin:20px 0}th,td{text-align:left;padding:12px;border-bottom:1px solid #304052}a{color:#59dad3}
++.note{background:#1c2c41;border-radius:8px;padding:16px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.card{background:#182639;padding:20px;border-radius:10px}.num{font-size:30px;color:white}.small{font-size:13px;color:#adc0d1}@media(max-width:650px){body{padding:12px}canvas{height:400px}.cards{grid-template-columns:1fr}}
++</style>
++<div class="tag">MEIJI · 3 CAMERAS · COCO17 · 1,010 FRAMES</div>
++<h1>三角測量による初期3Dポーズ</h1>
++<p>保存済みの人物対応・2Dキーポイント・コート14点由来の近似カメラを使用。confidence ≥ 0.3の観測から、重み付きDLT＋再投影最適化で復元しました。PLCS補正・時間平滑化・骨長補正は加えていません。</p>
++<div class="cards"><div class="card"><div class="num">98.90%</div>3D関節の復元率</div><div class="card"><div class="num">2.40 px</div>再投影誤差の中央値</div><div class="card"><div class="num">9.73 px</div>再投影誤差の95%点</div></div>
++<p class="note">このクリップには独立した3D正解がありません。再投影誤差は入力2Dとの整合性であり、実際の3D位置誤差ではありません。カメラ組合せによる差も、真値からの誤差や信頼区間ではありません。</p>
++<h2>元映像への再投影と3D骨格</h2>
++<video src="triangulation.mp4" poster="overview.png" controls preload="metadata"></video>
++<p class="small">白丸：元の2D観測　／　水色：P0　／　橙：P1　／　紫線：再投影残差。下段中央・右は人物のXY位置だけを中心へ移動し、Zはコート地面からの高さのまま表示。</p>
++<h2>3Dを回転して確認</h2>
++<div class="controls"><button id="play">再生</button><select id="view"><option value="world">コート全体</option><option value="0">P0を拡大</option><option value="1">P1を拡大</option></select><label><input id="pairs" type="checkbox">2台ずつの復元を重ねる</label><button id="reset">視点を戻す</button></div>
++<canvas id="scene"></canvas>
++<div class="controls"><span id="clock"></span><input id="time" type="range" min="0" max="1009" value="0"></div>
++<p class="small">ドラッグ：回転　／　ホイール：拡大縮小。灰色の3骨格はcam1+2、cam0+2、cam0+1それぞれの復元。欠測点は描画していません。3Dデータは全1,010フレームを収録。</p>
++<h2>2台で復元 → 未使用の1台へ投影</h2>
++<table><tr><th>復元に使用</th><th>確認用カメラ</th><th>中央値</th><th>95%点</th></tr>
++<tr><td>cam1 + cam2</td><td>cam0</td><td>6.98 px</td><td>42.51 px</td></tr>
++<tr><td>cam0 + cam2</td><td>cam1</td><td>10.62 px</td><td>64.82 px</td></tr>
++<tr><td>cam0 + cam1</td><td>cam2</td><td>12.33 px</td><td>75.19 px</td></tr></table>
++<p>異なる2台組で得た3D関節同士の距離は中央値26.0 cm、95%点80.1 cm。3台全体への小さい再投影誤差だけで、高い3D精度を保証することはできません。</p>
++<h2>失敗例：frame 320の手首</h2>
++<p>P1の26 / 1,010フレームで、四肢のいずれかの骨長が1mを超えました。最大はframe 320の左前腕3.04m。左手首にはcam0のconfidence 0.317とcam2の0.896を使用し、cam1の0.216は除外しています。低解像度の遠景観測と2視点のみの復元が重なる箇所で、大きな外れ値が残っています。小さい残差だけを「精度がよい」と解釈しないため、この例も保存しています。</p>
++<img src="crops_frame_0320.png" alt="frame320。上段P0、下段P1。各カメラの元2Dと3D再投影を拡大比較">
++<img src="diagnostics.png" alt="再投影誤差、未使用カメラ評価、骨長変動のグラフ">
++<h2>成果物</h2><p><a href="triangulation.npz">X_init・valid mask・再投影残差（NPZ）</a> · <a href="metrics.json">全メトリクス（JSON）</a> · <a href="report.md">評価条件と考察</a></p>
++<script id="data" type="application/json">__DATA__</script>
++<script>
++const D=JSON.parse(document.getElementById('data').textContent),canvas=document.getElementById('scene'),ctx=canvas.getContext('2d');
++const slider=document.getElementById('time'),clock=document.getElementById('clock'),view=document.getElementById('view'),pairs=document.getElementById('pairs');
++let az=-0.6,el=0.9,zoom=1,drag=null,running=false,startTime=0,startFrame=0;
++const colors=['#35d9cf','#ffb45e']; const good=p=>p&&p.every(v=>v!==null&&Number.isFinite(v));
++function draw(){
++ const width=canvas.clientWidth,height=canvas.clientHeight,dpr=devicePixelRatio||1;canvas.width=width*dpr;canvas.height=height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
++ ctx.fillStyle='#101a2b';ctx.fillRect(0,0,width,height);let t=+slider.value,world=view.value==='world',person=world?-1:+view.value;
++ let origin=[0,0,0.4],scale=Math.min(width/45,height/43)*zoom;
++ if(!world){const hip=D.points[person][t].slice(11,13).filter(good);if(hip.length)origin=[hip.reduce((s,p)=>s+p[0],0)/hip.length,hip.reduce((s,p)=>s+p[1],0)/hip.length,1];scale=Math.min(width,height)/3.5*zoom;}
++ const project=p=>{let x=p[0]-origin[0],y=p[1]-origin[1],z=p[2]-origin[2];let u=x*Math.cos(az)-y*Math.sin(az),v=x*Math.sin(az)+y*Math.cos(az);return[width/2+u*scale,height/2+(v*Math.sin(el)-z*Math.cos(el))*scale];};
++ function line(a,b,color,w=1){if(!good(a)||!good(b))return;let p=project(a),q=project(b);ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(...p);ctx.lineTo(...q);ctx.stroke();}
++ if(world){for(const seg of D.court)line([...seg[0],0],[...seg[1],0],'#809a9d',1.4);line([-5.485,0,.914],[5.485,0,.914],'#bcccd5',2);D.centers.forEach((p,c)=>{const q=project(p);ctx.fillStyle='#94a9c6';ctx.fillRect(q[0]-4,q[1]-4,8,8);ctx.font='13px system-ui';ctx.fillText('cam'+c,q[0]+8,q[1]);});}
++ else{for(let i=-2;i<=2;i++){line([origin[0]+i*.5,origin[1]-1.5,0],[origin[0]+i*.5,origin[1]+1.5,0],'#30444c');line([origin[0]-1.5,origin[1]+i*.5,0],[origin[0]+1.5,origin[1]+i*.5,0],'#30444c');}}
++ function skeleton(points,color,w){for(const [a,b]of D.edges)line(points[a],points[b],color,w);for(const p of points){if(!good(p))continue;const q=project(p);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q[0],q[1],world?2.4:4,0,2*Math.PI);ctx.fill();}}
++ for(let i=0;i<2;i++){if(!world&&i!==person)continue;if(pairs.checked)for(let k=0;k<3;k++)skeleton(D.pairs[k][i][t],['#8f9bad99','#bdcadb77','#e3ecf455'][k],1.5);skeleton(D.points[i][t],colors[i],world?2.7:4);}
++ ctx.font='14px system-ui';ctx.fillStyle='#bccbdc';ctx.fillText(world?'コート座標 / 単位 m':'XYのみ中心化 / Z=0はコート地面',20,28);clock.textContent=`frame ${t} / 1009 · ${(t/D.fps).toFixed(2)} s`;
++}
++canvas.onpointerdown=e=>{drag=[e.clientX,e.clientY];canvas.setPointerCapture(e.pointerId);};canvas.onpointermove=e=>{if(!drag)return;az+=(e.clientX-drag[0])*.006;el=Math.max(-.2,Math.min(1.55,el+(e.clientY-drag[1])*.006));drag=[e.clientX,e.clientY];draw();};canvas.onpointerup=()=>drag=null;
++canvas.onwheel=e=>{e.preventDefault();zoom=Math.max(.4,Math.min(5,zoom*Math.exp(-e.deltaY*.001)));draw();};
++slider.oninput=()=>{startFrame=+slider.value;startTime=performance.now();draw();};view.onchange=()=>{az=-.6;el=view.value==='world'?.9:.15;zoom=1;draw();};pairs.onchange=draw;
++document.getElementById('reset').onclick=()=>{az=-.6;el=view.value==='world'?.9:.15;zoom=1;draw();};
++document.getElementById('play').onclick=()=>{running=!running;startFrame=+slider.value;startTime=performance.now();document.getElementById('play').textContent=running?'停止':'再生';};
++function tick(now){if(running){slider.value=(startFrame+Math.floor((now-startTime)/1000*D.fps))%D.frames;draw();}requestAnimationFrame(tick);}requestAnimationFrame(tick);window.onresize=draw;draw();
++</script></html>
+diff --git a/scripts/analysis/triangulation/README.md b/scripts/analysis/triangulation/README.md
+new file mode 100644
+index 00000000..5fb9ccaa
+--- /dev/null
++++ b/scripts/analysis/triangulation/README.md
+@@ -0,0 +1,18 @@
++# Meiji clip_000 三角測量診断
++
++保存済みのSceneResultと近似camera fitから、学習モデルを使わず初期COCO17 3D poseを検証するCPU実験。
++描画テンプレートは今回のMeiji clip_000・2人・3台の結果用。汎用の幾何計算は `src/utils/geometry/triangulation.py` に置く。
++
++```bash
++TRIANGULATION_PYTHON=/home/kamimura/projects/tennis-lab/.venv/bin/python \
++  bash knowledge/runs/run-meiji-clip000-triangulation/repro.sh
++```
++
++`TRIANGULATION_CLIP` と `TRIANGULATION_OUTPUT` で入出力先を明示的に変更できる。専用worktreeのrootで実行する。
++元データは読取のみ。GPUとtraining queueは使用しない。
++
++- `evaluate.py`: カメラ・人物・court順序の検証、confidence重み付き三角測量、未使用cameraへの再投影、骨長変動、source SHA256を保存。
++- `render.py`: 元動画への重ね合わせ、3D骨格動画、観測の拡大比較、診断図、回転/時間操作できるoffline HTMLを生成。
++- `triangulation.npz`: `X_init[P,T,17,3]`、valid、元pixel観測、confidence、used_views、再投影、`original - reprojected`残差、各2台組の3D解など。
++
++数値結果・評価条件・限界の正本は [knowledge run](../../../knowledge/nodes/run-meiji-clip000-triangulation.md)。`report.md` はこのnode本文から生成する閲覧用コピー。
