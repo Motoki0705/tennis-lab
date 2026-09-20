@@ -279,8 +279,11 @@ def test_initialization_is_exact_masked_identity_and_update_preserving(
     assert torch.equal(output, expected_output)
 
 
-def test_zero_residual_mix_gate_is_not_dead() -> None:
+@pytest.mark.parametrize("gate_value", [0.0, 1.0])
+def test_residual_mix_gate_is_not_dead_at_boundaries(gate_value: float) -> None:
     mhc = ManifoldConstrainedHyperConnection(_config())
+    with torch.no_grad():
+        mhc.residual_mix_gate.fill_(gate_value)
     streams = torch.randn(1, 4, 6)
     mask = torch.ones(1, 4, dtype=torch.bool)
 
@@ -292,6 +295,37 @@ def test_zero_residual_mix_gate_is_not_dead() -> None:
     assert mhc.residual_mix_gate.grad is not None
     assert torch.isfinite(mhc.residual_mix_gate.grad)
     assert mhc.residual_mix_gate.grad.abs().item() > 0.0
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("compiled", [False, True], ids=["eager", "aot-eager"])
+def test_residual_mix_gate_bounds_and_gradients(
+    dtype: torch.dtype, compiled: bool
+) -> None:
+    mhc = ManifoldConstrainedHyperConnection(_config())
+    bounded_gate = mhc._bounded_residual_mix_gate
+    if compiled:
+        bounded_gate = torch.compile(bounded_gate, backend="aot_eager", fullgraph=True)
+
+    for raw_value, expected_value, expected_gradient in (
+        (-10.0, 0.0, 0.0),
+        (0.0, 0.0, 1.0),
+        (0.5, 0.5, 1.0),
+        (1.0, 1.0, 1.0),
+        (10.0, 1.0, 0.0),
+    ):
+        with torch.no_grad():
+            mhc.residual_mix_gate.fill_(raw_value)
+        mhc.zero_grad(set_to_none=True)
+
+        gate = bounded_gate(dtype)
+        assert gate.dtype == dtype
+        assert gate.item() == expected_value
+        gate.backward()
+
+        gradient = mhc.residual_mix_gate.grad
+        assert gradient is not None
+        assert gradient.item() == expected_gradient
 
 
 def test_residual_mix_gate_opens_from_zero_and_clamps_to_convex_endpoints() -> None:
