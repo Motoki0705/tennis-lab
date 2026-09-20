@@ -163,3 +163,22 @@ def test_job_encoding_preserves_manifest() -> None:
     path = REPO / "scripts/colab/workflows/jobs/court_vit_ablation.toml"
     job = tomllib.loads(path.read_text())
     assert tomllib.loads(encode_job(job)) == job
+
+
+def test_required_recipe_resources_are_in_git_source() -> None:
+    import json
+    import subprocess
+
+    from scripts.colab.train.court_vit_ablation.launch import REPO
+
+    for name in ("archives.json", "baseline.yaml"):
+        path = HERE / name
+        subprocess.run(
+            ["git", "ls-files", "--error-unmatch", str(path.relative_to(REPO))],
+            cwd=REPO,
+            check=True,
+            capture_output=True,
+        )
+    manifest = json.loads((HERE / "archives.json").read_text())
+    assert len(manifest["archives"]) == 6
+    assert sum(item["size_bytes"] for item in manifest["archives"]) == 42905595821
