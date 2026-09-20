@@ -6,7 +6,7 @@
   "knowledge_validate_errors": 0,
   "pdf_pages_visually_inspected": 7,
   "additional_training": false,
-  "gpu_used": false,
+  "gpu_used": true,
   "validator_first_round_findings_addressed": [
     "checkpoint_byte_binding",
     "refined_tcd_keypoint_display",
@@ -96,5 +96,17 @@
     "offline_verification": "passed",
     "pytest_passed": 31,
     "tracked_diff": "empty"
-  }
+  },
+  "gpu_scope": "Only the pre-existing test_cuda_tf32_does_not_reject_recovered_bfloat16_rotation unit regression (small pose-decoding tensor operations) ran on CUDA in the parent test suite. PROSAC, evidence/figure regeneration and all photograph processing were CPU-only; no new training, neural re-inference or GPU rendering.",
+  "prosac_validator": {
+    "requested": 1,
+    "attempted": 1,
+    "completed": 1,
+    "verdict": "PASS",
+    "tests_passed": 81,
+    "tests_skipped": 1,
+    "skip_reason": "existing CUDA bf16 pose regression unavailable in validator environment",
+    "findings": []
+  },
+  "post_review_record_clarification": "Corrected the broad gpu_used flag to account for the existing CUDA unit test in parent validation; reviewed code, PDF and evidence arrays unchanged."
 }
