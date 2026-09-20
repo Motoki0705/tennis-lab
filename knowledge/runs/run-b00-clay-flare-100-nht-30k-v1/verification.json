@@ -1,0 +1,29 @@
+{
+  "status": "complete",
+  "training_steps": 30000,
+  "checkpoint_step_zero_based": 29999,
+  "gaussians": 1000000,
+  "all_splat_values_finite": true,
+  "camera_count": 100,
+  "full_sfm_camera_count": 491,
+  "split_counts": {
+    "train": 86,
+    "validation": 14
+  },
+  "scene_scale": 1.5407659983226785,
+  "source_transform_max_abs_difference": 0.0,
+  "source_and_input_hashes_verified": true,
+  "validation_render_count": 14,
+  "validation_metrics": {
+    "psnr": 24.347225189208984,
+    "ssim": 0.6698395013809204,
+    "lpips": 0.1710643470287323,
+    "lpips_alex": 0.1710643470287323,
+    "cc_psnr": 24.105770111083984,
+    "cc_ssim": 0.6604482531547546,
+    "cc_lpips": 0.17463041841983795,
+    "ellipse_time": 0.014580930982317244,
+    "num_GS": 1000000
+  },
+  "elapsed_seconds": 2194.7078131910002
+}

@@ -1,0 +1,34 @@
+{
+  "request_id": "comparison-sunburst-01",
+  "provider": "openai_api",
+  "api_request_id": "req_b9c1559956e54b4c8fef687c10b76511",
+  "api_parameters": {
+    "model": "gpt-image-2.5-sunburst-2026-09-08",
+    "quality": "high",
+    "size": "1536x864",
+    "output_format": "png",
+    "background": "opaque",
+    "n": 1
+  },
+  "created": 1789890127,
+  "usage": {
+    "input_tokens": 2735,
+    "input_tokens_details": {
+      "image_tokens": 2592,
+      "text_tokens": 143
+    },
+    "output_tokens": 1078,
+    "output_tokens_details": {
+      "image_tokens": 1078,
+      "text_tokens": 0
+    },
+    "total_tokens": 3813
+  },
+  "size": [
+    1536,
+    864
+  ],
+  "output_sha256": "ab461e83a74744f90588fa9e24f440b9d786f47b974f93bb5251233e916f523e",
+  "elapsed_seconds": 24.24534948300061,
+  "revised_prompt": null
+}
