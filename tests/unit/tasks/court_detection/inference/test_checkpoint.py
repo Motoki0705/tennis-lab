@@ -18,6 +18,7 @@ from src.tasks.court_detection.inference.checkpoint import (
     load_court_checkpoint,
 )
 from src.tasks.court_detection.model_io.contracts import CourtModelIOError
+from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from tests.unit.tasks.court_detection.inference.test_pose_output_predictors import (
     _bundle,
 )
@@ -37,6 +38,31 @@ def test_inference_does_not_fabricate_unused_training_configuration() -> None:
     assert config == before
     with pytest.raises(Exception, match="run"):
         CourtTrainingConfig.from_config(config)
+
+
+def test_saved_encoder_assets_use_the_explicit_external_asset_root(
+    tmp_path: Path,
+) -> None:
+    config = OmegaConf.to_container(
+        _compose(
+            "synthetic_court", "model/encoder=dinov3", f"paths.project_root={tmp_path}"
+        ),
+        resolve=True,
+    )
+    assert isinstance(config, dict)
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(config["paths"], repository_root=tmp_path)
+    )
+    spec = CourtInferenceSpec.from_checkpoint_config(
+        config, serialize_target_bundle(_bundle()), resolver=resolver
+    )
+    for path in (
+        spec.model.encoder.repository_path,
+        spec.model.encoder.checkpoint_path,
+    ):
+        assert path is not None
+        assert resolver.validate(PathRole.EXTERNAL_ASSET, path) == path
+    assert spec.model.encoder.repository_path == tmp_path / "third_party/dinov3"
 
 
 @pytest.mark.parametrize("change", ["none", "missing", "unexpected", "foreign_prefix"])
