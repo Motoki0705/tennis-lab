@@ -403,12 +403,17 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
 
         # Match the existing pose DataModule boundary: validate every synthetic
         # pose authority before model construction, accelerator setup, or workers.
+        self._validated_synthetic_datasets: dict[
+            CourtSourceSplit, CourtDetectionDataset
+        ] = {}
         if self.pose_variant:
             train_pipeline = self._train_pipelines["synthetic_court"]
             eval_pipeline = self._eval_pipelines["synthetic_court"]
             for split in train_pipeline.input_layer.available_splits:
                 pipeline = train_pipeline if split == "train" else eval_pipeline
-                pipeline.preflight(pipeline.input_layer.records(split))
+                self._validated_synthetic_datasets[split] = CourtDetectionDataset(
+                    pipeline.input_layer.records(split), pipeline=pipeline
+                )
 
         self.train_dataset: Dataset[Any] | None = None
         self.val_dataset: Dataset[Any] | None = None
@@ -435,7 +440,13 @@ class MixedCourtDetectionDataModule(pl.LightningDataModule):
         pipelines = self._train_pipelines if split == "train" else self._eval_pipelines
         datasets: dict[str, CourtDetectionDataset] = {}
         for name in _SOURCE_ORDER:
-            dataset = self._source_dataset(split=split, pipeline=pipelines[name])
+            # The pose boundary already constructed and fully validated these
+            # exact Dataset objects before model/accelerator initialization.
+            dataset = (
+                self._validated_synthetic_datasets.get(split)
+                if name == "synthetic_court" and self.pose_variant
+                else self._source_dataset(split=split, pipeline=pipelines[name])
+            )
             if dataset is not None:
                 datasets[name] = dataset
         if not datasets:

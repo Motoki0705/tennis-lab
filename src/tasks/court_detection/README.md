@@ -165,6 +165,8 @@ python -m src.tasks.court_detection.scripts.train_mixed \
   run.test_after_fit=true
 ```
 
+pose有効時はモデル構築前にSyntheticの全splitを検証し、その検証済みDatasetを`setup`でも再利用します。同一DataModuleで同じpose・教師データを再走査しません。
+
 pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
 
 `run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。
