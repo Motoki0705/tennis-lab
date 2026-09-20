@@ -382,10 +382,28 @@ def main() -> None:
         "build_receipt_verified": True,
         "alignment_method": method_checks,
         "sfm_temporal_ground_audit": drift_checks,
-        "confidence_homography": {
+        "hybrid_homography": {
             key: {
-                field: item[field]
-                for field in ("status", "inlier_count", "inlier_rms_px", "threshold_px")
+                **{
+                    field: item[field]
+                    for field in (
+                        "status",
+                        "inlier_count",
+                        "inlier_rms_px",
+                        "threshold_px",
+                        "candidate_count",
+                        "refined_count",
+                        "alternative_score_gap",
+                    )
+                },
+                "stage_line_support": {
+                    stage: {
+                        field: value["line"][field]
+                        for field in ("forward_support", "reverse_support")
+                    }
+                    for stage, value in item["stages"].items()
+                    if value["line"] is not None
+                },
             }
             for key, item in homographies["images"].items()
         },

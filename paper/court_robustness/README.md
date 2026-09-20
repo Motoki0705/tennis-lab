@@ -1,6 +1,6 @@
 # 3DGSによる視点拡張と幾何教師を用いたテニスコート検出
 
-[report.pdf](report.pdf) は日本語・A4縦・7ページの技術報告です。手法、実験条件、結果、課題点の正本は [report.tex](report.tex)。指定された `data/samples/tennis_court` の**全4枚**で旧資料の外部写真6枚を置き換え、B00〜B03各3視点の実3DGSレンダリング＋アライメントを収録しています。方法の実例としてB00の点群によるRANSAC地面推定、視点ごとのLINE投影から集約までを掲載しています。第6節「課題点」では実SfMトラックによる地面高さの時間依存の不整合と、合成側4シーンの多様性・汎化の制約を扱います。模式図や生成AI画像は使用していません。
+[report.pdf](report.pdf) は日本語・A4縦・8ページの技術報告です。手法、実験条件、結果、課題点の正本は [report.tex](report.tex)。指定された `data/samples/tennis_court` の**全4枚**で旧資料の外部写真6枚を置き換え、B00〜B03各3視点の実3DGSレンダリング＋アライメントを収録しています。方法の実例としてB00の点群によるRANSAC地面推定、視点ごとのLINE投影から集約までを掲載しています。第6節「課題点」では実SfMトラックによる地面高さの時間依存の不整合と、合成側4シーンの多様性・汎化の制約を扱います。模式図や生成AI画像は使用していません。
 
 ## 同梱物
 
@@ -8,7 +8,7 @@
 |---|---|
 | `images/`, `evidence/inputs.json` | 指定画像のバイト一致コピー、元ファイル名・サイズ・SHA-256 |
 | `evidence/predictions/` | 両モデルのKP座標、H生成可否、TCD確率マップ・argmax、提案モデルのLINE確率・姿勢生出力。数値はfloat32/float64のまま保存 |
-| `evidence/homography/`, `tables/homography.tex` | 保存KP・スコアからのPROSAC再推定。参照テンプレート、H、信頼度順位、再推定に使った点と最終インライア、残差、コード・元推論のハッシュ |
+| `evidence/homography/`, `tables/homography.tex` | 保存KP・スコア・LINEからの共同推定。参照テンプレート、3段階のHと線支持率、KP採用履歴・除外理由、残差、コード・元推論のハッシュ |
 | `evidence/inference_both.json`, `checkpoint_config.json`, `target_bundle.json` | 重み・入力・出力のハッシュ、CPU実行、保存設定と出力契約 |
 | `evidence/training_run*.{json,yaml}`, `training_provenance.json` | mixed学習の保存設定と既存queue runの出典。checkpointの正規化設定から落ちる混合比を補う |
 | `evidence/dataset_audit.json` | TCD全8,841画像＋B00〜B03全8,415レンダリングとのバイト/RGB/知覚ハッシュ照合 |
@@ -50,7 +50,7 @@
 .venv/bin/python paper/court_robustness/verify_artifacts.py
 ```
 
-KP由来のHは `src/tasks/court_detection/geometry/confidence_homography.py` を共通実装として、保存済み `raw_kp` と `kp_scores` からCPUで再推定します。元の推論NPZ・重みSHAは保持し、新しいHだけを別の証拠へ保存します。`infer.py` で今後推論する場合も同じ推定を呼びます。OpenCVのバージョン、推定コード、入力、設定が記録と異なると検証は停止します。方法と閾値の正本は本文3.4・4.2です。`fit_inliers` は最終最小二乗に用いた集合、`inliers` はそのHの再投影誤差による再判定で、表示と集計は後者です。TCDの公式後処理は保持しています。
+KP・LINEのHは `src/tasks/court_detection/geometry/hybrid_homography.py` と `line_evidence.py` を共通実装として、保存済み `raw_kp`・`kp_scores`・`line_probability` からCPUで再推定します。元の推論NPZ・重みSHAは保持し、3段階のHと診断を別の証拠へ保存します。`infer.py` で今後推論する場合も同じ推定を呼びます。OpenCV・NumPy・SciPyのバージョン、推定コード、入力、設定が記録と異なると検証は停止します。方法と閾値の正本は本文3.4・4.2です。互換フィールド `fit_inliers` と `inliers` はともに最後の共同最適化に使ったKP集合で、誤差閾値内の全点を意味しません。`kp_rejection_reasons` は幾何外れ値・LINE支持不足・点数上限などを区別します。旧PROSACは比較段階 `kp_only` に保存し、TCD公式処理は保持しています。
 
 3DGS図は保存レンダリングの原寸RGBに、保存カメラから全コートを再投影します。キャプチャ画像への置換はありません。画像の切り抜き・補修は行わず、線分だけを画面/near planeでclipします。`--collect` なしではデータセットも不要です。テストは、カメラやアライメントを誤って組み合わせた場合の拒否、near planeを跨ぐ線分、全図版の画素一致を確認します。
 

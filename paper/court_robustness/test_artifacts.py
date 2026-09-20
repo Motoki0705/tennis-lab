@@ -118,7 +118,7 @@ def test_tcd_official_panel_displays_refined_keypoints() -> None:
         assert not np.array_equal(np.asarray(actual), np.asarray(unrefined))
 
 
-def test_confidence_homography_reproduces_all_saved_kp_and_generated_table() -> None:
+def test_hybrid_homography_reproduces_saved_kp_line_and_generated_table() -> None:
     from homography_evidence import table_text
 
     results = read_results()
@@ -127,18 +127,32 @@ def test_confidence_homography_reproduces_all_saved_kp_and_generated_table() -> 
     for record in sources():
         item = results["images"][record["id"]]
         assert item["status"] == "ok"
-        assert item["inlier_count"] > 4
+        assert 4 <= item["inlier_count"] <= 8
         residuals = np.array(item["residuals_px"])
-        np.testing.assert_array_equal(
-            item["inliers"], residuals <= item["threshold_px"]
+        selected = np.asarray(item["inliers"])
+        assert np.all(residuals[selected] <= item["threshold_px"])
+        assert np.all(
+            np.asarray(item["kp_line_distance_px"])[selected] <= item["threshold_px"]
         )
+        assert (
+            np.flatnonzero(selected).tolist()
+            == item["stages"]["hybrid"]["selection_history"][-1]
+        )
+        assert all(
+            4 <= len(indices) <= 8
+            for indices in item["stages"]["hybrid"]["selection_history"]
+        )
+        assert item["fit_inliers"] == item["inliers"]
         with np.load(ROOT / f"evidence/predictions/{record['id']}_ours.npz") as source:
             scores = source["kp_scores"][item["ranked_indices"]]
             assert np.all(np.diff(scores) <= 0)
 
 
-@pytest.mark.parametrize("change", ["parameters", "matrix", "rank", "source"])
-def test_confidence_evidence_rejects_tampering(
+@pytest.mark.parametrize(
+    "change",
+    ["parameters", "matrix", "rank", "source", "line_support", "selected_history"],
+)
+def test_hybrid_evidence_rejects_tampering(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     change: str,
@@ -149,11 +163,15 @@ def test_confidence_evidence_rejects_tampering(
     result = json.loads((original / "results.json").read_text())
     item = result["images"]["local02"]
     if change == "parameters":
-        result["parameters"]["sampler"] = 0
+        result["parameters"]["hybrid"]["max_kp"] = 14
     elif change == "matrix":
         item["matrix"][0][2] += 1
     elif change == "rank":
         item["ranked_indices"] = item["ranked_indices"][::-1]
+    elif change == "line_support":
+        item["stages"]["hybrid"]["line"]["reverse_support"] = 0
+    elif change == "selected_history":
+        item["stages"]["hybrid"]["selection_history"][-1] = list(range(14))
     else:
         item["source_sha256"] = "0" * 64
     (tmp_path / "results.json").write_text(json.dumps(result))

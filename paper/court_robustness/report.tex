@@ -27,7 +27,7 @@
 \newcommand{\panel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth]{figures/#1}\end{minipage}}
 \newcommand{\epanel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth,height=32mm,keepaspectratio]{figures/#1}\end{minipage}}
 \newcommand{\external}[1]{%
-\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours.png}{本モデル：KP＋PROSAC H}\par\vspace{1mm}
+\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours.png}{本モデル：KP＋LINE H}\par\vspace{1mm}
 \noindent\epanel{#1_ours_line_mask.png}{本モデル：LINE二値マスク}\hfill\epanel{#1_ours_line_overlay.png}{本モデル：LINE重畳 $p\geq0.5$}\hfill\epanel{#1_ours_heat.png}{本モデル：LINE確率 $[0,1]$}\par}
 \newcommand{\scenerow}[7]{\noindent{\sffamily\bfseries #1}\par\vspace{.5mm}\panel{#2}{#3}\hfill\panel{#4}{#5}\hfill\panel{#6}{#7}\par\vspace{.8mm}}
 
@@ -42,7 +42,8 @@
 放送映像に偏ったコート検出器を、多様な撮影視点へ適用するための実装済みパイプラインを整理する。
 実動画から3D Gaussian Splatting（3DGS）でシーンを再構成し、地面と規格コートを位置合わせして、新規視点のRGBと幾何教師を生成する。
 これを実画像と混合し、凍結DINOv3特徴にTransformer・DPT・複数の予測ヘッドを接続して学習する。
-指定された写真4枚で既存重みを推論した結果、LINE出力はコートの線構造を捉える一方、キーポイントからのホモグラフィ復元にはずれが残った。
+指定写真4枚の保存推論に対し、KP候補をLINEで選び、外れ値KPを除外して点と線を共同最適化する。
+LINEとの整合は改善したが、遮蔽や線の対応の曖昧さは残る。
 B00--B03各3視点の実レンダリングと全4枚の推論を掲載する。
 本報告の「未学習」は指定写真を下流学習へ追加していないことを指し、事前学習との非重複を保証しない。
 人手正解を持たない定性比較のため、精度向上や合成データ単独の効果は主張しない。
@@ -60,7 +61,8 @@ TennisCourtDetector（TCD）\cite{tcd}はTrackNetに近い構成で14点のコ�
 3DGS\cite{gs}は異方性Gaussianの位置・形状・不透明度・外観を最適化し、校正カメラに対する新規視点画像を合成する。
 本手法ではこの画像合成を教師付きデータの視点拡張に用いる。
 検出器には自己教師あり視覚特徴のDINOv3\cite{dino}と、多段特徴を空間的な予測へ戻すDPT\cite{dpt}を組み合わせる。
-これら自体の新規性ではなく、規格コートの幾何と実画像の教師を接続する構成が本報告の対象である。
+Nieら\cite{dense_registration}はKPからの初期Hを密な線・領域の距離マップで補正し、PnLCalib\cite{pnlcalib}は点と線を用いて幾何推定を共同最適化する。
+本報告はこの方向を、二値LINEと明示的なKP除外を持つ後処理として構成する。
 
 \textbf{SfM・単眼SLAMのドリフト。}
 Holynskiら\cite{drift}は、画像間の通常の点対応を越えて広がる平面・消失点を大域SfMの制約に用い、位置・スケールの長周期ドリフトを低減した。
@@ -137,15 +139,22 @@ KPと姿勢の整合損失はこの重みでは無効である。
 AdamW、学習率$10^{-4}$、weight decay 1、warmup 3 epochを用いた保存重み（epoch 17、29,844 step）を固定する。
 本報告の写真に対する再学習・重み選択は行わない。
 
-\subsection{KP信頼度を用いたホモグラフィ推定}
-KPヒートマップのsigmoid後のピーク値をスコア$s_i$とし、有効な点を降順に並べる（同点はKP番号順）。
-PROSAC\cite{prosac}で上位点から優先して最小4点組を抽出し、候補範囲を広げる。
-共線などの退化した組を除外し、MSACの打切り二乗再投影誤差で候補を評価する。
-得られたインライアだけで最小二乗・LM再推定し、最終Hに対してインライアを再判定する。
-スコアは抽出順位に使い、誤差の重みや校正済み正解確率とは扱わない。
-有効な支持点が4点未満、特異行列、コート内で射影分母が0を跨ぐ場合はHなしとする。
+\subsection{外れ値を除外するKP・LINE共同推定}
+\textbf{候補と採用点。}KPのsigmoidピーク値$s_i$で順位付けしたPROSAC\cite{prosac}に、最下位点の順位が小さい順で非退化な4点組を列挙する候補（最大1,001組）を追加する。
+二値LINEは線種を区別しないため、KPの意味対応を保持する。
+外れ値を前提とし、再投影誤差$r_i=\|\pi(HX_i)-q_i\|$と観測KPからLINE中心への距離$d_L(q_i)$がともに$\tau$以下、かつ$s_i\geq0.05$の点だけを選ぶ。
+$s_i/(1+(r_i/\tau)^2)$の上位最大8点を$S$とし、4点以上の非退化な支持を要求する。
+\textbf{除外点はKP損失に含めない。}各最適化中は$S$を固定し、終了後にゲートを更新して再最適化する。各距離場で最大4回まで更新し、集合が安定しなければ失敗とする。上限8点と閾値は全画像で共用するヒューリスティックである。
 
+\textbf{共同目的。}確率0.5以上のLINEの内部距離変換から稜線を抽出する。
+規格コートの主要9線を画像内にクリップし、各線40点から稜線までの距離を線ごとに平均する。逆方向には固定した稜線観測から投影線分までの距離をLINE確率で重み付けする。
+\begin{equation}
+E(H;S)=0.25\sum_{i\in S}w_i(r_i/\tau)^2+E_{\rm line}^{\rightarrow}+E_{\rm line}^{\leftarrow}+0.1E_{\rm dir}.
+\end{equation}
+$w_i\propto0.5+0.5s_i$は和を1とし、信頼度を正解確率とは扱わない。LINE距離は$\tau$で正規化して$4\tau$で打ち切り、方向項は近傍稜線の主方向との不一致を、方向の確かさと近接度で重み付けする。
+投影が異なる上位最大6候補の8自由度のHを平滑化距離場、元の距離場の順で最適化する。双方向の支持不足、射影極・縮退、異なる候補間の僅差は失敗とし、旧Hへの代替は行わない。
 
+\newpage
 \sect{実験設定と評価範囲}
 \subsection{データと「未学習」の確認}
 指定フォルダ内の4ファイルを名前順でA--Dに対応付け、すべて推論・掲載した（図\ref{fig:ab}、\ref{fig:cd}）。
@@ -156,15 +165,24 @@ TCDの8,841枚とB00--B03の8,415レンダリングを照合し、ファイルSH
 \subsection{比較条件と表示方法}
 TCDは公開重みとBGR入力640$\times$360、しきい値170/255の公式ピーク抽出・局所補正を用いる。
 本モデルはRGB・ImageNet正規化、短辺512・16画素整列で推論し、KPをチャネルごとに1点抽出する。
-本モデルのHは保存済みKP・スコアから再計算し、抽出下限0.05、幾何閾値は原画像対角長の0.5\%で全4枚共通とした。
-OpenCV 5.0.0のUSACを使い、乱数種42、最大10,000反復、終了信頼水準0.999、単一スレッド・局所最適化を有効にした。
+本モデルのHは保存KP・スコア・LINEからCPUで再計算し、$\tau$は原画像対角長の0.5\%で全4枚共通とした。
+OpenCV 5.0.0のPROSAC（種42、非並列）とSciPy信頼領域法（\texttt{max\_nfev}=70）を用い、稜線観測は最大768点とする。
+双方向の線支持率0.55以上、縦・横各2本以上の支持を要求する。全設定・採用履歴・除外理由と3段階の結果を同梱する。
 TCDは公式の12組候補選択を1280$\times$720座標で行い、argmaxによる補助結果も併記する。
 後処理条件も異なるため、モデル単体の優劣を示す比較ではない。
 
-指定写真4枚とTCD動作確認の推論はCPU、EXIF補正は共通、追加クロップなしとした。
+推論はCPU、EXIF補正は共通、追加クロップなしとした。
 本モデルのLINEは確率0.5以上を白とする二値マスク・原画像への直接重畳・確率マップの3形式で示す。確率マップは共通の$[0,1]$色域を使う。
 \textbf{Hの生成可否や検出点数は正解率ではない。}画像に人手GTはなく、LINEを持たないTCDとの出力差、backbone・解像度・学習データの差も残る。
-TCDの既存val画像1枚では14点を検出し、H補正後の平均誤差1.423 pxを確認した。これは実装の動作確認であり、外部4枚の評価には含めない。
+TCDの既存val画像1枚での動作確認（14点、補正後平均誤差1.423 px）は外部評価に含めない。
+
+\newcommand{\hpanel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth,height=29mm,keepaspectratio]{figures/#1}\end{minipage}}
+\newcommand{\hrow}[2]{\noindent\hpanel{#1_ours_kp_only.png}{#2：KPのみ（PROSAC）}\hfill\hpanel{#1_ours_line_selection.png}{#2：LINEで候補選択}\hfill\hpanel{#1_ours.png}{#2：KP＋LINE共同推定}\par\vspace{1mm}}
+\hrow{local01}{A}
+\hrow{local02}{B}
+\hrow{local03}{C}
+\hrow{local04}{D}
+\captionof{figure}{同一の保存推論を使う3段階の幾何復元。線は各段階のH、丸点は採用KP、灰×は不採用KPである。最適化した候補のうち最良を選ぶため、中央の最良初期候補が必ず右の初期値とは限らない。定量的な予測間整合は表2に示す。GTによる精度比較ではない。}\label{fig:hybrid_stages}\par
 
 \newpage
 \sect{結果}
@@ -193,32 +211,32 @@ B03 & 1,669 & 226 & 198 & 40 & 0.109\\\midrule
 
 \newpage
 \subsection{指定実画像への推論：低視点・斜視}
-{\small 橙＝TCD、水色＝本モデル。本モデルの丸点は最終インライア、灰色の×は棄却KP、線は推定Hによる規格コート投影。TCD公式欄の点は局所補正後。Hなしの場合は点だけを表示する。LINE欄はテンプレートを当てはめていない直接の密予測である。}\par
+{\small 橙＝TCD、水色＝本モデル。丸点は採用KP、灰×は不採用（外れ値・LINE支持不足・点数上限）、線はHによる規格コート。TCDは局所補正点のみ。LINE欄は直接の密予測である。}\par
 \vspace{1mm}
 \noindent\textbf{A：\texttt{ennai011\_1.jpg} / 1,000$\times$667}\par
 \external{local01}
-{\small TCDの公式処理は3点でHを生成できず、argmaxに変えても大きく崩れた配置となる。本モデルのLINEは外周・内側線を捉える。PROSAC Hは奥側の一部に沿うが、手前の外周を過大に広げており、5点の合意だけでは全体の正しい復元を保証しない。}\par
+{\small 共同推定は7点を採用し、KPのみで過大に広がった手前の外周をLINEに合わせる。外周・内側線の整合は改善するが、人手GTによる評価ではない。}\par
 \vspace{3mm}
 \noindent\textbf{B：\texttt{images (1).jpg} / 638$\times$480}\par
 \external{local02}
-{\small TCDは公式処理で1点、argmaxでも有効なHを生成できない。本モデルは画面右へ見切れる線を含めてLINEを検出するが、PROSAC Hは7点を支持するが線とのずれが残る。信頼度Top-4は参照コート上で全点が共線であり、4点固定では解けない例である。}
-\captionof{figure}{指定写真A・Bの実推論。上段でKPと幾何復元、下段で本モデルのLINE出力を示す。二値マスクは白が$p\geq0.5$、黒がそれ未満。確率マップは黒0から黄白1までの固定色域。全パネルは縦横比を保ち、元画像の全領域を表示した。}\label{fig:ab}\par
+{\small 共同推定は5点を採用して見切れを含む線へ合わせる。各方向の支持率は単独には単調改善しない（表2）。信頼度Top-4は共線で、4点固定では解けない。}
+\captionof{figure}{指定写真A・Bの実推論。上段はKPとH、下段はLINE。マスクは白が$p\geq0.5$。確率マップは黒0〜黄白1の共通色域。全パネルは縦横比を保ち、画像全域を示す。}\label{fig:ab}\par
 \vspace{2mm}
 \begin{center}\small
 \input{tables/homography.tex}
-\captionof{table}{保存推論から集計した出力の状態。本モデルは全例14点を抽出。残差は最終インライアへの自己整合値で、GT誤差ではない。点数・H生成可否も精度を表さない。}
+\captionof{table}{後処理の比較。線支持率は距離$\tau$以内の順方向／逆方向の割合（線ごと／確率による重み付け）。KP残差・線支持率・採用点数はGT精度ではない。}
 \end{center}
 
 \newpage
 \subsection{指定実画像への推論：人物・観客席を含む場面}
 \noindent\textbf{C：\texttt{images (2).jpg} / 547$\times$365}\par
 \external{local03}
-{\small 本モデルのLINEはコートに沿って反応するが、手前や人物周辺に途切れがある。PROSAC Hは手前まで投影されるが、外周・内側線の位置にはずれが残る。TCDは公式処理で0点、argmaxでもHを生成できない。}\par
+{\small LINEには人物周辺や奥側で途切れがある。共同推定は4点を採用し、検出された線の大半を説明する一方、順方向支持率は66.1\%に留まる。検出されない外周や遠方の線の対応は不確かであり、全コートの正確性は保証できない。TCD公式は0点でHなし。}\par
 \vspace{2mm}
 \noindent\textbf{D：\texttt{images.jpg} / 678$\times$452}\par
 \external{local04}
-{\small 本モデルは俯瞰の線構造を捉える一方、画面下にも小さなLINE反応がある。PROSAC Hは実コートより小さく右側へ寄り、特に奥側・左側の線がずれる。TCDは公式処理で1点、argmaxでもHを生成できない。}
-\captionof{figure}{指定写真C・Dの実推論。表示条件は図\ref{fig:ab}と共通。4例とも、本モデルのLINEとKP由来の幾何復元は同じ品質にはなっていない。}\label{fig:cd}\par
+{\small 共同推定は8点を採用し、KPのみで小さく右寄りだった配置を、俯瞰コートの外周・内側線へ近付ける。画面下の小さなLINE反応は規格コートで説明できず、打切り距離項で影響を制限する。TCD公式は1点でHなし。}
+\captionof{figure}{指定写真C・Dの実推論。表示条件は図\ref{fig:ab}と共通。共同推定はLINEで幾何を補うが、LINE自体の欠落・誤認を解決するものではない。}\label{fig:cd}\par
 \section{課題点}
 \subsection{SfMのドリフトと幾何教師への影響}
 SfMには、長い撮影区間で位置・姿勢・スケールの誤差が累積するドリフトの問題がある\cite{drift}。
@@ -249,13 +267,11 @@ B03は6セルと少なく、1 m格子で中央値が+1.55から+0.56 cmへ変わ
 今後はSfM段階の構造制約\cite{drift}や再訪時の整合化\cite{scale_drift}を検討し、独立な地面基準で幾何教師の品質を確かめる必要がある。
 
 \subsection{4シーンに限られる多様性と汎化性能の不足}
-合成側はB00--B03の\textbf{4シーンのみ}で、8,415枚への視点拡張も、新しい会場・路面・照明・背景を追加するものではない。
-TCD実画像8,841枚を混合する一方、合成側は同一シーン内で分割しており、未知シーンへの汎化は未評価である。4シーンが独立した4会場とも限らない。
+合成側はB00--B03の\textbf{4シーンのみ}で、8,415枚の視点拡張は会場・路面・照明の多様性を増やさない。
+4シーンが独立した4会場とも限らず、同一シーン内分割のため未知会場への汎化は未評価である。
+共同推定も誤ったKP・LINEを必ず補正できず、写真4枚にGTがないため精度は未確定である。
+今後は会場分離のGT付き集合で、実写のみ／合成混合と後処理を比較する。
 
-指定4写真ではLINEに反応しても規格コートはずれる。ただし人手GTがなく、性能の定量化やシーン数への原因帰属はできない。
-今後は会場・撮影条件を増やした会場分離のGT付き集合でLINEとKPを評価し、実写のみ／合成混合を同一モデル・解像度で比較する。
-\par
-\vspace{-2mm}
 \begin{thebibliography}{7}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
 \bibitem{tcd} yastrebksv. \href{https://github.com/yastrebksv/TennisCourtDetector}{TennisCourtDetector}. 公開コード・重み、コード版 e5cd4f1（2026-09-18参照）.
 \bibitem{gs} B. Kerbl, G. Kopanas, T. Leimkühler, G. Drettakis. \href{https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}{3D Gaussian Splatting for Real-Time Radiance Field Rendering}. ACM TOG 42(4), 2023.
@@ -264,5 +280,7 @@ TCD実画像8,841枚を混合する一方、合成側は同一シーン内で分
 \bibitem{drift} A. Holynski, D. Geraghty, J.-M. Frahm, C. Sweeney, R. Szeliski. \href{https://arxiv.org/abs/2008.12295}{Reducing Drift in Structure From Motion Using Extended Features}. 3DV, pp. 51--60, 2020.
 \bibitem{scale_drift} H. Strasdat, J. M. M. Montiel, A. J. Davison. \href{https://www.roboticsproceedings.org/rss06/p10.html}{Scale Drift-Aware Large Scale Monocular SLAM}. RSS, 2010.
 \bibitem{prosac} O. Chum, J. Matas. \href{https://cmp.felk.cvut.cz/~matas/papers/chum-prosac-cvpr05.pdf}{Matching with PROSAC -- Progressive Sample Consensus}. CVPR, 2005.
+\bibitem{dense_registration} X. Nie et al. \href{https://openaccess.thecvf.com/content/WACV2021/html/Nie_A_Robust_and_Efficient_Framework_for_Sports-Field_Registration_WACV_2021_paper.html}{A Robust and Efficient Framework for Sports-Field Registration}. WACV, 2021.
+\bibitem{pnlcalib} M. Guti\'errez-P\'erez, A. Agudo. \href{https://arxiv.org/abs/2404.08401}{PnLCalib: Sports Field Registration via Points and Lines Optimization}. CVIU, 2026.
 \end{thebibliography}
 \end{document}

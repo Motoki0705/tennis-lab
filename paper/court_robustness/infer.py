@@ -125,7 +125,7 @@ def main() -> None:
         "seed": 42,
         "ids": [r["id"] for r in records],
         "checkpoint": str(CHECKPOINT),
-        "ours_homography": "confidence-ranked PROSAC with inlier-only refit",
+        "ours_homography": "confidence-ranked candidates + LINE selection + hard-trimmed KP/LINE joint fit",
     }
     if args.model in {"both", "baseline"}:
         model = BallTrackerNet(out_channels=15).cpu().eval()
@@ -252,8 +252,14 @@ def main() -> None:
                 )
             points = kp.keypoints[:, 0].numpy()
             points[~kp.valid[:, 0].numpy()] = np.nan
-            # Scores rank PROSAC samples; final fit uses geometric inliers only.
-            homography = fit_prediction(points, kp.scores[:, 0].numpy(), w, h)
+            # LINE ranks the candidates; only hard-selected KP enter the joint loss.
+            homography = fit_prediction(
+                points,
+                kp.scores[:, 0].numpy(),
+                w,
+                h,
+                logits["line"][0, 0].sigmoid().numpy(),
+            )
             matrix = homography["matrix"]
             result = {
                 "raw_kp": points,
@@ -268,6 +274,9 @@ def main() -> None:
                 "homography_fit_inliers": np.asarray(homography["fit_inliers"]),
                 "homography_ranked_indices": np.asarray(homography["ranked_indices"]),
                 "homography_status": np.asarray(homography["status"]),
+                "homography_kp_rejection_reasons": np.asarray(
+                    homography["kp_rejection_reasons"]
+                ),
                 "kp_scores": kp.scores[:, 0].numpy(),
                 "line_probability": logits["line"][0, 0].sigmoid().numpy(),
                 "input_hw": np.asarray(tensor.shape[-2:]),
