@@ -20,6 +20,7 @@ from src.utils.configuration import (
     PathRole,
     RuntimePathRoots,
 )
+from src.utils.paths import PROJECT_ROOT
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="slcs.dataset_scene_review",
@@ -58,7 +59,7 @@ def main() -> None:
 
     data_root = args.data_root.expanduser().resolve()
     roots = RuntimePathRoots(
-        project_root=data_root.parent,
+        project_root=PROJECT_ROOT,
         data_root=data_root,
         checkpoint_root=data_root,
         artifact_root=data_root,
