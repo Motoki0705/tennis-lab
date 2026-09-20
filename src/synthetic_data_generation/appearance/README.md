@@ -184,6 +184,8 @@ B00_VARIANTS_ROOT=/home/kamimura/projects/tennis-lab/data/synthetic_data_generat
 
 - `prepare`の再実行は同一設定と元ファイルのハッシュを検証する。
 - 未レビューの`generate`を再実行しても、保存済みAPI結果を返して再課金を避ける。
+- 単発生成・一括生成・比較結果の再利用は同じ試行ディレクトリのロックを共有し、
+  同じリクエストの同時送信や保存済み応答の上書きを防ぐ。
 - API失敗・通信切断・プロセス中断は記録して停止する。自動のモデル変更・再送をしない。
   失敗内容を確認して再送する場合は`action=generate api_retry=true`を明示する。
   応答不明の中断では、再送が追加課金になり得る。
@@ -193,6 +195,10 @@ B00_VARIANTS_ROOT=/home/kamimura/projects/tennis-lab/data/synthetic_data_generat
 - 学習ジョブが失敗した場合は原因を解消してから`action=finalize`で入力を再検証し、
   `action=train training_retry=true`で再投入する。前回のqueue記録は保存され、
   待機中・実行中のジョブは重複投入しない。
+- 強制中断でmanifestが`training`のままでも、共有queueが処理終了を確認して
+  `failed`/`cancelled`になっていれば`action=train training_retry=true`で再検証・復旧できる。
+  元manifestとqueue記録を保存してから再投入する。ホスト再起動などでqueue自体が
+  `running`のまま残った場合は自動復旧せず、queueの終了確認・復旧を先に行う。
 - SfM再計算や画像選択の変更は派生workspaceで拒否する。別variantを作る。
 - 「幾何保持」は入力画像とカメラの保持であり、学習中のGaussian位置を固定する意味ではない。
   生成AIの画素単位の同一性は保証しないため、生成原本を保存して学習入力を再利用する。

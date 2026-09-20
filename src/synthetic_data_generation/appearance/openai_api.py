@@ -8,6 +8,7 @@ import json
 import mimetypes
 import os
 import time
+from collections.abc import Callable
 from contextlib import ExitStack
 from io import BytesIO
 from pathlib import Path
@@ -171,8 +172,29 @@ def execute_request(
     key: str,
     *,
     retry_failed_request: bool = False,
+    before_send: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
-    """Execute a recorded edit request; caller owns its directory lock."""
+    """Serialize all callers on the same attempt before inspecting/sending it."""
+    with variant_lock(directory):
+        return _execute_locked_request(
+            directory,
+            request,
+            api,
+            key,
+            retry_failed_request=retry_failed_request,
+            before_send=before_send,
+        )
+
+
+def _execute_locked_request(
+    directory: Path,
+    request: GenerationRequest,
+    api: OpenAIImageConfig,
+    key: str,
+    *,
+    retry_failed_request: bool,
+    before_send: Callable[[], None] | None,
+) -> dict[str, Any]:
     if request.provider != "openai_api" or request.api_parameters is None:
         raise ValueError("An explicit OpenAI API request is required")
     for input_name, expected in zip(
@@ -189,6 +211,8 @@ def execute_request(
         raise ValueError(
             "Previous API request failed or was interrupted. Inspect its metadata; explicit api_retry=true is required to retry (it may incur another charge)."
         )
+    if before_send is not None:
+        before_send()
     prior = len(list(directory.glob("api-call-*.json")))
     call_path = directory / f"api-call-{prior + 1:02d}.json"
     call = {
@@ -231,8 +255,11 @@ def execute_request(
             message = f"Image API returned HTTP {response.status_code}"
             try:
                 error_body = response.json().get("error", {})
-                message += ": " + str(error_body.get("message", ""))[:500].replace(
-                    key, "<redacted>"
+                message += (
+                    ": "
+                    + str(error_body.get("message", "")).replace(key, "<redacted>")[
+                        :500
+                    ]
                 )
             except (ValueError, AttributeError):
                 pass

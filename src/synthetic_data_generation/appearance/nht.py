@@ -158,10 +158,13 @@ def enqueue_training(root: Path, *, retry_failed_job: bool = False) -> dict[str,
     with variant_lock(root):
         manifest = load_manifest(root)
         validate_ready(root, manifest)
-        if manifest.status != "finalized":
+        queue_record = root / "queue.json"
+        recovering = retry_failed_job and manifest.status in {"training", "failed"}
+        if manifest.status != "finalized" and not (
+            recovering and queue_record.is_file()
+        ):
             raise ValueError("Finalize the variant before enqueueing training")
         _verify_prepared(root, manifest)
-        queue_record = root / "queue.json"
         if queue_record.exists():
             existing_record = dict(json.loads(queue_record.read_text()))
             job_name = (
@@ -170,10 +173,18 @@ def enqueue_training(root: Path, *, retry_failed_job: bool = False) -> dict[str,
             if Path(job_name).name != job_name or not job_name.endswith(".job"):
                 raise ValueError("Malformed queue receipt")
             queue_dir = Path(existing_record["queue_dir"])
-            terminal_failure = any(
-                (queue_dir / state / job_name).is_file()
-                for state in ("failed", "cancelled")
-            )
+            states = [
+                state
+                for state in ("jobs", "running", "done", "failed", "cancelled")
+                if (queue_dir / state / job_name).is_file()
+            ]
+            if not states:
+                raise ValueError(
+                    "Queue receipt has no matching job; inspect queue state"
+                )
+            if len(states) > 1:
+                raise ValueError("Queue receipt has conflicting job states")
+            terminal_failure = states in (["failed"], ["cancelled"])
             if not terminal_failure:
                 if retry_failed_job:
                     raise ValueError("Only a failed/cancelled job can be retried")
@@ -186,6 +197,17 @@ def enqueue_training(root: Path, *, retry_failed_job: bool = False) -> dict[str,
             write_json(
                 root / "provenance/queue-attempts" / f"{job_name}.json", existing_record
             )
+            if recovering:
+                # The queue publishes failed/cancelled only after verified process
+                # teardown. A stale running receipt (for example after host reboot)
+                # is deliberately insufficient proof to launch another GPU job.
+                archive = (
+                    root / "provenance/queue-attempts" / f"{job_name}.manifest.json"
+                )
+                if not archive.exists():
+                    write_json(archive, manifest.model_dump(mode="json"))
+                manifest.status = "finalized"
+                save_manifest(root, manifest)
         session = (
             os.environ.get("CODEX_THREAD_ID")
             or os.environ.get("CODEX_SESSION_ID")
@@ -312,7 +334,7 @@ def execute_training(root: Path) -> dict[str, Any]:
                     "NHT result camera count/step count does not match the experiment"
                 )
             validate_ready(root, manifest)
-        except Exception:
+        except BaseException:
             manifest.status = "failed"
             save_manifest(root, manifest)
             raise

@@ -78,17 +78,30 @@ def reuse_comparison(root: Path, directory: Path) -> dict[str, Any]:
         persist_request(root, request)
         target_dir = root / "generation/attempts" / request.request_id
         destination = target_dir / "api-result.png"
-        if destination.exists() and sha256(destination) != metadata["output_sha256"]:
-            raise ValueError("A different image already exists for this frame")
-        if not destination.exists():
-            shutil.copyfile(source, destination)
         metadata.update(
             request_id=request.request_id,
             reused_from=str(directory),
             reused_request_id=previous.request_id,
             new_api_call=False,
         )
-        write_json(target_dir / "api-response.json", metadata)
+        with variant_lock(target_dir):
+            if (
+                destination.exists()
+                and sha256(destination) != metadata["output_sha256"]
+            ):
+                raise ValueError("A different image already exists for this frame")
+            response_path = target_dir / "api-response.json"
+            if (
+                response_path.exists()
+                and json.loads(response_path.read_text()) != metadata
+            ):
+                raise ValueError(
+                    "A different API response already exists for this frame"
+                )
+            if not destination.exists():
+                shutil.copyfile(source, destination)
+            if not response_path.exists():
+                write_json(response_path, metadata)
         manifest.pending = request
         save_manifest(root, manifest)
         return {"request_id": request.request_id, "path": str(destination)}
@@ -162,23 +175,21 @@ def generate_batch(
 
         def generate(request: GenerationRequest) -> dict[str, Any]:
             directory = root / "generation/attempts" / request.request_id
-            with variant_lock(directory):
-                if not (directory / "api-response.json").exists():
-                    limiter.wait()
-                assert manifest.config.api is not None
-                result = execute_request(
-                    directory,
-                    request,
-                    manifest.config.api,
-                    key,
-                    retry_failed_request=retry_failed_request,
-                )
-                with Image.open(result["path"]) as image:
-                    if image.size != manifest.config.generation_size:
-                        raise ValueError(
-                            "Generated dimensions differ from the fixed input dimensions"
-                        )
-                return result
+            assert manifest.config.api is not None
+            result = execute_request(
+                directory,
+                request,
+                manifest.config.api,
+                key,
+                retry_failed_request=retry_failed_request,
+                before_send=limiter.wait,
+            )
+            with Image.open(result["path"]) as image:
+                if image.size != manifest.config.generation_size:
+                    raise ValueError(
+                        "Generated dimensions differ from the fixed input dimensions"
+                    )
+            return result
 
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
             futures = {pool.submit(generate, request): request for request in requests}

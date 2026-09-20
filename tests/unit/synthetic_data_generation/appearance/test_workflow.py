@@ -6,8 +6,11 @@ import base64
 import json
 import shutil
 import subprocess
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import pytest
 import requests
@@ -32,6 +35,7 @@ from src.synthetic_data_generation.appearance.workspace import (
     load_manifest,
     prepare,
     revise_generation_size,
+    save_manifest,
     sha256,
 )
 
@@ -66,7 +70,7 @@ def variant(tmp_path: Path) -> Path:
         training_python=tmp_path / "python",
     )
     prepare(config)
-    return config.output_root
+    return Path(config.output_root)
 
 
 def accept_next(root: Path, tmp_path: Path, size: tuple[int, int] = (32, 18)) -> str:
@@ -81,7 +85,7 @@ def accept_next(root: Path, tmp_path: Path, size: tuple[int, int] = (32, 18)) ->
         accepted=True,
         review_notes="Synthetic fixture: known dimensions and uniform pixels",
     )
-    return request.target
+    return str(request.target)
 
 
 def test_b00_sampling_preserves_original_split() -> None:
@@ -277,7 +281,7 @@ def api_variant(variant: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         }
     )
     prepare(config)
-    return config.output_root
+    return Path(config.output_root)
 
 
 def api_response(size: tuple[int, int] = (1536, 864)) -> requests.Response:
@@ -378,6 +382,22 @@ def test_api_error_is_redacted_and_requires_explicit_retry(
     assert len(list(api_variant.rglob("api-call-*.json"))) == 2
 
 
+@pytest.mark.parametrize("padding", [490, 499, 500])
+def test_api_error_redacts_key_before_truncating(
+    api_variant: Path, monkeypatch: pytest.MonkeyPatch, padding: int
+) -> None:
+    response = requests.Response()
+    response.status_code = 401
+    response._content = json.dumps(
+        {"error": {"message": "x" * padding + "sk-test-never-log" + " denied"}}
+    ).encode()
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: response)
+    with pytest.raises(RuntimeError, match="request failed"):
+        generate_next(api_variant)
+    for path in api_variant.rglob("*.json"):
+        assert "sk-test" not in path.read_text()
+
+
 def test_api_wrong_dimensions_cannot_be_accepted(
     api_variant: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -411,8 +431,9 @@ def test_api_output_tampering_cannot_trigger_regeneration(
         generate_next(api_variant)
 
 
+@pytest.mark.parametrize("terminal_state", ["failed", "cancelled"])
 def test_finalize_uses_public_import_and_queue_uses_common_root(
-    variant: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    variant: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_state: str
 ) -> None:
     from src.synthetic_data_generation.appearance import nht
 
@@ -456,7 +477,11 @@ def test_finalize_uses_public_import_and_queue_uses_common_root(
             assert environment["TRAINING_QUEUE_DIR"] == str(
                 tmp_path / "main/.training_queue"
             )
-            return subprocess.CompletedProcess(command, 0, "queued: fixture.job\n", "")
+            number = sum(c[0] == "bash" and c[2] == "add" for c, _ in calls)
+            job = tmp_path / f"main/.training_queue/jobs/fixture-{number}.job"
+            job.parent.mkdir(parents=True, exist_ok=True)
+            job.touch()
+            return subprocess.CompletedProcess(command, 0, f"queued: {job.name}\n", "")
         assert command[2] == "start"
         return subprocess.CompletedProcess(
             command, 1, "", "worker already running (PID 123)."
@@ -478,19 +503,116 @@ def test_finalize_uses_public_import_and_queue_uses_common_root(
     assert (
         sum(command[0] == "bash" and command[2] == "add" for command, _ in calls) == 1
     )
-    failed_job = tmp_path / "main/.training_queue/failed/fixture.job"
+    queued_job = tmp_path / "main/.training_queue/jobs/fixture-1.job"
+    queued_job.unlink()
+    with pytest.raises(ValueError, match="no matching job"):
+        nht.enqueue_training(variant)
+    queued_job.touch()
+    failed_job = tmp_path / "main/.training_queue/failed/fixture-1.job"
     failed_job.parent.mkdir(parents=True)
-    failed_job.touch()
+    queued_job.replace(failed_job)
     with pytest.raises(ValueError, match="training_retry=true"):
         nht.enqueue_training(variant)
     nht.enqueue_training(variant, retry_failed_job=True)
     assert (
         sum(command[0] == "bash" and command[2] == "add" for command, _ in calls) == 2
     )
-    assert (variant / "provenance/queue-attempts/fixture.job.json").is_file()
+    assert (variant / "provenance/queue-attempts/fixture-1.job.json").is_file()
+
+    # A killed launcher can leave its manifest in training. Recovery requires
+    # terminal queue proof, not just an explicit retry flag or an unlocked file.
+    interrupted = load_manifest(variant)
+    interrupted.status = "training"
+    save_manifest(variant, interrupted)
+    queued_job = tmp_path / "main/.training_queue/jobs/fixture-2.job"
+    running_job = tmp_path / "main/.training_queue/running/fixture-2.job"
+    running_job.parent.mkdir(parents=True)
+    queued_job.replace(running_job)
+    with pytest.raises(ValueError, match="Only a failed/cancelled"):
+        nht.enqueue_training(variant, retry_failed_job=True)
+    assert load_manifest(variant).status == "training"
+    terminal_job = tmp_path / f"main/.training_queue/{terminal_state}/fixture-2.job"
+    terminal_job.parent.mkdir(parents=True, exist_ok=True)
+    terminal_job.touch()
+    with pytest.raises(ValueError, match="conflicting job states"):
+        nht.enqueue_training(variant, retry_failed_job=True)
+    running_job.unlink()
+    assert nht.finalize(variant)["status"] == "training"
+    nht.enqueue_training(variant, retry_failed_job=True)
+    assert load_manifest(variant).status == "finalized"
+    archived = variant / "provenance/queue-attempts/fixture-2.job.manifest.json"
+    assert json.loads(archived.read_text())["status"] == "training"
+    assert (
+        sum(command[0] == "bash" and command[2] == "add" for command, _ in calls) == 3
+    )
+
     monkeypatch.delenv("TENNIS_RUN_ID", raising=False)
     with pytest.raises(ValueError, match="shared training queue"):
         nht.execute_training(variant)
+    monkeypatch.setenv("TENNIS_RUN_ID", "fixture")
+
+    def interrupt(*args: object, **kwargs: object) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess, "run", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        nht.execute_training(variant)
+    assert load_manifest(variant).status == "failed"
+
+
+def test_serial_generation_waits_for_batch_result_without_sending_twice(
+    api_variant: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.synthetic_data_generation.appearance import batch, openai_api
+
+    reference = tmp_path / "shared-reference.png"
+    Image.new("RGB", (1536, 864), (160, 60, 20)).save(reference)
+    batch.import_reference(api_variant, reference, review_notes="Fixture reference")
+    posting, release_response = threading.Event(), threading.Event()
+    serial_entered, serial_cache_checked = threading.Event(), threading.Event()
+    serial_thread = []
+    calls = []
+    execute = openai_api.execute_request
+    saved = openai_api._saved_result
+
+    def post(*args: object, **kwargs: object) -> requests.Response:
+        calls.append(1)
+        posting.set()
+        assert release_response.wait(10)
+        return api_response()
+
+    def serial_execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        serial_thread.append(threading.get_ident())
+        serial_entered.set()
+        result: dict[str, Any] = execute(*args, **kwargs)
+        return result
+
+    def observe_saved(*args: Any, **kwargs: Any) -> dict[str, Any] | None:
+        if serial_thread and threading.get_ident() == serial_thread[0]:
+            serial_cache_checked.set()
+        result: dict[str, Any] | None = saved(*args, **kwargs)
+        return result
+
+    monkeypatch.setattr(requests, "post", post)
+    monkeypatch.setattr(openai_api, "execute_request", serial_execute)
+    monkeypatch.setattr(openai_api, "_saved_result", observe_saved)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        batch_result = pool.submit(
+            batch.generate_batch, api_variant, indices=[0], start_interval_seconds=0
+        )
+        try:
+            assert posting.wait(10)
+            serial_result = pool.submit(generate_next, api_variant)
+            assert serial_entered.wait(10)
+            # The serial caller cannot inspect the cache/inflight state while
+            # the batch owns this attempt, even though their root locks differ.
+            assert not serial_cache_checked.wait(0.2)
+        finally:
+            release_response.set()
+        assert serial_result.result(timeout=20)["cached"] is True
+        assert batch_result.result(timeout=20)["generated_or_cached"] == 1
+    assert len(calls) == 1
+    assert len(list(api_variant.rglob("api-call-*.json"))) == 1
 
 
 def test_model_comparison_sends_identical_inputs_and_reuses_results(
