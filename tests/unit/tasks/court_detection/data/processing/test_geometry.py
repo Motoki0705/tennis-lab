@@ -301,3 +301,27 @@ def test_pose_safe_patch_alignment_is_replicate_filled_before_model_input() -> N
         image_tensor[:, 188:, :],
         image_tensor[:, 187:188, :].expand(-1, 4, -1),
     )
+
+
+@pytest.mark.parametrize("scale", [256, 320, 384, 448, 512])
+def test_multiscale_pose_preserves_camera_projection(scale: int) -> None:
+    raw = _raw_pose_sample()
+    config = replace(_pose_safe_config(), train_scales=(scale,), val_short_side=512)
+    geometry = CourtProcessingGeometry(config, is_train=True, require_pose=True)
+    plan = geometry.sample(raw)
+    transformed = geometry.apply(raw, dense_targets={}, plan=plan)
+    assert plan.output_size_hw[0] % 16 == 0
+    assert plan.output_size_hw[1] % 16 == 0
+    torch.testing.assert_close(plan.matrix[0, 0], plan.matrix[1, 1])
+    target = transformed.pose_target
+    assert target is not None
+    assert transformed.keypoint_channels is not None
+    torch.testing.assert_close(target.intrinsics[0, 0], target.intrinsics[1, 1])
+    assert float(target.intrinsics[0, 0]) == pytest.approx(200.0 * scale / 256.0)
+    validate_projection_round_trip(
+        target,
+        transformed.keypoint_channels.points_xy[:, 0],
+        semantic_in_front=semantic_in_front_mask(
+            target, transformed.court_instances[0]
+        ),
+    )

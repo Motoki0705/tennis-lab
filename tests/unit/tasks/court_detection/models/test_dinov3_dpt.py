@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from types import MappingProxyType
 
 import pytest
@@ -470,3 +471,49 @@ def test_pose_training_propagates_content_size_as_dino_patch_mask(
     assert torch.count_nonzero(patch_valid_mask[0]).item() == 25
     assert torch.count_nonzero(patch_valid_mask[1]).item() == 9
     assert isinstance(output, CourtModelOutput)
+
+
+@pytest.mark.parametrize("input_width", [4, 12])
+def test_feature_adapter_trains_outside_frozen_dino_and_keeps_downstream_fixed(
+    monkeypatch: pytest.MonkeyPatch,
+    input_width: int,
+) -> None:
+    baseline_fake = FakeDINOv3()
+    monkeypatch.setattr(
+        model_module, "build_court_encoder", lambda **kwargs: _encoder(baseline_fake)
+    )
+    baseline = CourtHierarchicalModel(_enabled_model_config(), _bundle())
+    baseline_shapes = {
+        name: tensor.shape
+        for name, tensor in baseline.state_dict().items()
+        if not name.startswith("encoder.")
+    }
+    assert not hasattr(baseline, "feature_adapter")
+    baseline.load_state_dict(baseline.state_dict(), strict=True)
+
+    fake = FakeDINOv3()
+    fake.embed_dim = input_width
+    monkeypatch.setattr(
+        model_module, "build_court_encoder", lambda **kwargs: _encoder(fake)
+    )
+    config = replace(_enabled_model_config(), feature_adapter_channels=8)
+    model = CourtHierarchicalModel(config, _bundle())
+    actual_shapes = {
+        name: tensor.shape
+        for name, tensor in model.state_dict().items()
+        if not name.startswith(("encoder.", "feature_adapter."))
+    }
+    assert baseline_shapes == actual_shapes
+    call = _adapter(model).prepare_images(torch.zeros(2, 3, 16, 20))
+    assert fake.grad_enabled is False
+    result = model(*call.model_args)
+    assert isinstance(result, CourtModelOutput)
+    assert result.pose is not None
+    (
+        result.dense_logits["kp"].square().mean() + result.pose.values.square().mean()
+    ).backward()
+    for projection in model.feature_adapter.projections:
+        assert projection.weight.grad is not None
+        assert torch.isfinite(projection.weight.grad).all()
+        assert torch.count_nonzero(projection.weight.grad) > 0
+    assert all(parameter.grad is None for parameter in model.encoder.parameters())

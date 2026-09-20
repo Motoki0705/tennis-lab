@@ -333,6 +333,11 @@ bash scripts/colab/run.sh jobs
 bash scripts/colab/run.sh run my_training_job --dry-run
 ```
 
+## Court DINOv3サイズ比較
+
+L4上のS/S+/B/L比較とBの完全状態再開は
+[専用runner](train/court_vit_ablation/README.md)を参照してください。
+
 ## 既存timestamp固定runner
 
 `train/20260829T150257Z/run_b01_b03_alignment.sh` はgeneric catalogとは別の、
