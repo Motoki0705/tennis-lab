@@ -1,0 +1,147 @@
+import { test, expect } from "@playwright/test";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const nodeRoot = fileURLToPath(new URL("../../../nodes/", import.meta.url));
+const pageSize = 30;
+const nodeCount = (task: string) =>
+  readdirSync(join(nodeRoot, task)).filter((name) =>
+    /^\d{6}-(run|group)-.+\.md$/.test(name),
+  ).length;
+const totalNodes = readdirSync(nodeRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .reduce((total, entry) => total + nodeCount(entry.name), 0);
+
+test("browse, compare, follow research, and read PDF", async ({
+  page,
+  request,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await page.getByRole("button", { name: /^plcs/ }).click();
+  await page.getByRole("textbox", { name: "検索", exact: true }).fill("accad");
+  await expect(page.locator(".experiment-row")).toHaveCount(3);
+  await page.locator(".compare-check input").first().check();
+  await page.locator(".compare-check input").nth(1).check();
+  await page.getByRole("button", { name: "実験比較 (2)" }).click();
+  await expect(page.locator(".comparison-table")).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "CSVを書き出す" }).click();
+  expect((await download).suggestedFilename()).toBe(
+    "experiment-comparison.csv",
+  );
+  await page.goto("/?node=run-plcs-accad-gvhmr-meiji-1000-v1-train");
+  await expect(
+    page.getByRole("complementary", { name: "実験の詳細" }),
+  ).toContainText("0.382341");
+  await page
+    .locator(".panel")
+    .getByRole("button", { name: /World-Grounded/ })
+    .click();
+  await expect(page.locator(".paper-detail")).toBeVisible();
+  const pdf = await request.get("/api/papers/paper-2024-gvhmr");
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  expect((await request.get("/api/papers/paper-2024-missing")).status()).toBe(
+    404,
+  );
+  await page.getByRole("button", { name: "研究サマリー", exact: true }).click();
+  await page
+    .locator(".summary-document")
+    .getByRole("link", {
+      name: "run-plcs-accad-gvhmr-meiji-1000-v1-train",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("complementary", { name: "実験の詳細" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("complementary", { name: "実験の詳細" }),
+  ).toHaveCount(0);
+  await page.screenshot({ path: "/tmp/knowledge-library-desktop.png" });
+  expect(errors).toEqual([]);
+});
+
+test("filters, pagination, graph and mobile layout", async ({ page }) => {
+  const syntheticNodes = nodeCount("synthetic_data_generation");
+  expect(totalNodes).toBeGreaterThan(pageSize);
+  await page.goto("/");
+  await expect(page.locator(".experiment-row")).toHaveCount(pageSize);
+  await page.getByRole("button", { name: "次へ", exact: true }).click();
+  await expect(page.locator(".pagination")).toContainText(
+    `2 / ${Math.ceil(totalNodes / pageSize)}`,
+  );
+  await page
+    .getByRole("button", { name: /^synthetic data generation/ })
+    .click();
+  await expect(page.locator(".experiment-row")).toHaveCount(
+    Math.min(syntheticNodes, pageSize),
+  );
+  await expect(page.locator(".pagination")).toContainText(
+    `1 / ${Math.max(1, Math.ceil(syntheticNodes / pageSize))}`,
+  );
+  await page.getByRole("button", { name: "知識グラフ", exact: true }).click();
+  await expect(page.locator(".react-flow")).toBeVisible();
+  await page.getByLabel("比較・確認などの関連線を表示").check();
+  await page.getByRole("button", { name: "実験一覧", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "検索", exact: true })
+    .fill("no-such-experiment");
+  await expect(page.getByText("該当する実験がありません")).toBeVisible();
+  await page.getByRole("button", { name: "リセット", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".experiment-row").first()).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+});
+
+test("selected paper and experiment paper filter survive reload independently", async ({
+  page,
+}) => {
+  await page.goto("/?paper=paper-2024-gvhmr");
+  await expect(page.locator(".paper-detail")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "実験一覧", exact: true }).click();
+  await expect(page.locator(".experiment-row")).toHaveCount(30);
+  expect(new URL(page.url()).searchParams.has("paperFilter")).toBeFalsy();
+  await page.goto("/?view=timeline&paperFilter=paper-2024-gvhmr");
+  await expect(page.locator(".experiment-row")).toHaveCount(3);
+  await page.getByRole("button", { name: "Papers", exact: true }).click();
+  await page.locator(".paper-card").first().click();
+  await page.reload();
+  await expect(page.locator(".paper-detail")).toBeVisible();
+  await page.getByRole("button", { name: "実験一覧", exact: true }).click();
+  await expect(page.locator(".experiment-row")).toHaveCount(3);
+  expect(new URL(page.url()).searchParams.get("paperFilter")).toBe(
+    "paper-2024-gvhmr",
+  );
+});
+
+test("nested and boolean measurements render in list, details, comparison and graph", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?query=run-court-b00-alignment-v14");
+  const booleanRow = page.locator(".experiment-row").filter({
+    has: page.getByLabel("run-court-b00-alignment-v14 を比較", { exact: true }),
+  });
+  await expect(booleanRow.locator(".row-metric strong").first()).toHaveText("true");
+  const id = "run-court-b00-canonical-sfm";
+  await page.goto(`/?query=${id}&node=${id}`);
+  const panel = page.getByRole("complementary", { name: "実験の詳細" });
+  await expect(panel).toContainText('{"test":238,"train":1718,"validation":220}');
+  await page.keyboard.press("Escape");
+  await page.getByLabel(`${id} を比較`, { exact: true }).check();
+  await page.getByRole("button", { name: "実験比較 (1)" }).click();
+  await expect(page.locator(".comparison-table")).toContainText('{"test":238,"train":1718,"validation":220}');
+  await page.getByRole("button", { name: "知識グラフ", exact: true }).click();
+  await expect(page.locator(".react-flow")).toBeVisible();
+  expect(errors).toEqual([]);
+});
