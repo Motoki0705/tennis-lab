@@ -235,6 +235,7 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
         "src.synthetic_data_generation.scripts.edit_alignment:main",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
         "src.synthetic_data_generation.scripts.review_court_dataset:main",
+        "src.synthetic_data_generation.scripts.run_appearance_variant:main",
         "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
         "src.synthetic_data_generation.scripts.visualize_dataset:main",
     }
@@ -245,6 +246,15 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
     assert visualization_boundary.validator_callable == (
         "src.synthetic_data_generation.visualization.configuration."
         "validate_dataset_visualization_boundary"
+    )
+    appearance_boundary = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id
+        == "src.synthetic_data_generation.scripts.run_appearance_variant:main"
+    )
+    assert appearance_boundary.validator_callable == (
+        "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary"
     )
     assert any(
         authority.endswith(".build_visualization_request")
