@@ -121,8 +121,10 @@
     "mypy": "4 changed geometry/API/test files passed with repository --follow-imports=skip policy",
     "offline_artifact_verifier": "passed; 8-page PDF, all inference hashes, derived H/table/figures, RANSAC/projection and all-four-scene SfM evidence",
     "pdf_pages_visually_inspected": [
+      1,
       3,
       4,
+      5,
       6,
       7,
       8
@@ -151,6 +153,20 @@
       "Binary LINE ambiguity and mutually wrong KP/LINE remain; LINE-only initialization is not implemented.",
       "Historical checkpoint SHA mismatch remains documented; this revision uses the original immutable predictions."
     ],
-    "pdf_build": "Final 8-page LuaLaTeX build and current artifact verifier passed after one transient LuaLaTeX SIGSEGV; source/figure/PDF hashes are bound by the successful build receipt."
+    "pdf_build": "Final 8-page LuaLaTeX build and current artifact verifier passed after one transient LuaLaTeX SIGSEGV; source/figure/PDF hashes are bound by the successful build receipt.",
+    "clean_checkout": {
+      "commit": "ab329a39ac8d97a45d11f73543884665c2cfa314",
+      "worktree": ".claude/worktrees/court-paper-reproduction",
+      "rebuilt": [
+        "homography_evidence.py",
+        "make_comparisons.py"
+      ],
+      "offline_verifier": "passed with exit 0",
+      "git_diff_after_regeneration": "empty",
+      "data_outputs_baseline_checkout_and_latex_log": "absent",
+      "environment": "shared project .venv only; CUDA hidden",
+      "tests": "97-test suite ran in primary worktree (96 passed, CUDA-only test skipped); not redundantly repeated in reproduction worktree",
+      "subsequent_changes": "This validation receipt only; algorithms, numerical evidence, figures and PDF unchanged."
+    }
   }
 }
