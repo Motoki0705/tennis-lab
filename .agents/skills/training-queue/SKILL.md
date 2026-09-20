@@ -103,7 +103,7 @@ After a run finishes, register it into the git-tracked knowledge graph with the
 
 ```bash
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py <job-name> \
-    --issue 525 --provider claude
+    --task plcs --issue 525 --provider claude
 ```
 
 ### Declaring your provider + session id

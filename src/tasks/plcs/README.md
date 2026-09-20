@@ -232,7 +232,7 @@ the shared reference-frame contract. Direct scene inference requires a stable
 
 現行の `plcs_multiview_axial_foot_residual` の構成は Modules の該当項目を参照。学習・同条件の
 本番推論比較の結果と当時の実験条件は knowledge の群ノード
-[足元疑似位置・幾何埋め込み・残差学習の比較](../../../knowledge/nodes/group-plcs-foot-residual.md)
+[足元疑似位置・幾何埋め込み・残差学習の比較](../../../knowledge/nodes/plcs/000094-group-plcs-foot-residual.md)
 に集約している。
 `data.sampling_weights` はscene directory内のJSONファイル名を指定する任意項目で、
 filtered train splitの全scene名を正の有限重みに対応させる。固定dataset backendのみ対応し、
