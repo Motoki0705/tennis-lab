@@ -93,6 +93,8 @@ testの中央値は0.297539→0.244948m、95%点は1.309357→0.986543m。平均
 観測：合成側ではroot/relativeとも改善した一方、実clipの誤検出に由来する約3mの前腕は修正できなかった。
 仮説：合成の独立camera摂動と実際のCourt14 fitに由来する誤差の相関、観測ノイズ/欠測の分布、ACCADの動作とテニスの動作差が転移を制限している可能性がある。個別原因のablationは未実施。
 
+追加のpost-hoc診断では、実clipの再投影誤差はroot補正のみ5.95px、relative補正のみ4.10px、両方5.94px（初期3.25px）で、root補正の寄与が大きかった。学習時と同じ初期値との一致を確認した合成testの64sceneでは、3D誤差が0.401→0.314m、true camera＋clean UVへの誤差が11.50→8.83pxへ減る一方、estimated camera＋入力UVへの誤差は10.39→12.41pxへ増えた。GT 3D自体をestimated cameraへ投影した誤差も15.29pxだった。この部分集合では教師の3D改善と入力観測への再投影悪化が同時に起きており、実clipの再投影悪化だけから実3D悪化とは断定できない。全testの再評価や原因を分離した再学習ではなく、詳細JSONは会話artifactのgeometric-residual/diagnosis/に保存した。
+
 ### 既存実験との比較
 
 同じtest sampleの初期三角測量＋明示的観測seedをbaselineとしたpaired比較。既存PLCSのSMPL-root/yawやfoot priorの指標とは定義・誤差分布が違うため改善率を直接比較しない。
