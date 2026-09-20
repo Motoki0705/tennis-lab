@@ -356,6 +356,14 @@ button {
   gap: 5px;
 }
 
+.scene-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
