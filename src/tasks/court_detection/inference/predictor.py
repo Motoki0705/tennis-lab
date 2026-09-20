@@ -23,7 +23,10 @@ from src.tasks.court_detection.geometry.hybrid_homography import (
     estimate_hybrid_homography,
 )
 from src.tasks.court_detection.inference.checkpoint import load_court_checkpoint
-from src.tasks.court_detection.inference.contracts import CourtPrediction
+from src.tasks.court_detection.inference.contracts import (
+    CourtPrediction,
+    validate_hybrid_inference_config,
+)
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtDecodedPrediction,
@@ -63,6 +66,7 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         hybrid_config: HybridHomographyConfig = DEFAULT_HYBRID_CONFIG,
         checkpoint_identity: dict[str, Any] | None = None,
     ) -> None:
+        validate_hybrid_inference_config(hybrid_config)
         if not isinstance(model_io.adapter, CourtModelIOAdapter):
             raise CourtModelIOError("CourtPredictor requires CourtModelIOAdapter")
         self.model_io = model_io
@@ -94,6 +98,7 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         max_peaks: int = 1,
         hybrid_config: HybridHomographyConfig = DEFAULT_HYBRID_CONFIG,
     ) -> Self:
+        validate_hybrid_inference_config(hybrid_config)
         if resolver is not None:
             paths = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
         else:

@@ -13,6 +13,12 @@ from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKP
 from tests.unit.tennis_scene.pipeline.config_factories import make_court_kp_config
 
 
+def test_pipeline_rejects_a_kp_cap_above_eight_before_model_loading(tmp_path) -> None:
+    config = make_court_kp_config(tmp_path)
+    with pytest.raises(ValueError, match="cap between 4 and 8"):
+        replace(config, postprocess=replace(config.postprocess, max_kp=9))
+
+
 class _TypedCourtPredictor:
     def predict(self, image: np.ndarray, *, postprocess: str, heads: tuple[str, ...]):
         from tests.unit.tasks.court_detection.inference.test_unified_predictor import (

@@ -203,9 +203,11 @@ class RuntimePathRoots:
             for role in PathRole
             for name in (role.value, f"{role.value}_root")
         }
-        return frozenset(
-            alias.casefold() for alias in _LEGACY_ROOT_ALIASES
-        ) | configured_basenames | role_names
+        return (
+            frozenset(alias.casefold() for alias in _LEGACY_ROOT_ALIASES)
+            | configured_basenames
+            | role_names
+        )
 
     def as_mapping(self) -> Mapping[str, str]:
         """Serialize the complete absolute root contract for a subprocess."""
@@ -310,6 +312,8 @@ class BoundaryPathField:
     role-relative fragments accepted by :meth:`PathResolver.resolve`.  This
     contract accepts absolute paths only, so a CLI or subprocess boundary
     cannot silently reinterpret a relative value against the process CWD.
+    ``required=False`` permits an omitted key; a supplied value is still fully
+    validated and cannot be ``None`` or an empty path sequence.
     """
 
     name: str
@@ -319,12 +323,15 @@ class BoundaryPathField:
     must_exist: bool = False
     allow_role_root: bool = False
     many: bool = False
+    required: bool = True
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip() or self.name != self.name.strip():
             raise ValueError("Boundary path field names must be non-empty and trimmed.")
         if type(self.many) is not bool:
             raise TypeError("Boundary path field many must be exactly bool.")
+        if type(self.required) is not bool:
+            raise TypeError("Boundary path field required must be exactly bool.")
         if self.direction is PathDirection.OUTPUT and self.must_exist:
             raise ValueError(
                 f"Output boundary path {self.name!r} cannot require prior existence."
@@ -347,8 +354,6 @@ class ResolvedBoundaryPaths(Mapping[str, Path | tuple[Path, ...]]):
     entries: tuple[ResolvedBoundaryPath, ...]
 
     def __post_init__(self) -> None:
-        if not self.entries:
-            raise ValueError("Resolved boundary paths must not be empty.")
         for name in self:
             declared = tuple(
                 value for value in self.entries if value.field.name == name
@@ -408,7 +413,7 @@ class NonHydraPathBoundary:
     """Strict path contract for argparse, callable, and subprocess boundaries.
 
     Callers first parse syntax without opening files or creating directories,
-    then pass the complete path mapping here.  Validation closes the key set,
+    then pass all required and any supplied optional paths here. Validation closes the key set,
     rejects non-path/relative/escaping values, and checks requested input
     existence and kind before the caller performs any side effect.
     """
@@ -436,7 +441,9 @@ class NonHydraPathBoundary:
         """Validate the exact path mapping without changing the filesystem."""
         expected = {field.name for field in self.fields}
         actual = set(arguments)
-        missing = sorted(expected - actual)
+        missing = sorted(
+            {field.name for field in self.fields if field.required} - actual
+        )
         unknown = sorted(actual - expected)
         if missing or unknown:
             details: list[str] = []
@@ -450,6 +457,8 @@ class NonHydraPathBoundary:
 
         resolved_values: list[ResolvedBoundaryPath] = []
         for field in self.fields:
+            if field.name not in arguments:
+                continue
             raw_value = arguments[field.name]
             if field.many:
                 if (

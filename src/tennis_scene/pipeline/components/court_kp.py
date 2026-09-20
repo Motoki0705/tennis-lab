@@ -14,6 +14,9 @@ import numpy as np
 from src.tasks.court_detection.geometry.hybrid_homography import (
     HybridHomographyConfig as CourtKPPostprocessConfig,
 )
+from src.tasks.court_detection.inference.contracts import (
+    validate_hybrid_inference_config,
+)
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.configuration import PathResolver
 from src.utils.io import load_json, save_json
@@ -59,6 +62,7 @@ class CourtKPConfig:
     load_keypoint_contract: str | None = None
 
     def __post_init__(self) -> None:
+        validate_hybrid_inference_config(self.postprocess)
         if (self.source == "load") != (self.load_path is not None):
             raise ValueError(
                 "CourtKP source='load' requires load_path; execute forbids it"

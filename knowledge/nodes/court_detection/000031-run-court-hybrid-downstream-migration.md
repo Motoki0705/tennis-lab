@@ -37,7 +37,7 @@ tags:
 - camera-view
 - inference-audit
 task: court_detection
-sequence: 28
+sequence: 31
 recorded_at: '2026-09-21'
 ---
 
@@ -77,3 +77,5 @@ LINE支持はモデル内部の整合率で、正解annotationに対する精度
 複数会場の人手正解Hで採用率と誤採用率を評価し、LINEの誤検出・幾何候補・最適化の寄与を分離する。設定変更の評価にはこの8枚と独立なholdoutを使う。既存B00/B01/B03のheatmap v2を現行v3 loaderが読めない制限は今回も残る。保存成果物の形式やcheckpoint履歴は書き換えていない。
 
 推論時のcommitはrebase前の`e002a6a8`。最新mainへの載せ替え後の同一推論実装は`d3fd5f80`であり、`metrics.json`の推論コードSHAでも照合できる。validator対応では保存入力契約とsemantic可視化設定を変更し、幾何推論の測定結果は書き換えていない。
+
+PR #901のmain取り込み時に、下流の最大8点制限を推論APIとpipeline設定の検証へ移した。論文の共有幾何コードは保存証拠のハッシュと一致する版を保持する。このrunの`metrics.json`のコードSHAは移動前の測定版の記録であり、保存済みの推論出力・測定値は変更していない。

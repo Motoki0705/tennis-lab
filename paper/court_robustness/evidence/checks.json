@@ -1,0 +1,172 @@
+{
+  "pytest_command": ".venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/geometry paper/court_robustness/test_artifacts.py",
+  "pytest_passed": 82,
+  "ruff_check": "passed",
+  "ruff_format": "passed",
+  "knowledge_validate_errors": 0,
+  "pdf_pages_visually_inspected": 7,
+  "additional_training": false,
+  "gpu_used": true,
+  "validator_first_round_findings_addressed": [
+    "checkpoint_byte_binding",
+    "refined_tcd_keypoint_display",
+    "verification_without_temporary_log"
+  ],
+  "clean_checkout": {
+    "commit": "14aa523410f1b393cc29fe3ae7b96b87655791d7",
+    "data_and_weights_absent": true,
+    "temporary_latex_log_absent": true,
+    "regenerated_artifacts": [
+      "confidence_homographies",
+      "homography_latex_table",
+      "external_prediction_figures"
+    ],
+    "offline_verification": "passed",
+    "pytest_passed": 82,
+    "tracked_diff": "empty"
+  },
+  "alignment_method_geometry": "production RANSAC and selected ray projections match the saved plane and arrays; fit-only 32-view sum exactly matches the original raster",
+  "method_revision_previous_head": "9a3bbc4509640aa14b32f115a1842b7fabc3af8a",
+  "sfm_drift_geometry": "B00--B03 full COLMAP point/track source checks passed; bijective export mapping and RGB agreement; all shared-cell measurements, table values and figure pixels reproduce. Registered-frame gaps retained; unsupported four-period comparisons explicitly null.",
+  "local_source_validation": {
+    "date": "2026-09-19",
+    "full_command": ".venv/bin/python paper/court_robustness/verify_artifacts.py --check-local-sources --write-report",
+    "full_command_status": "failed",
+    "reason": "Checkpoint SHA-256 differs from inference",
+    "expected_ours_sha256": "e11b494366a2be4266f3f034973ef08c6a91530530d116764689ec35b2843455",
+    "actual_ours_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "current_checkpoint_config_contract_epoch_step_match": true,
+    "matching_original_checkpoint_copy_found": false,
+    "baseline_checkpoint_sha256_matches": true,
+    "alignment_method_source_validation": "passed before the checkpoint rejection",
+    "sfm_drift_source_validation": "passed, including full binary model reread and per-point track comparison",
+    "bundled_artifact_validation": "passed; see validation.json (source_owner_check=false)",
+    "existing_inference_outputs_and_weight_hash_records_changed": false,
+    "interpretation": "Equal configuration/epoch does not establish identical model weights. Do not substitute current checkpoint or relax the byte check."
+  },
+  "sfm_revision_previous_head": "906e6875f2402d8ef0540420d31251607f4f0362",
+  "four_scene_source_validation": {
+    "date": "2026-09-20",
+    "status": "passed",
+    "scenes": [
+      "B00",
+      "B01",
+      "B02",
+      "B03"
+    ],
+    "source": "Original images.bin and points3D.bin reread for every scene; all per-point metadata compared after bijective mapping to the public export; saved alignment and frame IDs checked.",
+    "bundle_manifest_sha256": "826e8b7bd3a651697761ce6158a1995c6e34cbfb34e357fb5f01788d572a5f95",
+    "primary_protocol": "Same chronological registered-frame half comparison for every scene; 0.5 m cells, minimum five points per cell in each period; 1 m sensitivity and four-period audit retained."
+  },
+  "all_scene_revision_previous_head": "3fff4cba21360eca85fc92349d653b3ec0122d53",
+  "pytest_execution": "All 82 tests passed together in clean checkout without data, weights or temporary LaTeX log.",
+  "mypy_check": "passed: confidence_homography.py, geometry/__init__.py and new unit tests",
+  "prosac_revision_previous_head": "492785f49d75a3195ad19456522c21aebb6e4941",
+  "prosac_validation": {
+    "cpu_only": true,
+    "neural_inference_repeated": false,
+    "original_prediction_npz_unchanged": true,
+    "new_homographies": 4,
+    "inlier_counts": [
+      5,
+      7,
+      5,
+      7
+    ],
+    "reproduction": "homography_evidence.py rechecks all fields, source/code/template hashes and numerical results",
+    "pdf_pages_inspected_this_revision": [
+      3,
+      5,
+      6,
+      7
+    ],
+    "known_checkpoint_mismatch": "historical limitation unchanged; postprocessing uses bundled original KP and scores"
+  },
+  "clean_checkout_previous_all_scene_revision": {
+    "commit": "44481a6cb2d63870e49bf7457d1deadcfb8264ab",
+    "data_and_weights_absent": true,
+    "temporary_latex_log_absent": true,
+    "regenerated_artifacts": [
+      "external_predictions",
+      "3dgs_alignment",
+      "ransac_and_projection",
+      "sfm_temporal_drift_all_scenes",
+      "sfm_drift_latex_table"
+    ],
+    "offline_verification": "passed",
+    "pytest_passed": 31,
+    "tracked_diff": "empty"
+  },
+  "gpu_scope": "Only the pre-existing test_cuda_tf32_does_not_reject_recovered_bfloat16_rotation unit regression (small pose-decoding tensor operations) ran on CUDA in the parent test suite. PROSAC, evidence/figure regeneration and all photograph processing were CPU-only; no new training, neural re-inference or GPU rendering.",
+  "prosac_validator": {
+    "requested": 1,
+    "attempted": 1,
+    "completed": 1,
+    "verdict": "PASS",
+    "tests_passed": 81,
+    "tests_skipped": 1,
+    "skip_reason": "existing CUDA bf16 pose regression unavailable in validator environment",
+    "findings": []
+  },
+  "post_review_record_clarification": "Corrected the broad gpu_used flag to account for the existing CUDA unit test in parent validation; reviewed code, PDF and evidence arrays unchanged.",
+  "latest_validation": "hybrid_validation",
+  "legacy_summary_scope": "Top-level legacy test/GPU summaries describe the preceding PROSAC revision; hybrid_validation is the current KP+LINE revision.",
+  "hybrid_validation": {
+    "base_commit": "6a92921d77593abe3dba60df2be3756e339e7885",
+    "pytest_command": "CUDA_VISIBLE_DEVICES='' .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/geometry paper/court_robustness/test_artifacts.py",
+    "passed": 96,
+    "skipped": 1,
+    "skip_reason": "Existing CUDA bf16 pose regression; CUDA deliberately hidden for this CPU postprocessing revision.",
+    "ruff": "19 files check/format passed",
+    "mypy": "4 changed geometry/API/test files passed with repository --follow-imports=skip policy",
+    "offline_artifact_verifier": "passed; 8-page PDF, all inference hashes, derived H/table/figures, RANSAC/projection and all-four-scene SfM evidence",
+    "pdf_pages_visually_inspected": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "hard_kp_exclusion": "Selected-only residual test remains bit-identical after rejected KP coordinates become NaN and rejected scores become extreme; all fitted sets are bounded and geometrically/LINE gated.",
+    "kp_used_A_B_C_D": [
+      7,
+      5,
+      4,
+      8
+    ],
+    "additional_training": false,
+    "neural_reinference": false,
+    "gpu_used": false,
+    "original_prediction_npz_and_inference_hash_records": "unchanged from base commit",
+    "knowledge_validate": {
+      "nodes": 206,
+      "errors": 0,
+      "advisory_warnings": 47
+    },
+    "additional_validator_runs": 0,
+    "validator_scope": "The previously requested single round was completed for the PROSAC revision. No additional evaluation was requested for the hybrid changes; the earlier PASS does not cover them.",
+    "limitations": [
+      "No human GT on the four photographs; LINE support is internal agreement, not accuracy.",
+      "Four synthetic scenes do not establish held-out-scene generalization.",
+      "Binary LINE ambiguity and mutually wrong KP/LINE remain; LINE-only initialization is not implemented.",
+      "Historical checkpoint SHA mismatch remains documented; this revision uses the original immutable predictions."
+    ],
+    "pdf_build": "Final 8-page LuaLaTeX build and current artifact verifier passed after one transient LuaLaTeX SIGSEGV; source/figure/PDF hashes are bound by the successful build receipt.",
+    "clean_checkout": {
+      "commit": "ab329a39ac8d97a45d11f73543884665c2cfa314",
+      "worktree": ".claude/worktrees/court-paper-reproduction",
+      "rebuilt": [
+        "homography_evidence.py",
+        "make_comparisons.py"
+      ],
+      "offline_verifier": "passed with exit 0",
+      "git_diff_after_regeneration": "empty",
+      "data_outputs_baseline_checkout_and_latex_log": "absent",
+      "environment": "shared project .venv only; CUDA hidden",
+      "tests": "97-test suite ran in primary worktree (96 passed, CUDA-only test skipped); not redundantly repeated in reproduction worktree",
+      "subsequent_changes": "This validation receipt only; algorithms, numerical evidence, figures and PDF unchanged."
+    }
+  }
+}

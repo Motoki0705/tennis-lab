@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
 
@@ -20,7 +21,11 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.geometry.confidence_homography import (
     ConfidenceHomographyResult,
 )
-from src.tasks.court_detection.geometry.hybrid_homography import HybridHomographyResult
+from src.tasks.court_detection.geometry.hybrid_homography import (
+    DEFAULT_HYBRID_CONFIG,
+    HybridHomographyConfig,
+    HybridHomographyResult,
+)
 from src.tasks.court_detection.inference.contracts import CourtPrediction
 from src.tasks.court_detection.inference.predictor import CourtPredictor
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
@@ -38,13 +43,35 @@ from tests.unit.tasks.court_detection.inference.test_pose_output_predictors impo
 )
 
 
-def _predictor() -> CourtPredictor:
+def _predictor(
+    hybrid_config: HybridHomographyConfig = DEFAULT_HYBRID_CONFIG,
+) -> CourtPredictor:
     bundle = _bundle()
     model = _StaticPoseModel(bundle)
     adapter = CourtModelIOAdapter(
         CourtModelSpec(bundle, 3, 32), loss_config=_loss_config()
     )
-    return CourtPredictor(bind_model_io(model, adapter), torch.device("cpu"))
+    return CourtPredictor(
+        bind_model_io(model, adapter), torch.device("cpu"), hybrid_config=hybrid_config
+    )
+
+
+@pytest.mark.parametrize("cap", [9, 14, 100])
+def test_downstream_kp_cap_is_enforced_before_loading_or_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cap: int
+) -> None:
+    import src.tasks.court_detection.inference.predictor as module
+
+    config = replace(DEFAULT_HYBRID_CONFIG, max_kp=cap)
+    load = Mock(side_effect=AssertionError("Invalid settings must fail before loading"))
+    monkeypatch.setattr(module, "load_court_checkpoint", load)
+    with pytest.raises(ValueError, match="cap between 4 and 8"):
+        CourtPredictor.load_from_checkpoint(
+            tmp_path / "model.ckpt", device="cpu", hybrid_config=config
+        )
+    load.assert_not_called()
+    with pytest.raises(ValueError, match="cap between 4 and 8"):
+        _predictor(config)
 
 
 def geometry_prediction(*, status: str = "ok") -> CourtPrediction:

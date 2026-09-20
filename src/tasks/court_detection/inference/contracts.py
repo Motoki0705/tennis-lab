@@ -9,11 +9,20 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.court_detection.data.contracts import CourtTargetKind
-from src.tasks.court_detection.geometry.hybrid_homography import HybridHomographyResult
+from src.tasks.court_detection.geometry.hybrid_homography import (
+    HybridHomographyConfig,
+    HybridHomographyResult,
+)
 from src.tasks.court_detection.model_io.contracts import (
     CourtDecodedPrediction,
     CourtKeypointPrediction,
 )
+
+
+def validate_hybrid_inference_config(config: HybridHomographyConfig) -> None:
+    """Bound downstream KP fitting while retaining the audited research solver."""
+    if not 4 <= config.max_kp <= 8:
+        raise ValueError("Hybrid inference requires a KP cap between 4 and 8")
 
 
 @dataclass(frozen=True)

@@ -51,14 +51,15 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
 - `inference/`: `CourtPredictor` が1回のforwardでraw head群と任意のKP・LINE共同推定を返します。head別predictorは同じ実装へのraw出力の委譲です。
-- `geometry/hybrid_homography.py`: 外れ値を除いた最大8点とLINEでHを推定します。規格コートのメートル座標・KP14順序・主要9線を共有します。
+- `geometry/hybrid_homography.py` / `line_evidence.py`: 再投影・LINE支持の硬いゲートで外れ値を除いた既定最大8点とLINEでHを推定します。規格コートのメートル座標・KP14順序・主要9線を共有し、候補を双方向LINE距離で比較します。
+- `geometry/confidence_homography.py`: KP座標・スコアから信頼度順PROSACとインライア再推定を行うAPI。推定H、採用点、残差、失敗理由を返します。呼び出し側が原画像pixelの再投影閾値を明示します。
 - `visualization/`: bundle-awareなprediction/rendering surface。
 
 ### 共通推論と幾何補正
 
 `CourtPredictor.load_from_checkpoint(..., resolver=resolver, device=device)` はcheckpointの保存モデル構成・loss定義・target bundle・`val_short_side`を読み、全model tensorをstrictにロードします。学習専用のrun/source/augmentation検証と分離しており、旧checkpointへ`artifact_store`等を補う処理はありません。学習時の設定検証は従来どおりです。既定の配布先は `ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` で、重みはGit管理しません。
 
-`predict(rgb, postprocess="hybrid")` は `CourtPrediction.raw_heads` と `homography` を分けて返します。KP座標は原画像pixel、raw LINE確率・logitsはnative gridで、両サイズを結果に保持します。hybridにはordered KP14・1 peak/channel・LINEが必要です。失敗理由を返し、raw KPや別Hへ代替しません。`downstream_keypoints()` は再投影14点と画像内validityを返し、失敗時はゼロ座標・全不可視です。`selected`は最適化に採用した観測のmaskであり、このvalidityとは別です。
+`predict(rgb, postprocess="hybrid")` は `CourtPrediction.raw_heads` と `homography` を分けて返します。KP座標は原画像pixel、raw LINE確率・logitsはnative gridで、両サイズを結果に保持します。hybridにはordered KP14・1 peak/channel・LINEが必要です。下流の`max_kp`は4〜8に制限し、範囲外はモデル読込み前に拒否します。失敗理由を返し、raw KPや別Hへ代替しません。`downstream_keypoints()` は再投影14点と画像内validityを返し、失敗時はゼロ座標・全不可視です。`selected`は最適化に採用した観測のmaskであり、このvalidityとは別です。
 
 LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。今回の配布重みは短辺256・KP/SEG/LINE＋poseで、semantic LINE headはありません。
 

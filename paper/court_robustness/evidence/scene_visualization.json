@@ -1,0 +1,82 @@
+{
+  "B00": {
+    "bundle_sha256": "036ca2ac8a49db0241e10306757671a5e1e606f28db654b50f93d7a7366495d0",
+    "views": [
+      {
+        "sample_index": 720,
+        "figure": "figures/B00_000720_alignment.png",
+        "sha256": "58896c57a96f73144926c5dcc992875a2691ade637d1b1039f5e5c94013b4117"
+      },
+      {
+        "sample_index": 1493,
+        "figure": "figures/B00_001493_alignment.png",
+        "sha256": "93ae4c9441567b1cd5c8d2c9f24e4a258f0d2df71fdacc20d8dceb08a9fb6c8a"
+      },
+      {
+        "sample_index": 423,
+        "figure": "figures/B00_000423_alignment.png",
+        "sha256": "c5bda24fbbe0148f4fb1de510ddb90864bcc7ee31e73e60c2414d2ba2cd434e0"
+      }
+    ]
+  },
+  "B01": {
+    "bundle_sha256": "2cac05da98eaa12da35def8790e7be9214f4704e784cd21ca1d9ddb8b3cd90f5",
+    "views": [
+      {
+        "sample_index": 1403,
+        "figure": "figures/B01_001403_alignment.png",
+        "sha256": "a263d1dd84c820c97d27ccbacb3d63270c6a2c1ed2d2bfdecebb2928aa04591a"
+      },
+      {
+        "sample_index": 1918,
+        "figure": "figures/B01_001918_alignment.png",
+        "sha256": "a974ab038a989d40c8caffdf6dbd700f29782c2e174b936bfbc73b9ad5e76627"
+      },
+      {
+        "sample_index": 1601,
+        "figure": "figures/B01_001601_alignment.png",
+        "sha256": "7e08511afa8af2a082abfc2989202af45ceb117a86232aa0701ee73d031afc0c"
+      }
+    ]
+  },
+  "B02": {
+    "bundle_sha256": "81d961686d210687009e14bc1ebe5ef5d424e418bf6bdfa38ad008ceda04d5c5",
+    "views": [
+      {
+        "sample_index": 808,
+        "figure": "figures/B02_000808_alignment.png",
+        "sha256": "d9a58111d4ce520269c3d5e1fa83683bdb2dcd77c57d9f9fa818fb3aa7380fe9"
+      },
+      {
+        "sample_index": 1982,
+        "figure": "figures/B02_001982_alignment.png",
+        "sha256": "5ebec878d11ef4ea6734b6e5287898a575b1d149a3d8ef711a167770e7e82047"
+      },
+      {
+        "sample_index": 445,
+        "figure": "figures/B02_000445_alignment.png",
+        "sha256": "853d761fcfc447a3803b40a1dcf6900cd6b5886af50e39d228bf1e66ff971388"
+      }
+    ]
+  },
+  "B03": {
+    "bundle_sha256": "7d21985dff204463816e557ca763a887731a710ce491b509de4cf9c0e965f606",
+    "views": [
+      {
+        "sample_index": 1112,
+        "figure": "figures/B03_001112_alignment.png",
+        "sha256": "6504cf60fba9e99083e9f077c5f7164682311ebfe44d268338b7bdd6987953f6"
+      },
+      {
+        "sample_index": 1091,
+        "figure": "figures/B03_001091_alignment.png",
+        "sha256": "28f939ac4889967c4ac88314acb686ec6a5555c4b09b9edf16c5048d0cc121ba"
+      },
+      {
+        "sample_index": 1288,
+        "figure": "figures/B03_001288_alignment.png",
+        "sha256": "1f8a54cd304af07977fa13f1253d3de54355895bf2da45992e96ceb617929955"
+      }
+    ]
+  }
+}

@@ -221,14 +221,6 @@ export function frustumSegments(frustum, camera, view) {
   );
 }
 
-/** Return the world direction of a (cos, sin) yaw at ground level. */
-export function yawDirection(orientation) {
-  const cos = orientation[0];
-  const sin = orientation[1];
-  const norm = Math.hypot(cos, sin) || 1;
-  return [cos / norm, sin / norm, 0];
-}
-
 export function strideFor(frameCount, budget) {
   return Math.max(1, Math.ceil(frameCount / budget));
 }
