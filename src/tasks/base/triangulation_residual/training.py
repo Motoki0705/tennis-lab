@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 import json
+import warnings
+from collections.abc import Mapping
+from copy import deepcopy
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.base.triangulation_residual.configuration import (
+    FeatureConfig,
     ResidualConfig,
     validate_config,
 )
@@ -40,7 +45,9 @@ from src.utils.schema.court_normalization import (
 def checkpoint_contract(config: ResidualConfig) -> dict[str, Any]:
     return {
         "family": config.model.name,
-        "schema_version": 1,
+        "schema_version": 2,
+        "ffn_type": config.model.ffn_type,
+        "features": asdict(config.features),
         "task": config.task,
         "joints": config.joints,
         "feature_dim": feature_dimension(config.joints),
@@ -54,6 +61,77 @@ def checkpoint_contract(config: ResidualConfig) -> dict[str, Any]:
         "missing_seed": "linear_interpolation_edge_hold_else_root_with_original_valid_mask",
         "camera_estimate_is_input_only": True,
     }
+
+
+def migrate_legacy_checkpoint(checkpoint: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate embedded semantics and explicitly upgrade known schema-1 copies.
+
+    Only historical v1/v2 SwiGLU/raw checkpoints may omit the new config fields.
+    The supplied mapping and its tensors are never modified. Migration provenance
+    is retained for inference metadata; ordinary training configs remain strict.
+    """
+    validate_court_coordinate_normalization(
+        checkpoint, artifact="geometry residual checkpoint"
+    )
+    marker = checkpoint.get("geometric_residual_contract")
+    if (
+        not isinstance(marker, dict)
+        or type(marker.get("schema_version")) is not int
+        or marker["schema_version"] not in (1, 2)
+    ):
+        raise ValueError("Incompatible geometric residual checkpoint semantics")
+    hyper_parameters = checkpoint.get("hyper_parameters")
+    if not isinstance(hyper_parameters, Mapping) or "config" not in hyper_parameters:
+        raise ValueError("Geometric residual checkpoint requires its embedded config")
+    embedded = hyper_parameters["config"]
+    if isinstance(embedded, DictConfig):
+        embedded = OmegaConf.to_container(embedded, resolve=True)
+    config = OmegaConf.create(embedded)
+    if not isinstance(config, DictConfig):
+        raise ValueError("Geometric residual checkpoint config must be a mapping")
+    legacy = marker["schema_version"] == 1
+    if legacy:
+        if not isinstance(config.get("model"), DictConfig):
+            raise ValueError("Geometric residual checkpoint requires model config")
+        if "ffn_type" not in config.model:
+            config.model.ffn_type = "swiglu"
+        if "features" not in config:
+            config.features = asdict(FeatureConfig("raw", 1.0))
+    parsed = validate_config(config)
+    expected = checkpoint_contract(parsed)
+    source_expected = dict(expected)
+    if legacy:
+        if parsed.model.ffn_type != "swiglu" or parsed.features != FeatureConfig(
+            "raw", 1.0
+        ):
+            raise ValueError("Legacy residual checkpoints require SwiGLU/raw semantics")
+        source_expected["schema_version"] = 1
+        del source_expected["ffn_type"], source_expected["features"]
+    if marker != source_expected:
+        raise ValueError("Incompatible geometric residual checkpoint semantics")
+    migrated = dict(checkpoint)
+    if legacy:
+        migrated["hyper_parameters"] = {
+            **hyper_parameters,
+            "config": OmegaConf.to_container(config, resolve=True),
+        }
+        migrated["geometric_residual_contract"] = expected
+        migrated["geometric_residual_migration"] = {
+            "source_contract": deepcopy(marker),
+            "target_schema_version": 2,
+            "explicit_settings": {
+                "model.ffn_type": "swiglu",
+                "features": asdict(parsed.features),
+            },
+        }
+        warnings.warn(
+            "Migrating legacy geometric residual checkpoint schema 1 to schema 2 "
+            "with model.ffn_type=swiglu, features.residual_encoding=raw, "
+            "features.residual_scale=1.0; source checkpoint is unchanged",
+            UserWarning,
+            stacklevel=2,
+        )
+    return migrated
 
 
 class ResidualLightningModule(BaseLightningModule):
@@ -77,10 +155,8 @@ class ResidualLightningModule(BaseLightningModule):
         )
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        validate_court_coordinate_normalization(
-            checkpoint, artifact="geometry residual checkpoint"
-        )
-        if checkpoint.get("geometric_residual_contract") != checkpoint_contract(
+        validated = migrate_legacy_checkpoint(checkpoint)
+        if validated["geometric_residual_contract"] != checkpoint_contract(
             self.residual_config
         ):
             raise ValueError("Incompatible geometric residual checkpoint semantics")

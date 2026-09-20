@@ -6,6 +6,7 @@ from itertools import combinations
 
 import numpy as np
 
+from src.tasks.base.triangulation_residual.configuration import FeatureConfig
 from src.tasks.base.triangulation_residual.contracts import (
     CameraRig,
     GeometryInput,
@@ -60,6 +61,7 @@ def prepare_geometry(
     *,
     root_indices: tuple[int, ...],
     fps: float,
+    feature_config: FeatureConfig,
     min_score: float = 0.3,
     refinement_steps: int = 5,
 ) -> GeometryInput:
@@ -68,6 +70,7 @@ def prepare_geometry(
     2D features are normalized by each view's W,H, global 3D by court scale;
     relative pose remains in metres. Raw observations/geometry are retained
     separately from finite neural features. All models share this entrypoint.
+    Encoding changes only the residual feature block, never raw UV diagnostics.
     """
     obs = np.asarray(observations_px, dtype=np.float64)
     conf = np.asarray(scores, dtype=np.float64)
@@ -159,12 +162,17 @@ def prepare_geometry(
         return repeated
 
     # Every block is ordered explicitly; the feature count is a checkpoint contract.
+    encoded_residual = (
+        np.arcsinh(residual / feature_config.residual_scale)
+        if feature_config.residual_encoding == "asinh"
+        else residual
+    )
     blocks = [
         np.where(observed[..., None], uv - 0.5, 0).reshape(views, frames, -1),
         np.where(project_valid[..., None], reprojected - 0.5, 0).reshape(
             views, frames, -1
         ),
-        residual.reshape(views, frames, -1),
+        encoded_residual.reshape(views, frames, -1),
         np.broadcast_to(
             np.where(court_valid[..., None], court_uv - 0.5, 0).reshape(views, 1, 28),
             (views, frames, 28),

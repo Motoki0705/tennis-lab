@@ -18,7 +18,10 @@ from src.tasks.base.triangulation_residual.contracts import (
 )
 from src.tasks.base.triangulation_residual.geometry import prepare_geometry
 from src.tasks.base.triangulation_residual.model import GeometricResidualModel
-from src.tasks.base.triangulation_residual.training import ResidualLightningModule
+from src.tasks.base.triangulation_residual.training import (
+    ResidualLightningModule,
+    migrate_legacy_checkpoint,
+)
 from src.utils.geometry.triangulation import project_multiview
 from src.utils.schema.court_normalization import load_and_validate_checkpoint
 from src.utils.schema.player import COCO17_BONE_LENGTH_EDGES
@@ -166,7 +169,7 @@ def evaluate_clip(
     device: str,
     render: bool = True,
 ) -> dict[str, Any]:
-    raw = load_and_validate_checkpoint(checkpoint)
+    raw = migrate_legacy_checkpoint(load_and_validate_checkpoint(checkpoint))
     config = OmegaConf.create(raw["hyper_parameters"]["config"])
     module = ResidualLightningModule(config)
     module.on_load_checkpoint(dict(raw))
@@ -216,6 +219,7 @@ def evaluate_clip(
             scene.rig,
             root_indices=cfg.root_indices,
             fps=scene.fps,
+            feature_config=cfg.features,
             min_score=cfg.initializer.min_score,
             refinement_steps=cfg.initializer.refinement_steps,
         )
@@ -276,6 +280,7 @@ def evaluate_clip(
         "checkpoint": str(checkpoint.resolve()),
         "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
         "contract": raw["geometric_residual_contract"],
+        "checkpoint_migration": raw.get("geometric_residual_migration"),
         "clip": str(clip_dir.resolve()),
         "inference_precision": "float32",
         "window_size": window,

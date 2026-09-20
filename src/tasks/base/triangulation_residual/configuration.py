@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
+from math import isfinite
 from typing import Any, TypeVar
 
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import BaseTrainingConfig, TrainingRuntimeConfig
 from src.utils.hydra import register_boundary_validator
+from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
 from src.utils.paths import PROJECT_ROOT
 
 T = TypeVar("T")
@@ -21,8 +23,27 @@ class ModelConfig:
     num_layers: int
     num_heads: int
     ffn_dim: int
+    ffn_type: str
     dropout: float
     rope_base: float
+
+
+@dataclass(frozen=True)
+class FeatureConfig:
+    residual_encoding: str
+    residual_scale: float
+
+    def __post_init__(self) -> None:
+        if self.residual_encoding not in ("raw", "asinh"):
+            raise ValueError("Unknown residual_encoding; expected raw or asinh")
+        if (
+            type(self.residual_scale) not in (int, float)
+            or not isfinite(self.residual_scale)
+            or self.residual_scale <= 0
+        ):
+            raise ValueError("residual_scale must be finite and positive")
+        if self.residual_encoding == "raw" and self.residual_scale != 1.0:
+            raise ValueError("raw residual encoding requires residual_scale=1.0")
 
 
 @dataclass(frozen=True)
@@ -112,6 +133,7 @@ class V2Config:
 class ResidualConfig:
     task: str
     model: ModelConfig
+    features: FeatureConfig
     data: DataConfig
     initializer: InitializerConfig
     corruption: CorruptionConfig
@@ -159,6 +181,7 @@ def validate_config(
     keys = {
         "task",
         "model",
+        "features",
         "data",
         "initializer",
         "corruption",
@@ -182,6 +205,7 @@ def validate_config(
     result = ResidualConfig(
         str(task),
         _section(ModelConfig, root["model"]),
+        _section(FeatureConfig, root["features"]),
         _section(DataConfig, root["data"]),
         _section(InitializerConfig, root["initializer"]),
         _section(CorruptionConfig, root["corruption"]),
@@ -193,6 +217,8 @@ def validate_config(
     version = 2 if result.v2 is not None else 1
     if model.name != f"{task}_triangulation_residual_v{version}":
         raise ValueError("This profile cannot load legacy position/yaw models")
+    if model.ffn_type not in SUPPORTED_FFN_TYPES:
+        raise ValueError(f"Unsupported ffn_type={model.ffn_type}")
     if (
         model.hidden_dim <= 0
         or model.num_heads <= 0
