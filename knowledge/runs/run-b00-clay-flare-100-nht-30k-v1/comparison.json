@@ -1,0 +1,88 @@
+{
+  "common_validation_names": [
+    "frame_000000.jpg",
+    "frame_000040.jpg",
+    "frame_000056.jpg",
+    "frame_000096.jpg",
+    "frame_000152.jpg",
+    "frame_000192.jpg",
+    "frame_000208.jpg",
+    "frame_000248.jpg"
+  ],
+  "common_target_pixels_identical": true,
+  "metric_source": "NHT built-in validation (one optimizer update after its saved checkpoint)",
+  "runs": [
+    {
+      "root": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/clay-flare-v001",
+      "scene_id": "B00-clay-flare-v001",
+      "images": 50,
+      "training_steps": 7000,
+      "validation_images": 8,
+      "all_validation_metrics": {
+        "psnr": 22.717906951904297,
+        "ssim": 0.6527017951011658,
+        "lpips": 0.2625459134578705,
+        "lpips_alex": 0.2625459134578705,
+        "cc_psnr": 22.547405242919922,
+        "cc_ssim": 0.6385965347290039,
+        "cc_lpips": 0.26750048995018005,
+        "ellipse_time": 0.011619985103607178,
+        "num_GS": 1000000
+      },
+      "elapsed_seconds": 384.89981622000005,
+      "common_validation_metrics": {
+        "psnr": 22.717908143997192,
+        "ssim": 0.652701772749424,
+        "lpips": 0.2625459060072899
+      }
+    },
+    {
+      "root": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/clay-flare-50-30k-v001",
+      "scene_id": "B00-clay-flare-50-30k-v001",
+      "images": 50,
+      "training_steps": 30000,
+      "validation_images": 8,
+      "all_validation_metrics": {
+        "psnr": 23.13494110107422,
+        "ssim": 0.6246808767318726,
+        "lpips": 0.23034197092056274,
+        "lpips_alex": 0.23034197092056274,
+        "cc_psnr": 22.767940521240234,
+        "cc_ssim": 0.606555700302124,
+        "cc_lpips": 0.24095302820205688,
+        "ellipse_time": 0.012073665857315063,
+        "num_GS": 1000000
+      },
+      "elapsed_seconds": 1983.055991094,
+      "common_validation_metrics": {
+        "psnr": 23.13494038581848,
+        "ssim": 0.6246809139847755,
+        "lpips": 0.23034197464585304
+      }
+    },
+    {
+      "root": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/clay-flare-100-30k-v001",
+      "scene_id": "B00-clay-flare-100-30k-v001",
+      "images": 100,
+      "training_steps": 30000,
+      "validation_images": 14,
+      "all_validation_metrics": {
+        "psnr": 24.347225189208984,
+        "ssim": 0.6698395013809204,
+        "lpips": 0.1710643470287323,
+        "lpips_alex": 0.1710643470287323,
+        "cc_psnr": 24.105770111083984,
+        "cc_ssim": 0.6604482531547546,
+        "cc_lpips": 0.17463041841983795,
+        "ellipse_time": 0.014580930982317244,
+        "num_GS": 1000000
+      },
+      "elapsed_seconds": 2194.7078131910002,
+      "common_validation_metrics": {
+        "psnr": 24.247726678848267,
+        "ssim": 0.6587958782911301,
+        "lpips": 0.1808630023151636
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+diff --git a/src/synthetic_data_generation/README.md b/src/synthetic_data_generation/README.md
+index 72e7d1e6..ad4c8a2c 100644
+--- a/src/synthetic_data_generation/README.md
++++ b/src/synthetic_data_generation/README.md
+@@ -5,6 +5,9 @@ video and one `scene_id` resolve to one mutable workspace. NHT remains an
+ independent command that owns reconstruction and rendering; tennis-lab consumes
+ only its public standard scene export and render files.
+ 
++For reference-guided image edits and retraining with existing SfM, see
++[Appearance variants](appearance/README.md).
++
+ ## Set up NHT with spin
+ 
+ Before running the pipeline for the first time, or after updating the NHT
+diff --git a/third_party/nht b/third_party/nht
+index 615c2edb..9493001f 160000
+--- a/third_party/nht
++++ b/third_party/nht
+@@ -1 +1 @@
+-Subproject commit 615c2edba93014e0287324d37053556d2c744d5d
++Subproject commit 9493001f1f5650f62e8f9809b023618edcde3f03-dirty

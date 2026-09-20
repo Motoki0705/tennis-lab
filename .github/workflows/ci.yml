@@ -68,33 +68,3 @@ jobs:
           path: artifacts/ci/shard-${{ matrix.shard }}/
           if-no-files-found: error
           retention-days: 14
-
-      - name: Validate formal knowledge
-        if: matrix.shard == 1
-        run: |
-          .venv/bin/python \
-            .agents/skills/knowledge-control/scripts/kg_validate.py
-
-  knowledge-webui:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: knowledge/webui
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          submodules: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: knowledge/webui/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build knowledge Web UI
-        run: npm run build

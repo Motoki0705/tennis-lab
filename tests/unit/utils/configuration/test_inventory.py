@@ -21,6 +21,10 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
         if boundary.domain == "synthetic_data_generation"
     }
     expected = {
+        "src.synthetic_data_generation.scripts.run_appearance_variant": (
+            "synthetic.appearance_variant",
+            "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary",
+        ),
         "src.synthetic_data_generation.scripts.compact_court_storage": (
             "synthetic.court_storage_compaction",
             "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -56,8 +60,7 @@ def test_manual_court_editor_has_an_explicit_non_hydra_path_boundary() -> None:
     boundary = next(
         boundary
         for boundary in EXPECTED_RUNTIME_BOUNDARIES
-        if boundary.module
-        == "src.synthetic_data_generation.scripts.edit_alignment"
+        if boundary.module == "src.synthetic_data_generation.scripts.edit_alignment"
     )
 
     assert boundary.domain == "manual_court_alignment"
