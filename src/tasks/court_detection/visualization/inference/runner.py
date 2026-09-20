@@ -1,4 +1,4 @@
-"""One strict Lightning load per checkpoint, shared by every Court head."""
+"""One strict inference load per checkpoint, shared by every Court head."""
 
 from __future__ import annotations
 

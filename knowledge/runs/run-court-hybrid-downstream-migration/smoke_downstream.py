@@ -76,9 +76,9 @@ for kind, cls in [("plcs", PLCSModule), ("blcs", BLCSModule)]:
     )
     predict = getattr(module._predictor, method)
 
-    def capture(**kwargs):
-        seen.append(np.array(kwargs["court_vis"], copy=True))
-        return predict(**kwargs)
+    def capture(*, _seen=seen, _predict=predict, **kwargs):
+        _seen.append(np.array(kwargs["court_vis"], copy=True))
+        return _predict(**kwargs)
 
     setattr(module._predictor, method, capture)
     kwargs = {
