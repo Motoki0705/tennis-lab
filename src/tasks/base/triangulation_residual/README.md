@@ -72,6 +72,8 @@ fitは点のcoverage・正depth・地上camera・焦点範囲を検査する。c
 
 BaseLightningModuleのoptimizer/repro保存、BaseTrainingRunnerのcheckpoint/queue連携を再利用する。最小val/world_mpjpe_mのcheckpointを明示loadしてtestし、evaluation.jsonへ選択を記録する。実クリップ/testを選択に使わない。
 
+このprofileのDataLoaderは、`num_workers>0`では`spawn`でpersistent workerを作り、各workerのOpenCVを1 threadに固定する。epoch共有値も同じspawn contextで作り、親でのepoch更新をworkerへ伝える。native libraryの状態をforkで引き継がないためのruntime方針であり、誤差生成・seed・教師の定義は変えない。`num_workers=0`での単一process実行も可能。
+
 ```bash
 # GPU実行は共有training queueから。worktreeではmainのdata/output rootsを明示。
 .venv/bin/python -m src.tasks.plcs.scripts.train_triangulation_residual paths.data_root=/absolute/repo/data

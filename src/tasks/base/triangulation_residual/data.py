@@ -25,6 +25,13 @@ from src.tasks.base.triangulation_residual.geometry import (
 from src.utils.configuration import PathRole
 
 
+def _initialize_residual_worker(_worker_id: int) -> None:
+    """Keep native OpenCV work inside each fresh worker on one thread."""
+    import cv2
+
+    cv2.setNumThreads(1)
+
+
 class ResidualDataset(Dataset[dict[str, Any]]):
     def __init__(
         self,
@@ -39,7 +46,8 @@ class ResidualDataset(Dataset[dict[str, Any]]):
             config,
             split,
         )
-        self.epoch = multiprocessing.Value("q", 0)
+        # The shared semaphore must use the same context as DataLoader workers.
+        self.epoch = multiprocessing.get_context("spawn").Value("q", 0)
         self.cache: OrderedDict[Path, CleanResidualScene] = OrderedDict()
 
     def __len__(self) -> int:
@@ -278,6 +286,8 @@ class ResidualDataModule(pl.LightningDataModule):
             num_workers=cfg.num_workers,
             pin_memory=cfg.pin_memory,
             persistent_workers=cfg.num_workers > 0,
+            multiprocessing_context="spawn" if cfg.num_workers > 0 else None,
+            worker_init_fn=_initialize_residual_worker,
             collate_fn=collate_residual,
             generator=torch.Generator().manual_seed(self.config.runtime.run.seed),
         )
