@@ -1,13 +1,16 @@
 ---
-id: run-b00-clay-sunburst-high-v1
+id: run-b00-clay-flare-high-v1
 type: run
-title: B00クレー化 sunburst high 1視点
+task: synthetic_data_generation
+sequence: 13
+recorded_at: '2026-09-20'
+title: B00クレー化 flare high 1視点
 provider: codex
+session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
 date: '2026-09-20'
 status: done
-session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
 config:
-  model: gpt-image-2.5-sunburst-2026-09-08
+  model: gpt-image-2.5-flare-2026-09-08
   quality: high
   size: 1536x864
   target: frame_000000.jpg
@@ -17,17 +20,20 @@ config:
   - e938c6671d26263ccdea93472f475e9344e8f25f3586cbec0b88a6edc0c18428
   - 2b32079c47bd56d52bcd0d90d0604ec1db28d413a1a672c74ebc2d88812f701d
 metrics:
-  elapsed_seconds: 24.24534948300061
+  elapsed_seconds: 17.612908241000696
   input_tokens: 2735
   output_tokens: 1078
   total_tokens: 3813
 artifacts:
-  run_dir: knowledge/runs/run-b00-clay-sunburst-high-v1
-  output_dir: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/sunburst
-  image: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/sunburst/api-result.png
+  run_dir: knowledge/runs/run-b00-clay-flare-high-v1
+  output_dir: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/flare
+  image: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/flare/api-result.png
   comparison: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-sunburst-flare-v002/comparison.png
 parents: []
-relations: []
+relations:
+- to: run-b00-clay-sunburst-high-v1
+  rel: compares
+papers: []
 tags:
 - synthetic-data
 - image-api
@@ -53,3 +59,5 @@ Sunburstは24.245秒、Flareは17.613秒。今回のクレー化の見た目に�
 
 ### 次に有効な実験
 モデルの選定後、別の2視点でも白線・ネット・背景構造の維持を確認し、採用画像50枚で7,000ステップのNHT再学習を行う。
+
+画像APIの生成記録であり、TensorBoardの学習曲線は生成されない。
