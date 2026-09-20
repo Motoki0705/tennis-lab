@@ -6,7 +6,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.tasks.base.triangulation_residual.configuration import LossConfig
+from src.tasks.base.triangulation_residual.balanced_loss import balanced_residual_loss
+from src.tasks.base.triangulation_residual.configuration import LossConfig, V2Config
 from src.tasks.base.triangulation_residual.model import reconstruct_world
 from src.utils.schema.player import COCO17_BONE_LENGTH_EDGES
 
@@ -17,8 +18,18 @@ def masked_mean(value: Tensor, mask: Tensor) -> Tensor:
 
 
 def residual_loss(
-    output: dict[str, Tensor], batch: dict[str, Tensor], config: LossConfig, task: str
+    output: dict[str, Tensor],
+    batch: dict[str, Tensor],
+    config: LossConfig,
+    task: str,
+    *,
+    v2: V2Config | None = None,
 ) -> tuple[Tensor, dict[str, Tensor], Tensor]:
+    if v2 is not None:
+        if v2.loss_mode == "balanced_regret":
+            return balanced_residual_loss(output, batch, config, task, v2)
+        if v2.loss_mode != "legacy":
+            raise ValueError(f"Unknown residual loss mode: {v2.loss_mode}")
     # Keep metre reconstruction and camera math FP32 even under mixed precision.
     with torch.autocast(device_type=batch["features"].device.type, enabled=False):
         world, root, relative = reconstruct_world(

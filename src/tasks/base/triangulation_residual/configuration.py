@@ -83,6 +83,32 @@ class LossConfig:
 
 
 @dataclass(frozen=True)
+class V2Config:
+    """Explicit opt-in experiment; absent in unchanged historical v1 recipes."""
+
+    camera_preset: str
+    evaluation_views: int
+    true_camera_position_jitter_m: float
+    true_camera_height_jitter_m: float
+    calibration_min_points: int
+    court_noise_px: float
+    court_bias_px: float
+    court_dropout_probability: float
+    court_outlier_probability: float
+    court_outlier_sigma_px: float
+    persistent_rate_per_view_second: float
+    persistent_min_seconds: float
+    persistent_max_seconds: float
+    persistent_offset_scale: float
+    persistent_high_confidence_probability: float
+    error_mode: str
+    loss_mode: str
+    regret_weight: float
+    regret_tolerance_m: float
+    balanced_world_weight: float
+
+
+@dataclass(frozen=True)
 class ResidualConfig:
     task: str
     model: ModelConfig
@@ -91,6 +117,7 @@ class ResidualConfig:
     corruption: CorruptionConfig
     loss: LossConfig
     runtime: TrainingRuntimeConfig
+    v2: V2Config | None
 
     @property
     def joints(self) -> int:
@@ -141,6 +168,8 @@ def validate_config(
         "paths",
         "court_keypoints",
     }
+    if "v2" in root:
+        keys.add("v2")
     if set(root) != keys:
         raise ValueError(f"Residual config keys differ: {set(root) ^ keys}")
     task = root["task"]
@@ -158,9 +187,11 @@ def validate_config(
         _section(CorruptionConfig, root["corruption"]),
         _section(LossConfig, root["loss"]),
         runtime,
+        _section(V2Config, root["v2"]) if "v2" in root else None,
     )
     model, data, noise = result.model, result.data, result.corruption
-    if model.name != f"{task}_triangulation_residual_v1":
+    version = 2 if result.v2 is not None else 1
+    if model.name != f"{task}_triangulation_residual_v{version}":
         raise ValueError("This profile cannot load legacy position/yaw models")
     if (
         model.hidden_dim <= 0
@@ -222,7 +253,52 @@ def validate_config(
         raise ValueError("Select checkpoints using held-out world 3D error")
     if dict(config.court_keypoints) != {"selector": "physical_v1"}:
         raise ValueError("Residual inputs/outputs use the physical court contract")
+    if result.v2 is not None:
+        _validate_v2(result.v2, data, noise)
     return result
+
+
+def _validate_v2(config: V2Config, data: DataConfig, noise: CorruptionConfig) -> None:
+    if config.camera_preset != "four_corners_front_pair":
+        raise ValueError("v2 requires four corners and the near-fence front pair")
+    if not 2 <= config.evaluation_views <= data.max_views <= 6:
+        raise ValueError("v2 evaluation/train view counts must fit the six-camera rig")
+    if config.error_mode not in {
+        "mixed",
+        "clean",
+        "calibration",
+        "observation",
+        "temporal",
+        "persistent",
+        "combined",
+    }:
+        raise ValueError("Unknown v2 corruption experiment")
+    if config.loss_mode not in {"legacy", "balanced_regret"}:
+        raise ValueError("Unknown v2 residual objective")
+    for field in fields(config):
+        value = getattr(config, field.name)
+        if not isinstance(value, str) and (
+            value < 0 or (field.name.endswith("probability") and value > 1)
+        ):
+            raise ValueError(f"Invalid v2 setting {field.name}")
+    if not 6 <= config.calibration_min_points <= 14:
+        raise ValueError(
+            "This calibration profile needs 6..14 noncollinear court points"
+        )
+    if not 0 < config.persistent_min_seconds <= config.persistent_max_seconds:
+        raise ValueError("Persistent event durations must be positive and ordered")
+    if (
+        max(
+            noise.camera_rotation_std_deg,
+            noise.camera_center_std_m,
+            noise.camera_focal_log_std,
+            noise.camera_principal_std_px,
+        )
+        != 0
+    ):
+        raise ValueError(
+            "v2 estimates cameras from Court14; independent camera noise must be zero"
+        )
 
 
 def _validate_plcs(config: DictConfig) -> None:
