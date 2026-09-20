@@ -1,0 +1,18 @@
+defaults:
+  - geometric_residual
+  - court_keypoints: physical_v1
+  - paths: default
+  - run: train
+  - _self_
+
+task: plcs
+model:
+  name: plcs_triangulation_residual_v1
+data:
+  scene_dir: plcs/single_object_camera_view_v2
+run:
+  output_dir: plcs/triangulation_residual
+
+hydra:
+  searchpath:
+    - pkg://src.tasks.base.triangulation_residual.configs

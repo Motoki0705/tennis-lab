@@ -2,6 +2,8 @@
 
 出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
 
+三角測量の初期COCO17をglobal root残差＋relative pose残差で補正するprofileは、[共有の残差学習ガイド](../base/triangulation_residual/README.md)を参照。入口は`python -m src.tasks.plcs.scripts.train_triangulation_residual`です。
+
 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。ACCAD (AMASS/SMPL-H) または GVHMR モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
 ## Court keypoint contract

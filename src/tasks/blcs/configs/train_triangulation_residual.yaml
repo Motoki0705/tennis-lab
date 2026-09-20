@@ -1,0 +1,21 @@
+defaults:
+  - geometric_residual
+  - court_keypoints: physical_v1
+  - paths: default
+  - run: train
+  - _self_
+
+task: blcs
+model:
+  name: blcs_triangulation_residual_v1
+data:
+  scene_dir: blcs/single_object_camera_view_v2
+loss:
+  relative_weight: 0.0
+  bone_weight: 0.0
+run:
+  output_dir: blcs/triangulation_residual
+
+hydra:
+  searchpath:
+    - pkg://src.tasks.base.triangulation_residual.configs

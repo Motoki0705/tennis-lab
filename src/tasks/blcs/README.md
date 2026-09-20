@@ -2,6 +2,8 @@
 
 出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
 
+三角測量の初期ボール軌道をXYZ残差で補正するprofileは、[共有の残差学習ガイド](../base/triangulation_residual/README.md)を参照。入口は`python -m src.tasks.blcs.scripts.train_triangulation_residual`です。
+
 2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。合成データ生成（物理シミュレーション + マルチカメラ投影）、学習、推論、可視化までを一貫して提供します。
 
 CourtKP20 の version 選択、disk 上の camera-local semantics、model の
