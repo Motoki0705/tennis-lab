@@ -109,7 +109,7 @@ def main() -> None:
             "--gpu",
             "L4",
             "--source",
-            "snapshot",
+            "git",
         ]
         if args.dry_run:
             command.append("--dry-run")
