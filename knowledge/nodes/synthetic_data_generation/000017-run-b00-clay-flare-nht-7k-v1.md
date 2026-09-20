@@ -1,6 +1,9 @@
 ---
 id: run-b00-clay-flare-nht-7k-v1
 type: run
+task: synthetic_data_generation
+sequence: 17
+recorded_at: '2026-09-20'
 title: B00 クレー50枚 Flare → NHT 7,000ステップ
 provider: codex
 session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
@@ -56,6 +59,7 @@ parents:
 relations:
 - to: run-b00-clay-flare-nht-7k-interrupted-v1
   rel: supersedes
+papers: []
 tags:
 - synthetic-data
 - nht

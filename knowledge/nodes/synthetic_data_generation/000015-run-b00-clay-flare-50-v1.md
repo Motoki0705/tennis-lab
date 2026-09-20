@@ -1,11 +1,14 @@
 ---
 id: run-b00-clay-flare-50-v1
 type: run
+task: synthetic_data_generation
+sequence: 15
+recorded_at: '2026-09-20'
 title: B00 クレー化 Flare 50視点
 provider: codex
+session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
 date: '2026-09-20'
 status: done
-session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
 config:
   model: gpt-image-2.5-flare-2026-09-08
   quality: high
@@ -36,6 +39,7 @@ artifacts:
   overview: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/clay-flare-v001/review/overview-50.jpg
 parents:
 - run-b00-clay-flare-high-v1
+papers: []
 tags:
 - synthetic-data
 - image-api
@@ -61,3 +65,5 @@ tags:
 
 ### 次に有効な実験
 生成50枚（学習42／評価8）で7,000ステップのNHTを実行し、白線・ネットの二重化や背景の不一致をレンダリングで確認する。
+
+画像APIの生成記録であり、TensorBoardの学習曲線は生成されない。

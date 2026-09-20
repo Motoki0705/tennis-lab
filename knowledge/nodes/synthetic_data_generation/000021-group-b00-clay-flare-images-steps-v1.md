@@ -1,6 +1,9 @@
 ---
 id: group-b00-clay-flare-images-steps-v1
 type: group
+task: synthetic_data_generation
+sequence: 21
+recorded_at: '2026-09-20'
 title: 'B00 Flare: 50/100枚・7k/30kステップ比較'
 artifacts:
   output_dir: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scene_variants/B00/comparison-flare-50-100-30k-v001
@@ -11,6 +14,7 @@ members:
 - run-b00-clay-flare-50-nht-30k-v1
 - run-b00-clay-flare-100-nht-30k-v1
 parents: []
+papers: []
 tags:
 - synthetic-data
 - nht

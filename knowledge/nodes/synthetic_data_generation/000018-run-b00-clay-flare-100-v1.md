@@ -1,6 +1,9 @@
 ---
 id: run-b00-clay-flare-100-v1
 type: run
+task: synthetic_data_generation
+sequence: 18
+recorded_at: '2026-09-20'
 title: B00 Flare 50視点を追加し100枚へ拡張
 provider: codex
 session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
@@ -38,6 +41,7 @@ artifacts:
 parents:
 - run-b00-clay-flare-50-v1
 relations: []
+papers: []
 tags:
 - synthetic-data
 - image-api
@@ -63,3 +67,5 @@ tags:
 
 ### 次に有効な実験
 50枚／100枚を同じ3万ステップ・seed 42・factor 2・固定カメラで学習し、共通する8評価視点の指標と白線・ネットのレンダリングを比較する。
+
+画像APIの生成記録であり、TensorBoardの学習曲線は生成されない。

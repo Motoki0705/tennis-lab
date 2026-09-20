@@ -1,6 +1,9 @@
 ---
 id: run-b00-clay-flare-nht-7k-interrupted-v1
 type: run
+task: synthetic_data_generation
+sequence: 16
+recorded_at: '2026-09-20'
 title: 'B00 クレー50枚 NHT 7k: ホスト再起動による中断'
 provider: codex
 session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
@@ -32,6 +35,7 @@ artifacts:
 parents:
 - run-b00-clay-flare-50-v1
 relations: []
+papers: []
 tags:
 - synthetic-data
 - nht
@@ -58,3 +62,5 @@ checkpointの初回保存は7,000ステップのため途中再開用の状態�
 
 ### 次に有効な実験
 孤立したqueue記録を監査付きで整理し、同じ入力・設定を共有queueから再実行する。
+
+中断実行のTensorBoardは保存bundleに残っていないため、曲線は作成していない。中断時のログを根拠として残す。

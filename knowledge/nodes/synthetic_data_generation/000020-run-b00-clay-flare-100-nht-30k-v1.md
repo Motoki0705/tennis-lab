@@ -1,6 +1,9 @@
 ---
 id: run-b00-clay-flare-100-nht-30k-v1
 type: run
+task: synthetic_data_generation
+sequence: 20
+recorded_at: '2026-09-20'
 title: B00 Flare 100枚・NHT 30,000ステップ
 provider: codex
 session: 01a0bd70-e78d-7732-ba19-1a4595e91a32
@@ -54,6 +57,7 @@ parents:
 relations:
 - to: run-b00-clay-flare-50-nht-30k-v1
   rel: compares
+papers: []
 tags:
 - synthetic-data
 - nht

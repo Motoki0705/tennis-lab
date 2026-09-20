@@ -1,11 +1,15 @@
 ---
 id: group-b00-clay-sunburst-flare-high-v1
 type: group
+task: synthetic_data_generation
+sequence: 14
+recorded_at: '2026-09-20'
 title: B00クレー化 SunburstとFlareの同条件比較
 members:
 - run-b00-clay-sunburst-high-v1
 - run-b00-clay-flare-high-v1
 parents: []
+papers: []
 tags:
 - synthetic-data
 - image-api
