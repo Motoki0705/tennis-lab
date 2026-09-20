@@ -15,6 +15,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import cv2
 import numpy as np
 import torch
+from homography_evidence import fit_prediction
 from PIL import Image, ImageOps
 
 BASELINE = REPO / ".cache/court-report/TennisCourtDetector"
@@ -124,6 +125,7 @@ def main() -> None:
         "seed": 42,
         "ids": [r["id"] for r in records],
         "checkpoint": str(CHECKPOINT),
+        "ours_homography": "confidence-ranked PROSAC with inlier-only refit",
     }
     if args.model in {"both", "baseline"}:
         model = BallTrackerNet(out_channels=15).cpu().eval()
@@ -250,13 +252,22 @@ def main() -> None:
                 )
             points = kp.keypoints[:, 0].numpy()
             points[~kp.valid[:, 0].numpy()] = np.nan
-            # Use the same 12-configuration criterion, at the same fitting scale.
-            scale = np.asarray([w / 1280, h / 720])
-            fitted, matrix = fit_court(points / scale)
+            # Scores rank PROSAC samples; final fit uses geometric inliers only.
+            homography = fit_prediction(points, kp.scores[:, 0].numpy(), w, h)
+            matrix = homography["matrix"]
             result = {
                 "raw_kp": points,
-                "aligned_kp": fitted * scale,
+                "aligned_kp": np.asarray(homography["aligned_kp"])
+                if matrix is not None
+                else np.full((14, 2), np.nan),
                 "homography_found": np.asarray(matrix is not None),
+                "homography": np.asarray(matrix)
+                if matrix is not None
+                else np.full((3, 3), np.nan),
+                "homography_inliers": np.asarray(homography["inliers"]),
+                "homography_fit_inliers": np.asarray(homography["fit_inliers"]),
+                "homography_ranked_indices": np.asarray(homography["ranked_indices"]),
+                "homography_status": np.asarray(homography["status"]),
                 "kp_scores": kp.scores[:, 0].numpy(),
                 "line_probability": logits["line"][0, 0].sigmoid().numpy(),
                 "input_hw": np.asarray(tensor.shape[-2:]),

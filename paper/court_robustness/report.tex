@@ -27,7 +27,7 @@
 \newcommand{\panel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth]{figures/#1}\end{minipage}}
 \newcommand{\epanel}[2]{\begin{minipage}[t]{.326\linewidth}\centering\sffamily\fontsize{7.2}{9}\selectfont #2\par\vspace{.6mm}\includegraphics[width=\linewidth,height=32mm,keepaspectratio]{figures/#1}\end{minipage}}
 \newcommand{\external}[1]{%
-\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours.png}{本モデル：KP14＋H}\par\vspace{1mm}
+\noindent\epanel{#1_input.png}{入力写真}\hfill\epanel{#1_baseline.png}{TCD：局所補正KP（Hなし）}\hfill\epanel{#1_ours.png}{本モデル：KP＋PROSAC H}\par\vspace{1mm}
 \noindent\epanel{#1_ours_line_mask.png}{本モデル：LINE二値マスク}\hfill\epanel{#1_ours_line_overlay.png}{本モデル：LINE重畳 $p\geq0.5$}\hfill\epanel{#1_ours_heat.png}{本モデル：LINE確率 $[0,1]$}\par}
 \newcommand{\scenerow}[7]{\noindent{\sffamily\bfseries #1}\par\vspace{.5mm}\panel{#2}{#3}\hfill\panel{#4}{#5}\hfill\panel{#6}{#7}\par\vspace{.8mm}}
 
@@ -137,6 +137,15 @@ KPと姿勢の整合損失はこの重みでは無効である。
 AdamW、学習率$10^{-4}$、weight decay 1、warmup 3 epochを用いた保存重み（epoch 17、29,844 step）を固定する。
 本報告の写真に対する再学習・重み選択は行わない。
 
+\subsection{KP信頼度を用いたホモグラフィ推定}
+KPヒートマップのsigmoid後のピーク値をスコア$s_i$とし、有効な点を降順に並べる（同点はKP番号順）。
+PROSAC\cite{prosac}で上位点から優先して最小4点組を抽出し、候補範囲を広げる。
+共線などの退化した組を除外し、MSACの打切り二乗再投影誤差で候補を評価する。
+得られたインライアだけで最小二乗・LM再推定し、最終Hに対してインライアを再判定する。
+スコアは抽出順位に使い、誤差の重みや校正済み正解確率とは扱わない。
+有効な支持点が4点未満、特異行列、コート内で射影分母が0を跨ぐ場合はHなしとする。
+
+
 \sect{実験設定と評価範囲}
 \subsection{データと「未学習」の確認}
 指定フォルダ内の4ファイルを名前順でA--Dに対応付け、すべて推論・掲載した（図\ref{fig:ab}、\ref{fig:cd}）。
@@ -147,10 +156,10 @@ TCDの8,841枚とB00--B03の8,415レンダリングを照合し、ファイルSH
 \subsection{比較条件と表示方法}
 TCDは公開重みとBGR入力640$\times$360、しきい値170/255の公式ピーク抽出・局所補正を用いる。
 本モデルはRGB・ImageNet正規化、短辺512・16画素整列で推論し、KPをチャネルごとに1点抽出する。
-両者のKPにTCDの12種類の4点組によるホモグラフィ候補選択を適用する。
-候補は残りの観測点への平均誤差で選び、特異行列や評価点のない候補は採用しない。
-TCDの補正・H推定は1280$\times$720座標で行い、原画像へ戻す。
-加えてTCDの14チャネルargmaxでのH生成可否を数表に併記し、しきい値による棄却の影響を確認する。
+本モデルのHは保存済みKP・スコアから再計算し、抽出下限0.05、幾何閾値は原画像対角長の0.5\%で全4枚共通とした。
+OpenCV 5.0.0のUSACを使い、乱数種42、最大10,000反復、終了信頼水準0.999、単一スレッド・局所最適化を有効にした。
+TCDは公式の12組候補選択を1280$\times$720座標で行い、argmaxによる補助結果も併記する。
+後処理条件も異なるため、モデル単体の優劣を示す比較ではない。
 
 指定写真4枚とTCD動作確認の推論はCPU、EXIF補正は共通、追加クロップなしとした。
 本モデルのLINEは確率0.5以上を白とする二値マスク・原画像への直接重畳・確率マップの3形式で示す。確率マップは共通の$[0,1]$色域を使う。
@@ -184,37 +193,31 @@ B03 & 1,669 & 226 & 198 & 40 & 0.109\\\midrule
 
 \newpage
 \subsection{指定実画像への推論：低視点・斜視}
-{\small 橙＝TCD、水色＝本モデル。KP＋H欄の点は抽出KP、線はそのKPから求めた規格コート投影。TCD公式欄の点は局所補正後。Hなしの場合は点だけを表示する。LINE欄はテンプレートを当てはめていない直接の密予測である。}\par
+{\small 橙＝TCD、水色＝本モデル。本モデルの丸点は最終インライア、灰色の×は棄却KP、線は推定Hによる規格コート投影。TCD公式欄の点は局所補正後。Hなしの場合は点だけを表示する。LINE欄はテンプレートを当てはめていない直接の密予測である。}\par
 \vspace{1mm}
 \noindent\textbf{A：\texttt{ennai011\_1.jpg} / 1,000$\times$667}\par
 \external{local01}
-{\small TCDの公式処理は3点でHを生成できず、argmaxに変えても大きく崩れた配置となる。本モデルのLINEは外周・内側線を捉える。KP＋Hは輪郭の一部に沿うものの、奥側の点の対応や内側線にはずれが見られる。}\par
+{\small TCDの公式処理は3点でHを生成できず、argmaxに変えても大きく崩れた配置となる。本モデルのLINEは外周・内側線を捉える。PROSAC Hは奥側の一部に沿うが、手前の外周を過大に広げており、5点の合意だけでは全体の正しい復元を保証しない。}\par
 \vspace{3mm}
 \noindent\textbf{B：\texttt{images (1).jpg} / 638$\times$480}\par
 \external{local02}
-{\small TCDは公式処理で1点、argmaxでも有効なHを生成できない。本モデルは画面右へ見切れる線を含めてLINEを検出するが、KP＋Hは手前側の輪郭と一致しない。線の抽出と点の意味的対応付けの差が現れている。}
+{\small TCDは公式処理で1点、argmaxでも有効なHを生成できない。本モデルは画面右へ見切れる線を含めてLINEを検出するが、PROSAC Hは7点を支持するが線とのずれが残る。信頼度Top-4は参照コート上で全点が共線であり、4点固定では解けない例である。}
 \captionof{figure}{指定写真A・Bの実推論。上段でKPと幾何復元、下段で本モデルのLINE出力を示す。二値マスクは白が$p\geq0.5$、黒がそれ未満。確率マップは黒0から黄白1までの固定色域。全パネルは縦横比を保ち、元画像の全領域を表示した。}\label{fig:ab}\par
 \vspace{2mm}
 \begin{center}\small
-\begin{tabular}{@{}lrrrr@{}}\toprule
- & A & B & C & D\\\midrule
-TCD公式：検出点数 / 14 & 3 & 1 & 0 & 1\\
-TCD公式：H生成 & 不可 & 不可 & 不可 & 不可\\
-TCD argmax：H生成 & 可 & 不可 & 不可 & 不可\\
-本モデル：KP数 / H生成 & 14 / 可 & 14 / 可 & 14 / 可 & 14 / 可\\\bottomrule
-\end{tabular}
-\captionof{table}{保存推論から集計した出力の状態。しきい値とデコード方式が違うため、点数を両モデルの精度比較に用いることはできない。Hが生成されても正しい対応とは限らない。}
+\input{tables/homography.tex}
+\captionof{table}{保存推論から集計した出力の状態。本モデルは全例14点を抽出。残差は最終インライアへの自己整合値で、GT誤差ではない。点数・H生成可否も精度を表さない。}
 \end{center}
 
 \newpage
 \subsection{指定実画像への推論：人物・観客席を含む場面}
 \noindent\textbf{C：\texttt{images (2).jpg} / 547$\times$365}\par
 \external{local03}
-{\small 本モデルのLINEはコートに沿って反応するが、手前や人物周辺に途切れがある。KP＋Hではコートの奥行きが縮み、手前の領域を復元できていない。TCDは公式処理で0点、argmaxでもHを生成できない。}\par
+{\small 本モデルのLINEはコートに沿って反応するが、手前や人物周辺に途切れがある。PROSAC Hは手前まで投影されるが、外周・内側線の位置にはずれが残る。TCDは公式処理で0点、argmaxでもHを生成できない。}\par
 \vspace{2mm}
 \noindent\textbf{D：\texttt{images.jpg} / 678$\times$452}\par
 \external{local04}
-{\small 本モデルは俯瞰の線構造を捉える一方、画面下にも小さなLINE反応がある。KP＋Hは特に奥側・左側の線で実コートとずれる。TCDは公式処理で1点、argmaxでもHを生成できない。}
+{\small 本モデルは俯瞰の線構造を捉える一方、画面下にも小さなLINE反応がある。PROSAC Hは実コートより小さく右側へ寄り、特に奥側・左側の線がずれる。TCDは公式処理で1点、argmaxでもHを生成できない。}
 \captionof{figure}{指定写真C・Dの実推論。表示条件は図\ref{fig:ab}と共通。4例とも、本モデルのLINEとKP由来の幾何復元は同じ品質にはなっていない。}\label{fig:cd}\par
 \section{課題点}
 \subsection{SfMのドリフトと幾何教師への影響}
@@ -247,21 +250,19 @@ B03は6セルと少なく、1 m格子で中央値が+1.55から+0.56 cmへ変わ
 
 \subsection{4シーンに限られる多様性と汎化性能の不足}
 合成側はB00--B03の\textbf{4シーンのみ}で、8,415枚への視点拡張も、新しい会場・路面・照明・背景を追加するものではない。
-TCD実画像8,841枚も混合しているが、合成側の分割は同一シーン内の軌道群単位であり、未知シーンへの汎化を測れていない。
-また、4シーンを4つの独立した会場とみなすこともできない。
+TCD実画像8,841枚を混合する一方、合成側は同一シーン内で分割しており、未知シーンへの汎化は未評価である。4シーンが独立した4会場とも限らない。
 
-指定写真ではLINEが反応してもKP由来の規格コートはずれており、未知画像に対する幾何復元の汎化性能は十分でない。
-ただし4枚・人手GTなしの観測から性能全体を定量化したり、シーン数だけを失敗原因と断定したりはできない。
-会場・路面・照明の異なるシーンを追加し、会場を完全に分離した人手GT付き集合でLINEとKPを別々に評価する必要がある。
-同一モデル・解像度で実写のみと合成混合を比較し、シーン数の増加が汎化へ与える効果も検証する。
+指定4写真ではLINEに反応しても規格コートはずれる。ただし人手GTがなく、性能の定量化やシーン数への原因帰属はできない。
+今後は会場・撮影条件を増やした会場分離のGT付き集合でLINEとKPを評価し、実写のみ／合成混合を同一モデル・解像度で比較する。
 \par
 \vspace{-2mm}
-\begin{thebibliography}{6}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
+\begin{thebibliography}{7}\fontsize{8}{10}\selectfont\setlength{\itemsep}{0mm}
 \bibitem{tcd} yastrebksv. \href{https://github.com/yastrebksv/TennisCourtDetector}{TennisCourtDetector}. 公開コード・重み、コード版 e5cd4f1（2026-09-18参照）.
 \bibitem{gs} B. Kerbl, G. Kopanas, T. Leimkühler, G. Drettakis. \href{https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}{3D Gaussian Splatting for Real-Time Radiance Field Rendering}. ACM TOG 42(4), 2023.
 \bibitem{dino} O. Siméoni et al. \href{https://arxiv.org/abs/2508.10104}{DINOv3}. arXiv:2508.10104, 2025.
 \bibitem{dpt} R. Ranftl, A. Bochkovskiy, V. Koltun. \href{https://openaccess.thecvf.com/content/ICCV2021/html/Ranftl_Vision_Transformers_for_Dense_Prediction_ICCV_2021_paper.html}{Vision Transformers for Dense Prediction}. ICCV, 2021.
 \bibitem{drift} A. Holynski, D. Geraghty, J.-M. Frahm, C. Sweeney, R. Szeliski. \href{https://arxiv.org/abs/2008.12295}{Reducing Drift in Structure From Motion Using Extended Features}. 3DV, pp. 51--60, 2020.
 \bibitem{scale_drift} H. Strasdat, J. M. M. Montiel, A. J. Davison. \href{https://www.roboticsproceedings.org/rss06/p10.html}{Scale Drift-Aware Large Scale Monocular SLAM}. RSS, 2010.
+\bibitem{prosac} O. Chum, J. Matas. \href{https://cmp.felk.cvut.cz/~matas/papers/chum-prosac-cvpr05.pdf}{Matching with PROSAC -- Progressive Sample Consensus}. CVPR, 2005.
 \end{thebibliography}
 \end{document}

@@ -15,6 +15,8 @@ from build_paper import source_digests
 from common import PAPER_PAGES, REPO, ROOT, sha256, sources, write_json
 from drift_evidence import BUNDLE as DRIFT_BUNDLE
 from drift_evidence import validate as validate_drift_geometry
+from homography_evidence import read_results as read_homographies
+from homography_evidence import table_text
 from make_drift_figure import drift_table
 from make_scene_figures import SELECTION, render_overlay, validate_projection
 from PIL import Image
@@ -327,7 +329,21 @@ def main() -> None:
                 "Overlay not reproducible from real render + camera",
             )
             scene_figures.append(path.name)
+    homographies = read_homographies()
+    require(
+        (ROOT / "tables/homography.tex").read_text() == table_text(homographies),
+        "Confidence homography table differs",
+    )
+    require(
+        "tables/homography.tex" in (ROOT / "report.tex").read_text(),
+        "Confidence homography table absent from paper",
+    )
     external = json.loads((ROOT / "evidence/external_figures.json").read_text())
+    require(
+        external["homography_evidence_sha256"]
+        == sha256(ROOT / "evidence/homography/results.json"),
+        "External figures use stale homography evidence",
+    )
     for name, digest in external["figures"].items():
         require(
             sha256(ROOT / "figures" / name) == digest,
@@ -366,6 +382,13 @@ def main() -> None:
         "build_receipt_verified": True,
         "alignment_method": method_checks,
         "sfm_temporal_ground_audit": drift_checks,
+        "confidence_homography": {
+            key: {
+                field: item[field]
+                for field in ("status", "inlier_count", "inlier_rms_px", "threshold_px")
+            }
+            for key, item in homographies["images"].items()
+        },
         "corpus_images_audited": 17256,
         "exact_matches": 0,
         "baseline_official_detections": counts,

@@ -51,6 +51,7 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
 - `inference/`: single-head predictorはmulti-head checkpointから対象headを明示選択します。
+- `geometry/confidence_homography.py`: KP座標・スコアから信頼度順PROSACとインライア再推定を行うAPI。推定H、採用点、残差、失敗理由を返します。呼び出し側が原画像pixelの再投影閾値を明示します。
 - `visualization/`: bundle-awareなprediction/rendering surface。
 
 ### KP heatmapのピークcardinality
