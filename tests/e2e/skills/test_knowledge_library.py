@@ -5,6 +5,7 @@ import importlib
 import os
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -266,12 +267,15 @@ def test_missing_library_or_orphan_papers_are_not_silently_ignored(tmp_path: Pat
     assert 'Traceback' not in result.stderr
 
 
-def test_base_comparison_preserves_identity_and_deleted_allocations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize('quoted_base', [True, False])
+def test_base_comparison_preserves_identity_and_deleted_allocations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, quoted_base: bool) -> None:
     monkeypatch.syspath_prepend(str(SCRIPTS))
     history = importlib.import_module('kg_history')
     base = tmp_path / 'knowledge'
     create(base, 'run-one')
     create(base, 'run-two')
+    first = base / 'nodes/new_topic/000001-run-one.md'
+    update_meta(first, recorded_at='2026-06-26' if quoted_base else date(2026, 6, 26))
     subprocess.run(['git', 'init', '-q', str(tmp_path)], check=True)
     subprocess.run(['git', '-C', str(tmp_path), 'add', '.'], check=True)
     subprocess.run(['git', '-C', str(tmp_path), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.org', 'commit', '-qm', 'base'], check=True)
@@ -279,6 +283,8 @@ def test_base_comparison_preserves_identity_and_deleted_allocations(tmp_path: Pa
     monkeypatch.setattr(history, 'nodes_dir', lambda: base / 'nodes')
     lib = importlib.import_module('kg_lib')
     directory = base / 'nodes/new_topic'
+    assert history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD') == []
+    update_meta(first, recorded_at=date(2026, 6, 26) if quoted_base else '2026-06-26')
     assert history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD') == []
     create(base, 'run-three')
     assert history.validate_history(lib.load_nodes(base / 'nodes'), 'HEAD') == []

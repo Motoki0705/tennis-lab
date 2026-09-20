@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { KnowledgeGraph, KnowledgeNode } from "@/lib/types";
+import { formatValue } from "@/lib/explorer";
 import { PROVIDER_COLOR } from "./nodeTypes";
 
 function KeyVals({ obj }: { obj?: Record<string, unknown> }) {
@@ -12,7 +13,7 @@ function KeyVals({ obj }: { obj?: Record<string, unknown> }) {
         {Object.entries(obj).map(([k, v]) => (
           <tr key={k}>
             <th>{k}</th>
-            <td>{String(v)}</td>
+            <td>{formatValue(v)}</td>
           </tr>
         ))}
       </tbody>
