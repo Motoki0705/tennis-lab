@@ -1,0 +1,73 @@
+schema_version = 1
+output_storage = "drive"
+name = "court_vit_ablation"
+description = "L4 Court DINOv3 S/S+/B/L size ablation; B resumes epoch 17, all finish at 20 epochs."
+accelerator = "gpu"
+timeout_seconds = 604800
+setup = ["base", "submodules"]
+protected_override_keys = ["run.artifact_store", "paths", "run", "data", "mixed", "model", "loss", "training"]
+outputs = ["outputs/colab/court_vit_ablation"]
+
+[command]
+argv = ["bash", "scripts/colab/train/court_vit_ablation.sh"]
+args = ["paths.output_root=outputs/colab", "run.output_dir=court_vit_ablation", "run.gpus=1"]
+
+[[inputs]]
+source = "data/court_training_archives.json"
+destination = "data/court_training_archives.json"
+writable = false
+
+[[inputs]]
+source = "data/court.tar.zst"
+destination = "data/court.tar.zst"
+writable = false
+
+[[inputs]]
+source = "data/synthetic_court_B00.tar.zst"
+destination = "data/synthetic_court_B00.tar.zst"
+writable = false
+
+[[inputs]]
+source = "data/synthetic_court_B01.tar.zst"
+destination = "data/synthetic_court_B01.tar.zst"
+writable = false
+
+[[inputs]]
+source = "data/synthetic_court_B02.tar.zst"
+destination = "data/synthetic_court_B02.tar.zst"
+writable = false
+
+[[inputs]]
+source = "data/synthetic_court_B03.tar.zst"
+destination = "data/synthetic_court_B03.tar.zst"
+writable = false
+
+[[inputs]]
+source = "data/court_detection.tar.zst"
+destination = "data/court_detection.tar.zst"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth"
+writable = false
+
+[[inputs]]
+source = "data/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth"
+destination = "third_party/dinov3/checkpoints/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth"
+writable = false
+
+[[inputs]]
+source = "data/court-detection-epoch=17.ckpt"
+destination = "ckpt/court_vit_ablation/b.ckpt"
+writable = false

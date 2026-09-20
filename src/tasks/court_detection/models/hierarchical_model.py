@@ -19,6 +19,7 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.models.decoder import build_court_decoder
 from src.tasks.court_detection.models.dense_head import build_court_dense_head
 from src.tasks.court_detection.models.encoders import build_court_encoder
+from src.tasks.court_detection.models.feature_adapter import CourtFeatureAdapter
 from src.tasks.court_detection.models.pose_head import (
     CourtModelOutput,
     CourtPose10DHead,
@@ -70,15 +71,22 @@ class CourtHierarchicalModel(nn.Module):
             config=config.encoder,
             in_channels=self.in_channels,
         )
+        downstream_channels = self.encoder.feature_channels
+        self._feature_adapter_enabled = config.feature_adapter_channels is not None
+        if config.feature_adapter_channels is not None:
+            self.feature_adapter = CourtFeatureAdapter(
+                self.encoder.feature_channels, config.feature_adapter_channels
+            )
+            downstream_channels = (config.feature_adapter_channels,) * 4
         self.decoder = build_court_decoder(
             config=config.decoder,
-            encoder_channels=self.encoder.feature_channels,
+            encoder_channels=downstream_channels,
         )
 
         transformer_config = config.transformer_encoder
         self._transformer_enabled = transformer_config.enabled
         if self._transformer_enabled:
-            deepest_dim = int(self.encoder.feature_channels[-1])
+            deepest_dim = int(downstream_channels[-1])
             if transformer_config.dim != deepest_dim:
                 raise ValueError(
                     "Transformer dimension must match the deepest encoder feature: "
@@ -256,6 +264,8 @@ class CourtHierarchicalModel(nn.Module):
         features: CourtFeatures,
         patch_valid_mask: Tensor | None,
     ) -> tuple[dict[CourtTargetKind, Tensor], TransformerEncoderOutput]:
+        if self._feature_adapter_enabled:
+            features = self.feature_adapter(features)
         deepest = features[-1]
         if deepest is None:
             raise ValueError(

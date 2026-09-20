@@ -552,8 +552,7 @@ class SyntheticCourtSourceConfig:
         court_scope = _string(mapping, "court_scope", path="data.source")
         if court_scope not in {"all_courts", "target_court"}:
             raise SemanticConfigurationError(
-                "data.source.court_scope must be 'all_courts' or "
-                "'target_court'."
+                "data.source.court_scope must be 'all_courts' or 'target_court'."
             )
         if schema == "v1" and court_scope == "target_court":
             raise SemanticConfigurationError(
@@ -741,8 +740,7 @@ class CourtDataConfig:
                 target.kind == "seg"
                 or target.kind == "semantic_line"
                 or (
-                    target.kind == "line"
-                    and target.target_schema == LINE_TARGET_SCHEMA
+                    target.kind == "line" and target.target_schema == LINE_TARGET_SCHEMA
                 )
                 for target in processing.targets
             )
@@ -1173,7 +1171,9 @@ class CourtDenseHeadConfig:
                 "model.dense_head.name must be 'linear' or 'residual'."
             )
         required = {"name", "normalization_groups", "kp", "seg", "line"}
-        expected = required | ({"semantic_line"} if "semantic_line" in mapping else set())
+        expected = required | (
+            {"semantic_line"} if "semantic_line" in mapping else set()
+        )
         _exact(mapping, expected, path=path)
         normalization_groups = _integer(mapping, "normalization_groups", path=path)
         if normalization_groups <= 0:
@@ -1209,6 +1209,7 @@ class CourtModelConfig:
     decoder: CourtDecoderConfig
     transformer_encoder: CourtTransformerEncoderConfig
     dense_head: CourtDenseHeadConfig
+    feature_adapter_channels: int | None = None
 
     @classmethod
     def from_mapping(cls, value: object, *, resolver: PathResolver) -> CourtModelConfig:
@@ -1221,6 +1222,8 @@ class CourtModelConfig:
             "decoder",
             "dense_head",
         }
+        if "feature_adapter" in mapping:
+            expected.add("feature_adapter")
         legacy_linear = set(mapping) == expected - {"dense_head"}
         if legacy_linear:
             warnings.warn(
@@ -1231,12 +1234,26 @@ class CourtModelConfig:
             )
         else:
             _exact(mapping, expected, path="model")
+        adapter_channels = None
+        if "feature_adapter" in mapping:
+            adapter = as_config_mapping(
+                mapping["feature_adapter"], path="model.feature_adapter"
+            )
+            _exact(adapter, {"output_channels"}, path="model.feature_adapter")
+            adapter_channels = _integer(
+                adapter, "output_channels", path="model.feature_adapter"
+            )
+            if adapter_channels <= 0:
+                raise SemanticConfigurationError(
+                    "model.feature_adapter.output_channels must be positive."
+                )
         name = _string(mapping, "name", path="model")
         if name != "court_hierarchical":
             raise SemanticConfigurationError("model.name must be 'court_hierarchical'.")
         result = cls(
             name="court_hierarchical",
             in_channels=_integer(mapping, "in_channels", path="model"),
+            feature_adapter_channels=adapter_channels,
             encoder=CourtEncoderConfig.from_mapping(
                 require_config_mapping(mapping, "encoder", path="model"),
                 resolver=resolver,
@@ -1259,6 +1276,14 @@ class CourtModelConfig:
                 )
             ),
         )
+        if adapter_channels is not None and (
+            result.encoder.name != "dinov3"
+            or not result.transformer_encoder.enabled
+            or adapter_channels != result.transformer_encoder.dim
+        ):
+            raise SemanticConfigurationError(
+                "Feature adapter requires DINOv3 and an enabled Transformer with matching output_channels/dim."
+            )
         if result.in_channels <= 0:
             raise SemanticConfigurationError("model.in_channels must be positive.")
         if result.decoder.name == "dpt" and result.encoder.name != "dinov3":
@@ -1421,7 +1446,9 @@ class CourtLossConfig:
     def from_mapping(cls, value: object) -> CourtLossConfig:
         mapping = as_config_mapping(value, path="loss")
         required = {"seg", "kp", "line", "pose", "consistency"}
-        expected = required | ({"semantic_line"} if "semantic_line" in mapping else set())
+        expected = required | (
+            {"semantic_line"} if "semantic_line" in mapping else set()
+        )
         _exact(mapping, expected, path="loss")
         seg = require_config_mapping(mapping, "seg", path="loss")
         kp = require_config_mapping(mapping, "kp", path="loss")
@@ -1859,9 +1886,14 @@ def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
             "Pose supervision rejects horizontal flip, random-resized crop, unequal "
             "axes, affine, shear, and perspective transforms."
         )
-    if len(config.train_scales) != 1 or config.train_scales[0] != config.val_short_side:
+    # ``train_scales`` are isotropic long-side sizes: the sampled scale is applied
+    # to both axes, so a multi-scale schedule preserves the square-pixel /
+    # fx == fy contract that pose supervision requires.  The pose target rescales
+    # the intrinsics with the same source-to-output matrix, which keeps the focal
+    # target consistent with whichever long-side size a sample drew.
+    if any(scale <= 0 for scale in config.train_scales):
         raise SemanticConfigurationError(
-            "Pose-safe train_scales must contain exactly the validation long-side size."
+            "Pose-safe train_scales must be positive long-side sizes."
         )
 
 

@@ -47,6 +47,7 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 ## Model and runtime
 
+- `models/feature_adapter.py`: 明示的な`model.feature_adapter.output_channels`で4段のDINO特徴を1×1 Convにより共通幅へ変換。省略時は追加パラメータなし。
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
