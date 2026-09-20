@@ -180,27 +180,6 @@ export function jointSide(name) {
   return "core";
 }
 
-/**
- * Unit heading vector for a stored root rotation.
- *
- * PLCS stores the root heading as a ``(cos, sin)`` pair in the court XY plane,
- * so the vector is returned (normalised) as ``[cos, sin, 0]``.  A scalar yaw in
- * radians is also accepted for convenience.
- */
-export function headingVector(rotation) {
-  let x = 1;
-  let y = 0;
-  if (typeof rotation === "number") {
-    x = Math.cos(rotation);
-    y = Math.sin(rotation);
-  } else if (rotation && rotation.length >= 2) {
-    x = Number(rotation[0]);
-    y = Number(rotation[1]);
-  }
-  const size = Math.hypot(x, y) || 1;
-  return [x / size, y / size, 0];
-}
-
 function pickPayload(payload) {
   if (payload instanceof Float32Array) {
     return payload;

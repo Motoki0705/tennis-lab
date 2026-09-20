@@ -22,6 +22,12 @@ joint confidence、frame validityへ変換します。COCO-17にはpelvisがな�
 並進・回転を17点から再推定しません。ACCAD adapterはSMPL-Hのroot信号を、GVHMR
 adapterはglobal SMPL-Xの`transl`/`global_orient`をそれぞれ保持します。
 
+`rotation=(cos θ, sin θ)`は、`motion/geometry.py`の`root_yaw()`が求める
+root-local `+X`軸の方位を符号化したyawです。ACCAD/GVHMRのSMPL身体前方は
+local `+Z`で、Z-upかつyawを除いたcanonical poseでは基準前方が`-Y`になります。
+可視化の矢印はこの基準前方を回転した`(sin θ, -cos θ)`を使います。
+保存されたrotation pair自体をXY方向として描くと90度横を向きます。
+
 保存形式はpickleを使わないversioned `*.motion.npz` です。generatorの
 `motion_sources` entryは`format`、`paths`、`weight`を明示し、現在は
 `amass_smplh_v1`と`coco17_motion_v1`を登録しています。scene生成側はsource固有の
