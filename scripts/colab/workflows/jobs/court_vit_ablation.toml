@@ -68,6 +68,6 @@ destination = "third_party/dinov3/checkpoints/dinov3_vitl16_pretrain_lvd1689m-8a
 writable = false
 
 [[inputs]]
-source = "data/court-detection-epoch=17.ckpt"
+source = "data/court-detection-multiscale-depth3-epoch17-b863df1f.ckpt"
 destination = "ckpt/court_vit_ablation/b.ckpt"
 writable = false
