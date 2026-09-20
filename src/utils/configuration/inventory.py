@@ -137,6 +137,7 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+    "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
@@ -196,6 +197,9 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+    "src.synthetic_data_generation.scripts.run_appearance_variant": (
+        "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary"
+    ),
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": (
         "src.synthetic_data_generation.visualization.publication.configuration."
         "validate_publication_boundary"
@@ -268,6 +272,7 @@ def _runtime_boundary(
     module: str,
     *,
     callable_name: str = "main",
+    path_authority: str = _PATH_AUTHORITY,
 ) -> RuntimeBoundary:
     validator_key = _BOUNDARY_VALIDATOR_KEYS.get(module)
     validator_callable = _BOUNDARY_VALIDATOR_CALLABLES.get(module)
@@ -280,7 +285,7 @@ def _runtime_boundary(
         validator_key=validator_key,
         validator_callable=validator_callable,
         configuration_authority=validator_callable,
-        path_authority=_PATH_AUTHORITY,
+        path_authority=path_authority,
         validation_target="validated typed runtime contract before side effects",
         required_policy="present after composition; missing values are errors",
         optional_policy="declared optional and absent without value synthesis",
@@ -369,6 +374,11 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _runtime_boundary(
+        "synthetic_data_generation",
+        "src.synthetic_data_generation.scripts.run_appearance_variant",
+        path_authority="src.synthetic_data_generation.appearance.configuration.require_absolute_path",
+    ),
     _non_hydra_boundary(
         "src.tasks.base.scripts.inference_worker",
         "main",

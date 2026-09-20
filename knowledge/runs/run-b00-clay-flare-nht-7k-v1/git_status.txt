@@ -1,0 +1,16 @@
+ M src/synthetic_data_generation/README.md
+ M third_party/nht
+?? knowledge/nodes/group-b00-clay-sunburst-flare-high-v1.md
+?? knowledge/nodes/run-b00-clay-flare-50-v1.md
+?? knowledge/nodes/run-b00-clay-flare-high-v1.md
+?? knowledge/nodes/run-b00-clay-flare-nht-7k-interrupted-v1.md
+?? knowledge/nodes/run-b00-clay-sunburst-high-v1.md
+?? knowledge/runs/run-b00-clay-flare-50-v1/
+?? knowledge/runs/run-b00-clay-flare-high-v1/
+?? knowledge/runs/run-b00-clay-flare-nht-7k-interrupted-v1/
+?? knowledge/runs/run-b00-clay-sunburst-high-v1/
+?? src/synthetic_data_generation/appearance/
+?? src/synthetic_data_generation/configs/run_appearance_variant.yaml
+?? src/synthetic_data_generation/scripts/run_appearance_variant.py
+?? tests/integration/synthetic_data_generation/test_appearance_import.py
+?? tests/unit/synthetic_data_generation/appearance/

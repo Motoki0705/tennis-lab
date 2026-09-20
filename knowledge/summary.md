@@ -1,4 +1,4 @@
-<!-- knowledge-review: 68071745a9d3fe1173e62a4fd2ec0ef1449d91ff6cecc1aba0240cba6b11f1ee on 2026-09-20 -->
+<!-- knowledge-review: 74c37b0f49b7bceba2ca46a3c64954da8510ece635fe85bdac3ed2715e10f679 on 2026-09-20 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-20（構造移行・9月追加ノードの確認）
@@ -19,6 +19,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 - **Court detection**: [run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1](nodes/court_detection/000026-run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1.md)では親に対してKP平均誤差とline Diceが改善する一方、seg mIoUとpose再投影が悪化した。head構造とline幅を同時変更しており、単一要因の効果は分離できない。次は同一line schemaでheadだけを比較する。
 - **PLCS / motion source**: [run-plcs-accad-gvhmr-meiji-1000-v1-train](nodes/plcs/000102-run-plcs-accad-gvhmr-meiji-1000-v1-train.md)は200 epochの学習と混合testを完走したが、向きとposeに改善余地がある。生成教師に対する評価で、実動画の独立3D正解への精度でもGVHMR追加の因果効果でもない。次は固定val/testでACCAD-only対混合train、未見収録holdoutを比較する。
+- **Synthetic data / B00外観変換**: [50/100枚・7k/30k比較](nodes/synthetic_data_generation/000021-group-b00-clay-flare-images-steps-v1.md)では、共通評価8視点で100枚30kが今回の実験基準となった。50枚の学習を延ばすだけではSSIM低下と白線の薄れがあり、100枚版にも近いネットのぼけ・線の欠けが残る。[ホスト再起動による中断](nodes/synthetic_data_generation/000016-run-b00-clay-flare-nht-7k-interrupted-v1.md)は失敗として保存した。生成教師に対する単一シーン・単一seedの診断であり、実世界の幾何精度やproduction採用は未検証。次は元画像100枚の同条件対照で変換由来の誤差を分離し、編集範囲と視点間整合性を検討する。
 - **統合・生成・UI検証**: 新しいtask区分によりデータ生成・smoke・統合診断を辿れる。これらの完走を推定精度の改善と混同しない。最新の個別条件・残課題はノード本文を正本とする。
 
 以下のproduction/deploy表は**2026-09-04時点の調査記録**を保持している。今回の構造移行ではcheckpointの再評価・昇格をしておらず、9月20日の現行配備状態を保証する表には更新しない。新規結果を以前の異なるsplitと直接ランキングしない。

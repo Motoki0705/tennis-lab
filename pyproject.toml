@@ -277,6 +277,8 @@ disallow_untyped_decorators = false
 [[tool.mypy.overrides]]
 module = [
     "src.synthetic_data_generation.alignment.manual.models",
+    "src.synthetic_data_generation.appearance.contracts",
+    "src.synthetic_data_generation.appearance.configuration",
     "src.synthetic_data_generation.alignment.manual.web",
     "src.synthetic_data_generation.dataset.court.review.web",
     "src.tasks.base.visualization.review.web",
