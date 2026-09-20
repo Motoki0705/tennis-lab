@@ -127,6 +127,14 @@ bash scripts/colab/run.sh run slcs --gpu A100 --dry-run -- \
 そのjobが所有しないmodel/training parameterだけです。別Hydra configを固定して実行
 したい場合は、そのconfig、入力、出力を固定した専用job TOMLを追加します。
 
+同じDrive directory内の複数のread-only file入力は、一括inventoryと選択fileだけの
+並列copyでstageします。入力ごとのSHA-256 manifestは従来どおり保存し、同名候補の
+重複・欠落・サイズ不一致を拒否します。directory入力やwritable入力は個別copyです。
+
+Colab CLIのruntime keep-aliveはローカルhostのprocessが担当します。host停止・再起動後の
+runtime維持は保証されません。学習checkpointをDriveへ保存し、VMが失われた場合は
+新しいrunから完全状態を再開してください。
+
 ## 学習出力と進捗確認
 
 学習job TOMLは `output_storage = "drive"` を必ず指定します。rclone modeではrunnerが

@@ -1347,6 +1347,102 @@ def _copy_rclone_input(
         )
 
 
+def _batch_stage_rclone_files(
+    request: dict[str, Any], repo: Path, config: Path, *, reset_existing: bool
+) -> bool:
+    """Stage sibling, immutable files with one inventory and one filtered copy."""
+    mappings = request["job"]["inputs"]
+    sources = [
+        PurePosixPath(_strict_relative(item["source"], "input source"))
+        for item in mappings
+    ]
+    if (
+        len(sources) < 2
+        or any(item["writable"] for item in mappings)
+        or len({path.parent for path in sources}) != 1
+        or sources[0].parent == PurePosixPath(".")
+        or len({path.name for path in sources}) != len(sources)
+        or any("\n" in path.name or "\r" in path.name for path in sources)
+    ):
+        return False
+    parent = _rclone_path(request, sources[0].parent.as_posix())
+    inventory = json.loads(
+        _run(
+            ["rclone", "--config", str(config), "lsjson", parent],
+            timeout=300,
+            capture=True,
+        ).stdout
+    )
+    if not isinstance(inventory, list):
+        raise RemoteWorkflowError("rclone sibling inventory must be a list")
+    selected = {}
+    wanted = {path.name for path in sources}
+    for item in inventory:
+        if not isinstance(item, dict) or item.get("Path") not in wanted:
+            continue
+        name = item["Path"]
+        if name in selected:
+            raise RemoteWorkflowError(f"Ambiguous duplicate Drive input: {name}")
+        if not isinstance(item.get("IsDir"), bool):
+            raise RemoteWorkflowError(f"Invalid Drive input type: {name}")
+        selected[name] = item
+    if set(selected) != wanted:
+        raise RemoteWorkflowError(
+            f"Missing Drive inputs: {sorted(wanted - set(selected))}"
+        )
+    if any(item["IsDir"] for item in selected.values()):
+        return False  # Directory inputs retain the normal recursive-copy contract.
+    destinations = [
+        _child(repo, item["destination"], "input destination") for item in mappings
+    ]
+    for destination in destinations:
+        if (destination.exists() or destination.is_symlink()) and not reset_existing:
+            raise RemoteWorkflowError(
+                f"input destination already exists: {destination}"
+            )
+    with tempfile.TemporaryDirectory(prefix=".colab-inputs-", dir=repo) as directory:
+        temporary = Path(directory)
+        names = temporary / "files.txt"
+        names.write_text(
+            "\n".join(path.name for path in sources) + "\n", encoding="utf-8"
+        )
+        incoming = temporary / "incoming"
+        print(
+            f"[tennis-colab] batch staging {len(sources)} immutable input files",
+            flush=True,
+        )
+        _run(
+            [
+                "rclone",
+                "--config",
+                str(config),
+                "copy",
+                parent,
+                str(incoming),
+                "--files-from-raw",
+                str(names),
+                "--transfers",
+                "4",
+            ],
+            timeout=3600,
+        )
+        for source, destination in zip(sources, destinations, strict=True):
+            staged = incoming / source.name
+            if not staged.is_file() or staged.is_symlink():
+                raise RemoteWorkflowError(
+                    f"Batch input is not a regular file: {source}"
+                )
+            if staged.stat().st_size != selected[source.name].get("Size"):
+                raise RemoteWorkflowError(f"Batch input size mismatch: {source}")
+            if destination.is_dir() and not destination.is_symlink():
+                shutil.rmtree(destination)
+            elif destination.exists() or destination.is_symlink():
+                destination.unlink()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(staged, destination)
+    return True
+
+
 def _stage_inputs(
     request: dict[str, Any],
     repo: Path,
@@ -1356,13 +1452,20 @@ def _stage_inputs(
 ) -> list[dict[str, Any]]:
     manifest: list[dict[str, Any]] = []
     drive = request["drive"]
+    batched = (
+        drive["mode"] == "rclone"
+        and rclone_config is not None
+        and _batch_stage_rclone_files(
+            request, repo, rclone_config, reset_existing=reset_existing
+        )
+    )
     for index, mapping in enumerate(request["job"]["inputs"]):
         source_relative = _strict_relative(mapping["source"], f"inputs[{index}].source")
         destination_relative = _strict_relative(
             mapping["destination"], f"inputs[{index}].destination"
         )
         destination = _child(repo, destination_relative, f"inputs[{index}].destination")
-        if destination.exists() or destination.is_symlink():
+        if not batched and (destination.exists() or destination.is_symlink()):
             if not reset_existing:
                 raise RemoteWorkflowError(
                     f"input destination already exists: {destination}"
@@ -1371,7 +1474,9 @@ def _stage_inputs(
                 shutil.rmtree(destination)
             else:
                 destination.unlink()
-        if drive["mode"] == "mount":
+        if batched:
+            pass
+        elif drive["mode"] == "mount":
             drive_root = _mount_drive_root(request)
             source = _child(drive_root, source_relative, f"inputs[{index}].source")
             _copy_mount_input(source, destination)
@@ -1444,9 +1549,10 @@ def _run_monitored_job(
             else arg
             for arg in argv
         ]
-    if request["job"].get("output_storage", "local") == "drive" and request[
-        "drive"
-    ]["mode"] == "rclone":
+    if (
+        request["job"].get("output_storage", "local") == "drive"
+        and request["drive"]["mode"] == "rclone"
+    ):
         drive = request["drive"]
         remote_root = PurePosixPath(
             _strict_relative(drive["root"], "drive.root"),
