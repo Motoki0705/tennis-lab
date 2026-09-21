@@ -36,10 +36,26 @@ PREPARE_SCHEMA = StrictConfigSchema(
                 name="source",
                 fields={
                     "url": ConfigField.of(str, type(None)),
+                    "urls": ConfigField.sequence(ConfigField.of(str)),
                     "local_video": ConfigField.of(str, type(None)),
                     "format_selector": ConfigField.of(str),
                     "js_runtimes": ConfigField.of(str, type(None)),
                     "remote_components": ConfigField.of(str, type(None)),
+                },
+            )
+        ),
+        "batch": ConfigField.mapping(
+            StrictConfigSchema(
+                name="batch",
+                fields={"download_workers": ConfigField.of(int)},
+            )
+        ),
+        "sampling": ConfigField.mapping(
+            StrictConfigSchema(
+                name="sampling",
+                fields={
+                    "max_clips_per_video": ConfigField.of(int, type(None)),
+                    "strategy": ConfigField.of(str),
                 },
             )
         ),
@@ -105,6 +121,7 @@ def youtube_id(url: str) -> str:
 @dataclass(frozen=True)
 class PrepareConfig:
     url: str | None
+    urls: tuple[str, ...]
     local_video: Path | None
     format_selector: str
     js_runtimes: str | None
@@ -116,6 +133,9 @@ class PrepareConfig:
     crf: int
     preset: str
     policies: Policies
+    download_workers: int
+    max_clips_per_video: int | None
+    sampling_strategy: str
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> PrepareConfig:
@@ -129,11 +149,17 @@ class PrepareConfig:
         resolver = PathResolver(roots)
         source = cast(dict[str, object], validated["source"])
         url = cast(str | None, source["url"])
+        urls = cast(tuple[str, ...], source["urls"])
         local = cast(str | None, source["local_video"])
-        if (url is None) == (local is None):
-            raise ValueError("specify exactly one of source.url and source.local_video")
+        if sum((url is not None, local is not None, bool(urls))) != 1:
+            raise ValueError(
+                "specify exactly one of source.url, source.urls and source.local_video"
+            )
         if url is not None:
             youtube_id(url)
+        video_ids = [youtube_id(item) for item in urls]
+        if len(video_ids) != len(set(video_ids)):
+            raise ValueError("source.urls contains duplicate YouTube video IDs")
         clip = cast(dict[str, object], validated["clip"])
         duration = float(cast(float, clip["duration_seconds"]))
         context = float(cast(float, clip["context_seconds"]))
@@ -164,8 +190,20 @@ class PrepareConfig:
         selector = cast(str, source["format_selector"])
         if not selector.strip():
             raise ValueError("source.format_selector cannot be empty")
+        batch = cast(dict[str, object], validated["batch"])
+        download_workers = cast(int, batch["download_workers"])
+        if download_workers < 1:
+            raise ValueError("batch.download_workers must be at least 1")
+        sampling = cast(dict[str, object], validated["sampling"])
+        max_clips = cast(int | None, sampling["max_clips_per_video"])
+        if max_clips is not None and max_clips < 1:
+            raise ValueError("sampling.max_clips_per_video must be positive or null")
+        sampling_strategy = cast(str, sampling["strategy"])
+        if sampling_strategy != "uniform_midpoints":
+            raise ValueError("sampling.strategy must be uniform_midpoints")
         return cls(
             url=url,
+            urls=urls,
             local_video=resolver.resolve(PathRole.DATA, local)
             if local is not None
             else None,
@@ -183,6 +221,9 @@ class PrepareConfig:
             policies=Policies.model_validate(
                 dict(cast(dict[str, object], validated["annotation"]))
             ),
+            download_workers=download_workers,
+            max_clips_per_video=max_clips,
+            sampling_strategy=sampling_strategy,
         )
 
 

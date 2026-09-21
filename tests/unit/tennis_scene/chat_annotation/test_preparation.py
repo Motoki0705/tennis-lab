@@ -211,6 +211,7 @@ def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
         tmp_path / "source.mp4", [i * 3000 for i in range(20)], Fraction(30), noise=True
     )
     cfg.clip.context_seconds, cfg.clip.max_bytes = 0, 14000
+    cfg.sampling.max_clips_per_video = None
     config = PrepareConfig.from_config(cfg)
     root = prepare(config)
     summary = read_json(root / "prepared.json")
@@ -260,6 +261,61 @@ def test_url_download_reuses_existing_helper_and_preserves_provenance(
     assert manifest["source"]["title"] == "Tennis fixture"
 
 
+def test_sample_cap_also_limits_final_files_after_capacity_shrinking(
+    tmp_path: Path, cfg: DictConfig
+) -> None:
+    write_video(
+        tmp_path / "source.mp4",
+        [i * 3000 for i in range(120)],
+        Fraction(30),
+        noise=True,
+    )
+    cfg.clip.duration_seconds = 0.3
+    cfg.clip.context_seconds = 0
+    cfg.clip.max_bytes = 14000
+    cfg.sampling.max_clips_per_video = 5
+    config = PrepareConfig.from_config(cfg)
+    root = prepare(config)
+    summary = read_json(root / "prepared.json")
+    assert summary["coverage_mode"] == "sampled"
+    assert summary["candidate_clip_count"] > 5
+    assert len(summary["clips"]) == len(summary["requested_target_ranges"]) == 5
+    assert summary["selected_frame_count"] < 120
+    manifests = [
+        ClipManifest.model_validate(
+            read_json(root / "clips" / name / "clip_manifest.json")
+        )
+        for name in summary["clips"]
+    ]
+    assert all(m.bytes <= 14000 for m in manifests)
+    assert all(
+        a.target_range.stop <= b.target_range.start
+        for a, b in zip(manifests, manifests[1:], strict=False)
+    )
+    for requested, manifest in zip(
+        summary["requested_target_ranges"], manifests, strict=True
+    ):
+        assert (
+            requested["start"]
+            <= manifest.target_range.start
+            < manifest.target_range.stop
+            <= requested["stop"]
+        )
+        assert (
+            manifest.target_range.stop - manifest.target_range.start
+            < requested["stop"] - requested["start"]
+        )
+    with patch(
+        "src.tennis_scene.chat_annotation.preparation.probe_video",
+        side_effect=AssertionError("completed sample must be reused"),
+    ):
+        assert prepare(config) == root
+    summary["clips"].pop()
+    write_json(root / "prepared.json", summary)
+    with pytest.raises(ValueError, match="sampling slot"):
+        prepare(config)
+
+
 @pytest.mark.parametrize(
     "key,value",
     [
@@ -288,8 +344,7 @@ def test_explicit_url_id_and_configuration_authority(cfg: DictConfig) -> None:
     contract = next(
         item
         for item in BOUNDARY_CONTRACTS
-        if item.boundary_id
-        == "src.tennis_scene.chat_annotation.scripts.prepare:main"
+        if item.boundary_id == "src.tennis_scene.chat_annotation.scripts.prepare:main"
     )
     assert (
         contract.validator_callable

@@ -14,11 +14,17 @@ paths:
 
 source:
   url: null
+  urls: [] # Ordered batch input; mutually exclusive with url and local_video.
   local_video: null # Optional offline input relative to paths.data_root; mutually exclusive with URL.
   # Video-only MP4/H.264 SDR, up to 1080p; do not limit the source FPS or fall back to another format.
   format_selector: bv[ext=mp4][vcodec^=avc1][dynamic_range=SDR][height<=1080]
   js_runtimes: null
   remote_components: null
+batch:
+  download_workers: 2
+sampling:
+  max_clips_per_video: 5 # null restores exhaustive sequential coverage.
+  strategy: uniform_midpoints
 output_directory: chat_annotation
 clip:
   duration_seconds: 15
