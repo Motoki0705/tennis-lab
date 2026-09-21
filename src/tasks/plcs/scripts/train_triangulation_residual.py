@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
-from src.tasks.base.triangulation_residual.configuration import validate_config
-from src.tasks.base.triangulation_residual.training import ResidualTrainingRunner
+from src.tasks.plcs.configuration import validate_residual_config
+from src.tasks.plcs.training.runner import PLCSTrainingRunner
 from src.utils.hydra import hydra_main
 
 
@@ -17,8 +17,8 @@ from src.utils.hydra import hydra_main
 )
 def main(config: DictConfig) -> None:
     """Validate the PLCS contract and execute the shared training runner."""
-    validate_config(config, expected_task="plcs")
-    ResidualTrainingRunner().run(config)
+    validate_residual_config(config)
+    PLCSTrainingRunner().run(config)
 
 
 if __name__ == "__main__":

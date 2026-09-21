@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from src.tasks.base.configuration import (
+    TrainingRuntimeConfig,
     as_config_mapping,
     require_config_mapping,
     require_config_value,
@@ -376,3 +377,102 @@ class PLCSGenerationComponents:
         _validate_camera(root)
         _validate_motion_sources(root, resolver=paths.resolver)
         return cls(mode=mode, paths=paths)
+
+
+@dataclass(frozen=True)
+class ResidualModelConfig:
+    name: str
+    hidden_dim: int
+    num_layers: int
+    num_heads: int
+    ffn_dim: int
+    ffn_type: str
+    dropout: float
+    rope_base: float
+
+
+@dataclass(frozen=True)
+class ResidualDataConfig:
+    scene_dir: str
+    batch_size: int
+    num_workers: int
+    pin_memory: bool
+    sequence_length: int
+    target_fps: float
+    min_views: int
+    max_views: int
+    train_limit: int
+    val_limit: int
+    test_limit: int
+    cache_scenes: int
+
+
+@dataclass(frozen=True)
+class ResidualInitializerConfig:
+    min_score: float
+    refinement_steps: int
+
+
+@dataclass(frozen=True)
+class ResidualAugmentationConfig:
+    observation_sigma_px: float
+    temporal_sigma_px: float
+    view_bias_px: float
+    confidence_noise: float
+    outlier_probability: float
+    outlier_sigma_px: float
+    dropout_probability: float
+    burst_probability: float
+    burst_max_frames: int
+    time_shift_probability: float
+    time_shift_max_frames: int
+    radial_std: float
+    focal_scale_min: float
+    focal_scale_max: float
+    clean_probability: float
+    hard_probability: float
+    camera_preset: str
+    evaluation_views: int
+    true_camera_position_jitter_m: float
+    true_camera_height_jitter_m: float
+    calibration_min_points: int
+    court_noise_px: float
+    court_bias_px: float
+    court_dropout_probability: float
+    court_outlier_probability: float
+    court_outlier_sigma_px: float
+    persistent_rate_per_view_second: float
+    persistent_min_seconds: float
+    persistent_max_seconds: float
+    persistent_offset_scale: float
+    persistent_high_confidence_probability: float
+    error_mode: str
+
+
+@dataclass(frozen=True)
+class ResidualLossConfig:
+    root_weight: float
+    relative_weight: float
+    world_weight: float
+    reprojection_weight: float
+    velocity_weight: float
+    bone_weight: float
+    huber_delta_m: float
+
+
+@dataclass(frozen=True)
+class ResidualConfig:
+    model: ResidualModelConfig
+    data: ResidualDataConfig
+    initializer: ResidualInitializerConfig
+    augmentation: ResidualAugmentationConfig
+    loss: ResidualLossConfig
+    runtime: TrainingRuntimeConfig
+
+    @property
+    def joints(self) -> int:
+        return 17
+
+    @property
+    def root_indices(self) -> tuple[int, ...]:
+        return (11, 12)
