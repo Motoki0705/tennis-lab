@@ -52,6 +52,7 @@ repro:
   commit: 4671f9bad0873a23054a3311009b9ecf4a6bbc88
   command: PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
     .venv/bin/python knowledge/runs/run-residual-v2-conditioning-cpu/conditioning_probe.py
+  script_commit: 98282c0f
 ---
 
 ## 考察 / Findings
@@ -60,7 +61,7 @@ repro:
 再投影差分は通常特徴より小さく、MLP埋め込み内でその影響がBF16の丸めに埋もれる場合が多い。固定asinh変換はFP32との差分方向をよく保つ。学習停滞の原因を確定した診断ではなく、入力conditioningを独立に比較する根拠とする。
 
 ### 条件と指標
-完了済smoke checkpointのmodel.embedだけをCPUで計算し、差分blockあり/zeroの出力差を比較した。各taskでnormal calibration 2、normal observation 2、hard combined 4の8例をcorruption family/severityだけで選び、GT値は選択・正規化に使っていない。reported metricsはscoutの測定値を丸めて保存したもの。lost fractionはFP32の埋め込み差が非zeroの要素中、BF16の差がexact zeroだった率。各sampleで計算後8例を単純平均する。cosineも各sample内中央値の8例平均である。再現scriptは返却された計測式を保存した。
+完了済smoke checkpointのmodel.embedだけをCPUで計算し、差分blockあり/zeroの出力差を比較した。各taskでnormal calibration 2、normal observation 2、hard combined 4の8例をcorruption family/severityだけで選び、GT値は選択・正規化に使っていない。reported metricsはscoutの測定値を丸めて保存したもの。lost fractionはFP32の埋め込み差が非zeroの要素中、BF16の差がexact zeroだった率。各sampleで計算後8例を単純平均する。cosineも各sample内中央値の8例平均である。再現scriptは返却された計測式をknowledge commit 98282c0fに保存した。再現時はscriptを別に保持し、数値実装が4671f9baのcheckoutをPYTHONPATHに指定する。
 
 入力residualそのもののBF16 underflowは0%。O(1)のcamera/maskを含むlinear出力上の小差の丸めが問題候補である。rawのFP32差/full embedノルムはPLCS約0.211%、BLCS約0.154%、asinh後は約14.6%、7.92%だった。
 

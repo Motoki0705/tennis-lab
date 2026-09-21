@@ -66,6 +66,8 @@ fitは点のcoverage・正depth・地上camera・焦点範囲を検査する。c
 
 モデル構造と入力の数値定義はv1と同じにして、`v2.loss_mode=legacy`と`balanced_regret`を同一入力で比較する。後者はsample内平均の後、存在するclean/通常/hard群を均等に平均する。root/relative/worldは3D距離のHuber、BLCSのroot/world重複は除き、PLCSのworld結合項は補助とする。true-camera再投影・GT速度・GT骨長は維持し、`relu(補正後3D誤差−初期3D誤差−許容値)`を追加する。GTとseverityは損失・診断だけに使い、推論gateや入力正規化には使わない。
 
+実験recipeの既定はvalidation比較に基づき、PLCSは`legacy`、BLCSは`balanced_regret`とする。いずれも入力encodingは`raw`。比較根拠と単一seedの制限は[実験群](../../../../knowledge/nodes/plcs/000111-group-geometric-residual-v2.md)を参照。production checkpointの昇格を意味しない。
+
 `diagnostics.py`は平均・中央値・p95、point/sample改善率、初期誤差bin、誤差成分別、イベント中/外、clean raw-valid補正量、最大補正1%の改善寄与を出す。validation各epochを保存し、少数の大誤差改善だけで全体平均が下がるケースを検出する。損失変更が多数例の改善を保証するとは扱わず、paired runで検証する。
 
 ## 学習・推論
@@ -78,7 +80,7 @@ BaseLightningModuleのoptimizer/repro保存、BaseTrainingRunnerのcheckpoint/qu
 # GPU実行は共有training queueから。worktreeではmainのdata/output rootsを明示。
 .venv/bin/python -m src.tasks.plcs.scripts.train_triangulation_residual paths.data_root=/absolute/repo/data
 .venv/bin/python -m src.tasks.blcs.scripts.train_triangulation_residual paths.data_root=/absolute/repo/data
-# v2。旧損失の比較runは末尾へ v2.loss_mode=legacy を付ける。
+# v2。比較時は v2.loss_mode=legacy または balanced_regret を明示。
 .venv/bin/python -m src.tasks.plcs.scripts.train_triangulation_residual \
   --config-name train_triangulation_residual_v2 paths.data_root=/absolute/repo/data
 .venv/bin/python -m src.tasks.blcs.scripts.train_triangulation_residual \
