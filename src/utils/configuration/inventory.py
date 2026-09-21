@@ -137,6 +137,7 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+    "src.tennis_scene.chat_annotation.prepare": "tennis_scene.chat_annotation.prepare",
     "src.tasks.blcs.scripts.evaluate_real": "blcs.evaluate_real",
     "src.tennis_scene.scripts.import_broadcast_ball": "tennis_scene.import_broadcast_ball",
     "src.tennis_scene.scripts.prepare_blcs_real_dataset": "tennis_scene.prepare_blcs_real_dataset",
@@ -203,6 +204,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+    "src.tennis_scene.chat_annotation.prepare": "src.tennis_scene.chat_annotation.configuration.validate_prepare_config",
     "src.tasks.blcs.scripts.evaluate_real": "src.tasks.blcs.evaluation.configuration.validate_real_evaluation",
     "src.tennis_scene.scripts.import_broadcast_ball": "src.tennis_scene.dataset_pipeline.preparation.validate_broadcast_import_config",
     "src.tennis_scene.scripts.prepare_blcs_real_dataset": "src.tennis_scene.dataset_pipeline.preparation.validate_blcs_preparation_config",
@@ -312,6 +314,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = (
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tennis_scene.chat_annotation.runtime.cli": (
+        "tennis_scene.chat_annotation.tools",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.scripts.build_real_rgb": (
         "tennis_scene.build_real_rgb",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -417,6 +423,8 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary("src.tennis_scene.chat_annotation.runtime.cli", "main", domain="tennis_scene"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.chat_annotation.prepare"),
     _non_hydra_boundary(
         "src.tasks.court_detection.scripts.audit_hybrid_inference",
         "main",
