@@ -1,4 +1,4 @@
-"""Hydra CLI: python -m src.tennis_scene.chat_annotation.prepare source.url=..."""
+"""Hydra CLI: python -m src.tennis_scene.chat_annotation.scripts.prepare."""
 
 from omegaconf import DictConfig
 
@@ -14,13 +14,13 @@ register_boundary_validator(
 
 
 @hydra_main(  # type: ignore[untyped-decorator]
-    config_path="configs",
+    config_path="../configs",
     config_name="prepare",
     version_base="1.3",
     validation_boundary="tennis_scene.chat_annotation.prepare",
 )
 def main(cfg: DictConfig) -> None:
-    from .preparation import prepare
+    from src.tennis_scene.chat_annotation.preparation import prepare
 
     destination = prepare(PrepareConfig.from_config(cfg))
     print(f"Prepared: {destination}")

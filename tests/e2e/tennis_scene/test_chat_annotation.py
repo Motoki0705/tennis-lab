@@ -37,7 +37,7 @@ def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
         [
             sys.executable,
             "-m",
-            "src.tennis_scene.chat_annotation.prepare",
+            "src.tennis_scene.chat_annotation.scripts.prepare",
             f"paths.data_root={tmp_path}",
             f"paths.output_root={tmp_path / 'output'}",
             "source.local_video=fixture.mp4",
