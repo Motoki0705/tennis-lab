@@ -15,8 +15,8 @@ paths:
 source:
   url: null
   local_video: null # Optional offline input relative to paths.data_root; mutually exclusive with URL.
-  # Annotation output is 8-bit H.264; select the best SDR stream up to 1080p without limiting FPS.
-  format_selector: bv[dynamic_range=SDR][height<=1080]/b[dynamic_range=SDR][height<=1080]
+  # Video-only MP4/H.264 SDR, up to 1080p; do not limit the source FPS or fall back to another format.
+  format_selector: bv[ext=mp4][vcodec^=avc1][dynamic_range=SDR][height<=1080]
   js_runtimes: null
   remote_components: null
 output_directory: chat_annotation

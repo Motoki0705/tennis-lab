@@ -251,7 +251,7 @@ def test_url_download_reuses_existing_helper_and_preserves_provenance(
         root = prepare(PrepareConfig.from_config(cfg))
     assert downloader.call_args.kwargs["no_playlist"] is True
     assert downloader.call_args.kwargs["format_selector"] == (
-        "bv[dynamic_range=SDR][height<=1080]/b[dynamic_range=SDR][height<=1080]"
+        "bv[ext=mp4][vcodec^=avc1][dynamic_range=SDR][height<=1080]"
     )
     clip_name = read_json(root / "prepared.json")["clips"][0]
     manifest = read_json(root / "clips" / clip_name / "clip_manifest.json")
