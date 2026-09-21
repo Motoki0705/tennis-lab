@@ -1,5 +1,5 @@
 defaults:
-- data: triangulation_residual
+- data: _triangulation_residual
 - model: triangulation_residual
 - loss: triangulation_residual
 - training: triangulation_residual
