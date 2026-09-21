@@ -469,7 +469,10 @@ def test_asinh_changes_only_residual_features_and_preserves_missingness(joints, 
                 np.testing.assert_array_equal(
                     getattr(result, field.name), getattr(raw, field.name)
                 )
-    residual = raw.residual_uv.reshape(3, 16, -1)
+    # Geometry encodes in float64 before storing float32 features. Its diagnostic
+    # residual is already float32; avoid a second low-precision division/asinh in
+    # the independent reference (which can differ by two ULP across NumPy builds).
+    residual = raw.residual_uv.astype(np.float64).reshape(3, 16, -1)
     np.testing.assert_array_equal(raw.features[..., residual_slice], residual)
     values = encoded.features[..., residual_slice]
     assert_allclose(values, np.arcsinh(residual / 0.01), rtol=2e-7, atol=1e-8)
