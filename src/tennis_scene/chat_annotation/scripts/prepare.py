@@ -20,9 +20,11 @@ register_boundary_validator(
     validation_boundary="tennis_scene.chat_annotation.prepare",
 )
 def main(cfg: DictConfig) -> None:
+    from src.tennis_scene.chat_annotation.batch import prepare_batch
     from src.tennis_scene.chat_annotation.preparation import prepare
 
-    destination = prepare(PrepareConfig.from_config(cfg))
+    config = PrepareConfig.from_config(cfg)
+    destination = prepare_batch(config) if config.urls else prepare(config)
     print(f"Prepared: {destination}")
 
 

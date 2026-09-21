@@ -14,6 +14,10 @@ repo/worktreeのrootから:
 .venv/bin/python -m src.tennis_scene.chat_annotation.scripts.prepare \
   'source.url="https://www.youtube.com/watch?v=VIDEO_ID"'
 
+# 複数URL。URL内の=をHydraが解釈しないよう各値をdouble quoteで囲む。
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.prepare \
+  'source.urls=["https://www.youtube.com/watch?v=VIDEO_ID_1","https://www.youtube.com/watch?v=VIDEO_ID_2"]'
+
 # 長さは参考区間込み。20秒中、通常18秒を担当し前後各1秒を参考にする。
 .venv/bin/python -m src.tennis_scene.chat_annotation.scripts.prepare \
   'source.url="https://www.youtube.com/watch?v=VIDEO_ID"' \
@@ -25,7 +29,30 @@ repo/worktreeのrootから:
 ```
 
 全設定は[configs/prepare.yaml](configs/prepare.yaml)。CLI overrideも同じ設定を使用する。
-URLとlocal_videoは排他的。HTTPSの単一YouTube動画URLを受け付け、playlist取得は行わない。
+`source.url`、`source.urls`、`source.local_video`は排他的。HTTPSのYouTube動画URLを
+受け付け、playlist取得は行わない。単一URLと複数URLの設定例:
+
+```yaml
+# 1動画
+source:
+  url: "https://www.youtube.com/watch?v=VIDEO_ID"
+  urls: []
+
+# 複数動画（入力順を維持）
+source:
+  url: null
+  urls:
+    - "https://www.youtube.com/watch?v=VIDEO_ID_1"
+    - "https://www.youtube.com/watch?v=VIDEO_ID_2"
+batch:
+  download_workers: 2
+```
+
+複数URLではダウンロードだけを`batch.download_workers`本まで並行し、取得済み動画の
+エンコードは1動画ずつ行う。ダウンロードとエンコードは重なるが、実効速度は回線・配信元・
+CPUに依存する。1件が失敗しても残りを処理し、入力順の結果とエラーを`batches/*/batch.json`へ
+保存して全体を失敗として終了する。同じYouTube動画IDの重複は設定エラーにする。
+
 YouTubeの取得環境に応じて`source.js_runtimes=node`等を明示指定できる。
 source.format_selectorの既定値は
 `bv[ext=mp4][vcodec^=avc1][dynamic_range=SDR][height<=1080]`。
@@ -70,11 +97,19 @@ Web UIの説明と初回手順は配布PROTOCOL.md末尾に集約している。
 
 ## 分割・再実行
 
+既定では1動画につき最大5クリップを採取する。通常分割の候補が5本以下なら全候補を使い、
+超える場合は全時間を5枠に等分して各枠の中央付近から担当区間を選ぶ。
+`sampling.max_clips_per_video: null`にすると従来どおり全フレームを順次担当する。
+方式は`sampling.strategy: uniform_midpoints`のみを受け付ける。`prepared.json`には候補数、
+依頼範囲と実際の選択範囲、選択フレーム数、`full`/`sampled`のcoverageを記録する。
+
 表示順frame indexと元PTS/time_baseを保存し、CFR化・間引き・縮小を行わない。
 フレーム境界に丸めるため長さは指定値以下になり、末尾は短くなる。
-担当範囲は半開区間で全元フレームを一度ずつ覆う。前後の参考区間だけが重複する。
-容量を超えたら担当範囲を二分して再エンコード。1フレーム＋文脈でも上限を超える場合は
-明示的に失敗する。`-fs`による打ち切りや品質変更で成功扱いしない。
+採取モードでは選ばれた区間だけが注釈対象であり、非選択フレームをnegativeとは扱わない。
+容量を超えた枠は中心を保って短縮し、1枠を複数クリップへ増やさない。全量モードでは担当範囲が
+半開区間で全元フレームを一度ずつ覆い、前後の参考区間だけが重複する。容量超過時の二分も
+全量モードだけで行う。1フレーム＋文脈でも上限を超える場合は明示的に失敗する。
+`-fs`による打ち切りや品質変更で成功扱いしない。
 
 キット、元動画、設定のハッシュごとに出力を分離する。正常な完成物は再実行で検証して再利用し、
 一時出力は完成物として扱わない。変更・破損した完成物はエラーにするため、新しいoutput_directoryを

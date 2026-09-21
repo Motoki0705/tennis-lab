@@ -27,6 +27,7 @@ from .runtime.contracts import (
     write_json,
 )
 from .runtime.media import Timeline, check_clip, decode_range, encode_video, probe_video
+from .sampling import centered_subrange, select_target_ranges
 
 
 def _digest(value: Any) -> str:
@@ -90,22 +91,6 @@ def _acquire(config: PrepareConfig) -> tuple[Path, SourceInfo]:
     )
     write_json(record, metadata.model_dump(mode="json"))
     return source, metadata
-
-
-def target_ranges(
-    timeline: Timeline, duration: float, context: float
-) -> list[FrameRange]:
-    boundaries = [timeline.boundary(i) for i in range(len(timeline.pts) + 1)]
-    core = Fraction(str(duration)) - 2 * Fraction(str(context))
-    if core <= 0:
-        raise ValueError("duration must exceed twice the context")
-    result: list[FrameRange] = []
-    start = 0
-    while start < len(timeline.pts):
-        stop = max(start + 1, bisect_right(boundaries, boundaries[start] + core) - 1)
-        result.append(FrameRange(start=start, stop=stop))
-        start = stop
-    return result
 
 
 def media_range(timeline: Timeline, target: FrameRange, context: float) -> FrameRange:
@@ -202,6 +187,22 @@ def _make_clip(
                 raise ValueError(
                     "one target frame with its context exceeds the duration/byte limit; cannot split without dropping frames or context"
                 )
+            if config.max_clips_per_video is not None:
+                # A sampling slot is one output file. Keep its temporal center
+                # and reduce duration rather than exceeding the video's cap.
+                smaller = centered_subrange(timeline, target)
+                print(
+                    f"  sampling slot [{target.start}, {target.stop}) shortened to [{smaller.start}, {smaller.stop}) to meet the duration/byte limit"
+                )
+                return _make_clip(
+                    config,
+                    source,
+                    source_info,
+                    timeline,
+                    kit_id,
+                    clips_root,
+                    smaller,
+                )
             middle = (target.start + target.stop) // 2
             return _make_clip(
                 config,
@@ -266,6 +267,15 @@ def _make_clip(
     return [destination]
 
 
+def _covers_source(ranges: list[FrameRange], count: int) -> bool:
+    cursor = 0
+    for interval in ranges:
+        if interval.start != cursor:
+            return False
+        cursor = interval.stop
+    return cursor == count
+
+
 def _verify_run(
     root: Path, source: SourceInfo, kit_id: str, settings: dict[str, Any]
 ) -> None:
@@ -276,26 +286,78 @@ def _verify_run(
         or summary["settings"] != settings
     ):
         raise ValueError("prepared run identity mismatch")
-    cursor = 0
-    for name in summary["clips"]:
+    if summary["schema_version"] != "tennis_chat_preparation.v2":
+        raise ValueError("unsupported preparation summary")
+    requested = [
+        FrameRange.model_validate(value) for value in summary["requested_target_ranges"]
+    ]
+    maximum = settings["sampling"]["max_clips_per_video"]
+    expected_slots = (
+        summary["candidate_clip_count"]
+        if maximum is None
+        else min(maximum, summary["candidate_clip_count"])
+    )
+    if len(requested) != expected_slots or len(set(summary["clips"])) != len(
+        summary["clips"]
+    ):
+        raise ValueError("preparation summary has missing/duplicate sampling slots")
+    if maximum is not None and len(summary["clips"]) != expected_slots:
+        raise ValueError(
+            "final clip count must equal the requested sampling slot count"
+        )
+    realized: list[FrameRange] = []
+    for index, name in enumerate(summary["clips"]):
         if Path(name).name != name:
             raise ValueError("invalid clip name in preparation summary")
         manifest = _verify_published(root / "clips" / name)
-        if (
-            manifest.target_range.start != cursor
-            or manifest.source.sha256 != source.sha256
-            or manifest.kit_id != kit_id
+        if manifest.source.sha256 != source.sha256 or manifest.kit_id != kit_id:
+            raise ValueError("prepared clip source/kit identity mismatch")
+        target = manifest.target_range
+        if target.stop > summary["source_frame_count"] or (
+            realized and target.start < realized[-1].stop
         ):
-            raise ValueError("prepared clips do not partition the source")
-        cursor = manifest.target_range.stop
-    if cursor != summary["source_frame_count"]:
-        raise ValueError("prepared clips do not cover all source frames")
+            raise ValueError("prepared target frames overlap or exceed the source")
+        if maximum is not None and not (
+            requested[index].start
+            <= target.start
+            < target.stop
+            <= requested[index].stop
+        ):
+            raise ValueError("prepared target escaped its requested sampling slot")
+        if manifest.bytes > settings["max_bytes"]:
+            raise ValueError("prepared clip exceeds the byte limit")
+        realized.append(target)
+    full = _covers_source(realized, summary["source_frame_count"])
+    if maximum is None and not full:
+        raise ValueError("full extraction did not cover all source frames")
+    if summary["coverage_mode"] != ("full" if full else "sampled"):
+        raise ValueError("preparation coverage claim differs from actual target frames")
+    if summary["selected_target_ranges"] != [
+        target.model_dump() for target in realized
+    ]:
+        raise ValueError("selected target ranges differ from the prepared clips")
+    if summary["selected_frame_count"] != sum(
+        target.stop - target.start for target in realized
+    ):
+        raise ValueError("selected frame count differs from actual target ranges")
 
 
 def prepare(config: PrepareConfig) -> Path:
+    if config.urls:
+        raise ValueError("use prepare_batch for multiple source URLs")
     config.output.mkdir(parents=True, exist_ok=True)
     kit_directory, kit_id = build_kit(config.output / "project_kits")
     source, source_info = _acquire(config)
+    return _prepare_acquired(config, source, source_info, kit_directory, kit_id)
+
+
+def _prepare_acquired(
+    config: PrepareConfig,
+    source: Path,
+    source_info: SourceInfo,
+    kit_directory: Path,
+    kit_id: str,
+) -> Path:
     settings = {
         "duration_seconds": config.duration_seconds,
         "context_seconds": config.context_seconds,
@@ -303,9 +365,13 @@ def prepare(config: PrepareConfig) -> Path:
         "crf": config.crf,
         "preset": config.preset,
         "policies": config.policies.model_dump(mode="json"),
+        "sampling": {
+            "max_clips_per_video": config.max_clips_per_video,
+            "strategy": config.sampling_strategy,
+        },
     }
     run_id = _digest([source_info.sha256, kit_id, settings])[:16]
-    root = config.output / "videos" / source_info.source_id / run_id
+    root = Path(config.output) / "videos" / str(source_info.source_id) / run_id
     if (root / "prepared.json").exists():
         _verify_run(root, source_info, kit_id, settings)
         return root
@@ -313,21 +379,37 @@ def prepare(config: PrepareConfig) -> Path:
     clips_root.mkdir(parents=True, exist_ok=True)
     timeline = probe_video(source)
     outputs: list[Path] = []
-    for target in target_ranges(
-        timeline, config.duration_seconds, config.context_seconds
-    ):
+    requested, candidate_count = select_target_ranges(
+        timeline,
+        config.duration_seconds,
+        config.context_seconds,
+        config.max_clips_per_video,
+        config.sampling_strategy,
+    )
+    for target in requested:
         outputs.extend(
             _make_clip(
                 config, source, source_info, timeline, kit_id, clips_root, target
             )
         )
+    realized = [_verify_published(path).target_range for path in outputs]
     write_json(
         root / "prepared.json",
         {
+            "schema_version": "tennis_chat_preparation.v2",
             "source_sha256": source_info.sha256,
             "kit_id": kit_id,
             "project_kit_directory": str(kit_directory.resolve()),
             "source_frame_count": len(timeline.pts),
+            "candidate_clip_count": candidate_count,
+            "requested_target_ranges": [target.model_dump() for target in requested],
+            "selected_target_ranges": [target.model_dump() for target in realized],
+            "selected_frame_count": sum(
+                target.stop - target.start for target in realized
+            ),
+            "coverage_mode": "full"
+            if _covers_source(realized, len(timeline.pts))
+            else "sampled",
             "settings": settings,
             "clips": [path.name for path in outputs],
         },
