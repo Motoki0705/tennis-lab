@@ -385,7 +385,7 @@ class _ComparisonCanvas:
         self.figure.text(
             0.025,
             0.022,
-            "No independent 3D ground truth.  Prediction x = missing raw triangulation.  No temporal smoothing or bone correction.",
+            "Neural residual prediction; no independent 3D ground truth.  x marks missing raw triangulation.",
             color=_RAW,
             fontsize=10,
         )
@@ -568,7 +568,7 @@ class _ComparisonCanvas:
                     (raw_valid & ~visible_raw).sum() + (~visible_prediction).sum()
                 )
                 axis.set_title(
-                    f"P{person} | shared translation only\nDetail viewport: {cropped} points outside",
+                    f"P{person} | origin: predicted hips\nDetail viewport: {cropped} points outside",
                     color=_FOREGROUND,
                     fontsize=9,
                 )
@@ -632,7 +632,7 @@ p{{line-height:1.7;color:#b6c4d6}}.card{{background:#111c2b;border:1px solid #2b
 <small>{data.frames}フレーム / {data.fps:.5f} fps。動画は{stride}フレームごとに描画し、元の時間経過で再生します。</small></div>
 <div class="card"><strong>元の2D観測への平均再投影誤差</strong><div class="metric">{before_text} → {after_text}</div>
 <p>観測score ≥ 0.3かつ三角測量・補正後投影がともに有効な同一の点集合で比較しています。これは画像との整合性であり、3Dの正解誤差ではありません。</p><img src="diagnostics.png" alt="再投影誤差、補正量、三角測量の有効率"></div>
-<p>欠測を埋めた初期seedは灰色の三角測量として表示しません。時間平滑化・骨長補正は行っていません。人物拡大図では初期値と補正後へ同じ平行移動を適用しています。表示範囲外の点数は図中に明示しています。低scoreの2D観測は小さい暗色の円です。</p></main></html>""",
+<p>欠測を埋めた初期seedは灰色の三角測量として表示しません。補正後はモデルの残差予測です。人物拡大図では補正後のhip中点を共通原点としています。表示範囲外の点数は図中に明示しています。低scoreの2D観測は小さい暗色の円です。</p></main></html>""",
         encoding="utf-8",
     )
 
