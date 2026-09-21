@@ -1,4 +1,4 @@
-<!-- knowledge-review: 4b34ad22b9b3a7ba769b613ab75d4facb2a4e5189af8959cf00394c51332c229 on 2026-09-21 -->
+<!-- knowledge-review: f0f6c6074aca47df444f8c64659eb8aa843941436ca4e955a950979e20d2451e on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
@@ -19,6 +19,8 @@
 - **Synthetic data / SfM幾何**: [B00の保存トラック診断](nodes/synthetic_data_generation/000022-run-court-sfm-ground-drift-20260919.md)に続き、[B00〜B03の共通2区間診断](nodes/synthetic_data_generation/000023-run-court-sfm-all-scenes-drift-20260920.md)でも、時間分割した共通地面セルに高さ不整合を観測した。SfM driftと整合する兆候だが絶対ドリフト誤差ではなく、符号はシーンごとに異なり、B01の偏りは小さく、B03は支持セルが少ない。地面凹凸・特徴点誤差・三角測量誤差も分離できないため、合成教師の幾何的不確実性として扱う。次は再訪で十分に重なる地面観測と独立地面基準を用意し、長距離構造制約・loop closureの有無を同条件で比較して下流court精度への影響を測る。
 
 [PLCS・BLCSの三角測量残差モデル初回検証](nodes/plcs/000105-group-geometric-residual-v1.md)では、合成testの幾何初期値に対してPLCSの平均3D誤差が約20%、BLCSが約1%減った。一方、Meijiの同一実clipでは両taskとも再投影誤差が増え、PLCSの大きな骨長異常とBLCSのほぼ一定の微小補正が残った。合成64sceneの追加診断でも3D誤差改善と入力観測への再投影悪化が同時に起きたため、実clipの再投影悪化を実3D悪化とは断定しない。独立3D正解はなく、実映像の精度改善・production置換を支持する根拠は得られていないため、追加profileは実験用とする。合成camera摂動とCourt14からの推定誤差構造の差は原因候補だが未分離であり、次は同一splitでcamera再推定と独立摂動を比較し、clean caseの不要補正・実clipの持続外れ値を別に確認する。従来PLCSのSMPL-root/yawとは出力契約が異なるため、既存deployの指標と直接順位付けしない。
+
+[三角測量残差v2の比較](nodes/plcs/000111-group-geometric-residual-v2.md)では、Court14再推定・四隅＋正面2候補・持続誤検出を実装した。同一v2入力でPLCSはlegacy lossのtest平均0.119929mがbalanced regretの0.131759mより良く、新損失の一律採用は支持されない。Meijiでは極端な骨長異常を減らしたが、再投影増大と長い前腕が残り、独立3D精度は不明。BLCS legacyは平均を約2.1%改善した一方、中央値は微悪化し、多数例の停滞が残る。balanced runのnative worker中断は[失敗記録](nodes/blcs/000037-run-blcs-residual-v2-balanced-s42.md)へ分離し、復旧中。入力差分のBF16感度を[CPUで診断](nodes/plcs/000108-run-residual-v2-conditioning-cpu.md)し、固定asinh変換を別のpaired比較として実行している。曲線・実clipのみでproductionへ昇格せず、最終test照合と複数seed評価を区別する。
 
 ## 2026-09-20の追加確認
 
