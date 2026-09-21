@@ -21,6 +21,7 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
 from src.tennis_scene.chat_annotation.runtime.media import (
     check_clip,
     decode_range,
+    encode_video,
     probe_video,
 )
 
@@ -88,6 +89,61 @@ def test_hydra_accepts_quoted_url_with_multiple_query_parameters() -> None:
             overrides=[f'source.url="{url}"'],
         )
     assert composed.source.url == url
+
+
+def test_sdr_metadata_is_preserved_and_hdr_input_is_rejected(tmp_path: Path) -> None:
+    sdr = tmp_path / "sdr.mp4"
+    hdr = tmp_path / "hdr.mp4"
+
+    def tagged_video(path: Path, color_trc: int) -> None:
+        with av.open(str(path), "w") as container:
+            stream = container.add_stream("libx264", rate=2)
+            stream.width, stream.height, stream.pix_fmt = 96, 64, "yuv420p"
+            stream.codec_context.colorspace = 1
+            stream.codec_context.color_range = 1
+            stream.codec_context.color_primaries = 1
+            stream.codec_context.color_trc = color_trc
+            for index in range(2):
+                frame = av.VideoFrame.from_ndarray(
+                    np.full((64, 96, 3), index * 32, dtype=np.uint8), format="rgb24"
+                )
+                frame.pts = index
+                for packet in stream.encode(frame):
+                    container.mux(packet)
+            for packet in stream.encode():
+                container.mux(packet)
+
+    tagged_video(sdr, 1)
+    tagged_video(hdr, 18)
+    timeline = probe_video(sdr)
+    output = tmp_path / "encoded.mp4"
+    encode_video(
+        output,
+        width=timeline.width,
+        height=timeline.height,
+        time_base=timeline.time_base,
+        rate=timeline.rate,
+        frames=(
+            (
+                frame,
+                timeline.pts[index] - timeline.pts[0],
+                timeline.durations[index],
+            )
+            for index, frame in enumerate(decode_range(sdr, timeline, 0, 2))
+        ),
+        crf=18,
+        preset="medium",
+    )
+    with av.open(str(output)) as container:
+        context = container.streams.video[0].codec_context
+        assert (
+            context.colorspace,
+            context.color_range,
+            context.color_primaries,
+            context.color_trc,
+        ) == (1, 1, 1, 1)
+    with pytest.raises(ValueError, match="HDR HLG input is not supported"):
+        probe_video(hdr)
 
 
 @pytest.mark.parametrize(
@@ -194,7 +250,9 @@ def test_url_download_reuses_existing_helper_and_preserves_provenance(
     ) as downloader:
         root = prepare(PrepareConfig.from_config(cfg))
     assert downloader.call_args.kwargs["no_playlist"] is True
-    assert downloader.call_args.kwargs["format_selector"] == "bv/b"
+    assert downloader.call_args.kwargs["format_selector"] == (
+        "bv[dynamic_range=SDR][height<=1080]/b[dynamic_range=SDR][height<=1080]"
+    )
     clip_name = read_json(root / "prepared.json")["clips"][0]
     manifest = read_json(root / "clips" / clip_name / "clip_manifest.json")
     assert manifest["source"]["url"] == cfg.source.url
@@ -230,7 +288,8 @@ def test_explicit_url_id_and_configuration_authority(cfg: DictConfig) -> None:
     contract = next(
         item
         for item in BOUNDARY_CONTRACTS
-        if item.boundary_id == "src.tennis_scene.chat_annotation.prepare:main"
+        if item.boundary_id
+        == "src.tennis_scene.chat_annotation.scripts.prepare:main"
     )
     assert (
         contract.validator_callable

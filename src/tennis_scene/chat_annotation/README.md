@@ -11,23 +11,26 @@ MP4、元動画とのフレーム対応manifest、各Chatへの開始文、再�
 repo/worktreeのrootから:
 
 ```bash
-.venv/bin/python -m src.tennis_scene.chat_annotation.prepare \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.prepare \
   'source.url="https://www.youtube.com/watch?v=VIDEO_ID"'
 
 # 長さは参考区間込み。20秒中、通常18秒を担当し前後各1秒を参考にする。
-.venv/bin/python -m src.tennis_scene.chat_annotation.prepare \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.prepare \
   'source.url="https://www.youtube.com/watch?v=VIDEO_ID"' \
   clip.duration_seconds=20 clip.context_seconds=1
 
 # 保存済み動画でオフライン確認。パスはpaths.data_rootからの相対パス。
-.venv/bin/python -m src.tennis_scene.chat_annotation.prepare \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.prepare \
   source.local_video=samples/tennis_clip.mp4
 ```
 
 全設定は[configs/prepare.yaml](configs/prepare.yaml)。CLI overrideも同じ設定を使用する。
 URLとlocal_videoは排他的。HTTPSの単一YouTube動画URLを受け付け、playlist取得は行わない。
 YouTubeの取得環境に応じて`source.js_runtimes=node`等を明示指定できる。
-source.format_selectorの既定値は最高品質のvideo-onlyを選ぶ`bv/b`。
+source.format_selectorの既定値はFPSを制限せず1080p以下で最高品質のSDRを選ぶ
+`bv[dynamic_range=SDR][height<=1080]/b[dynamic_range=SDR][height<=1080]`。
+注釈用出力は8-bit H.264のため、
+PQ/HLGのHDRを暗いSDRとして誤表示しないようHDR入力は明示的に拒否する。
 元解像度を保持し、CPU libx264でCRF18のMP4に変換する。音声は保存クリップから除外する。
 B-frameを無効にし、可変FPSでも末尾フレームの表示時間まで保存する。
 回転メタデータ・非正方画素・奇数解像度・不正なPTSは自動補正せずエラーにする。

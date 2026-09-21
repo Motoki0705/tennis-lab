@@ -14,6 +14,17 @@ from numpy.typing import NDArray
 
 from .contracts import ClipManifest, sha256_file
 
+HDR_TRANSFER_CHARACTERISTICS = {16: "PQ", 18: "HLG"}
+COLOR_ATTRIBUTES = ("colorspace", "color_range", "color_primaries", "color_trc")
+
+
+def _reject_hdr(color_trc: int, path: Path) -> None:
+    transfer = HDR_TRANSFER_CHARACTERISTICS.get(color_trc)
+    if transfer is not None:
+        raise ValueError(
+            f"HDR {transfer} input is not supported for 8-bit annotation output: {path}"
+        )
+
 
 @dataclass(frozen=True)
 class Timeline:
@@ -41,6 +52,7 @@ def probe_video(path: Path) -> Timeline:
             raise ValueError("input has no video stream")
         stream = container.streams.video[0]
         stream.codec_context.thread_count = 2
+        _reject_hdr(stream.codec_context.color_trc, path)
         if stream.time_base is None or stream.average_rate is None:
             raise ValueError("video must declare a time base and nominal frame rate")
         time_base = Fraction(stream.time_base)
@@ -57,6 +69,7 @@ def probe_video(path: Path) -> Timeline:
         if int(stream.metadata.get("rotate", "0")) % 360:
             raise ValueError("rotated video requires an explicit coordinate transform")
         for frame in container.decode(stream):
+            _reject_hdr(frame.color_trc, path)
             if frame.side_data.get("DISPLAYMATRIX") is not None:
                 raise ValueError(
                     "display-matrix video requires an explicit coordinate transform"
@@ -141,7 +154,17 @@ def encode_video(
             packet.duration = int(duration)
             output.mux(packet)
 
+        first = True
         for frame, pts, duration in frames:
+            _reject_hdr(frame.color_trc, path)
+            if first:
+                for attribute in COLOR_ATTRIBUTES:
+                    setattr(
+                        stream.codec_context,
+                        attribute,
+                        getattr(frame, attribute),
+                    )
+                first = False
             converted = frame.reformat(width=width, height=height, format="yuv420p")
             converted.pts = pts
             converted.time_base = time_base
