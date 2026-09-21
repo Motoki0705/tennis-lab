@@ -1,4 +1,4 @@
-<!-- knowledge-review: f0f6c6074aca47df444f8c64659eb8aa843941436ca4e955a950979e20d2451e on 2026-09-21 -->
+<!-- knowledge-review: ade70569c881d7f4081cea67d5bd08c5ef98634d642178586067a27ae4b3246b on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
@@ -20,7 +20,7 @@
 
 [PLCS・BLCSの三角測量残差モデル初回検証](nodes/plcs/000105-group-geometric-residual-v1.md)では、合成testの幾何初期値に対してPLCSの平均3D誤差が約20%、BLCSが約1%減った。一方、Meijiの同一実clipでは両taskとも再投影誤差が増え、PLCSの大きな骨長異常とBLCSのほぼ一定の微小補正が残った。合成64sceneの追加診断でも3D誤差改善と入力観測への再投影悪化が同時に起きたため、実clipの再投影悪化を実3D悪化とは断定しない。独立3D正解はなく、実映像の精度改善・production置換を支持する根拠は得られていないため、追加profileは実験用とする。合成camera摂動とCourt14からの推定誤差構造の差は原因候補だが未分離であり、次は同一splitでcamera再推定と独立摂動を比較し、clean caseの不要補正・実clipの持続外れ値を別に確認する。従来PLCSのSMPL-root/yawとは出力契約が異なるため、既存deployの指標と直接順位付けしない。
 
-[三角測量残差v2の比較](nodes/plcs/000111-group-geometric-residual-v2.md)では、Court14再推定・四隅＋正面2候補・持続誤検出を実装した。同一v2入力でPLCSはlegacy lossのtest平均0.119929mがbalanced regretの0.131759mより良く、新損失の一律採用は支持されない。Meijiでは極端な骨長異常を減らしたが、再投影増大と長い前腕が残り、独立3D精度は不明。BLCS legacyは平均を約2.1%改善した一方、中央値は微悪化し、多数例の停滞が残る。balanced runのnative worker中断は[失敗記録](nodes/blcs/000037-run-blcs-residual-v2-balanced-s42.md)へ分離し、復旧中。入力差分のBF16感度を[CPUで診断](nodes/plcs/000108-run-residual-v2-conditioning-cpu.md)し、固定asinh変換を別のpaired比較として実行している。曲線・実clipのみでproductionへ昇格せず、最終test照合と複数seed評価を区別する。
+[三角測量残差v2の比較](nodes/plcs/000111-group-geometric-residual-v2.md)では、Court14再推定・四隅＋正面2候補・持続誤検出を実装し、同一観測/初期3Dの6条件を評価した。validationで選んだPLCS legacy/rawはtest平均0.155524→0.119929m、BLCS balanced/rawは0.844004→0.812402m。asinhはBLCSのlegacy対照には有効だったが、PLCSでは悪化し最良構成も更新せず、入力感度と精度を区別する。PLCSの実clip骨長異常は減ったが長い前腕・再投影増大が残り、BLCSの実補正は約2mm。独立3D正解がなくproduction置換の根拠とはしない。BLCSの[native worker中断](nodes/blcs/000037-run-blcs-residual-v2-balanced-s42.md)は[checkpoint復旧](nodes/blcs/000040-run-blcs-residual-v2-balanced-s42-resume.md)で完走したが、後半のstochastic順序差が制限。次はcamera-onlyの識別性、低誤差点の不要補正、長い欠測、実測誤差分布と複数seed/会場を確認する。
 
 ## 2026-09-20の追加確認
 

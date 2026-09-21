@@ -10,6 +10,8 @@ model:
   name: plcs_triangulation_residual_v2
 data:
   scene_dir: plcs/single_object_camera_view_v2
+v2:
+  loss_mode: legacy
 run:
   output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
 
