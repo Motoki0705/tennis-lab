@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fractions import Fraction
-from typing import Any, cast
+from typing import Any
 
 import cv2
 import numpy as np
@@ -90,7 +90,7 @@ def complete_court(
         raise ValueError(
             f"homography residual {residual:.3f}px exceeds {tolerance:.3f}px"
         )
-    result = sample.model_copy(deep=True)
+    result: CourtSample = sample.model_copy(deep=True)
     for index in range(15):
         if result.points[index].point_px is not None:
             continue
@@ -105,7 +105,7 @@ def complete_court(
             source_frames=[sample.frame_index],
             anchor_indices=indices,
         )
-    return cast(CourtSample, result)
+    return result
 
 
 def court_mode(annotation: Annotation, manifest: ClipManifest) -> str:
@@ -221,7 +221,7 @@ def interpolate_ball(
     annotation: Annotation, manifest: ClipManifest, track_id: str, start: int, stop: int
 ) -> Annotation:
     values = interpolation_values(annotation, manifest, track_id, start, stop)
-    result = annotation.model_copy(deep=True)
+    result: Annotation = annotation.model_copy(deep=True)
     for frame in result.frames:
         if frame.frame_index not in values:
             continue
@@ -234,4 +234,4 @@ def interpolate_ball(
         ball.status = "interpolated"
         ball.missing_reason = None
         ball.source_frames = [start, stop]
-    return cast(Annotation, result)
+    return result

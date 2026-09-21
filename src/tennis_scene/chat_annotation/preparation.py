@@ -10,7 +10,7 @@ from bisect import bisect_left, bisect_right
 from datetime import UTC, datetime
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from src.utils.video.youtube import download_youtube_video
 
@@ -124,9 +124,8 @@ def _verify_published(directory: Path) -> ClipManifest:
     for name, digest in ready["files"].items():
         if Path(name).name != name or sha256_file(directory / name) != digest:
             raise ValueError(f"prepared clip is incomplete or changed: {directory}")
-    manifest = cast(
-        ClipManifest,
-        ClipManifest.model_validate(read_json(directory / "clip_manifest.json")),
+    manifest: ClipManifest = ClipManifest.model_validate(
+        read_json(directory / "clip_manifest.json")
     )
     if set(ready["files"]) != {manifest.filename, "clip_manifest.json", "REQUEST.txt"}:
         raise ValueError("ready marker must cover video, manifest and request")

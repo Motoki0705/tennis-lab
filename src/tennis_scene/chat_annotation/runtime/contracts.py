@@ -4,11 +4,23 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Protocol, Self, TypeVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+_ModelT = TypeVar("_ModelT")
+
+
+class _AfterModelValidator(Protocol):
+    def __call__(
+        self, function: Callable[[_ModelT], _ModelT]
+    ) -> Callable[[_ModelT], _ModelT]: ...
+
+
+_after_model_validator = cast(_AfterModelValidator, model_validator(mode="after"))
 
 KIT_VERSION = "1.0.0"
 SCHEMA_VERSION: Literal["tennis_chat_annotation.v1"] = "tennis_chat_annotation.v1"
@@ -40,7 +52,7 @@ class FrameRange(StrictModel):
     start: int = Field(ge=0)
     stop: int = Field(gt=0)
 
-    @model_validator(mode="after")  # type: ignore[untyped-decorator]
+    @_after_model_validator
     def ordered(self) -> Self:
         if self.stop <= self.start:
             raise ValueError("frame range must be nonempty and increasing")
@@ -92,7 +104,7 @@ class ClipManifest(StrictModel):
     frames: list[FrameMap] = Field(min_length=1)
     policies: Policies
 
-    @model_validator(mode="after")  # type: ignore[untyped-decorator]
+    @_after_model_validator
     def consistent(self) -> Self:
         if Fraction(self.time_base) <= 0 or Fraction(self.nominal_fps) <= 0:
             raise ValueError("positive time base and nominal fps required")
@@ -137,7 +149,7 @@ class Person(StrictModel):
     truncated: bool
     source_frames: list[int]
 
-    @model_validator(mode="after")  # type: ignore[untyped-decorator]
+    @_after_model_validator
     def consistent(self) -> Self:
         if (self.kind == "non_player") != (self.non_player_role is not None):
             raise ValueError("only non_player must have a non_player_role")
@@ -159,7 +171,7 @@ class Ball(StrictModel):
     missing_reason: Literal["out_of_frame", "unresolved"] | None
     source_frames: list[int]
 
-    @model_validator(mode="after")  # type: ignore[untyped-decorator]
+    @_after_model_validator
     def consistent(self) -> Self:
         if self.center_px is None:
             if self.missing_reason is None or self.status not in (None, "occluded"):
@@ -188,7 +200,7 @@ class CourtPoint(StrictModel):
     source_frames: list[int]
     anchor_indices: list[int]
 
-    @model_validator(mode="after")  # type: ignore[untyped-decorator]
+    @_after_model_validator
     def consistent(self) -> Self:
         if (self.point_px is None) != (self.source == "unresolved"):
             raise ValueError("null court point requires unresolved source")
