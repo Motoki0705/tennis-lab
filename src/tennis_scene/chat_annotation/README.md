@@ -27,9 +27,10 @@ repo/worktreeのrootから:
 全設定は[configs/prepare.yaml](configs/prepare.yaml)。CLI overrideも同じ設定を使用する。
 URLとlocal_videoは排他的。HTTPSの単一YouTube動画URLを受け付け、playlist取得は行わない。
 YouTubeの取得環境に応じて`source.js_runtimes=node`等を明示指定できる。
-source.format_selectorの既定値はFPSを制限せず1080p以下で最高品質のSDRを選ぶ
-`bv[dynamic_range=SDR][height<=1080]/b[dynamic_range=SDR][height<=1080]`。
-注釈用出力は8-bit H.264のため、
+source.format_selectorの既定値は
+`bv[ext=mp4][vcodec^=avc1][dynamic_range=SDR][height<=1080]`。
+音声なしのMP4/H.264、SDR、最大1080pに固定し、元のFPSは制限しない。
+条件に合わない形式へ静かにfallbackしない。注釈用出力は8-bit H.264のため、
 PQ/HLGのHDRを暗いSDRとして誤表示しないようHDR入力は明示的に拒否する。
 元解像度を保持し、CPU libx264でCRF18のMP4に変換する。音声は保存クリップから除外する。
 B-frameを無効にし、可変FPSでも末尾フレームの表示時間まで保存する。
