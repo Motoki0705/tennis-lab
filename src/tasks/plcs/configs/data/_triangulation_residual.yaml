@@ -1,4 +1,5 @@
 # @package _global_
+# Internal component composed only by train_triangulation_residual.yaml.
 
 data:
   scene_dir: plcs/single_object_camera_view_v2
