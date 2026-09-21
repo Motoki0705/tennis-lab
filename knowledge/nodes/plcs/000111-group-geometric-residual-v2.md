@@ -50,3 +50,12 @@ MeijiのPLCSは同じraw-valid四肢edgeで1m超28→2件、最大骨長3.038→
 BLCS balancedはepoch23後にnative workerが中断し、同epoch24全8000件のfresh単一process走査は成功した。原因は未確定。checkpointからoptimizer/scheduler/best historyを保ちworker0で完走したが、無中断と後半batch順/RNG進行の完全一致は保証しない。新runtimeのspawn/OpenCV1threadはsampleのバイト一致・epoch共有を確認し、conditioningの両30epochは完走した。
 
 単一seed、未校正の合成誤差仮定、ACCADのsubject重複、実clip/別会場の独立3D正解不足が制限。既定選択はこの実験family内の判断であり、v1や既存deployの異なる評価条件とは直接順位付けしない。次はcamera-onlyの観測可能性、低誤差点の不要補正、長い欠測と実測誤差分布、複数seed/会場を検証する。
+
+
+## 導入範囲の変更（2026-09-21）
+
+ユーザー方針によりPR #908の導入をPLCSのみに限定した。PLCSはこの比較で採用した
+Court14再校正・持続誤検出・従来損失・raw入力を単一構成としてtask内の各レイヤーへ移す。
+BLCS実装と不採用の損失/入力分岐は撤去するが、上記の測定値と失敗を含む実験記録は保持する。
+旧実験のrepro.shは当時のcommit/patchで実行する歴史的手順であり、現行CLIとの互換を意味しない。
+これは実装範囲と保守方針の変更で、精度の追加改善やproduction昇格ではない。

@@ -1,18 +1,17 @@
 defaults:
-  - geometric_residual
-  - court_keypoints: physical_v1
-  - paths: default
-  - run: train
-  - _self_
-
-task: plcs
-model:
-  name: plcs_triangulation_residual_v1
-data:
-  scene_dir: plcs/single_object_camera_view_v2
+- data: triangulation_residual
+- model: triangulation_residual
+- loss: triangulation_residual
+- training: triangulation_residual
+- court_keypoints: physical_v1
+- paths: default
+- run: train
+- _self_
 run:
   output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
-
 hydra:
-  searchpath:
-    - pkg://src.tasks.base.triangulation_residual.configs
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/hydra
+  output_subdir: null
+  job:
+    chdir: false

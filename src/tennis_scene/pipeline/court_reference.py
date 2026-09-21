@@ -8,6 +8,7 @@ from typing import Any, Literal
 import cv2
 import numpy as np
 import torch
+from scipy.optimize import minimize_scalar
 
 from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
@@ -21,7 +22,6 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.base.model_io import write_model_artifact_court_keypoint_contract
 from src.tasks.blcs.model_io.contracts import BLCSReferenceMetadata
 from src.tasks.plcs.model_io.contracts import PLCSReferenceMetadata
-from src.utils.geometry.planar_camera import fit_planar_camera
 from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
@@ -98,16 +98,47 @@ def fit_camera(
     if half_turn:
         xyz[:, :2] *= -1
     pixels = keypoints.astype(np.float64) * [width, height]
-    fit = fit_planar_camera(xyz, pixels, np.ones(len(xyz)), size)
-    center = fit.center
+
+    def solve(focal: float) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+        intrinsic = np.array(
+            [[focal, 0, width / 2], [0, focal, height / 2], [0, 0, 1.0]],
+            np.float64,
+        )
+        ok, rotation_vector, translation = cv2.solvePnP(
+            xyz,
+            pixels,
+            intrinsic,
+            None,
+            flags=cv2.SOLVEPNP_ITERATIVE,
+        )
+        if not ok:
+            raise ValueError("Court camera pose fit failed")
+        projected, _ = cv2.projectPoints(
+            xyz,
+            rotation_vector,
+            translation,
+            intrinsic,
+            None,
+        )
+        mse = float(np.square(projected[:, 0] - pixels).mean())
+        return mse, rotation_vector, translation, intrinsic
+
+    fit = minimize_scalar(
+        lambda focal: solve(float(focal))[0],
+        bounds=(width * 0.2, width * 3),
+        method="bounded",
+    )
+    mse, rotation_vector, translation, intrinsic = solve(float(fit.x))
+    rotation = cv2.Rodrigues(rotation_vector)[0]
+    center = (-rotation.T @ translation).ravel()
     if not np.isfinite(center).all() or center[2] <= 0 or (center[1] > 0) != half_turn:
         raise ValueError(f"Camera fit contradicts explicit court side: {center}")
     return {
         "camera_center_court_m": center.tolist(),
-        "K": fit.K.tolist(),
-        "R": fit.R.tolist(),
-        "t": fit.t.tolist(),
-        "rmse_px": fit.rmse_px,
+        "K": intrinsic.tolist(),
+        "R": rotation.tolist(),
+        "t": translation.ravel().tolist(),
+        "rmse_px": float(np.sqrt(mse)),
         "calibration": "approximate single-plane pinhole; no distortion correction",
     }
 
