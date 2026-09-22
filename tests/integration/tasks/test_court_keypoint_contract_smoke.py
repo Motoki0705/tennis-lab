@@ -69,7 +69,7 @@ from src.tasks.plcs.models.plcs_track_query_reference_model import (
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tennis_scene.pipeline.components.blcs import BLCSModule
 from src.tennis_scene.pipeline.components.plcs import PLCSModule
-from src.tennis_scene.pipeline.court_reference import reference_metadata
+from src.tennis_scene.pipeline.utilts.court_reference import reference_metadata
 from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
 from src.utils.schema.court_normalization import (
     denormalize_court_position,

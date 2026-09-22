@@ -25,8 +25,10 @@ false positiveです。GTは2D trackerの完了後に物理instance provenance�
 sideは定義上falseなのでside損失・正解率から除きます。
 
 各taskの`PLCSAssociationPredictor` / `BLCSAssociationPredictor`は同一view/frame内のID重複を解消し、欠測・非対象を-1、
-参照sideをfalseにします。ID番号はclip内でのみ有効です。長動画では同じraw
-観測を共有する重複windowについて`stitch_overlap_ids`でscene IDへ対応付けます。
+参照sideをfalseにします。ID番号は1回のモデル入力区間内でのみ有効です。同じraw
+観測を共有する重複window用の補助関数
+[`stitch_overlap_ids`](../../tennis_scene/pipeline/utilts/association_state.py)は、
+現行predictor/pipelineには未接続です。predictor自身は入力を自動分割しません。
 重複区間に現れない新しいIDは呼び出し側が新規scene IDを割り当てます。
 
 下流の`src.tennis_scene.pipeline.components.view_association.ViewAssociationModule`
