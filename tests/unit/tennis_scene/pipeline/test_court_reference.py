@@ -17,7 +17,6 @@ from src.tennis_scene.pipeline.court_reference import (
     reference_metadata,
 )
 from src.utils.schema.court import (
-    COURT_KP20_HALF_TURN_INDEX,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     CourtConfig,
@@ -36,7 +35,7 @@ def _camera_fit(half_turn: bool) -> dict[str, Any]:
     }
 
 
-def test_camera_view_reference_aligns_keypoints_and_visibility(
+def test_camera_view_reference_preserves_keypoints_and_visibility(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     half_turns = (False, False, True)
@@ -76,12 +75,10 @@ def test_camera_view_reference_aligns_keypoints_and_visibility(
     np.testing.assert_array_equal(context.keypoints[:2], keypoints[:2])
     np.testing.assert_array_equal(
         context.keypoints[2],
-        keypoints[2][:, COURT_KP20_HALF_TURN_INDEX[:14]],
+        keypoints[2],
     )
     np.testing.assert_array_equal(context.visibility[:2], visibility[:2])
-    np.testing.assert_array_equal(
-        context.visibility[2], visibility[2][:, COURT_KP20_HALF_TURN_INDEX[:14]]
-    )
+    np.testing.assert_array_equal(context.visibility[2], visibility[2])
     assert context.selection is not None
     assert context.document is not None
     assert context.provenance.reference_camera_id == "cam0"

@@ -17,6 +17,9 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_model_artifact_court_keypoint_contract,
 )
+from src.tasks.base.model_io.court_keypoint_contract import (
+    validate_neural_court_observation_order,
+)
 from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 
 
@@ -44,6 +47,7 @@ def validate_plcs_checkpoint_court_keypoints(
     contract: CourtKeypointContract,
 ) -> None:
     """Reject CourtKP20 mismatch before Lightning restores state."""
+    validate_neural_court_observation_order(checkpoint, contract)
     validate_model_artifact_court_keypoint_contract(
         checkpoint,
         contract,
@@ -112,6 +116,7 @@ def prepare_plcs_checkpoint_court_keypoint_config(
         )
     )
     contract = compatibility.contract
+    validate_neural_court_observation_order(checkpoint, contract)
     if "court_keypoints" not in config:
         if not compatibility.legacy_metadata_free:
             raise MissingCourtKeypointMetadataError(
