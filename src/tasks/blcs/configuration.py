@@ -2702,7 +2702,7 @@ __all__ = [
 
 def validate_association_config(config: object) -> object:
     """Validate the task-owned Global-MHA association recipe."""
-    from src.tasks.base.data.association_configuration import (
+    from src.tasks.base.association_configuration import (
         validate_association_configuration,
     )
 

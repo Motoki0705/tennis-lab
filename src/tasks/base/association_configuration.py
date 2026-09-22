@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 
 from src.tasks.base.configuration import TrainingRuntimeConfig, exact_config_mapping
 from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
-from src.utils.models.components.view_query import ViewQueryModelConfig
+from src.tasks.base.models.view_association import ViewQueryModelConfig
 from src.utils.paths import PROJECT_ROOT
 
 

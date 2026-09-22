@@ -1,6 +1,6 @@
 """BLCS view-side and clip identity model; global MHA with mHC."""
 
-from src.utils.models.components.view_query import (
+from src.tasks.base.models.view_association import (
     ViewQueryAssociationModel,
     ViewQueryModelConfig,
 )
