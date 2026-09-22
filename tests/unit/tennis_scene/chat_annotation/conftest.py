@@ -7,6 +7,7 @@ import pytest
 
 from src.tennis_scene.chat_annotation.kit import build_kit
 from src.tennis_scene.chat_annotation.runtime.contracts import (
+    KIT_VERSION,
     Annotation,
     ClipManifest,
     FrameMap,
@@ -33,7 +34,7 @@ def definition(kit: tuple[Path, str]) -> dict[str, Any]:
 def manifest(kit: tuple[Path, str]) -> ClipManifest:
     return ClipManifest(
         schema_version="tennis_chat_clip.v1",
-        kit_version="1.0.0",
+        kit_version=KIT_VERSION,
         kit_id=kit[1],
         clip_id="clip_000",
         source=SourceInfo(

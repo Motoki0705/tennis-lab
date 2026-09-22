@@ -355,3 +355,38 @@ def test_explicit_url_id_and_configuration_authority(cfg: DictConfig) -> None:
         in contract.authority_symbols
     )
     assert any(path.endswith("source.url") for path in contract.field_paths)
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "PROTOCOL.md",
+        "annotation.schema.json",
+        "court_definition.json",
+        "kit_manifest.json",
+    ],
+)
+def test_resume_checks_each_clip_attachment(
+    tmp_path: Path, cfg: DictConfig, filename: str
+) -> None:
+    write_video(tmp_path / "source.mp4", [0, 3000, 6000], Fraction(30))
+    config = PrepareConfig.from_config(cfg)
+    root = prepare(config)
+    name = read_json(root / "prepared.json")["clips"][0]
+    directory = root / "clips" / name
+    ready = read_json(root / "ready" / f"{name}.json")
+    assert set(ready["files"]) == {path.name for path in directory.iterdir()}
+    assert len(ready["files"]) == 6
+    path = directory / filename
+    original = path.read_bytes()
+    path.write_bytes(b"modified")
+    with pytest.raises(ValueError, match="changed"):
+        prepare(config)
+    path.unlink()
+    with pytest.raises(ValueError, match="incomplete"):
+        prepare(config)
+    path.write_bytes(original)
+    assert prepare(config) == root
+    (directory / "REQUEST.txt").write_text("legacy", encoding="utf-8")
+    with pytest.raises(ValueError, match="exactly the six attachments"):
+        prepare(config)

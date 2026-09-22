@@ -15,7 +15,7 @@ from typing import Any
 from src.utils.video.youtube import download_youtube_video
 
 from .configuration import PrepareConfig, youtube_id
-from .kit import build_kit
+from .kit import CLIP_KIT_FILES, build_kit, copy_clip_kit
 from .runtime.contracts import (
     KIT_VERSION,
     ClipManifest,
@@ -107,28 +107,28 @@ def media_range(timeline: Timeline, target: FrameRange, context: float) -> Frame
     )
 
 
-def _request(manifest: ClipManifest) -> str:
-    template = (Path(__file__).parent / "resources" / "REQUEST.txt").read_text(
-        encoding="utf-8"
-    )
-    return (
-        template.replace("{{CLIP_ID}}", manifest.clip_id)
-        .replace("{{VIDEO}}", manifest.filename)
-        .replace("{{KIT_ID}}", manifest.kit_id)
-        .replace("{{KIT_VERSION}}", manifest.kit_version)
-    )
+def _ready_path(directory: Path) -> Path:
+    return directory.parent.parent / "ready" / f"{directory.name}.json"
 
 
 def _verify_published(directory: Path) -> ClipManifest:
-    ready = read_json(directory / "ready.json")
+    ready = read_json(_ready_path(directory))
     for name, digest in ready["files"].items():
-        if Path(name).name != name or sha256_file(directory / name) != digest:
+        if (
+            Path(name).name != name
+            or not (directory / name).is_file()
+            or (directory / name).is_symlink()
+            or sha256_file(directory / name) != digest
+        ):
             raise ValueError(f"prepared clip is incomplete or changed: {directory}")
     manifest: ClipManifest = ClipManifest.model_validate(
         read_json(directory / "clip_manifest.json")
     )
-    if set(ready["files"]) != {manifest.filename, "clip_manifest.json", "REQUEST.txt"}:
-        raise ValueError("ready marker must cover video, manifest and request")
+    expected = {manifest.filename, "clip_manifest.json", *CLIP_KIT_FILES}
+    if set(ready["files"]) != expected:
+        raise ValueError("ready marker must cover exactly the six clip attachments")
+    if {file.name for file in directory.iterdir()} != expected:
+        raise ValueError("prepared clip must contain exactly the six attachments")
     if ready["files"].get(manifest.filename) != manifest.sha256:
         raise ValueError("ready marker does not identify the clip hash")
     return manifest
@@ -140,6 +140,7 @@ def _make_clip(
     source_info: SourceInfo,
     timeline: Timeline,
     kit_id: str,
+    kit_directory: Path,
     clips_root: Path,
     target: FrameRange,
 ) -> list[Path]:
@@ -199,6 +200,7 @@ def _make_clip(
                     source_info,
                     timeline,
                     kit_id,
+                    kit_directory,
                     clips_root,
                     smaller,
                 )
@@ -209,6 +211,7 @@ def _make_clip(
                 source_info,
                 timeline,
                 kit_id,
+                kit_directory,
                 clips_root,
                 FrameRange(start=target.start, stop=middle),
             ) + _make_clip(
@@ -217,6 +220,7 @@ def _make_clip(
                 source_info,
                 timeline,
                 kit_id,
+                kit_directory,
                 clips_root,
                 FrameRange(start=middle, stop=target.stop),
             )
@@ -251,13 +255,13 @@ def _make_clip(
         )
         check_clip(video, manifest)
         write_json(staging / "clip_manifest.json", manifest.model_dump(mode="json"))
-        (staging / "REQUEST.txt").write_text(_request(manifest), encoding="utf-8")
+        copy_clip_kit(kit_directory, staging)
         write_json(
-            staging / "ready.json",
+            _ready_path(destination),
             {
                 "files": {
                     name: sha256_file(staging / name)
-                    for name in (video.name, "clip_manifest.json", "REQUEST.txt")
+                    for name in (video.name, "clip_manifest.json", *CLIP_KIT_FILES)
                 }
             },
         )
@@ -388,7 +392,14 @@ def _prepare_acquired(
     for target in requested:
         outputs.extend(
             _make_clip(
-                config, source, source_info, timeline, kit_id, clips_root, target
+                config,
+                source,
+                source_info,
+                timeline,
+                kit_id,
+                kit_directory,
+                clips_root,
+                target,
             )
         )
     realized = [_verify_published(path).target_range for path in outputs]
