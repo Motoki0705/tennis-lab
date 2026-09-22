@@ -176,17 +176,17 @@ def test_false_positive_and_empty_observation_losses_are_finite():
 def test_downstream_groups_ids_without_assuming_shared_local_slots():
     import numpy as np
 
-    from src.tennis_scene.pipeline.components.view_association import (
-        ViewAssociationResult,
+    from src.tennis_scene.pipeline.model_io.observations import (
+        ObjectObservations,
+        group_observations,
     )
 
     ids = np.array([[[0, 1]], [[1, 0]]], dtype=np.int64)
     uv: np.ndarray = np.arange(8, dtype=np.float32).reshape(2, 1, 2, 1, 2)
     vis = np.ones(uv.shape[:-1], dtype=np.bool_)
-    result = ViewAssociationResult(
-        ("left", "right"), "left", (False, True), ids, np.array([-1.0, 1.0], np.float32)
-    )
-    unique, grouped, mask = result.group_observations(uv, vis)
+    observations = ObjectObservations(("left", "right"), (10, 10), 30., uv, vis.astype(np.float32), vis.any(-1), np.zeros((2, 2), np.int64))
+    result = group_observations(observations, ids, threshold=.5)
+    unique, grouped, mask = result.identities, result.uv_px, result.visibility
     assert unique.tolist() == [0, 1]
     np.testing.assert_array_equal(grouped[0, 1, 0], uv[1, 0, 1])
     assert mask.all()

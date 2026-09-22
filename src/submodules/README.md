@@ -37,6 +37,8 @@ model family packageは内部実装であり、同じsymbolを再exportしませ
 - deviceは`"auto"`のみavailabilityに応じて選択し、明示したCUDAが利用できない場合はmodel構築前にエラーにする。CPUへの暗黙fallbackは持たない。
 - `GvhmrRequest`は`(F,17,3)` keypoints、`(F,3)` boxes、`(F,1024)` features、frame/device/dtypeと正の画像・bbox寸法を構築時とvendor entry直前に検証する。
 - request / result はモデルごとの frozen dataclass。
+- `TrackRequest.num_tracks=None, interactive=False`は全trackを返し、検出0件も空結果にする。`observed_mask`はbbox補間と実検出を区別する。
+- `Pose2DRequest` / `ImageFeatureRequest`の`frame_indices`を指定すると、明示したsource frameを逐次decodeし、全動画をRAMへ展開せずcrop batchを作る。
 
 ```python
 from src.submodules.models import DinoPersonTracker, TrackRequest

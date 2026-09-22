@@ -81,6 +81,10 @@ def label_masks(scene: SceneResult, quality: QualityConfig) -> dict[str, np.ndar
         ball_3d=scene.ball_3d,
         config=quality,
         teacher_quality=scene.metadata["label_quality"],
+        scene_schema_version=scene.schema_version,
+        player_reconstruction_valid=scene.player_valid,
+        player_heading_valid=scene.player_heading_valid,
+        ball_reconstruction_valid=scene.ball_3d_valid,
     )
     return masks
 

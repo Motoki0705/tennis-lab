@@ -17,26 +17,16 @@ from src.submodules.configuration import (
     SubmoduleRuntimeConfig,
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
-from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.base.model_io.association_contracts import AssociationInferencePolicy
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
-from src.tennis_scene.motion_alignment.similarity import SimilarityConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
-from src.tennis_scene.pipeline.components.blcs import BLCSConfig
+from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
 from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
-from src.tennis_scene.pipeline.components.gvhmr import (
-    CourtFootpointFilterConfig,
-    GVHMRConfig,
-)
-from src.tennis_scene.pipeline.components.motion_alignment import PlayerMotionConfig
-from src.tennis_scene.pipeline.components.player_association import (
-    PlayerAssociationConfig,
-)
-from src.tennis_scene.pipeline.components.plcs import PLCSConfig
-from src.tennis_scene.pipeline.utilts.court_reference import CourtReferenceRuntimeConfig
+from src.tennis_scene.pipeline.model_io.people import PeopleModelConfig
 from src.utils.configuration import (
     ConfigField,
     PathResolver,
@@ -117,7 +107,7 @@ def _positive(value: int | float, *, name: str) -> None:
 
 
 def _unit_interval(value: float, *, name: str) -> None:
-    if value < 0.0 or value > 1.0:
+    if not math.isfinite(value) or value < 0.0 or value > 1.0:
         raise SemanticConfigurationError(f"{name} must be in [0, 1], got {value}.")
 
 
@@ -186,53 +176,15 @@ _POSTPROCESS_SCHEMA = StrictConfigSchema(
 )
 _COURT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp",
-    fields={
-        **_STAGE_IO_FIELDS,
-        "enabled": ConfigField.of(bool),
-        "checkpoint": ConfigField.of(str),
-        "frame_index": ConfigField.of(int),
-        "mode": ConfigField.of(str),
-        "num_keypoints": ConfigField.of(int),
-        "subpixel_refine": ConfigField.of(bool),
-        "load_keypoint_contract": ConfigField.of(str, type(None)),
-        "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
-    },
+    fields={"checkpoint": ConfigField.of(str), "subpixel_refine": ConfigField.of(bool),
+            "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA)},
 )
-_COURT_FOOTPOINT_FILTER_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.gvhmr.court_footpoint_filter",
+_PEOPLE_MODELS_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.people_models",
     fields={
-        "enabled": ConfigField.of(bool),
-        "sideline_margin_m": ConfigField.of(float, int),
-        "baseline_margin_m": ConfigField.of(float, int),
-    },
-)
-_GVHMR_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.gvhmr",
-    fields={
-        **_STAGE_IO_FIELDS,
-        "enabled": ConfigField.of(bool),
-        "gvhmr_checkpoint": ConfigField.of(str),
-        "detector": ConfigField.of(str),
-        "yolo_checkpoint": ConfigField.of(str),
-        "dino_checkpoint": ConfigField.of(str),
-        "dino_repository": ConfigField.of(str),
-        "vitpose_checkpoint": ConfigField.of(str),
-        "hmr2_checkpoint": ConfigField.of(str),
-        "body_models_dir": ConfigField.of(str),
+        **{name: ConfigField.of(str) for name in ("detector", "gvhmr_checkpoint", "yolo_checkpoint", "dino_checkpoint", "dino_repository", "vitpose_checkpoint", "hmr2_checkpoint", "body_models_dir")},
         "bundled_assets": ConfigField.mapping(BUNDLED_MODEL_ASSET_SCHEMA),
         "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
-        "track_selection": ConfigField.of(str),
-        "num_tracks": ConfigField.of(int),
-        "court_footpoint_filter": ConfigField.mapping(_COURT_FOOTPOINT_FILTER_SCHEMA),
-    },
-)
-_ASSOCIATION_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.player_association",
-    fields={
-        **_STAGE_IO_FIELDS,
-        "mode": ConfigField.of(str),
-        "frame_index": ConfigField.of(int),
-        "reference_camera": ConfigField.of(str, int),
     },
 )
 _TRAJECTORY_SCHEMA = StrictConfigSchema(
@@ -266,87 +218,46 @@ _BALL_SCHEMA = StrictConfigSchema(
         "trajectory_gate": ConfigField.mapping(_TRAJECTORY_SCHEMA),
     },
 )
-_PLCS_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.plcs",
-    fields={
-        **_STAGE_IO_FIELDS,
-        "enabled": ConfigField.of(bool),
-        "checkpoint": ConfigField.of(str),
-        "window_size": ConfigField.of(int),
-        "window_overlap": ConfigField.of(int),
-        "sample_stride": ConfigField.of(int),
-        "human_vis_threshold": ConfigField.of(float),
-    },
-)
-_PLAYER_MOTION_ALIGNMENT_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.player_motion.alignment",
-    fields={
-        "sigma_position_m": ConfigField.of(float, int),
-        "sigma_heading_deg": ConfigField.of(float, int),
-        "heading_weight": ConfigField.of(float, int),
-        "scale_prior": ConfigField.of(float, int),
-        "min_scale": ConfigField.of(float, int),
-        "max_scale": ConfigField.of(float, int),
-        "huber_delta": ConfigField.of(float, int),
-        "heading_resultant_threshold": ConfigField.of(float, int),
-        "max_nfev": ConfigField.of(int),
-    },
-)
-_PLAYER_MOTION_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.player_motion",
-    fields={
-        "scale_mode": ConfigField.of(str),
-        "alignment": ConfigField.mapping(_PLAYER_MOTION_ALIGNMENT_SCHEMA),
-    },
-)
-_BLCS_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.blcs",
-    fields={
-        **_STAGE_IO_FIELDS,
-        "enabled": ConfigField.of(bool),
-        "checkpoint": ConfigField.of(str),
-        "window_size": ConfigField.of(int),
-        "window_overlap": ConfigField.of(int),
-        "sample_stride": ConfigField.of(int),
-    },
-)
-_COURT_KEYPOINTS_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.court_keypoints",
-    fields={"selector": ConfigField.of(str)},
-)
-_COURT_REFERENCE_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.court_reference",
-    fields={
-        "reference_camera": ConfigField.of(str, type(None)),
-        "view_half_turns": ConfigField.of(list, tuple, type(None)),
-    },
-)
-_PIPELINE_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.pipeline",
-    fields={
-        "paths": ConfigField.mapping(PATHS_SCHEMA),
-        "video_paths": ConfigField.sequence(ConfigField.of(str)),
-        "camera_ids": ConfigField.sequence(ConfigField.of(str)),
-        "output_name": ConfigField.of(str),
-        "output_directory": ConfigField.of(str),
-        "device": ConfigField.of(str),
-        "court_keypoints": ConfigField.mapping(_COURT_KEYPOINTS_SCHEMA),
-        "court_reference": ConfigField.mapping(_COURT_REFERENCE_SCHEMA),
-        "court_kp": ConfigField.mapping(_COURT_SCHEMA),
-        "gvhmr": ConfigField.mapping(_GVHMR_SCHEMA),
-        "player_association": ConfigField.mapping(_ASSOCIATION_SCHEMA),
-        "player_motion": ConfigField.mapping(_PLAYER_MOTION_SCHEMA),
-        "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
-        "plcs": ConfigField.mapping(_PLCS_SCHEMA),
-        "blcs": ConfigField.mapping(_BLCS_SCHEMA),
-        "max_frames": ConfigField.of(int, type(None)),
-    },
-)
+_FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": ConfigField.of(bool)})
+_AUTO_ASSOCIATION_SCHEMA = StrictConfigSchema(name="tennis_scene.association_stage", fields={"enabled": ConfigField.of(bool), "checkpoint": ConfigField.of(str)})
+_PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observations", fields={
+    "enabled": ConfigField.of(bool), "visibility_threshold": ConfigField.of(float, int),
+    "sideline_margin_m": ConfigField.of(float, int), "baseline_margin_m": ConfigField.of(float, int),
+})
+_AUTO_BALL_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_detection", fields={k: v for k, v in _BALL_SCHEMA.fields.items() if k not in _STAGE_IO_FIELDS})
+_INFERENCE_SCHEMA = StrictConfigSchema(name="tennis_scene.association", fields={
+    "min_probability": ConfigField.of(float, int), "min_assignment_gap": ConfigField.of(float, int),
+    "min_frames": ConfigField.of(int), "max_frames": ConfigField.of(int), "padded_views": ConfigField.of(int),
+})
+_GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={
+    "reference_camera": ConfigField.of(str, type(None)), "calibration_samples": ConfigField.of(int),
+    "consensus_ratio": ConfigField.of(float, int), "calibration_error_ratio": ConfigField.of(float, int),
+    "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
+    "side_min_support": ConfigField.of(float, int), "side_min_margin": ConfigField.of(float, int),
+})
+_PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction", fields={
+    "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "joint_confidence": ConfigField.of(float, int),
+})
+_BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
+    "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int), "ambiguity_ratio": ConfigField.of(float, int),
+})
+_CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
+_PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
+    "paths": ConfigField.mapping(PATHS_SCHEMA), "video_paths": ConfigField.sequence(ConfigField.of(str)),
+    "camera_ids": ConfigField.sequence(ConfigField.of(str)), "output_name": ConfigField.of(str),
+    "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
+    "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
+    "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_AUTO_BALL_SCHEMA),
+    "plcs_association": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA), "blcs_association": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA),
+    "association": ConfigField.mapping(_INFERENCE_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
+    "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
+    "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
+})
 
 
 @dataclass(frozen=True, slots=True)
 class PipelineRuntimeConfig:
-    """Validated pipeline boundary and fully resolved stage paths."""
+    """Automatic stage configuration; dataset callers can leave run inputs unbound."""
 
     roots: RuntimePathRoots
     resolver: PathResolver
@@ -355,382 +266,111 @@ class PipelineRuntimeConfig:
     output_path: Path
     device: str
     max_frames: int | None
-    frame_index: int
-    court_reference: CourtReferenceRuntimeConfig
     court_kp: CourtKPConfig
-    gvhmr: GVHMRConfig
-    player_association: PlayerAssociationConfig
-    player_motion: PlayerMotionConfig
+    people: PeopleModelConfig
     ball_detection: BallDetectionConfig
-    plcs: PLCSConfig
-    blcs: BLCSConfig
+    plcs_checkpoint: Path
+    blcs_checkpoint: Path
+    inference_policy: AssociationInferencePolicy
+    camera_geometry: CameraGeometryConfig
+    human_vis_threshold: float
+    person_roi_margins: tuple[float, float]
+    player_reprojection_px: float
+    joint_confidence: float
+    ball_reprojection_px: float
+    ball_min_frames: int
+    ball_ambiguity_ratio: float
+    cache_directory: Path
+    cache_source: str
+    cache_overwrite: bool
     enabled: Mapping[str, bool]
+    processing_settings: Mapping[str, object]
 
     @classmethod
-    def from_config(cls, cfg: DictConfig) -> PipelineRuntimeConfig:
-        """Reject the complete composed config before any model or I/O begins."""
+    def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
         value = _PIPELINE_SCHEMA.validate(_plain(cfg))
         roots, resolver = _roots(value["paths"])
-        raw_videos = _sequence(value["video_paths"], name="video_paths")
-        raw_cameras = _sequence(value["camera_ids"], name="camera_ids")
-        if not raw_videos or len(raw_videos) != len(raw_cameras):
-            raise SemanticConfigurationError(
-                "video_paths and camera_ids must be non-empty and have equal length."
-            )
-        video_paths = tuple(
-            resolver.resolve(PathRole.DATA, cast(str, path)) for path in raw_videos
-        )
-        camera_ids = tuple(cast(str, item) for item in raw_cameras)
-        if len(set(camera_ids)) != len(camera_ids):
-            raise SemanticConfigurationError("camera_ids must be unique.")
-        if any(not camera_id for camera_id in camera_ids):
-            raise SemanticConfigurationError(
-                "camera_ids must not contain empty values."
-            )
-        output_name = _single_component(
-            cast(str, value["output_name"]), name="output_name"
-        )
-        output_path = resolver.resolve(
-            PathRole.OUTPUT, cast(str, value["output_directory"]), f"{output_name}.npz"
-        )
+        raw_videos = _sequence(value["video_paths"], name="video_paths") if bind_inputs else ()
+        raw_cameras = _sequence(value["camera_ids"], name="camera_ids") if bind_inputs else ()
+        if bind_inputs and (not 3 <= len(raw_videos) <= 5 or len(raw_videos) != len(raw_cameras)):
+            raise SemanticConfigurationError("Automatic reconstruction requires 3..5 synchronized video paths and camera IDs")
+        camera_ids = tuple(cast(str, x) for x in raw_cameras)
+        if len(set(camera_ids)) != len(camera_ids) or any(not x.strip() for x in camera_ids):
+            raise SemanticConfigurationError("Camera IDs must be nonempty and unique")
+        video_paths = tuple(resolver.resolve(PathRole.DATA, cast(str, x)) for x in raw_videos)
+        output_name = _single_component(cast(str, value["output_name"]), name="output_name")
+        output_path = resolver.resolve(PathRole.OUTPUT, cast(str, value["output_directory"]), f"{output_name}.npz")
         device = cast(str, value["device"])
         if not device.strip():
-            raise SemanticConfigurationError("device must be a non-empty string.")
-
-        court_keypoints = _mapping(value["court_keypoints"], name="court_keypoints")
-        court_contract = resolve_court_keypoint_contract(
-            cast(str, court_keypoints["selector"])
-        )
-        raw_reference = _mapping(value["court_reference"], name="court_reference")
-        court_reference_camera = cast(str | None, raw_reference["reference_camera"])
-        raw_half_turns = raw_reference["view_half_turns"]
-        half_turns: tuple[bool, ...] | None
-        if raw_half_turns is None:
-            half_turns = None
-        else:
-            sequence = _sequence(raw_half_turns, name="court_reference.view_half_turns")
-            if any(type(item) is not bool for item in sequence):
-                raise TypeError(
-                    "court_reference.view_half_turns must contain exactly bool values."
-                )
-            half_turns = tuple(cast(bool, item) for item in sequence)
-        if court_contract.selector == "physical_v1":
-            if court_reference_camera is not None or half_turns is not None:
-                raise SemanticConfigurationError(
-                    "physical_v1 forbids court_reference reference_camera and "
-                    "view_half_turns."
-                )
-        elif (
-            court_reference_camera is None
-            or not court_reference_camera.strip()
-            or half_turns is None
-        ):
-            raise SemanticConfigurationError(
-                "camera_view_v2 requires a non-empty court_reference.reference_camera "
-                "and explicit court_reference.view_half_turns."
-            )
-        if court_contract.selector == "camera_view_v2":
-            if half_turns is None or len(half_turns) != len(camera_ids):
-                raise SemanticConfigurationError(
-                    "camera_view_v2 requires one court_reference.view_half_turn per camera_ids entry."
-                )
-            if court_reference_camera not in camera_ids:
-                raise SemanticConfigurationError(
-                    "court_reference.reference_camera must be in camera_ids."
-                )
-            if half_turns[camera_ids.index(court_reference_camera)]:
-                raise SemanticConfigurationError(
-                    "court_reference.reference_camera must have view_half_turn=false."
-                )
-        court_reference = CourtReferenceRuntimeConfig(
-            reference_camera=court_reference_camera,
-            view_half_turns=half_turns,
-        )
-
-        court = _mapping(value["court_kp"], name="court_kp")
-        post = _mapping(court["postprocess"], name="court_kp.postprocess")
-        court_load, court_output = _stage_path(court, resolver, name="court_kp")
-        mode = cast(str, court["mode"])
-        if mode not in {"model", "manual_ui"}:
-            raise SemanticConfigurationError(
-                "court_kp.mode must be model or manual_ui."
-            )
-        num_keypoints = cast(int, court["num_keypoints"])
-        _positive(num_keypoints, name="court_kp.num_keypoints")
-        frame_index = cast(int, court["frame_index"])
-        if frame_index < 0:
-            raise SemanticConfigurationError("court_kp.frame_index must be >= 0.")
-        court_config = CourtKPConfig(
-            checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, court["checkpoint"])
-            ),
-            source=cast(Literal["execute", "load"], court["source"]),
-            mode=cast(Literal["model", "manual_ui"], mode),
-            device=device,
-            subpixel_refine=cast(bool, court["subpixel_refine"]),
-            num_keypoints=num_keypoints,
-            save_result=cast(bool, court["save_result"]),
-            output_path=court_output,
-            load_path=court_load,
-            postprocess=CourtKPPostprocessConfig(**cast("dict[str, Any]", dict(post))),
-            output_keypoint_contract=court_contract.selector,
-            load_keypoint_contract=cast(str | None, court["load_keypoint_contract"]),
-            resolver=resolver,
-        )
-
-        gvhmr = _mapping(value["gvhmr"], name="gvhmr")
-        gvhmr_load, gvhmr_output = _stage_path(gvhmr, resolver, name="gvhmr")
-        gvhmr_runtime = SubmoduleRuntimeConfig.from_mapping(
-            _mapping(gvhmr["runtime"], name="gvhmr.runtime")
-        )
-        bundled_assets = BundledModelAssetPaths.from_mapping(
-            _mapping(gvhmr["bundled_assets"], name="gvhmr.bundled_assets"),
-            resolver=resolver,
-        )
-        if gvhmr_runtime.device != device:
-            raise SemanticConfigurationError(
-                "gvhmr.runtime.device must equal the pipeline device."
-            )
-        num_tracks = cast(int, gvhmr["num_tracks"])
-        _positive(num_tracks, name="gvhmr.num_tracks")
-        raw_footpoint_filter = _mapping(
-            gvhmr["court_footpoint_filter"],
-            name="gvhmr.court_footpoint_filter",
-        )
-        footpoint_filter_enabled = cast(bool, raw_footpoint_filter["enabled"])
-        sideline_margin_m = float(
-            cast(float | int, raw_footpoint_filter["sideline_margin_m"])
-        )
-        baseline_margin_m = float(
-            cast(float | int, raw_footpoint_filter["baseline_margin_m"])
-        )
-        if (
-            not math.isfinite(sideline_margin_m)
-            or not math.isfinite(baseline_margin_m)
-            or sideline_margin_m < 0
-            or baseline_margin_m < 0
-        ):
-            raise SemanticConfigurationError(
-                "gvhmr.court_footpoint_filter margins must be finite and non-negative."
-            )
-        if footpoint_filter_enabled and cast(str, gvhmr["detector"]) != "dino":
-            raise SemanticConfigurationError(
-                "gvhmr.court_footpoint_filter requires detector='dino'."
-            )
-        gvhmr_config = GVHMRConfig(
-            gvhmr_checkpoint=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["gvhmr_checkpoint"])
-            ),
-            source=cast(Literal["execute", "load"], gvhmr["source"]),
-            detector=cast(str, gvhmr["detector"]),
-            yolo_checkpoint=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["yolo_checkpoint"])
-            ),
-            dino_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, gvhmr["dino_checkpoint"])
-            ),
-            dino_repository=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["dino_repository"])
-            ),
-            vitpose_checkpoint=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["vitpose_checkpoint"])
-            ),
-            hmr2_checkpoint=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["hmr2_checkpoint"])
-            ),
-            body_models_dir=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, gvhmr["body_models_dir"])
-            ),
-            bundled_assets=bundled_assets,
-            runtime=gvhmr_runtime,
-            track_selection=cast(str, gvhmr["track_selection"]),
-            num_tracks=num_tracks,
-            court_footpoint_filter=CourtFootpointFilterConfig(
-                enabled=footpoint_filter_enabled,
-                sideline_margin_m=sideline_margin_m,
-                baseline_margin_m=baseline_margin_m,
-            ),
-            save_result=cast(bool, gvhmr["save_result"]),
-            output_path=gvhmr_output,
-            load_path=gvhmr_load,
-        )
-
-        association = _mapping(value["player_association"], name="player_association")
-        association_load, association_output = _stage_path(
-            association, resolver, name="player_association"
-        )
-        association_mode = cast(str, association["mode"])
-        if association_mode != "manual_ui":
-            raise SemanticConfigurationError(
-                "player_association.mode must be 'manual_ui'."
-            )
-        association_frame = cast(int, association["frame_index"])
-        if association_frame < 0:
-            raise SemanticConfigurationError(
-                "player_association.frame_index must be >= 0."
-            )
-        reference_camera = cast(str | int, association["reference_camera"])
-        if isinstance(reference_camera, int):
-            if reference_camera < 0 or reference_camera >= len(camera_ids):
-                raise SemanticConfigurationError(
-                    "player_association.reference_camera index is out of range."
-                )
-        elif reference_camera not in camera_ids:
-            raise SemanticConfigurationError(
-                "player_association.reference_camera must name a configured camera."
-            )
-        association_config = PlayerAssociationConfig(
-            source=cast(Literal["execute", "load"], association["source"]),
-            mode=cast(Literal["manual_ui"], association_mode),
-            initial_frame_index=association_frame,
-            reference_camera=reference_camera,
-            save_result=cast(bool, association["save_result"]),
-            output_path=association_output,
-            load_path=association_load,
-        )
-
-        player_motion = _mapping(value["player_motion"], name="player_motion")
-        alignment = _mapping(player_motion["alignment"], name="player_motion.alignment")
-        scale_mode = cast(str, player_motion["scale_mode"])
-        if scale_mode not in {"fixed", "free"}:
-            raise SemanticConfigurationError(
-                "player_motion.scale_mode must be 'fixed' or 'free', got "
-                f"{scale_mode!r}."
-            )
-        sigma_position = float(cast(float | int, alignment["sigma_position_m"]))
-        _positive(sigma_position, name="player_motion.alignment.sigma_position_m")
-        sigma_heading_deg = float(cast(float | int, alignment["sigma_heading_deg"]))
-        _positive(
-            sigma_heading_deg,
-            name="player_motion.alignment.sigma_heading_deg",
-        )
-        heading_weight = float(cast(float | int, alignment["heading_weight"]))
-        _non_negative(heading_weight, name="player_motion.alignment.heading_weight")
-        scale_prior = float(cast(float | int, alignment["scale_prior"]))
-        _non_negative(scale_prior, name="player_motion.alignment.scale_prior")
-        min_scale = float(cast(float | int, alignment["min_scale"]))
-        max_scale = float(cast(float | int, alignment["max_scale"]))
-        _positive(min_scale, name="player_motion.alignment.min_scale")
-        _positive(max_scale, name="player_motion.alignment.max_scale")
-        if min_scale > max_scale:
-            raise SemanticConfigurationError(
-                "player_motion.alignment.min_scale must not exceed max_scale, "
-                f"got {min_scale} > {max_scale}."
-            )
-        huber_delta = float(cast(float | int, alignment["huber_delta"]))
-        _positive(huber_delta, name="player_motion.alignment.huber_delta")
-        heading_resultant = float(
-            cast(float | int, alignment["heading_resultant_threshold"])
-        )
-        _unit_interval(
-            heading_resultant,
-            name="player_motion.alignment.heading_resultant_threshold",
-        )
-        max_nfev = cast(int, alignment["max_nfev"])
-        _positive(max_nfev, name="player_motion.alignment.max_nfev")
-        player_motion_config = PlayerMotionConfig(
-            scale_mode=cast(Literal["fixed", "free"], scale_mode),
-            smpl_joint_regressor=bundled_assets.smpl_neutral_joint_regressor,
-            similarity=SimilarityConfig(
-                sigma_position=sigma_position,
-                sigma_heading=math.radians(sigma_heading_deg),
-                heading_weight=heading_weight,
-                scale_prior=scale_prior,
-                min_scale=min_scale,
-                max_scale=max_scale,
-                huber_delta=huber_delta,
-                heading_resultant_threshold=heading_resultant,
-                max_nfev=max_nfev,
-            ),
-        )
-
-        ball = _mapping(value["ball_detection"], name="ball_detection")
-        ball_config = build_ball_detection_config(ball, resolver, device=device)
-        plcs = _mapping(value["plcs"], name="plcs")
-        plcs_load, plcs_output = _stage_path(plcs, resolver, name="plcs")
-        plcs_window_size = cast(int, plcs["window_size"])
-        plcs_window_overlap = cast(int, plcs["window_overlap"])
-        _window_contract(plcs_window_size, plcs_window_overlap, name="plcs")
-        plcs_sample_stride = cast(int, plcs["sample_stride"])
-        _positive(plcs_sample_stride, name="plcs.sample_stride")
-        human_vis_threshold = cast(float, plcs["human_vis_threshold"])
-        _unit_interval(human_vis_threshold, name="plcs.human_vis_threshold")
-        plcs_config = PLCSConfig(
-            checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])
-            ),
-            source=cast(Literal["execute", "load"], plcs["source"]),
-            device=device,
-            save_result=cast(bool, plcs["save_result"]),
-            output_path=plcs_output,
-            load_path=plcs_load,
-            window_size=plcs_window_size,
-            window_overlap=plcs_window_overlap,
-            sample_stride=plcs_sample_stride,
-            human_vis_threshold=human_vis_threshold,
-            resolver=resolver,
-            court_keypoint_contract=court_contract,
-        )
-        blcs = _mapping(value["blcs"], name="blcs")
-        blcs_load, blcs_output = _stage_path(blcs, resolver, name="blcs")
-        blcs_window_size = cast(int, blcs["window_size"])
-        blcs_window_overlap = cast(int, blcs["window_overlap"])
-        _window_contract(blcs_window_size, blcs_window_overlap, name="blcs")
-        blcs_sample_stride = cast(int, blcs["sample_stride"])
-        _positive(blcs_sample_stride, name="blcs.sample_stride")
-        blcs_config = BLCSConfig(
-            checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, blcs["checkpoint"])
-            ),
-            source=cast(Literal["execute", "load"], blcs["source"]),
-            device=device,
-            save_result=cast(bool, blcs["save_result"]),
-            output_path=blcs_output,
-            load_path=blcs_load,
-            window_size=blcs_window_size,
-            window_overlap=blcs_window_overlap,
-            sample_stride=blcs_sample_stride,
-            resolver=resolver,
-            court_keypoint_contract=court_contract,
-        )
-        enabled = {
-            name: cast(bool, section["enabled"])
-            for name, section in (
-                ("court_kp", court),
-                ("gvhmr", gvhmr),
-                ("ball_detection", ball),
-                ("plcs", plcs),
-                ("blcs", blcs),
-            )
-        }
-        if not enabled["court_kp"] or not enabled["plcs"]:
-            raise SemanticConfigurationError("court_kp and plcs must be enabled.")
-        if enabled["plcs"] and not enabled["gvhmr"]:
-            raise SemanticConfigurationError("plcs requires gvhmr.")
-        if enabled["blcs"] and not enabled["ball_detection"]:
-            raise SemanticConfigurationError("blcs requires ball_detection.")
+            raise SemanticConfigurationError("Pipeline device must be explicit")
         max_frames = cast(int | None, value["max_frames"])
         if max_frames is not None:
             _positive(max_frames, name="max_frames")
-        return cls(
-            roots=roots,
-            resolver=resolver,
-            video_paths=video_paths,
-            camera_ids=camera_ids,
-            output_path=output_path,
-            device=device,
-            max_frames=max_frames,
-            frame_index=frame_index,
-            court_reference=court_reference,
-            court_kp=court_config,
-            gvhmr=gvhmr_config,
-            player_association=association_config,
-            player_motion=player_motion_config,
-            ball_detection=ball_config,
-            plcs=plcs_config,
-            blcs=blcs_config,
-            enabled=enabled,
+        cache = _mapping(value["cache"], name="cache")
+        cache_source = cast(str, cache["source"])
+        if cache_source not in ("execute", "load") or (cache_source == "load" and cache["overwrite"]):
+            raise SemanticConfigurationError("Cache source must be execute/load; load forbids overwrite")
+        cache_directory = resolver.resolve(PathRole.ARTIFACT, cast(str, cache["directory"]))
+        court = _mapping(value["court_kp"], name="court_kp")
+        court_config = CourtKPConfig(
+            checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, court["checkpoint"])), source="execute", mode="model", device=device,
+            subpixel_refine=cast(bool, court["subpixel_refine"]), num_keypoints=14, save_result=False,
+            output_path=cache_directory / "court.component.json", load_path=None,
+            postprocess=CourtKPPostprocessConfig(**dict(_mapping(court["postprocess"], name="court.postprocess"))),
+            output_keypoint_contract="camera_view_v2", load_keypoint_contract=None, resolver=resolver,
         )
+        models = _mapping(value["people_models"], name="people_models")
+        runtime = SubmoduleRuntimeConfig.from_mapping(_mapping(models["runtime"], name="people_models.runtime"))
+        if runtime.device != device:
+            raise SemanticConfigurationError("People model device must equal pipeline device")
+        people = PeopleModelConfig(
+            detector=cast(str, models["detector"]),
+            dino_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["dino_checkpoint"])),
+            dino_repository=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"])),
+            yolo_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["yolo_checkpoint"])),
+            vitpose_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["vitpose_checkpoint"])),
+            hmr2_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["hmr2_checkpoint"])),
+            gvhmr_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["gvhmr_checkpoint"])),
+            body_models_dir=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["body_models_dir"])),
+            bundled_assets=BundledModelAssetPaths.from_mapping(_mapping(models["bundled_assets"], name="bundled_assets"), resolver=resolver), runtime=runtime,
+        )
+        ball_settings = dict(_mapping(value["ball_detection"], name="ball_detection"))
+        ball_config = build_ball_detection_config({**ball_settings, "source": "execute", "save_result": False, "load_path": None, "output_path": str(cache["directory"]) + "/ball.component.json"}, resolver, device=device)
+        plcs = _mapping(value["plcs_association"], name="plcs_association")
+        blcs = _mapping(value["blcs_association"], name="blcs_association")
+        inference_policy = AssociationInferencePolicy(**cast(dict[str, Any], dict(_mapping(value["association"], name="association"))))
+        geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
+        if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
+            raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
+        person = _mapping(value["person_observations"], name="person_observations")
+        player = _mapping(value["player_reconstruction"], name="player_reconstruction")
+        ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
+        visibility = float(cast(float, person["visibility_threshold"]))
+        _unit_interval(visibility, name="person visibility")
+        margins = (float(cast(float, person["sideline_margin_m"])), float(cast(float, person["baseline_margin_m"])))
+        for margin in margins:
+            if not math.isfinite(margin) or margin < 0:
+                raise SemanticConfigurationError("Court ROI margins must be finite and nonnegative")
+        player_error, ball_error = float(cast(float, player["reprojection_px"])), float(cast(float, ball["reprojection_px"]))
+        for error in (player_error, ball_error):
+            if not math.isfinite(error) or error <= 0:
+                raise SemanticConfigurationError("Reprojection thresholds must be finite and positive")
+        joint_confidence = float(cast(float, player["joint_confidence"]))
+        ambiguity_ratio = float(cast(float, ball["ambiguity_ratio"]))
+        _unit_interval(joint_confidence, name="joint_confidence")
+        _unit_interval(ambiguity_ratio, name="ball ambiguity ratio")
+        _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
+        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_association", "blcs_association", "player_reconstruction", "ball_reconstruction", "gvhmr")}
+        enabled.update(court_kp=True, camera_geometry=True)
+        from src.tennis_scene.pipeline.dependency_graph import (
+            build_default_dependency_graph,
+        )
+        build_default_dependency_graph(enabled).resolve_from_enabled(enabled)
+        settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
+        return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
+            resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])), resolver.resolve(PathRole.CHECKPOINT, cast(str, blcs["checkpoint"])),
+            inference_policy, geometry, visibility, margins, player_error, joint_confidence, ball_error, cast(int, ball["min_frames"]), ambiguity_ratio,
+            cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1196,7 +836,7 @@ _VISUALIZE_TASKS_SCHEMA = StrictConfigSchema(
     },
 )
 _VISUALIZATION_TASK_NAMES = frozenset(
-    {"ball_detection", "court_kp", "gvhmr", "plcs", "blcs", "gvhmr_alignment"}
+    {"ball_detection", "court_kp", "gvhmr", "plcs", "blcs", "gvhmr_alignment", "person_observations", "player_reconstruction", "ball_reconstruction"}
 )
 
 
