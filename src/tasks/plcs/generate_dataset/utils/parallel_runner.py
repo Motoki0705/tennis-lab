@@ -81,11 +81,13 @@ def _generate_scene_task(
         )
 
     torch.set_num_threads(1)
+    # Worker construction can consume RNG (e.g. composer initialization).
+    # Seed AFTER it so cold and reused workers sample the same source scene.
+    scene_generator = _get_worker_scene_generator(config_dict, device)
     scene_seed = int(config_dict["run"]["seed"]) + scene_index
     random.seed(scene_seed)
     np.random.seed(scene_seed)
     torch.manual_seed(scene_seed)
-    scene_generator = _get_worker_scene_generator(config_dict, device)
     if isinstance(scene_generator, MultiPersonSceneGenerator):
         scene_generator.composer.rng.seed(scene_seed)
     return scene_generator.generate_scene(scene_id=f"scene_{scene_index:06d}")

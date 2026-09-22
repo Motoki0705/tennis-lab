@@ -85,13 +85,6 @@ def _generate_scene_task(
         )
     torch.set_num_threads(1)
 
-    # Per-scene seeding: forked workers otherwise share the parent's RNG
-    # state, producing correlated scenes within each batch of workers. This
-    # also makes scenes reproducible regardless of worker scheduling.
-    torch.manual_seed(base_seed + scene_index)
-    random.seed(base_seed + scene_index)
-    np.random.seed(base_seed + scene_index)
-
     generator = _get_worker_scene_generator(
         generator_config,
         device,
@@ -99,6 +92,13 @@ def _generate_scene_task(
         timeline_config,
         maximum_physics_attempts_per_object,
     )
+    # Per-scene seeding: forked workers otherwise share the parent's RNG
+    # state, producing correlated scenes within each batch of workers. This
+    # also makes scenes reproducible regardless of worker scheduling.
+    torch.manual_seed(base_seed + scene_index)
+    random.seed(base_seed + scene_index)
+    np.random.seed(base_seed + scene_index)
+
     if isinstance(generator, MultiBallSceneGenerator):
         generator.composer.rng.seed(base_seed + scene_index)
         return generator.generate_scene(f"scene_{scene_index:06d}")
