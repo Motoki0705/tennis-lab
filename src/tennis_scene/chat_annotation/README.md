@@ -75,7 +75,7 @@ outputs/chat_annotation/             # output_directoryで変更可能
   sources/                         # 保存した元動画、取得metadata、ハッシュ記録
   project_kits/
     PROJECT_INSTRUCTIONS.txt       # Project instructions用
-    REQUEST.txt                    # 短い要求・JSON例・最小限の入力一覧
+    REQUEST.txt                    # 全クリップ共通の短い要求・JSON例
   videos/<source-video-name>/      # 保存したソース動画のファイル名（拡張子なし）
     <source-id>__<run-hash>__<clip-id>.mp4
     ...                            # 同じソースのクリップを並べる
@@ -90,8 +90,9 @@ outputs/chat_annotation/             # output_directoryで変更可能
 3. `project_kits/REQUEST.txt`の全文をプロンプトとして貼り付ける。
 4. 返却ZIP内の注釈JSONと重畳動画を確認する。部分完了もJSONに明示される。
 
-REQUESTには要求と短いJSON例、各動画のファイル名・幅・高さ・総フレーム数・補間上限だけを
-埋め込む。同じREQUESTを準備済み動画に共通で使い、添付ファイル名に一致する行を選ぶ。
+REQUESTには要求と短いJSON例を含める。動画名・解像度・総フレーム数は添付動画から取得する。
+同じREQUESTを全クリップで共通に使い、動画が増えても本文は変わらない。
+補間上限は設定値を要求文へ直接埋め込むため、異なる上限を使う場合も新しいoutput_directoryを使う。
 動画はファイル名を変更せず添付する。別のJSONやPROTOCOLファイルの添付は不要。
 元動画の出典・ハッシュ・全PTS・フレーム対応はローカルのmanifestに保持する。
 Pythonコードは配布せず、実装はgpt-6-astraに任せる。PROTOCOLは要求文書とJSON例の
@@ -99,7 +100,7 @@ Pythonコードは配布せず、実装はgpt-6-astraに任せる。PROTOCOLは�
 
 `_preparation/`のmanifestと完成マーカーはローカルでの再実行検証用で、Chatには渡さない。
 `project_kits/`には常に2つのテキストを生成し、ハッシュ付きキットディレクトリは作らない。
-複数動画・複数URLの準備では、それまでに公開済みの入力情報もREQUESTへ残す。
+複数動画・複数URLの準備でも、公開済み動画の整合性はローカルmetadataで検証する。
 要求の版が異なる既存動画と混在する場合は明示的に失敗するため、新しいoutput_directoryを使う。
 実際のChatでの動画処理・コード実行・ダウンロードは利用環境で確認が必要。
 機械検証は注釈の意味的精度を保証しない。
@@ -129,7 +130,7 @@ source_frame_index/is_targetで所有範囲を識別できる。1フレーム＋
 ## 実装とテスト
 
 - configuration/prepare/preparation: 厳密な設定、既存YouTube取得API、容量検査と公開。
-- kit/prompt: 注釈型で版を識別し、要求文書と最小限の動画情報からREQUESTを生成。
+- kit/prompt: 注釈型・補間上限・要求文書で版を識別し、全クリップ共通のREQUESTを生成。
 - runtime: repo内で使用する型、動画I/O、補完、検証、描画、ZIP処理。Chatには配布しない。
 - resources: Project指示・成果物要求の唯一の保守元。
 

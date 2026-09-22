@@ -56,7 +56,7 @@ def _source(url: str, root: Path) -> tuple[Path, SourceInfo]:
 
 def _patch_kit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     kit = {"PROTOCOL.md": b"requirements"}
-    monkeypatch.setattr(batch, "build_kit", lambda _: (kit, "b" * 64))
+    monkeypatch.setattr(batch, "build_kit", lambda _root, _policies: (kit, "b" * 64))
 
 
 def test_batch_bounds_parallel_downloads_and_overlaps_sequential_encoding(

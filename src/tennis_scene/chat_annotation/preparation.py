@@ -372,7 +372,7 @@ def prepare(config: PrepareConfig) -> Path:
     if config.urls:
         raise ValueError("use prepare_batch for multiple source URLs")
     config.output.mkdir(parents=True, exist_ok=True)
-    kit_contents, kit_id = build_kit(config.output / "project_kits")
+    kit_contents, kit_id = build_kit(config.output / "project_kits", config.policies)
     source, source_info = _acquire(config)
     return _prepare_acquired(config, source, source_info, kit_contents, kit_id)
 

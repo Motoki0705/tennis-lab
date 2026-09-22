@@ -7,15 +7,16 @@ from pathlib import Path
 import pytest
 
 from src.tennis_scene.chat_annotation.kit import build_kit
-from src.tennis_scene.chat_annotation.runtime.contracts import Annotation
+from src.tennis_scene.chat_annotation.runtime.contracts import Annotation, Policies
 
 
 def test_request_uses_valid_short_example_and_only_two_project_texts(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "project_kits"
-    contents, kit_id = build_kit(root)
-    other, other_id = build_kit(tmp_path / "other" / "project_kits")
+    policies = Policies(ball_max_gap_seconds=0.1)
+    contents, kit_id = build_kit(root, policies)
+    other, other_id = build_kit(tmp_path / "other" / "project_kits", policies)
     assert kit_id == other_id
     assert contents == other
     assert {path.name for path in root.iterdir()} == {
@@ -37,7 +38,7 @@ def test_request_uses_valid_short_example_and_only_two_project_texts(
     assert contents["PROTOCOL.md"].decode() in request
     assert len(request) < 4000
     mtimes = {path: path.stat().st_mtime_ns for path in root.iterdir()}
-    assert build_kit(root) == (contents, kit_id)
+    assert build_kit(root, policies) == (contents, kit_id)
     assert mtimes == {path: path.stat().st_mtime_ns for path in mtimes}
 
 
@@ -57,4 +58,4 @@ def test_request_rejects_invalid_layout_and_unpublished_video(
         else:
             (source / "orphan.mp4").write_bytes(b"unpublished")
     with pytest.raises(ValueError, match="directories only|only MP4|incomplete"):
-        build_kit(tmp_path / "project_kits")
+        build_kit(tmp_path / "project_kits", Policies(ball_max_gap_seconds=0.1))

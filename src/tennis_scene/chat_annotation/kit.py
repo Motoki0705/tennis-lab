@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .prompt import write_request
-from .runtime.contracts import KIT_VERSION, Annotation
+from .runtime.contracts import KIT_VERSION, Annotation, Policies
 
 
 def _json_bytes(value: Any) -> bytes:
@@ -17,7 +17,7 @@ def _json_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
-def build_kit(root: Path) -> tuple[dict[str, bytes], str]:
+def build_kit(root: Path, policies: Policies) -> tuple[dict[str, bytes], str]:
     resources = Path(__file__).parent / "resources"
 
     def resource(name: str) -> bytes:
@@ -25,6 +25,7 @@ def build_kit(root: Path) -> tuple[dict[str, bytes], str]:
             (resources / name)
             .read_text(encoding="utf-8")
             .replace("{{KIT_VERSION}}", KIT_VERSION)
+            .replace("{{BALL_MAX_GAP_SECONDS}}", str(policies.ball_max_gap_seconds))
             .encode("utf-8")
         )
 

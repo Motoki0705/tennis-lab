@@ -1,4 +1,4 @@
-"""A concise shared request with only essential per-clip input information."""
+"""A shared request whose video information comes from the attachment."""
 
 from __future__ import annotations
 
@@ -9,30 +9,12 @@ from .layout import video_path
 from .runtime.contracts import ClipManifest, read_json, sha256_file
 
 
-def render_request(contents: dict[str, bytes], manifests: list[ClipManifest]) -> str:
+def render_request(contents: dict[str, bytes]) -> str:
     resources = Path(__file__).parent / "resources"
-    inputs = [
-        {
-            "filename": manifest.filename,
-            "width": manifest.width,
-            "height": manifest.height,
-            "frame_count": len(manifest.frames),
-            "ball_max_gap_seconds": manifest.policies.ball_max_gap_seconds,
-        }
-        for manifest in manifests
-    ]
-    catalog = "\n".join(
-        json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        for value in inputs
-    )
     return "\n".join(
         (
             (resources / "REQUEST.txt").read_text(encoding="utf-8"),
             contents["PROTOCOL.md"].decode("utf-8"),
-            "## 入力一覧\n\n各行は1本の動画の入力情報です。添付ファイル名と一致する行だけを使います。\n\n"
-            + "```jsonl\n"
-            + catalog
-            + "\n```\n",
         )
     )
 
@@ -40,8 +22,7 @@ def render_request(contents: dict[str, bytes], manifests: list[ClipManifest]) ->
 def write_request(
     root: Path, contents: dict[str, bytes], *, project_directory: Path | None = None
 ) -> None:
-    """Include every published video, so preparing another source keeps prior inputs."""
-    manifests = []
+    """Verify local provenance before publishing the shared request."""
     names: set[str] = set()
     expected_paths: set[Path] = set()
     current_id = json.loads(contents["kit_manifest.json"])["kit_id"]
@@ -59,7 +40,7 @@ def write_request(
                 "existing videos use a different request version; use a new output directory"
             )
         if manifest.filename in names:
-            raise ValueError("duplicate video filename in request catalog")
+            raise ValueError("duplicate published video filename")
         if (
             ready["files"]
             != {
@@ -71,7 +52,6 @@ def write_request(
             raise ValueError("published video metadata changed")
         names.add(manifest.filename)
         expected_paths.add(video)
-        manifests.append(manifest)
     folders = list((root / "videos").iterdir()) if (root / "videos").exists() else []
     if any(not folder.is_dir() or folder.is_symlink() for folder in folders):
         raise ValueError("videos must contain source video directories only")
@@ -85,7 +65,7 @@ def write_request(
         )
     if set(videos) != expected_paths:
         raise ValueError("video catalog is incomplete or contains an unpublished video")
-    value = render_request(contents, manifests)
+    value = render_request(contents)
     path = (
         project_directory if project_directory is not None else root / "project_kits"
     ) / "REQUEST.txt"
