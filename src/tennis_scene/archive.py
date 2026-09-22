@@ -17,9 +17,19 @@ from src.tennis_scene.schema import SceneResult
 
 
 def _validate_observation_order(metadata: dict[str, Any]) -> None:
-    contract = extract_court_keypoint_contract_metadata(metadata, location="Scene archive")
+    contract = extract_court_keypoint_contract_metadata(
+        metadata, location="Scene archive"
+    )
     if contract is not None:
         validate_neural_court_observation_order(metadata, contract.contract)
+    for key in ("reference", "court_reference"):
+        context = metadata.get(key)
+        if context is not None:
+            nested = extract_court_keypoint_contract_metadata(
+                context, location=f"Scene archive {key}"
+            )
+            if nested is not None:
+                validate_neural_court_observation_order(context, nested.contract)
 
 
 def _metadata_sidecar_path(path: Path) -> Path:

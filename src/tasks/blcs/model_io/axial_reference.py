@@ -19,6 +19,7 @@ from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
 from src.tasks.blcs.model_io.adapters import (
     AxialTrajectoryModelIOAdapter,
 )
+from src.tasks.blcs.model_io.contracts import blcs_reference_metadata_from_batch
 from src.tasks.blcs.models.blcs_multiview_axial_reference_model import (
     BLCSMultiViewAxialReferenceModel,
 )
@@ -52,6 +53,14 @@ class AxialReferenceTrajectoryModelIOAdapter(AxialTrajectoryModelIOAdapter):
         )
         try:
             validate_reference_context_mask(reference, ~padding)
+            if "reference_view_selection" in batch:
+                metadata = blcs_reference_metadata_from_batch(batch)
+                if metadata is None or not torch.equal(
+                    reference, metadata.reference_view_index
+                ):
+                    raise ValueError(
+                        "Reference index and geometry provenance disagree."
+                    )
         except (TypeError, ValueError) as error:
             raise ModelInputContractError(str(error)) from error
         return ModelCall(kwargs={**call.kwargs, "reference_view_index": reference})

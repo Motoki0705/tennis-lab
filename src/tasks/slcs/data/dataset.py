@@ -229,14 +229,18 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
     ).astype(np.float32)[order]
     ball_position_norm = (ball_3d / scale).astype(np.float32)
 
-    context = scene.metadata.get("court_reference")
+    context = scene.metadata.get("court_reference", scene.metadata.get("reference"))
     camera_half_turns: tuple[bool, ...] = ()
-    if context is not None:
+    if context is not None and "court_keypoint_views" in context:
         views = context["court_keypoint_views"]
         from src.tasks.base.generate_dataset import CourtViewRecord
 
         by_id = {
-            v.camera_id: v for v in (CourtViewRecord.from_mapping(v, location="SLCS court view") for v in views)
+            v.camera_id: v
+            for v in (
+                CourtViewRecord.from_mapping(v, location="SLCS court view")
+                for v in views
+            )
         }
         # Targets on disk are physical; each monocular sample uses its own local gauge.
         camera_half_turns = tuple(

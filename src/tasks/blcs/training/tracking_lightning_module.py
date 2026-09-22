@@ -14,6 +14,9 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_model_artifact_court_keypoint_contract,
 )
+from src.tasks.base.model_io.court_keypoint_contract import (
+    validate_neural_court_observation_order,
+)
 from src.tasks.base.training.metric_logging import (
     compute_scalar_metric_statistics,
     evaluation_only_metric_logging_contract,
@@ -76,6 +79,9 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Reject the deleted checkpoint-key contract without migrating it."""
+        validate_neural_court_observation_order(
+            checkpoint, self.court_keypoint_contract
+        )
         validate_court_coordinate_normalization(
             checkpoint, artifact="BLCS tracking checkpoint"
         )
@@ -197,9 +203,6 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
                 max_views=int(self.config.data.num_views_range[1]),
             )
             payload.update(
-                {
-                    key: self._to_numpy(value)
-                    for key, value in metadata_payload.items()
-                }
+                {key: self._to_numpy(value) for key, value in metadata_payload.items()}
             )
         return payload

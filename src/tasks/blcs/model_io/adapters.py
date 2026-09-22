@@ -1000,11 +1000,12 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         try:
-            validate_track_query_reference_contract(
-                batch,
-                self.track_query_reference_contract,
-                location="BLCS track-query input",
-            )
+            if "track_query_reference" in batch:
+                validate_track_query_reference_contract(
+                    batch,
+                    self.track_query_reference_contract,
+                    location="BLCS track-query input",
+                )
         except ValueError as error:
             raise ModelInputContractError(str(error)) from error
         call = super().build_call(batch)
@@ -1020,15 +1021,22 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
             ),
         )
         validate_reference_view_index(
-            reference_view_index, batch_size=batch_size, num_views=padding_mask.shape[1], device=padding_mask.device,
+            reference_view_index,
+            batch_size=batch_size,
+            num_views=padding_mask.shape[1],
+            device=padding_mask.device,
         )
         if "view_camera_ids" in batch or "reference_camera_id" in batch:
             validate_reference_view_batch(
                 reference_view_index=reference_view_index,
                 view_camera_ids=cast(Tensor, batch["view_camera_ids"]),
                 reference_camera_id=cast(Tensor, batch["reference_camera_id"]),
-                reference_from_physical=cast(Tensor | None, batch.get("reference_from_physical")),
-                physical_from_reference=cast(Tensor | None, batch.get("physical_from_reference")),
+                reference_from_physical=cast(
+                    Tensor | None, batch.get("reference_from_physical")
+                ),
+                physical_from_reference=cast(
+                    Tensor | None, batch.get("physical_from_reference")
+                ),
                 expected_device=padding_mask.device,
             )
         selected_padding = padding_mask.gather(
