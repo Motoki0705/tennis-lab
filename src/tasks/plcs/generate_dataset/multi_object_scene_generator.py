@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Iterator, Mapping
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import numpy as np
 import torch
@@ -51,7 +51,7 @@ class MultiPersonSceneGenerator:
         self.composer = TimelineComposer(self.timeline, rng=rng)
 
     def generate_scene(self, scene_id: str) -> SceneData:
-        """Generate one fixed-length multi-person lifecycle scene."""
+        """Generate one full-source multi-person lifecycle scene."""
         num_persons = self.composer.sample_num_tracks()
         first = self.scene_generator.generate_scene(scene_id=f"{scene_id}_person_00")
         native_fps = _scene_native_fps(first)
@@ -97,11 +97,11 @@ class MultiPersonSceneGenerator:
         for base_camera in base.cameras:
             camera = camera_from_mapping(base_camera.camera_params)
             human_uv: NDArray[np.float32] = np.zeros(
-                (self.timeline.num_frames, self.timeline.max_tracks, 17, 2),
+                (composition.present.shape[0], self.timeline.max_tracks, 17, 2),
                 dtype=np.float32,
             )
             human_visible: NDArray[np.bool_] = np.zeros(
-                (self.timeline.num_frames, self.timeline.max_tracks, 17),
+                (composition.present.shape[0], self.timeline.max_tracks, 17),
                 dtype=np.bool_,
             )
             for track_index in range(num_persons):
@@ -114,10 +114,10 @@ class MultiPersonSceneGenerator:
                 human_uv[:, track_index] = track_uv
                 human_visible[:, track_index] = track_visible
             court_uv = np.repeat(
-                base_camera.court_kp_uv[0:1], self.timeline.num_frames, axis=0
+                base_camera.court_kp_uv[0:1], composition.present.shape[0], axis=0
             )
             court_visible = np.repeat(
-                base_camera.court_kp_vis[0:1], self.timeline.num_frames, axis=0
+                base_camera.court_kp_vis[0:1], composition.present.shape[0], axis=0
             )
             active_count = max(int(composition.present[:, :num_persons].sum()), 1)
             cameras.append(
@@ -138,7 +138,7 @@ class MultiPersonSceneGenerator:
         base.meta = {
             **base.meta,
             "scene_id": scene_id,
-            "num_frames": self.timeline.num_frames,
+            "num_frames": composition.present.shape[0],
             "num_persons": num_persons,
             "motion_sources": [scene.meta["motion_source"] for scene in objects],
             "motion_source_kinds": [
@@ -174,3 +174,43 @@ def _scene_native_fps(scene: SceneData) -> float:
             "Generated PLCS scene metadata fps must be positive and finite."
         )
     return fps
+
+
+def rebalance_scene_births(scene: SceneData, composer: TimelineComposer) -> SceneData:
+    """Replan births in scene-ID order against the dataset's duration ledger."""
+    old = scene.track_instances
+    plan = composer.compose(
+        [p["source_scene_id"] for p in old],
+        [int(p["source_end"]) for p in old],
+        fps=float(scene.meta["fps"]),
+        balance_dataset=True,
+    )
+
+    def retime(value: np.ndarray) -> np.ndarray:
+        return cast(
+            np.ndarray,
+            plan.compose_numpy(
+                [value[p["birth_frame"] : p["death_frame"], p["track_id"]] for p in old]
+            ),
+        )
+
+    scene.position = retime(scene.position)
+    scene.rotation = retime(scene.rotation)
+    scene.rotation[~plan.present] = [1.0, 0.0]
+    scene.canonical_pose_3d = retime(scene.canonical_pose_3d)
+    if scene.human_kp_3d is None:
+        raise ValueError("Full-source PLCS scene lacks world joints")
+    scene.human_kp_3d = retime(scene.human_kp_3d)
+    for camera in scene.cameras:
+        camera.human_kp_uv = retime(camera.human_kp_uv)
+        camera.human_kp_vis = retime(camera.human_kp_vis)
+        camera.court_kp_uv = np.repeat(
+            camera.court_kp_uv[:1], len(plan.present), axis=0
+        )
+        camera.court_kp_vis = np.repeat(
+            camera.court_kp_vis[:1], len(plan.present), axis=0
+        )
+    scene.person_present = plan.present
+    scene.meta["num_frames"] = len(plan.present)
+    scene.track_instances = [p.to_metadata() for p in plan.placements]
+    return scene

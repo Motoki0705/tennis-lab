@@ -26,16 +26,12 @@ from src.tasks.blcs.generate_dataset.source_api import (
 
 def _timeline_mapping(*, min_tracks: int = 2) -> dict[str, object]:
     return {
-        "num_frames": 4,
+        "min_scene_frames": 1,
+        "planning_iterations": 60,
         "min_tracks": min_tracks,
         "max_tracks": 2,
         "max_concurrent": 2,
         "min_reuse_gap_frames": 0,
-        "start_index_range": [0, 0],
-        "min_active_frames": 2,
-        "overlap_probability": 1.0,
-        "min_gap_frames": 0,
-        "max_gap_frames": 0,
     }
 
 
@@ -52,7 +48,9 @@ def _settings() -> BLCSTrajectorySourceSettings:
     )
 
 
-def _source_scene(*, scene_id: str, seed: int, maximum_attempts: int) -> BLCSSourceScene:
+def _source_scene(
+    *, scene_id: str, seed: int, maximum_attempts: int
+) -> BLCSSourceScene:
     rng = np.random.default_rng(seed)
     positions = rng.normal(size=(4, 2, 3)).astype(np.float64)
     positions[:, :, 2] = np.abs(positions[:, :, 2]) + 0.5
@@ -236,8 +234,7 @@ def test_provider_uses_only_public_source_and_preserves_every_semantic(
             "ball-002",
         ]
         assert all(
-            track.source_frame_indices == (0, 1, 2, 3)
-            for track in trajectory.tracks
+            track.source_frame_indices == (0, 1, 2, 3) for track in trajectory.tracks
         )
     for left, right in zip(first, repeated, strict=True):
         np.testing.assert_array_equal(left.positions_court_m, right.positions_court_m)
