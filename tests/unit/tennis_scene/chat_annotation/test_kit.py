@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from src.tennis_scene.chat_annotation.kit import build_kit
 
 
@@ -38,3 +40,17 @@ def test_request_contains_all_definitions_and_only_two_project_texts_are_stored(
     mtimes = {path: path.stat().st_mtime_ns for path in root.iterdir()}
     assert build_kit(root) == (contents, kit_id)
     assert mtimes == {path: path.stat().st_mtime_ns for path in mtimes}
+
+
+@pytest.mark.parametrize("legacy_directory", [True, False])
+def test_request_rejects_legacy_layout_and_unpublished_video(
+    tmp_path: Path, legacy_directory: bool
+) -> None:
+    videos = tmp_path / "videos"
+    videos.mkdir()
+    if legacy_directory:
+        (videos / "clips").mkdir()
+    else:
+        (videos / "orphan.mp4").write_bytes(b"unpublished")
+    with pytest.raises(ValueError, match="only MP4|incomplete"):
+        build_kit(tmp_path / "project_kits")

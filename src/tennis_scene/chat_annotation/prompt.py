@@ -107,6 +107,16 @@ def write_request(
             raise ValueError("published video metadata changed")
         names.add(manifest.filename)
         manifests.append(manifest)
+    videos = list((root / "videos").iterdir()) if (root / "videos").exists() else []
+    if any(
+        not path.is_file() or path.is_symlink() or path.suffix != ".mp4"
+        for path in videos
+    ):
+        raise ValueError(
+            "videos must contain only MP4 files directly; use a new output directory for legacy layouts"
+        )
+    if {path.name for path in videos} != names:
+        raise ValueError("video catalog is incomplete or contains an unpublished video")
     value = render_request(contents, manifests)
     path = (
         project_directory if project_directory is not None else root / "project_kits"
