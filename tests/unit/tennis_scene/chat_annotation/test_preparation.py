@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import replace
 from fractions import Fraction
 from pathlib import Path
@@ -170,7 +172,7 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
         manifest = ClipManifest.model_validate(
             read_json(directory / "clip_manifest.json")
         )
-        video = directory / manifest.filename
+        video = config.output / "videos" / manifest.filename
         timeline = check_clip(video, manifest)
         assert timeline.boundary(len(timeline.pts)) <= 1
         assert manifest.target_range.start == previous_end
@@ -202,6 +204,16 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
         assert prepare(config) == root
     assert mtimes == {file: file.stat().st_mtime_ns for file in mtimes}
     assert prepare(replace(config, duration_seconds=0.8)) != root
+    request = (config.output / "project_kits" / "REQUEST.txt").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r"## 動画入力定義\n\n```json\n(.*?)\n```", request, re.S)
+    assert match is not None
+    catalog = json.loads(match.group(1))
+    videos = list((config.output / "videos").iterdir())
+    assert all(path.is_file() and path.suffix == ".mp4" for path in videos)
+    assert {row["filename"] for row in catalog} == {path.name for path in videos}
+    assert len(catalog) > len(summary["clips"])
 
 
 def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
@@ -228,8 +240,7 @@ def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
     ] == list(range(20))
     with pytest.raises(ValueError, match="one target frame"):
         prepare(replace(config, max_bytes=100))
-    directory = root / "clips" / summary["clips"][0]
-    (directory / manifests[0].filename).write_bytes(b"corrupted")
+    (config.output / "videos" / manifests[0].filename).write_bytes(b"corrupted")
     with pytest.raises(ValueError, match="changed"):
         prepare(config)
 
@@ -357,36 +368,39 @@ def test_explicit_url_id_and_configuration_authority(cfg: DictConfig) -> None:
     assert any(path.endswith("source.url") for path in contract.field_paths)
 
 
-@pytest.mark.parametrize(
-    "filename",
-    [
-        "PROTOCOL.md",
-        "annotation.schema.json",
-        "court_definition.json",
-        "kit_manifest.json",
-    ],
-)
-def test_resume_checks_each_clip_attachment(
-    tmp_path: Path, cfg: DictConfig, filename: str
+@pytest.mark.parametrize("target", ["video", "manifest"])
+def test_resume_checks_published_video_and_internal_manifest(
+    tmp_path: Path, cfg: DictConfig, target: str
 ) -> None:
     write_video(tmp_path / "source.mp4", [0, 3000, 6000], Fraction(30))
     config = PrepareConfig.from_config(cfg)
     root = prepare(config)
     name = read_json(root / "prepared.json")["clips"][0]
     directory = root / "clips" / name
+    manifest = read_json(directory / "clip_manifest.json")
     ready = read_json(root / "ready" / f"{name}.json")
-    assert set(ready["files"]) == {path.name for path in directory.iterdir()}
-    assert len(ready["files"]) == 6
-    path = directory / filename
+    assert set(ready["files"]) == {"clip_manifest.json", manifest["filename"]}
+    assert {p.name for p in directory.iterdir()} == {"clip_manifest.json"}
+    assert all(
+        p.is_file() and p.suffix == ".mp4" for p in (config.output / "videos").iterdir()
+    )
+    path = (
+        config.output / "videos" / manifest["filename"]
+        if target == "video"
+        else directory / "clip_manifest.json"
+    )
     original = path.read_bytes()
-    path.write_bytes(b"modified")
+    path.write_bytes(
+        original.replace(b'"width": 96', b'"width": 94')
+        if target == "manifest"
+        else b"modified"
+    )
     with pytest.raises(ValueError, match="changed"):
-        prepare(config)
-    path.unlink()
-    with pytest.raises(ValueError, match="incomplete"):
         prepare(config)
     path.write_bytes(original)
     assert prepare(config) == root
-    (directory / "REQUEST.txt").write_text("legacy", encoding="utf-8")
-    with pytest.raises(ValueError, match="exactly the six attachments"):
+
+    ready_path = root / "ready" / f"{name}.json"
+    ready_path.unlink()
+    with pytest.raises(ValueError, match="incomplete"):
         prepare(config)

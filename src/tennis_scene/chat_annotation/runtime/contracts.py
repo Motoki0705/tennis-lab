@@ -22,7 +22,7 @@ class _AfterModelValidator(Protocol):
 
 _after_model_validator = cast(_AfterModelValidator, model_validator(mode="after"))
 
-KIT_VERSION = "2.0.0"
+KIT_VERSION = "3.0.0"
 SCHEMA_VERSION: Literal["tennis_chat_annotation.v1"] = "tennis_chat_annotation.v1"
 Point = Annotated[list[float], Field(min_length=2, max_length=2)]
 Box = Annotated[list[float], Field(min_length=4, max_length=4)]

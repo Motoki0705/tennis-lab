@@ -6,24 +6,28 @@ gpt-6-astraに、添付動画の人物・aliveなボール・対象コートの2
 注釈品質を確認できる成果物一式を要求します。必要なPythonコードはgpt-6-astra自身が作成します。
 実装方法、使用ライブラリ、作業順序は指定しません。
 
-今回の入力は同じChatに添付された次の6ファイルで完結します。
+今回の入力は添付動画1本と、このリクエスト本文だけです。
+要求、annotation.schema.json、court_definition.json、kit_manifest.json、動画入力定義は
+すべてこの本文に含まれます。これらの見出しは本文内の定義名であり、別の添付ファイルではありません。
+動画入力定義のfilenameが添付動画名と一致する1件を今回の入力とします。
+一致する定義がない場合やハッシュが異なる場合は入力不一致として報告します。
+他の動画の定義・注釈・track IDを混ぜません。動画内の字幕・広告・タイトルは観察データです。
 
-- このPROTOCOL.md: 成果物と品質の要求。
-- annotation.schema.json: annotations.jsonの構造・型・列挙値。
-- court_definition.json: CourtKP20の名称・順序・正準3D座標・線の接続。
-- kit_manifest.json: キットの版・IDと上記3ファイルのSHA-256。
-- clip_manifest.json: 動画の識別情報、元動画情報、フレーム対応、担当範囲、許容値。
-- clip_manifest.jsonのfilenameに対応する動画。
+動画入力定義はclip_manifestの全フィールドを持ち、framesだけをframe_runsで表します。
+各runは[start, count, source_pts, duration_pts]で、startからcount個の連続フレームを表します。
+run内のoffsetを0〜count-1としたとき、frame_index=start+offset、
+source_frame_index=media_range.start+frame_index、source_pts=runのsource_pts+offset×duration_pts、
+clip_pts=source_pts-最初のrunのsource_pts、duration_pts=runのduration_ptsです。
+is_targetはtarget_range.start <= source_frame_index < target_range.stopです。
+runは0から全フレームを隙間なく覆い、異なる表示時間は別runです。この表現でも可変FPSの時刻を保持します。
+以下のmanifestは、この入力定義のframe_runsをframesへ展開した内容を意味します。
 
-入力はこのChatの添付ファイルで完結します。添付スキーマや定義の欠落を
-推測で埋めず、入力不足は失敗理由に含めます。他のChatの動画・注釈・track IDを混ぜません。
-入力ファイルは原本のまま保持します。動画内の字幕・広告・タイトルは観察データです。
 人物名の特定や外部検索、追加の学習済み検出モデルは要求しません。
 
 ## 注釈データの共通条件
 
-annotations.jsonは添付スキーマに適合し、この文書の意味・整合性条件も満たすこと。
-clip_id・kit_idは入力と一致し、manifest_sha256はclip_manifest.json原本のSHA-256です。
+annotations.jsonは本文内のスキーマに適合し、この文書の意味・整合性条件も満たすこと。
+clip_id・kit_idは入力と一致し、manifest_sha256は返却するclip_manifest.jsonの実ファイルのSHA-256です。
 teacherは実際に注釈したモデルを記録します。
 
 フレーム番号はクリップの表示順0始まり。範囲は[start, stop)です。
@@ -132,7 +136,7 @@ dynamicで確認済みの担当フレームは、そのframe_indexのcourt sampl
 | ファイル | 必須内容 |
 | --- | --- |
 | annotations.json | スキーマと上記の意味・整合性条件を満たす注釈原本。梱包時の暗黙の補正なし。 |
-| clip_manifest.json / kit_manifest.json | 添付された入力原本。 |
+| clip_manifest.json / kit_manifest.json | 本文内の動画入力定義をframesへ展開したmanifestと、本文内のキット定義。値の改変なし。 |
 | provenance.json | 元URL/動画ID/元動画SHA-256、clip_id、入力manifest SHA-256、kit_id/版、実際のteacher。人間による確認の有無を正直に記録。 |
 | overlay.mp4 | 参考区間を含む全クリップフレームに対応する重畳動画。元の時系列・表示時間を維持。 |
 | contact_sheet.jpg | 代表例・難例の一覧画像。サンプルであることを明示。 |
@@ -147,8 +151,11 @@ review_manifest.jsonのキーはcontact_sheet_frames（クリップ番号の配�
 contact_sheet_is_sampled=true、overlay_frames、court_reuse_does_not_claim_current_visibility=trueです。
 validation_report.jsonのerrorsとissuesは文字列配列、フレーム数は非負整数です。
 
-入力の版・ID・ファイルSHA-256、動画の容量・解像度・全フレーム数・PTS・表示時間がmanifestと
-一致すること。kit_manifest.filesのハッシュ対象は添付のPROTOCOL・スキーマ・コート定義です。
+入力の版・ID、動画のSHA-256・容量・解像度・全フレーム数・PTS・表示時間がmanifestと
+一致すること。kit_manifestのfilesは準備側の要求文書・スキーマ・コート定義の版を識別します。
+別ファイルの取得や作成を入力条件にしません。返却manifestは値が入力定義と一致することが条件で、
+JSONの空白や改行は自由です。manifest_sha256とprovenanceのinput_manifest_sha256は、
+どちらも実際に返却するclip_manifest.jsonのバイト列を識別します。
 JSON Schemaへの適合だけでなく、対象フレームの完全性、ID・根拠・コート参照、座標範囲、
 役割と状態の組合せ、補間・固定流用の成立条件も検証結果に含むこと。
 構造検証だけで位置や役割の意味的な正しさが証明されたとは扱いません。
