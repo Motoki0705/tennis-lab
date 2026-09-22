@@ -228,14 +228,22 @@ class TimelineComposer:
         serial = np.concatenate(([0], np.cumsum(lengths[:-1] + gap))).astype(np.int64)
         horizon = int(serial[-1])
 
+        def enforce_capacity(births: NDArray[np.int64]) -> NDArray[np.int64]:
+            """Return the exact capacity-safe plan used for scoring and output."""
+            repaired = births.copy()
+            order = np.argsort(repaired, kind="stable")
+            available: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
+            for i in order:
+                slot = int(np.argmin(available))
+                repaired[i] = max(repaired[i], available[slot])
+                available[slot] = repaired[i] + lengths[i] + gap
+            return repaired
+
         def objective(values: NDArray[np.float64]) -> float:
             births = np.rint(values).astype(np.int64)
             births -= births.min()
+            births = enforce_capacity(births)
             durations = occupancy_durations(births, lengths, bins=max(n, capacity) + 1)
-            reserved = occupancy_durations(
-                births, lengths + gap, bins=max(n, capacity) + 1
-            )
-            overflow = reserved[capacity + 1 :].sum()
             positive = durations[1:].sum()
             current_seconds = durations[1 : capacity + 1] / fps
             aggregate = current_seconds + (
@@ -243,10 +251,9 @@ class TimelineComposer:
             )
             score = float(
                 np.square(
-                    (aggregate - aggregate.mean()) / max(current_seconds.sum(), 1 / fps)
+                    (aggregate - aggregate.mean()) / max(aggregate.sum(), 1 / fps)
                 ).sum()
             )
-            score += 10 * float(overflow / max(positive, 1))
             scene_length = int((births + lengths).max())
             score += (
                 10
@@ -275,13 +282,7 @@ class TimelineComposer:
             )
             births = np.rint(result.x).astype(np.int64)
             births -= births.min()
-            # Repair a rare soft-penalty overflow by delaying births, never trimming sources.
-            order = np.argsort(births, kind="stable")
-            available: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
-            for i in order:
-                slot = int(np.argmin(available))
-                births[i] = max(births[i], available[slot])
-                available[slot] = births[i] + lengths[i] + gap
+            births = enforce_capacity(births)
         scene_frames = int((births + lengths).max())
         if scene_frames < self.config.min_scene_frames:
             raise ValueError(

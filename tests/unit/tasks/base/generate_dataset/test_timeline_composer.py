@@ -100,3 +100,25 @@ def test_dataset_ledger_balances_unequal_lengths_and_rates():
         )
     seconds = composer.occupancy_seconds[1:]
     np.testing.assert_allclose(seconds / seconds.sum(), 0.25, atol=0.025, rtol=0)
+
+
+def test_dataset_ledger_does_not_reward_a_long_low_occupancy_scene():
+    composer = TimelineComposer(config(min_reuse_gap_frames=64), rng=random.Random(71))
+    composer.occupancy_seconds[:] = [
+        8.316666666666666,
+        130.59166666666667,
+        118.34166666666667,
+        106.075,
+        105.9,
+    ]
+
+    plan = composer.compose(
+        [str(i) for i in range(6)],
+        [284, 476, 387, 1273, 387, 529],
+        fps=120.0,
+        balance_dataset=True,
+    )
+
+    assert plan.present.sum(1).max() == 3
+    seconds = composer.occupancy_seconds[1:]
+    np.testing.assert_allclose(seconds / seconds.sum(), 0.25, atol=0.04, rtol=0)
