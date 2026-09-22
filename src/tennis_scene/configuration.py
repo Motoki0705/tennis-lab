@@ -36,7 +36,7 @@ from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
 )
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig
-from src.tennis_scene.pipeline.court_reference import CourtReferenceRuntimeConfig
+from src.tennis_scene.pipeline.utilts.court_reference import CourtReferenceRuntimeConfig
 from src.utils.configuration import (
     ConfigField,
     PathResolver,

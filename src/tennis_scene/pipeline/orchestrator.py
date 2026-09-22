@@ -27,12 +27,6 @@ from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationModule,
 )
 from src.tennis_scene.pipeline.components.plcs import PLCSModule
-from src.tennis_scene.pipeline.court_reference import (
-    CourtReferenceRuntimeConfig,
-    court_footpoint_polygon_px,
-    prepare_court_reference,
-    reference_metadata,
-)
 from src.tennis_scene.pipeline.dependency_graph import (
     ResolutionResult,
     Stage,
@@ -42,6 +36,12 @@ from src.tennis_scene.pipeline.model_io.gvhmr import (
     GVHMRChain,
     GVHMRResult,
     build_gvhmr_chain,
+)
+from src.tennis_scene.pipeline.utilts.court_reference import (
+    CourtReferenceRuntimeConfig,
+    court_footpoint_polygon_px,
+    prepare_court_reference,
+    reference_metadata,
 )
 from src.tennis_scene.schema import (
     SceneResult,
