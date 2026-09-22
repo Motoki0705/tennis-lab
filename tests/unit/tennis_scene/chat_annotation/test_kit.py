@@ -42,15 +42,20 @@ def test_request_contains_all_definitions_and_only_two_project_texts_are_stored(
     assert mtimes == {path: path.stat().st_mtime_ns for path in mtimes}
 
 
-@pytest.mark.parametrize("legacy_directory", [True, False])
-def test_request_rejects_legacy_layout_and_unpublished_video(
-    tmp_path: Path, legacy_directory: bool
+@pytest.mark.parametrize("invalid_layout", ["flat", "nested", "orphan"])
+def test_request_rejects_invalid_layout_and_unpublished_video(
+    tmp_path: Path, invalid_layout: str
 ) -> None:
     videos = tmp_path / "videos"
     videos.mkdir()
-    if legacy_directory:
-        (videos / "clips").mkdir()
-    else:
+    if invalid_layout == "flat":
         (videos / "orphan.mp4").write_bytes(b"unpublished")
-    with pytest.raises(ValueError, match="only MP4|incomplete"):
+    else:
+        source = videos / "source"
+        source.mkdir()
+        if invalid_layout == "nested":
+            (source / "clips").mkdir()
+        else:
+            (source / "orphan.mp4").write_bytes(b"unpublished")
+    with pytest.raises(ValueError, match="directories only|only MP4|incomplete"):
         build_kit(tmp_path / "project_kits")

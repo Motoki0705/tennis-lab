@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .layout import video_path
 from .runtime.contracts import ClipManifest, FrameMap, read_json, sha256_file
 
 
@@ -80,6 +81,7 @@ def write_request(
     """Include every published video, so preparing another source keeps prior inputs."""
     manifests = []
     names: set[str] = set()
+    expected_paths: set[Path] = set()
     current_id = json.loads(contents["kit_manifest.json"])["kit_id"]
     for path in sorted((root / "_preparation").glob("*/*/clips/*/clip_manifest.json")):
         if path.parent.name.startswith(".building-"):
@@ -89,7 +91,7 @@ def write_request(
             raise ValueError(f"prepared video metadata is incomplete: {path}")
         ready = read_json(ready_path)
         manifest = ClipManifest.model_validate(read_json(path))
-        video = root / "videos" / manifest.filename
+        video = video_path(root, manifest)
         if manifest.kit_id != current_id:
             raise ValueError(
                 "existing videos use a different request version; use a new output directory"
@@ -106,16 +108,20 @@ def write_request(
         ):
             raise ValueError("published video metadata changed")
         names.add(manifest.filename)
+        expected_paths.add(video)
         manifests.append(manifest)
-    videos = list((root / "videos").iterdir()) if (root / "videos").exists() else []
+    folders = list((root / "videos").iterdir()) if (root / "videos").exists() else []
+    if any(not folder.is_dir() or folder.is_symlink() for folder in folders):
+        raise ValueError("videos must contain source video directories only")
+    videos = [path for folder in folders for path in folder.iterdir()]
     if any(
         not path.is_file() or path.is_symlink() or path.suffix != ".mp4"
         for path in videos
     ):
         raise ValueError(
-            "videos must contain only MP4 files directly; use a new output directory for legacy layouts"
+            "source video directories must contain only MP4 files directly"
         )
-    if {path.name for path in videos} != names:
+    if set(videos) != expected_paths:
         raise ValueError("video catalog is incomplete or contains an unpublished video")
     value = render_request(contents, manifests)
     path = (
