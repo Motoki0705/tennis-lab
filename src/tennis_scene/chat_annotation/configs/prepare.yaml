@@ -34,8 +34,6 @@ encoding:
   crf: 18
   preset: medium
 annotation:
-  static_tolerance_px_at_1080p: 3
-  homography_max_error_px_at_1080p: 3
   ball_max_gap_seconds: 0.1
 hydra:
   run:

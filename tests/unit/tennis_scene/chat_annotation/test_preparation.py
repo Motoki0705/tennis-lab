@@ -208,9 +208,9 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
     request = (config.output / "project_kits" / "REQUEST.txt").read_text(
         encoding="utf-8"
     )
-    match = re.search(r"## 動画入力定義\n\n```json\n(.*?)\n```", request, re.S)
+    match = re.search(r"```jsonl\n(.*?)\n```", request, re.S)
     assert match is not None
-    catalog = json.loads(match.group(1))
+    catalog = [json.loads(line) for line in match.group(1).splitlines()]
     videos = list((config.output / "videos").glob("*/*"))
     assert all(path.is_file() and path.suffix == ".mp4" for path in videos)
     assert {row["filename"] for row in catalog} == {path.name for path in videos}

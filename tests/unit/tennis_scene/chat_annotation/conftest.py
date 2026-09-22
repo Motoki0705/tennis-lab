@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -15,7 +14,6 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
     Policies,
     SourceInfo,
     make_template,
-    read_json,
 )
 
 
@@ -26,12 +24,6 @@ def kit(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, str]:
     for name, value in contents.items():
         (directory / name).write_bytes(value)
     return directory, kit_id
-
-
-@pytest.fixture
-def definition(kit: tuple[Path, str]) -> dict[str, Any]:
-    value: dict[str, Any] = read_json(kit[0] / "court_definition.json")
-    return value
 
 
 @pytest.fixture
@@ -73,8 +65,6 @@ def manifest(kit: tuple[Path, str]) -> ClipManifest:
             for i in range(12)
         ],
         policies=Policies(
-            static_tolerance_px_at_1080p=3,
-            homography_max_error_px_at_1080p=3,
             ball_max_gap_seconds=0.1,
         ),
     )
@@ -82,9 +72,8 @@ def manifest(kit: tuple[Path, str]) -> ClipManifest:
 
 @pytest.fixture
 def annotation(manifest: ClipManifest) -> Annotation:
-    result = make_template(manifest, "c" * 64)
-    result.court_mode = "unavailable"
-    result.inspection_ranges = [FrameRange(start=0, stop=12)]
+    result = make_template(manifest)
+    result.status = "completed"
     for frame in result.frames:
-        frame.people_review = frame.balls_review = frame.court_review = "complete"
+        frame.reviewed = True
     return result

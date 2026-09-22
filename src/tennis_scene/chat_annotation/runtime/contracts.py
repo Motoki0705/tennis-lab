@@ -22,24 +22,13 @@ class _AfterModelValidator(Protocol):
 
 _after_model_validator = cast(_AfterModelValidator, model_validator(mode="after"))
 
-KIT_VERSION = "3.0.0"
-SCHEMA_VERSION: Literal["tennis_chat_annotation.v1"] = "tennis_chat_annotation.v1"
+KIT_VERSION = "4.0.0"
+SCHEMA_VERSION: Literal["tennis_chat_annotation.v2"] = "tennis_chat_annotation.v2"
 Point = Annotated[list[float], Field(min_length=2, max_length=2)]
 Box = Annotated[list[float], Field(min_length=4, max_length=4)]
 Identifier = Annotated[str, Field(min_length=1, pattern=r"^[A-Za-z0-9_-]+$")]
 FileName = Annotated[str, Field(min_length=1, pattern=r"^[A-Za-z0-9_.-]+$")]
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-Review = Literal["complete", "partial", "unreviewed", "unusable"]
-NonPlayerRole = Literal[
-    "spectator",
-    "chair_umpire",
-    "line_umpire",
-    "ball_person",
-    "coach",
-    "staff",
-    "other",
-    "unknown",
-]
 
 
 class StrictModel(BaseModel):
@@ -80,8 +69,6 @@ class FrameMap(StrictModel):
 
 
 class Policies(StrictModel):
-    static_tolerance_px_at_1080p: float = Field(gt=0)
-    homography_max_error_px_at_1080p: float = Field(gt=0)
     ball_max_gap_seconds: float = Field(gt=0)
 
 
@@ -138,129 +125,66 @@ class ClipManifest(StrictModel):
         return self
 
 
-class Person(StrictModel):
+class Player(StrictModel):
+    """Only participants on the target court; full-body, amodal boxes."""
+
     track_id: Identifier
-    kind: Literal["player", "non_player", "unknown"]
-    non_player_role: NonPlayerRole | None
-    court_relation: Literal["target", "other", "unknown", "not_applicable"]
     bbox_xyxy: Box | None
     bbox_source: Literal["observed", "inferred", "unresolved"]
     occluded: bool
     truncated: bool
-    source_frames: list[int]
 
     @_after_model_validator
     def consistent(self) -> Self:
-        if (self.kind == "non_player") != (self.non_player_role is not None):
-            raise ValueError("only non_player must have a non_player_role")
         if (self.bbox_xyxy is None) != (self.bbox_source == "unresolved"):
             raise ValueError("null bbox requires unresolved source")
         if self.bbox_xyxy is not None:
             x1, y1, x2, y2 = self.bbox_xyxy
             if x2 <= x1 or y2 <= y1:
                 raise ValueError("bbox must have positive area")
-        if self.bbox_source == "inferred" and not self.source_frames:
-            raise ValueError("inferred bbox requires evidence frame indices")
+        if self.bbox_source == "observed" and (self.occluded or self.truncated):
+            raise ValueError("occluded/truncated full-body bbox must be inferred")
         return self
 
 
 class Ball(StrictModel):
     track_id: Identifier
     center_px: Point | None
-    status: Literal["visible", "occluded", "interpolated"] | None
-    missing_reason: Literal["out_of_frame", "unresolved"] | None
-    source_frames: list[int]
+    status: Literal["visible", "occluded", "interpolated", "out_of_frame", "unresolved"]
+    interpolation_frames: Annotated[list[int], Field(min_length=2, max_length=2)] | None
 
     @_after_model_validator
     def consistent(self) -> Self:
-        if self.center_px is None:
-            if self.missing_reason is None or self.status not in (None, "occluded"):
-                raise ValueError(
-                    "unlocalized ball needs a reason and no observed position"
-                )
-        elif self.status is None or self.missing_reason is not None:
-            raise ValueError(
-                "localized ball needs one of the three statuses and no missing reason"
-            )
-        if self.status in ("occluded", "interpolated") and not self.source_frames:
-            raise ValueError("estimated ball needs evidence frames")
-        if self.status == "interpolated" and len(self.source_frames) != 2:
-            raise ValueError("interpolation requires exactly two endpoint frames")
+        if self.status in ("visible", "interpolated") and self.center_px is None:
+            raise ValueError("visible/interpolated ball needs a position")
+        if self.status in ("out_of_frame", "unresolved") and self.center_px is not None:
+            raise ValueError("out_of_frame/unresolved ball position must be null")
+        if (self.status == "interpolated") != (self.interpolation_frames is not None):
+            raise ValueError("only interpolated balls require two endpoint frames")
+        if self.interpolation_frames is not None:
+            start, stop = self.interpolation_frames
+            if start < 0 or stop <= start + 1:
+                raise ValueError("interpolation endpoints must enclose a gap")
         return self
-
-
-class CourtPoint(StrictModel):
-    index: int = Field(ge=0, le=19)
-    name: Identifier
-    point_px: Point | None
-    visibility: Literal[
-        "visible", "occluded", "out_of_frame", "unassessed", "unresolved"
-    ]
-    source: Literal["observed", "inferred", "homography", "unresolved"]
-    source_frames: list[int]
-    anchor_indices: list[int]
-
-    @_after_model_validator
-    def consistent(self) -> Self:
-        if (self.point_px is None) != (self.source == "unresolved"):
-            raise ValueError("null court point requires unresolved source")
-        if self.point_px is not None and self.visibility == "unresolved":
-            raise ValueError(
-                "localized court point cannot have unresolved visibility; use unassessed for derived geometry"
-            )
-        if self.visibility == "visible" and self.source != "observed":
-            raise ValueError("visible court point must be directly observed")
-        if self.source in ("inferred", "homography") and not self.source_frames:
-            raise ValueError("derived court point needs source frames")
-        if self.source == "homography" and (
-            self.index > 14 or len(self.anchor_indices) < 4
-        ):
-            raise ValueError(
-                "homography only completes 0..14 from at least four anchors"
-            )
-        if self.source != "homography" and self.anchor_indices:
-            raise ValueError("only homography points have anchor indices")
-        return self
-
-
-class CourtSample(StrictModel):
-    frame_index: int = Field(ge=0)
-    orientation: Literal["known", "ambiguous"]
-    orientation_note: str
-    points: list[CourtPoint] = Field(min_length=20, max_length=20)
-
-
-class IgnoreRegion(StrictModel):
-    bbox_xyxy: Box
-    reason: Literal["inseparable_crowd"]
 
 
 class FrameAnnotation(StrictModel):
     frame_index: int = Field(ge=0)
-    source_frame_index: int = Field(ge=0)
-    people_review: Review
-    balls_review: Review
-    court_review: Review
-    people: list[Person]
+    reviewed: bool
+    players: list[Player]
     balls: list[Ball]
-    ignore_regions: list[IgnoreRegion]
-    court_reference_frame: int | None
-    events: list[Literal["hit", "bounce", "cut", "play_start", "play_end"]]
-    shot_id: Identifier
+    interpolation_break: bool
     notes: str
 
 
 class Annotation(StrictModel):
-    schema_version: Literal["tennis_chat_annotation.v1"]
-    clip_id: Identifier
-    kit_id: Digest
-    manifest_sha256: Digest
-    teacher: str
-    inspection_ranges: list[FrameRange]
-    camera_review_ranges: list[FrameRange]
-    camera_motion: Literal["none", "moving", "unknown"]
-    court_mode: Literal["static", "dynamic", "unavailable", "unreviewed"]
-    court_samples: list[CourtSample]
+    schema_version: Literal["tennis_chat_annotation.v2"]
+    clip_id: FileName
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    frame_count: int = Field(gt=0)
+    status: Literal["completed", "partial"]
+    issues: list[str]
     frames: list[FrameAnnotation]
 
 
@@ -309,43 +233,29 @@ def write_json(path: Path, value: Any) -> None:
     temporary.replace(path)
 
 
-def make_template(manifest: ClipManifest, manifest_sha256: str) -> Annotation:
+def annotation_clip_id(manifest: ClipManifest) -> str:
+    """Use the globally unique input stem, not its source-local sampling range."""
+    return Path(manifest.filename).stem
+
+
+def make_template(manifest: ClipManifest) -> Annotation:
     return Annotation(
         schema_version=SCHEMA_VERSION,
-        clip_id=manifest.clip_id,
-        kit_id=manifest.kit_id,
-        manifest_sha256=manifest_sha256,
-        teacher="gpt-6-astra",
-        inspection_ranges=[],
-        camera_review_ranges=[],
-        camera_motion="unknown",
-        court_mode="unreviewed",
-        court_samples=[],
+        clip_id=annotation_clip_id(manifest),
+        width=manifest.width,
+        height=manifest.height,
+        frame_count=len(manifest.frames),
+        status="partial",
+        issues=[],
         frames=[
             FrameAnnotation(
                 frame_index=frame.frame_index,
-                source_frame_index=frame.source_frame_index,
-                people_review="unreviewed",
-                balls_review="unreviewed",
-                court_review="unreviewed",
-                people=[],
+                reviewed=False,
+                players=[],
                 balls=[],
-                ignore_regions=[],
-                court_reference_frame=None,
-                events=[],
-                shot_id="shot_000",
+                interpolation_break=False,
                 notes="",
             )
             for frame in manifest.frames
-            if frame.is_target
         ],
     )
-
-
-def covered_indices(ranges: list[FrameRange], count: int) -> set[int]:
-    result: set[int] = set()
-    for interval in ranges:
-        if interval.stop > count:
-            raise ValueError("review range extends beyond clip")
-        result.update(range(interval.start, interval.stop))
-    return result

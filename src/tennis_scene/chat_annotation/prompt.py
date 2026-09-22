@@ -1,78 +1,40 @@
-"""Self-contained request text with lossless, compact per-video frame metadata."""
+"""A concise shared request with only essential per-clip input information."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from .layout import video_path
-from .runtime.contracts import ClipManifest, FrameMap, read_json, sha256_file
-
-
-def compact_manifest(manifest: ClipManifest) -> dict[str, Any]:
-    value: dict[str, Any] = manifest.model_dump(mode="json", exclude={"frames"})
-    runs: list[list[int]] = []
-    for frame in manifest.frames:
-        if runs and runs[-1][3] == frame.duration_pts:
-            runs[-1][1] += 1
-        else:
-            runs.append([frame.frame_index, 1, frame.source_pts, frame.duration_pts])
-    value["frame_runs"] = runs
-    return value
-
-
-def expand_manifest(value: dict[str, Any]) -> ClipManifest:
-    """Decode the documented frame-run representation without losing VFR timing."""
-    expanded = dict(value)
-    runs = expanded.pop("frame_runs")
-    first_pts = runs[0][2]
-    frames: list[dict[str, Any]] = []
-    for start, count, source_pts, duration in runs:
-        if count <= 0 or start != len(frames):
-            raise ValueError("frame runs must be positive and contiguous from zero")
-        for offset in range(count):
-            index = start + offset
-            source_index = expanded["media_range"]["start"] + index
-            stamp = source_pts + offset * duration
-            frames.append(
-                FrameMap(
-                    frame_index=index,
-                    source_frame_index=source_index,
-                    source_pts=stamp,
-                    clip_pts=stamp - first_pts,
-                    duration_pts=duration,
-                    is_target=expanded["target_range"]["start"]
-                    <= source_index
-                    < expanded["target_range"]["stop"],
-                ).model_dump()
-            )
-    expanded["frames"] = frames
-    result: ClipManifest = ClipManifest.model_validate(expanded)
-    return result
+from .runtime.contracts import ClipManifest, read_json, sha256_file
 
 
 def render_request(contents: dict[str, bytes], manifests: list[ClipManifest]) -> str:
     resources = Path(__file__).parent / "resources"
-    sections = [
-        (resources / "REQUEST.txt").read_text(encoding="utf-8"),
-        contents["PROTOCOL.md"].decode("utf-8"),
+    inputs = [
+        {
+            "filename": manifest.filename,
+            "width": manifest.width,
+            "height": manifest.height,
+            "frame_count": len(manifest.frames),
+            "ball_max_gap_seconds": manifest.policies.ball_max_gap_seconds,
+        }
+        for manifest in manifests
     ]
-    for name in (
-        "annotation.schema.json",
-        "court_definition.json",
-        "kit_manifest.json",
-    ):
-        sections.append(
-            f"## {name}\n\n```json\n{contents[name].decode('utf-8').rstrip()}\n```\n"
-        )
-    catalog = [compact_manifest(manifest) for manifest in manifests]
-    sections.append(
-        "## 動画入力定義\n\n```json\n"
-        + json.dumps(catalog, ensure_ascii=False, indent=2, allow_nan=False)
-        + "\n```\n"
+    catalog = "\n".join(
+        json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        for value in inputs
     )
-    return "\n".join(sections)
+    return "\n".join(
+        (
+            (resources / "REQUEST.txt").read_text(encoding="utf-8"),
+            contents["PROTOCOL.md"].decode("utf-8"),
+            "## 入力一覧\n\n各行は1本の動画の入力情報です。添付ファイル名と一致する行だけを使います。\n\n"
+            + "```jsonl\n"
+            + catalog
+            + "\n```\n",
+        )
+    )
 
 
 def write_request(

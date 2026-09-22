@@ -7,9 +7,10 @@ from pathlib import Path
 import pytest
 
 from src.tennis_scene.chat_annotation.kit import build_kit
+from src.tennis_scene.chat_annotation.runtime.contracts import Annotation
 
 
-def test_request_contains_all_definitions_and_only_two_project_texts_are_stored(
+def test_request_uses_valid_short_example_and_only_two_project_texts(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "project_kits"
@@ -23,20 +24,18 @@ def test_request_contains_all_definitions_and_only_two_project_texts_are_stored(
     }
     assert all(path.is_file() for path in root.iterdir())
     request = (root / "REQUEST.txt").read_text(encoding="utf-8")
-    blocks = {
-        name: json.loads(value)
-        for name, value in re.findall(
-            r"## ([^\n]+)\n\n```json\n(.*?)\n```", request, re.S
-        )
-    }
+    example = re.search(r"```json\n(.*?)\n```", request, re.S)
+    assert example is not None
+    Annotation.model_validate(json.loads(example.group(1)))
     for name in (
         "annotation.schema.json",
         "court_definition.json",
         "kit_manifest.json",
     ):
-        assert blocks[name] == json.loads(contents[name])
+        assert name not in request
+    assert "court_definition.json" not in contents
     assert contents["PROTOCOL.md"].decode() in request
-    assert blocks["動画入力定義"] == []
+    assert len(request) < 4000
     mtimes = {path: path.stat().st_mtime_ns for path in root.iterdir()}
     assert build_kit(root) == (contents, kit_id)
     assert mtimes == {path: path.stat().st_mtime_ns for path in mtimes}

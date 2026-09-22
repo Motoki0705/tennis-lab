@@ -19,7 +19,7 @@ GVHMRワールドモーションの整合もパイプライン内で常に実行
 ## Modules
 
 ### chat_annotation/
-YouTube動画を容量・秒数で分割し、人物・ボール・コートの注釈要求と入力を
+YouTube動画を容量・秒数で分割し、プレーヤー・ボールの全フレーム注釈要求と入力を
 動画と自己完結するリクエスト本文として生成する。実行と添付方法は
 [`chat_annotation/README.md`](chat_annotation/README.md)を参照。
 
