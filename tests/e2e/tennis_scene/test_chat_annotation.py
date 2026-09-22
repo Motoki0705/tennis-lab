@@ -131,7 +131,7 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
             [
                 sys.executable,
                 "-m",
-                "src.tennis_scene.chat_annotation.runtime.cli",
+                "src.tennis_scene.chat_annotation.scripts.annotate",
                 *arguments,
             ],
             cwd=repository,

@@ -16,7 +16,7 @@ from src.utils.configuration.paths import (
     RuntimePathRoots,
 )
 
-from .contracts import (
+from ..runtime.contracts import (
     KIT_VERSION,
     Annotation,
     ClipManifest,
@@ -24,10 +24,10 @@ from .contracts import (
     read_json,
     write_json,
 )
-from .geometry import interpolate_ball
-from .media import check_clip, extract_frames
-from .review import finalize
-from .validation import validate_annotation
+from ..runtime.geometry import interpolate_ball
+from ..runtime.media import check_clip, extract_frames
+from ..runtime.review import finalize
+from ..runtime.validation import validate_annotation
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="tennis_scene.chat_annotation.tools",

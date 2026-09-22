@@ -314,7 +314,7 @@ _SLCS_REAL_RGB_ENTRYPOINTS = (
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.tennis_scene.chat_annotation.runtime.cli": (
+    "src.tennis_scene.chat_annotation.scripts.annotate": (
         "tennis_scene.chat_annotation.tools",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
@@ -423,7 +423,7 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
-    _non_hydra_boundary("src.tennis_scene.chat_annotation.runtime.cli", "main", domain="tennis_scene", executable_module=True),
+    _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.annotate", "main", domain="tennis_scene", executable_module=True),
     _runtime_boundary("tennis_scene", "src.tennis_scene.chat_annotation.scripts.prepare"),
     _non_hydra_boundary(
         "src.tasks.court_detection.scripts.audit_hybrid_inference",

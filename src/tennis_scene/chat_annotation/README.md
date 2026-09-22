@@ -147,7 +147,7 @@ GPTが独自に作るコードやChat上での注釈結果そのものは自動�
 ローカルで返却注釈を検証する場合は、元のmanifestを指定する（すべて絶対パス）。
 
 ```bash
-.venv/bin/python -m src.tennis_scene.chat_annotation.runtime.cli validate \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.annotate validate \
   --manifest /absolute/path/clip_manifest.json \
   --annotations /absolute/path/annotation_CLIP.json \
   --report /absolute/path/report.json
