@@ -7,7 +7,7 @@ from src.tasks.base.models.view_association import (
     ViewQueryModelConfig,
 )
 from src.tasks.base.training.association_losses import association_loss
-from src.tennis_scene.pipeline.association_state import stitch_overlap_ids
+from src.tennis_scene.pipeline.utilts.association_state import stitch_overlap_ids
 
 
 def inputs(joints=17):

@@ -20,10 +20,10 @@ from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationSegment,
 )
 from src.tennis_scene.pipeline.components.plcs import PLCSResult
-from src.tennis_scene.pipeline.court_reference import CourtReferenceRuntimeConfig
 from src.tennis_scene.pipeline.dependency_graph import ResolutionResult, Stage
 from src.tennis_scene.pipeline.model_io.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+from src.tennis_scene.pipeline.utilts.court_reference import CourtReferenceRuntimeConfig
 from src.utils.configuration import PathRole
 from src.utils.video import VideoInfo
 from tests.unit.tennis_scene.pipeline.config_factories import (

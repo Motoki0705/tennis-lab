@@ -13,7 +13,7 @@ from src.tasks.base.data.track_query_reference import ReferenceCameraSelection
 from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.blcs.inference.association_predictor import BLCSAssociationPredictor
 from src.tasks.plcs.inference.association_predictor import PLCSAssociationPredictor
-from src.tennis_scene.pipeline.court_reference import (
+from src.tennis_scene.pipeline.utilts.court_reference import (
     CourtReferenceContext,
     CourtReferenceRuntimeConfig,
     prepare_court_reference,
