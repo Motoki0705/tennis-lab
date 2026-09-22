@@ -19,7 +19,9 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
 
 @pytest.fixture(scope="session")
 def kit(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, str]:
-    contents, kit_id = build_kit(tmp_path_factory.mktemp("project_kits"))
+    contents, kit_id = build_kit(
+        tmp_path_factory.mktemp("project_kits"), Policies(ball_max_gap_seconds=0.1)
+    )
     directory = tmp_path_factory.mktemp("clip_attachments")
     for name, value in contents.items():
         (directory / name).write_bytes(value)

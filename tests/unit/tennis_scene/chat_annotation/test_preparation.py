@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import replace
 from fractions import Fraction
 from pathlib import Path
@@ -204,17 +202,18 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
     ):
         assert prepare(config) == root
     assert mtimes == {file: file.stat().st_mtime_ns for file in mtimes}
+    request_path = config.output / "project_kits" / "REQUEST.txt"
+    request_before = request_path.read_text(encoding="utf-8")
+    request_mtime = request_path.stat().st_mtime_ns
     assert prepare(replace(config, duration_seconds=0.8)) != root
-    request = (config.output / "project_kits" / "REQUEST.txt").read_text(
-        encoding="utf-8"
-    )
-    match = re.search(r"```jsonl\n(.*?)\n```", request, re.S)
-    assert match is not None
-    catalog = [json.loads(line) for line in match.group(1).splitlines()]
+    request = request_path.read_text(encoding="utf-8")
     videos = list((config.output / "videos").glob("*/*"))
     assert all(path.is_file() and path.suffix == ".mp4" for path in videos)
-    assert {row["filename"] for row in catalog} == {path.name for path in videos}
-    assert len(catalog) > len(summary["clips"])
+    assert len(videos) > len(summary["clips"])
+    assert request == request_before
+    assert request_path.stat().st_mtime_ns == request_mtime
+    assert "入力一覧" not in request
+    assert all(path.name not in request for path in videos)
 
 
 def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
@@ -437,4 +436,18 @@ def test_clips_are_grouped_by_source_video_filename(
     request = (config.output / "project_kits" / "REQUEST.txt").read_text(
         encoding="utf-8"
     )
-    assert all(m.filename in request for m in manifests)
+    assert all(m.filename not in request for m in manifests)
+
+
+def test_shared_request_rejects_mixed_gap_policies(
+    tmp_path: Path, cfg: DictConfig
+) -> None:
+    write_video(tmp_path / "source.mp4", [i * 3000 for i in range(4)], Fraction(30))
+    config = PrepareConfig.from_config(cfg)
+    prepare(config)
+    request_path = config.output / "project_kits" / "REQUEST.txt"
+    previous = request_path.read_bytes()
+    cfg.annotation.ball_max_gap_seconds = 0.25
+    with pytest.raises(ValueError, match="different request version"):
+        prepare(PrepareConfig.from_config(cfg))
+    assert request_path.read_bytes() == previous

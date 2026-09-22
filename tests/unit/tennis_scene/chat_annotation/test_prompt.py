@@ -1,47 +1,33 @@
 from __future__ import annotations
 
-import json
-import re
 from pathlib import Path
 
 from src.tennis_scene.chat_annotation.kit import build_kit
 from src.tennis_scene.chat_annotation.prompt import render_request
-from src.tennis_scene.chat_annotation.runtime.contracts import ClipManifest, FrameRange
+from src.tennis_scene.chat_annotation.runtime.contracts import Policies
 
 
-def test_request_keeps_only_essential_metadata_for_all_clip_frames(
-    tmp_path: Path,
-    manifest: ClipManifest,
-) -> None:
-    manifest.target_range = FrameRange(start=1, stop=11)
-    manifest.frames[0].is_target = manifest.frames[-1].is_target = False
-    contents, _ = build_kit(tmp_path / "project_kits")
-    request = render_request(contents, [manifest])
-    block = re.search(r"```jsonl\n(.*?)\n```", request, re.S)
-    assert block is not None
-    record = json.loads(block.group(1))
-    assert record == {
-        "filename": "sample.mp4",
-        "width": 1920,
-        "height": 1080,
-        "frame_count": 12,
-        "ball_max_gap_seconds": 0.1,
-    }
-    assert "frame_runs" not in request
-    assert "source_pts" not in request
-    assert "court_definition" not in request
-
-
-def test_five_clip_request_is_bounded_and_does_not_repeat_schema(
-    tmp_path: Path,
-    manifest: ClipManifest,
-) -> None:
-    contents, _ = build_kit(tmp_path / "project_kits")
-    manifests = [
-        manifest.model_copy(update={"filename": f"source__run__clip_{i}.mp4"})
-        for i in range(5)
-    ]
-    request = render_request(contents, manifests)
-    assert all(m.filename in request for m in manifests)
-    assert len(request) < 5000
+def test_request_needs_no_video_catalog(tmp_path: Path) -> None:
+    contents, _ = build_kit(
+        tmp_path / "project_kits", Policies(ball_max_gap_seconds=0.1)
+    )
+    request = render_request(contents)
+    assert "入力一覧" not in request
+    assert "jsonl" not in request
+    assert "動画名・解像度・総フレーム数Nは添付動画から取得" in request
+    assert "両端の実時刻差は0.1秒以下" in request
+    assert "{{" not in request
     assert "$defs" not in request
+    assert len(request) < 3000
+
+
+def test_gap_policy_is_in_the_shared_request_and_kit_identity(tmp_path: Path) -> None:
+    first, first_id = build_kit(
+        tmp_path / "first" / "project_kits", Policies(ball_max_gap_seconds=0.1)
+    )
+    second, second_id = build_kit(
+        tmp_path / "second" / "project_kits", Policies(ball_max_gap_seconds=0.25)
+    )
+    assert first_id != second_id
+    assert first["annotation.schema.json"] == second["annotation.schema.json"]
+    assert "両端の実時刻差は0.25秒以下" in render_request(second)

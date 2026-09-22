@@ -98,23 +98,21 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     # A Chat can construct the result from its video and the concise request alone.
     # Source mapping remains local for validation after receiving that result.
     example_match = re.search(r"```json\n(.*?)\n```", request, re.S)
-    catalog_match = re.search(r"```jsonl\n(.*?)\n```", request, re.S)
-    assert example_match is not None and catalog_match is not None
+    assert example_match is not None
+    assert "入力一覧" not in request and video.name not in request
     example = json.loads(example_match.group(1))
-    inputs = [json.loads(line) for line in catalog_match.group(1).splitlines()]
-    record = next(value for value in inputs if value["filename"] == video.name)
     timeline = probe_video(video)
-    assert record["frame_count"] == len(timeline.pts)
+    frame_count = len(timeline.pts)
     annotation = deepcopy(example)
     annotation.update(
         clip_id=video.stem,
-        width=record["width"],
-        height=record["height"],
-        frame_count=record["frame_count"],
+        width=timeline.width,
+        height=timeline.height,
+        frame_count=frame_count,
     )
     annotation["frames"] = [
         dict(deepcopy(example["frames"][0]), frame_index=index)
-        for index in range(record["frame_count"])
+        for index in range(frame_count)
     ]
     for row in annotation["frames"]:
         row["players"][0]["bbox_xyxy"] = [40, 40, 110, 300]
@@ -146,7 +144,7 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     template_path = tmp_path / "template.json"
     run("init", *common, "--video", str(video), "--output", str(template_path))
     template = read_json(template_path)
-    assert len(template["frames"]) == record["frame_count"]
+    assert len(template["frames"]) == frame_count
     assert all(not row["reviewed"] for row in template["frames"])
     run(
         "frames",
@@ -192,7 +190,7 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
             assert set(bundle.namelist()) == expected
             assert bundle.read(annotation_path.name) == annotation_path.read_bytes()
         overlay = probe_video(output / f"overlay_{video.stem}.mp4")
-        assert len(overlay.pts) == record["frame_count"]
+        assert len(overlay.pts) == frame_count
         assert [p * overlay.time_base for p in overlay.pts] == [
             p * timeline.time_base for p in timeline.pts
         ]

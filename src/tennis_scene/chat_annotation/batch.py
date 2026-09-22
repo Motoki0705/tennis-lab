@@ -59,7 +59,7 @@ def prepare_batch(config: PrepareConfig) -> Path:
     if not config.urls or config.url is not None or config.local_video is not None:
         raise ValueError("prepare_batch requires source.urls as the only input")
     config.output.mkdir(parents=True, exist_ok=True)
-    kit_contents, kit_id = build_kit(config.output / "project_kits")
+    kit_contents, kit_id = build_kit(config.output / "project_kits", config.policies)
     index_path = _batch_index_path(config, kit_id)
     results: list[dict[str, Any]] = [
         {
