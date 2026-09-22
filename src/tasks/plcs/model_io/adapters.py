@@ -1045,11 +1045,8 @@ class PLCSTrackQueryIOAdapter:
             spec=TensorSpec(shape=(None, None, None), dtypes=frozenset({torch.bool})),
         )
         batch_size, views, frames, queries = human_kp.shape[:4]
-        _court_context(
-            batch,
-            self.court_keypoint_contract,
-            batch_size=batch_size,
-        )
+        if "court_keypoint_metadata" in batch or "court_reference_provenance" in batch:
+            _court_context(batch, self.court_keypoint_contract, batch_size=batch_size)
         if min(batch_size, views, frames, queries) == 0:
             raise ModelInputContractError(
                 "Tracking (B,V,T,Q) axes must all be non-empty."
@@ -1261,11 +1258,12 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         """Build the exact six-tensor call after identity/index validation."""
         try:
-            validate_track_query_reference_contract(
-                batch,
-                self.reference_contract,
-                location="PLCS track-query input",
-            )
+            if "track_query_reference" in batch:
+                validate_track_query_reference_contract(
+                    batch,
+                    self.reference_contract,
+                    location="PLCS track-query input",
+                )
         except ValueError as error:
             raise ModelInputContractError(str(error)) from error
         call = super().build_call(batch)
@@ -1278,15 +1276,22 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
             spec=TensorSpec(shape=(batch_size,), dtypes=frozenset({torch.int64})),
         )
         validate_reference_view_index(
-            reference_view_index, batch_size=batch_size, num_views=padding_mask.shape[1], device=padding_mask.device,
+            reference_view_index,
+            batch_size=batch_size,
+            num_views=padding_mask.shape[1],
+            device=padding_mask.device,
         )
         if "view_camera_ids" in batch or "reference_camera_id" in batch:
             validate_reference_view_batch(
                 reference_view_index=reference_view_index,
                 view_camera_ids=cast(Tensor, batch["view_camera_ids"]),
                 reference_camera_id=cast(Tensor, batch["reference_camera_id"]),
-                reference_from_physical=cast(Tensor | None, batch.get("reference_from_physical")),
-                physical_from_reference=cast(Tensor | None, batch.get("physical_from_reference")),
+                reference_from_physical=cast(
+                    Tensor | None, batch.get("reference_from_physical")
+                ),
+                physical_from_reference=cast(
+                    Tensor | None, batch.get("physical_from_reference")
+                ),
                 expected_device=padding_mask.device,
             )
         selected_padding = padding_mask.gather(

@@ -16,6 +16,7 @@ from src.tasks.base.model_io import (
 from src.tasks.base.models import validate_reference_context_mask
 from src.tasks.plcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
 from src.tasks.plcs.model_io.adapters import PLCSModelIOAdapter
+from src.tasks.plcs.model_io.contracts import plcs_reference_metadata_from_batch
 
 
 class PLCSAxialReferenceIOAdapter(PLCSModelIOAdapter):
@@ -45,6 +46,14 @@ class PLCSAxialReferenceIOAdapter(PLCSModelIOAdapter):
         )
         try:
             validate_reference_context_mask(reference, ~padding)
+            if "reference_view_selection" in batch:
+                metadata = plcs_reference_metadata_from_batch(batch)
+                if metadata is None or not torch.equal(
+                    reference, metadata.reference_view_index
+                ):
+                    raise ValueError(
+                        "Reference index and geometry provenance disagree."
+                    )
         except (TypeError, ValueError) as error:
             raise ModelInputContractError(str(error)) from error
         return ModelCall(kwargs={**call.kwargs, "reference_view_index": reference})
