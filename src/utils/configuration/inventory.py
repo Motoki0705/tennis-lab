@@ -316,6 +316,8 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     "src.tennis_scene.chat_annotation.scripts.annotate": (
         "tennis_scene.chat_annotation.tools",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.plcs.scripts.migrate_residual_checkpoint": (
         "plcs.residual_checkpoint_migration",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
