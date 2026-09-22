@@ -70,6 +70,31 @@ def _scalar_prediction(
     return result, state.last_visibility
 
 
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("elapsed", [1, 3, 7])
+def test_batched_motion_prediction_preserves_values_and_gradients(
+    dtype: torch.dtype, elapsed: int
+) -> None:
+    rng = torch.Generator().manual_seed(317)
+    previous = torch.rand(17, 2, generator=rng, dtype=dtype).requires_grad_()
+    last = torch.rand(17, 2, generator=rng, dtype=dtype).requires_grad_()
+    state = tracking._TrackState(
+        last_values=last,
+        last_visibility=torch.rand(17, generator=rng) > 0.2,
+        last_frame=elapsed,
+        previous_values=previous,
+        previous_visibility=torch.rand(17, generator=rng) > 0.2,
+        previous_frame=0,
+    )
+    actual, _ = state.prediction(elapsed + 3, use_velocity=True)
+    expected, _ = _scalar_prediction(state, elapsed + 3, use_velocity=True)
+    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+    actual_grads = torch.autograd.grad(actual.sum(), (last, previous))
+    expected_grads = torch.autograd.grad(expected.sum(), (last, previous))
+    for result, baseline in zip(actual_grads, expected_grads, strict=True):
+        torch.testing.assert_close(result, baseline, rtol=0, atol=0)
+
+
 @pytest.mark.parametrize("joints", [1, 17])
 @pytest.mark.parametrize(
     "dtype", [torch.float16, torch.bfloat16, torch.float32, torch.float64]
