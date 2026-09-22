@@ -80,7 +80,11 @@ def test_preparation_and_self_contained_clip(tmp_path: Path) -> None:
     assert "project_kit_directory" not in summary
     directory = tmp_path / "chat_upload"
     directory.mkdir()
-    videos = project_texts.parent / "videos"
+    videos_root = project_texts.parent / "videos"
+    assert {p.name for p in videos_root.iterdir()} == {
+        Path(manifests[0].source.filename).stem
+    }
+    videos = videos_root / Path(manifests[0].source.filename).stem
     assert all(p.is_file() and p.suffix == ".mp4" for p in videos.iterdir())
     assert len(list(videos.iterdir())) == 3
     video = directory / manifests[0].filename

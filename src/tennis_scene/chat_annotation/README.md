@@ -75,9 +75,9 @@ outputs/chat_annotation/             # output_directoryで変更可能
   project_kits/
     PROJECT_INSTRUCTIONS.txt       # Project instructions用
     REQUEST.txt                    # 要求・スキーマ・定義・動画情報を含む全文プロンプト
-  videos/
+  videos/<source-video-name>/      # 保存したソース動画のファイル名（拡張子なし）
     <source-id>__<run-hash>__<clip-id>.mp4
-    ...                            # 動画のみを直下に並べる
+    ...                            # 同じソースのクリップを並べる
   _preparation/<source-id>/<run-hash>/
     prepared.json                  # ローカルでの再実行・整合性確認用
     ready/<clip-id>.json
@@ -85,7 +85,7 @@ outputs/chat_annotation/             # output_directoryで変更可能
 ```
 
 1. Projectを使う場合は`project_kits/PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
-2. クリップごとのChatでgpt-6-astraを選び、`videos/`から動画1本だけを添付する。
+2. クリップごとのChatでgpt-6-astraを選び、`videos/<source-video-name>/`からクリップ1本だけを添付する。
 3. `project_kits/REQUEST.txt`の全文をプロンプトとして貼り付ける。
 4. 返却ZIPの検証結果と重畳動画を確認する。
 

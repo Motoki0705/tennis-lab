@@ -16,6 +16,7 @@ from src.utils.video.youtube import download_youtube_video
 
 from .configuration import PrepareConfig, youtube_id
 from .kit import build_kit
+from .layout import video_path
 from .prompt import write_request
 from .runtime.contracts import (
     KIT_VERSION,
@@ -112,8 +113,8 @@ def _ready_path(directory: Path) -> Path:
     return directory.parent.parent / "ready" / f"{directory.name}.json"
 
 
-def _video_directory(directory: Path) -> Path:
-    return directory.parents[4] / "videos"
+def _output_root(directory: Path) -> Path:
+    return directory.parents[4]
 
 
 def _verify_published(directory: Path) -> ClipManifest:
@@ -130,7 +131,7 @@ def _verify_published(directory: Path) -> ClipManifest:
         path = (
             directory / name
             if name == "clip_manifest.json"
-            else _video_directory(directory) / name
+            else video_path(_output_root(directory), manifest)
         )
         if (
             Path(name).name != name
@@ -268,7 +269,7 @@ def _make_clip(
         )
         check_clip(video, manifest)
         write_json(staging / "clip_manifest.json", manifest.model_dump(mode="json"))
-        published_video = _video_directory(destination) / video.name
+        published_video = video_path(Path(config.output), manifest)
         published_video.parent.mkdir(parents=True, exist_ok=True)
         if published_video.exists():
             raise ValueError(
