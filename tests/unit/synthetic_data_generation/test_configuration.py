@@ -61,7 +61,7 @@ def test_blcs_configuration_is_parsed_through_public_source_contracts() -> None:
 
     assert isinstance(generator, _BLCS_GENERATOR_RUNTIME_TYPE)
     assert isinstance(source.timeline, BLCSTimelineSpec)
-    assert source.timeline.min_scene_frames == 1024
+    assert source.timeline.min_scene_frames == 512
     assert source.maximum_physics_attempts_per_object == 64
 
 
@@ -334,7 +334,7 @@ def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() ->
         "validation": 1,
         "test": 1,
     }
-    assert runtime.blcs.trajectory_source.timeline.min_scene_frames == 1024
+    assert runtime.blcs.trajectory_source.timeline.min_scene_frames == 512
     assert runtime.blcs.assets.ball.role.value == "movable"
     assert runtime.blcs.assets.ball.asset_class == "ball"
     assert runtime.blcs.assets.ball.floating_dtype == "float32"

@@ -219,6 +219,8 @@ source's 3D arrays, 2D observations, masks and rally event timestamps together,
 without recomputing or altering source values. The plan depends on run seed,
 scene ID and source lengths, not worker completion order. Each generation call
 owns one ledger (a dataset or a training chunk); there is no mutable worker ledger.
+The public BLCS `generate_sequence()` API uses the same birth rebalancer and
+a sequence-owned ledger, including synthetic production generation.
 
 Presence and visibility remain separate. Birth at t=0 need not imply visible
 observations. Zero-occupancy time is reported separately and does not receive a

@@ -18,8 +18,8 @@ trajectory_source:
     min_tracks: 4
     max_tracks: 10
     max_concurrent: 4
-    min_reuse_gap_frames: 4
-    min_scene_frames: 1024
+    min_reuse_gap_frames: 8
+    min_scene_frames: 512
     planning_iterations: 180
   device: cpu
 
