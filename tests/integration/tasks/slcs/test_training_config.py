@@ -41,6 +41,16 @@ def test_lightning_schedule_uses_trainer_max_epochs() -> None:
     assert module.max_epochs == 7
 
 
+def test_checkpoint_without_camera_local_court_contract_is_rejected() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train", overrides=["model=small"])
+
+    module = SLCSLightningModule(config)
+
+    with pytest.raises(ValueError, match="requires retraining"):
+        module.on_load_checkpoint({})
+
+
 def test_small_model_defaults_to_original_all_shared_trunk() -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(config_name="train", overrides=["model=small"])
@@ -66,14 +76,13 @@ def test_legacy_config_checkpoint_loads_with_ablations_disabled(tmp_path: Path) 
         del config.model.missing_ball_one_sided_context
     module = SLCSLightningModule(config)
     path = tmp_path / "legacy.ckpt"
-    torch.save(
-        {
-            "state_dict": module.state_dict(),
-            "hyper_parameters": {"config": config},
-            "pytorch-lightning_version": lightning_version,
-        },
-        path,
-    )
+    checkpoint = {
+        "state_dict": module.state_dict(),
+        "hyper_parameters": {"config": config},
+        "pytorch-lightning_version": lightning_version,
+    }
+    module.on_save_checkpoint(checkpoint)
+    torch.save(checkpoint, path)
     restored = SLCSLightningModule.load_from_checkpoint(path, weights_only=False)
     assert restored.loss_fn.config.ball_velocity_weight == 0.0
     assert restored.loss_fn.config.ball_velocity_scale_mps == 1.0
@@ -163,14 +172,13 @@ def test_one_sided_profile_and_checkpoint_roundtrip(tmp_path: Path) -> None:
     with torch.no_grad():
         context.weight.fill_(0.25)
     path = tmp_path / "one_sided.ckpt"
-    torch.save(
-        {
-            "state_dict": module.state_dict(),
-            "hyper_parameters": {"config": config},
-            "pytorch-lightning_version": lightning_version,
-        },
-        path,
-    )
+    checkpoint = {
+        "state_dict": module.state_dict(),
+        "hyper_parameters": {"config": config},
+        "pytorch-lightning_version": lightning_version,
+    }
+    module.on_save_checkpoint(checkpoint)
+    torch.save(checkpoint, path)
     restored = SLCSLightningModule.load_from_checkpoint(path, weights_only=False)
     for name, value in module.state_dict().items():
         assert torch.equal(value, restored.state_dict()[name])

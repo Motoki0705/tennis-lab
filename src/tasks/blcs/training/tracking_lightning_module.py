@@ -79,9 +79,6 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Reject the deleted checkpoint-key contract without migrating it."""
-        validate_neural_court_observation_order(
-            checkpoint, self.court_keypoint_contract
-        )
         validate_court_coordinate_normalization(
             checkpoint, artifact="BLCS tracking checkpoint"
         )
@@ -100,6 +97,9 @@ class BLCSTrackingLightningModule(TrackingLightningModule[BLCSTrackQueryPredicti
             checkpoint,
             self.court_keypoint_contract,
             location="BLCS tracking checkpoint",
+        )
+        validate_neural_court_observation_order(
+            checkpoint, self.court_keypoint_contract
         )
         track_query_reference = getattr(
             self,
