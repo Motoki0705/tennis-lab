@@ -1,0 +1,8 @@
+name: plcs_triangulation_residual
+hidden_dim: 256
+num_layers: 4
+num_heads: 8
+ffn_dim: 768
+ffn_type: swiglu
+dropout: 0.1
+rope_base: 10000.0

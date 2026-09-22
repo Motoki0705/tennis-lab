@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/blcs/triangulation_residual_v1_20260921/logs/version_0/checkpoints
