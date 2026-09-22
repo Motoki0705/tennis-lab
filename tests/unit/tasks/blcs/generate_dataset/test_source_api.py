@@ -38,16 +38,12 @@ _CONFIG_ROOT = Path(__file__).resolve().parents[5] / "src/tasks/blcs/configs"
 
 def _timeline_mapping() -> dict[str, object]:
     return {
-        "num_frames": 4,
+        "min_scene_frames": 1,
+        "planning_iterations": 60,
         "min_tracks": 2,
         "max_tracks": 2,
         "max_concurrent": 2,
         "min_reuse_gap_frames": 0,
-        "start_index_range": [0, 0],
-        "min_active_frames": 4,
-        "overlap_probability": 1.0,
-        "min_gap_frames": 0,
-        "max_gap_frames": 0,
     }
 
 
@@ -315,13 +311,14 @@ def test_source_is_deterministic_complete_and_independent_of_internal_scenes(
     changed = source.generate(scene_id="B00-blcs-000000", seed=18)
 
     assert isinstance(first, BLCSSourceScene)
-    assert first.frame_indices == (0, 1, 2, 3)
-    assert first.frame_count == 4
+    assert first.frame_indices == tuple(range(first.frame_count))
+    assert first.frame_count >= 5
     assert first.object_count == 2
-    assert first.positions_court_m.shape == (4, 2, 3)
-    assert first.velocities_court_mps.shape == (4, 2, 3)
-    assert first.present.shape == (4, 2)
-    assert first.present.all()
+    assert first.positions_court_m.shape == (first.frame_count, 2, 3)
+    assert first.velocities_court_mps.shape == (first.frame_count, 2, 3)
+    assert first.present.shape == (first.frame_count, 2)
+    assert first.present[0].any()
+    assert first.present.sum(0).tolist() == [5, 5]
     assert not first.positions_court_m.flags.writeable
     assert not first.present.flags.writeable
     assert [track.object_id for track in first.tracks] == [
@@ -329,7 +326,7 @@ def test_source_is_deterministic_complete_and_independent_of_internal_scenes(
         "ball-002",
     ]
     assert all(
-        track.source_frame_indices in {(0, 1, 2, 3), (1, 2, 3, 4)}
+        tuple(i for i in track.source_frame_indices if i is not None) == (0, 1, 2, 3, 4)
         for track in first.tracks
     )
     assert all(item.accepted_attempt == 2 for item in first.proposal_diagnostics)
@@ -339,7 +336,7 @@ def test_source_is_deterministic_complete_and_independent_of_internal_scenes(
     assert all(item.output_fps == 30.0 for item in first.physics_provenance)
     assert all(item.simulation_fps == 120.0 for item in first.physics_provenance)
     metadata = first.to_metadata()
-    assert metadata["source_frame_count"] == 4
+    assert metadata["source_frame_count"] == first.frame_count
     assert isinstance(metadata["tracks"], list)
     assert isinstance(metadata["physics_sources"], list)
     assert isinstance(metadata["physics_proposals"], list)

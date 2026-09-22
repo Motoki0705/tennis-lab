@@ -15,16 +15,12 @@ trajectory_source:
   multi_object: true
   maximum_physics_attempts_per_object: 64
   timeline:
-    num_frames: 1024
-    min_tracks: 3
+    min_tracks: 4
     max_tracks: 10
     max_concurrent: 4
     min_reuse_gap_frames: 4
-    start_index_range: [-128, 992]
-    min_active_frames: 32
-    overlap_probability: 0.3
-    min_gap_frames: 8
-    max_gap_frames: 256
+    min_scene_frames: 1024
+    planning_iterations: 180
   device: cpu
 
 generator:

@@ -157,37 +157,20 @@ def _validate_generation_mode(root: Mapping[str, object]) -> str:
         return mode
 
     timeline_fields = {
-        "num_frames",
         "min_tracks",
         "max_tracks",
         "max_concurrent",
         "min_reuse_gap_frames",
-        "start_index_range",
-        "min_active_frames",
-        "overlap_probability",
-        "min_gap_frames",
-        "max_gap_frames",
+        "min_scene_frames",
+        "planning_iterations",
     }
     timeline = _reject_unknown(
         require_config_mapping(mode_config, "timeline", path="generation"),
         timeline_fields,
         path="generation.timeline",
     )
-    for key in timeline_fields - {"start_index_range", "overlap_probability"}:
+    for key in timeline_fields:
         require_config_value(timeline, key, int, path="generation.timeline")
-    _sequence(
-        timeline,
-        "start_index_range",
-        path="generation.timeline",
-        item_types=(int,),
-        length=2,
-    )
-    require_config_value(
-        timeline,
-        "overlap_probability",
-        float,
-        path="generation.timeline",
-    )
     try:
         TimelineConfig.from_mapping(timeline)
     except ValueError as error:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterator, Mapping
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import numpy as np
 import torch
@@ -108,7 +108,7 @@ class MultiBallSceneGenerator:
         )
 
     def generate_scene(self, scene_id: str) -> BLCSSceneData:
-        """Generate one fixed-length multi-ball lifecycle scene."""
+        """Generate one full-source multi-ball lifecycle scene."""
         num_balls = self.composer.sample_num_tracks()
         objects = [
             self._generate_ball(f"{scene_id}_ball_{index:02d}")
@@ -143,11 +143,11 @@ class MultiBallSceneGenerator:
         for base_camera in base.cameras:
             camera = camera_from_mapping(base_camera.camera_params)
             uv: NDArray[np.float32] = np.zeros(
-                (self.timeline.num_frames, self.timeline.max_tracks, 2),
+                (composition.present.shape[0], self.timeline.max_tracks, 2),
                 dtype=np.float32,
             )
             visible: NDArray[np.bool_] = np.zeros(
-                (self.timeline.num_frames, self.timeline.max_tracks),
+                (composition.present.shape[0], self.timeline.max_tracks),
                 dtype=np.bool_,
             )
             for track_index in range(num_balls):
@@ -202,3 +202,53 @@ class MultiBallSceneGenerator:
         """Yield canonical multi-ball lifecycle scenes."""
         for index in range(num_scenes):
             yield self.generate_scene(f"scene_{index:06d}")
+
+
+def rebalance_scene_births(
+    scene: BLCSSceneData, composer: TimelineComposer
+) -> BLCSSceneData:
+    """Move complete rallies and all their events using the global duration quota."""
+    old = scene.track_instances
+    plan = composer.compose(
+        [p["source_scene_id"] for p in old],
+        [int(p["source_end"]) for p in old],
+        fps=float(scene.fps_out),
+        balance_dataset=True,
+    )
+
+    def retime_tensor(value: torch.Tensor) -> torch.Tensor:
+        return plan.compose_tensor(
+            [value[p["birth_frame"] : p["death_frame"], p["track_id"]] for p in old]
+        )
+
+    def retime_numpy(value: np.ndarray) -> np.ndarray:
+        return cast(
+            np.ndarray,
+            plan.compose_numpy(
+                [value[p["birth_frame"] : p["death_frame"], p["track_id"]] for p in old]
+            ),
+        )
+
+    scene.ball_pos_world = retime_tensor(scene.ball_pos_world)
+    scene.ball_pos_norm = retime_tensor(scene.ball_pos_norm)
+    scene.ball_vel_world = retime_tensor(scene.ball_vel_world)
+    scene.ball_vel_norm = retime_tensor(scene.ball_vel_norm)
+    for camera in scene.cameras:
+        camera.ball_uv = retime_numpy(camera.ball_uv)
+        camera.ball_vis = retime_numpy(camera.ball_vis)
+    for entry, before, after in zip(scene.shots, old, plan.placements, strict=True):
+        shift = after.birth_frame - int(before["birth_frame"])
+        for shot in entry["shots"]:
+            for key in (
+                "t_start",
+                "t_net",
+                "t_bounce1",
+                "t_bounce2",
+                "t_bounce3",
+                "t_return",
+            ):
+                if shot.get(key) is not None:
+                    shot[key] += shift
+    scene.ball_present = torch.from_numpy(plan.present).to(scene.ball_pos_world.device)
+    scene.track_instances = [p.to_metadata() for p in plan.placements]
+    return scene
