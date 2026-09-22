@@ -80,8 +80,6 @@ PREPARE_SCHEMA = StrictConfigSchema(
             StrictConfigSchema(
                 name="annotation",
                 fields={
-                    "static_tolerance_px_at_1080p": ConfigField.of(int, float),
-                    "homography_max_error_px_at_1080p": ConfigField.of(int, float),
                     "ball_max_gap_seconds": ConfigField.of(int, float),
                 },
             )
