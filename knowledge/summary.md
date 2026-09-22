@@ -1,7 +1,7 @@
-<!-- knowledge-review: 31ecfb5b9c5c9b492cf8af2b68510fdf58505507ae87a2bff8cd4a124e269aa7 on 2026-09-21 -->
+<!-- knowledge-review: f466b04cb7251a9b76b30da034bacd867f34b19b9425a12525a25fd0bda699ec on 2026-09-22 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
+更新日: 2026-09-22（PLCS・BLCS associationの実行確認を追加）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,10 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-22の追加確認
+
+camera-local V2観測からsideとclip内IDを推論するモデルを既存task runnerへ接続し、Global MHA＋mHC、幅512・12 stage・8 headのGPUスモークを[PLCS](nodes/plcs/000103-run-plcs-association-refactor-512-smoke.md)・[BLCS](nodes/blcs/000034-run-blcs-association-refactor-512-smoke.md)で完了した。両方ともfit/validation/testとcheckpoint再読込が成功し、batch2の最大予約メモリは約5.45 GiBだった。4更新だけの診断ではside balanced accuracy=0.5であり、収束や既存deployへの優位性は確認していない。次は再生成済みV2の同じ800/100/100 split・seed42で両taskを新規60 epoch学習し、sideの両クラスrecallとID/FP指標、定常学習性能を確認する。以下の3D推定baseline・deploy判断は更新しない。
 
 ## 2026-09-21の追加確認
 
