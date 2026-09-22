@@ -53,7 +53,9 @@ def test_sample_does_not_require_three_dimensional_arrays(task, monkeypatch):
         )
         for i in range(2)
     )
-    monkeypatch.setattr(d, "selected_views", MethodType(lambda self, scene: ((0, 1), views, 1), d))
+    monkeypatch.setattr(
+        d, "selected_views", MethodType(lambda self, scene: ((0, 1), views, 1), d)
+    )
     payload: dict[str, np.ndarray] = {}
     for i in range(2):
         if task == "plcs":
