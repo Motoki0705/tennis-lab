@@ -1,0 +1,16 @@
+{
+  "run_id": "1789944342452638821_322747_plcs-residual-v2-balanced-s42",
+  "name": "plcs-residual-v2-balanced-s42",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 .venv/bin/python -m src.tasks.plcs.scripts.train_triangulation_residual --config-name train_triangulation_residual_v2 paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs run.output_dir=plcs/triangulation_residual_v2_balanced_s42_20260921 run.seed=42 v2.loss_mode=balanced_regret training.trainer.enable_progress_bar=false && CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 .venv/bin/python -m src.tasks.base.scripts.infer_triangulation_residual --task plcs --run-dir /home/kamimura/projects/tennis-lab/outputs/plcs/triangulation_residual_v2_balanced_s42_20260921 --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --output '/mnt/c/Users/kamim/.codex/visualizations/2026/09/20/01a0bf91-5494-74c0-8793-3424866618ed/geometric-residual-v2/plcs/balanced' --device cuda",
+  "provider": "codex",
+  "session": "01a0bf91-5494-74c0-8793-3424866618ed",
+  "issue": "",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "4671f9bad0873a23054a3311009b9ecf4a6bbc88",
+  "branch": "codex/plcs-triangulation-residual",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual",
+  "captured_at": "2026-09-21T07:45:43+09:00"
+}
