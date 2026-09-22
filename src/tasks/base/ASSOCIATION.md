@@ -3,7 +3,7 @@
 PLCS/BLCSの2D検出を、カメラ校正と三角測量の前に対応付けるモデルです。
 `train_association` entry pointで学習します。従来の3D track-queryモデルとは
 別のチェックポイント契約を持ち、再学習が必須です。Courtの入力契約は
-[共有正本](../generate_dataset/README.md)を参照してください。
+[共有正本](generate_dataset/README.md)を参照してください。
 
 入力は`object_uv (B,V,T,P,J,2)`、`object_vis (B,V,T,P,J)`、
 `court_kp (B,V,T,14,2)`、`court_vis (B,V,T,14)`、`padding_mask (B,V,T)`、
@@ -12,7 +12,7 @@ PLCS/BLCSの2D検出を、カメラ校正と三角測量の前に対応付ける
 
 各stageはobject tokenをmHCでP→1に圧縮し、viewごとのQを時間列の先頭へ
 追加します。時間attentionは`(B*V,T+1,D)`、空間attentionは`(B*T,V,D)`です。
-Qは空間attentionへ入りません。Qの位置は-1とし、時間attentionは全域MHAを
+Qは空間attentionへ入りません。Qの位置は-1とし、時間attentionは全域MHAだけを
 使います。既存CSWAの局所windowへQを通常フレームとして入れる解釈はしません。
 空間RoPEの3軸は時刻、view、reference selectorです。mHCで元のobject streamへ
 書き戻し、最終Qをside head、object tokenをidentity headへ渡します。
@@ -24,7 +24,7 @@ false positiveです。GTは2D trackerの完了後に物理instance provenance�
 でclass番号の任意性を除き、観測があるobjectだけを分類します。参照viewの
 sideは定義上falseなのでside損失・正解率から除きます。
 
-`AssociationPredictor`は同一view/frame内のID重複を解消し、欠測・非対象を-1、
+各taskの`PLCSAssociationPredictor` / `BLCSAssociationPredictor`は同一view/frame内のID重複を解消し、欠測・非対象を-1、
 参照sideをfalseにします。ID番号はclip内でのみ有効です。長動画では同じraw
 観測を共有する重複windowについて`stitch_overlap_ids`でscene IDへ対応付けます。
 重複区間に現れない新しいIDは呼び出し側が新規scene IDを割り当てます。
@@ -40,7 +40,15 @@ sideは定義上falseなのでside損失・正解率から除きます。
 .venv/bin/python -m src.tasks.blcs.scripts.train_association
 ```
 
-チェックポイントは`run.output_dir/checkpoints/`、loss/side・ID正解率は
-`metrics/version_*/metrics.csv`に保存します。`association.limit_train_batches=4`
-と`association.limit_val_batches=2`で実データのスモーク検証ができます。
+チェックポイントは`run.output_dir/logs/version_*/checkpoints/`、loss/side・ID正解率は
+`association_metrics.jsonl`とTensorBoardに保存します。`run.fast_dev_run=true`
+と`training.warmup_steps=0`で1batchの実データスモーク検証ができます。
 全欠測windowも通常のpadding/visibility契約で扱い、3D損失は計算しません。
+
+実モデルの設定は各taskの`configs/model/view_association.yaml`だけを正本とします。
+旧`association.model`と3D tracking model設定の併存は廃止しました。
+モデル計算は共通の`utils/models/components/view_query.py`、入力と教師は各taskの
+association Dataset、入出力はmodel_io、学習は既存task runner/compositionで構成します。
+時間attentionは全stage Global MHA、mHCは保持します。CSWA/CUDA拡張は使いません。
+データはcamera-local 2D観測とside/ID教師のみを読み、3D target packingを行いません。
+共通optimizer/scheduler/compileを有効にし、新しい契約v2として両taskを新規60epoch学習します。

@@ -494,14 +494,24 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         if name == "blcs_multiview_axial_reference":
             from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
 
-            for key in ("target_frame_contract", "axial_rope_contract", "reference_selector_mode"):
+            for key in (
+                "target_frame_contract",
+                "axial_rope_contract",
+                "reference_selector_mode",
+            ):
                 keys.add(key)
                 if model.get(key) != AXIAL_REFERENCE_CONTRACT[key]:
-                    raise SemanticConfigurationError(f"Invalid axial reference model.{key}.")
+                    raise SemanticConfigurationError(
+                        f"Invalid axial reference model.{key}."
+                    )
             if int(model["rope_dim"]) < 6:
-                raise SemanticConfigurationError("Axial reference requires rope_dim >= 6.")
+                raise SemanticConfigurationError(
+                    "Axial reference requires rope_dim >= 6."
+                )
             if parse_court_keypoint_contract(config).selector != "camera_view_v2":
-                raise SemanticConfigurationError("Axial reference requires camera_view_v2.")
+                raise SemanticConfigurationError(
+                    "Axial reference requires camera_view_v2."
+                )
         _exact(model, keys, path="model")
         _validate_types(
             model,
@@ -540,7 +550,10 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "Invalid axial model profile, attention_type, or ffn_type."
             )
         result = AxialModelConfig(
-            name=cast("Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']", name),
+            name=cast(
+                "Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']",
+                name,
+            ),
             input_profile="multiview",
             hidden_dim=int(model["hidden_dim"]),
             num_layers=int(model["num_layers"]),
@@ -1595,7 +1608,9 @@ def validate_generator_sections(
         },
         path="camera",
     )
-    candidates = camera_candidate_indices(camera.get("fixed_camera_indices"), capacity=6)
+    candidates = camera_candidate_indices(
+        camera.get("fixed_camera_indices"), capacity=6
+    )
     if candidates is not None and camera["layout"] != "fixed":
         raise SemanticConfigurationError(
             "camera.fixed_camera_indices requires layout=fixed."
@@ -2084,8 +2099,13 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     if model.name == "blcs_multiview_axial_reference":
         data_keys.add("evaluation_reference_camera_id")
         evaluation_reference = data.get("evaluation_reference_camera_id")
-        if not isinstance(evaluation_reference, str) or not evaluation_reference.strip():
-            raise SemanticConfigurationError("Axial reference requires evaluation_reference_camera_id.")
+        if (
+            not isinstance(evaluation_reference, str)
+            or not evaluation_reference.strip()
+        ):
+            raise SemanticConfigurationError(
+                "Axial reference requires evaluation_reference_camera_id."
+            )
     _exact(data, data_keys, path="data")
     data_types: dict[str, type[object]] = {
         "backend": str,
@@ -2132,7 +2152,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 f"data.{name} must be a positive ordered range."
             )
-    if model.name == "blcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+    if model.name == "blcs_multiview_axial_reference" and not (
+        3 <= num_views_range[0] <= num_views_range[1] <= 4
+    ):
         raise SemanticConfigurationError("Axial reference requires 3 or 4 views.")
     batch_size = cast("int", data["batch_size"])
     num_workers = cast("int", data["num_workers"])
@@ -2498,7 +2520,10 @@ def validate_preview_boundary(config: object) -> None:
 
 
 def _validate_training_for_hydra(config: DictConfig) -> None:
-    validate_training_boundary(config)
+    if str(config.model.name) == "blcs_view_association":
+        validate_association_config(config)
+    else:
+        validate_training_boundary(config)
 
 
 register_boundary_validator("blcs.train", _validate_training_for_hydra)
@@ -2673,3 +2698,14 @@ __all__ = [
     "validate_training_boundary",
     "validate_visualization_boundary",
 ]
+
+
+def validate_association_config(config: object) -> object:
+    """Validate the task-owned Global-MHA association recipe."""
+    from src.tasks.base.data.association_configuration import (
+        validate_association_configuration,
+    )
+
+    return validate_association_configuration(
+        config, model_name="blcs_view_association"
+    )

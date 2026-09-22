@@ -175,4 +175,4 @@ seed 42, compile enabled); this job protects the point counts and resume setting
 
 `src.tasks.blcs.scripts.train_association` はcamera-local観測から各viewのsideと
 観測objectの共通IDを学習します。アーキテクチャ、教師・loss、推論APIと下流への
-接続は[共通association仕様](../base/association/README.md)を参照してください。
+接続は[共通association仕様](../base/ASSOCIATION.md)を参照してください。

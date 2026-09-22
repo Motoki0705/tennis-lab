@@ -1,0 +1,17 @@
+defaults:
+  - _augmentation
+  - _observation_tracking
+  - _self_
+backend: default
+scene_dir: plcs/multi_object_camera_view_v2
+camera_mode: random
+camera_candidates: null
+num_views_range: [3, 5]
+seq_len_range: [512, 512]
+batch_size: 2
+num_workers: 4
+pin_memory: true
+evaluation_reference_camera_id: camera_1
+validation_cache_size: 64
+persistent_workers: true
+prefetch_factor: 2

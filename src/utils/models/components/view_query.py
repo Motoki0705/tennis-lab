@@ -8,7 +8,6 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 
-from src.tasks.base.models import validate_reference_context_mask
 from src.utils.models import (
     RMSNorm,
     RotaryFrequencyComputer,
@@ -27,7 +26,7 @@ from src.utils.models.components.mhc import (
 
 
 @dataclass(frozen=True)
-class AssociationModelConfig:
+class ViewQueryModelConfig:
     hidden_dim: int = 256
     num_heads: int = 8
     ffn_dim: int = 768
@@ -45,10 +44,10 @@ class AssociationModelConfig:
             value = getattr(self, field.name)
             if type(value) is not int or value <= 0:
                 raise ValueError(
-                    f"association.model.{field.name} must be a positive int"
+                    f"model.{field.name} must be a positive int"
                 )
         if self.ffn_type not in SUPPORTED_FFN_TYPES:
-            raise ValueError(f"Unsupported association.model.ffn_type={self.ffn_type}")
+            raise ValueError(f"Unsupported model.ffn_type={self.ffn_type}")
         if (
             self.hidden_dim % self.num_heads
             or self.rope_dim % 2
@@ -61,10 +60,10 @@ class AssociationModelConfig:
             raise ValueError("Invalid dropout or identity capacity")
 
     @classmethod
-    def from_mapping(cls, value: dict[str, Any]) -> AssociationModelConfig:
+    def from_mapping(cls, value: dict[str, Any]) -> ViewQueryModelConfig:
         if set(value) != set(asdict(cls())):
             raise ValueError(
-                "association.model requires the exact declared configuration fields"
+                "model requires the exact declared configuration fields"
             )
         return cls(**value)
 
@@ -77,7 +76,7 @@ def _keep(valid: Tensor) -> Tensor:
 class TemporalViewQueryStage(nn.Module):
     """P -> mHC -> (T + one view Q) temporal -> V spatial -> mHC -> P."""
 
-    def __init__(self, cfg: AssociationModelConfig) -> None:
+    def __init__(self, cfg: ViewQueryModelConfig) -> None:
         super().__init__()
         self.mhc = ManifoldConstrainedHyperConnection(
             MHCConfig(
@@ -148,19 +147,17 @@ class TemporalViewQueryStage(nn.Module):
         return objects * object_valid[..., None], queries * valid.any(-1)[..., None]
 
 
-class ViewAssociationModel(nn.Module):
+class ViewQueryAssociationModel(nn.Module):
     """Raw observations plus one reference index; no camera side/pose input.
 
     Identity classes are arbitrary clip-global labels, not reusable local slots.
     No spatial query tokens or 3D heads exist in this model.
     """
 
-    def __init__(self, cfg: AssociationModelConfig, *, num_keypoints: int) -> None:
+    def __init__(self, cfg: ViewQueryModelConfig, *, num_keypoints: int) -> None:
         super().__init__()
-        if num_keypoints not in (1, 17):
-            raise ValueError(
-                "Association supports ball (1) or COCO player (17) observations"
-            )
+        if type(num_keypoints) is not int or num_keypoints <= 0:
+            raise ValueError("num_keypoints must be positive")
         self.config = cfg
         self.num_keypoints = num_keypoints
         self.object_encoder = nn.Sequential(
@@ -194,19 +191,7 @@ class ViewAssociationModel(nn.Module):
         padding_mask: Tensor,
         reference_view_index: Tensor,
     ) -> dict[str, Tensor]:
-        b, v, t, p, j, xy = object_uv.shape
-        if (p, j, xy) != (self.config.num_slots, self.num_keypoints, 2):
-            raise ValueError("object_uv must match (B,V,T,num_slots,num_keypoints,2)")
-        if (
-            object_vis.shape != object_uv.shape[:-1]
-            or court_kp.shape != (b, v, t, 14, 2)
-            or court_vis.shape != (b, v, t, 14)
-            or padding_mask.shape != (b, v, t)
-        ):
-            raise ValueError("Association observation/mask shapes do not agree")
-        if any(x.dtype != torch.bool for x in (object_vis, court_vis, padding_mask)):
-            raise TypeError("Association visibility and padding must be boolean")
-        validate_reference_context_mask(reference_view_index, ~padding_mask)
+        b, v, t, _p, _j, _xy = object_uv.shape
         visible = object_vis & ~padding_mask[..., None, None]
         court_visible = court_vis & ~padding_mask[..., None]
         features = torch.cat(

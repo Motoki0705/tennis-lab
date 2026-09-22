@@ -250,7 +250,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.blcs.scripts.generate_dataset_samples": "src.tasks.blcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.blcs.scripts.preview_augmentation": "src.tasks.blcs.configuration.validate_preview_boundary",
     "src.tasks.blcs.scripts.train": "src.tasks.blcs.configuration._validate_training_for_hydra",
-    "src.tasks.blcs.scripts.train_association": "src.tasks.blcs.scripts.train_association.validate_config",
+    "src.tasks.blcs.scripts.train_association": "src.tasks.blcs.configuration.validate_association_config",
     "src.tasks.blcs.scripts.visualize": "src.tasks.blcs.configuration.validate_visualization_boundary",
     "src.tasks.plcs.scripts.analysis.analyze_angle_velocity": "src.tasks.plcs.configuration._validate_angle_velocity_boundary",
     "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution": "src.tasks.plcs.configuration._validate_distribution_boundary",
@@ -261,7 +261,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "src.tasks.plcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
-    "src.tasks.plcs.scripts.train_association": "src.tasks.plcs.scripts.train_association.validate_config",
+    "src.tasks.plcs.scripts.train_association": "src.tasks.plcs.configuration.validate_association_config",
     "src.tasks.plcs.scripts.visualize": "src.tasks.plcs.configuration._validate_visualization_boundary",
     "src.tasks.slcs.scripts.analyze_predictions": "src.tasks.slcs.configuration.validate_analysis_boundary",
     "src.tasks.slcs.scripts.evaluate": "src.tasks.slcs.configuration.validate_evaluation_boundary",
@@ -310,9 +310,7 @@ def _runtime_boundary(
     )
 
 
-_SLCS_REAL_RGB_ENTRYPOINTS = (
-    "evaluate_run",
-)
+_SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
@@ -331,8 +329,6 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         )
         for script in _SLCS_REAL_RGB_ENTRYPOINTS
     },
-
-
     "src.tasks.court_detection.scripts.audit_hybrid_inference": (
         "court_detection.hybrid_inference_audit",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",

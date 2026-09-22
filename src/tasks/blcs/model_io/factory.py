@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TypeAlias, cast
+from typing import Any, TypeAlias, cast
 
 from src.tasks.base.configuration import as_config_mapping, require_config_mapping
 from src.tasks.base.model_io import (
@@ -163,3 +163,25 @@ __all__ = [
     "compose_blcs_track_query_model_io",
     "compose_blcs_trajectory_model_io",
 ]
+
+
+def compose_blcs_association_model_io(config: object) -> Any:
+    """Bind the association model to its task-specific input dimensions."""
+    from typing import cast
+
+    from src.tasks.base.model_io.association_contracts import AssociationIOAdapter
+    from src.tasks.blcs.configuration import validate_association_config
+    from src.tasks.blcs.models.blcs_view_association_model import (
+        BLCSViewAssociationModel,
+    )
+    from src.utils.models.components.view_query import ViewQueryModelConfig
+
+    model_config = cast(ViewQueryModelConfig, validate_association_config(config))
+    model = BLCSViewAssociationModel(model_config)
+    adapter = AssociationIOAdapter(
+        BLCSViewAssociationModel,
+        joints=1,
+        slots=model_config.num_slots,
+        identities=model_config.max_identities,
+    )
+    return bind_model_io(model, adapter)
