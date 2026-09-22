@@ -183,6 +183,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "plcs.generate_dataset_samples",
     "src.tasks.plcs.scripts.preview_augmentation": "plcs.preview_augmentation",
     "src.tasks.plcs.scripts.train": "plcs.train",
+    "src.tasks.plcs.scripts.train_triangulation_residual": "plcs.triangulation_residual.train",
     "src.tasks.plcs.scripts.visualize": "plcs.visualize",
     "src.tasks.slcs.scripts.analyze_predictions": "slcs.analyze_predictions",
     "src.tasks.slcs.scripts.evaluate": "slcs.evaluate",
@@ -260,6 +261,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "src.tasks.plcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
+    "src.tasks.plcs.scripts.train_triangulation_residual": "src.tasks.plcs.configuration._validate_residual_boundary",
     "src.tasks.plcs.scripts.visualize": "src.tasks.plcs.configuration._validate_visualization_boundary",
     "src.tasks.slcs.scripts.analyze_predictions": "src.tasks.slcs.configuration.validate_analysis_boundary",
     "src.tasks.slcs.scripts.evaluate": "src.tasks.slcs.configuration.validate_evaluation_boundary",
@@ -308,14 +310,14 @@ def _runtime_boundary(
     )
 
 
-_SLCS_REAL_RGB_ENTRYPOINTS = (
-    "evaluate_run",
-)
+_SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     "src.tennis_scene.chat_annotation.scripts.annotate": (
         "tennis_scene.chat_annotation.tools",
+    "src.tasks.plcs.scripts.migrate_residual_checkpoint": (
+        "plcs.residual_checkpoint_migration",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tennis_scene.scripts.build_real_rgb": (
@@ -333,10 +335,12 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         )
         for script in _SLCS_REAL_RGB_ENTRYPOINTS
     },
-
-
     "src.tasks.court_detection.scripts.audit_hybrid_inference": (
         "court_detection.hybrid_inference_audit",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.plcs.scripts.infer_triangulation_residual": (
+        "plcs.triangulation_residual.inference",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.base.scripts.inference_worker": (
@@ -426,6 +430,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.annotate", "main", domain="tennis_scene", executable_module=True),
     _runtime_boundary("tennis_scene", "src.tennis_scene.chat_annotation.scripts.prepare"),
     _non_hydra_boundary(
+        "src.tasks.plcs.scripts.migrate_residual_checkpoint",
+        "main",
+        domain="plcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
         "src.tasks.court_detection.scripts.audit_hybrid_inference",
         "main",
         domain="court_detection",
@@ -436,6 +446,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.run_appearance_variant",
         path_authority="src.synthetic_data_generation.appearance.configuration.require_absolute_path",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.infer_triangulation_residual",
+        "main",
+        domain="plcs",
+        executable_module=True,
     ),
     _non_hydra_boundary(
         "src.tasks.base.scripts.inference_worker",
@@ -602,6 +618,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.generate_dataset_samples"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.preview_augmentation"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train"),
+    _runtime_boundary("plcs", "src.tasks.plcs.scripts.train_triangulation_residual"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.visualize"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.analyze_predictions"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.evaluate"),

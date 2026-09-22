@@ -1,0 +1,16 @@
+{
+  "run_id": "1789927444958097687_81586_plcs-triangulation-residual-accad-v1",
+  "name": "plcs-triangulation-residual-accad-v1",
+  "command": "'env' 'CUDA_VISIBLE_DEVICES=0' 'OMP_NUM_THREADS=2' 'OPENBLAS_NUM_THREADS=1' 'MKL_NUM_THREADS=2' '/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual/.venv/bin/python' '-u' '-m' 'src.tasks.plcs.scripts.train_triangulation_residual' 'paths.data_root=/home/kamimura/projects/tennis-lab/data' 'paths.output_root=/home/kamimura/projects/tennis-lab/outputs' 'paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs' 'paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs' 'paths.cache_root=/home/kamimura/projects/tennis-lab/.cache' 'paths.external_asset_root=/home/kamimura/projects/tennis-lab/data' 'run.output_dir=plcs/triangulation_residual_v1_20260921' 'training.trainer.enable_progress_bar=false' && 'env' 'CUDA_VISIBLE_DEVICES=0' 'OMP_NUM_THREADS=2' 'OPENBLAS_NUM_THREADS=1' 'MKL_NUM_THREADS=2' '/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual/.venv/bin/python' '-u' '-m' 'src.tasks.base.triangulation_residual.inference' '--task' 'plcs' '--run-dir' '/home/kamimura/projects/tennis-lab/outputs/plcs/triangulation_residual_v1_20260921' '--clip' '/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000' '--output' '/mnt/c/Users/kamim/.codex/visualizations/2026/09/20/01a0bf91-5494-74c0-8793-3424866618ed/geometric-residual/plcs' '--device' 'cuda'",
+  "provider": "codex",
+  "session": "01a0bf91-5494-74c0-8793-3424866618ed",
+  "issue": "",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "branch": "codex/plcs-triangulation-residual",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual",
+  "captured_at": "2026-09-21T03:04:05+09:00"
+}

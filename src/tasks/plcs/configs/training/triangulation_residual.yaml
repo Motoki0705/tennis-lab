@@ -1,0 +1,61 @@
+trainer:
+  max_epochs: 30
+  gradient_clip_val: 1.0
+  deterministic: true
+  precision: bf16-mixed
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 1
+  accumulate_grad_batches: 1
+  reload_dataloaders_every_n_epochs: 0
+  enable_progress_bar: true
+  enable_model_summary: true
+  benchmark: false
+learning_rate: 0.0002
+weight_decay: 0.01
+warmup_steps: null
+warmup_epochs: 1
+min_lr: 1.0e-06
+steps_per_epoch: null
+optimizer:
+  betas:
+  - 0.9
+  - 0.999
+compile:
+  enabled: false
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+checkpoint:
+  enabled: true
+  filename: plcs-residual-{epoch:02d}
+  monitor: val/world_mpjpe_m
+  mode: min
+  save_top_k: 1
+  save_last: true
+early_stopping:
+  enabled: true
+  monitor: val/world_mpjpe_m
+  mode: min
+  patience: 8
+  min_delta: 0.0001
+  check_on_train_epoch_end: false
+lr_monitor:
+  enabled: true
+  interval: step
+qualitative_logging:
+  enabled: false
+  every_n_epochs: 1
+  num_samples: 1
+  selection_mode: random
+  selected_indices: null
+gan:
+  enabled: false
+  target_weight: 0.0
+  warmup_epochs: 1
+  generator_gradient_clip_val: 1.0
+  discriminator_gradient_clip_val: 1.0
+  transition:
+    start_epoch: 0
+matmul_precision: high
+allow_tf32: true

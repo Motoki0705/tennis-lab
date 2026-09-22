@@ -1,0 +1,16 @@
+{
+  "run_id": "1789944199254774101_314430_blcs-residual-v2-gpu-smoke",
+  "name": "blcs-residual-v2-gpu-smoke",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 .venv/bin/python -c 'import runpy,torch; runpy.run_module(\"src.tasks.blcs.scripts.train_triangulation_residual\",run_name=\"__main__\"); print(\"CUDA_PEAK\",torch.cuda.max_memory_allocated(),torch.cuda.max_memory_reserved(),flush=True)' --config-name train_triangulation_residual_v2 paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs run.output_dir=blcs/triangulation_residual_v2_gpu_smoke_20260921 run.seed=42 data.train_limit=64 data.val_limit=32 data.test_limit=32 data.num_workers=2 data.min_views=6 data.max_views=6 v2.evaluation_views=6 training.trainer.max_epochs=1 training.trainer.enable_progress_bar=false",
+  "provider": "codex",
+  "session": "01a0bf91-5494-74c0-8793-3424866618ed",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "4671f9bad0873a23054a3311009b9ecf4a6bbc88",
+  "branch": "codex/plcs-triangulation-residual",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-triangulation-residual",
+  "captured_at": "2026-09-21T07:43:25+09:00"
+}

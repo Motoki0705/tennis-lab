@@ -2,6 +2,8 @@
 
 出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
 
+三角測量の初期COCO17を補正する残差モデルは、本READMEの「Triangulation residual」を参照。実装は既存のdata・geometry・models・model_io・training・inference・visualizationレイヤーに配置します。
+
 2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。ACCAD (AMASS/SMPL-H) または GVHMR モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
 ## Court keypoint contract
@@ -99,7 +101,7 @@ data-root相対パスを指定してください。既存の混合profileは既�
 - **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。augmentation前の`human_kp_target`/`human_vis_target`と選択camera parameterも保持し、2D reprojection supervisionへ渡す。
 - **`datamodule.py`**: `PLCSDataModule`。model非依存のcanonical `(B,V,T,...)` batchを構築し、profile固有変換は行わない。
 - **`frame_rate_augmentation.py`**: native timingを保持したsceneから学習時のtarget FPSをsampleし、continuous/discrete/heading信号を意味に応じて同期resampleする。
-- **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
+- **`augmentation/observation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
 - **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、pose観測をnoise/dropout/false-positiveで破損してからcamera-local trackingにより固定幅`Q`へ変換するDataset/DataModule。target lifecycle packingは観測associationと独立です。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成します。val/testは常に`scene_dir`上の固定splitを使います。
@@ -245,3 +247,66 @@ the shared reference-frame contract. Direct scene inference requires a stable
 `data.sampling_weights` はscene directory内のJSONファイル名を指定する任意項目で、
 filtered train splitの全scene名を正の有限重みに対応させる。固定dataset backendのみ対応し、
 val/test loaderには適用しない。未指定時は従来のshuffleを使う。
+
+
+## Triangulation residual
+
+物理コート座標（XY地面・Z上、metre）のCOCO17を、各カメラの
+`[p_obs, p_reproj, p_obs-p_reproj, court14, X_init, camera]`とconfidence/maskから補正する。
+rootは左右hipの中点、出力はglobal root残差と17関節の相対姿勢残差。
+相対残差のhip平均をゼロにし、rootとの重複を除く。既存のSMPL-root/yawモデルとは
+異なる入出力契約であり、checkpointを読み替えない。BLCSにはこのモデルを導入しない。
+
+### 責務と設定
+
+- `data/residual_dataset.py`・`residual_datamodule.py`: ACCAD scene読込、motion-source split検査、時間窓・視点選択、loader。GT worldをそのまま読み、既存モデル用の座標変換は適用しない。
+- `data/augmentation/observation.py`: 既存の観測augmentation。packageから従来の公開型を再公開する。
+- `data/augmentation/residual.py`・`persistent_pose.py`: 四隅＋フェンス付近正面2台の学習camera、Court14の破損と再校正、通常・持続誤検出。旧来の独立camera摂動は使わない。
+- `geometry/residual_features.py`: 学習・推論共通の三角測量とraw特徴生成。汎用の投影・DLT・平面camera推定は`src/utils/geometry`を利用する。
+- `models/triangulation_residual.py`: camera/time attentionと時間RoPE、ゼロ初期化した2つの残差head。camera順序には依存しない。
+- `model_io/residual_contracts.py`・`residual_checkpoint.py`: 入出力とcheckpoint schemaの厳密な検証。
+- `training/residual_losses.py`・`residual_metrics.py`・`residual_lightning_module.py`: root/relative/worldの成分別Smooth L1、true-camera/clean-UV再投影、GT速度・骨長、paired診断。実行と構成は既存の`runner.py`・`composition.py`を使う。
+- `inference/residual_clip_io.py`・`residual_predictor.py`: 整列済みCourt14と保存cameraを検証して読み、時間windowの予測を融合する。half-turnを二重適用しない。
+- `visualization/adapters/residual.py`・`rendering/residual_comparison.py`: 初期姿勢と補正結果の比較。
+
+単一の`configs/train_triangulation_residual.yaml`がdata/model/loss/trainingの各設定を合成する。
+数値の正本は各YAML。学習方式のv1/v2、損失legacy/balanced、raw/asinhの切替は廃止し、
+[比較実験](../../../knowledge/nodes/plcs/000111-group-geometric-residual-v2.md)で選択した
+Court14再校正＋従来の成分別損失＋raw入力に統一する。単一seedでの選択であり、
+augmentation各成分の個別効果や実写3D精度を証明するものではない。
+
+### 欠測・校正・学習境界
+
+三角測量には信頼度閾値以上の2視点以上を要求し、無効点はNaNと元のmaskを保存する。
+モデル入力のseedだけ時間補間・端点保持を行い、全期間欠測jointは観測由来rootで補う。
+rootも全期間観測できなければ失敗し、GTによる補完やcameraへの代用はしない。
+全6候補を同じ誤差drawで生成してから実行可能なsubsetを選び、最大8回の再試行でも
+GT/window/splitや誤差family/severityは変更しない。
+
+学習cameraはnoisy Court14から焦点距離とR/tを推定し、主点中央・fx=fy・skew/歪み0を仮定する。
+画像内の6点以上、非共線性、正depth、地上camera、焦点境界を検査する。
+カメラ不確実性の推定やコート対称性の自動解決は行わず、Court14の物理対応は既知とする。
+既存の共通実映像pipelineは変更しない。合成誤差分布は実測から校正した値ではない。
+
+GT・true camera・clean UVは損失と診断だけに渡す。loader workerはspawn、OpenCVは1 thread。
+validation/testのseed・窓は固定し、最小`val/world_mpjpe_m`のcheckpointでtestする。
+実clipには独立3D正解がなく、再投影誤差を絶対3D精度として扱わない。
+
+```bash
+# GPUを使う学習・推論は必ず共有training queue経由で実行する。
+.venv/bin/python -m src.tasks.plcs.scripts.train_triangulation_residual \
+  paths.data_root=/absolute/repo/data
+.venv/bin/python -m src.tasks.plcs.scripts.infer_triangulation_residual \
+  --checkpoint /absolute/model.ckpt --clip /absolute/clip_000 \
+  --output /absolute/comparison --device cpu
+```
+
+checkpointはschema 3のみを通常読込する。採用した旧PLCS Court14/raw checkpoint（schema 1/2）は
+次の明示変換で重みと由来を保持した別ファイルにする。これは推論・初期重み用で、旧実験の
+optimizer状態を新方式でresumeする変換ではない。旧v1、BLCS、balanced/asinhの再現は
+knowledgeに記録した当時のcommit・patchを使う。
+
+```bash
+.venv/bin/python -m src.tasks.plcs.scripts.migrate_residual_checkpoint \
+  /absolute/old.ckpt /absolute/new.ckpt
+```
