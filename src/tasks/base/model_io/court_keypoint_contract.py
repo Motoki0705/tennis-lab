@@ -144,3 +144,26 @@ def write_model_artifact_court_keypoint_contract(
             f"{existing.to_dict()!r} with {expected.to_dict()!r}."
         )
     document[COURT_KEYPOINT_METADATA_KEY] = expected.to_dict()
+    if contract.selector != PHYSICAL_V1_SELECTOR:
+        if (
+            document.get("court_observation_order", "camera_local_v1")
+            != "camera_local_v1"
+        ):
+            raise CourtKeypointContractMismatchError(
+                "Refusing to replace incompatible Court observation ordering."
+            )
+        document["court_observation_order"] = "camera_local_v1"
+
+
+def validate_neural_court_observation_order(
+    document: Mapping[str, object],
+    contract: CourtKeypointContract,
+) -> None:
+    """Reject weights trained on side-aligned Court inputs; retraining is required."""
+    if (
+        contract.selector != PHYSICAL_V1_SELECTOR
+        and document.get("court_observation_order") != "camera_local_v1"
+    ):
+        raise CourtKeypointContractMismatchError(
+            "Expected camera_local_v1 Court observations; aligned checkpoints require retraining."
+        )

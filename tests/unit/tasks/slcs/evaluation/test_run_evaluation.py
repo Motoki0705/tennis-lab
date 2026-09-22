@@ -345,15 +345,14 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
     best = _checkpoints(run)
     OmegaConf.save(cfg, run / "config.yaml", resolve=True)
     module = SLCSLightningModule(cfg)
-    torch.save(
-        {
-            "epoch": 2,
-            "state_dict": module.state_dict(),
-            "hyper_parameters": dict(module.hparams),
-            "pytorch-lightning_version": pl.__version__,
-        },
-        best,
-    )
+    checkpoint = {
+        "epoch": 2,
+        "state_dict": module.state_dict(),
+        "hyper_parameters": dict(module.hparams),
+        "pytorch-lightning_version": pl.__version__,
+    }
+    module.on_save_checkpoint(checkpoint)
+    torch.save(checkpoint, best)
     out = evaluate_training_run(
         training_run=run.relative_to(output_root),
         output_root=output_root,

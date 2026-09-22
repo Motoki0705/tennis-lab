@@ -52,6 +52,20 @@ class SLCSLightningModule(BaseLightningModule):
 
     # ------------------------------------------------------------------
 
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        super().on_save_checkpoint(checkpoint)
+        checkpoint["slcs_court_frame"] = "camera_local_observation_and_target_v1"
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        if (
+            checkpoint.get("slcs_court_frame")
+            != "camera_local_observation_and_target_v1"
+        ):
+            raise ValueError(
+                "SLCS requires retraining with camera-local Court observations and targets."
+            )
+        super().on_load_checkpoint(checkpoint)
+
     def forward_batch(self, batch: dict[str, Tensor]) -> SLCSDecodedOutput:
         """Validate, execute, and decode one collated SLCS batch."""
         decoded: SLCSDecodedOutput = self.model_io.run(batch)

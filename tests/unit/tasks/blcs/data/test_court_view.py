@@ -64,7 +64,7 @@ def _camera(
     )
 
 
-def test_v2_dataset_aligns_reordered_views_targets_velocity_and_extrinsics(
+def test_v2_dataset_keeps_local_views_and_rotates_teacher_geometry(
     tmp_path: Path,
 ) -> None:
     physical_court = np.linspace(0.01, 0.4, 40, dtype=np.float32).reshape(20, 2)
@@ -129,7 +129,9 @@ def test_v2_dataset_aligns_reordered_views_targets_velocity_and_extrinsics(
     expected_court = torch.from_numpy(
         physical_court[np.asarray(COURT_KP20_HALF_TURN_INDEX)[:NUM_GROUND_COURT_KP]]
     )
-    torch.testing.assert_close(sample["court_kp"][0, 0], expected_court)
+    torch.testing.assert_close(
+        sample["court_kp"][0, 0], torch.from_numpy(physical_court[:NUM_GROUND_COURT_KP])
+    )
     torch.testing.assert_close(sample["court_kp"][1, 0], expected_court)
     provenance = sample["court_reference_provenance"]
     assert provenance.reference_camera_id == "cam_0"

@@ -27,7 +27,6 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.court_view import (
-    align_blcs_court_array,
     blcs_reference_sample_fields,
     blcs_track_query_reference_contract_document,
     collate_blcs_reference_fields,
@@ -177,31 +176,18 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         cam_w_list: list[Tensor] = []
         cam_h_list: list[Tensor] = []
 
-        for selected_index, cam_idx in enumerate(cams.indices):
+        for cam_idx in cams.indices:
             ball_uv = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "ball_uv", window=window)
             ).float()
             ball_vis = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "ball_vis", window=window)
             ).float()
-            source_view = (
-                frame.selected_views[selected_index] if frame.selected_views else None
-            )
             court_kp = torch.from_numpy(
-                align_blcs_court_array(
-                    scene.get_camera_array(cam_idx, "court_kp_uv"),
-                    source_view=source_view,
-                    frame=frame,
-                    keypoint_axis=0,
-                )
+                scene.get_camera_array(cam_idx, "court_kp_uv")
             ).float()
             court_vis = torch.from_numpy(
-                align_blcs_court_array(
-                    scene.get_camera_array(cam_idx, "court_kp_vis"),
-                    source_view=source_view,
-                    frame=frame,
-                    keypoint_axis=0,
-                )
+                scene.get_camera_array(cam_idx, "court_kp_vis")
             ).float()
             court_kp = court_kp[: self.num_court_kp]
             court_vis = court_vis[: self.num_court_kp]

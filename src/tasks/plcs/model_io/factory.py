@@ -141,6 +141,14 @@ def _standard_adapter(
     output_rank: int,
     min_views: int = 1,
 ) -> PLCSModelIOAdapter:
+    if (
+        runtime.court_keypoint_contract.selector == "camera_view_v2"
+        and profile is PLCSInputProfile.MULTIVIEW
+        and model_type is not PLCSMultiViewAxialReferenceModel
+    ):
+        raise ValueError(
+            "Camera-local multiview inputs require a reference-selector model."
+        )
     num_court_tokens = runtime.data.num_court_tokens
     if num_court_tokens is None:
         raise ValueError("Standard PLCS models require data.num_court_kp.")
