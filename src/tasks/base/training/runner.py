@@ -111,7 +111,7 @@ class BaseTrainingRunner:
                 )
 
             if not self.skip_test(config):
-                trainer.test(lightning_module, datamodule=datamodule)
+                self.test_after_fit(trainer, lightning_module, datamodule, callbacks)
         except BaseException as training_error:
             try:
                 artifact_store.sync_tree()
@@ -126,6 +126,16 @@ class BaseTrainingRunner:
         print(f"Training complete. Outputs saved to {output_dir}")
 
     # ---- abstract methods (must be implemented by subclasses) ----
+    def test_after_fit(
+        self,
+        trainer: pl.Trainer,
+        lightning_module: pl.LightningModule,
+        datamodule: pl.LightningDataModule,
+        callbacks: list[Any],
+    ) -> None:
+        """Task hook for explicit checkpoint selection; legacy behavior is unchanged."""
+        trainer.test(lightning_module, datamodule=datamodule)
+
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         """Build the data module. Must be implemented by subclasses."""
         raise NotImplementedError

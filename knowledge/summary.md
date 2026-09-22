@@ -1,4 +1,4 @@
-<!-- knowledge-review: 31ecfb5b9c5c9b492cf8af2b68510fdf58505507ae87a2bff8cd4a124e269aa7 on 2026-09-21 -->
+<!-- knowledge-review: af78761b5077b2d89a313005cfd290eca3aebb5f039570821247ffac8ab4394b on 2026-09-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
@@ -17,6 +17,12 @@
 
 - **Court detection / 実写homography postprocess**: [指定4写真の保存予測](nodes/court_detection/000028-run-court-supplied-photos-paper-20260918.md)に対し、[PROSAC](nodes/court_detection/000029-run-court-prosac-paper-20260920.md)と[KP・LINE共同推定](nodes/court_detection/000030-run-court-kp-line-hybrid-20260920.md)はいずれも4枚でHを生成した。共同推定はKPのみより予測LINEとの双方向内部整合を高めたが、人手GTがなく、段階間で採用KPも異なるため、実コートへの精度向上率や4写真外への汎化は未確認である。写真CのLINE欠落・対応の曖昧さも残る。次は会場分離の人手GTと固定モデル・解像度で旧H／PROSAC／共同推定の誤差、失敗率、棄却率、処理時間、下流E2Eを同条件比較する。保存出力による再検証は可能だが、ニューラル再推論には[記録済みのcheckpointハッシュ不一致](../paper/court_robustness/README.md)の解消が必要である。
 - **Synthetic data / SfM幾何**: [B00の保存トラック診断](nodes/synthetic_data_generation/000022-run-court-sfm-ground-drift-20260919.md)に続き、[B00〜B03の共通2区間診断](nodes/synthetic_data_generation/000023-run-court-sfm-all-scenes-drift-20260920.md)でも、時間分割した共通地面セルに高さ不整合を観測した。SfM driftと整合する兆候だが絶対ドリフト誤差ではなく、符号はシーンごとに異なり、B01の偏りは小さく、B03は支持セルが少ない。地面凹凸・特徴点誤差・三角測量誤差も分離できないため、合成教師の幾何的不確実性として扱う。次は再訪で十分に重なる地面観測と独立地面基準を用意し、長距離構造制約・loop closureの有無を同条件で比較して下流court精度への影響を測る。
+
+[PLCS・BLCSの三角測量残差モデル初回検証](nodes/plcs/000105-group-geometric-residual-v1.md)では、合成testの幾何初期値に対してPLCSの平均3D誤差が約20%、BLCSが約1%減った。一方、Meijiの同一実clipでは両taskとも再投影誤差が増え、PLCSの大きな骨長異常とBLCSのほぼ一定の微小補正が残った。合成64sceneの追加診断でも3D誤差改善と入力観測への再投影悪化が同時に起きたため、実clipの再投影悪化を実3D悪化とは断定しない。独立3D正解はなく、実映像の精度改善・production置換を支持する根拠は得られていないため、追加profileは実験用とする。合成camera摂動とCourt14からの推定誤差構造の差は原因候補だが未分離であり、次は同一splitでcamera再推定と独立摂動を比較し、clean caseの不要補正・実clipの持続外れ値を別に確認する。従来PLCSのSMPL-root/yawとは出力契約が異なるため、既存deployの指標と直接順位付けしない。
+
+[三角測量残差v2の比較](nodes/plcs/000111-group-geometric-residual-v2.md)では、Court14再推定・四隅＋正面2候補・持続誤検出を実装し、同一観測/初期3Dの6条件を評価した。validationで選んだPLCS legacy/rawはtest平均0.155524→0.119929m、BLCS balanced/rawは0.844004→0.812402m。asinhはBLCSのlegacy対照には有効だったが、PLCSでは悪化し最良構成も更新せず、入力感度と精度を区別する。PLCSの実clip骨長異常は減ったが長い前腕・再投影増大が残り、BLCSの実補正は約2mm。独立3D正解がなくproduction置換の根拠とはしない。BLCSの[native worker中断](nodes/blcs/000037-run-blcs-residual-v2-balanced-s42.md)は[checkpoint復旧](nodes/blcs/000040-run-blcs-residual-v2-balanced-s42-resume.md)で完走したが、後半のstochastic順序差が制限。次はcamera-onlyの識別性、低誤差点の不要補正、長い欠測、実測誤差分布と複数seed/会場を確認する。
+
+2026-09-21の導入方針見直しでは、上記比較結果を再確認し、残差モデルをPLCSのみに限定した。Court14再校正＋従来損失＋raw入力を単一構成として採用し、BLCS導入と不採用分岐を撤去する。過去のBLCSを含む実験記録は保持し、再現は記録済みcommit/patchを使う。測定結果・実写精度の制限とproduction非昇格の判断は変わらない。
 
 ## 2026-09-20の追加確認
 

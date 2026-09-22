@@ -22,9 +22,14 @@ test("browse, compare, follow research, and read PDF", async ({
   await page.goto("/");
   await page.getByRole("button", { name: /^plcs/ }).click();
   await page.getByRole("textbox", { name: "検索", exact: true }).fill("accad");
-  await expect(page.locator(".experiment-row")).toHaveCount(3);
-  await page.locator(".compare-check input").first().check();
-  await page.locator(".compare-check input").nth(1).check();
+  // The live research library grows. Select the intended matching experiments
+  // by identity instead of fixing the number or order of ACCAD search results.
+  for (const id of [
+    "run-plcs-accad-gvhmr-meiji-1000-v1",
+    "run-plcs-accad-gvhmr-meiji-1000-v1-train",
+  ]) {
+    await page.getByLabel(`${id} を比較`, { exact: true }).check();
+  }
   await page.getByRole("button", { name: "実験比較 (2)" }).click();
   await expect(page.locator(".comparison-table")).toBeVisible();
   const download = page.waitForEvent("download");
