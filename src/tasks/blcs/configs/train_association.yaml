@@ -28,5 +28,5 @@ training:
   compile:
     enabled: false
 run:
-  output_dir: blcs/association_reference/${tennis_run_id:}
+  output_dir: blcs/train/association_reference/${tennis_run_id:}
   test_after_fit: false
