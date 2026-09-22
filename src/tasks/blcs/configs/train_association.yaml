@@ -13,6 +13,7 @@ association:
     num_slots: 4
     max_identities: 10
     dropout: 0.1
+    ffn_type: swiglu
   limit_train_batches: 1.0
   limit_val_batches: 1.0
 
