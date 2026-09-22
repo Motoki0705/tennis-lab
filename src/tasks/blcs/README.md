@@ -170,3 +170,9 @@ and the number of model input tokens are independent. The earlier KP20 run is
 not a compatible initialization or resume checkpoint for this KP14 recipe.
 Use Colab job `blcs_axial_reference_kp14` for a new 50-epoch run (L4, BS16,
 seed 42, compile enabled); this job protects the point counts and resume setting.
+
+## Side / object association before triangulation
+
+`src.tasks.blcs.scripts.train_association` はcamera-local観測から各viewのsideと
+観測objectの共通IDを学習します。アーキテクチャ、教師・loss、推論APIと下流への
+接続は[共通association仕様](../base/association/README.md)を参照してください。

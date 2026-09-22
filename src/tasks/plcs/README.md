@@ -245,3 +245,9 @@ the shared reference-frame contract. Direct scene inference requires a stable
 `data.sampling_weights` はscene directory内のJSONファイル名を指定する任意項目で、
 filtered train splitの全scene名を正の有限重みに対応させる。固定dataset backendのみ対応し、
 val/test loaderには適用しない。未指定時は従来のshuffleを使う。
+
+## Side / object association before triangulation
+
+`src.tasks.plcs.scripts.train_association` はcamera-local観測から各viewのsideと
+観測objectの共通IDを学習します。アーキテクチャ、教師・loss、推論APIと下流への
+接続は[共通association仕様](../base/association/README.md)を参照してください。
