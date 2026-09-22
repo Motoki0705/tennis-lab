@@ -92,6 +92,7 @@ def test_cli_publishes_root_contract_before_first_scene(
         val_ratio=0.1,
         test_ratio=0.1,
         split_group="scene",
+        generation_mode="single_object",
     )
     writer = MagicMock()
 
