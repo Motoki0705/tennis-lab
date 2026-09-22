@@ -20,9 +20,13 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor
 
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
+from src.tasks.base.generate_dataset.timeline_composer import (
+    TimelineComposer,
+    TimelineConfig,
+)
 from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
     MultiBallSceneGenerator,
+    rebalance_scene_births,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
@@ -1043,6 +1047,29 @@ class BLCSPhysicsTrajectorySource:
 
     def generate(self, *, scene_id: str, seed: int) -> BLCSSourceScene:
         """Generate one deterministic complete multi-object source scene."""
+        return self._generate(scene_id=scene_id, seed=seed, composer=None)
+
+    def generate_sequence(
+        self, requests: Sequence[tuple[str, int]]
+    ) -> Iterator[BLCSSourceScene]:
+        """Generate a scene-ID-ordered dataset with one cumulative seconds ledger.
+
+        Source proposal diagnostics remain per-scene and source arrays are complete.
+        The ledger belongs to this invocation, so repeated calls are reproducible.
+        """
+        ids = [scene_id for scene_id, _ in requests]
+        if not ids or ids != sorted(set(ids)):
+            raise ValueError("BLCS sequence requires unique, sorted scene IDs.")
+        for scene_id, seed in requests:
+            self.preflight(scene_id=scene_id, seed=seed)
+        composer = TimelineComposer(self.settings.timeline._to_internal())
+        for scene_id, seed in requests:
+            composer.rng.seed(seed)
+            yield self._generate(scene_id=scene_id, seed=seed, composer=composer)
+
+    def _generate(
+        self, *, scene_id: str, seed: int, composer: TimelineComposer | None
+    ) -> BLCSSourceScene:
         self.preflight(scene_id=scene_id, seed=seed)
         with _deterministic_random_state(seed):
             bounded = _BoundedPhysicsSceneSource(
@@ -1061,6 +1088,8 @@ class BLCSPhysicsTrajectorySource:
                 maximum_physics_attempts_per_object=1,
                 rng=random.Random(seed),
             ).generate_scene(scene_id)
+        if composer is not None:
+            internal = rebalance_scene_births(internal, composer)
         return _source_scene_from_internal(
             internal,
             seed=seed,

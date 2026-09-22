@@ -324,7 +324,7 @@ def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
         execution_device=runtime.blcs.performance.execution_device,
         maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
     )
-    assert provider.settings.timeline.min_scene_frames == 1024
+    assert provider.settings.timeline.min_scene_frames == 512
     assert blcs_renderer.timeout_seconds == 3_600.0
 
     parameters = runtime.plcs.build_stage_parameters(seed=runtime.stages.seed)

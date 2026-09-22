@@ -395,3 +395,46 @@ def test_unrecognized_runtime_failure_is_not_retried_or_hidden(
         _source().generate(scene_id="B00-blcs-000000", seed=17)
 
     assert _UnexpectedFailureGenerator.total_calls == 1
+
+
+def test_sequence_shares_seconds_quota_and_preserves_complete_sources(monkeypatch):
+    import src.tasks.blcs.generate_dataset.source_api as api
+    from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
+        rebalance_scene_births,
+    )
+
+    monkeypatch.setattr(api, "BLCSSceneGenerator", _RetryingPhysicsGenerator)
+    ledgers = []
+    snapshots = []
+
+    def rebalance(scene, composer):
+        ledgers.append(composer)
+        result = rebalance_scene_births(scene, composer)
+        snapshots.append(composer.occupancy_seconds.copy())
+        return result
+
+    monkeypatch.setattr(api, "rebalance_scene_births", rebalance)
+    source = _source()
+    requests = [(f"B00-blcs-{index:06d}", 17 + index) for index in range(8)]
+    scenes = list(source.generate_sequence(requests))
+    assert len({id(ledger) for ledger in ledgers}) == 1
+    cumulative: np.ndarray = np.zeros(3, dtype=np.float64)
+    for scene, snapshot in zip(scenes, snapshots, strict=True):
+        cumulative += np.bincount(scene.present.sum(1), minlength=3) / scene.fps
+        np.testing.assert_allclose(cumulative, snapshot)
+        assert scene.present[0].any()
+        for track in scene.tracks:
+            assert tuple(i for i in track.source_frame_indices if i is not None) == (
+                0,
+                1,
+                2,
+                3,
+                4,
+            )
+    np.testing.assert_allclose(
+        cumulative[1:] / cumulative[1:].sum(), 0.5, atol=0.025, rtol=0
+    )
+    repeated = list(source.generate_sequence(requests))
+    for a, b in zip(scenes, repeated, strict=True):
+        np.testing.assert_array_equal(a.positions_court_m, b.positions_court_m)
+        assert a.tracks == b.tracks

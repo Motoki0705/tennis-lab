@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import replace
 
 import numpy as np
@@ -122,6 +122,15 @@ class _FakePublicPhysicsSource:
     def preflight(*, scene_id: str, seed: int) -> None:
         if not scene_id or seed < 0:
             raise ValueError("invalid public source request")
+
+    def generate_sequence(
+        self, requests: Sequence[tuple[str, int]]
+    ) -> Iterator[BLCSSourceScene]:
+        assert [scene_id for scene_id, _ in requests] == sorted(
+            scene_id for scene_id, _ in requests
+        )
+        for scene_id, seed in requests:
+            yield self.generate(scene_id=scene_id, seed=seed)
 
     def generate(self, *, scene_id: str, seed: int) -> BLCSSourceScene:
         self.preflight(scene_id=scene_id, seed=seed)
