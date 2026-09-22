@@ -127,17 +127,17 @@ def test_camera_local_targets_rotate_and_keep_raw_court(data_config, synthetic_d
     local = build_window_sample(
         replace(clip, camera_half_turns=(True,) * clip.court_kp.shape[0]), **kwargs
     )
-    torch.testing.assert_close(local.court_kp, physical.court_kp)
-    torch.testing.assert_close(local.court_vis, physical.court_vis)
+    torch.testing.assert_close(local["court_kp"], physical["court_kp"])
+    torch.testing.assert_close(local["court_vis"], physical["court_vis"])
     torch.testing.assert_close(
-        local.target_player_position,
-        physical.target_player_position.flip(0) * torch.tensor([-1.0, -1.0, 1.0]),
+        local["target_player_position"],
+        physical["target_player_position"].flip(0) * torch.tensor([-1.0, -1.0, 1.0]),
     )
     torch.testing.assert_close(
-        local.target_ball_position,
-        physical.target_ball_position * torch.tensor([-1.0, -1.0, 1.0]),
+        local["target_ball_position"],
+        physical["target_ball_position"] * torch.tensor([-1.0, -1.0, 1.0]),
     )
     torch.testing.assert_close(
-        local.target_player_rotation, -physical.target_player_rotation.flip(0)
+        local["target_player_rotation"], -physical["target_player_rotation"].flip(0)
     )
-    torch.testing.assert_close(local.player_kp, physical.player_kp.flip(0))
+    torch.testing.assert_close(local["player_kp"], physical["player_kp"].flip(0))

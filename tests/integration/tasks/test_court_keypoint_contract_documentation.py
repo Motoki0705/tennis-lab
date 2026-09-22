@@ -24,7 +24,7 @@ def test_shared_readme_is_the_only_detailed_court_keypoint_authority() -> None:
         "camera_view_courtkp20_rzpi_v1",
         "Camera-local disk semantics",
         "Model reference semantics",
-        "H_v^-1 o H_r",
+        "camera_local_v1",
         "#782/#788",
         "court_coordinate_normalization",
         "separate metadata field",
@@ -33,15 +33,12 @@ def test_shared_readme_is_the_only_detailed_court_keypoint_authority() -> None:
         "model retraining",
     ):
         assert required in shared
-    assert (
-        "(3,2,1,0,7,6,5,4,11,10,9,8,13,12,14,17,18,15,16,19)"
-        in compact_shared
-    )
+    assert "(3,2,1,0,7,6,5,4,11,10,9,8,13,12,14,17,18,15,16,19)" in compact_shared
 
     authority_only_fragments = (
         "physical_courtkp20_v1",
         "camera_view_courtkp20_rzpi_v1",
-        "H_v^-1 o H_r",
+        "camera_local_v1",
         "OPPOSITE_COURT_END_INDEX",
         "(3,2,1,0,7,6,5,4,11,10,9,8,13,12,14,17,18,15,16,19)",
     )

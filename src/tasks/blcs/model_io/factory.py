@@ -81,8 +81,23 @@ def compose_blcs_model_io(config: object) -> BLCSBoundModelIO:
             "TrajectoryBoundModelIO", bind_model_io(single_model, single_adapter)
         )
     if isinstance(model_config, AxialModelConfig):
-        model_type = BLCSMultiViewAxialReferenceModel if model_config.name == "blcs_multiview_axial_reference" else BLCSMultiViewAxialModel
-        adapter_type = AxialReferenceTrajectoryModelIOAdapter if model_config.name == "blcs_multiview_axial_reference" else AxialTrajectoryModelIOAdapter
+        if (
+            court_keypoint_contract.selector == "camera_view_v2"
+            and model_config.name != "blcs_multiview_axial_reference"
+        ):
+            raise ValueError(
+                "Camera-local multiview inputs require a reference-selector model."
+            )
+        model_type = (
+            BLCSMultiViewAxialReferenceModel
+            if model_config.name == "blcs_multiview_axial_reference"
+            else BLCSMultiViewAxialModel
+        )
+        adapter_type = (
+            AxialReferenceTrajectoryModelIOAdapter
+            if model_config.name == "blcs_multiview_axial_reference"
+            else AxialTrajectoryModelIOAdapter
+        )
         axial_model = model_type.from_config(model_config)
         axial_adapter = adapter_type(
             num_court_tokens=model_config.num_court_tokens,
