@@ -1,4 +1,4 @@
-"""Portable command interface; the kit relocates shared path-contract imports."""
+"""Local reference helpers; no Python runtime is distributed with clip inputs."""
 
 from __future__ import annotations
 

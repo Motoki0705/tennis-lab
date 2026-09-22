@@ -1,8 +1,10 @@
-"""Run the real CLI and the exported kit with tennis-lab imports forbidden."""
+"""Prepare self-contained attachments and exercise the local reference runtime."""
 
 from __future__ import annotations
 
 import json
+import re
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -13,11 +15,17 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tennis_scene.chat_annotation.runtime.contracts import ClipManifest, read_json
+from src.tennis_scene.chat_annotation.prompt import expand_manifest
+from src.tennis_scene.chat_annotation.runtime.contracts import (
+    ClipManifest,
+    read_json,
+    sha256_file,
+    write_json,
+)
 from src.tennis_scene.chat_annotation.runtime.media import probe_video
 
 
-def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
+def test_preparation_and_self_contained_clip(tmp_path: Path) -> None:
     source = tmp_path / "fixture.mp4"
     with av.open(str(source), "w") as container:
         stream = container.add_stream("libx264", rate=5)
@@ -64,34 +72,67 @@ def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
     assert [
         f.source_frame_index for m in manifests for f in m.frames if f.is_target
     ] == list(range(155))
-    kit = Path(summary["project_kit_directory"])
-    directory = summary_path.parent / "clips" / summary["clips"][0]
-    manifest_path = directory / "clip_manifest.json"
+    project_texts = tmp_path / "output" / "chat_annotation" / "project_kits"
+    assert {path.name for path in project_texts.iterdir()} == {
+        "PROJECT_INSTRUCTIONS.txt",
+        "REQUEST.txt",
+    }
+    assert "project_kit_directory" not in summary
+    directory = tmp_path / "chat_upload"
+    directory.mkdir()
+    videos_root = project_texts.parent / "videos"
+    assert {p.name for p in videos_root.iterdir()} == {
+        Path(manifests[0].source.filename).stem
+    }
+    videos = videos_root / Path(manifests[0].source.filename).stem
+    assert all(p.is_file() and p.suffix == ".mp4" for p in videos.iterdir())
+    assert len(list(videos.iterdir())) == 3
     video = directory / manifests[0].filename
-    annotation_path = tmp_path / "annotations.json"
-    launcher = tmp_path / "isolated_launcher.py"
-    launcher.write_text(
-        "import importlib.abc, runpy, sys\n"
-        "class BlockRepository(importlib.abc.MetaPathFinder):\n"
-        "    def find_spec(self, fullname, path=None, target=None):\n"
-        "        if fullname.split('.')[0] in {'src', 'torch', 'hydra', 'omegaconf', 'yt_dlp'}:\n"
-        "            raise ImportError('Forbidden repository dependency: ' + fullname)\n"
-        "sys.meta_path.insert(0, BlockRepository())\n"
-        "sys.argv.pop(0)\n"
-        "runpy.run_path(sys.argv[0], run_name='__main__')\n",
-        encoding="utf-8",
+    shutil.copyfile(videos / video.name, video)
+    request = (project_texts / "REQUEST.txt").read_text(encoding="utf-8")
+    (directory / "REQUEST.txt").write_text(request, encoding="utf-8")
+    assert {p.name for p in directory.iterdir()} == {video.name, "REQUEST.txt"}
+    # Only the video and the pasted text remain available as input data.
+    project_texts.parent.rename(tmp_path / "unavailable_preparation")
+    blocks = {
+        name: json.loads(value)
+        for name, value in re.findall(
+            r"## ([^\n]+)\n\n```json\n(.*?)\n```", request, re.S
+        )
+    }
+    record = next(
+        value for value in blocks["動画入力定義"] if value["filename"] == video.name
     )
+    recovered = expand_manifest(record)
+    assert recovered == manifests[0]
+    manifest_path = directory / "clip_manifest.json"
+    write_json(manifest_path, recovered.model_dump(mode="json"))
+    for name in (
+        "annotation.schema.json",
+        "court_definition.json",
+        "kit_manifest.json",
+    ):
+        write_json(directory / name, blocks[name])
+    protocol = request[
+        request.index("# テニス動画") : request.index("\n## annotation.schema.json")
+    ]
+    (directory / "PROTOCOL.md").write_text(protocol, encoding="utf-8")
+    for name, digest in blocks["kit_manifest.json"]["files"].items():
+        assert sha256_file(directory / name) == digest
+    annotation_path = tmp_path / "annotations.json"
 
     def run(*arguments: str, success: bool = True) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
             [
                 sys.executable,
-                "-I",
-                str(launcher),
-                str(kit / "annotation_tools.py"),
+                "-c",
+                "from src.tennis_scene.chat_annotation.runtime.cli import main; "
+                "from pathlib import Path; raise SystemExit(main(Path.cwd()))",
+                "--kit-dir",
+                str(directory),
                 *arguments,
             ],
-            cwd=tmp_path,
+            cwd=repository,
             capture_output=True,
             text=True,
         )
@@ -232,7 +273,7 @@ def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
         success=False,
     )
     assert len(invalid_annotation.stdout.strip().splitlines()) == 5
-    # Corrupting a Project file is detected before annotation or rendering.
-    (kit / "PROTOCOL.md").write_text("modified", encoding="utf-8")
+    # Corrupting an attached requirement is detected before local annotation/rendering.
+    (directory / "PROTOCOL.md").write_text("modified", encoding="utf-8")
     rejected = run("preflight", *common, "--video", str(video), success=False)
     assert "missing or modified" in rejected.stdout

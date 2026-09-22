@@ -46,7 +46,7 @@ def _batch_index_path(config: PrepareConfig, kit_id: str) -> Path:
     digest = hashlib.sha256(
         json.dumps(identity, sort_keys=True, allow_nan=False).encode()
     ).hexdigest()[:16]
-    return config.output / "batches" / digest / "batch.json"
+    return Path(config.output) / "batches" / digest / "batch.json"
 
 
 def _error_text(error: BaseException) -> str:
@@ -59,7 +59,7 @@ def prepare_batch(config: PrepareConfig) -> Path:
     if not config.urls or config.url is not None or config.local_video is not None:
         raise ValueError("prepare_batch requires source.urls as the only input")
     config.output.mkdir(parents=True, exist_ok=True)
-    kit_directory, kit_id = build_kit(config.output / "project_kits")
+    kit_contents, kit_id = build_kit(config.output / "project_kits")
     index_path = _batch_index_path(config, kit_id)
     results: list[dict[str, Any]] = [
         {
@@ -103,7 +103,7 @@ def prepare_batch(config: PrepareConfig) -> Path:
             try:
                 source, source_info = future.result()
                 destination = preparation._prepare_acquired(
-                    item_config, source, source_info, kit_directory, kit_id
+                    item_config, source, source_info, kit_contents, kit_id
                 )
             except Exception as error:
                 item["status"] = "failed"
