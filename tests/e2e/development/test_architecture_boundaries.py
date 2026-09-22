@@ -127,6 +127,18 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
     (
+        "src.tasks.base.association.model.ViewAssociationModel.forward",
+        "Python raise",
+    ): 3,
+    (
+        "src.tasks.base.association.model.ViewAssociationModel.forward",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.base.association.model.ViewAssociationModel.forward",
+        "forward validation helper validate_reference_context_mask",
+    ): 1,
+    (
         "src.tasks.court_detection.models.hierarchical_model."
         "CourtHierarchicalModel.forward",
         "Python raise",

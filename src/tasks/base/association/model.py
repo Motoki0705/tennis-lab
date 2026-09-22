@@ -15,7 +15,11 @@ from src.utils.models import (
     TransformerBlock,
     TransformerBlockConfig,
 )
-from src.utils.models.components.ffn_layers import build_ffn
+from src.utils.models.components.ffn_layers import (
+    SUPPORTED_FFN_TYPES,
+    FFNType,
+    build_ffn,
+)
 from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
     MHCConfig,
@@ -32,14 +36,19 @@ class AssociationModelConfig:
     num_slots: int = 4
     max_identities: int = 10
     dropout: float = 0.1
+    ffn_type: FFNType = "swiglu"
 
     def __post_init__(self) -> None:
         for field in fields(self):
+            if field.name in {"dropout", "ffn_type"}:
+                continue
             value = getattr(self, field.name)
-            if field.name != "dropout" and (type(value) is not int or value <= 0):
+            if type(value) is not int or value <= 0:
                 raise ValueError(
                     f"association.model.{field.name} must be a positive int"
                 )
+        if self.ffn_type not in SUPPORTED_FFN_TYPES:
+            raise ValueError(f"Unsupported association.model.ffn_type={self.ffn_type}")
         if (
             self.hidden_dim % self.num_heads
             or self.rope_dim % 2
@@ -91,13 +100,15 @@ class TemporalViewQueryStage(nn.Module):
             attention_type="mha",
             n_kv_heads=None,
             rope_base=10000.0,
-            ffn_type="swiglu",
+            ffn_type=cfg.ffn_type,
             ffn_enabled=False,
         )
         self.temporal = TransformerBlock(block)
         self.spatial = TransformerBlock(block)
         self.ffn_norm = RMSNorm(cfg.hidden_dim)
-        self.ffn = build_ffn(ffn_type="swiglu", dim=cfg.hidden_dim, ffn_dim=cfg.ffn_dim)
+        self.ffn = build_ffn(
+            ffn_type=cfg.ffn_type, dim=cfg.hidden_dim, ffn_dim=cfg.ffn_dim
+        )
 
     def forward(
         self,
