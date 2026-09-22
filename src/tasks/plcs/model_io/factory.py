@@ -294,11 +294,11 @@ def compose_plcs_association_model_io(config: object) -> Any:
     from typing import cast
 
     from src.tasks.base.model_io.association_contracts import AssociationIOAdapter
+    from src.tasks.base.models.view_association import ViewQueryModelConfig
     from src.tasks.plcs.configuration import validate_association_config
     from src.tasks.plcs.models.plcs_view_association_model import (
         PLCSViewAssociationModel,
     )
-    from src.utils.models.components.view_query import ViewQueryModelConfig
 
     model_config = cast(ViewQueryModelConfig, validate_association_config(config))
     model = PLCSViewAssociationModel(model_config)

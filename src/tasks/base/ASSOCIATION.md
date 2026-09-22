@@ -47,8 +47,9 @@ sideは定義上falseなのでside損失・正解率から除きます。
 
 実モデルの設定は各taskの`configs/model/view_association.yaml`だけを正本とします。
 旧`association.model`と3D tracking model設定の併存は廃止しました。
-モデル計算は共通の`utils/models/components/view_query.py`、入力と教師は各taskの
-association Dataset、入出力はmodel_io、学習は既存task runner/compositionで構成します。
+汎用stageは`utils/models/components/view_query.py`、Court encoderとside/ID headは
+`tasks/base/models/view_association.py`へ配置します。入力と教師は各taskのassociation
+Dataset、入出力はmodel_io、学習は既存task runner/compositionで構成します。
 時間attentionは全stage Global MHA、mHCは保持します。CSWA/CUDA拡張は使いません。
 データはcamera-local 2D観測とside/ID教師のみを読み、3D target packingを行いません。
 共通optimizer/scheduler/compileを有効にし、新しい契約v2として両taskを新規60epoch学習します。

@@ -2,12 +2,12 @@ import pytest
 import torch
 
 from src.tasks.base.model_io.association_decoding import decode_association
-from src.tasks.base.training.association_losses import association_loss
-from src.tennis_scene.pipeline.association_state import stitch_overlap_ids
-from src.utils.models.components.view_query import (
+from src.tasks.base.models.view_association import (
     ViewQueryAssociationModel,
     ViewQueryModelConfig,
 )
+from src.tasks.base.training.association_losses import association_loss
+from src.tennis_scene.pipeline.association_state import stitch_overlap_ids
 
 
 def inputs(joints=17):
