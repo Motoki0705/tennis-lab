@@ -69,11 +69,12 @@ def test_preparation_and_self_contained_clip(tmp_path: Path) -> None:
     assert [
         f.source_frame_index for m in manifests for f in m.frames if f.is_target
     ] == list(range(155))
-    kit = Path(summary["project_kit_directory"])
-    assert (kit.parent / "PROJECT_INSTRUCTIONS.txt").is_file()
-    assert (kit.parent / "PROTOCOL.md").read_bytes() == (
-        kit / "PROTOCOL.md"
-    ).read_bytes()
+    project_texts = tmp_path / "output" / "chat_annotation" / "project_kits"
+    assert {path.name for path in project_texts.iterdir()} == {
+        "PROJECT_INSTRUCTIONS.txt",
+        "REQUEST.txt",
+    }
+    assert "project_kit_directory" not in summary
     directory = tmp_path / "chat_upload"
     shutil.copytree(summary_path.parent / "clips" / summary["clips"][0], directory)
     assert {file.name for file in directory.iterdir()} == {
@@ -93,8 +94,8 @@ def test_preparation_and_self_contained_clip(tmp_path: Path) -> None:
     }
     for name, digest in kit_manifest["files"].items():
         assert sha256_file(directory / name) == digest
-    # The upload is independent even after the original kit is relocated.
-    kit.rename(tmp_path / "unavailable_original_kit")
+    # The upload is independent even when the project texts are not available.
+    project_texts.rename(tmp_path / "unavailable_project_texts")
     manifest_path = directory / "clip_manifest.json"
     video = directory / manifests[0].filename
     annotation_path = tmp_path / "annotations.json"

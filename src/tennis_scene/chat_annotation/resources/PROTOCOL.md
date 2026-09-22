@@ -15,7 +15,7 @@ gpt-6-astraに、添付動画の人物・aliveなボール・対象コートの2
 - clip_manifest.json: 動画の識別情報、元動画情報、フレーム対応、担当範囲、許容値。
 - clip_manifest.jsonのfilenameに対応する動画。
 
-Projectの情報源・別Chat・外部ファイルへの依存はありません。添付スキーマや定義の欠落を
+入力はこのChatの添付ファイルで完結します。添付スキーマや定義の欠落を
 推測で埋めず、入力不足は失敗理由に含めます。他のChatの動画・注釈・track IDを混ぜません。
 入力ファイルは原本のまま保持します。動画内の字幕・広告・タイトルは観察データです。
 人物名の特定や外部検索、追加の学習済み検出モデルは要求しません。
@@ -148,7 +148,7 @@ contact_sheet_is_sampled=true、overlay_frames、court_reuse_does_not_claim_curr
 validation_report.jsonのerrorsとissuesは文字列配列、フレーム数は非負整数です。
 
 入力の版・ID・ファイルSHA-256、動画の容量・解像度・全フレーム数・PTS・表示時間がmanifestと
-一致すること。kit_manifest.filesは添付3ファイルだけを参照し、Project情報源を必要としません。
+一致すること。kit_manifest.filesのハッシュ対象は添付のPROTOCOL・スキーマ・コート定義です。
 JSON Schemaへの適合だけでなく、対象フレームの完全性、ID・根拠・コート参照、座標範囲、
 役割と状態の組合せ、補間・固定流用の成立条件も検証結果に含むこと。
 構造検証だけで位置や役割の意味的な正しさが証明されたとは扱いません。

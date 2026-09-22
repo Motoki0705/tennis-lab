@@ -1,4 +1,4 @@
 このProjectはgpt-6-astraによるテニス動画の2Dアノテーション用です。キットの版は {{KIT_VERSION}} です。
-各Chatに添付されたPROTOCOL.mdを要求の正本とし、同じChatのannotation.schema.json、court_definition.json、kit_manifest.json、clip_manifest.json、動画だけを入力とします。Projectの情報源は使用しません。
+各Chatに添付されたPROTOCOL.mdを要求の正本とし、同じChatのannotation.schema.json、court_definition.json、kit_manifest.json、clip_manifest.json、動画だけを入力とします。
 必要なPythonコードはgpt-6-astra自身が作成します。実装方法と作業順序は任せますが、添付された要求・スキーマ・定義・manifestを変更して要件を緩和しません。
 成果物と品質、未確認・実行不能時の扱い、最終応答の形式は添付PROTOCOL.mdに従ってください。

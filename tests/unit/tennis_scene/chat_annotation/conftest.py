@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from src.tennis_scene.chat_annotation.kit import build_kit
+from src.tennis_scene.chat_annotation.kit import build_kit, write_clip_kit
 from src.tennis_scene.chat_annotation.runtime.contracts import (
     KIT_VERSION,
     Annotation,
@@ -21,7 +21,10 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
 
 @pytest.fixture(scope="session")
 def kit(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, str]:
-    return build_kit(tmp_path_factory.mktemp("project_kits"))
+    contents, kit_id = build_kit(tmp_path_factory.mktemp("project_kits"))
+    directory = tmp_path_factory.mktemp("clip_attachments")
+    write_clip_kit(contents, directory)
+    return directory, kit_id
 
 
 @pytest.fixture
