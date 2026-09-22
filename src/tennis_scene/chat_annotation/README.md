@@ -1,7 +1,7 @@
 # ChatGPT Project用のテニス動画アノテーション準備
 
 YouTube URLから動画を取得し、前後の参考区間を含む最大15秒・500,000,000 bytes以下の
-MP4、元動画とのフレーム対応manifest、各Chatへの開始文、再利用するProjectキットを作る。
+MP4と元動画とのフレーム対応manifestを含む、各Chatにまとめて添付できる6ファイルを作る。
 アノテーションの正本・座標・役割・補間・可視化・返却形式は
 [PROTOCOL.md](resources/PROTOCOL.md)、機械契約は
 [runtime/contracts.py](runtime/contracts.py)を参照する。JSON Schemaはこの型から生成する。
@@ -67,33 +67,45 @@ worktreeから共通データと出力を使う場合、`paths.data_root`と`pat
 絶対パスを指定する。local_video/output_directoryは対応rootからの相対パスを指定する。
 ダウンロード用にネットワークとyt-dlp、処理用にrepoの通常Python依存が必要。GPUは使用しない。
 
-## 出力とProjectへの登録
+## 出力とChatへの添付
 
 ```text
-outputs/chat_annotation/
+outputs/chat_annotation/             # output_directoryで変更可能
   sources/                         # 保存した元動画、YouTube取得metadata、ハッシュ記録
-  project_kits/<kit-hash>/          # 初回登録する共通6ファイル
+  project_kits/
+    PROJECT_INSTRUCTIONS.txt       # Project instructionsに貼る場合の文面
+    PROTOCOL.md                    # 最新の要求文書のローカル控え
+    <kit-hash>/                    # 版・ハッシュで固定された共通添付4ファイル
   videos/<source-id>/<run-hash>/
     prepared.json                  # 完成した全クリップの一覧、キットの場所
-    clips/<clip-id>/
-      <source-id>__<clip-id>.mp4
+    ready/<clip-id>.json            # 再実行検証用の完成マーカー（添付対象外）
+    clips/<clip-id>/                # このフォルダ内の6ファイルを全選択して添付
+      PROTOCOL.md
+      annotation.schema.json
+      court_definition.json
+      kit_manifest.json
       clip_manifest.json
-      REQUEST.txt
-      ready.json                   # 検証済み入力一式の完成マーカー
+      <source-id>__<clip-id>.mp4
 ```
 
-1. ChatGPT Webで注釈用Projectを作成し、`project_kits/<kit-hash>`の**6ファイル全て**を
-   Project Sourcesへ登録する。PROJECT_INSTRUCTIONS.txtはProject instructionsにも貼る。
-2. 指定モデルを選び、Project内でクリップごとの新しいChatを作成する。
-3. 該当クリップのMP4とclip_manifest.jsonを添付し、REQUEST.txtを貼る。共通キットの再添付は不要。
-4. 初回はキット実ファイルの読込・preflight・画像表示・ZIPダウンロードまで確認する。
-   Projectの共有と、利用アカウントでのコード実行・動画処理能力は別の条件。
-5. 返却ZIPのvalidation_report.jsonと重畳動画を確認する。機械検証は意味的精度を保証しない。
+1. クリップごとのChatでgpt-6-astraを選ぶ。Projectを使う場合は、必要に応じて
+   `project_kits/PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
+2. 該当する`clips/<clip-id>/`を開き、Ctrl+Aで6ファイルを選択してChatへ貼り付ける。
+   Projectの情報源への登録やREQUEST.txtの貼り付けは不要。
+3. 添付PROTOCOLの要求に沿った成果物を依頼し、返却ZIPの検証結果と重畳動画を確認する。
 
-返却ZIPには入力manifest原本、注釈、キット版、元URL/動画ID/ハッシュ、検証結果、
-重畳MP4、一覧JPGが入る。ローカルでも配布されたannotation_tools.pyの同じコマンドで再現できる。
-通常ChatでMP4展開やPython実行ができなければ、コードを推測して続けず制限を報告する。
-Web UIの説明と初回手順は配布PROTOCOL.md末尾に集約している。
+Pythonコードは配布せず、必要な処理はgpt-6-astra自身が実装する。
+PROTOCOLは成果物・品質・返却形式の要求であり、実装手順やライブラリを指定しない。
+clip内は通常ファイルのみで、元のキットフォルダ・repo・他Chatには依存しない。
+`kit_manifest.json`のハッシュ対象は同梱のPROTOCOL・スキーマ・コート定義の3ファイルだけ。
+Project instructionsは任意の利用補助で、clipの入力契約には含めない。
+
+`output_directory=chat_annotation_youtube_1080p_trial`の場合も同じ構成で、
+`outputs/chat_annotation_youtube_1080p_trial/project_kits/`直下に
+PROJECT_INSTRUCTIONS.txtとPROTOCOL.mdを残す。これらとclip内文書はresourcesから生成する。
+版変更時には新しいkit-hash/run-hashを生成し、既存の旧版成果物は上書きしない。
+実際のChatでの動画処理・コード実行・ダウンロードは利用環境で確認が必要。
+機械検証は注釈の意味的精度を保証しない。
 
 ## 分割・再実行
 
@@ -119,9 +131,9 @@ Web UIの説明と初回手順は配布PROTOCOL.md末尾に集約している。
 ## 実装とテスト
 
 - configuration/prepare/preparation: 厳密な設定、既存YouTube取得API、容量検査と公開。
-- kit: repoのCourtKP20定義とportable runtimeから、版・ハッシュ付きの配布ファイルを生成。
-- runtime: 型、動画I/O、補完、検証、描画、ZIP処理。配布時に最小限の共有パス検証も同梱し、インストール済みrepo・torch・モデル重みに依存しない。
-- resources: Project指示・詳細プロトコル・短い開始文の唯一の保守元。
+- kit: repoのCourtKP20定義・注釈型・要求文書から、コードを含まない版・ハッシュ付き添付ファイルを生成。
+- runtime: repo内で使用する型、動画I/O、補完、検証、描画、ZIP処理。Chatには配布しない。
+- resources: Project指示・成果物要求の唯一の保守元。
 
 ```bash
 .venv/bin/python -m pytest tests/unit/tennis_scene/chat_annotation tests/e2e/tennis_scene/test_chat_annotation.py
@@ -130,4 +142,5 @@ Web UIの説明と初回手順は配布PROTOCOL.md末尾に集約している。
 ```
 
 YouTube取得はテストではmockにし、動画分割と配布キットは実際にエンコード・デコードする。
-E2Eはrepo/GPU/モデル依存のimportを禁止した別プロセスで、返却ZIPまで実行する。
+E2Eは生成clipだけを独立した場所へコピーして整合性を検証し、ローカルruntimeによる返却ZIPも確認する。
+GPTが独自に作るコードやChat上での注釈結果そのものは自動テストの対象外。

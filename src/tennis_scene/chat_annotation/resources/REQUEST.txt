@@ -1,6 +1,0 @@
-このProjectに登録済みのテニス注釈キット {{KIT_VERSION}} を使用し、添付の {{VIDEO}} と clip_manifest.json を処理してください。
-clip_id={{CLIP_ID}}
-kit_id={{KIT_ID}}
-Project SourcesのPROTOCOL.mdから始め、共通Pythonコードのpreflightで実ファイル・版・入力の一致を確認してください。コードとスキーマは再生成しないでください。
-前後の参考区間で時系列を理解し、manifestのis_target=trueの全フレームに注釈してください。他のChatの動画や結果を混ぜないでください。
-検証結果と元動画情報を含むZIPを実際に生成し、提供コードのFINAL_RESPONSE.txtだけを最終応答にしてください。キットや実行機能にアクセスできない場合は理由を明示してください。

@@ -1,8 +1,9 @@
-"""Run the real CLI and the exported kit with tennis-lab imports forbidden."""
+"""Prepare self-contained attachments and exercise the local reference runtime."""
 
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -13,11 +14,15 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tennis_scene.chat_annotation.runtime.contracts import ClipManifest, read_json
+from src.tennis_scene.chat_annotation.runtime.contracts import (
+    ClipManifest,
+    read_json,
+    sha256_file,
+)
 from src.tennis_scene.chat_annotation.runtime.media import probe_video
 
 
-def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
+def test_preparation_and_self_contained_clip(tmp_path: Path) -> None:
     source = tmp_path / "fixture.mp4"
     with av.open(str(source), "w") as container:
         stream = container.add_stream("libx264", rate=5)
@@ -65,33 +70,47 @@ def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
         f.source_frame_index for m in manifests for f in m.frames if f.is_target
     ] == list(range(155))
     kit = Path(summary["project_kit_directory"])
-    directory = summary_path.parent / "clips" / summary["clips"][0]
+    assert (kit.parent / "PROJECT_INSTRUCTIONS.txt").is_file()
+    assert (kit.parent / "PROTOCOL.md").read_bytes() == (
+        kit / "PROTOCOL.md"
+    ).read_bytes()
+    directory = tmp_path / "chat_upload"
+    shutil.copytree(summary_path.parent / "clips" / summary["clips"][0], directory)
+    assert {file.name for file in directory.iterdir()} == {
+        "PROTOCOL.md",
+        "annotation.schema.json",
+        "court_definition.json",
+        "kit_manifest.json",
+        "clip_manifest.json",
+        manifests[0].filename,
+    }
+    assert all(file.is_file() and not file.is_symlink() for file in directory.iterdir())
+    kit_manifest = read_json(directory / "kit_manifest.json")
+    assert set(kit_manifest["files"]) == {
+        "PROTOCOL.md",
+        "annotation.schema.json",
+        "court_definition.json",
+    }
+    for name, digest in kit_manifest["files"].items():
+        assert sha256_file(directory / name) == digest
+    # The upload is independent even after the original kit is relocated.
+    kit.rename(tmp_path / "unavailable_original_kit")
     manifest_path = directory / "clip_manifest.json"
     video = directory / manifests[0].filename
     annotation_path = tmp_path / "annotations.json"
-    launcher = tmp_path / "isolated_launcher.py"
-    launcher.write_text(
-        "import importlib.abc, runpy, sys\n"
-        "class BlockRepository(importlib.abc.MetaPathFinder):\n"
-        "    def find_spec(self, fullname, path=None, target=None):\n"
-        "        if fullname.split('.')[0] in {'src', 'torch', 'hydra', 'omegaconf', 'yt_dlp'}:\n"
-        "            raise ImportError('Forbidden repository dependency: ' + fullname)\n"
-        "sys.meta_path.insert(0, BlockRepository())\n"
-        "sys.argv.pop(0)\n"
-        "runpy.run_path(sys.argv[0], run_name='__main__')\n",
-        encoding="utf-8",
-    )
 
     def run(*arguments: str, success: bool = True) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
             [
                 sys.executable,
-                "-I",
-                str(launcher),
-                str(kit / "annotation_tools.py"),
+                "-c",
+                "from src.tennis_scene.chat_annotation.runtime.cli import main; "
+                "from pathlib import Path; raise SystemExit(main(Path.cwd()))",
+                "--kit-dir",
+                str(directory),
                 *arguments,
             ],
-            cwd=tmp_path,
+            cwd=repository,
             capture_output=True,
             text=True,
         )
@@ -232,7 +251,7 @@ def test_preparation_and_standalone_chat_zip(tmp_path: Path) -> None:
         success=False,
     )
     assert len(invalid_annotation.stdout.strip().splitlines()) == 5
-    # Corrupting a Project file is detected before annotation or rendering.
-    (kit / "PROTOCOL.md").write_text("modified", encoding="utf-8")
+    # Corrupting an attached requirement is detected before local annotation/rendering.
+    (directory / "PROTOCOL.md").write_text("modified", encoding="utf-8")
     rejected = run("preflight", *common, "--video", str(video), success=False)
     assert "missing or modified" in rejected.stdout
