@@ -9,7 +9,27 @@ from typing import Any
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
 
+from src.tasks.base.generate_dataset import extract_court_keypoint_contract_metadata
+from src.tasks.base.model_io.court_keypoint_contract import (
+    validate_neural_court_observation_order,
+)
 from src.tennis_scene.schema import SceneResult
+
+
+def _validate_observation_order(metadata: dict[str, Any]) -> None:
+    contract = extract_court_keypoint_contract_metadata(
+        metadata, location="Scene archive"
+    )
+    if contract is not None:
+        validate_neural_court_observation_order(metadata, contract.contract)
+    for key in ("reference", "court_reference"):
+        context = metadata.get(key)
+        if context is not None:
+            nested = extract_court_keypoint_contract_metadata(
+                context, location=f"Scene archive {key}"
+            )
+            if nested is not None:
+                validate_neural_court_observation_order(context, nested.contract)
 
 
 def _metadata_sidecar_path(path: Path) -> Path:
@@ -34,6 +54,7 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
         raise ValueError(f"Scene archive path must use the .npz suffix: {archive_path}")
     if not isinstance(result.metadata, dict):
         raise TypeError("Scene metadata must be a dictionary")
+    _validate_observation_order(result.metadata)
     metadata_text = json.dumps(
         result.metadata,
         ensure_ascii=False,
@@ -89,6 +110,7 @@ def load_scene_result(path: str | Path) -> SceneResult:
     if not isinstance(metadata, dict):
         raise TypeError(f"Scene metadata must be a JSON object: {sidecar_path}")
 
+    _validate_observation_order(metadata)
     with np.load(archive_path, allow_pickle=False) as archive:
         return SceneResult(
             num_frames=int(archive["num_frames"]),

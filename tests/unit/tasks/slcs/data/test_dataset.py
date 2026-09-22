@@ -107,3 +107,37 @@ def test_load_rejects_invalid_visibility_before_sampling(
         dataset.load_clip_arrays(manifest, config=data_config)
     actual = getattr(scene, name).flat[0]
     assert actual == value or (np.isnan(actual) and np.isnan(value))
+
+
+def test_camera_local_targets_rotate_and_keep_raw_court(data_config, synthetic_dataset):
+    from dataclasses import replace
+
+    from src.tasks.slcs.data.dataset import build_window_sample, load_clip_arrays
+    from src.tasks.slcs.data.windows import plan_windows
+
+    manifest = ClipManifest.load(synthetic_dataset.clip_dir(synthetic_dataset.clips[0]))
+    clip = load_clip_arrays(manifest, config=data_config)
+    plan = plan_windows(
+        clip.num_frames,
+        window_size=data_config.window_size,
+        stride=data_config.window_size,
+    )[0]
+    kwargs = dict(camera_index=0, plan=plan, dino_arrays=None, empty_dino_shape=(1, 1))
+    physical = build_window_sample(clip, **kwargs)
+    local = build_window_sample(
+        replace(clip, camera_half_turns=(True,) * clip.court_kp.shape[0]), **kwargs
+    )
+    torch.testing.assert_close(local["court_kp"], physical["court_kp"])
+    torch.testing.assert_close(local["court_vis"], physical["court_vis"])
+    torch.testing.assert_close(
+        local["target_player_position"],
+        physical["target_player_position"].flip(0) * torch.tensor([-1.0, -1.0, 1.0]),
+    )
+    torch.testing.assert_close(
+        local["target_ball_position"],
+        physical["target_ball_position"] * torch.tensor([-1.0, -1.0, 1.0]),
+    )
+    torch.testing.assert_close(
+        local["target_player_rotation"], -physical["target_player_rotation"].flip(0)
+    )
+    torch.testing.assert_close(local["player_kp"], physical["player_kp"].flip(0))

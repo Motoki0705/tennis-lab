@@ -15,7 +15,7 @@ from src.tasks.base.model_io import (
 )
 from src.tasks.base.models import validate_reference_context_mask
 from src.tasks.plcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
-from src.tasks.plcs.model_io.adapters import PLCSModelIOAdapter, _court_context
+from src.tasks.plcs.model_io.adapters import PLCSModelIOAdapter
 from src.tasks.plcs.model_io.contracts import plcs_reference_metadata_from_batch
 
 
@@ -28,7 +28,9 @@ class PLCSAxialReferenceIOAdapter(PLCSModelIOAdapter):
         batch_size = padding.shape[0]
         valid_views = (~padding.all(dim=-1)).sum(dim=-1)
         if not bool(((valid_views >= 3) & (valid_views <= 4)).all().item()):
-            raise ModelInputContractError("Axial reference requires 3 or 4 non-padding cameras per sample.")
+            raise ModelInputContractError(
+                "Axial reference requires 3 or 4 non-padding cameras per sample."
+            )
         reference = require_tensor(
             batch,
             "reference_view_index",
@@ -37,54 +39,21 @@ class PLCSAxialReferenceIOAdapter(PLCSModelIOAdapter):
                 dtypes=frozenset({torch.int64}),
             ),
         )
+        reference = require_tensor(
+            batch,
+            "reference_view_index",
+            spec=TensorSpec(shape=(padding.shape[0],), dtypes=frozenset({torch.int64})),
+        )
         try:
             validate_reference_context_mask(reference, ~padding)
-            provenance = _court_context(
-                batch, self.court_keypoint_contract, batch_size=batch_size
-            )
-            expected = [p.reference_camera_local_index for p in provenance]
-            if len(expected) == 1:
-                expected *= batch_size
-            if len(expected) != batch_size or reference.tolist() != expected:
-                raise ValueError(
-                    "reference_view_index does not match the explicit reference provenance."
-                )
-            metadata = (
-                plcs_reference_metadata_from_batch(batch)
-                if any(
-                    key in batch
-                    for key in (
-                        "view_camera_ids",
-                        "reference_view_selection",
-                        "reference_camera_id",
-                        "stable_camera_id_table",
-                        "reference_from_physical",
-                        "physical_from_reference",
-                    )
-                )
-                else None
-            )
-            if metadata is not None and not torch.equal(
-                metadata.view_camera_ids.ge(0), ~padding.all(dim=-1)
-            ):
-                raise ValueError("Reference camera IDs do not match padding_mask.")
-            if metadata is not None:
-                contexts = (
-                    provenance
-                    if len(provenance) == batch_size
-                    else provenance * batch_size
-                )
-                if any(
-                    selection.provenance != context
-                    for selection, context in zip(
-                        metadata.selections, contexts, strict=True
-                    )
+            if "reference_view_selection" in batch:
+                metadata = plcs_reference_metadata_from_batch(batch)
+                if metadata is None or not torch.equal(
+                    reference, metadata.reference_view_index
                 ):
                     raise ValueError(
-                        "Reference metadata and court provenance disagree."
+                        "Reference index and geometry provenance disagree."
                     )
-            if self.court_keypoint_contract.selector != "camera_view_v2":
-                raise ValueError("Axial reference requires camera_view_v2.")
         except (TypeError, ValueError) as error:
             raise ModelInputContractError(str(error)) from error
         return ModelCall(kwargs={**call.kwargs, "reference_view_index": reference})

@@ -8,12 +8,12 @@
 
 ## Court keypoint contract
 
-CourtKP20 の version、camera-local disk ordering、reference-frame alignment、
+CourtKP20 の version、camera-local disk ordering、camera-local model inputs、
 metadata と checkpoint の exact-match 規約は共有正本
 [`src/tasks/base/generate_dataset/README.md`](../base/generate_dataset/README.md)
 を参照してください。PLCS 固有の差分は、disk の `court_kp_uv` / `court_kp_vis`
-がそれぞれ `(T,20,2)` / `(T,20)`、standard sample が整列済み20点、tracking
-sample が整列後の先頭14点を使うことです。reference transform は position、
+がそれぞれ `(T,20,2)` / `(T,20)`、standard sample がcamera-localの20点、tracking
+sample がcamera-localの先頭14点を使うことです。reference transform は position、
 heading、court-space world joints に適用し、player-local `canonical_pose_3d` と
 human UV/visibility には適用しません。
 

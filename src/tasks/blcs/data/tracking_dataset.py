@@ -26,7 +26,6 @@ from src.tasks.base.generate_dataset import (
 )
 from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.court_view import (
-    align_blcs_court_array,
     blcs_reference_sample_fields,
     blcs_track_query_reference_contract_document,
     collate_blcs_reference_fields,
@@ -152,9 +151,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             contract=self.court_keypoint_contract,
             rng=self.rng,
             training=self.augment,
-            reference_camera_id=(
-                None if self.augment else self.reference_camera_id
-            ),
+            reference_camera_id=(None if self.augment else self.reference_camera_id),
         )
         position = position[window.sl]
         velocity = velocity[window.sl]
@@ -172,7 +169,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         vis_rows: list[Tensor] = []
         court_rows: list[Tensor] = []
         court_vis_rows: list[Tensor] = []
-        for selected_index, camera_index in enumerate(cameras.indices):
+        for camera_index in cameras.indices:
             uv = torch.from_numpy(
                 scene.get_camera_array(camera_index, "ball_uv", window=window)
             ).float()
@@ -187,25 +184,10 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
             uv_rows.append(uv)
             vis_rows.append(ball_vis)
 
-            source_view = (
-                frame.selected_views[selected_index]
-                if frame.selected_views
-                else None
-            )
             raw_court = scene.get_camera_array(camera_index, "court_kp_uv")
-            court_np = align_blcs_court_array(
-                raw_court,
-                source_view=source_view,
-                frame=frame,
-                keypoint_axis=(0 if raw_court.ndim == 2 else 1),
-            )
+            court_np = raw_court
             raw_court_vis = scene.get_camera_array(camera_index, "court_kp_vis")
-            court_vis_np = align_blcs_court_array(
-                raw_court_vis,
-                source_view=source_view,
-                frame=frame,
-                keypoint_axis=(0 if raw_court_vis.ndim == 1 else 1),
-            )
+            court_vis_np = raw_court_vis
             if court_np.ndim == 2:
                 court = (
                     torch.from_numpy(court_np[:14])
@@ -404,8 +386,7 @@ def collate_blcs_tracking_batch(
     for sample_index, sample in enumerate(batch):
         camera_ids = sample.get("selected_camera_ids")
         if not isinstance(camera_ids, tuple) or any(
-            type(camera_id) is not str or not camera_id
-            for camera_id in camera_ids
+            type(camera_id) is not str or not camera_id for camera_id in camera_ids
         ):
             raise ValueError(
                 "Every BLCS tracking sample must provide canonical "

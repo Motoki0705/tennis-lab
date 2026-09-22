@@ -104,6 +104,7 @@ class ClipArrays:
     player_label_weight: NDArray[np.float32]  # (P, T)
     ball_label_valid: NDArray[np.bool_]  # (T,)
     ball_label_weight: NDArray[np.float32]  # (T,)
+    camera_half_turns: tuple[bool, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -228,7 +229,26 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
     ).astype(np.float32)[order]
     ball_position_norm = (ball_3d / scale).astype(np.float32)
 
+    context = scene.metadata.get("court_reference", scene.metadata.get("reference"))
+    camera_half_turns: tuple[bool, ...] = ()
+    if context is not None and "court_keypoint_views" in context:
+        views = context["court_keypoint_views"]
+        from src.tasks.base.generate_dataset import CourtViewRecord
+
+        by_id = {
+            v.camera_id: v
+            for v in (
+                CourtViewRecord.from_mapping(v, location="SLCS court view")
+                for v in views
+            )
+        }
+        # Targets on disk are physical; each monocular sample uses its own local gauge.
+        camera_half_turns = tuple(
+            by_id[camera_id].camera_center_court_m[1] > 0
+            for camera_id in context["camera_ids"]
+        )
     return ClipArrays(
+        camera_half_turns=camera_half_turns,
         manifest=manifest,
         fps=float(scene.fps),
         num_frames=int(scene.num_frames),
@@ -317,6 +337,19 @@ def build_window_sample(
     target_ball_position = pad_time(clip.ball_position_norm[t0:t1], 0)
     target_ball_valid = pad_time(clip.ball_label_valid[t0:t1], 0)
     target_ball_weight = pad_time(clip.ball_label_weight[t0:t1], 0)
+
+    if clip.camera_half_turns and clip.camera_half_turns[cam]:
+        # Reverse the globally sorted player axis to retain local near-to-far order.
+        player_kp = player_kp[::-1].copy()
+        player_kp_vis = player_kp_vis[::-1].copy()
+        player_valid = player_valid[::-1].copy()
+        target_player_position = target_player_position[::-1].copy()
+        target_player_position[..., :2] *= -1
+        target_player_rotation = -target_player_rotation[::-1].copy()
+        target_player_valid = target_player_valid[::-1].copy()
+        target_player_weight = target_player_weight[::-1].copy()
+        target_ball_position = target_ball_position.copy()
+        target_ball_position[..., :2] *= -1
 
     return SLCSSample(
         player_kp=torch.from_numpy(np.ascontiguousarray(player_kp)),

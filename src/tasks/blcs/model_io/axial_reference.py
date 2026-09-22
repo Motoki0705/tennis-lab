@@ -8,12 +8,16 @@ from typing import cast
 import torch
 from torch import nn
 
-from src.tasks.base.model_io import ModelCall, ModelInputContractError
+from src.tasks.base.model_io import (
+    ModelCall,
+    ModelInputContractError,
+    TensorSpec,
+    require_tensor,
+)
 from src.tasks.base.models import validate_reference_context_mask
 from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
 from src.tasks.blcs.model_io.adapters import (
     AxialTrajectoryModelIOAdapter,
-    _batch_court_provenance,
 )
 from src.tasks.blcs.model_io.contracts import blcs_reference_metadata_from_batch
 from src.tasks.blcs.models.blcs_multiview_axial_reference_model import (
@@ -26,7 +30,7 @@ class AxialReferenceTrajectoryModelIOAdapter(AxialTrajectoryModelIOAdapter):
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return BLCSMultiViewAxialReferenceModel
+        return cast("type[nn.Module]", BLCSMultiViewAxialReferenceModel)
 
     def _validate_inference_observations(self, batch: Mapping[str, object]) -> None:
         # Array builders precede the explicit reference metadata binding in predictor.
@@ -42,39 +46,20 @@ class AxialReferenceTrajectoryModelIOAdapter(AxialTrajectoryModelIOAdapter):
             raise ModelInputContractError(
                 "Axial reference requires 3 or 4 non-padding cameras."
             )
+        reference = require_tensor(
+            batch,
+            "reference_view_index",
+            spec=TensorSpec(shape=(padding.shape[0],), dtypes=frozenset({torch.int64})),
+        )
         try:
-            metadata = blcs_reference_metadata_from_batch(batch)
-            if metadata is None:
-                raise ValueError(
-                    "Axial reference requires explicit reference metadata."
-                )
-            reference = metadata.reference_view_index
-            if reference.device != padding.device:
-                raise ValueError(
-                    "reference_view_index must share the observation device."
-                )
             validate_reference_context_mask(reference, ~padding)
-            if not torch.equal(metadata.view_camera_ids.ge(0), ~padding.all(dim=-1)):
-                raise ValueError("Reference camera IDs do not match padding_mask.")
-            if any(
-                s.provenance.contract != self.court_keypoint_contract
-                for s in metadata.selections
-            ):
-                raise ValueError(
-                    "Reference metadata has a mismatched CourtKP contract."
-                )
-            if "court_reference_provenance" in batch:
-                provenance = _batch_court_provenance(
-                    batch,
-                    batch_size=padding.shape[0],
-                    court_keypoint_contract=self.court_keypoint_contract,
-                )
-                if any(
-                    s.provenance != p
-                    for s, p in zip(metadata.selections, provenance, strict=True)
+            if "reference_view_selection" in batch:
+                metadata = blcs_reference_metadata_from_batch(batch)
+                if metadata is None or not torch.equal(
+                    reference, metadata.reference_view_index
                 ):
                     raise ValueError(
-                        "Reference metadata and court provenance disagree."
+                        "Reference index and geometry provenance disagree."
                     )
         except (TypeError, ValueError) as error:
             raise ModelInputContractError(str(error)) from error

@@ -102,8 +102,7 @@ def test_reference_adapter_rejects_missing_metadata_identity_mismatch_and_masked
     adapter = _reference_adapter()
     missing_metadata = _batch()
     del missing_metadata[TRACK_QUERY_REFERENCE_METADATA_KEY]
-    with pytest.raises(ValueError, match="metadata is absent"):
-        adapter.build_call(missing_metadata)
+    adapter.build_call(missing_metadata)
 
     mismatched_identity = _batch()
     mismatched_identity["reference_camera_id"] = torch.tensor([10, 22])
@@ -310,3 +309,19 @@ def test_checkpoint_rejects_removed_model_names(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="Unsupported BLCS checkpoint model name"):
         load_checkpoint_runtime(path)
+
+
+def test_forward_needs_only_observations_and_reference():
+    source = _batch()
+    names = (
+        "ball_uv",
+        "ball_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+        "reference_view_index",
+    )
+    assert (
+        len(_reference_adapter().build_call({key: source[key] for key in names}).kwargs)
+        == 6
+    )

@@ -6,6 +6,7 @@ Batch and overlapping-window clip inference return distinct typed CPU outputs.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import ParamSpec, TypeVar
 
@@ -166,19 +167,15 @@ class SLCSPredictor(BasePredictor[SLCSDecodedOutput]):
             for i, plan in enumerate(plans[start : start + len(chunk)]):
                 t0, length = plan.start, plan.length
                 sl = slice(t0, t0 + length)
-                acc["player_position"][:, sl] += outputs.player_position[
-                    i, :, :length
-                ]
-                acc["player_rotation"][:, sl] += outputs.player_rotation[
-                    i, :, :length
-                ]
+                acc["player_position"][:, sl] += outputs.player_position[i, :, :length]
+                acc["player_rotation"][:, sl] += outputs.player_rotation[i, :, :length]
                 acc["ball_position"][sl] += outputs.ball_position[i, :length]
-                acc["player_position_log_b"][
-                    :, sl
-                ] += outputs.player_position_log_b[i, :, :length]
-                acc["player_rotation_log_b"][
-                    :, sl
-                ] += outputs.player_rotation_log_b[i, :, :length]
+                acc["player_position_log_b"][:, sl] += outputs.player_position_log_b[
+                    i, :, :length
+                ]
+                acc["player_rotation_log_b"][:, sl] += outputs.player_rotation_log_b[
+                    i, :, :length
+                ]
                 acc["ball_position_log_b"][sl] += outputs.ball_position_log_b[
                     i, :length
                 ]
@@ -197,15 +194,26 @@ class SLCSPredictor(BasePredictor[SLCSDecodedOutput]):
                 acc["player_rotation"] / denom_frames[None, :, None], dim=-1
             ),
             ball_position=acc["ball_position"] / denom_frames[:, None],
-            player_position_log_b=acc["player_position_log_b"]
-            / denom_frames[None, :],
-            player_rotation_log_b=acc["player_rotation_log_b"]
-            / denom_frames[None, :],
+            player_position_log_b=acc["player_position_log_b"] / denom_frames[None, :],
+            player_rotation_log_b=acc["player_rotation_log_b"] / denom_frames[None, :],
             ball_position_log_b=acc["ball_position_log_b"] / denom_frames,
         )
+        physical = self.model_adapter.to_physical(normalized)
+        if clip.camera_half_turns and clip.camera_half_turns[camera_index]:
+            rotation = physical.player_position_meters.new_tensor([-1.0, -1.0, 1.0])
+            yaw = physical.player_yaw_radians.flip(0) + torch.pi
+            physical = replace(
+                physical,
+                player_position_meters=physical.player_position_meters.flip(0)
+                * rotation,
+                player_yaw_radians=torch.atan2(torch.sin(yaw), torch.cos(yaw)),
+                ball_position_meters=physical.ball_position_meters * rotation,
+                player_position_sigma_m=physical.player_position_sigma_m.flip(0),
+                player_rotation_sigma_rad=physical.player_rotation_sigma_rad.flip(0),
+            )
         return SLCSClipPrediction(
             normalized=normalized,
-            physical=self.model_adapter.to_physical(normalized),
+            physical=physical,
             coverage=coverage,
         )
 
