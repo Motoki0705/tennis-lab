@@ -53,10 +53,14 @@ cross-level mismatched records fail before arrays are consumed.
 ## Model reference semantics
 
 Camera-view v2 selects exactly one stable camera ID after the view subset is
-known. Its local index is resolved independently of view order. With per-camera
-semantic-to-physical mappings `H_v` and reference `H_r`, each disk Court channel
-is reordered by `H_v^-1 o H_r` before a standard consumer keeps 20 points or a
-tracking consumer keeps the aligned first 14.
+known. Its local index is resolved independently of view order. All neural
+inputs retain the detector's camera-local channel order, including the first
+14 channels for tracking. Changing the reference must leave observation tensors
+byte-for-byte unchanged. No side labels, camera poses, or reference transforms
+are required to construct a forward call: the five observation tensors and
+`reference_view_index` suffice. Geometry provenance is teacher/output metadata.
+New v2 checkpoints carry `court_observation_order: camera_local_v1`; older
+aligned checkpoints are rejected and must be retrained.
 
 The reference rotation `S_r` is then applied consistently:
 
@@ -86,7 +90,7 @@ Import from `src.tasks.base.generate_dataset`:
 - `validate_dataset_court_keypoint_contract[_documents]()` before readers index
   scene payloads.
 - `resolve_reference_court_view()`,
-  `align_court_keypoints_to_reference()`, and
+  `align_court_keypoints_to_reference()` (geometry only), and
   `build_reference_frame_provenance()` after selecting views.
 - `court_points_*`, `court_vectors_*`, `court_headings_*`,
   `court_world_joints_*`, and `camera_extrinsics_*` for reversible transforms.

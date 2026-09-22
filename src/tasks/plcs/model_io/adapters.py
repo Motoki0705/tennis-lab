@@ -11,13 +11,13 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.base.data import validate_reference_view_batch
+from src.tasks.base.data.track_query_reference import validate_reference_view_index
 from src.tasks.base.generate_dataset import (
     CAMERA_VIEW_V2_SELECTOR,
     PHYSICAL_V1_SELECTOR,
     CourtKeypointContract,
     CourtReferenceFrameProvenance,
     CourtViewRecord,
-    align_court_keypoints_to_reference,
     build_physical_court_provenance,
     build_reference_frame_provenance,
 )
@@ -31,7 +31,9 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     validate_track_query_reference_contract,
 )
-from src.tasks.base.models import resolve_reference_selector_mode
+from src.tasks.base.models import (
+    resolve_reference_selector_mode,
+)
 from src.tasks.plcs.court_keypoint_contract import (
     court_keypoint_contract_document,
     provenance_from_value,
@@ -386,11 +388,10 @@ class PLCSModelIOAdapter:
         human_kp, court_kp, human_vis, padding_mask, court_vis = (
             self._validate_ready_inputs(batch)
         )
-        _court_context(
-            batch,
-            self.court_keypoint_contract,
-            batch_size=int(human_kp.shape[0]),
-        )
+        if "court_keypoint_metadata" in batch or "court_reference_provenance" in batch:
+            _court_context(
+                batch, self.court_keypoint_contract, batch_size=int(human_kp.shape[0])
+            )
         kwargs = {
             "human_kp": human_kp,
             "court_kp": court_kp,
@@ -829,27 +830,16 @@ class PLCSModelIOAdapter:
                 )
             except ValueError as error:
                 raise ModelInputContractError(str(error)) from error
-            reference_view = typed_views[
-                cast(int, provenance.reference_camera_local_index)
-            ]
         else:
             provenance = build_physical_court_provenance()
             typed_views = ()
-            reference_view = None
         human = np.stack(
             [np.asarray(scene_cameras[index].human_kp_uv) for index in selected],
             axis=0,
         )
         court_arrays: list[np.ndarray] = []
-        for local_index, camera in enumerate(selected_scene_cameras):
+        for camera in selected_scene_cameras:
             court_array = np.asarray(camera.court_kp_uv)
-            if reference_view is not None:
-                court_array = align_court_keypoints_to_reference(
-                    court_array,
-                    typed_views[local_index],
-                    reference_view,
-                    keypoint_axis=-2,
-                )
             court_arrays.append(court_array[..., : self.num_court_tokens, :])
         court = np.stack(court_arrays, axis=0)
         human_vis = np.stack(
@@ -860,15 +850,8 @@ class PLCSModelIOAdapter:
             axis=0,
         )
         court_vis_arrays: list[np.ndarray] = []
-        for local_index, camera in enumerate(selected_scene_cameras):
+        for camera in selected_scene_cameras:
             court_vis_array = np.asarray(camera.court_kp_vis, dtype=np.bool_)
-            if reference_view is not None:
-                court_vis_array = align_court_keypoints_to_reference(
-                    court_vis_array,
-                    typed_views[local_index],
-                    reference_view,
-                    keypoint_axis=-1,
-                )
             court_vis_arrays.append(court_vis_array[..., : self.num_court_tokens])
         court_vis = np.stack(court_vis_arrays, axis=0)
         frames = human.shape[1]
@@ -1289,52 +1272,23 @@ class PLCSTrackQueryReferenceIOAdapter(PLCSTrackQueryIOAdapter):
         human_kp = cast(Tensor, call.kwargs["human_kp"])
         padding_mask = cast(Tensor, call.kwargs["padding_mask"])
         batch_size, _num_views, num_frames = human_kp.shape[:3]
-        try:
-            reference_metadata = plcs_reference_metadata_from_batch(batch)
-            if reference_metadata is None:
-                raise ValueError(
-                    "Reference-v2 PLCS input requires complete typed reference "
-                    "metadata."
-                )
-            if reference_metadata.track_query_contract != self.reference_contract:
-                raise ValueError(
-                    "PLCS typed reference metadata and adapter contracts do not "
-                    "match exactly."
-                )
-            validate_reference_view_batch(
-                reference_view_index=reference_metadata.reference_view_index,
-                view_camera_ids=reference_metadata.view_camera_ids,
-                reference_camera_id=reference_metadata.reference_camera_id,
-                stable_camera_id_tables=(reference_metadata.stable_camera_id_tables),
-                reference_from_physical=(reference_metadata.reference_from_physical),
-                physical_from_reference=(reference_metadata.physical_from_reference),
-                expected_device=human_kp.device,
-            )
-        except (TypeError, ValueError) as error:
-            raise ModelInputContractError(str(error)) from error
-        reference_view_index = reference_metadata.reference_view_index
-        reference_from_physical = reference_metadata.reference_from_physical
-        if reference_from_physical.dtype != human_kp.dtype:
-            raise ModelInputContractError(
-                "reference_from_physical must share the model input floating dtype."
-            )
-        provenance = _court_context(
+        reference_view_index = require_tensor(
             batch,
-            self.court_keypoint_contract,
-            batch_size=batch_size,
+            "reference_view_index",
+            spec=TensorSpec(shape=(batch_size,), dtypes=frozenset({torch.int64})),
         )
-        if len(provenance) != batch_size:
-            raise ModelInputContractError(
-                "Reference-v2 court_reference_provenance must contain exactly "
-                "one record per sample."
+        validate_reference_view_index(
+            reference_view_index, batch_size=batch_size, num_views=padding_mask.shape[1], device=padding_mask.device,
+        )
+        if "view_camera_ids" in batch or "reference_camera_id" in batch:
+            validate_reference_view_batch(
+                reference_view_index=reference_view_index,
+                view_camera_ids=cast(Tensor, batch["view_camera_ids"]),
+                reference_camera_id=cast(Tensor, batch["reference_camera_id"]),
+                reference_from_physical=cast(Tensor | None, batch.get("reference_from_physical")),
+                physical_from_reference=cast(Tensor | None, batch.get("physical_from_reference")),
+                expected_device=padding_mask.device,
             )
-        for sample_index, selection in enumerate(reference_metadata.selections):
-            if provenance[sample_index] != selection.provenance:
-                raise ModelInputContractError(
-                    f"sample {sample_index} Court/target provenance does not "
-                    "match its typed stable camera selection."
-                )
-
         selected_padding = padding_mask.gather(
             1,
             reference_view_index[:, None, None].expand(

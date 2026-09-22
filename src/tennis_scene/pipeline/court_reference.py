@@ -17,7 +17,6 @@ from src.tasks.base.generate_dataset import (
     CourtReferenceFrameProvenance,
     build_court_view_record,
     build_physical_court_provenance,
-    reference_court_keypoint_indices,
 )
 from src.tasks.base.model_io import write_model_artifact_court_keypoint_contract
 from src.tasks.blcs.model_io.contracts import BLCSReferenceMetadata
@@ -40,7 +39,7 @@ class CourtReferenceRuntimeConfig:
 
 @dataclass(frozen=True, slots=True)
 class CourtReferenceContext:
-    """Aligned observations and exact model-frame provenance for one clip."""
+    """Camera-local observations and exact geometry provenance for one clip."""
 
     keypoints: np.ndarray
     visibility: np.ndarray
@@ -65,7 +64,9 @@ def court_footpoint_polygon_px(
         or sideline_margin_m < 0
         or baseline_margin_m < 0
     ):
-        raise ValueError("Court footpoint filter margins must be finite and non-negative.")
+        raise ValueError(
+            "Court footpoint filter margins must be finite and non-negative."
+        )
     width, height = size
     physical = court_keypoints_3d(CourtConfig(0.914, None)).numpy()[:14, :2]
     pixels = keypoints.astype(np.float32) * np.array([width, height], np.float32)
@@ -76,9 +77,7 @@ def court_footpoint_polygon_px(
         raise ValueError("Court footpoint filter homography fit failed.")
     x = HALF_DOUBLES_WIDTH + sideline_margin_m
     y = HALF_LENGTH + baseline_margin_m
-    rectangle = np.array(
-        [[-x, y], [x, y], [x, -y], [-x, -y]], dtype=np.float32
-    )
+    rectangle = np.array([[-x, y], [x, y], [x, -y], [-x, -y]], dtype=np.float32)
     projected = cv2.perspectiveTransform(
         rectangle.reshape(1, 4, 2), physical_to_pixels
     )[0]
@@ -153,7 +152,7 @@ def prepare_court_reference(
     size: tuple[int, int],
     frame_index: int,
 ) -> CourtReferenceContext:
-    """Align camera-local CourtKP slots and build one shared reference context."""
+    """Preserve camera-local CourtKP slots and build downstream geometry context."""
     if keypoints.ndim != 4 or keypoints.shape[0] != len(camera_ids):
         raise ValueError(
             "Court reference keypoints must have shape (N,T,K,2) matching cameras."
@@ -191,9 +190,10 @@ def prepare_court_reference(
     calibration_visibility = visibility[:, frame_index]
     if calibration_points.shape[1:] != (14, 2):
         raise ValueError("camera_view_v2 integrated inference requires CourtKP14.")
-    if not np.isfinite(calibration_points).all() or not (
-        calibration_visibility == 1
-    ).all():
+    if (
+        not np.isfinite(calibration_points).all()
+        or not (calibration_visibility == 1).all()
+    ):
         raise ValueError(
             "camera_view_v2 calibration frame requires all 14 finite visible points."
         )
@@ -216,16 +216,6 @@ def prepare_court_reference(
         selected_views=views,
         reference_camera_id=reference_camera,
     )
-    reference_view = views[selection.reference_view_index]
-    aligned_keypoints: list[np.ndarray] = []
-    aligned_visibility: list[np.ndarray] = []
-    for view, points, visible in zip(views, keypoints, visibility, strict=True):
-        indices = reference_court_keypoint_indices(view, reference_view)[:14]
-        if set(indices) != set(range(14)):
-            raise ValueError("CourtKP14 is not closed under reference permutation.")
-        aligned_keypoints.append(points[:, indices])
-        aligned_visibility.append(visible[:, indices])
-
     document: dict[str, Any] = {
         "camera_ids": list(camera_ids),
         "reference_camera": reference_camera,
@@ -237,8 +227,8 @@ def prepare_court_reference(
     }
     write_model_artifact_court_keypoint_contract(document, contract)
     return CourtReferenceContext(
-        keypoints=np.asarray(aligned_keypoints, dtype=np.float32),
-        visibility=np.asarray(aligned_visibility, dtype=np.float32),
+        keypoints=keypoints,
+        visibility=visibility,
         provenance=selection.provenance,
         document=document,
         selection=selection,
