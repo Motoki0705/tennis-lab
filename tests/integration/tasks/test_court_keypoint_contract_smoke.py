@@ -363,10 +363,12 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
         blcs_sample["court_reference_provenance"],
     )
     assert blcs_sample["court_kp"].shape == (2, 2, 20, 2)
-    torch.testing.assert_close(
-        blcs_sample["court_kp"][0],
-        blcs_sample["court_kp"][1],
-    )
+    if selector == "camera_view_v2":
+        assert not torch.equal(blcs_sample["court_kp"][0], blcs_sample["court_kp"][1])
+    else:
+        torch.testing.assert_close(
+            blcs_sample["court_kp"][0], blcs_sample["court_kp"][1]
+        )
     expected_order = (
         COURT_KP20_HALF_TURN_INDEX if selector == "camera_view_v2" else tuple(range(20))
     )
@@ -405,6 +407,14 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
         "dict[str, Any]",
         dict(collate_multiview_trajectories([blcs_dataset[0]])),
     )
+    if selector == "camera_view_v2":
+        # Raw multiview Court no longer permits models without a reference selector.
+        # Reference-family forward/backward is covered by the dedicated runtime tests.
+        with pytest.raises(ValueError, match="reference-selector"):
+            compose_blcs_trajectory_model_io(blcs_config)
+        with pytest.raises(ValueError, match="reference-selector"):
+            PLCSLightningModule(_plcs_config(selector))
+        return
     blcs_module = (
         BLCSLightningModule(
             blcs_config,
@@ -719,7 +729,9 @@ class _PhysicalPLCS:
     def __init__(self, provenance: CourtReferenceFrameProvenance) -> None:
         self.provenance = provenance
         self.calls = 0
-        self.received_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
+        self.received_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = (
+            None
+        )
 
     def require_input_profile(self, profile: str) -> None:
         assert profile == "multiview"

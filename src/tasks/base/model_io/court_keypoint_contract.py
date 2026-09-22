@@ -145,6 +145,13 @@ def write_model_artifact_court_keypoint_contract(
         )
     document[COURT_KEYPOINT_METADATA_KEY] = expected.to_dict()
     if contract.selector != PHYSICAL_V1_SELECTOR:
+        if (
+            document.get("court_observation_order", "camera_local_v1")
+            != "camera_local_v1"
+        ):
+            raise CourtKeypointContractMismatchError(
+                "Refusing to replace incompatible Court observation ordering."
+            )
         document["court_observation_order"] = "camera_local_v1"
 
 
