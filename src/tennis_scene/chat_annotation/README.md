@@ -74,10 +74,9 @@ outputs/chat_annotation/             # output_directoryで変更可能
   sources/                         # 保存した元動画、YouTube取得metadata、ハッシュ記録
   project_kits/
     PROJECT_INSTRUCTIONS.txt       # Project instructionsに貼る場合の文面
-    PROTOCOL.md                    # 最新の要求文書のローカル控え
-    <kit-hash>/                    # 版・ハッシュで固定された共通添付4ファイル
+    REQUEST.txt                    # クリップの添付後にChatへ貼る依頼文
   videos/<source-id>/<run-hash>/
-    prepared.json                  # 完成した全クリップの一覧、キットの場所
+    prepared.json                  # 完成した全クリップの一覧、キットID
     ready/<clip-id>.json            # 再実行検証用の完成マーカー（添付対象外）
     clips/<clip-id>/                # このフォルダ内の6ファイルを全選択して添付
       PROTOCOL.md
@@ -91,7 +90,7 @@ outputs/chat_annotation/             # output_directoryで変更可能
 1. クリップごとのChatでgpt-6-astraを選ぶ。Projectを使う場合は、必要に応じて
    `project_kits/PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
 2. 該当する`clips/<clip-id>/`を開き、Ctrl+Aで6ファイルを選択してChatへ貼り付ける。
-   Projectの情報源への登録やREQUEST.txtの貼り付けは不要。
+   `project_kits/REQUEST.txt`の文面もChatへ貼る。
 3. 添付PROTOCOLの要求に沿った成果物を依頼し、返却ZIPの検証結果と重畳動画を確認する。
 
 Pythonコードは配布せず、必要な処理はgpt-6-astra自身が実装する。
@@ -102,8 +101,9 @@ Project instructionsは任意の利用補助で、clipの入力契約には含�
 
 `output_directory=chat_annotation_youtube_1080p_trial`の場合も同じ構成で、
 `outputs/chat_annotation_youtube_1080p_trial/project_kits/`直下に
-PROJECT_INSTRUCTIONS.txtとPROTOCOL.mdを残す。これらとclip内文書はresourcesから生成する。
-版変更時には新しいkit-hash/run-hashを生成し、既存の旧版成果物は上書きしない。
+PROJECT_INSTRUCTIONS.txtとREQUEST.txtだけを生成する。共通の添付内容はメモリ上で生成し、
+各clipへ直接書き込む。これらの文面とclip内のPROTOCOLはresourcesを保守元とする。
+版変更時には新しいkit ID/run-hashを生成し、既存の旧版成果物は上書きしない。
 実際のChatでの動画処理・コード実行・ダウンロードは利用環境で確認が必要。
 機械検証は注釈の意味的精度を保証しない。
 

@@ -15,7 +15,7 @@ from typing import Any
 from src.utils.video.youtube import download_youtube_video
 
 from .configuration import PrepareConfig, youtube_id
-from .kit import CLIP_KIT_FILES, build_kit, copy_clip_kit
+from .kit import CLIP_KIT_FILES, build_kit, write_clip_kit
 from .runtime.contracts import (
     KIT_VERSION,
     ClipManifest,
@@ -140,7 +140,7 @@ def _make_clip(
     source_info: SourceInfo,
     timeline: Timeline,
     kit_id: str,
-    kit_directory: Path,
+    kit_contents: dict[str, bytes],
     clips_root: Path,
     target: FrameRange,
 ) -> list[Path]:
@@ -200,7 +200,7 @@ def _make_clip(
                     source_info,
                     timeline,
                     kit_id,
-                    kit_directory,
+                    kit_contents,
                     clips_root,
                     smaller,
                 )
@@ -211,7 +211,7 @@ def _make_clip(
                 source_info,
                 timeline,
                 kit_id,
-                kit_directory,
+                kit_contents,
                 clips_root,
                 FrameRange(start=target.start, stop=middle),
             ) + _make_clip(
@@ -220,7 +220,7 @@ def _make_clip(
                 source_info,
                 timeline,
                 kit_id,
-                kit_directory,
+                kit_contents,
                 clips_root,
                 FrameRange(start=middle, stop=target.stop),
             )
@@ -255,7 +255,7 @@ def _make_clip(
         )
         check_clip(video, manifest)
         write_json(staging / "clip_manifest.json", manifest.model_dump(mode="json"))
-        copy_clip_kit(kit_directory, staging)
+        write_clip_kit(kit_contents, staging)
         write_json(
             _ready_path(destination),
             {
@@ -349,16 +349,16 @@ def prepare(config: PrepareConfig) -> Path:
     if config.urls:
         raise ValueError("use prepare_batch for multiple source URLs")
     config.output.mkdir(parents=True, exist_ok=True)
-    kit_directory, kit_id = build_kit(config.output / "project_kits")
+    kit_contents, kit_id = build_kit(config.output / "project_kits")
     source, source_info = _acquire(config)
-    return _prepare_acquired(config, source, source_info, kit_directory, kit_id)
+    return _prepare_acquired(config, source, source_info, kit_contents, kit_id)
 
 
 def _prepare_acquired(
     config: PrepareConfig,
     source: Path,
     source_info: SourceInfo,
-    kit_directory: Path,
+    kit_contents: dict[str, bytes],
     kit_id: str,
 ) -> Path:
     settings = {
@@ -397,7 +397,7 @@ def _prepare_acquired(
                 source_info,
                 timeline,
                 kit_id,
-                kit_directory,
+                kit_contents,
                 clips_root,
                 target,
             )
@@ -409,7 +409,6 @@ def _prepare_acquired(
             "schema_version": "tennis_chat_preparation.v2",
             "source_sha256": source_info.sha256,
             "kit_id": kit_id,
-            "project_kit_directory": str(kit_directory.resolve()),
             "source_frame_count": len(timeline.pts),
             "candidate_clip_count": candidate_count,
             "requested_target_ranges": [target.model_dump() for target in requested],
