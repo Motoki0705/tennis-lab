@@ -1,4 +1,4 @@
-"""Build code-free clip attachments in memory and write the two project texts."""
+"""Build the embedded prompt definitions and the two project texts."""
 
 from __future__ import annotations
 
@@ -7,10 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .prompt import write_request
 from .runtime.contracts import KIT_VERSION, Annotation
-
-KIT_CONTENT_FILES = ("PROTOCOL.md", "annotation.schema.json", "court_definition.json")
-CLIP_KIT_FILES = (*KIT_CONTENT_FILES, "kit_manifest.json")
 
 
 def _json_bytes(value: Any) -> bytes:
@@ -58,17 +56,12 @@ def build_kit(root: Path) -> tuple[dict[str, bytes], str]:
         {"kit_version": KIT_VERSION, "kit_id": kit_id, "files": files}
     )
     root.mkdir(parents=True, exist_ok=True)
-    for name in ("PROJECT_INSTRUCTIONS.txt", "REQUEST.txt"):
+    for name in ("PROJECT_INSTRUCTIONS.txt",):
         value = resource(name)
         path = root / name
         if not path.exists() or path.read_bytes() != value:
             temporary = path.with_suffix(path.suffix + ".partial")
             temporary.write_bytes(value)
             temporary.replace(path)
+    write_request(root.parent, contents, project_directory=root)
     return contents, kit_id
-
-
-def write_clip_kit(contents: dict[str, bytes], destination: Path) -> None:
-    """Materialize the common attachments directly inside a clip directory."""
-    for name in CLIP_KIT_FILES:
-        (destination / name).write_bytes(contents[name])

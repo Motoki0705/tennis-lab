@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -14,10 +15,12 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tennis_scene.chat_annotation.prompt import expand_manifest
 from src.tennis_scene.chat_annotation.runtime.contracts import (
     ClipManifest,
     read_json,
     sha256_file,
+    write_json,
 )
 from src.tennis_scene.chat_annotation.runtime.media import probe_video
 
@@ -76,28 +79,42 @@ def test_preparation_and_self_contained_clip(tmp_path: Path) -> None:
     }
     assert "project_kit_directory" not in summary
     directory = tmp_path / "chat_upload"
-    shutil.copytree(summary_path.parent / "clips" / summary["clips"][0], directory)
-    assert {file.name for file in directory.iterdir()} == {
-        "PROTOCOL.md",
+    directory.mkdir()
+    videos = project_texts.parent / "videos"
+    assert all(p.is_file() and p.suffix == ".mp4" for p in videos.iterdir())
+    assert len(list(videos.iterdir())) == 3
+    video = directory / manifests[0].filename
+    shutil.copyfile(videos / video.name, video)
+    request = (project_texts / "REQUEST.txt").read_text(encoding="utf-8")
+    (directory / "REQUEST.txt").write_text(request, encoding="utf-8")
+    assert {p.name for p in directory.iterdir()} == {video.name, "REQUEST.txt"}
+    # Only the video and the pasted text remain available as input data.
+    project_texts.parent.rename(tmp_path / "unavailable_preparation")
+    blocks = {
+        name: json.loads(value)
+        for name, value in re.findall(
+            r"## ([^\n]+)\n\n```json\n(.*?)\n```", request, re.S
+        )
+    }
+    record = next(
+        value for value in blocks["動画入力定義"] if value["filename"] == video.name
+    )
+    recovered = expand_manifest(record)
+    assert recovered == manifests[0]
+    manifest_path = directory / "clip_manifest.json"
+    write_json(manifest_path, recovered.model_dump(mode="json"))
+    for name in (
         "annotation.schema.json",
         "court_definition.json",
         "kit_manifest.json",
-        "clip_manifest.json",
-        manifests[0].filename,
-    }
-    assert all(file.is_file() and not file.is_symlink() for file in directory.iterdir())
-    kit_manifest = read_json(directory / "kit_manifest.json")
-    assert set(kit_manifest["files"]) == {
-        "PROTOCOL.md",
-        "annotation.schema.json",
-        "court_definition.json",
-    }
-    for name, digest in kit_manifest["files"].items():
+    ):
+        write_json(directory / name, blocks[name])
+    protocol = request[
+        request.index("# テニス動画") : request.index("\n## annotation.schema.json")
+    ]
+    (directory / "PROTOCOL.md").write_text(protocol, encoding="utf-8")
+    for name, digest in blocks["kit_manifest.json"]["files"].items():
         assert sha256_file(directory / name) == digest
-    # The upload is independent even when the project texts are not available.
-    project_texts.rename(tmp_path / "unavailable_project_texts")
-    manifest_path = directory / "clip_manifest.json"
-    video = directory / manifests[0].filename
     annotation_path = tmp_path / "annotations.json"
 
     def run(*arguments: str, success: bool = True) -> subprocess.CompletedProcess[str]:
