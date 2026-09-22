@@ -227,10 +227,12 @@ class _TrackState:
                 )
             horizon = frame_index - self.last_frame
             common = self.last_visibility & self.previous_visibility
-            velocity = (
-                self.last_values[common] - self.previous_values[common]
-            ) / elapsed
-            predicted[common] = self.last_values[common] + velocity * horizon
+            velocity = (self.last_values - self.previous_values) / elapsed
+            predicted = torch.where(
+                common.unsqueeze(-1),
+                self.last_values + velocity * horizon,
+                self.last_values,
+            )
         return predicted, self.last_visibility
 
     def update(self, values: Tensor, visibility: Tensor, frame_index: int) -> None:
@@ -310,20 +312,27 @@ def _canonical_detection_indices(
     frame_values: Tensor,
     frame_visibility: Tensor,
 ) -> list[int]:
-    visible_detections = (
-        torch.nonzero(frame_visibility.any(dim=-1), as_tuple=False).flatten().tolist()
-    )
+    # Transfer a frame in bulk, rather than indexing a Tensor for every joint.
+    # Keep the exact visibility/visible-coordinate/carrier-index lexicographic
+    # key: masked coordinates (including NaNs) must not participate in ordering.
+    visibility_rows: list[list[bool]] = frame_visibility.tolist()
+    coordinate_rows: list[list[list[float]]] = frame_values.tolist()
+    visible_detections = [
+        index for index, visibility in enumerate(visibility_rows) if any(visibility)
+    ]
 
     def sort_key(
         detection_index: int,
     ) -> tuple[tuple[int, ...], tuple[float, ...], int]:
-        detection_visibility = frame_visibility[detection_index]
-        visibility_key = tuple(int(value) for value in detection_visibility.tolist())
+        detection_visibility = visibility_rows[detection_index]
+        visibility_key = tuple(detection_visibility)
         coordinate_key = tuple(
-            float(coordinate)
-            for keypoint_index in range(frame_values.shape[1])
-            if bool(detection_visibility[keypoint_index])
-            for coordinate in frame_values[detection_index, keypoint_index].tolist()
+            coordinate
+            for visible, coordinates in zip(
+                detection_visibility, coordinate_rows[detection_index], strict=True
+            )
+            if visible
+            for coordinate in coordinates
         )
         # The carrier index distinguishes exact model-visible duplicates only.
         # Such duplicates yield identical tracked values regardless of this key.
@@ -485,23 +494,26 @@ def limit_synthetic_false_positive_carriers(
     carrier_visible_all = flat_visibility.any(dim=-1)
     genuine_carrier_all = flat_pre_false_positive.any(dim=-1)
     over_capacity = carrier_visible_all.sum(-1) > num_slots
-    for leading_index in over_capacity.nonzero().flatten().tolist():
-        carrier_visible = carrier_visible_all[leading_index]
-        genuine_carrier = genuine_carrier_all[leading_index]
-        genuine_visible_count = int((carrier_visible & genuine_carrier).sum())
-        allowed_synthetic_count = max(num_slots - genuine_visible_count, 0)
+    allowed_synthetic = (
+        num_slots - (carrier_visible_all & genuine_carrier_all).sum(-1)
+    ).clamp_min(0)
+    synthetic_visible = carrier_visible_all & ~genuine_carrier_all
+    # Full genuine occupancy needs no ranking: reject every synthetic carrier.
+    rejected = synthetic_visible & (over_capacity & allowed_synthetic.eq(0))[:, None]
+    ranking_rows = (over_capacity & allowed_synthetic.gt(0)).nonzero().flatten()
+    allowances: list[int] = allowed_synthetic[ranking_rows].tolist()
+    for leading_index, allowed_count in zip(
+        ranking_rows.tolist(), allowances, strict=True
+    ):
+        # Filtering genuine carriers before ranking preserves the relative order
+        # of synthetic detections and avoids building unused genuine-pose keys.
         canonical_indices = _canonical_detection_indices(
-            flat_values[leading_index], flat_visibility[leading_index]
+            flat_values[leading_index],
+            flat_visibility[leading_index] & synthetic_visible[leading_index, :, None],
         )
-        synthetic_indices = [
-            carrier_index
-            for carrier_index in canonical_indices
-            if not bool(genuine_carrier[carrier_index])
-        ]
-        rejected_indices = synthetic_indices[allowed_synthetic_count:]
-        if rejected_indices:
-            flat_values[leading_index, rejected_indices] = 0
-            flat_visibility[leading_index, rejected_indices] = False
+        rejected[leading_index, canonical_indices[allowed_count:]] = True
+    flat_values.masked_fill_(rejected[..., None, None], 0)
+    flat_visibility.masked_fill_(rejected[..., None], False)
     return limited_values, limited_visibility
 
 
