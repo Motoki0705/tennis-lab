@@ -127,6 +127,8 @@ def fit_camera(
         bounds=(width * 0.2, width * 3),
         method="bounded",
     )
+    if not fit.success:
+        raise ValueError("Court camera focal fit did not converge")
     mse, rotation_vector, translation, intrinsic = solve(float(fit.x))
     rotation = cv2.Rodrigues(rotation_vector)[0]
     center = (-rotation.T @ translation).ravel()

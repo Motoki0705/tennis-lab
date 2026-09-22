@@ -1,4 +1,8 @@
-# GVHMR world motion の PLCS 整合
+# v1のGVHMR world motion / PLCS比較
+
+標準v2は`mesh_placement.py`による三角測量＋incam配置を使用します。
+その契約は[tennis_scene README](../README.md)を参照してください。
+以下は旧v1の保存結果と独立した`MotionAlignmentModule`の比較表現です。
 
 GVHMRのワールドモーションを、トラック全体に共通の
 `s * Rz(yaw) * point + translation` でPLCSのコート軌道へ整合します。
@@ -6,8 +10,8 @@ GVHMRのワールドモーションを、トラック全体に共通の
 
 ## パイプライン契約
 
-整合は`TennisSceneOrchestrator.run()`内で常に実行されます。実行するかどうかを
-選ぶ設定はありません。PLCS配置を上書きせず、`SceneResult`には両方を保存します。
+旧v1 producerはPLCS配置を上書きせず、`SceneResult`へ比較用の両表現を保存しました。
+現在の標準orchestratorからこのPLCS依存の整合処理は呼びません。
 
 | 内容 | `SceneResult`フィールド |
 |---|---|
@@ -48,8 +52,9 @@ PLCSの参照軌道は既存の`player_position` / `player_yaw`に保持され�
 
 ## 設定
 
-`configs/pipeline.yaml`の`player_motion.scale_mode`(`fixed`/`free`)と
-`player_motion.alignment`配下の重み・正則化・ソルバ設定が推定方法を制御します。
+独立した`PlayerMotionConfig.scale_mode`(`fixed`/`free`)と
+`SimilarityConfig`の重み・正則化・ソルバ設定が推定方法を制御します。
+旧`player_motion`設定は現在の標準pipeline設定から除去されています。
 既定値は位置誤差尺度0.5m、heading誤差尺度30°、heading項重み1、scale prior 1、
 scale範囲0.5–2です。
 

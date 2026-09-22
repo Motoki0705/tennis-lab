@@ -99,6 +99,10 @@ def build_label_masks(
     ball_3d: NDArray[np.float32],
     config: QualityConfig,
     teacher_quality: dict[str, Any] | None = None,
+    scene_schema_version: int = 1,
+    player_reconstruction_valid: NDArray[np.bool_] | None = None,
+    player_heading_valid: NDArray[np.bool_] | None = None,
+    ball_reconstruction_valid: NDArray[np.bool_] | None = None,
 ) -> dict[str, NDArray[Any]]:
     """Compute label validity masks and confidence weights for a whole clip.
 
@@ -160,6 +164,24 @@ def build_label_masks(
                 raise ValueError(f"Invalid {name} teacher-quality weights")
             weight *= evidence
             valid &= evidence > 0
+
+    if scene_schema_version not in (1, 2):
+        raise ValueError("Unsupported scene schema for teacher masks")
+    if scene_schema_version == 2:
+        for name, mask, expected in (
+            ("player reconstruction", player_reconstruction_valid, player_valid.shape),
+            ("player heading", player_heading_valid, player_valid.shape),
+            ("ball reconstruction", ball_reconstruction_valid, ball_valid.shape),
+        ):
+            if not isinstance(mask, np.ndarray) or mask.dtype != np.bool_ or mask.shape != expected:
+                raise ValueError(f"v2 requires boolean {name} validity of shape {expected}")
+        assert player_reconstruction_valid is not None
+        assert player_heading_valid is not None
+        assert ball_reconstruction_valid is not None
+        player_valid &= player_reconstruction_valid & player_heading_valid
+        ball_valid &= ball_reconstruction_valid
+        player_weight[~player_valid] = 0
+        ball_weight[~ball_valid] = 0
 
     return {
         "player_label_valid": player_valid,
