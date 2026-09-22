@@ -115,9 +115,7 @@ class ObservationTrackingConfig:
             ),
             min_reuse_gap_frames=cast(
                 "int",
-                require_config_value(
-                    mapping, "min_reuse_gap_frames", int, path=path
-                ),
+                require_config_value(mapping, "min_reuse_gap_frames", int, path=path),
             ),
             use_velocity_prediction=cast(
                 "bool",
@@ -127,9 +125,7 @@ class ObservationTrackingConfig:
             ),
             min_common_keypoints=cast(
                 "int",
-                require_config_value(
-                    mapping, "min_common_keypoints", int, path=path
-                ),
+                require_config_value(mapping, "min_common_keypoints", int, path=path),
             ),
             cost_reduction=cast(
                 "CostReduction",
@@ -186,15 +182,15 @@ class TrackedObservations:
 
     def __post_init__(self) -> None:
         if self.values.ndim not in (4, 5) or self.values.shape[-1] != 2:
-            raise ValueError(
-                "Tracked values must have shape (T,Q,K,2) or (V,T,Q,K,2)."
-            )
+            raise ValueError("Tracked values must have shape (T,Q,K,2) or (V,T,Q,K,2).")
         if self.visibility.shape != self.values.shape[:-1]:
             raise ValueError("Tracked visibility must match values without UV axis.")
         if self.visibility.dtype != torch.bool:
             raise TypeError("Tracked visibility must have dtype torch.bool.")
         if self.detection_indices.shape != self.values.shape[:-2]:
-            raise ValueError("Tracked detection indices must have shape (T,Q) or (V,T,Q).")
+            raise ValueError(
+                "Tracked detection indices must have shape (T,Q) or (V,T,Q)."
+            )
         if self.detection_indices.dtype != torch.long:
             raise TypeError("Tracked detection indices must have dtype torch.long.")
         if (
@@ -214,7 +210,9 @@ class _TrackState:
     previous_frame: int | None = None
     missed_frames: int = 0
 
-    def prediction(self, frame_index: int, *, use_velocity: bool) -> tuple[Tensor, Tensor]:
+    def prediction(
+        self, frame_index: int, *, use_velocity: bool
+    ) -> tuple[Tensor, Tensor]:
         predicted = self.last_values.clone()
         if (
             use_velocity
@@ -224,10 +222,14 @@ class _TrackState:
         ):
             elapsed = self.last_frame - self.previous_frame
             if elapsed <= 0:
-                raise RuntimeError("Matched observation frames must be strictly ordered.")
+                raise RuntimeError(
+                    "Matched observation frames must be strictly ordered."
+                )
             horizon = frame_index - self.last_frame
             common = self.last_visibility & self.previous_visibility
-            velocity = (self.last_values[common] - self.previous_values[common]) / elapsed
+            velocity = (
+                self.last_values[common] - self.previous_values[common]
+            ) / elapsed
             predicted[common] = self.last_values[common] + velocity * horizon
         return predicted, self.last_visibility
 
@@ -250,9 +252,7 @@ def _validate_num_slots(num_slots: int) -> None:
 
 def _validate_camera_index(camera_index: int) -> None:
     if type(camera_index) is not int:
-        raise TypeError(
-            f"camera_index must be int, got {type(camera_index).__name__}."
-        )
+        raise TypeError(f"camera_index must be int, got {type(camera_index).__name__}.")
     if camera_index < 0:
         raise ValueError("camera_index must be non-negative.")
 
@@ -310,11 +310,13 @@ def _canonical_detection_indices(
     frame_values: Tensor,
     frame_visibility: Tensor,
 ) -> list[int]:
-    visible_detections = torch.nonzero(
-        frame_visibility.any(dim=-1), as_tuple=False
-    ).flatten().tolist()
+    visible_detections = (
+        torch.nonzero(frame_visibility.any(dim=-1), as_tuple=False).flatten().tolist()
+    )
 
-    def sort_key(detection_index: int) -> tuple[tuple[int, ...], tuple[float, ...], int]:
+    def sort_key(
+        detection_index: int,
+    ) -> tuple[tuple[int, ...], tuple[float, ...], int]:
         detection_visibility = frame_visibility[detection_index]
         visibility_key = tuple(int(value) for value in detection_visibility.tolist())
         coordinate_key = tuple(
@@ -344,9 +346,42 @@ def _association_cost(
     distances = torch.linalg.vector_norm(
         predicted_values[common] - detection_values[common], dim=-1
     )
-    reduced = distances.mean() if config.cost_reduction == "mean" else distances.median()
+    reduced = (
+        distances.mean() if config.cost_reduction == "mean" else distances.median()
+    )
     cost = float(reduced)
     return cost if cost <= config.max_distance else None
+
+
+def _association_cost_matrix(
+    predictions: Sequence[tuple[Tensor, Tensor]],
+    detections: Sequence[tuple[Tensor, Tensor]],
+    *,
+    config: ObservationTrackingConfig,
+) -> list[list[float | None]]:
+    """Evaluate all slot/detection pairs in one tensor operation per frame."""
+    if not predictions or not detections:
+        return [[] for _ in predictions]
+    predicted = torch.stack([value for value, _ in predictions])
+    detected = torch.stack([value for value, _ in detections])
+    common = (
+        torch.stack([mask for _, mask in predictions])[:, None]
+        & torch.stack([mask for _, mask in detections])[None]
+    )
+    counts = common.sum(-1)
+    distances = torch.linalg.vector_norm(predicted[:, None] - detected[None], dim=-1)
+    if config.cost_reduction == "mean":
+        costs = distances.masked_fill(~common, 0).sum(-1) / counts.clamp_min(1)
+    else:
+        ordered = distances.masked_fill(~common, float("inf")).sort(-1).values
+        costs = ordered.gather(-1, ((counts - 1).clamp_min(0) // 2)[..., None]).squeeze(
+            -1
+        )
+    costs = costs.masked_fill(counts < config.min_common_keypoints, float("inf"))
+    return [
+        [value if value <= config.max_distance else None for value in row]
+        for row in costs.tolist()
+    ]
 
 
 def _exact_deterministic_assignment(
@@ -447,9 +482,12 @@ def limit_synthetic_false_positive_carriers(
     flat_pre_false_positive = visibility_before_false_positive.reshape(
         -1, num_carriers, num_keypoints
     )
-    for leading_index in range(flat_values.shape[0]):
-        carrier_visible = flat_visibility[leading_index].any(dim=-1)
-        genuine_carrier = flat_pre_false_positive[leading_index].any(dim=-1)
+    carrier_visible_all = flat_visibility.any(dim=-1)
+    genuine_carrier_all = flat_pre_false_positive.any(dim=-1)
+    over_capacity = carrier_visible_all.sum(-1) > num_slots
+    for leading_index in over_capacity.nonzero().flatten().tolist():
+        carrier_visible = carrier_visible_all[leading_index]
+        genuine_carrier = genuine_carrier_all[leading_index]
         genuine_visible_count = int((carrier_visible & genuine_carrier).sum())
         allowed_synthetic_count = max(num_slots - genuine_visible_count, 0)
         canonical_indices = _canonical_detection_indices(
@@ -572,27 +610,19 @@ def _track_camera_core(
         active_slots = [
             slot_index for slot_index, state in enumerate(states) if state is not None
         ]
-        costs: list[list[float | None]] = []
+        predictions = []
         for slot_index in active_slots:
             state = states[slot_index]
             if state is None:
-                raise RuntimeError("Active observation track unexpectedly has no state.")
-            predicted_values, predicted_visibility = state.prediction(
-                frame_index,
-                use_velocity=config.use_velocity_prediction,
+                raise RuntimeError(
+                    "Active observation track unexpectedly has no state."
+                )
+            predictions.append(
+                state.prediction(
+                    frame_index, use_velocity=config.use_velocity_prediction
+                )
             )
-            costs.append(
-                [
-                    _association_cost(
-                        predicted_values,
-                        predicted_visibility,
-                        detection_values,
-                        detection_visibility,
-                        config=config,
-                    )
-                    for detection_values, detection_visibility in detections
-                ]
-            )
+        costs = _association_cost_matrix(predictions, detections, config=config)
         matches = _exact_deterministic_assignment(active_slots, costs)
         matched_slots = {slot_index for slot_index, _ in matches}
         matched_detection_ranks = {detection_rank for _, detection_rank in matches}
@@ -601,18 +631,24 @@ def _track_camera_core(
             detection_values, detection_visibility = detections[detection_rank]
             state = states[slot_index]
             if state is None:
-                raise RuntimeError("Matched observation track unexpectedly has no state.")
+                raise RuntimeError(
+                    "Matched observation track unexpectedly has no state."
+                )
             state.update(detection_values, detection_visibility, frame_index)
             tracked_values[frame_index, slot_index] = detection_values
             tracked_visibility[frame_index, slot_index] = detection_visibility
-            detection_indices[frame_index, slot_index] = canonical_indices[detection_rank]
+            detection_indices[frame_index, slot_index] = canonical_indices[
+                detection_rank
+            ]
 
         for slot_index in active_slots:
             if slot_index in matched_slots:
                 continue
             state = states[slot_index]
             if state is None:
-                raise RuntimeError("Unmatched observation track unexpectedly has no state.")
+                raise RuntimeError(
+                    "Unmatched observation track unexpectedly has no state."
+                )
             state.missed_frames += 1
             if state.missed_frames > config.max_missed_frames:
                 states[slot_index] = None
@@ -636,8 +672,7 @@ def _track_camera_core(
                 (
                     slot_index
                     for slot_index, state in enumerate(states)
-                    if state is None
-                    and frame_index < reusable_after_frame[slot_index]
+                    if state is None and frame_index < reusable_after_frame[slot_index]
                 ),
                 key=lambda slot_index: (
                     reusable_after_frame[slot_index],
@@ -684,7 +719,9 @@ def _track_camera_core(
             )
             tracked_values[frame_index, slot_index] = detection_values
             tracked_visibility[frame_index, slot_index] = detection_visibility
-            detection_indices[frame_index, slot_index] = canonical_indices[detection_rank]
+            detection_indices[frame_index, slot_index] = canonical_indices[
+                detection_rank
+            ]
 
     return TrackedObservations(
         values=tracked_values,
@@ -768,9 +805,7 @@ def track_multiview_observations(
         for view_index, camera_index in enumerate(resolved_camera_indices)
     ]
     tracked_values = torch.stack([result.values for result in camera_results])
-    tracked_visibility = torch.stack(
-        [result.visibility for result in camera_results]
-    )
+    tracked_visibility = torch.stack([result.visibility for result in camera_results])
     detection_indices = torch.stack(
         [result.detection_indices for result in camera_results]
     )

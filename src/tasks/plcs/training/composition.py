@@ -11,6 +11,10 @@ from src.tasks.plcs.configuration import PLCSTrainingConfig
 
 def build_plcs_datamodule(config: Any) -> pl.LightningDataModule:
     """Select the validated data lifecycle outside the training runner."""
+    if str(config.model.name) == "plcs_view_association":
+        from src.tasks.plcs.data.association_datamodule import PLCSAssociationDataModule
+
+        return PLCSAssociationDataModule(config)
     runtime = PLCSTrainingConfig.from_config(config)
     backend = runtime.data.backend
     if runtime.model.name in {
@@ -46,6 +50,12 @@ def build_plcs_datamodule(config: Any) -> pl.LightningDataModule:
 
 def build_plcs_lightning_module(config: Any) -> pl.LightningModule:
     """Select the validated Lightning lifecycle outside the training runner."""
+    if str(config.model.name) == "plcs_view_association":
+        from src.tasks.plcs.training.association_lightning_module import (
+            PLCSAssociationLightningModule,
+        )
+
+        return PLCSAssociationLightningModule(config)
     runtime = PLCSTrainingConfig.from_config(config)
     if runtime.model.name in {
         "plcs_track_query",

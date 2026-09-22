@@ -27,7 +27,12 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS."""
 
     def prepare_config(self, config: Any) -> None:
-        PLCSTrainingConfig.from_config(config)
+        if str(config.model.name) == "plcs_view_association":
+            from src.tasks.plcs.configuration import validate_association_config
+
+            validate_association_config(config)
+        else:
+            PLCSTrainingConfig.from_config(config)
         super().prepare_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
@@ -57,6 +62,10 @@ class PLCSTrainingRunner(BaseTrainingRunner):
             )
             if not isinstance(checkpoint, dict):
                 raise ValueError(f"Invalid PLCS init_weights checkpoint: {init_path}.")
+            if str(lightning_module.config.model.name) == "plcs_view_association":
+                lightning_module.on_load_checkpoint(checkpoint)
+                lightning_module.load_state_dict(checkpoint["state_dict"], strict=True)
+                return
             runtime = PLCSTrainingConfig.from_config(lightning_module.config)
             validate_court_coordinate_normalization(
                 checkpoint,
@@ -66,11 +75,15 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                 checkpoint,
                 runtime.court_keypoint_contract,
             )
-            validate_axial_reference_checkpoint(checkpoint, model_name=runtime.model.name)
+            validate_axial_reference_checkpoint(
+                checkpoint, model_name=runtime.model.name
+            )
             if runtime.model.name == "plcs_multiview_axial_reference":
                 state_dict = checkpoint.get("state_dict")
                 if not isinstance(state_dict, dict):
-                    raise ValueError("Axial reference init_weights requires a complete state_dict.")
+                    raise ValueError(
+                        "Axial reference init_weights requires a complete state_dict."
+                    )
                 lightning_module.load_state_dict(state_dict, strict=True)
                 return
             if runtime.model.name in {
@@ -94,6 +107,8 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     ) -> list[Any]:
         extras: list[Any] = super().callbacks_extra(config, datamodule, logger)
 
+        if str(config.model.name) == "plcs_view_association":
+            return extras
         runtime = PLCSTrainingConfig.from_config(config)
         if runtime.data.backend != "chunked":
             return extras

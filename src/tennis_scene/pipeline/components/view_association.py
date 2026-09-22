@@ -9,9 +9,10 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.tasks.base.association.inference import AssociationPredictor
 from src.tasks.base.data.track_query_reference import ReferenceCameraSelection
 from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.blcs.inference.association_predictor import BLCSAssociationPredictor
+from src.tasks.plcs.inference.association_predictor import PLCSAssociationPredictor
 from src.tennis_scene.pipeline.court_reference import (
     CourtReferenceContext,
     CourtReferenceRuntimeConfig,
@@ -77,7 +78,14 @@ class ViewAssociationModule:
     """Inference on unassociated camera-local player/ball observations."""
 
     def __init__(self, checkpoint: Path, *, device: str = "cpu") -> None:
-        self.predictor = AssociationPredictor.load(checkpoint, device=device)
+        payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        task = payload.get("association_model")
+        if task == "plcs_view_association":
+            self.predictor = PLCSAssociationPredictor.load(checkpoint, device=device)
+        elif task == "blcs_view_association":
+            self.predictor = BLCSAssociationPredictor.load(checkpoint, device=device)
+        else:
+            raise ValueError("Unknown association checkpoint task")
 
     def process(
         self,

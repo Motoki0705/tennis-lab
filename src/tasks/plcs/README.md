@@ -250,4 +250,4 @@ val/test loaderには適用しない。未指定時は従来のshuffleを使う�
 
 `src.tasks.plcs.scripts.train_association` はcamera-local観測から各viewのsideと
 観測objectの共通IDを学習します。アーキテクチャ、教師・loss、推論APIと下流への
-接続は[共通association仕様](../base/association/README.md)を参照してください。
+接続は[共通association仕様](../base/ASSOCIATION.md)を参照してください。

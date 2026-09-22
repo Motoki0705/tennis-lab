@@ -1,32 +1,36 @@
 defaults:
-  - train_tracking
-  - override data: tracking_camera_view_v2
+  - court_keypoints: camera_view_v2
+  - model: view_association
+  - data: _association
+  - training: default
+  - loss: association
+  - metrics: association
+  - run: train
+  - paths: default
   - _self_
 
-association:
-  model:
-    hidden_dim: 256
-    num_heads: 8
-    ffn_dim: 768
-    num_stages: 4
-    rope_dim: 32
-    num_slots: 4
-    max_identities: 10
-    dropout: 0.1
-    ffn_type: swiglu
-  limit_train_batches: 1.0
-  limit_val_batches: 1.0
-
-data:
-  batch_size: 4
-  seq_len_range: [512, 512]
 training:
   trainer:
-    max_epochs: 100
+    max_epochs: 60
     check_val_every_n_epoch: 1
+    accumulate_grad_batches: 16
     log_every_n_steps: 10
-  compile:
+  learning_rate: 0.0001
+  weight_decay: 0.1
+  warmup_steps: 100
+  checkpoint:
+    monitor: val/loss
+    save_top_k: 2
+  qualitative_logging:
     enabled: false
+  compile:
+    enabled: true
 run:
-  output_dir: plcs/train/association_reference/${tennis_run_id:}
-  test_after_fit: false
+  output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
+  test_after_fit: true
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

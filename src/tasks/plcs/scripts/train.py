@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
-from src.tasks.plcs.configuration import PLCSTrainingConfig
+from src.tasks.plcs.configuration import PLCSTrainingConfig, validate_association_config
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
 from src.utils.hydra import hydra_main
 
@@ -46,7 +46,10 @@ def run_training(config: DictConfig) -> None:
 )
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for PLCS training."""
-    PLCSTrainingConfig.from_config(config)
+    if str(config.model.name) == "plcs_view_association":
+        validate_association_config(config)
+    else:
+        PLCSTrainingConfig.from_config(config)
     run_training(config)
 
 

@@ -1,11 +1,12 @@
 import pytest
 import torch
 
-from src.tasks.base.association.inference import decode_association, stitch_overlap_ids
-from src.tasks.base.association.loss import association_loss
-from src.tasks.base.association.model import (
-    AssociationModelConfig,
-    ViewAssociationModel,
+from src.tasks.base.model_io.association_decoding import decode_association
+from src.tasks.base.training.association_losses import association_loss
+from src.tennis_scene.pipeline.association_state import stitch_overlap_ids
+from src.utils.models.components.view_query import (
+    ViewQueryAssociationModel,
+    ViewQueryModelConfig,
 )
 
 
@@ -22,8 +23,8 @@ def inputs(joints=17):
 
 
 def model(j=17):
-    return ViewAssociationModel(
-        AssociationModelConfig(
+    return ViewQueryAssociationModel(
+        ViewQueryModelConfig(
             hidden_dim=48,
             num_heads=4,
             ffn_dim=96,
@@ -112,7 +113,7 @@ def test_global_matching_penalizes_cross_view_id_swaps_and_ignores_unobserved():
         )["loss"]
 
     assert loss(good) < 0.001
-    torch.testing.assert_close(loss(good), loss(good, target + 100))
+    torch.testing.assert_close(loss(good), loss(good, 1 - target))
     swapped = good.clone()
     swapped[:, 1] = swapped[:, 1].flip(-2)
     assert loss(swapped) > 4

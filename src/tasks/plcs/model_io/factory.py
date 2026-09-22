@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Protocol, TypeAlias, TypeVar, cast
+from typing import Any, Protocol, TypeAlias, TypeVar, cast
 
 from torch import nn
 
@@ -287,3 +287,25 @@ __all__ = [
     "bind_plcs_model_io",
     "build_plcs_model_io",
 ]
+
+
+def compose_plcs_association_model_io(config: object) -> Any:
+    """Bind the association model to its task-specific input dimensions."""
+    from typing import cast
+
+    from src.tasks.base.model_io.association_contracts import AssociationIOAdapter
+    from src.tasks.plcs.configuration import validate_association_config
+    from src.tasks.plcs.models.plcs_view_association_model import (
+        PLCSViewAssociationModel,
+    )
+    from src.utils.models.components.view_query import ViewQueryModelConfig
+
+    model_config = cast(ViewQueryModelConfig, validate_association_config(config))
+    model = PLCSViewAssociationModel(model_config)
+    adapter = AssociationIOAdapter(
+        PLCSViewAssociationModel,
+        joints=17,
+        slots=model_config.num_slots,
+        identities=model_config.max_identities,
+    )
+    return bind_model_io(model, adapter)

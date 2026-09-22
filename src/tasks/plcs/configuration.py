@@ -1457,7 +1457,10 @@ class PLCSTrainingConfig:
 
 
 def _validate_training_boundary(config: DictConfig) -> None:
-    PLCSTrainingConfig.from_config(config)
+    if str(config.model.name) == "plcs_view_association":
+        validate_association_config(config)
+    else:
+        PLCSTrainingConfig.from_config(config)
 
 
 def _validate_visualization_boundary(config: DictConfig) -> None:
@@ -2260,3 +2263,14 @@ __all__ = [
     "PLCSTrainingConfig",
     "validate_augmentation",
 ]
+
+
+def validate_association_config(config: object) -> object:
+    """Validate the task-owned Global-MHA association recipe."""
+    from src.tasks.base.data.association_configuration import (
+        validate_association_configuration,
+    )
+
+    return validate_association_configuration(
+        config, model_name="plcs_view_association"
+    )

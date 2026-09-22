@@ -1,0 +1,10 @@
+name: blcs_view_association
+hidden_dim: 512
+num_heads: 8
+ffn_dim: 1408
+num_stages: 12
+rope_dim: 64
+num_slots: 4
+max_identities: 10
+dropout: 0.1
+ffn_type: swiglu
