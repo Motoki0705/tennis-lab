@@ -55,8 +55,7 @@ def _source(url: str, root: Path) -> tuple[Path, SourceInfo]:
 
 
 def _patch_kit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    kit = tmp_path / "kit"
-    kit.mkdir()
+    kit = {"PROTOCOL.md": b"requirements"}
     monkeypatch.setattr(batch, "build_kit", lambda _: (kit, "b" * 64))
 
 
@@ -96,10 +95,10 @@ def test_batch_bounds_parallel_downloads_and_overlaps_sequential_encoding(
         item_config: PrepareConfig,
         source: Path,
         source_info: SourceInfo,
-        kit_directory: Path,
+        kit_contents: dict[str, bytes],
         kit_id: str,
     ) -> Path:
-        assert kit_directory.name == "kit" and kit_id == "b" * 64
+        assert kit_contents == {"PROTOCOL.md": b"requirements"} and kit_id == "b" * 64
         assert source.is_file()
         if not prepared:
             assert blocked_downloads.wait(timeout=5)
@@ -142,10 +141,10 @@ def test_batch_atomically_publishes_running_progress(
         item_config: PrepareConfig,
         source: Path,
         source_info: SourceInfo,
-        kit_directory: Path,
+        kit_contents: dict[str, bytes],
         kit_id: str,
     ) -> Path:
-        del item_config, source, kit_directory, kit_id
+        del item_config, source, kit_contents, kit_id
         return tmp_path / "results" / str(source_info.source_id)
 
     monkeypatch.setattr(batch, "write_json", capture)
@@ -188,10 +187,10 @@ def test_batch_isolates_failures_and_writes_input_order(
         item_config: PrepareConfig,
         source: Path,
         source_info: SourceInfo,
-        kit_directory: Path,
+        kit_contents: dict[str, bytes],
         kit_id: str,
     ) -> Path:
-        del item_config, source, kit_directory, kit_id
+        del item_config, source, kit_contents, kit_id
         prepared.append(source_info.source_id)
         return tmp_path / "results" / str(source_info.source_id)
 

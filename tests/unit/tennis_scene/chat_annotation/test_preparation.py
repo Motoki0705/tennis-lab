@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import replace
 from fractions import Fraction
 from pathlib import Path
@@ -12,6 +14,7 @@ from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
 from src.tennis_scene.chat_annotation.configuration import PrepareConfig, youtube_id
+from src.tennis_scene.chat_annotation.layout import video_path
 from src.tennis_scene.chat_annotation.preparation import prepare
 from src.tennis_scene.chat_annotation.runtime.contracts import (
     ClipManifest,
@@ -170,7 +173,7 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
         manifest = ClipManifest.model_validate(
             read_json(directory / "clip_manifest.json")
         )
-        video = directory / manifest.filename
+        video = video_path(config.output, manifest)
         timeline = check_clip(video, manifest)
         assert timeline.boundary(len(timeline.pts)) <= 1
         assert manifest.target_range.start == previous_end
@@ -202,6 +205,16 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
         assert prepare(config) == root
     assert mtimes == {file: file.stat().st_mtime_ns for file in mtimes}
     assert prepare(replace(config, duration_seconds=0.8)) != root
+    request = (config.output / "project_kits" / "REQUEST.txt").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r"## 動画入力定義\n\n```json\n(.*?)\n```", request, re.S)
+    assert match is not None
+    catalog = json.loads(match.group(1))
+    videos = list((config.output / "videos").glob("*/*"))
+    assert all(path.is_file() and path.suffix == ".mp4" for path in videos)
+    assert {row["filename"] for row in catalog} == {path.name for path in videos}
+    assert len(catalog) > len(summary["clips"])
 
 
 def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
@@ -228,8 +241,7 @@ def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
     ] == list(range(20))
     with pytest.raises(ValueError, match="one target frame"):
         prepare(replace(config, max_bytes=100))
-    directory = root / "clips" / summary["clips"][0]
-    (directory / manifests[0].filename).write_bytes(b"corrupted")
+    video_path(config.output, manifests[0]).write_bytes(b"corrupted")
     with pytest.raises(ValueError, match="changed"):
         prepare(config)
 
@@ -355,3 +367,74 @@ def test_explicit_url_id_and_configuration_authority(cfg: DictConfig) -> None:
         in contract.authority_symbols
     )
     assert any(path.endswith("source.url") for path in contract.field_paths)
+
+
+@pytest.mark.parametrize("target", ["video", "manifest"])
+def test_resume_checks_published_video_and_internal_manifest(
+    tmp_path: Path, cfg: DictConfig, target: str
+) -> None:
+    write_video(tmp_path / "source.mp4", [0, 3000, 6000], Fraction(30))
+    config = PrepareConfig.from_config(cfg)
+    root = prepare(config)
+    name = read_json(root / "prepared.json")["clips"][0]
+    directory = root / "clips" / name
+    manifest = read_json(directory / "clip_manifest.json")
+    ready = read_json(root / "ready" / f"{name}.json")
+    assert set(ready["files"]) == {"clip_manifest.json", manifest["filename"]}
+    assert {p.name for p in directory.iterdir()} == {"clip_manifest.json"}
+    assert all(
+        p.is_file() and p.suffix == ".mp4"
+        for p in (config.output / "videos").glob("*/*")
+    )
+    path = (
+        video_path(config.output, ClipManifest.model_validate(manifest))
+        if target == "video"
+        else directory / "clip_manifest.json"
+    )
+    original = path.read_bytes()
+    path.write_bytes(
+        original.replace(b'"width": 96', b'"width": 94')
+        if target == "manifest"
+        else b"modified"
+    )
+    with pytest.raises(ValueError, match="changed"):
+        prepare(config)
+    path.write_bytes(original)
+    assert prepare(config) == root
+
+    ready_path = root / "ready" / f"{name}.json"
+    ready_path.unlink()
+    with pytest.raises(ValueError, match="incomplete"):
+        prepare(config)
+
+
+def test_clips_are_grouped_by_source_video_filename(
+    tmp_path: Path, cfg: DictConfig
+) -> None:
+    manifests = []
+    for index, count in enumerate((3, 4)):
+        filename = f"source_{index}.mp4"
+        write_video(tmp_path / filename, [i * 3000 for i in range(count)], Fraction(30))
+        cfg.source.local_video = filename
+        config = PrepareConfig.from_config(cfg)
+        root = prepare(config)
+        summary = read_json(root / "prepared.json")
+        name = summary["clips"][0]
+        manifest = ClipManifest.model_validate(
+            read_json(root / "clips" / name / "clip_manifest.json")
+        )
+        manifests.append(manifest)
+        assert video_path(config.output, manifest).is_file()
+    folders = list((config.output / "videos").iterdir())
+    assert {folder.name for folder in folders} == {
+        Path(m.source.filename).stem for m in manifests
+    }
+    assert len(folders) == 2
+    for manifest in manifests:
+        folder = video_path(config.output, manifest).parent
+        assert {path.name for path in folder.iterdir()} == {manifest.filename}
+        assert all(path.is_file() for path in folder.iterdir())
+    request = (config.output / "project_kits" / "REQUEST.txt").read_text(
+        encoding="utf-8"
+    )
+    assert all(m.filename in request for m in manifests)

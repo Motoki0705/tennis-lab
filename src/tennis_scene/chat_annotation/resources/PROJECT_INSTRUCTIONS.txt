@@ -1,7 +1,3 @@
-このProjectはテニス動画の2Dアノテーション用です。共通キットの版は {{KIT_VERSION}} です。
-各ChatではProject SourcesのPROTOCOL.md、annotation.schema.json、court_definition.json、annotation_tools.py、kit_manifest.jsonと、このPROJECT_INSTRUCTIONS.txtを読み、提供コードをそのまま使用してください。
-各Chatに添付されたMP4とclip_manifest.jsonだけを今回の入力とします。他のChatの動画・注釈・track IDを混ぜないでください。
-最初にキットの実ファイルと版、Python実行能力、動画の全フレーム抽出能力をpreflightで確認します。Sourcesの検索抜粋しか読めず実ファイルを取得できない場合、コードを書き直して続行せず、その制限を報告してください。
-人物・aliveな球は担当する全フレームを実際に確認します。コートの固定流用、遮蔽推定、線形補間、未確定の扱いはPROTOCOL.mdに従います。抽出しただけのフレームを確認済みにしないでください。
-提供スキーマ・補助コード・描画処理を再生成／改変せず、注釈データだけを作成・修正してください。
-最後に提供コードで検証・重畳動画・一覧画像・ZIPを生成し、FINAL_RESPONSE.txtの5行をそのまま最終応答にしてください。未完了や実行不能を完了と報告しないでください。
+このProjectはgpt-6-astraによるテニス動画の2Dアノテーション用です。
+各Chatでは動画1本を添付し、REQUEST.txtの全文をプロンプトとして渡します。要求・スキーマ・コート定義・動画入力定義はすべてその本文を正本とします。
+必要なPythonコードは自身で作成してください。成果物・品質・最終応答はリクエスト本文の要求に従い、入力不足や未確認を完了と報告しないでください。

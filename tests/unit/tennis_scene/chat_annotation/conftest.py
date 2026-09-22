@@ -7,6 +7,7 @@ import pytest
 
 from src.tennis_scene.chat_annotation.kit import build_kit
 from src.tennis_scene.chat_annotation.runtime.contracts import (
+    KIT_VERSION,
     Annotation,
     ClipManifest,
     FrameMap,
@@ -20,7 +21,11 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
 
 @pytest.fixture(scope="session")
 def kit(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, str]:
-    return build_kit(tmp_path_factory.mktemp("project_kits"))
+    contents, kit_id = build_kit(tmp_path_factory.mktemp("project_kits"))
+    directory = tmp_path_factory.mktemp("clip_attachments")
+    for name, value in contents.items():
+        (directory / name).write_bytes(value)
+    return directory, kit_id
 
 
 @pytest.fixture
@@ -33,7 +38,7 @@ def definition(kit: tuple[Path, str]) -> dict[str, Any]:
 def manifest(kit: tuple[Path, str]) -> ClipManifest:
     return ClipManifest(
         schema_version="tennis_chat_clip.v1",
-        kit_version="1.0.0",
+        kit_version=KIT_VERSION,
         kit_id=kit[1],
         clip_id="clip_000",
         source=SourceInfo(

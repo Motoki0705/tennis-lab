@@ -16,6 +16,8 @@ from src.utils.video.youtube import download_youtube_video
 
 from .configuration import PrepareConfig, youtube_id
 from .kit import build_kit
+from .layout import video_path
+from .prompt import write_request
 from .runtime.contracts import (
     KIT_VERSION,
     ClipManifest,
@@ -107,29 +109,38 @@ def media_range(timeline: Timeline, target: FrameRange, context: float) -> Frame
     )
 
 
-def _request(manifest: ClipManifest) -> str:
-    template = (Path(__file__).parent / "resources" / "REQUEST.txt").read_text(
-        encoding="utf-8"
-    )
-    return (
-        template.replace("{{CLIP_ID}}", manifest.clip_id)
-        .replace("{{VIDEO}}", manifest.filename)
-        .replace("{{KIT_ID}}", manifest.kit_id)
-        .replace("{{KIT_VERSION}}", manifest.kit_version)
-    )
+def _ready_path(directory: Path) -> Path:
+    return directory.parent.parent / "ready" / f"{directory.name}.json"
+
+
+def _output_root(directory: Path) -> Path:
+    return directory.parents[4]
 
 
 def _verify_published(directory: Path) -> ClipManifest:
-    ready = read_json(directory / "ready.json")
-    for name, digest in ready["files"].items():
-        if Path(name).name != name or sha256_file(directory / name) != digest:
-            raise ValueError(f"prepared clip is incomplete or changed: {directory}")
+    ready = read_json(_ready_path(directory))
     manifest: ClipManifest = ClipManifest.model_validate(
         read_json(directory / "clip_manifest.json")
     )
-    if set(ready["files"]) != {manifest.filename, "clip_manifest.json", "REQUEST.txt"}:
-        raise ValueError("ready marker must cover video, manifest and request")
-    if ready["files"].get(manifest.filename) != manifest.sha256:
+    expected = {manifest.filename, "clip_manifest.json"}
+    if set(ready["files"]) != expected or {p.name for p in directory.iterdir()} != {
+        "clip_manifest.json"
+    }:
+        raise ValueError("prepared metadata must cover only video and manifest")
+    for name, digest in ready["files"].items():
+        path = (
+            directory / name
+            if name == "clip_manifest.json"
+            else video_path(_output_root(directory), manifest)
+        )
+        if (
+            Path(name).name != name
+            or not path.is_file()
+            or path.is_symlink()
+            or sha256_file(path) != digest
+        ):
+            raise ValueError(f"prepared clip is incomplete or changed: {directory}")
+    if ready["files"][manifest.filename] != manifest.sha256:
         raise ValueError("ready marker does not identify the clip hash")
     return manifest
 
@@ -140,6 +151,7 @@ def _make_clip(
     source_info: SourceInfo,
     timeline: Timeline,
     kit_id: str,
+    kit_contents: dict[str, bytes],
     clips_root: Path,
     target: FrameRange,
 ) -> list[Path]:
@@ -158,7 +170,10 @@ def _make_clip(
     duration = timeline.boundary(media.stop) - timeline.boundary(media.start)
     with tempfile.TemporaryDirectory(prefix=".building-", dir=clips_root) as temporary:
         staging = Path(temporary)
-        video = staging / f"{source_info.source_id}__{clip_id}.mp4"
+        video = (
+            staging
+            / f"{source_info.source_id}__{clips_root.parent.name}__{clip_id}.mp4"
+        )
         if duration <= Fraction(str(config.duration_seconds)):
             frames = (
                 (
@@ -199,6 +214,7 @@ def _make_clip(
                     source_info,
                     timeline,
                     kit_id,
+                    kit_contents,
                     clips_root,
                     smaller,
                 )
@@ -209,6 +225,7 @@ def _make_clip(
                 source_info,
                 timeline,
                 kit_id,
+                kit_contents,
                 clips_root,
                 FrameRange(start=target.start, stop=middle),
             ) + _make_clip(
@@ -217,6 +234,7 @@ def _make_clip(
                 source_info,
                 timeline,
                 kit_id,
+                kit_contents,
                 clips_root,
                 FrameRange(start=middle, stop=target.stop),
             )
@@ -251,17 +269,26 @@ def _make_clip(
         )
         check_clip(video, manifest)
         write_json(staging / "clip_manifest.json", manifest.model_dump(mode="json"))
-        (staging / "REQUEST.txt").write_text(_request(manifest), encoding="utf-8")
+        published_video = video_path(Path(config.output), manifest)
+        published_video.parent.mkdir(parents=True, exist_ok=True)
+        if published_video.exists():
+            raise ValueError(
+                f"video exists without completed metadata: {published_video}"
+            )
+        video.rename(published_video)
         write_json(
-            staging / "ready.json",
+            _ready_path(destination),
             {
                 "files": {
                     name: sha256_file(staging / name)
-                    for name in (video.name, "clip_manifest.json", "REQUEST.txt")
+                    if name == "clip_manifest.json"
+                    else manifest.sha256
+                    for name in (video.name, "clip_manifest.json")
                 }
             },
         )
         staging.rename(destination)
+    write_request(Path(config.output), kit_contents)
     print(f"  {clip_id}: {manifest.bytes} bytes, {len(manifest.frames)} frames")
     return [destination]
 
@@ -345,16 +372,16 @@ def prepare(config: PrepareConfig) -> Path:
     if config.urls:
         raise ValueError("use prepare_batch for multiple source URLs")
     config.output.mkdir(parents=True, exist_ok=True)
-    kit_directory, kit_id = build_kit(config.output / "project_kits")
+    kit_contents, kit_id = build_kit(config.output / "project_kits")
     source, source_info = _acquire(config)
-    return _prepare_acquired(config, source, source_info, kit_directory, kit_id)
+    return _prepare_acquired(config, source, source_info, kit_contents, kit_id)
 
 
 def _prepare_acquired(
     config: PrepareConfig,
     source: Path,
     source_info: SourceInfo,
-    kit_directory: Path,
+    kit_contents: dict[str, bytes],
     kit_id: str,
 ) -> Path:
     settings = {
@@ -370,9 +397,10 @@ def _prepare_acquired(
         },
     }
     run_id = _digest([source_info.sha256, kit_id, settings])[:16]
-    root = Path(config.output) / "videos" / str(source_info.source_id) / run_id
+    root = Path(config.output) / "_preparation" / str(source_info.source_id) / run_id
     if (root / "prepared.json").exists():
         _verify_run(root, source_info, kit_id, settings)
+        write_request(Path(config.output), kit_contents)
         return root
     clips_root = root / "clips"
     clips_root.mkdir(parents=True, exist_ok=True)
@@ -388,7 +416,14 @@ def _prepare_acquired(
     for target in requested:
         outputs.extend(
             _make_clip(
-                config, source, source_info, timeline, kit_id, clips_root, target
+                config,
+                source,
+                source_info,
+                timeline,
+                kit_id,
+                kit_contents,
+                clips_root,
+                target,
             )
         )
     realized = [_verify_published(path).target_range for path in outputs]
@@ -398,7 +433,6 @@ def _prepare_acquired(
             "schema_version": "tennis_chat_preparation.v2",
             "source_sha256": source_info.sha256,
             "kit_id": kit_id,
-            "project_kit_directory": str(kit_directory.resolve()),
             "source_frame_count": len(timeline.pts),
             "candidate_clip_count": candidate_count,
             "requested_target_ranges": [target.model_dump() for target in requested],

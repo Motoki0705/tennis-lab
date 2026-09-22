@@ -22,7 +22,7 @@ class _AfterModelValidator(Protocol):
 
 _after_model_validator = cast(_AfterModelValidator, model_validator(mode="after"))
 
-KIT_VERSION = "1.0.0"
+KIT_VERSION = "3.0.0"
 SCHEMA_VERSION: Literal["tennis_chat_annotation.v1"] = "tennis_chat_annotation.v1"
 Point = Annotated[list[float], Field(min_length=2, max_length=2)]
 Box = Annotated[list[float], Field(min_length=4, max_length=4)]
@@ -315,7 +315,7 @@ def make_template(manifest: ClipManifest, manifest_sha256: str) -> Annotation:
         clip_id=manifest.clip_id,
         kit_id=manifest.kit_id,
         manifest_sha256=manifest_sha256,
-        teacher="GPT-6 Astra Pro (Chat)",
+        teacher="gpt-6-astra",
         inspection_ranges=[],
         camera_review_ranges=[],
         camera_motion="unknown",

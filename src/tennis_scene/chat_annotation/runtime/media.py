@@ -1,4 +1,4 @@
-"""Presentation-order video I/O shared by preparation and the portable kit."""
+"""Presentation-order video I/O shared by preparation and local reference tools."""
 
 from __future__ import annotations
 
