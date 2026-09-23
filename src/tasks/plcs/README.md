@@ -184,7 +184,7 @@ BLCSと共有する各stageは `mHC object temporal -> global spatial(Q+V) -> qu
 
 `model=tracking_query`がこの唯一のcanonical architectureを選びます。各attention blockはFFNを持ちません。旧track-query checkpointはarchitectureが異なるためstrict load errorです。
 
-multi-object generatorは1024-frame global timelineに3〜10個の共通COCO-17 source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
+multi-objectのsource全区間保持・可変長・bornの存在数調整は共有正本の「Full-source multi-object lifetimes」に従います。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
 # 固定train/val/testデータを事前生成
