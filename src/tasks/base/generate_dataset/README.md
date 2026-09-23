@@ -206,3 +206,36 @@ in one split; realized scene counts approximate the requested 80/10/10 ratio.
 .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
 .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
 ```
+
+## Full-source multi-object lifetimes
+
+PLCS consumes every frame of each selected ACCAD/COCO-17 source; BLCS consumes
+all output frames of each generated rally. Every track has `source_start=0`,
+`source_end=source_length`, and `death=birth+source_length`. The earliest birth
+is 0 and the scene ends at the last death. There is no fixed 1024-frame cutoff,
+random source subclip, or `min_active_frames`. Existing Dataset windowing,
+augmentation and inference behavior are unchanged.
+
+Workers generate complete sources and project them through static cameras.
+The coordinator consumes results in scene-ID order and optimizes births against
+its accumulated **seconds** at positive occupancy counts 1..4. It moves every
+source's 3D arrays, 2D observations, masks and rally event timestamps together,
+without recomputing or altering source values. The plan depends on run seed,
+scene ID and source lengths, not worker completion order. Each generation call
+owns one ledger (a dataset or a training chunk); there is no mutable worker ledger.
+The public BLCS `generate_sequence()` API uses the same birth rebalancer and
+a sequence-owned ledger, including synthetic production generation.
+
+Presence and visibility remain separate. Birth at t=0 need not imply visible
+observations. Zero-occupancy time is reported separately and does not receive a
+1..4 quota. The default source count is 4..10, concurrency at most 4. Minimum
+scene length only protects existing loader constraints; it never truncates a
+source. The PLCS default reuse gap is 64 native frames (allowing local tracker
+retirement after ACCAD resampling); BLCS uses 8 frames. These control births,
+not the source-defined death times.
+
+The CLI writes `lifecycle_audit.json`, checks complete intervals, first birth,
+scene end and concurrency, and reports occupancy in seconds. Production-sized
+runs (at least 100 scenes) fail if any positive occupancy fraction differs from
+uniform by more than 0.05. Smaller smoke datasets report the same measurements
+without treating finite-sample variation as a publication failure.
