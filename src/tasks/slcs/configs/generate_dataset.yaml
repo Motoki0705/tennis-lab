@@ -1,0 +1,13 @@
+defaults:
+  - paths: default
+  - data: scene_generation
+  - precompute: default
+  - splits: default
+  - _self_
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:slcs,generate,generate_dataset,${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false

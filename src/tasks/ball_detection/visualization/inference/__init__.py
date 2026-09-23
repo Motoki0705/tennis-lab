@@ -7,7 +7,6 @@ bounded inference window per request.
 """
 
 from .loader import (
-    BallInferenceCheckpointError,
     LoadedBallModel,
     load_ball_model,
 )
@@ -28,7 +27,6 @@ __all__ = [
     "PREVIEW_FRAME_LIMIT",
     "TASK",
     "TITLE",
-    "BallInferenceCheckpointError",
     "DetectionRequestError",
     "DetectionService",
     "FramePeaks",

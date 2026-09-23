@@ -43,6 +43,7 @@ from src.tennis_scene.pipeline.model_io.gvhmr import (
     GVHMRResult,
     build_gvhmr_chain,
 )
+from src.tennis_scene.pipeline.observations import pose_visibility_from_heatmap_peaks
 from src.tennis_scene.schema import (
     SceneResult,
     attach_scene_result_court_keypoint_provenance,
@@ -295,7 +296,9 @@ class TennisSceneOrchestrator:
                 footpoint_polygons=footpoint_polygons,
             )
             human_kp_2d_norm = aligned_players.human_kp_2d
-            human_kp_vis = aligned_players.human_kp_vis
+            human_kp_vis, pose_visibility_audit = pose_visibility_from_heatmap_peaks(
+                aligned_players.human_kp_vis
+            )
             track_ids = aligned_players.track_ids
             track_ids_by_camera = aligned_players.track_ids_by_camera
         else:
@@ -405,6 +408,7 @@ class TennisSceneOrchestrator:
                     for camera_track_ids in track_ids_by_camera
                 ],
                 "player_association": association_result.to_dict(),
+                "pose_visibility_conversion": pose_visibility_audit,
                 "court_reference": court_context.document,
                 "enabled_stages": [stage.value for stage in self.execution_order],
                 **gvhmr_alignment.metadata,

@@ -420,8 +420,9 @@ class TennisSceneRenderer:
             start_frame=start_frame,
             end_frame=end_frame,
         )
+        # Matplotlib passes fractional FPS through to ffmpeg; its stubs require int.
         anim.save(
-            str(output_path), writer=writer, fps=int(round(selected_fps)), dpi=dpi
+            str(output_path), writer=writer, fps=selected_fps, dpi=dpi  # type: ignore[arg-type]
         )
 
     def _add_minimap_axes(self, fig: Figure) -> Axes:

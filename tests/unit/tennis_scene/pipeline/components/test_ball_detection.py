@@ -147,3 +147,36 @@ def test_process_exposes_one_unidentified_observation_stream_per_camera(
     np.testing.assert_allclose(result.ball_uv_px[:, 1], [[1.5, 1.2], [1.5, 1.2]])
     assert set(vars(result)) == {"ball_uv", "ball_uv_px", "visibility", "score"}
     assert result.validate() == (True, [])
+
+
+@pytest.mark.parametrize("expected_normalization", [False, True])
+def test_video_to_predictor_is_always_raw_rgb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expected_normalization: bool,
+) -> None:
+    frame = np.tile(np.array([64, 128, 255], dtype=np.uint8), (4, 6, 1))
+    packets = [FramePacket(index=i, frame=frame, original_size=(6, 4)) for i in range(2)]
+    monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
+
+    class CapturingPredictor(_TypedBallPredictor):
+        def predict(self, images: torch.Tensor) -> BallPrediction:
+            expected = torch.tensor([255, 128, 64], dtype=torch.float32) / 255
+            torch.testing.assert_close(images[0, 0, :, 0, 0], expected)
+            return super().predict(images)
+
+    module = BallDetectionModule(replace(make_ball_config(tmp_path), image_size=(4, 6),
+                                         normalize_imagenet=expected_normalization))
+    module._pipeline = CapturingPredictor()  # type: ignore[assignment]
+    module._predict_video(Path("unused.mp4"), max_frames=2)
+
+
+def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
+
+    fake = SimpleNamespace(image_normalization=BallImageNormalization())
+    monkeypatch.setattr(ball_component.BallDetectionPredictor, "load_from_checkpoint", lambda *args, **kwargs: fake)
+    module = BallDetectionModule(replace(make_ball_config(tmp_path), normalize_imagenet=True))
+    with pytest.raises(ValueError, match="does not match the saved checkpoint"):
+        module.load()
+    assert not module.is_loaded

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from struct import unpack_from
 from zipfile import BadZipFile, ZipFile
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.dino_tokens import (
@@ -85,6 +87,30 @@ def test_spec_mismatch_is_error(synthetic_dataset: SLCSDataIndex) -> None:
         load_dino_tokens(manifest, "cam0", expected_spec=wrong)
 
 
+def test_interrupted_overwrite_invalidates_completion_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    index = build_slcs_dataset_fixture(
+        tmp_path / "ds",
+        SLCSFixtureDatasetConfig(videos=("video_000",), num_cameras=2),
+    )
+    manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
+    cameras = {}
+    for camera in manifest.camera_ids:
+        tokens, frames, _ = load_dino_tokens(manifest, camera)
+        cameras[camera] = (tokens.astype(np.float16), frames)
+
+    def fail_write(*args: object, **kwargs: object) -> None:
+        raise OSError("interrupted feature write")
+
+    monkeypatch.setattr(np, "savez_compressed", fail_write)
+    with pytest.raises(OSError, match="interrupted"):
+        write_dino_tokens(
+            manifest, cameras, DEFAULT_FIXTURE_DINO_SPEC, overwrite=True
+        )
+    assert not has_dino_tokens(manifest.clip_dir)
+
+
 def test_non_monotonic_frame_idx_rejected(tmp_path: Path) -> None:
     root = tmp_path / "ds"
     index = build_slcs_dataset_fixture(
@@ -115,6 +141,46 @@ def test_frame_idx_out_of_range_rejected(tmp_path: Path) -> None:
     )
     with pytest.raises(DatasetManifestError, match="outside clip frames"):
         write_dino_tokens(manifest, {"cam0": (tokens, frames)}, spec, overwrite=True)
+
+
+@pytest.mark.parametrize("frames", [[0, 9, 20], [0, 20], [0, 10]])
+def test_cache_must_contain_exact_configured_sample_indices(
+    tmp_path: Path, frames: list[int],
+) -> None:
+    index = build_slcs_dataset_fixture(
+        tmp_path / "ds",
+        SLCSFixtureDatasetConfig(videos=("video_000",), num_frames=21),
+    )
+    manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
+    tokens, expected, spec = load_dino_tokens(manifest, "cam0")
+    assert expected.tolist() == [0, 10, 20]
+    folder = dino_dir(manifest.clip_dir)
+    np.savez_compressed(
+        folder / "cam0.npz", tokens=tokens[:len(frames)].astype(np.float16),
+        frame_idx=np.asarray(frames, dtype=np.int64),
+    )
+    # Even a matching inventory count must not certify a wrong sampling grid.
+    marker = folder / "annotation.json"
+    document = json.loads(marker.read_text())
+    document["cameras"]["cam0"]["num_samples"] = len(frames)
+    marker.write_text(json.dumps(document))
+    with pytest.raises(DatasetManifestError, match="configured sampling"):
+        load_dino_tokens(manifest, "cam0", expected_spec=spec)
+
+
+def test_writer_rejects_a_different_sampling_grid(tmp_path: Path) -> None:
+    index = build_slcs_dataset_fixture(
+        tmp_path / "ds",
+        SLCSFixtureDatasetConfig(videos=("video_000",), num_frames=21),
+    )
+    manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
+    spec = DEFAULT_FIXTURE_DINO_SPEC
+    tokens: NDArray[np.float16] = np.zeros((3, spec.num_tokens, spec.embed_dim), dtype=np.float16)
+    with pytest.raises(DatasetManifestError, match="configured sampling"):
+        write_dino_tokens(
+            manifest, {"cam0": (tokens, np.asarray([0, 9, 20], dtype=np.int64))},
+            spec, overwrite=True,
+        )
 
 
 def test_missing_archive_is_error(tmp_path: Path) -> None:

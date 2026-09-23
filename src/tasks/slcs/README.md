@@ -2,8 +2,8 @@
 
 出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
 
-Meijiとbroadcastの実RGB学習データを作る手順・品質判定・探索学習profileは
-[実RGBデータ生成ガイド](../../tennis_scene/dataset_pipeline/README.md)を参照。
+生成済みsceneの検証、DINO特徴抽出、収録単位のsplit準備は
+[SLCSデータ生成ガイド](generate_dataset/README.md)を参照。
 
 SLCS は Issue #634 の構造化実動画データセットを読み、単眼の player pose、ball UV、court keypoints と、10フレーム間隔の DINOv3 patch tokens を融合して、コート座標系の player/ball 3D 時系列を同時推定するタスクです。BLCS と PLCS を直列接続せず、frame 内の entity attention と entity ごとの temporal attention を交互に適用します。dataset/clip manifest の正本は `src.tennis_scene.generate_dataset.manifest`、scene schema/archive の正本は `src.tennis_scene.{schema,archive}` です。SLCS 固有の completion marker・必須配列検証だけを `data.annotation` が担当し、foreign schema や error を再exportしません。
 

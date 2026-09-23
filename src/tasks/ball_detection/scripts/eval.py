@@ -212,7 +212,9 @@ def _forward_batch(
     target_heatmaps = batch["heatmaps"]
 
     model_io = module.model_io
-    model_call = model_io.prepare_model_call(images)
+    model_call = model_io.prepare_model_call(
+        images, image_normalization=module.image_normalization, preprocessed=True,
+    )
     logits = model_io.resized_logits(
         module.model(*model_call.model_args),
         model_call,

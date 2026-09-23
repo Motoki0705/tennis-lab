@@ -18,7 +18,7 @@
 
 ### model_io/
 - **`contracts.py`**: RGB入力、model call、学習batch、typed predictionの契約。
-- **`adapters.py`**: forward前にfloat32・有限値・`[0, 1]`を含む入力契約を検証し、RGB/MDD・layout変換とloss/output decodeを担当。DINOv3ではraw backbone応答の検証、patch token decode、RoPE周波数とattention maskの生成もこの境界で完了する。
+- **`adapters.py`**: 推論の生RGBはfloat32・有限値・`[0,1]`を検証し、checkpointの正規化後にRGB/MDD・layout変換を行う。学習・評価のdataset側で正規化済みの入力は宣言されたchannel範囲を検証してそのまま使い、二重に正規化しない。loss/output decodeも担当。DINOv3ではraw backbone応答の検証、patch token decode、RoPE周波数とattention maskの生成もこの境界で完了する。
 - **`factory.py`**: `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からmodel+adapterを一度だけ選択し、DINOv3 backboneのfrozen/trainable実行経路も構築時にbind。
 - **`evaluation.py`**: checkpointから検証済みpairを読み、評価loopへprobability heatmapを提供。
 
@@ -45,6 +45,7 @@
 - **`staged_runner.py`**: `StagedBallDetectionTrainingRunner`。フェーズ間のOOM較正とweightのみ引き継ぎを制御。
 
 ### inference/
+- **`checkpoint.py`**: predictor・レビューUI共通の推論専用loader。保存されたmodel設定・`model.`重みと入力正規化をstrict復元する。`data.augmentation.normalize_imagenet.enabled`は必須で、有効なら保存されたmean/stdも使う。学習専用オプションは要求・補完しない。
 - **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction(coords, confidence, heatmaps)` を返す。
 
 ### evaluation/
@@ -65,7 +66,7 @@
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
 - **`review/datasets.py`**: `BallDatasetCatalog`。TrackNet/YouTube/unified webを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
 - **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
-- **`inference/loader.py`**: `load_ball_model()`。model+adapterを構築し `model.` 重みだけを `strict=True` で復元する推論専用loader。
+- **`inference/loader.py`**: `load_ball_model()`。共通checkpoint loaderを使い、レビュー用の入力サイズ・窓長を検証する。
 - **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをoriginal image pixelへ写す。
 - **`inference/rasters.py`**: 予測probability heatmapのRGBA overlay。
 - **`inference/service.py`**: `DetectionService`。catalog/scenes/preview/image/validate/inferを提供する共有Webバックエンド。
@@ -128,8 +129,8 @@ scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結�
   に残す。temporal sourceは選択frame以降の連続窓のみで、シーン長を超える要求は
   拒否する。
 - モデル入力は original frameを checkpointの `data.image_size` へ
-  `INTER_LINEAR` でresizeした float32 `[0,1]` RGB(augmentationなし)。
-  MDD変換は `model_io/adapters.py` の境界で行い、UI側では再実装しない。
+  `INTER_LINEAR` でresizeした float32 `[0,1]` RGBを渡す。保存された入力正規化は
+  model I/O境界で一度だけ適用する。MDD変換は `model_io/adapters.py` の境界で行い、UI側では再実装しない。
 - metricsは `BallDetectionMetrics` をそのまま使い、Hungarian matchingと
   checkpoint保存の `ball_distance_threshold`(original pixel)で採点する。
   一致検出が0件の平均距離は `null` (UIではN/A) とし、誤差0とは表示しない。

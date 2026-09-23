@@ -149,6 +149,8 @@ def test_all_task_cli_output_contracts(
         overrides += ["workflow.video_id=smoke-video"]
     if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
         overrides += ["evaluation.checkpoint=smoke/model.ckpt"]
+    if boundary.module == "src.tasks.slcs.scripts.generate_dataset":
+        overrides += ["data.dataset_root=smoke/clips"]
     cfg = _compose_boundary(boundary, overrides)
     roots = RuntimePathRoots.from_mapping(
         cast(dict[str, object], OmegaConf.to_container(cfg.paths, resolve=True)),
@@ -267,11 +269,9 @@ def test_visualize_mode_shares_log_identity_with_artifact(
     "name,kind,output_keys",
     [
         ("pipeline", "generate", ("output_directory",)),
-        ("reference_clip", "generate", ("output_dir",)),
         ("visualization", "visualize", ("output", "preview_output")),
         ("visualize_tasks", "visualize", ("output_directory",)),
         ("clip_studio", "generate", ()),
-        ("export_clips", "generate", ()),
         ("generate_dataset", "generate", ()),
     ],
 )
