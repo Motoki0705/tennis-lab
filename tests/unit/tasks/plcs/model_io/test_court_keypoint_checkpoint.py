@@ -90,8 +90,7 @@ def test_v2_direct_model_input_rejects_missing_unknown_and_mixed_context() -> No
         court_keypoint_contract=contract,
     )
     ready = _ready()
-    with pytest.raises(ValueError, match="metadata is absent"):
-        adapter.build_call(ready)
+    adapter.build_call(ready)  # Forward needs observations; geometry is optional.
 
     negative = build_court_view_record(
         camera_id="camera_0",

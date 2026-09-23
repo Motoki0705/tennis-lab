@@ -14,6 +14,9 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_model_artifact_court_keypoint_contract,
 )
+from src.tasks.base.model_io.court_keypoint_contract import (
+    validate_neural_court_observation_order,
+)
 from src.tasks.base.training.gan_training import (
     ManualGANSupportMixin,
     loss_component_metrics,
@@ -134,7 +137,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Persist the exact normalization and CourtKP contracts."""
-        write_axial_reference_checkpoint(checkpoint, model_name=str(self.config.model.name))
+        write_axial_reference_checkpoint(
+            checkpoint, model_name=str(self.config.model.name)
+        )
         add_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
         write_model_artifact_court_keypoint_contract(
             checkpoint,
@@ -144,7 +149,12 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Reject normalization or CourtKP mismatches before weights."""
-        validate_axial_reference_checkpoint(checkpoint, model_name=str(self.config.model.name))
+        validate_neural_court_observation_order(
+            checkpoint, self.court_keypoint_contract
+        )
+        validate_axial_reference_checkpoint(
+            checkpoint, model_name=str(self.config.model.name)
+        )
         validate_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
         validate_model_artifact_court_keypoint_contract(
             checkpoint,

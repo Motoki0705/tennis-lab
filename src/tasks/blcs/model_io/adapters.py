@@ -11,10 +11,8 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor, nn
 
-from src.tasks.base.data.track_query_reference import (
-    ReferenceViewBatchError,
-    validate_reference_view_batch,
-)
+from src.tasks.base.data import validate_reference_view_batch
+from src.tasks.base.data.track_query_reference import validate_reference_view_index
 from src.tasks.base.generate_dataset import (
     PHYSICAL_V1_SELECTOR,
     CourtKeypointContract,
@@ -1002,11 +1000,12 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
 
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         try:
-            validate_track_query_reference_contract(
-                batch,
-                self.track_query_reference_contract,
-                location="BLCS track-query input",
-            )
+            if "track_query_reference" in batch:
+                validate_track_query_reference_contract(
+                    batch,
+                    self.track_query_reference_contract,
+                    location="BLCS track-query input",
+                )
         except ValueError as error:
             raise ModelInputContractError(str(error)) from error
         call = super().build_call(batch)
@@ -1021,40 +1020,25 @@ class TrackQueryReferenceModelIOAdapter(TrackQueryModelIOAdapter):
                 dtypes=frozenset({torch.int64}),
             ),
         )
-        view_camera_ids = require_tensor(
-            batch,
-            "view_camera_ids",
-            spec=TensorSpec(
-                shape=(batch_size, num_views),
-                dtypes=frozenset({torch.int64}),
-            ),
+        validate_reference_view_index(
+            reference_view_index,
+            batch_size=batch_size,
+            num_views=padding_mask.shape[1],
+            device=padding_mask.device,
         )
-        reference_camera_id = require_tensor(
-            batch,
-            "reference_camera_id",
-            spec=TensorSpec(
-                shape=(batch_size,),
-                dtypes=frozenset({torch.int64}),
-            ),
-        )
-        reference_from_physical = require_tensor(
-            batch,
-            "reference_from_physical",
-            spec=TensorSpec(
-                shape=(batch_size, 3, 3),
-                dtypes=FloatDtypes,
-            ),
-        )
-        try:
+        if "view_camera_ids" in batch or "reference_camera_id" in batch:
             validate_reference_view_batch(
                 reference_view_index=reference_view_index,
-                view_camera_ids=view_camera_ids,
-                reference_camera_id=reference_camera_id,
-                reference_from_physical=reference_from_physical,
-                expected_device=ball_uv.device,
+                view_camera_ids=cast(Tensor, batch["view_camera_ids"]),
+                reference_camera_id=cast(Tensor, batch["reference_camera_id"]),
+                reference_from_physical=cast(
+                    Tensor | None, batch.get("reference_from_physical")
+                ),
+                physical_from_reference=cast(
+                    Tensor | None, batch.get("physical_from_reference")
+                ),
+                expected_device=padding_mask.device,
             )
-        except (TypeError, ReferenceViewBatchError) as error:
-            raise ModelInputContractError(str(error)) from error
         selected_padding = padding_mask.gather(
             1,
             reference_view_index[:, None, None].expand(

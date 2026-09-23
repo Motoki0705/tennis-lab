@@ -130,13 +130,13 @@ def _dataset_and_scene() -> tuple[SceneDataset, Scene]:
     return dataset, scene
 
 
-def test_standard_dataset_aligns_before_first20_and_rotates_court_targets() -> None:
+def test_standard_dataset_preserves_local_first20_and_rotates_court_targets() -> None:
     dataset, scene = _dataset_and_scene()
     sample = dataset.build_sample(scene)
     provenance = sample["court_reference_provenance"]
 
     assert sample["court_kp"].shape == (2, 2, 20, 2)
-    torch.testing.assert_close(sample["court_kp"][0], sample["court_kp"][1])
+    assert not torch.equal(sample["court_kp"][0], sample["court_kp"][1])
     assert sample["selected_camera_ids"] == ("camera_0", "camera_1") or sample[
         "selected_camera_ids"
     ] == ("camera_1", "camera_0")
@@ -184,7 +184,7 @@ def test_object_uv_is_invariant_under_reference_transform() -> None:
         torch.testing.assert_close(sample["human_kp"][local_index], expected)
 
 
-def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None:
+def test_tracking_preserves_local_first14_and_keeps_canonical_pose_local() -> None:
     standard, scene = _dataset_and_scene()
     dataset = object.__new__(PLCSTrackingDataset)
     dataset.rng = np.random.default_rng(0)
@@ -233,7 +233,7 @@ def test_tracking_aligns_before_first14_and_keeps_canonical_pose_local() -> None
         sample["reference_from_physical"].T,
     )
     assert sample["court_kp"].shape == (2, 2, 14, 2)
-    torch.testing.assert_close(sample["court_kp"][0], sample["court_kp"][1])
+    assert not torch.equal(sample["court_kp"][0], sample["court_kp"][1])
     torch.testing.assert_close(
         sample["target_canonical_pose_3d"][:, 0],
         torch.from_numpy(scene.data["canonical_pose_3d"]),
@@ -298,3 +298,20 @@ def test_single_view_and_seeded_reordering_resolve_reference_by_identity() -> No
         == reversed_order.selected_camera_ids[reversed_order.reference_view_index]
         == ordered.reference_camera_id
     )
+
+
+def test_reference_change_leaves_all_observations_identical():
+    dataset, scene = _dataset_and_scene()
+    dataset.reference_camera_id = "camera_0"
+    first = dataset.build_sample(scene)
+    dataset.rng = np.random.default_rng(0)
+    dataset.reference_camera_id = "camera_1"
+    second = dataset.build_sample(scene)
+    for key in ("human_kp", "human_vis", "court_kp", "court_vis", "padding_mask"):
+        assert torch.equal(first[key], second[key]), key
+    assert not torch.equal(first["position"], second["position"])
+    for i, camera_id in enumerate(second["selected_camera_ids"]):
+        index = int(camera_id.rsplit("_", 1)[1])
+        assert np.array_equal(
+            second["court_kp"][i].numpy(), scene.data[f"cam_{index}_court_kp_uv"]
+        )

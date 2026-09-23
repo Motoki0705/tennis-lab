@@ -1,4 +1,4 @@
-"""Compose independent source tracks on one fixed global timeline.
+"""Compose independent source tracks on one variable-length global timeline.
 
 The composer owns only lifecycle placement. Task-specific generators remain
 responsible for producing physical trajectories and projecting their composed
@@ -23,74 +23,44 @@ from torch import Tensor
 
 @dataclass(frozen=True)
 class TimelineConfig:
-    """Validated common BLCS/PLCS lifecycle generation schema."""
+    """Full-source lifetimes; only births are optimized for uniform occupancy."""
 
-    num_frames: int
     min_tracks: int
     max_tracks: int
     max_concurrent: int
     min_reuse_gap_frames: int
-    start_index_range: tuple[int, int]
-    min_active_frames: int
-    overlap_probability: float
-    min_gap_frames: int
-    max_gap_frames: int
+    min_scene_frames: int
+    planning_iterations: int
 
     def __post_init__(self) -> None:
-        if self.num_frames <= 0:
-            raise ValueError("timeline.num_frames must be positive.")
-        if self.min_tracks <= 0 or self.max_tracks < self.min_tracks:
-            raise ValueError(
-                "timeline track count must satisfy 1 <= min_tracks <= max_tracks."
-            )
-        if self.max_concurrent <= 0 or self.max_concurrent > self.max_tracks:
-            raise ValueError("timeline.max_concurrent must be in [1, max_tracks].")
-        if self.min_reuse_gap_frames < 0:
-            raise ValueError("timeline.min_reuse_gap_frames must be non-negative.")
-        if self.start_index_range[0] > self.start_index_range[1]:
-            raise ValueError("timeline.start_index_range must be increasing.")
-        if self.min_active_frames <= 0 or self.min_active_frames > self.num_frames:
-            raise ValueError("timeline.min_active_frames must be in [1, num_frames].")
-        if not 0.0 <= self.overlap_probability <= 1.0:
-            raise ValueError("timeline.overlap_probability must be in [0, 1].")
-        if self.min_gap_frames < 0 or self.max_gap_frames < self.min_gap_frames:
-            raise ValueError(
-                "timeline gaps must satisfy 0 <= min_gap_frames <= max_gap_frames."
-            )
-
-    @classmethod
-    def from_mapping(cls, config: Mapping[str, Any]) -> TimelineConfig:
-        """Build the schema from a Hydra/plain mapping without silent defaults."""
-        required = {
-            "num_frames",
+        for name in (
             "min_tracks",
             "max_tracks",
             "max_concurrent",
-            "min_reuse_gap_frames",
-            "start_index_range",
-            "min_active_frames",
-            "overlap_probability",
-            "min_gap_frames",
-            "max_gap_frames",
-        }
-        missing = sorted(required.difference(config))
-        if missing:
-            raise KeyError(f"Missing timeline config keys: {missing}")
-        start_range = config["start_index_range"]
-        if len(start_range) != 2:
-            raise ValueError("timeline.start_index_range must contain two values.")
-        return cls(
-            num_frames=int(config["num_frames"]),
-            min_tracks=int(config["min_tracks"]),
-            max_tracks=int(config["max_tracks"]),
-            max_concurrent=int(config["max_concurrent"]),
-            min_reuse_gap_frames=int(config["min_reuse_gap_frames"]),
-            start_index_range=(int(start_range[0]), int(start_range[1])),
-            min_active_frames=int(config["min_active_frames"]),
-            overlap_probability=float(config["overlap_probability"]),
-            min_gap_frames=int(config["min_gap_frames"]),
-            max_gap_frames=int(config["max_gap_frames"]),
-        )
+            "min_scene_frames",
+            "planning_iterations",
+        ):
+            value = getattr(self, name)
+            if type(value) is not int or value < 1:
+                raise ValueError(f"timeline.{name} must be a positive integer.")
+        if (
+            not self.min_tracks <= self.max_tracks
+            or self.max_concurrent > self.max_tracks
+        ):
+            raise ValueError("Invalid timeline track count or max_concurrent.")
+        if type(self.min_reuse_gap_frames) is not int or self.min_reuse_gap_frames < 0:
+            raise ValueError("timeline.min_reuse_gap_frames must be non-negative.")
+
+    @classmethod
+    def from_mapping(cls, config: Mapping[str, Any]) -> TimelineConfig:
+        from dataclasses import fields
+
+        required = {field.name for field in fields(cls)}
+        if set(config) != required:
+            raise ValueError(
+                f"timeline requires exactly {sorted(required)}; got {sorted(config)}"
+            )
+        return cls(**dict(config))
 
 
 @dataclass(frozen=True)
@@ -143,7 +113,7 @@ class TimelineComposition:
         if any(source.shape[1:] != trailing_shape for source in sources):
             raise ValueError("All source arrays must share trailing dimensions.")
         output = np.full(
-            (self.config.num_frames, self.config.max_tracks, *trailing_shape),
+            (self.present.shape[0], self.config.max_tracks, *trailing_shape),
             fill_value,
             dtype=sources[0].dtype,
         )
@@ -173,7 +143,7 @@ class TimelineComposition:
         if any(tuple(source.shape[1:]) != trailing_shape for source in sources):
             raise ValueError("All source tensors must share trailing dimensions.")
         output = torch.full(
-            (self.config.num_frames, self.config.max_tracks, *trailing_shape),
+            (self.present.shape[0], self.config.max_tracks, *trailing_shape),
             fill_value,
             dtype=sources[0].dtype,
             device=sources[0].device,
@@ -190,209 +160,159 @@ class TimelineComposition:
         return output
 
 
+def occupancy_durations(
+    births: NDArray[np.int64], lengths: NDArray[np.int64], *, bins: int
+) -> NDArray[np.float64]:
+    """Exact event-sweep histogram; no allocation proportional to scene length."""
+    events = np.concatenate((births, births + lengths))
+    order = np.argsort(events, kind="stable")
+    counts = np.cumsum(
+        np.concatenate(
+            (
+                np.ones(len(births), dtype=np.int64),
+                -np.ones(len(births), dtype=np.int64),
+            )
+        )[order]
+    )[:-1]
+    spans = np.diff(events[order])
+    return np.bincount(counts, weights=spans, minlength=bins).astype(np.float64)
+
+
 class TimelineComposer:
-    """Sample track count/start indices and enforce simultaneous-track limits."""
+    """Deterministic source-length-aware birth planning, independent of worker order.
+
+    Minimize the positive-frame occupancy histogram's distance from uniform.
+    Deaths always equal birth plus the entire source length. Dataset publication
+    audits the aggregate durations (seconds), since per-scene optima need not
+    realize every count, especially for short or unequal source sets.
+    """
 
     def __init__(
-        self,
-        config: TimelineConfig,
-        *,
-        rng: random.Random | None = None,
+        self, config: TimelineConfig, *, rng: random.Random | None = None
     ) -> None:
         self.config = config
         self.rng = rng or random.Random()
+        self.occupancy_seconds: NDArray[np.float64] = np.zeros(
+            config.max_concurrent + 1
+        )
 
     def sample_num_tracks(self) -> int:
-        """Sample the number of physical lifecycle instances in one scene."""
         return self.rng.randint(self.config.min_tracks, self.config.max_tracks)
 
     def compose(
         self,
         source_scene_ids: Sequence[str],
         source_lengths: Sequence[int],
+        *,
+        fps: float = 1.0,
+        balance_dataset: bool = False,
     ) -> TimelineComposition:
-        """Sample a valid global placement for the supplied source tracks."""
-        if len(source_scene_ids) != len(source_lengths):
-            raise ValueError(
-                "source_scene_ids and source_lengths must have equal length."
-            )
-        if not self.config.min_tracks <= len(source_lengths) <= self.config.max_tracks:
-            raise ValueError(
-                "Number of source tracks must be within timeline min/max_tracks."
-            )
-        if any(
-            int(length) < self.config.min_active_frames for length in source_lengths
+        from scipy.optimize import differential_evolution
+
+        if not np.isfinite(fps) or fps <= 0:
+            raise ValueError("fps must be positive and finite")
+        n = len(source_lengths)
+        if (
+            len(source_scene_ids) != n
+            or not self.config.min_tracks <= n <= self.config.max_tracks
         ):
             raise ValueError(
-                "Every source track must contain at least timeline.min_active_frames."
+                "Source IDs/lengths must match and obey timeline track counts."
             )
+        if any(type(x) is not int or x <= 0 for x in source_lengths):
+            raise ValueError("Every complete source must have a positive frame count.")
+        lengths = np.asarray(source_lengths, dtype=np.int64)
+        capacity = self.config.max_concurrent
+        gap = self.config.min_reuse_gap_frames
+        # A serial schedule is always valid and consumes all sources.
+        serial = np.concatenate(([0], np.cumsum(lengths[:-1] + gap))).astype(np.int64)
+        horizon = int(serial[-1])
 
-        placements: list[TrackPlacement] | None = None
-        last_error: RuntimeError | None = None
-        for _ in range(64):
-            candidate_placements: list[TrackPlacement] = []
-            slot_occupancy: NDArray[np.int16] = np.zeros(
-                self.config.num_frames, dtype=np.int16
+        def enforce_capacity(births: NDArray[np.int64]) -> NDArray[np.int64]:
+            """Return the exact capacity-safe plan used for scoring and output."""
+            repaired = births.copy()
+            order = np.argsort(repaired, kind="stable")
+            available: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
+            for i in order:
+                slot = int(np.argmin(available))
+                repaired[i] = max(repaired[i], available[slot])
+                available[slot] = repaired[i] + lengths[i] + gap
+            return repaired
+
+        def objective(values: NDArray[np.float64]) -> float:
+            births = np.rint(values).astype(np.int64)
+            births -= births.min()
+            births = enforce_capacity(births)
+            durations = occupancy_durations(births, lengths, bins=max(n, capacity) + 1)
+            positive = durations[1:].sum()
+            current_seconds = durations[1 : capacity + 1] / fps
+            aggregate = current_seconds + (
+                self.occupancy_seconds[1:] if balance_dataset else 0
             )
-            try:
-                for track_id, (scene_id, source_length) in enumerate(
-                    zip(source_scene_ids, source_lengths, strict=True)
-                ):
-                    placement = self._sample_placement(
-                        track_id=track_id,
-                        source_scene_id=str(scene_id),
-                        source_length=int(source_length),
-                        existing=candidate_placements,
-                        slot_occupancy=slot_occupancy,
-                    )
-                    candidate_placements.append(placement)
-                    occupied_until = min(
-                        self.config.num_frames,
-                        placement.death_frame + self.config.min_reuse_gap_frames,
-                    )
-                    slot_occupancy[placement.birth_frame : occupied_until] += 1
-            except RuntimeError as error:
-                last_error = error
-                continue
-            placements = candidate_placements
-            break
-        if placements is None:
-            raise RuntimeError(
-                "Could not compose a valid lifecycle timeline after 64 complete "
-                "placement attempts."
-            ) from last_error
+            score = float(
+                np.square(
+                    (aggregate - aggregate.mean()) / max(aggregate.sum(), 1 / fps)
+                ).sum()
+            )
+            scene_length = int((births + lengths).max())
+            score += (
+                10
+                * max(0, self.config.min_scene_frames - scene_length)
+                / self.config.min_scene_frames
+            )
+            # Avoid rewarding unobserved gaps: they do not count toward the 1..K quota.
+            score += 0.01 * durations[0] / max(positive, 1)
+            return float(score)
 
+        if n == 1:
+            births: NDArray[np.int64] = np.zeros(1, dtype=np.int64)
+        else:
+            result = differential_evolution(
+                objective,
+                [(0, max(horizon, 1))] * n,
+                seed=self.rng.getrandbits(32),
+                maxiter=self.config.planning_iterations,
+                popsize=8,
+                polish=False,
+                integrality=True,
+                x0=serial,
+                tol=1e-5,
+                atol=1e-6,
+                workers=1,
+            )
+            births = np.rint(result.x).astype(np.int64)
+            births -= births.min()
+            births = enforce_capacity(births)
+        scene_frames = int((births + lengths).max())
+        if scene_frames < self.config.min_scene_frames:
+            raise ValueError(
+                "Complete sources cannot satisfy min_scene_frames; resample the source set."
+            )
+        placements = tuple(
+            TrackPlacement(
+                i,
+                str(source_scene_ids[i]),
+                0,
+                int(lengths[i]),
+                int(births[i]),
+                int(births[i] + lengths[i]),
+            )
+            for i in range(n)
+        )
         present: NDArray[np.bool_] = np.zeros(
-            (self.config.num_frames, self.config.max_tracks), dtype=np.bool_
+            (scene_frames, self.config.max_tracks), dtype=np.bool_
         )
         for placement in placements:
             present[
-                placement.birth_frame : placement.death_frame,
-                placement.track_id,
+                placement.birth_frame : placement.death_frame, placement.track_id
             ] = True
-        if int(present.sum(axis=1).max(initial=0)) > self.config.max_concurrent:
-            raise RuntimeError("Timeline composer produced an illegal overlap.")
-        return TimelineComposition(
-            config=self.config,
-            placements=tuple(placements),
-            present=present,
-        )
-
-    def _sample_placement(
-        self,
-        *,
-        track_id: int,
-        source_scene_id: str,
-        source_length: int,
-        existing: Sequence[TrackPlacement],
-        slot_occupancy: NDArray[np.int16],
-    ) -> TrackPlacement:
-        for _ in range(256):
-            active_length = self.rng.randint(
-                self.config.min_active_frames,
-                min(source_length, self.config.num_frames),
+        if not present[0].any() or present.sum(1).max() > capacity:
+            raise RuntimeError("Invalid full-source birth plan.")
+        if balance_dataset:
+            self.occupancy_seconds += (
+                np.bincount(present.sum(1), minlength=capacity + 1) / fps
             )
-            start = self._candidate_start(active_length, existing)
-            placement = self._placement_from_start(
-                track_id,
-                source_scene_id,
-                source_length,
-                start,
-                active_length,
-            )
-            if placement is not None and self._can_place(placement, slot_occupancy):
-                return placement
-
-        start_min, start_max = self.config.start_index_range
-        starts = list(range(start_min, start_max + 1))
-        self.rng.shuffle(starts)
-        for start in starts:
-            active_length = self.rng.randint(
-                self.config.min_active_frames,
-                min(source_length, self.config.num_frames),
-            )
-            placement = self._placement_from_start(
-                track_id,
-                source_scene_id,
-                source_length,
-                start,
-                active_length,
-            )
-            if placement is not None and self._can_place(placement, slot_occupancy):
-                return placement
-        raise RuntimeError(
-            "Could not place track without exceeding timeline.max_concurrent; "
-            f"track_id={track_id}, source_length={source_length}."
-        )
-
-    def _candidate_start(
-        self,
-        source_length: int,
-        existing: Sequence[TrackPlacement],
-    ) -> int:
-        start_min, start_max = self.config.start_index_range
-        if not existing:
-            return self.rng.randint(start_min, start_max)
-
-        anchor = self.rng.choice(existing)
-        if self.rng.random() < self.config.overlap_probability:
-            lower = max(
-                start_min,
-                anchor.birth_frame - source_length + self.config.min_active_frames,
-            )
-            upper = min(
-                start_max,
-                anchor.death_frame - self.config.min_active_frames,
-            )
-            if lower <= upper:
-                return self.rng.randint(lower, upper)
-
-        gap = self.rng.randint(self.config.min_gap_frames, self.config.max_gap_frames)
-        if self.rng.random() < 0.5:
-            return min(start_max, anchor.death_frame + gap)
-        return max(start_min, anchor.birth_frame - gap - source_length)
-
-    def _placement_from_start(
-        self,
-        track_id: int,
-        source_scene_id: str,
-        source_length: int,
-        start: int,
-        requested_active_length: int,
-    ) -> TrackPlacement | None:
-        birth = max(0, start)
-        source_start = -start if start < 0 else 0
-        active = min(
-            requested_active_length,
-            self.config.num_frames - birth,
-            source_length - source_start,
-        )
-        if active < self.config.min_active_frames:
-            return None
-        if start >= 0 and source_length > active:
-            source_start = self.rng.randint(0, source_length - active)
-        death = birth + active
-        source_end = source_start + active
-        return TrackPlacement(
-            track_id=track_id,
-            source_scene_id=source_scene_id,
-            source_start=source_start,
-            source_end=source_end,
-            birth_frame=birth,
-            death_frame=death,
-        )
-
-    def _can_place(
-        self,
-        placement: TrackPlacement,
-        slot_occupancy: NDArray[np.int16],
-    ) -> bool:
-        occupied_until = min(
-            self.config.num_frames,
-            placement.death_frame + self.config.min_reuse_gap_frames,
-        )
-        interval = slot_occupancy[placement.birth_frame : occupied_until]
-        return bool(np.all(interval < self.config.max_concurrent))
+        return TimelineComposition(self.config, placements, present)
 
 
 __all__ = [

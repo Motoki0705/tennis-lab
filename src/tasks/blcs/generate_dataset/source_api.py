@@ -20,9 +20,13 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor
 
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
+from src.tasks.base.generate_dataset.timeline_composer import (
+    TimelineComposer,
+    TimelineConfig,
+)
 from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
     MultiBallSceneGenerator,
+    rebalance_scene_births,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
@@ -37,16 +41,12 @@ BLCSGeneratorConfiguration: TypeAlias = GeneratorConfig
 
 _PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _TIMELINE_KEYS = {
-    "num_frames",
     "min_tracks",
     "max_tracks",
     "max_concurrent",
     "min_reuse_gap_frames",
-    "start_index_range",
-    "min_active_frames",
-    "overlap_probability",
-    "min_gap_frames",
-    "max_gap_frames",
+    "min_scene_frames",
+    "planning_iterations",
 }
 _GENERATOR_KEYS = {"physics", "rally", "camera", "targeted_velocity", "court"}
 _PHYSICS_KEYS = {
@@ -153,92 +153,29 @@ class BLCSPhysicsProposalExhausted(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class BLCSTimelineSpec:
-    """Stable task-owned lifecycle specification for one source scene."""
+    """Task-owned full-source timeline schema."""
 
-    num_frames: int
     min_tracks: int
     max_tracks: int
     max_concurrent: int
     min_reuse_gap_frames: int
-    start_index_range: tuple[int, int]
-    min_active_frames: int
-    overlap_probability: float
-    min_gap_frames: int
-    max_gap_frames: int
+    min_scene_frames: int
+    planning_iterations: int
 
     def __post_init__(self) -> None:
-        _positive_int(self.num_frames, name="num_frames")
-        _positive_int(self.min_tracks, name="min_tracks")
-        _positive_int(self.max_tracks, name="max_tracks")
+        self._to_internal()
         if self.min_tracks < 2:
             raise ValueError("BLCS physics source scenes require at least two tracks.")
-        if self.max_tracks < self.min_tracks:
-            raise ValueError("max_tracks must be greater than or equal to min_tracks.")
-        _positive_int(self.max_concurrent, name="max_concurrent")
-        if self.max_concurrent > self.max_tracks:
-            raise ValueError("max_concurrent must not exceed max_tracks.")
-        _non_negative_int(
-            self.min_reuse_gap_frames,
-            name="min_reuse_gap_frames",
-        )
-        start_range = _integer_pair(
-            self.start_index_range,
-            name="start_index_range",
-        )
-        if start_range[0] > start_range[1]:
-            raise ValueError("start_index_range must be increasing.")
-        _positive_int(self.min_active_frames, name="min_active_frames")
-        if self.min_active_frames > self.num_frames:
-            raise ValueError("min_active_frames must not exceed num_frames.")
-        probability = _finite_float(
-            self.overlap_probability,
-            name="overlap_probability",
-        )
-        if not 0.0 <= probability <= 1.0:
-            raise ValueError("overlap_probability must be in [0, 1].")
-        _non_negative_int(self.min_gap_frames, name="min_gap_frames")
-        _non_negative_int(self.max_gap_frames, name="max_gap_frames")
-        if self.max_gap_frames < self.min_gap_frames:
-            raise ValueError("max_gap_frames must not be less than min_gap_frames.")
-        object.__setattr__(self, "start_index_range", start_range)
-        object.__setattr__(self, "overlap_probability", probability)
 
     @classmethod
     def from_mapping(cls, value: object) -> BLCSTimelineSpec:
-        """Parse a strict mapping without inheriting generator defaults."""
         raw = _exact_mapping(value, keys=_TIMELINE_KEYS, name="timeline")
-        return cls(
-            num_frames=_mapping_int(raw, "num_frames"),
-            min_tracks=_mapping_int(raw, "min_tracks"),
-            max_tracks=_mapping_int(raw, "max_tracks"),
-            max_concurrent=_mapping_int(raw, "max_concurrent"),
-            min_reuse_gap_frames=_mapping_int(raw, "min_reuse_gap_frames"),
-            start_index_range=_integer_pair(
-                raw["start_index_range"],
-                name="timeline.start_index_range",
-            ),
-            min_active_frames=_mapping_int(raw, "min_active_frames"),
-            overlap_probability=_finite_float(
-                raw["overlap_probability"],
-                name="timeline.overlap_probability",
-            ),
-            min_gap_frames=_mapping_int(raw, "min_gap_frames"),
-            max_gap_frames=_mapping_int(raw, "max_gap_frames"),
-        )
+        return cls(**{key: _mapping_int(raw, key) for key in _TIMELINE_KEYS})
 
     def _to_internal(self) -> TimelineConfig:
-        return TimelineConfig(
-            num_frames=self.num_frames,
-            min_tracks=self.min_tracks,
-            max_tracks=self.max_tracks,
-            max_concurrent=self.max_concurrent,
-            min_reuse_gap_frames=self.min_reuse_gap_frames,
-            start_index_range=self.start_index_range,
-            min_active_frames=self.min_active_frames,
-            overlap_probability=self.overlap_probability,
-            min_gap_frames=self.min_gap_frames,
-            max_gap_frames=self.max_gap_frames,
-        )
+        from dataclasses import asdict
+
+        return TimelineConfig.from_mapping(asdict(self))
 
 
 @dataclass(frozen=True, slots=True)
@@ -1110,6 +1047,29 @@ class BLCSPhysicsTrajectorySource:
 
     def generate(self, *, scene_id: str, seed: int) -> BLCSSourceScene:
         """Generate one deterministic complete multi-object source scene."""
+        return self._generate(scene_id=scene_id, seed=seed, composer=None)
+
+    def generate_sequence(
+        self, requests: Sequence[tuple[str, int]]
+    ) -> Iterator[BLCSSourceScene]:
+        """Generate a scene-ID-ordered dataset with one cumulative seconds ledger.
+
+        Source proposal diagnostics remain per-scene and source arrays are complete.
+        The ledger belongs to this invocation, so repeated calls are reproducible.
+        """
+        ids = [scene_id for scene_id, _ in requests]
+        if not ids or ids != sorted(set(ids)):
+            raise ValueError("BLCS sequence requires unique, sorted scene IDs.")
+        for scene_id, seed in requests:
+            self.preflight(scene_id=scene_id, seed=seed)
+        composer = TimelineComposer(self.settings.timeline._to_internal())
+        for scene_id, seed in requests:
+            composer.rng.seed(seed)
+            yield self._generate(scene_id=scene_id, seed=seed, composer=composer)
+
+    def _generate(
+        self, *, scene_id: str, seed: int, composer: TimelineComposer | None
+    ) -> BLCSSourceScene:
         self.preflight(scene_id=scene_id, seed=seed)
         with _deterministic_random_state(seed):
             bounded = _BoundedPhysicsSceneSource(
@@ -1128,6 +1088,8 @@ class BLCSPhysicsTrajectorySource:
                 maximum_physics_attempts_per_object=1,
                 rng=random.Random(seed),
             ).generate_scene(scene_id)
+        if composer is not None:
+            internal = rebalance_scene_births(internal, composer)
         return _source_scene_from_internal(
             internal,
             seed=seed,

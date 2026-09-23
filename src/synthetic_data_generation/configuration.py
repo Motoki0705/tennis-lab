@@ -1594,48 +1594,15 @@ def _blcs_source_settings(value: object) -> BLCSTrajectorySourceSettings:
         raw["timeline"],
         path=timeline_path,
         keys={
-            "num_frames",
             "min_tracks",
             "max_tracks",
             "max_concurrent",
             "min_reuse_gap_frames",
-            "start_index_range",
-            "min_active_frames",
-            "overlap_probability",
-            "min_gap_frames",
-            "max_gap_frames",
+            "min_scene_frames",
+            "planning_iterations",
         },
     )
-    start_range = _fixed_integer_tuple(
-        timeline_raw,
-        "start_index_range",
-        path=timeline_path,
-        length=2,
-    )
-    timeline = BLCSTimelineSpec(
-        num_frames=_integer(timeline_raw, "num_frames", path=timeline_path, minimum=1),
-        min_tracks=_integer(timeline_raw, "min_tracks", path=timeline_path, minimum=1),
-        max_tracks=_integer(timeline_raw, "max_tracks", path=timeline_path, minimum=1),
-        max_concurrent=_integer(
-            timeline_raw, "max_concurrent", path=timeline_path, minimum=1
-        ),
-        min_reuse_gap_frames=_integer(
-            timeline_raw, "min_reuse_gap_frames", path=timeline_path, minimum=0
-        ),
-        start_index_range=cast(tuple[int, int], start_range),
-        min_active_frames=_integer(
-            timeline_raw, "min_active_frames", path=timeline_path, minimum=1
-        ),
-        overlap_probability=_number(
-            timeline_raw, "overlap_probability", path=timeline_path
-        ),
-        min_gap_frames=_integer(
-            timeline_raw, "min_gap_frames", path=timeline_path, minimum=0
-        ),
-        max_gap_frames=_integer(
-            timeline_raw, "max_gap_frames", path=timeline_path, minimum=0
-        ),
-    )
+    timeline = BLCSTimelineSpec.from_mapping(timeline_raw)
     return BLCSTrajectorySourceSettings(
         scene_count=_integer(raw, "scene_count", path=path, minimum=1),
         split_scene_counts=counts,

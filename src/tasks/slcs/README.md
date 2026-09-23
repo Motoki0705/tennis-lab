@@ -29,6 +29,10 @@ windowの公開padding契約は`padding_mask (B,T)`、sparse DINO sample軸は`d
 
 DINO token precompute も同じ境界方針です。`model_io.factory` が backbone と `SLCSFrameTokenIOAdapter` を実行前に一度だけ bind し、adapter が uint8 `(B,H,W,3)` frame を検証・正規化して、`x_norm_patchtokens` を設定済み `(B,S,C)` と照合した後に float16 NumPy array へ変換します。precompute script と clip orchestration は backbone variant、tensor layout、raw output key を扱いません。テストデータの組み立ては production package に置かず、test support から canonical clip export、pseudo annotation/archive、DINO token、dataset index writer を呼びます。
 
+camera-view v2 の入力Courtは各cameraの検出順のまま保持します。単眼sampleの
+position/heading/ball教師はそのcameraのコート座標へ回転し、player順も
+camera基準のnear→farへ揃えます。旧チェックポイントは再学習が必要です。
+
 ## 学習
 
 以下はデータ版 `slcs/example_v1` の例です。外部のデータrootを使う場合は

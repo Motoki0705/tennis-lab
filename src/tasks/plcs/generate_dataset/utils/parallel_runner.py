@@ -12,7 +12,10 @@ from src.tasks.base.configuration import as_config_mapping
 from src.tasks.base.generate_dataset.parallel_runner import (
     run_parallel_scene_generation,
 )
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
+from src.tasks.base.generate_dataset.timeline_composer import (
+    TimelineComposer,
+    TimelineConfig,
+)
 from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
     MultiPersonSceneGenerator,
 )
@@ -78,12 +81,15 @@ def _generate_scene_task(
         )
 
     torch.set_num_threads(1)
-    random.seed(scene_index)
-    np.random.seed(scene_index)
-    torch.manual_seed(scene_index)
+    # Worker construction can consume RNG (e.g. composer initialization).
+    # Seed AFTER it so cold and reused workers sample the same source scene.
     scene_generator = _get_worker_scene_generator(config_dict, device)
+    scene_seed = int(config_dict["run"]["seed"]) + scene_index
+    random.seed(scene_seed)
+    np.random.seed(scene_seed)
+    torch.manual_seed(scene_seed)
     if isinstance(scene_generator, MultiPersonSceneGenerator):
-        scene_generator.composer.rng.seed(scene_index)
+        scene_generator.composer.rng.seed(scene_seed)
     return scene_generator.generate_scene(scene_id=f"scene_{scene_index:06d}")
 
 
@@ -109,7 +115,7 @@ def generate_parallel_scenes(
     if not isinstance(config_dict, dict):
         raise TypeError("PLCS parallel config must resolve to a dictionary.")
 
-    yield from run_parallel_scene_generation(
+    results = run_parallel_scene_generation(
         _generate_scene_task,
         list(range(start_index, start_index + num_scenes)),
         config_dict,
@@ -117,3 +123,17 @@ def generate_parallel_scenes(
         num_workers=num_workers,
         chunksize=1,
     )
+
+    if str(config.generation.mode) != "multi_object":
+        yield from results
+        return
+    from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
+        rebalance_scene_births,
+    )
+
+    composer = TimelineComposer(
+        TimelineConfig.from_mapping(dict(config.generation.timeline))
+    )
+    for scene_index, scene in enumerate(results, start=start_index):
+        composer.rng.seed(int(config.run.seed) + scene_index)
+        yield rebalance_scene_births(scene, composer)

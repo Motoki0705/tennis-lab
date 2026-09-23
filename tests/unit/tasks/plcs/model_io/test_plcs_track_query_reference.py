@@ -226,10 +226,13 @@ def test_plcs_contract_resolver_accepts_only_canonical_model_names() -> None:
         track_query_mhc=None,
         track_query_cswa=None,
     )
-    assert resolve_plcs_track_query_reference_contract(
-        canonical,
-        physical,
-    ) == TrackQueryReferenceContract.physical_v1()
+    assert (
+        resolve_plcs_track_query_reference_contract(
+            canonical,
+            physical,
+        )
+        == TrackQueryReferenceContract.physical_v1()
+    )
 
     removed = PLCSModelConfig(
         name="plcs_removed_track_query_variant",
@@ -285,3 +288,16 @@ def test_factory_model_type_remains_exact_for_reference_class() -> None:
     config = _model_config()
     model = PLCSTrackQueryReferenceModel(config)
     assert type(model) is PLCSTrackQueryReferenceModel
+
+
+def test_forward_needs_only_observations_and_reference():
+    source = _batch()
+    names = (
+        "human_kp",
+        "human_vis",
+        "court_kp",
+        "court_vis",
+        "padding_mask",
+        "reference_view_index",
+    )
+    assert len(_adapter().build_call({key: source[key] for key in names}).kwargs) == 6

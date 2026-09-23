@@ -1,0 +1,43 @@
+defaults:
+  - _self_
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+
+source:
+  url: null
+  urls: [] # Ordered batch input; mutually exclusive with url and local_video.
+  local_video: null # Optional offline input relative to paths.data_root; mutually exclusive with URL.
+  # Video-only MP4/H.264 SDR, up to 1080p; do not limit the source FPS or fall back to another format.
+  format_selector: bv[ext=mp4][vcodec^=avc1][dynamic_range=SDR][height<=1080]
+  js_runtimes: null
+  remote_components: null
+batch:
+  download_workers: 2
+sampling:
+  max_clips_per_video: 5 # null restores exhaustive sequential coverage.
+  strategy: uniform_midpoints
+output_directory: chat_annotation
+clip:
+  duration_seconds: 15
+  context_seconds: 1
+  max_bytes: 500000000
+encoding:
+  crf: 18
+  preset: medium
+annotation:
+  ball_max_gap_seconds: 0.1
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

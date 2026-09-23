@@ -25,6 +25,9 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_checkpoint_track_query_reference_contract,
 )
+from src.tasks.base.model_io.court_keypoint_contract import (
+    validate_neural_court_observation_order,
+)
 from src.tasks.base.models import (
     REFERENCE_SELECTOR_ROPE_CONTRACT,
     resolve_reference_selector_mode,
@@ -210,11 +213,15 @@ def load_checkpoint_runtime(
             location=str(path),
         )
 
+    validate_neural_court_observation_order(checkpoint, checkpoint_contract.contract)
     config = _checkpoint_config(checkpoint)
     config_track_query_contract = resolve_config_track_query_reference_contract(config)
     raw_model = config.get("model")
     validate_axial_reference_checkpoint(
-        checkpoint, model_name=str(raw_model.get("name")) if isinstance(raw_model, (DictConfig, Mapping)) else ""
+        checkpoint,
+        model_name=str(raw_model.get("name"))
+        if isinstance(raw_model, (DictConfig, Mapping))
+        else "",
     )
     if checkpoint_contract.legacy_metadata_free:
         if config_track_query_contract is not None:

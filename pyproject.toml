@@ -91,6 +91,7 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt"]
 "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
@@ -379,6 +380,4 @@ package = "src"
     ".spin/cmds.py:lint",
     ".spin/cmds.py:typecheck",
     ".spin/cmds.py:test",
-    ".spin/cmds.py:ci",
-    ".spin/cmds.py:ci_update_durations",
 ]

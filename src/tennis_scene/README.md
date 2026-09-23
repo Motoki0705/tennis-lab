@@ -5,9 +5,11 @@
 SLCS向けの特徴抽出・学習split準備は [SLCS生成ガイド](../tasks/slcs/generate_dataset/README.md)、
 再構成sceneからの合成学習データ生成は [synthetic_data_generation](../synthetic_data_generation/README.md) が担当します。
 
+動画注釈のリクエスト準備と添付方法は [chat_annotation](chat_annotation/README.md) を参照してください。
+
 ## パスと公開入口
 
-以下の5つが実行入口です。コマンドはrepoルートの `.venv/bin/python -m src.tennis_scene.scripts.<入口>` で実行します。
+`scripts/` の実行入口は以下の5つです。コマンドはrepoルートの `.venv/bin/python -m src.tennis_scene.scripts.<入口>` で実行します。
 このREADMEを5入口の入出力構造の正本とします。
 
 | 表記 | 設定 | 既定root | 用途 |
@@ -198,6 +200,8 @@ HydraログはOUTPUT内の `tennis_scene/<generate|visualize>/<入口の設定�
 `schema.SceneResult` と `archive.save_scene_result/load_scene_result` がsceneの唯一の定義・I/Oです。
 metadata sidecarの欠落はエラーです。ボールなど無効にしたstageの配列は省略されるため、
 下流は必要な配列を検証します。SLCSに必要な追加契約はSLCS側が所有します。
+`camera_view_v2` の保存済みsceneは [camera-local観測契約](../tasks/base/generate_dataset/README.md)
+も満たす必要があります。旧reference順sceneは再生成が必要です。
 
 ViTPoseの生ヒートマップピークは確率ではなく1を超えることがあります。sceneと下流推論に渡す
 姿勢visibilityは有限性を検証して `[0,1]` へ飽和させ、元の範囲・飽和件数を
