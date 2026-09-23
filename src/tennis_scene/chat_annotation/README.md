@@ -92,7 +92,7 @@ outputs/chat_annotation/             # output_directoryで変更可能
 1. 注釈対象に応じて`project_kits/ball_detection/`または`project_kits/player_detection/`を選び、その`PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
 2. クリップごとのChatでgpt-6-astraを選び、`videos/<source-video-name>/`からクリップ1本だけを添付する。
 3. 選んだディレクトリの`REQUEST.txt`全文をプロンプトとして貼り付ける。
-4. 返却ZIP内の注釈JSONと重畳動画を確認する。部分完了もJSONに明示される。
+4. 注釈JSON、重畳動画、両方を格納したZIPの3点を受け取る。ZIP名は添付MP4のファイル名と同じbasenameを使う。部分完了もJSONに明示される。
 
 各REQUESTには対象別の要求と専用JSON Schemaを含める。ボール用JSONはボール情報だけ、プレーヤー用JSONはプレーヤー情報だけを含む。動画名・解像度・総フレーム数は添付動画から取得する。
 同じ対象のREQUESTを全クリップで共通に使い、動画が増えても本文は変わらない。
@@ -147,7 +147,7 @@ source_frame_index/is_targetで所有範囲を識別できる。1フレーム＋
 
 YouTube取得はテストではmockにし、動画分割と配布キットは実際にエンコード・デコードする。
 E2Eは動画とREQUEST本文の例から合成注釈を作り、ローカルmanifestを使って返却ZIPを検証する。
-CFR/VFRの全フレーム・表示時間、参考区間の描画、completed/partialの2ファイル構成、無効入力の拒否を確認する。
+CFR/VFRの全フレーム・表示時間、参考区間の描画、JSON/overlay/ZIPの3成果物、ZIP内2ファイル構成、無効入力の拒否を確認する。
 GPTが独自に作るコードやChat上での注釈結果そのものは自動テストの対象外。
 
 ローカルで返却注釈を検証する場合は、元のmanifestを指定する（すべて絶対パス）。
@@ -170,5 +170,5 @@ GPTが独自に作るコードやChat上での注釈結果そのものは自動�
 ```
 
 同CLIの`finalize`は`--video`、`--manifest`、`--annotations`、`--output`を受け取り、
-有効なcompleted/partialだけを2ファイルのZIPとして生成する。構造・入力エラーや
+有効なcompleted/partialだけを注釈JSON、overlay動画、ZIPとして生成する。ZIPには前2点だけを格納する。構造・入力エラーや
 動画生成失敗ではZIPを公開せず非0終了する。既存の出力ディレクトリは上書きしない。

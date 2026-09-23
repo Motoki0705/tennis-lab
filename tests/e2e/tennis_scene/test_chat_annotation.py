@@ -196,7 +196,7 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
             str(output),
         )
         assert expected_status in response.stdout
-        archive = output / f"annotation_{video.stem}.zip"
+        archive = output / f"{video.stem}.zip"
         expected = {f"overlay_{video.stem}.mp4", annotation_path.name}
         assert {p.name for p in output.iterdir()} == expected | {archive.name}
         with zipfile.ZipFile(archive) as bundle:
