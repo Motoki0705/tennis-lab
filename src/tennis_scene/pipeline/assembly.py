@@ -76,7 +76,7 @@ def assemble_automatic_scene(
     meta = {
         **metadata,
         "scene_schema_version": 2,
-        "representation": "triangulated_coco17_and_calibrated_smpl_v1",
+        "representation": "triangulated_coco17_and_temporal_smpl_v1",
         "normalization": "image_width_height",
         "video_paths": [str(p) for p in video_paths],
         "camera_ids": list(camera_ids), "num_cameras": views, "sync_assumption": "preprocessed",
