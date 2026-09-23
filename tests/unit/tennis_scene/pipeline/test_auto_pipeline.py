@@ -170,12 +170,17 @@ def test_v2_missing_mask_rejected_before_any_archive_write(tmp_path: Path, monke
     assert not (tmp_path / "bad.npz").exists()
 
 
-def test_complete_body_path_uses_indexed_observations_and_triangulated_hips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("missing_hips", [False, True])
+def test_complete_body_path_corrects_yaw_from_coco17_and_keeps_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_hips: bool) -> None:
     from scipy.spatial.transform import Rotation
 
     from src.tennis_scene.pipeline.model_io.body import BodyGeometry, BodyParameters
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
     raw = stages[1].result
+    if missing_hips:
+        confidence = raw.confidence.copy()
+        confidence[..., 11:13] = 0
+        raw = replace(raw, confidence=confidence)
     boxes = np.zeros((*raw.observed.shape, 3), np.float32)
     boxes[..., :2] = raw.uv_px.mean(-2)
     boxes[..., 2] = 100.
@@ -191,7 +196,7 @@ def test_complete_body_path_uses_indexed_observations_and_triangulated_hips(tmp_
             assert req.keypoints.shape == (24, 17, 3)
             assert req.intrinsic.shape == (3, 3)
             return BodyParameters(np.zeros((24, 63), np.float32),
-                np.repeat(Rotation.from_matrix(cam.rotation).as_rotvec()[None], 24, axis=0).astype(np.float32),
+                Rotation.from_matrix(cam.rotation @ Rotation.from_euler("z", (.4 + .02 * req.source_frames)[:, None]).as_matrix()).as_rotvec().astype(np.float32),
                 np.zeros((24, 10), np.float32),
                 np.c_[req.source_frames, np.zeros((24, 2))].astype(np.float32))
         def reconstruct(self, params):
@@ -200,8 +205,12 @@ def test_complete_body_path_uses_indexed_observations_and_triangulated_hips(tmp_
             world[..., 0] = np.linspace(-.2, .2, 17)
             world[..., 1] = -4 + params.transl[:, 0, None] * .01
             world[..., 2] = np.linspace(.5, 1.8, 17)
-            root = world[:, 11:13].mean(1) + np.array([.03, 0., -.05], np.float32)
-            verts = root[:, None] + np.array([[0., 0., 0.], [.1, 0., 0.], [0., .1, 0.], [0., 0., .1]], np.float32)
+            hip = world[:, 11:13].mean(1)
+            rotation = Rotation.from_euler("z", (.4 + .02 * params.transl[:, 0])[:, None]).as_matrix()
+            drift = np.c_[1.5 + .1 * params.transl[:, 0], np.full(count, .2), np.full(count, .1)]
+            world = np.einsum("tij,tkj->tki", rotation, world-hip[:, None]) + hip[:, None] + drift[:, None]
+            root = hip + drift + rotation @ np.array([.03, 0., -.05])
+            verts = root[:, None] + np.einsum("tij,vj->tvi", rotation, np.array([[0., 0., 0.], [.1, 0., 0.], [0., .1, 0.], [0., 0., .1]]))
             return BodyGeometry((verts @ cam.rotation.T + cam.translation).astype(np.float32), (world @ cam.rotation.T + cam.translation).astype(np.float32))
         def unload(self):
             self.unloaded = True
@@ -214,6 +223,26 @@ def test_complete_body_path_uses_indexed_observations_and_triangulated_hips(tmp_
     assert scene.player_smpl_valid is not None and scene.player_smpl_valid.all()
     assert body.calls == 1 and body.unloaded
     assert scene.player_kp_3d is not None
-    expected = scene.player_kp_3d[0, :, 11:13].mean(1) + [.03, 0., -.05]
+    expected = np.column_stack((np.full(24, np.linspace(-.2, .2, 17)[11:13].mean()), -4 + np.arange(24)*.01,
+                                np.full(24, np.linspace(.5, 1.8, 17)[11:13].mean()))) + [.03, 0., -.05]
     np.testing.assert_allclose(scene.player_position[0], expected, atol=1e-4)
+    np.testing.assert_allclose(scene.player_yaw[0], 0, atol=1e-4)
+    np.testing.assert_array_equal(scene.smpl_body_pose, 0)
+    assert scene.metadata["body_placement"]["placement"] == "coco17_temporal_position_yaw_v1"
+    assert scene.metadata["body_placement"]["players"]["0"]["scale"] == pytest.approx(1, abs=1e-5)
+    if missing_hips:
+        assert not scene.player_kp_3d_vis[..., 11:13].any()
     save_scene_result(scene, tmp_path / "body.npz")
+    restored = load_scene_result(tmp_path / "body.npz")
+    np.testing.assert_array_equal(restored.player_position, scene.player_position)
+    pipeline.config = replace(config, cache_source="load")
+    again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    np.testing.assert_array_equal(again.player_position, scene.player_position)
+    assert body.calls == 1
+    settings = dict(config.processing_settings)
+    player_settings = dict(cast(dict[str, Any], settings["player_reconstruction"]))
+    player_settings["placement"] = {**player_settings["placement"], "temporal_weight": .2}
+    settings["player_reconstruction"] = player_settings
+    pipeline.config = replace(pipeline.config, player_placement=replace(config.player_placement, temporal_weight=.2), processing_settings=settings)
+    with pytest.raises(ValueError, match="[Ss]tale|identity"):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
