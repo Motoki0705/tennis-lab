@@ -1,0 +1,305 @@
+{
+  "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/scene.npz",
+  "cameras": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "arrays": {
+    "num_frames": {
+      "shape": [],
+      "dtype": "int64",
+      "nonfinite": 0
+    },
+    "fps": {
+      "shape": [],
+      "dtype": "float64",
+      "nonfinite": 0
+    },
+    "width": {
+      "shape": [],
+      "dtype": "int64",
+      "nonfinite": 0
+    },
+    "height": {
+      "shape": [],
+      "dtype": "int64",
+      "nonfinite": 0
+    },
+    "court_kp": {
+      "shape": [
+        3,
+        1010,
+        14,
+        2
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "court_vis": {
+      "shape": [
+        3,
+        1010,
+        14
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "player_position": {
+      "shape": [
+        2,
+        1010,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "player_yaw": {
+      "shape": [
+        2,
+        1010
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "smpl_body_pose": {
+      "shape": [
+        2,
+        1010,
+        63
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "smpl_global_orient": {
+      "shape": [
+        2,
+        1010,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "smpl_betas": {
+      "shape": [
+        2,
+        10
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "smpl_vertices_local": {
+      "shape": [
+        2,
+        1010,
+        6890,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "gvhmr_aligned_player_position": {
+      "shape": [
+        2,
+        1010,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "gvhmr_aligned_player_yaw": {
+      "shape": [
+        2,
+        1010
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "gvhmr_aligned_smpl_global_orient": {
+      "shape": [
+        2,
+        1010,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "gvhmr_aligned_smpl_vertices_local": {
+      "shape": [
+        2,
+        1010,
+        6890,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "ball_uv": {
+      "shape": [
+        3,
+        1010,
+        2
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "ball_vis": {
+      "shape": [
+        3,
+        1010
+      ],
+      "dtype": "bool",
+      "nonfinite": 0
+    },
+    "ball_3d": {
+      "shape": [
+        1010,
+        3
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "human_kp_2d": {
+      "shape": [
+        2,
+        3,
+        1010,
+        17,
+        2
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "human_kp_vis": {
+      "shape": [
+        2,
+        3,
+        1010,
+        17
+      ],
+      "dtype": "float32",
+      "nonfinite": 0
+    },
+    "player_track_ids": {
+      "shape": [
+        2
+      ],
+      "dtype": "int32",
+      "nonfinite": 0
+    }
+  },
+  "dynamics": {
+    "player_position": {
+      "xyz_min": [
+        -2.9071590900421143,
+        -15.913203239440918,
+        0.8440054655075073
+      ],
+      "xyz_max": [
+        3.113588809967041,
+        16.54229164123535,
+        0.8531634211540222
+      ],
+      "speed_m_s_p50_p95_max": [
+        2.6917970180511475,
+        9.566351175308224,
+        36.56344223022461
+      ]
+    },
+    "gvhmr_aligned_player_position": {
+      "xyz_min": [
+        -5.109407424926758,
+        -16.625154495239258,
+        0.3776388168334961
+      ],
+      "xyz_max": [
+        4.348639488220215,
+        15.63811206817627,
+        2.0428590774536133
+      ],
+      "speed_m_s_p50_p95_max": [
+        1.3677171468734741,
+        3.653559243679046,
+        11.395439147949219
+      ]
+    },
+    "ball_3d": {
+      "xyz_min": [
+        -3.460547685623169,
+        -16.381086349487305,
+        -1.4119594097137451
+      ],
+      "xyz_max": [
+        8.507054328918457,
+        9.893274307250977,
+        5.658605098724365
+      ],
+      "speed_m_s_p50_p95_max": [
+        16.892242431640625,
+        86.93040771484372,
+        310.116455078125
+      ]
+    }
+  },
+  "alignment": {
+    "scale_mode": "fixed",
+    "players": [
+      {
+        "track_id": 0,
+        "scale": 1.0,
+        "yaw_rad": -2.3266822206952154,
+        "yaw_deg": -133.3090715139618,
+        "position_residual_m": {
+          "median": 1.506836323062595,
+          "rmse": 1.6913527542332083,
+          "p90": 2.4805541434665996,
+          "count": 1010
+        },
+        "heading_residual_deg": {
+          "median": 10.66075026609079,
+          "rmse": 21.31052787610804,
+          "p90": 26.170934050667455,
+          "count": 1010
+        },
+        "fit": {
+          "success": true,
+          "nfev": 11,
+          "optimality": 0.009052554729534368,
+          "jacobian_rank": 4,
+          "n_free_parameters": 4,
+          "initializer": "heading_circular_mean"
+        },
+        "confidence_clipped": true
+      },
+      {
+        "track_id": 1,
+        "scale": 1.0,
+        "yaw_rad": -1.9944450692539748,
+        "yaw_deg": -114.27328493892995,
+        "position_residual_m": {
+          "median": 2.142847011458225,
+          "rmse": 2.2173260677136035,
+          "p90": 3.184184164090865,
+          "count": 1010
+        },
+        "heading_residual_deg": {
+          "median": 54.69742233142921,
+          "rmse": 62.65744484006743,
+          "p90": 94.86720988421114,
+          "count": 1010
+        },
+        "fit": {
+          "success": true,
+          "nfev": 10,
+          "optimality": 0.006495699913823039,
+          "jacobian_rank": 4,
+          "n_free_parameters": 4,
+          "initializer": "heading_circular_mean"
+        },
+        "confidence_clipped": false
+      }
+    ]
+  },
+  "fps": 59.94006,
+  "frames": 1010
+}

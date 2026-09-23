@@ -1,0 +1,36 @@
+{
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "assignments": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "reviewed_at_utc": "2026-09-23T02:58:36.939208+00:00",
+  "reason": "Independently regenerated dataset human results: all 1010 frames support local order [0,1] in every camera, with no frame favoring the opposite pairing and minimum alternative margin >6 bbox-normalized units. Normal-time crops/full views and lowest-margin source-image sheets (all seven) are byte-identical to the previously visually inspected pipeline evidence. Small numerical pose differences remain (maximum chosen combined cost about 0.02465 bbox-normalized units), without evidence of subject switching. Apply existing human assignments; track IDs alone were not identity evidence.",
+  "quality_limits": [
+    "Far players are small or dark in some views, and the tracker interpolates missing detections.",
+    "cam2 far-player keypoints at frame 1009 are visibly displaced from the person; identity correspondence is supported by the full trajectory and other views, but this is not a claim of correct pose on every frame."
+  ],
+  "matching_visual_evidence": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline/verified_mapping.json",
+  "matching_review_images_sha256": {
+    "identity_source_crops_cam2.jpg": "4c59dee0eb6c2639d3d19404d8cb41c338caad48d156c3616d915c5bc9d94d2c",
+    "identity_lowest_margins_cam2.jpg": "a4034fed99ad2693c8e2f734ab337994fa07bd866c66a941d038985fba124ab3",
+    "identity_source_crops_cam0.jpg": "3e1d9e80a758ed660e7b0cf0d55317f785af4fa581a9ad85ba34ebd61cd83568",
+    "identity_lowest_margins_cam0.jpg": "7ae5663bdd09140e674c0dea47d4d6727e191eb4f338f212ae94c60ac9c4cf82",
+    "identity_lowest_margins_cam1.jpg": "a5bdf0c9b1ed5ee0842876599e8de64b510f0659caf7e86d77c640c42a1f19c4",
+    "identity_contact_sheet.jpg": "3ba79fb1a4651704fe45d61809d49b6324f6c84eaf0e70c429dab21710ba5ed5",
+    "identity_source_crops_cam1.jpg": "4ba9596fd993e3a3adcc7d48f3041821aea919e71f1e5647e54258523e24db03"
+  },
+  "timeline_sha256": "088a1ae55bb95c66056973e1d5db18b97d18eed494f9578d33091c8002715324"
+}

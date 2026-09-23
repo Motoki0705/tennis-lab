@@ -174,7 +174,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         sequence_length=cfg.sequence_length,
         image_size_hw=cfg.image_size_hw,
         max_frames=cfg.max_frames,
-        normalize_imagenet=cfg.normalize_imagenet,
+        normalize_imagenet=False,
         imagenet_mean=cfg.imagenet_mean,
         imagenet_std=cfg.imagenet_std,
     )
@@ -195,6 +195,13 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         strict=cfg.strict,
         weights_only=cfg.weights_only,
     )
+    normalization = predictor.image_normalization
+    if cfg.normalize_imagenet != normalization.enabled or (
+        normalization.enabled and (
+            cfg.imagenet_mean != normalization.mean or cfg.imagenet_std != normalization.std
+        )
+    ):
+        raise ValueError("Visualization normalization must match the saved checkpoint preprocessing.")
     predictions = predict_clip(
         predictor=predictor,
         clip=clip,

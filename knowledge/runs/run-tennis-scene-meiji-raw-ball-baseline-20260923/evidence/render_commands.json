@@ -1,0 +1,26 @@
+[
+  {
+    "phase": "pipeline",
+    "module": "visualization",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-pipeline-visualization",
+    "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python -m src.tennis_scene.scripts.visualization paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup paths.data_root=/home/kamimura/projects/tennis-lab/data paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party input=tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/scene.npz output=tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-pipeline-visualization/scene.mp4 display=false"
+  },
+  {
+    "phase": "pipeline",
+    "module": "visualize_tasks",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-pipeline-visualize_tasks",
+    "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python -m src.tennis_scene.scripts.visualize_tasks paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup paths.data_root=/home/kamimura/projects/tennis-lab/data paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party scene_path=tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/scene.npz 'video_paths=[tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4]' output_directory=tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-pipeline-visualize_tasks"
+  },
+  {
+    "phase": "dataset",
+    "module": "visualization",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-dataset-visualization",
+    "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python -m src.tennis_scene.scripts.visualization paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup paths.data_root=/home/kamimura/projects/tennis-lab/data paths.artifact_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party input=tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.npz output=tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-dataset-visualization/scene.mp4 display=false"
+  },
+  {
+    "phase": "dataset",
+    "module": "visualize_tasks",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-dataset-visualize_tasks",
+    "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python -m src.tennis_scene.scripts.visualize_tasks paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup paths.data_root=/home/kamimura/projects/tennis-lab/data paths.artifact_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party scene_path=tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.npz 'video_paths=[tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4]' output_directory=tennis_scene/visualize/responsibility_cleanup/20260922T231809Z-dataset-visualize_tasks"
+  }
+]

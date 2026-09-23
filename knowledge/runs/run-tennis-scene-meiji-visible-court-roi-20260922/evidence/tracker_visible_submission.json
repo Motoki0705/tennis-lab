@@ -1,0 +1,5 @@
+{
+  "name": "tennis-scene-cleanup-visible-court-tracking-20260922T2207Z",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T191934Z/tracker_court_filter_visible_probe.py",
+  "result": "queued: 1790114989277783677_1903278_tennis-scene-cleanup-visible-court-tracking-20260922T2207Z.job\n"
+}

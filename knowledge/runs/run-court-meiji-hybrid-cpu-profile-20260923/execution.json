@@ -1,0 +1,11 @@
+{
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup .venv/bin/python /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T222952Z/profile_court_cpu.py",
+  "source_sha256": {
+    "src/tennis_scene/pipeline/components/court_kp.py": "48e9e3db40bd39c5a6b0d668226cb9947a6f5ac5c6f8e2e2dc51d11955954c62",
+    "src/tasks/court_detection/inference/predictor.py": "5e290b9ffff8d9a3b62203e971936e89dc29504fb169623b5a0f9c8da0f240df",
+    "src/tasks/court_detection/inference/regions.py": "77e444326040af87b821e134084cb88ce0adad3a4e91bebe34e6cbde3ec3b104",
+    "src/tasks/court_detection/geometry/hybrid_homography.py": "3d28bf88e9410c0ae09c3d1ec1427daf63905ebcf09132a830cc8dd054d06a40",
+    "src/tasks/court_detection/geometry/line_evidence.py": "a4a9fa809191b776ea4d85919f05f8aa97fd6540d5a4b9dd26f97da0ed37f353"
+  }
+}

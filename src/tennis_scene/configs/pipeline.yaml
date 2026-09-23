@@ -27,6 +27,12 @@ court_kp:
   mode: model
   num_keypoints: 14
   subpixel_refine: true
+  # Explicit fixed-camera image-only region search; every frame is still inferred.
+  region_search:
+    enabled: false
+    min_inliers: 8
+    inlier_distance_ratio: 0.005
+    min_area_ratio: 0.01
   postprocess:
     min_score: 0.05
     threshold_diagonal_ratio: 0.005
@@ -127,6 +133,7 @@ ball_detection:
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   batch_size: 4
   image_size: [288, 512]
+  # Ball's model-I/O adapter owns model preprocessing and requires RGB [0, 1].
   normalize_imagenet: true
   score_threshold: 0.5
   subpixel_refine: true

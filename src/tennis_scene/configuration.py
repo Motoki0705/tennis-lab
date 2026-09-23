@@ -20,6 +20,7 @@ from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateCon
 from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
+from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tennis_scene.motion_alignment.similarity import SimilarityConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig
@@ -184,6 +185,15 @@ _POSTPROCESS_SCHEMA = StrictConfigSchema(
         for field in fields(CourtKPPostprocessConfig)
     },
 )
+_COURT_REGION_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.court_kp.region_search",
+    fields={
+        "enabled": ConfigField.of(bool),
+        "min_inliers": ConfigField.of(int),
+        "inlier_distance_ratio": ConfigField.of(float, int),
+        "min_area_ratio": ConfigField.of(float, int),
+    },
+)
 _COURT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp",
     fields={
@@ -196,6 +206,7 @@ _COURT_SCHEMA = StrictConfigSchema(
         "subpixel_refine": ConfigField.of(bool),
         "load_keypoint_contract": ConfigField.of(str, type(None)),
         "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
+        "region_search": ConfigField.mapping(_COURT_REGION_SCHEMA),
     },
 )
 _COURT_FOOTPOINT_FILTER_SCHEMA = StrictConfigSchema(
@@ -473,6 +484,7 @@ class PipelineRuntimeConfig:
             output_path=court_output,
             load_path=court_load,
             postprocess=CourtKPPostprocessConfig(**cast("dict[str, Any]", dict(post))),
+            region_search=CourtRegionSearchConfig(**cast("dict[str, Any]", dict(_mapping(court["region_search"], name="court_kp.region_search")))),
             output_keypoint_contract=court_contract.selector,
             load_keypoint_contract=cast(str | None, court["load_keypoint_contract"]),
             resolver=resolver,
@@ -733,51 +745,6 @@ class PipelineRuntimeConfig:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class ReferenceClipPaths:
-    """Resolved path authority for the reference-clip reconstruction boundary."""
-
-    roots: RuntimePathRoots
-    resolver: PathResolver
-    clip_dir: Path
-    output_dir: Path
-    dino_checkpoint: Path
-    dino_repository: Path
-    vitpose_checkpoint: Path
-    plcs_checkpoint: Path
-    blcs_checkpoint: Path
-
-    @classmethod
-    def from_config(cls, cfg: DictConfig) -> ReferenceClipPaths:
-        """Resolve every configured path before observation or inference begins."""
-        value = _plain(cfg)
-        roots, resolver = _roots(value["paths"])
-        people = _mapping(value["people"], name="people")
-        return cls(
-            roots=roots,
-            resolver=resolver,
-            clip_dir=resolver.resolve(PathRole.DATA, cast(str, value["clip_dir"])),
-            output_dir=resolver.resolve(
-                PathRole.OUTPUT, cast(str, value["output_dir"])
-            ),
-            dino_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, people["dino_checkpoint"])
-            ),
-            dino_repository=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, people["dino_repository"])
-            ),
-            vitpose_checkpoint=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, cast(str, people["vitpose_checkpoint"])
-            ),
-            plcs_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, value["plcs_checkpoint"])
-            ),
-            blcs_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, value["blcs_checkpoint"])
-            ),
-        )
-
-
 _EXPORT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.export",
     fields={
@@ -802,7 +769,6 @@ class ClipExportRuntimeConfig:
     video_id: str
     video_paths: tuple[Path, ...]
     camera_ids: tuple[str, ...]
-    clip_names: tuple[str, ...] | None
     output_dir: Path
     fps: float | None
     width: int | None
@@ -819,7 +785,6 @@ class ClipExportRuntimeConfig:
             resolver, cast(str, value["source_directory"])
         )
         export = _mapping(value["export"], name="export")
-        names = _nullable_string_sequence(value["clip_names"], name="clip_names")
         width = cast(int | None, export["width"])
         height = cast(int | None, export["height"])
         if (width is None) != (height is None):
@@ -836,13 +801,6 @@ class ClipExportRuntimeConfig:
         crf = cast(int, export["crf"])
         if crf < 0 or crf > 51:
             raise SemanticConfigurationError("export.crf must be in [0, 51].")
-        parsed_names = None
-        if names is not None:
-            parsed_names = tuple(
-                _single_component(item, name="clip_names item") for item in names
-            )
-            if len(set(parsed_names)) != len(parsed_names):
-                raise SemanticConfigurationError("clip_names must be unique.")
         return cls(
             roots=roots,
             resolver=resolver,
@@ -852,7 +810,6 @@ class ClipExportRuntimeConfig:
             video_id=layout.video_id,
             video_paths=layout.video_paths,
             camera_ids=layout.camera_ids,
-            clip_names=parsed_names,
             output_dir=layout.dataset_directory,
             fps=None if fps_raw is None else float(fps_raw),
             width=width,
@@ -860,23 +817,6 @@ class ClipExportRuntimeConfig:
             crf=crf,
             overwrite=cast(bool, export["overwrite"]),
         )
-
-
-_EXPORT_BOUNDARY_SCHEMA = StrictConfigSchema(
-    name="tennis_scene.export_clips",
-    fields={
-        "paths": ConfigField.mapping(PATHS_SCHEMA),
-        "source_directory": ConfigField.of(str),
-        "clip_names": ConfigField.of(list, tuple, type(None)),
-        "export": ConfigField.mapping(_EXPORT_SCHEMA),
-    },
-)
-
-
-def parse_export_config(cfg: DictConfig) -> ClipExportRuntimeConfig:
-    """Validate the headless export boundary."""
-    value = _EXPORT_BOUNDARY_SCHEMA.validate(_plain(cfg))
-    return ClipExportRuntimeConfig._from_validated(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -949,9 +889,7 @@ _CLIP_STUDIO_SCHEMA = StrictConfigSchema(
 def parse_clip_studio_config(cfg: DictConfig) -> ClipStudioRuntimeConfig:
     """Discover and validate one canonical raw dataset video."""
     value = _CLIP_STUDIO_SCHEMA.validate(_plain(cfg))
-    mutable = dict(value)
-    mutable["clip_names"] = None
-    export = ClipExportRuntimeConfig._from_validated(mutable)
+    export = ClipExportRuntimeConfig._from_validated(value)
     gui = _mapping(value["gui"], name="gui")
     canvas_width = cast(int, gui["canvas_width"])
     tile_width = cast(int, gui["tile_width"])
@@ -1408,19 +1346,9 @@ def validate_pipeline_boundary(cfg: DictConfig) -> None:
     PipelineRuntimeConfig.from_config(cfg)
 
 
-def validate_reference_clip_boundary(cfg: DictConfig) -> None:
-    """Validate and resolve all reference-clip paths before side effects."""
-    ReferenceClipPaths.from_config(cfg)
-
-
 def validate_clip_studio_boundary(cfg: DictConfig) -> None:
     """Validate the complete clip-studio GUI boundary."""
     parse_clip_studio_config(cfg)
-
-
-def validate_export_clips_boundary(cfg: DictConfig) -> None:
-    """Validate the complete headless clip-export boundary."""
-    parse_export_config(cfg)
 
 
 def validate_generate_dataset_boundary(cfg: DictConfig) -> None:

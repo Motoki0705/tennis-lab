@@ -1,16 +1,8 @@
 defaults:
-  - paths: default
-  - data: default
-  - _self_
-
-splits:
-  val_ratio: 0.15
-  test_ratio: 0.15
-  seed: 0
-  overwrite: false
-  # Assign every recording to train; pair with data.overfit=true.
-  overfit: false
-
+- paths: default
+- data: default
+- splits: default
+- _self_
 hydra:
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:slcs,generate,make_splits,${tennis_run_id:}},hydra}

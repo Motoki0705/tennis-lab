@@ -43,7 +43,7 @@ class BallDetectionConfig:
         batch_size: Batch size for inference.
         device: Inference device.
         image_size: Model input size as ``(height, width)``.
-        normalize_imagenet: Whether to apply ImageNet normalization.
+        normalize_imagenet: Expected checkpoint normalization flag; checked on load.
         score_threshold: Minimum peak confidence for visible detections.
         subpixel_refine: Whether peak coordinates are refined to sub-cell
             precision instead of raw heatmap-lattice argmax.
@@ -216,7 +216,7 @@ class BallDetectionModule(BasePipelineModule):
             return
 
         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
-        self._pipeline = BallDetectionPredictor.load_from_checkpoint(
+        predictor = BallDetectionPredictor.load_from_checkpoint(
             self.config.checkpoint,
             resolver=self.config.resolver,
             device=self.config.device,
@@ -224,6 +224,12 @@ class BallDetectionModule(BasePipelineModule):
             strict=self.config.checkpoint_strict,
             weights_only=self.config.checkpoint_weights_only,
         )
+        if self.config.normalize_imagenet != predictor.image_normalization.enabled:
+            raise ValueError(
+                "ball_detection.normalize_imagenet does not match the saved "
+                f"checkpoint preprocessing ({predictor.image_normalization.enabled})."
+            )
+        self._pipeline = predictor
 
     @property
     def is_loaded(self) -> bool:
@@ -424,7 +430,7 @@ class BallDetectionModule(BasePipelineModule):
 
         transform = BgrToTensorTransform(
             image_size=self.config.image_size,
-            normalize_imagenet=self.config.normalize_imagenet,
+            normalize_imagenet=False,
         )
         frame_stream = (
             FramePacket(

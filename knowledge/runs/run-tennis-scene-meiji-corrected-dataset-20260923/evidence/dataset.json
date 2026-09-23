@@ -1,0 +1,37 @@
+{
+  "module": "src.tennis_scene.scripts.generate_dataset",
+  "overrides": [
+    "paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup",
+    "paths.data_root=/home/kamimura/projects/tennis-lab/data",
+    "paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt",
+    "paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs",
+    "paths.output_root=/home/kamimura/projects/tennis-lab/outputs",
+    "paths.cache_root=/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/cache",
+    "paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party",
+    "dataset_directory=tennis_multivew/processed/meiji_3cam/dataset",
+    "clip_ids=[video_000/clip_000]",
+    "overwrite=true",
+    "continue_on_error=false",
+    "pipeline_overrides=[\"output_directory=tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset\", \"output_name=scene\", \"court_reference.reference_camera=cam0\", \"court_reference.view_half_turns=[false,false,true]\", \"court_kp.source=load\", \"court_kp.load_path=tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/court_kp_result.json\", \"gvhmr.source=execute\", \"gvhmr.load_path=null\", \"gvhmr.track_selection=auto\", \"player_association.source=load\", \"player_association.reference_camera=cam0\", \"player_association.load_path=tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/inputs/player_association_result.json\", \"ball_detection.enabled=true\", \"ball_detection.source=execute\", \"ball_detection.load_path=null\", \"plcs.source=execute\", \"plcs.load_path=null\", \"blcs.enabled=true\", \"blcs.source=execute\", \"blcs.load_path=null\", \"max_frames=null\", \"court_kp.save_result=true\", \"gvhmr.save_result=true\", \"player_association.save_result=true\", \"ball_detection.save_result=true\", \"plcs.save_result=true\", \"blcs.save_result=true\", \"court_kp.region_search.enabled=true\", \"court_kp.checkpoint=court_detection/multiscale_depth3/b863df1f01f0.ckpt\", \"ball_detection.normalize_imagenet=true\", \"gvhmr.court_footpoint_filter.enabled=true\", \"gvhmr.court_footpoint_filter.baseline_margin_m=10.0\"]"
+  ],
+  "review": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset",
+  "clip": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000",
+  "manual_reference": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/manual_reference.json",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset",
+  "dino_extension": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib/MultiScaleDeformableAttention.so",
+  "court_reuse": {
+    "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-dataset/court_kp_result.json",
+    "copied_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/court_kp_result.json",
+    "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+    "phase": "dataset",
+    "shape": [
+      3,
+      1010,
+      14,
+      2
+    ],
+    "approval": "コート推論は引き継ぎしてください。",
+    "independence": "Each entrypoint retains its own completed Court; no human or Ball/3D predictions are reused.",
+    "ultimate_producer_job": "1790119155415493280_2342075_tennis-scene-cleanup-20260922T231809Z-dataset.job"
+  }
+}

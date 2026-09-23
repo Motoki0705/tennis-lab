@@ -8,10 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pytest
+import torch
 
+from src.tasks.ball_detection.visualization.inference.loader import load_ball_model
+from src.tasks.ball_detection.visualization.inference.peaks import decode_frame_peaks
 from src.tasks.ball_detection.visualization.inference.service import DetectionService
 from src.tasks.ball_detection.visualization.review.checkpoints import BallCheckpointInfo
+from src.utils.data.augmentation import normalize_frames_imagenet
 
 REPO_ROOT = Path("/home/kamimura/projects/tennis-lab")
 DATA_ROOT = REPO_ROOT / "data"
@@ -51,7 +56,7 @@ def test_curated_checkpoint_is_described_from_its_own_config() -> None:
     assert info.minimum_window == 2
 
 
-def test_cpu_window_inference_matches_labels_in_original_pixels() -> None:
+def test_cpu_window_matches_dataset_preprocessing_and_original_pixels() -> None:
     service = DetectionService(REPO_ROOT)
     info = curated_checkpoint(service)
     checkpoint = info.id
@@ -71,11 +76,41 @@ def test_cpu_window_inference_matches_labels_in_original_pixels() -> None:
     ground_truth = {
         item["index"]: item["gt"]["points"] for item in preview["items"]
     }
-    matched = 0
+    # Independently apply the dataset's NumPy normalization. The public UI
+    # accepts raw RGB, while this reference supplies dataset-preprocessed RGB.
+    resolved = service._resolve_scene(scene)
+    plan = service._plan_window(info, resolved, start=start, count=8)
+    loaded = load_ball_model(info.path, device="cpu")
+    assert loaded.image_size_hw is not None
+    raw = service._window_tensor(resolved.frames, plan, size=loaded.image_size_hw)
+    normalization = loaded.image_normalization
+    frames = list(raw[0].permute(0, 2, 3, 1).numpy())
+    if normalization.enabled:
+        frames = normalize_frames_imagenet(
+            frames,
+            mean=np.asarray(normalization.mean, dtype=np.float32).reshape(1, 1, 3),
+            std=np.asarray(normalization.std, dtype=np.float32).reshape(1, 1, 3),
+        )
+    prepared = torch.from_numpy(np.stack(frames)).permute(0, 3, 1, 2).unsqueeze(0).contiguous()
+    with torch.no_grad():
+        call = loaded.adapter.prepare_model_call(
+            prepared, image_normalization=normalization, preprocessed=True,
+        )
+        heatmaps = loaded.adapter.probability_heatmaps(loaded.model(*call.model_args), call)[0]
+    reference = decode_frame_peaks(
+        heatmaps, original_size=resolved.frames.original_size(start), threshold=.5,
+        nms_kernel=info.metrics.nms_kernel,
+        max_peaks=info.metrics.max_predictions_per_frame,
+        subpixel_refine=info.metrics.subpixel_refine,
+    )
     distances: list[float] = []
-    for item in result["items"]:
+    for item, expected in zip(result["items"], reference, strict=True):
         predictions = item["pred"]["points"]
         targets = ground_truth[item["index"]]
+        np.testing.assert_allclose(
+            [(point["x"], point["y"]) for point in predictions], expected.points,
+            rtol=0, atol=1e-4,
+        )
         assert item["pred"]["rasters"][0]["name"] == "probability"
         if not predictions or not targets:
             continue
@@ -85,13 +120,11 @@ def test_cpu_window_inference_matches_labels_in_original_pixels() -> None:
             for t in targets
         )
         distances.append(best)
-        if best <= info.metrics.ball_distance_threshold:
-            matched += 1
-    # The checkpoint's own metric threshold is 4 px in *original* pixels, which
-    # is strict on a 1280x720 clip; the epoch-13 checkpoint still lands most
-    # frames inside it. A broken resize or MDD path collapses this to near zero.
+    # Keep a GT-distance smoke check. Exact recall at the checkpoint's 4px
+    # threshold is an experiment metric, not a preprocessing specification:
+    # restoring its saved normalization changes this window from 5 to 4 matches.
+    # Pixel-exact agreement with the independent dataset path guards the fix.
     assert len(distances) == 8
-    assert matched >= 5
     assert float(sorted(distances)[len(distances) // 2]) <= 2.0 * (
         info.metrics.ball_distance_threshold
     )

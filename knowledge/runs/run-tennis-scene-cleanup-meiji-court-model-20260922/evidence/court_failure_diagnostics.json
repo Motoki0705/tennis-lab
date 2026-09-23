@@ -1,0 +1,19 @@
+{
+  "shape": [
+    3,
+    1010,
+    14,
+    2
+  ],
+  "per_camera_complete_frames": [
+    1,
+    0,
+    21
+  ],
+  "common_complete_frames": [],
+  "frame_zero_valid_points": [
+    [],
+    [],
+    []
+  ]
+}
