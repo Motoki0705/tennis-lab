@@ -1,0 +1,157 @@
+{
+  "court": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "bytes": 1320569176
+  },
+  "dino": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+    "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+    "bytes": 2611369517
+  },
+  "vitpose": {
+    "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+    "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+    "bytes": 2549075546
+  },
+  "hmr2": {
+    "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt",
+    "sha256": "2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e",
+    "bytes": 2709494041
+  },
+  "gvhmr": {
+    "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt",
+    "sha256": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91",
+    "bytes": 163508011
+  },
+  "plcs": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+    "sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+    "bytes": 940592845
+  },
+  "blcs": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/blcs/real-rgb-meiji-e60-v1.ckpt",
+    "sha256": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32",
+    "bytes": 621079077
+  },
+  "ball": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt",
+    "sha256": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+    "bytes": 250620009
+  },
+  "video_cam0": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+    "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+    "bytes": 11850811
+  },
+  "video_cam1": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+    "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+    "bytes": 19479451
+  },
+  "video_cam2": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+    "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+    "bytes": 19787313
+  },
+  "manual_association": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T231809Z/manual_reference.json",
+    "sha256": "9d49a6e7fc75d137119a1e4c60834b03244efc847fc4b6e0e2a37408800ae272",
+    "bytes": 367
+  },
+  "clip_manifest": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/clip.json",
+    "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138",
+    "bytes": 1730
+  },
+  "dataset_manifest": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/dataset.json",
+    "sha256": "df6f3b354fcec99216e52a844eaa46223d3a53d97ec022b857d782ea396b6264",
+    "bytes": 15969
+  },
+  "manual_court_reference": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/manual_court_kp_result.json",
+    "sha256": "4b55bb9a857f55285e2aa2d33163d349d33e1affcd1eee618e9ac1dff6bd6a5b",
+    "bytes": 4066303
+  },
+  "smpl_faces": {
+    "path": "/home/kamimura/projects/tennis-lab/data/smplh/neutral/model.npz",
+    "sha256": "a60a7e29d33f09ef1a6352907e2f485e161f471330ca40592764374063e751df",
+    "bytes": 87259106
+  },
+  "smpl_joint_regressor": {
+    "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt",
+    "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf",
+    "bytes": 662187
+  },
+  "dino_cuda_extension": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib/MultiScaleDeformableAttention.so",
+    "sha256": "8e5e7388243434107aa14380dcc4689053ba2e5443dd862794aa6b52add8d2e7",
+    "bytes": 12098320
+  },
+  "ball_reference_cam0": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/outsource/cam0_annotations.json",
+    "sha256": "d87f2f100afb82badd555b3cfb3b9d2a1015cfe40a06af7b51a9001c0c2f2979",
+    "bytes": 617133
+  },
+  "identity_reference_cam0": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T231809Z/identity_reference_cam0.npz",
+    "sha256": "2355ebe476b42332c9062900cfb0e284ba90ac95e0155ce146e55d64fadac377",
+    "bytes": 362679
+  },
+  "ball_reference_cam1": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/outsource/cam1_annotations.json",
+    "sha256": "6f7b89b591ae6bbc097317e78b8c43384b78eef52f2070d9a67b17dd916a2cc0",
+    "bytes": 628353
+  },
+  "identity_reference_cam1": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T231809Z/identity_reference_cam1.npz",
+    "sha256": "441822ee945ec249a3a8a54e7e6f87d9af26afb741160f9fe03ef2040add3a26",
+    "bytes": 368123
+  },
+  "ball_reference_cam2": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/outsource/cam2_annotations.json",
+    "sha256": "c624cc007c068a8ada161bad0aa9e4ba2e266219a8f7c83ef1a05a1e9930b3e1",
+    "bytes": 620482
+  },
+  "identity_reference_cam2": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T231809Z/identity_reference_cam2.npz",
+    "sha256": "83004c389ed4a5b9bb6a68a6f06f08df9bc4bced113e7fb81437e09cac4a836a",
+    "bytes": 370219
+  },
+  "gvhmr_asset_hmr2_mean_params": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz",
+    "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd",
+    "bytes": 1310
+  },
+  "gvhmr_asset_smplx_to_smpl": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt",
+    "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06",
+    "bytes": 208935
+  },
+  "gvhmr_asset_smpl_coco17_regressor": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt",
+    "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f",
+    "bytes": 469227
+  },
+  "gvhmr_asset_smplx_verts437": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt",
+    "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d",
+    "bytes": 4203
+  },
+  "gvhmr_asset_smpl_neutral_joint_regressor": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt",
+    "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf",
+    "bytes": 662187
+  },
+  "smplx_neutral": {
+    "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/body_models/smplx/SMPLX_NEUTRAL.npz",
+    "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992",
+    "bytes": 108752058
+  },
+  "reused_court_artifact": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/court_kp_result.json",
+    "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+    "bytes": 18534316
+  }
+}

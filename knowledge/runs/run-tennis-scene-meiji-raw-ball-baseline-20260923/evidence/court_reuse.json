@@ -1,0 +1,25 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T191934Z-pipeline/court_kp_result.json",
+  "copied_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/court_kp_result.json",
+  "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+  "producer_job": "1790104834047503676_884861_tennis-scene-cleanup-20260922T191934Z-pipeline.job",
+  "producer_control": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T191934Z",
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "shape": [
+    3,
+    1010,
+    14,
+    2
+  ],
+  "frame_indices": "0..1009",
+  "visible_points": 42420,
+  "court_inference_settings_identical": true,
+  "only_original_court_config_difference": "output_path",
+  "checkpoint_and_video_hashes_identical": true,
+  "approval": "コート推論は引き継ぎしてください。",
+  "scope": "run_pipeline reuses only this task freshly regenerated Court; downstream stages regenerate, generate_dataset independently executes Court and all downstream stages"
+}

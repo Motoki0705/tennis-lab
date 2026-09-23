@@ -1,29 +1,7 @@
-"""Render per-task visualizations from a saved SceneResult run directory.
+"""Render selected tasks from a saved scene and explicitly configured source video.
 
-The tennis-scene pipeline consolidates every stage output into a single
-``SceneResult`` npz. This script reads that npz (plus the source video from the
-metadata sidecar) and renders one video per task so each stage can be inspected
-in isolation, writing the results back into the same run directory:
-
-- ``ball_detection`` -> 2D ball position overlaid on the source video.
-- ``court_kp``       -> 2D court keypoints overlaid on the source video.
-- ``gvhmr``          -> per-player COCO-17 2D pose skeleton on the source video.
-- ``plcs``           -> court top-view of player positions + heading (yaw).
-- ``gvhmr_alignment`` -> court top-view of the GVHMR-aligned player positions and
-  headings with the PLCS reference dashed underneath.
-- ``blcs``           -> court top/side view of the 3D ball trajectory.
-
-Usage:
-    python -m src.tennis_scene.scripts.visualize_tasks
-    python -m src.tennis_scene.scripts.visualize_tasks \
-        scene_path=tennis_scene/tennis_clip.npz
-    python -m src.tennis_scene.scripts.visualize_tasks tasks='[plcs,blcs]'
-
-Notes:
-    - Hydra loads configuration from `src/tennis_scene/configs/visualize_tasks.yaml`.
-    - Scene and source-video paths are explicit role-relative configuration values.
-    - 2D overlays are written with OpenCV (mp4v); the court top-view animations
-      are written with matplotlib + ffmpeg.
+See src/tennis_scene/README.md for the canonical input/output layout, path
+roots, required files, and executable examples.
 """
 
 from __future__ import annotations
@@ -354,7 +332,8 @@ def _render_plcs(
         return []
 
     anim = FuncAnimation(fig, update, frames=frame_range, interval=1000.0 / fps)
-    anim.save(str(out_path), writer=FFMpegWriter(fps=int(round(fps))), dpi=dpi)
+    # Matplotlib passes fractional FPS to ffmpeg despite its int-only stubs.
+    anim.save(str(out_path), writer=FFMpegWriter(fps=fps), dpi=dpi)  # type: ignore[arg-type]
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
 
@@ -541,7 +520,8 @@ def _render_gvhmr_alignment(
         return []
 
     anim = FuncAnimation(fig, update, frames=frame_range, interval=1000.0 / fps)
-    anim.save(str(out_path), writer=FFMpegWriter(fps=int(round(fps))), dpi=dpi)
+    # Matplotlib passes fractional FPS to ffmpeg despite its int-only stubs.
+    anim.save(str(out_path), writer=FFMpegWriter(fps=fps), dpi=dpi)  # type: ignore[arg-type]
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
 
@@ -626,7 +606,8 @@ def _render_blcs(
         return []
 
     anim = FuncAnimation(fig, update, frames=frame_range, interval=1000.0 / fps)
-    anim.save(str(out_path), writer=FFMpegWriter(fps=int(round(fps))), dpi=dpi)
+    # Matplotlib passes fractional FPS to ffmpeg despite its int-only stubs.
+    anim.save(str(out_path), writer=FFMpegWriter(fps=fps), dpi=dpi)  # type: ignore[arg-type]
     plt.close(fig)
     LOGGER.info("wrote %s", out_path)
 

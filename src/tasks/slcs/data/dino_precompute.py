@@ -8,7 +8,7 @@ Per clip camera, frames at the contract's explicit sample indices
 (:func:`src.tasks.slcs.data.dino_tokens.sample_frame_indices`) are decoded,
 resized to the spec's fixed input size and encoded; results are written via
 :func:`src.tasks.slcs.data.dino_tokens.write_dino_tokens` (completion marker
-last). Completed clips are skipped unless ``overwrite=True``; per-clip
+last). Compatible completed clips are reused unless ``overwrite=True``; per-clip
 failures are recorded and reported — the run result never hides them.
 """
 
@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from string import hexdigits
 
 import cv2
 import numpy as np
@@ -26,6 +27,7 @@ from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.dino_tokens import (
     DinoTokenSpec,
     has_dino_tokens,
+    load_dino_tokens,
     sample_frame_indices,
     write_dino_tokens,
 )
@@ -147,25 +149,39 @@ def run_precompute(
     *,
     batch_size: int,
     overwrite: bool,
+    checkpoint_sha256: str,
     generator: dict[str, object] | None = None,
 ) -> PrecomputeReport:
-    """Precompute tokens for every clip in the dataset index."""
+    """Precompute tokens, reusing only caches from the same checkpoint bytes."""
+    if len(checkpoint_sha256) != 64 or any(
+        char not in hexdigits for char in checkpoint_sha256
+    ):
+        raise ValueError("checkpoint_sha256 must be a SHA-256 hex digest.")
+    checkpoint_sha256 = checkpoint_sha256.lower()
+    provenance = {**(generator or {}), "checkpoint_sha256": checkpoint_sha256}
     index = SLCSDataIndex.load(dataset_root)
     report = PrecomputeReport()
     for ref in index.clips:
         clip_dir = index.clip_dir(ref)
-        if not overwrite and has_dino_tokens(clip_dir):
-            report.skipped_existing.append(ref.clip_id)
-            continue
         try:
             manifest = ClipManifest.load(clip_dir)
+            if not overwrite and has_dino_tokens(clip_dir):
+                for camera_id in manifest.camera_ids:
+                    load_dino_tokens(
+                        manifest,
+                        camera_id,
+                        expected_spec=spec,
+                        expected_checkpoint_sha256=checkpoint_sha256,
+                    )
+                report.skipped_existing.append(ref.clip_id)
+                continue
             precompute_clip_tokens(
                 manifest,
                 encoder,
                 spec,
                 batch_size=batch_size,
                 overwrite=overwrite,
-                generator=generator,
+                generator=provenance,
             )
             report.processed.append(ref.clip_id)
         # Continue across clips so the report contains every per-clip failure.

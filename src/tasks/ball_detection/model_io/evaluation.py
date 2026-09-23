@@ -53,7 +53,9 @@ class LightningBallHeatmapPredictor:
     ) -> Tensor:
         """Predict probability heatmaps through the resolved adapter."""
         call = self.adapter.prepare_model_call(
-            images.to(self.device, non_blocking=True)
+            images.to(self.device, non_blocking=True),
+            image_normalization=self.module.image_normalization,
+            preprocessed=True,
         )
         logits = self.module.model(*call.model_args)
         return self.adapter.probability_heatmaps(

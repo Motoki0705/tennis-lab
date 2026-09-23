@@ -1,0 +1,113 @@
+[
+  {
+    "camera": "cam0",
+    "old_track_ids": [
+      1,
+      2
+    ],
+    "new_track_ids": [
+      1,
+      2
+    ],
+    "old_to_new_pair_costs": [
+      [
+        {
+          "bbox_median": 0.0,
+          "pose_median": 6.472094327136801e-08,
+          "supported_frames": 1010
+        },
+        {
+          "bbox_median": 4.304156303405762,
+          "pose_median": 4.286527633666992,
+          "supported_frames": 950
+        }
+      ],
+      [
+        {
+          "bbox_median": 12.453962326049805,
+          "pose_median": 12.41342830657959,
+          "supported_frames": 950
+        },
+        {
+          "bbox_median": 0.0,
+          "pose_median": 1.6044765516198822e-07,
+          "supported_frames": 950
+        }
+      ]
+    ]
+  },
+  {
+    "camera": "cam1",
+    "old_track_ids": [
+      1,
+      2
+    ],
+    "new_track_ids": [
+      1,
+      2
+    ],
+    "old_to_new_pair_costs": [
+      [
+        {
+          "bbox_median": 0.0,
+          "pose_median": 5.761824439787233e-08,
+          "supported_frames": 1010
+        },
+        {
+          "bbox_median": 2.860531806945801,
+          "pose_median": 2.8383536338806152,
+          "supported_frames": 1010
+        }
+      ],
+      [
+        {
+          "bbox_median": 10.375598907470703,
+          "pose_median": 10.319072723388672,
+          "supported_frames": 1010
+        },
+        {
+          "bbox_median": 0.0,
+          "pose_median": 9.473593820530368e-08,
+          "supported_frames": 1010
+        }
+      ]
+    ]
+  },
+  {
+    "camera": "cam2",
+    "old_track_ids": [
+      1,
+      2
+    ],
+    "new_track_ids": [
+      1,
+      2
+    ],
+    "old_to_new_pair_costs": [
+      [
+        {
+          "bbox_median": 0.0,
+          "pose_median": 6.339313074477104e-08,
+          "supported_frames": 1010
+        },
+        {
+          "bbox_median": 0.8670696020126343,
+          "pose_median": 0.804897129535675,
+          "supported_frames": 999
+        }
+      ],
+      [
+        {
+          "bbox_median": 4.150330066680908,
+          "pose_median": 3.8402111530303955,
+          "supported_frames": 999
+        },
+        {
+          "bbox_median": 0.0,
+          "pose_median": 1.0540247075141451e-07,
+          "supported_frames": 999
+        }
+      ]
+    ]
+  }
+]

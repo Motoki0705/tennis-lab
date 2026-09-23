@@ -1,0 +1,32 @@
+{
+  "pipeline": {
+    "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/court_kp_result.json",
+    "copied_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/court_kp_result.json",
+    "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+    "phase": "pipeline",
+    "shape": [
+      3,
+      1010,
+      14,
+      2
+    ],
+    "approval": "コート推論は引き継ぎしてください。",
+    "independence": "Each entrypoint retains its own completed Court; no human or Ball/3D predictions are reused.",
+    "ultimate_producer_job": "1790104834047503676_884861_tennis-scene-cleanup-20260922T191934Z-pipeline.job"
+  },
+  "dataset": {
+    "source": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-dataset/court_kp_result.json",
+    "copied_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/court_kp_result.json",
+    "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+    "phase": "dataset",
+    "shape": [
+      3,
+      1010,
+      14,
+      2
+    ],
+    "approval": "コート推論は引き継ぎしてください。",
+    "independence": "Each entrypoint retains its own completed Court; no human or Ball/3D predictions are reused.",
+    "ultimate_producer_job": "1790119155415493280_2342075_tennis-scene-cleanup-20260922T231809Z-dataset.job"
+  }
+}

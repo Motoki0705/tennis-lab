@@ -1,0 +1,38 @@
+         801646 function calls (801546 primitive calls) in 2.129 seconds
+
+   Ordered by: cumulative time
+   List reduced from 324 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.016    0.016    2.129    2.129 hybrid_homography.py:165(estimate_hybrid_homography)
+     1215    0.437    0.000    1.363    0.001 line_evidence.py:146(line_residuals)
+       14    0.000    0.000    1.269    0.091 _util.py:705(inner)
+       14    0.001    0.000    1.269    0.091 least_squares.py:266(least_squares)
+      919    0.002    0.000    1.190    0.001 _differentiable_functions.py:422(__call__)
+      919    0.002    0.000    1.186    0.001 least_squares.py:262(__call__)
+      919    0.011    0.000    1.184    0.001 hybrid_homography.py:360(residual)
+       14    0.000    0.000    1.099    0.078 trf.py:113(trf)
+       14    0.004    0.000    1.099    0.078 trf.py:415(trf_no_bounds)
+      100    0.002    0.000    1.065    0.011 _numdiff.py:278(approx_derivative)
+      100    0.001    0.000    1.053    0.011 _numdiff.py:663(_dense_difference)
+      100    0.003    0.000    1.050    0.010 _numdiff.py:686(<listcomp>)
+      800    0.004    0.000    1.044    0.001 _numdiff.py:871(__call__)
+      100    0.000    0.000    0.923    0.009 _differentiable_functions.py:748(jac)
+      100    0.000    0.000    0.921    0.009 _differentiable_functions.py:711(_update_jac)
+       86    0.001    0.000    0.920    0.011 _differentiable_functions.py:447(__call__)
+     1011    0.008    0.000    0.554    0.001 hybrid_homography.py:256(evaluate)
+     1215    0.292    0.000    0.525    0.000 line_evidence.py:135(segment_distances)
+    47453    0.275    0.000    0.275    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+     1308    0.041    0.000    0.214    0.000 confidence_homography.py:132(_has_support)
+     1930    0.036    0.000    0.210    0.000 hybrid_homography.py:107(project_candidate)
+     3686    0.035    0.000    0.179    0.000 _linalg.py:2623(norm)
+     3238    0.026    0.000    0.169    0.000 _linalg.py:2060(matrix_rank)
+       14    0.001    0.000    0.167    0.012 _differentiable_functions.py:542(__init__)
+      219    0.001    0.000    0.160    0.001 _differentiable_functions.py:705(_update_fun)
+      119    0.000    0.000    0.144    0.001 _differentiable_functions.py:741(fun)
+     3238    0.063    0.000    0.097    0.000 _linalg.py:1689(svd)
+     1215    0.068    0.000    0.091    0.000 line_evidence.py:114(clip_segments)
+      504    0.013    0.000    0.078    0.000 hybrid_homography.py:118(select_keypoints)
+     7697    0.032    0.000    0.078    0.000 _methods.py:117(_mean)
+
+

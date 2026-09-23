@@ -139,6 +139,9 @@ class _FakePLCSModule:
         self.result = result
 
     def process(self, *args: Any, **kwargs: Any) -> PLCSResult:
+        visibility = kwargs["human_kp_vis"]
+        assert isinstance(visibility, np.ndarray)
+        assert np.all((visibility >= 0) & (visibility <= 1))
         return self.result
 
 
@@ -184,6 +187,7 @@ def test_run_preserves_plcs_and_stores_alignment_separately(
         track_ids=np.array([5], dtype=np.int32),
         track_ids_by_camera=[np.array([5], dtype=np.int32)],
     )
+    aligned.human_kp_vis[0, 0, 0, 0] = 1.02
     association = PlayerAssociationResult(
         camera_ids=["cam0"],
         canonical_player_ids=np.array([5], dtype=np.int32),
@@ -266,3 +270,7 @@ def test_run_preserves_plcs_and_stores_alignment_separately(
     }
     assert "player_motion" not in result.metadata
     assert result.metadata["track_ids"] == [5]
+    assert result.human_kp_vis is not None
+    assert result.human_kp_vis.max() == 1
+    assert aligned.human_kp_vis.max() == pytest.approx(1.02)
+    assert result.metadata["pose_visibility_conversion"]["saturated_above_one_count"] == 1

@@ -14,15 +14,9 @@ from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ENTRYPOINTS = (
+    "src.tasks.slcs.scripts.generate_dataset",
     "src.tasks.slcs.scripts.evaluate_run",
     "src.tasks.blcs.scripts.evaluate_real",
-    "src.tennis_scene.scripts.import_broadcast_ball",
-    "src.tennis_scene.scripts.prepare_blcs_real_dataset",
-    "src.tennis_scene.scripts.build_real_rgb",
-    "src.tennis_scene.scripts.build_slcs_dataset",
-    "src.tennis_scene.scripts.assemble_slcs_dataset",
-    "src.tennis_scene.scripts.report_slcs_dataset_quality",
-    "src.tennis_scene.scripts.render_reconstruction_review",
 )
 REMOVED_ENTRYPOINTS = (
     "scripts/analysis/benchmark_vitpose_precision.py",

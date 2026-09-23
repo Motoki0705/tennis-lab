@@ -265,6 +265,17 @@ class PlayerAssociationModule(BasePipelineModule):
                 )
             LOGGER.info(f"Loading player association result from {load_path}")
             result = PlayerAssociationResult.load(load_path)
+            if result.camera_ids != camera_ids:
+                raise ValueError(
+                    "Player association camera_ids must match the runtime camera "
+                    f"order: {result.camera_ids} != {camera_ids}"
+                )
+            reference_camera = self._resolve_reference_camera(camera_ids)
+            if result.reference_camera != reference_camera:
+                raise ValueError(
+                    "Player association reference_camera must match the runtime "
+                    f"reference: {result.reference_camera!r} != {reference_camera!r}"
+                )
             self._validate_or_raise(
                 result,
                 num_frames=num_frames,

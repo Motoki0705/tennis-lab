@@ -1,0 +1,37 @@
+{
+  "camera": "cam0",
+  "bbox_median_matrix": [
+    [
+      0.0,
+      4.359797273754099
+    ],
+    [
+      12.638323499868575,
+      0.0
+    ]
+  ],
+  "pose_median_matrix": [
+    [
+      0.0,
+      4.36452234281547
+    ],
+    [
+      12.610088987135004,
+      0.0
+    ]
+  ],
+  "bbox_diagonal_p95": [
+    0.0,
+    0.0
+  ],
+  "opposite_order_better_frames": [],
+  "old_track_ids": [
+    1,
+    2
+  ],
+  "new_track_ids": [
+    1,
+    2
+  ],
+  "status": "Numerical early evidence only; final all-camera source-image review still required."
+}

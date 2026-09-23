@@ -1,0 +1,36 @@
+batch_size: 8
+num_workers: 4
+pin_memory: true
+overfit: false
+domain_sampling:
+  enabled: false
+  video_domains: {}
+window_size: 120
+train_stride: 60
+eval_stride: 120
+num_players: 2
+num_court_kp: 14
+require_dino: true
+cache_dino_tokens: true
+on_incomplete: error
+dino:
+  backbone: dinov3_vitb16
+  patch_size: 16
+  image_height: 256
+  image_width: 448
+  embed_dim: 768
+  frame_stride: 10
+quality:
+  min_player_confidence: 0.3
+  min_ball_cameras: 1
+  label_weight_power: 1.0
+  min_window_label_ratio: 0.1
+augmentation:
+  enabled: false
+  joint_dropout: 0.1
+  ball_dropout: 0.15
+  uv_std: 0.003
+  burst_probability: 0.5
+  burst_max_frames: 24
+  rgb_only_probability: 0.15
+  rgb_dropout_probability: 0.1

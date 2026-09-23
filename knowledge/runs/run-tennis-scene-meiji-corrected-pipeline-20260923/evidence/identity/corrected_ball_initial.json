@@ -1,0 +1,44 @@
+{
+  "cam0": {
+    "observed": 841,
+    "detected_on_observed": 315,
+    "missing_rate": 0.6254458977407847,
+    "distance_px_mean_median_p95": [
+      87.42156312563017,
+      7.635747936174171,
+      475.8777984685381
+    ]
+  },
+  "cam1": {
+    "observed": 985,
+    "detected_on_observed": 651,
+    "missing_rate": 0.33908629441624366,
+    "distance_px_mean_median_p95": [
+      30.62403336462159,
+      4.2954947491485935,
+      311.5866299183623
+    ]
+  },
+  "cam2": {
+    "observed": 941,
+    "detected_on_observed": 621,
+    "missing_rate": 0.34006376195536664,
+    "distance_px_mean_median_p95": [
+      40.971066792846884,
+      6.620660786347368,
+      336.7002860406026
+    ]
+  },
+  "ball_3d": {
+    "z_min_max": [
+      -0.7501033544540405,
+      4.452001571655273
+    ],
+    "z_below_zero_frames": 50,
+    "speed_m_s_median_p95_max": [
+      18.306201934814453,
+      67.10973663330076,
+      412.1759948730469
+    ]
+  }
+}

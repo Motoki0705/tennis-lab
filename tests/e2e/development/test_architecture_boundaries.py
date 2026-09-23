@@ -96,6 +96,47 @@ COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.mask_predictor",
     "src.tasks.court_detection.inference.semantic_lines",
 )
+TENNIS_SCENE_REMOVED_MODULES = (
+    "src.tennis_scene.clip_studio.migration",
+    "src.tennis_scene.dataset_pipeline",
+    "src.tennis_scene.dataset_pipeline.assemble",
+    "src.tennis_scene.dataset_pipeline.blcs_training",
+    "src.tennis_scene.dataset_pipeline.build",
+    "src.tennis_scene.dataset_pipeline.checkpoint_integrity",
+    "src.tennis_scene.dataset_pipeline.checkpoint_warning",
+    "src.tennis_scene.dataset_pipeline.configuration",
+    "src.tennis_scene.dataset_pipeline.court",
+    "src.tennis_scene.dataset_pipeline.detector_ball",
+    "src.tennis_scene.dataset_pipeline.features",
+    "src.tennis_scene.dataset_pipeline.geometry",
+    "src.tennis_scene.dataset_pipeline.legacy",
+    "src.tennis_scene.dataset_pipeline.orchestration",
+    "src.tennis_scene.dataset_pipeline.people",
+    "src.tennis_scene.dataset_pipeline.person_association",
+    "src.tennis_scene.dataset_pipeline.preparation",
+    "src.tennis_scene.dataset_pipeline.provenance",
+    "src.tennis_scene.dataset_pipeline.quality",
+    "src.tennis_scene.dataset_pipeline.quality_report",
+    "src.tennis_scene.dataset_pipeline.refinement",
+    "src.tennis_scene.dataset_pipeline.reprojection_audit",
+    "src.tennis_scene.dataset_pipeline.review",
+    "src.tennis_scene.dataset_pipeline.teacher_review",
+    "src.tennis_scene.reference_pipeline",
+    "src.tennis_scene.reference_pipeline.observations",
+    "src.tennis_scene.reference_pipeline.reconstruction",
+    "src.tennis_scene.reference_pipeline.reference",
+    "src.tennis_scene.reference_pipeline.rendering",
+    "src.tennis_scene.scripts.assemble_slcs_dataset",
+    "src.tennis_scene.scripts.build_real_rgb",
+    "src.tennis_scene.scripts.build_slcs_dataset",
+    "src.tennis_scene.scripts.export_clips",
+    "src.tennis_scene.scripts.import_broadcast_ball",
+    "src.tennis_scene.scripts.migrate_video_clip_layout",
+    "src.tennis_scene.scripts.prepare_blcs_real_dataset",
+    "src.tennis_scene.scripts.reconstruct_reference_clip",
+    "src.tennis_scene.scripts.render_reconstruction_review",
+    "src.tennis_scene.scripts.report_slcs_dataset_quality",
+)
 ISSUE_695_REMOVAL_PREFIXES = ("src.synthetic_data_generation.",)
 SUPPORTED_TASK_LOCAL_MODULES = frozenset(
     {
@@ -1365,16 +1406,21 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     deleted = _deleted_repository_modules()
     original = frozenset(REMOVED_MODULES)
     assert original <= deleted
+    removed = (
+        *REMOVED_MODULES,
+        *COURT_INFERENCE_REMOVED_MODULES,
+        *TENNIS_SCENE_REMOVED_MODULES,
+    )
     unexpected = {
         module
-        for module in deleted - original - frozenset(COURT_INFERENCE_REMOVED_MODULES)
+        for module in deleted - frozenset(removed)
         if not module.startswith(ISSUE_695_REMOVAL_PREFIXES)
     }
     assert not unexpected, f"deletions outside the canonical migration: {unexpected}"
 
     missing = [
         module
-        for module in (*REMOVED_MODULES, *COURT_INFERENCE_REMOVED_MODULES)
+        for module in removed
         if _module_path(module) is not None
     ]
     assert not missing, f"removed modules still exist: {missing}"
@@ -1384,7 +1430,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         if path.resolve() == Path(__file__).resolve():
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        for module in (*REMOVED_MODULES, *COURT_INFERENCE_REMOVED_MODULES):
+        for module in removed:
             references = (module, module.replace(".", "/"))
             if any(reference in text for reference in references):
                 stale.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")

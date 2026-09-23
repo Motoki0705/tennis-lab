@@ -1,0 +1,6578 @@
+{
+  "scope": "Selected diagnostic 8-frame windows; includes difficult frames; not full-pipeline overlap/gating or a held-out benchmark. Both modes use the same model weights and raw video windows on CPU.",
+  "checkpoint_sha256": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+  "normalization": {
+    "enabled": true,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "starts": [
+    0,
+    96,
+    232,
+    400,
+    504,
+    528,
+    768,
+    824,
+    992
+  ],
+  "summary": {
+    "cam0": {
+      "missing_normalization": {
+        "observed": 55,
+        "detected_on_observed": 14,
+        "missing_rate": 0.7454545454545455,
+        "distance_px": {
+          "mean": 191.13477032279474,
+          "median": 238.24751405352907,
+          "p95": 338.1685482943887
+        }
+      },
+      "saved_normalization": {
+        "observed": 55,
+        "detected_on_observed": 18,
+        "missing_rate": 0.6727272727272727,
+        "distance_px": {
+          "mean": 41.993790356247914,
+          "median": 6.583340740949266,
+          "p95": 206.15950146014322
+        }
+      }
+    },
+    "cam1": {
+      "missing_normalization": {
+        "observed": 71,
+        "detected_on_observed": 43,
+        "missing_rate": 0.3943661971830986,
+        "distance_px": {
+          "mean": 326.1350869942494,
+          "median": 7.558165262223937,
+          "p95": 761.4654587271341
+        }
+      },
+      "saved_normalization": {
+        "observed": 71,
+        "detected_on_observed": 42,
+        "missing_rate": 0.4084507042253521,
+        "distance_px": {
+          "mean": 60.15796960673705,
+          "median": 4.8767200754253395,
+          "p95": 323.1498294214242
+        }
+      }
+    },
+    "cam2": {
+      "missing_normalization": {
+        "observed": 62,
+        "detected_on_observed": 50,
+        "missing_rate": 0.19354838709677424,
+        "distance_px": {
+          "mean": 109.8701069143359,
+          "median": 3.497922186424942,
+          "p95": 759.2660414379559
+        }
+      },
+      "saved_normalization": {
+        "observed": 62,
+        "detected_on_observed": 48,
+        "missing_rate": 0.22580645161290325,
+        "distance_px": {
+          "mean": 3.783591637483692,
+          "median": 3.8120224963869864,
+          "p95": 7.323245013094976
+        }
+      }
+    }
+  },
+  "records": [
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 0,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6313087344169617,
+      "uv_px": [
+        601.5336715877056,
+        481.24532970786095
+      ],
+      "distance_px": 15.372282769574374,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 1,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6663879156112671,
+      "uv_px": [
+        602.9172279536724,
+        475.99642276763916
+      ],
+      "distance_px": 16.498011741613116,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 2,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5795274376869202,
+      "uv_px": [
+        595.2182789444923,
+        474.51541352272034
+      ],
+      "distance_px": 39.381880477866645,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 3,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.44703489542007446,
+      "uv_px": [
+        608.5651484429836,
+        463.39745756983757
+      ],
+      "distance_px": null,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 4,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.46479690074920654,
+      "uv_px": [
+        631.6241924464703,
+        470.9762464761734
+      ],
+      "distance_px": null,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 5,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5380117297172546,
+      "uv_px": [
+        620.998854726553,
+        463.5958001315594
+      ],
+      "distance_px": 66.7484678803422,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 6,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6440020203590393,
+      "uv_px": [
+        618.9525730311871,
+        466.5833832025528
+      ],
+      "distance_px": 86.8697913824831,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 7,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.833081066608429,
+      "uv_px": [
+        622.9118821918964,
+        476.4459413588047
+      ],
+      "distance_px": 104.95297802256233,
+      "window_seconds": 3.176427717997285
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 0,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.482243150472641,
+      "uv_px": [
+        732.1510691940784,
+        408.0065027177334
+      ],
+      "distance_px": null,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 1,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5570451617240906,
+      "uv_px": [
+        733.8878350555897,
+        404.7029478549957
+      ],
+      "distance_px": 136.08340517486906,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 2,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5210896730422974,
+      "uv_px": [
+        733.3393766582012,
+        411.5817495882511
+      ],
+      "distance_px": 113.22081360072845,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 3,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3491048812866211,
+      "uv_px": [
+        743.4068195223808,
+        413.2892706692219
+      ],
+      "distance_px": null,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 4,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.24436131119728088,
+      "uv_px": [
+        735.7947431206703,
+        401.766236692667
+      ],
+      "distance_px": null,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 5,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.27671170234680176,
+      "uv_px": [
+        692.9703794121742,
+        415.08107447624207
+      ],
+      "distance_px": null,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 6,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5692558884620667,
+      "uv_px": [
+        697.0479016602039,
+        414.80963972210884
+      ],
+      "distance_px": 7.307258570175267,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 0,
+      "frame": 7,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5801042914390564,
+      "uv_px": [
+        706.2257438600063,
+        427.7424558401108
+      ],
+      "distance_px": 13.510800368403121,
+      "window_seconds": 3.1642657590018644
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 96,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.08352623879909515,
+      "uv_px": [
+        673.0507593154907,
+        566.3637763857841
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 97,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.07918393611907959,
+      "uv_px": [
+        667.1123102903366,
+        559.6420601606369
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 98,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.06758902221918106,
+      "uv_px": [
+        668.8841912150383,
+        562.4436166882515
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 99,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.06265345960855484,
+      "uv_px": [
+        670.7148069441319,
+        564.1248335838318
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 100,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07435391843318939,
+      "uv_px": [
+        676.5008428692818,
+        566.554272711277
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 101,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.05738081783056259,
+      "uv_px": [
+        678.3299144506454,
+        572.6451386809349
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 102,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.05040295422077179,
+      "uv_px": [
+        684.2602995932102,
+        573.76663595438
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 103,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.05395903065800667,
+      "uv_px": [
+        692.3688480854034,
+        566.5747886896133
+      ],
+      "distance_px": null,
+      "window_seconds": 2.95240176399966
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 96,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.17486032843589783,
+      "uv_px": [
+        761.4440663456917,
+        406.1589070260525
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 97,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1794474571943283,
+      "uv_px": [
+        763.3311292529106,
+        400.3789964020252
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 98,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.2034551054239273,
+      "uv_px": [
+        670.8224397599697,
+        558.4979245662689
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 99,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.19459542632102966,
+      "uv_px": [
+        763.1672208309174,
+        398.41820910573006
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 100,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.25584256649017334,
+      "uv_px": [
+        757.2369500696659,
+        402.13639253377914
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 101,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.24217897653579712,
+      "uv_px": [
+        764.4445741474628,
+        402.16260024905205
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 102,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.20009835064411163,
+      "uv_px": [
+        608.6025511324406,
+        549.1378149390221
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 96,
+      "frame": 103,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.22303688526153564,
+      "uv_px": [
+        607.0399308204651,
+        551.673178255558
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9652396439996664
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 232,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9215641021728516,
+      "uv_px": [
+        544.5399795472622,
+        476.758986890316
+      ],
+      "distance_px": 227.7238500881362,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 233,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9193367958068848,
+      "uv_px": [
+        539.5484362244606,
+        478.3754080235958
+      ],
+      "distance_px": 248.77117801892192,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 234,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9012468457221985,
+      "uv_px": [
+        531.7816019058228,
+        482.0858738422394
+      ],
+      "distance_px": 272.18096811854076,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 235,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8638731241226196,
+      "uv_px": [
+        530.491094738245,
+        494.1257303953171
+      ],
+      "distance_px": 292.36450790652407,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 236,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8541049361228943,
+      "uv_px": [
+        530.6652974784374,
+        493.11990079283714
+      ],
+      "distance_px": 305.8216518839346,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 237,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8201314806938171,
+      "uv_px": [
+        536.0543158650398,
+        504.5665947496891
+      ],
+      "distance_px": 318.78721002660797,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 238,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8802672624588013,
+      "uv_px": [
+        532.6237915158272,
+        501.0292284786701
+      ],
+      "distance_px": 333.4121537456066,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 239,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8774382472038269,
+      "uv_px": [
+        532.7828387320042,
+        504.87674617767334
+      ],
+      "distance_px": 347.00185245641256,
+      "window_seconds": 3.112766965001356
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 232,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.505111038684845,
+      "uv_px": [
+        770.8614230155945,
+        400.25426054000854
+      ],
+      "distance_px": 14.620233963260043,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 233,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5374197959899902,
+      "uv_px": [
+        772.2222175002098,
+        384.2466845214367
+      ],
+      "distance_px": 5.695349972198253,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 234,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6184428930282593,
+      "uv_px": [
+        788.8067644536495,
+        384.8949315547943
+      ],
+      "distance_px": 2.6358710189337162,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 235,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5921123027801514,
+      "uv_px": [
+        792.2394620478153,
+        391.5909867286682
+      ],
+      "distance_px": 13.195555452922438,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 236,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.49442318081855774,
+      "uv_px": [
+        808.9538889825344,
+        387.63256055116653
+      ],
+      "distance_px": null,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 237,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3891526460647583,
+      "uv_px": [
+        533.8226792514324,
+        499.41991397738457
+      ],
+      "distance_px": null,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 238,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4282871186733246,
+      "uv_px": [
+        876.073815882206,
+        355.71333196759224
+      ],
+      "distance_px": null,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 232,
+      "frame": 239,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.39961859583854675,
+      "uv_px": [
+        588.1575204730034,
+        454.183660954237
+      ],
+      "distance_px": null,
+      "window_seconds": 3.2049480639980175
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 400,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.16631504893302917,
+      "uv_px": [
+        786.580217808485,
+        437.62064215540886
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 401,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.14647747576236725,
+      "uv_px": [
+        777.5366020798683,
+        433.28771898150444
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 402,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.14839273691177368,
+      "uv_px": [
+        775.2408547401428,
+        430.18636548519135
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 403,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.14393725991249084,
+      "uv_px": [
+        773.4095527231693,
+        427.6744765639305
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 404,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1672528088092804,
+      "uv_px": [
+        767.1816617846489,
+        432.6597306728363
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 405,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1435667723417282,
+      "uv_px": [
+        758.8893597126007,
+        429.5064119398594
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 406,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.16874714195728302,
+      "uv_px": [
+        759.9780410528183,
+        428.6341612935066
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 407,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.14236512780189514,
+      "uv_px": [
+        758.8460663855076,
+        432.0153102874756
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0827764329987986
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 400,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6566647291183472,
+      "uv_px": [
+        783.472763478756,
+        439.5140289962292
+      ],
+      "distance_px": 5.624574314836407,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 401,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8999122977256775,
+      "uv_px": [
+        782.2403048276901,
+        433.31347650289536
+      ],
+      "distance_px": 0.8553406289501254,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 402,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9201943874359131,
+      "uv_px": [
+        776.2824681699276,
+        432.5163760781288
+      ],
+      "distance_px": 0.8147315089635488,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 403,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9232780337333679,
+      "uv_px": [
+        772.0590525567532,
+        433.71260553598404
+      ],
+      "distance_px": 1.3140180439161455,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 404,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9140200018882751,
+      "uv_px": [
+        766.7008027434349,
+        432.4130244255066
+      ],
+      "distance_px": 0.6128824071238703,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 405,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.896808922290802,
+      "uv_px": [
+        764.2286222279072,
+        433.80389842391014
+      ],
+      "distance_px": 3.7532663997619595,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 406,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8374992609024048,
+      "uv_px": [
+        760.6499168872833,
+        435.2718520462513
+      ],
+      "distance_px": 5.859422911723266,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 400,
+      "frame": 407,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7392937541007996,
+      "uv_px": [
+        762.8120668530464,
+        438.10672292113304
+      ],
+      "distance_px": 13.618892825381522,
+      "window_seconds": 3.027573109000514
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 504,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07294300198554993,
+      "uv_px": [
+        691.7472428381443,
+        491.977373033762
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 505,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08407389372587204,
+      "uv_px": [
+        685.1927932500839,
+        483.6798174381256
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 506,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.07756979018449783,
+      "uv_px": [
+        682.4614246785641,
+        487.63634636998177
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 507,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.05386688560247421,
+      "uv_px": [
+        676.3436829447746,
+        483.37137031555176
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 508,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.07673808932304382,
+      "uv_px": [
+        676.6305512785912,
+        484.0759237408638
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 509,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.07621144503355026,
+      "uv_px": [
+        674.2940270006657,
+        481.1290510594845
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 510,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.05409654602408409,
+      "uv_px": [
+        674.253364443779,
+        473.8121785223484
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 511,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.06157951429486275,
+      "uv_px": [
+        650.9164310395718,
+        479.4546835422516
+      ],
+      "distance_px": null,
+      "window_seconds": 3.03147601299861
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 504,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.19673335552215576,
+      "uv_px": [
+        633.7212022542953,
+        537.8950909674168
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 505,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.18072377145290375,
+      "uv_px": [
+        1098.405810713768,
+        345.6503732204437
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 506,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.17364241182804108,
+      "uv_px": [
+        1096.7484254837036,
+        349.31707376241684
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 507,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1609339416027069,
+      "uv_px": [
+        1094.3547677397728,
+        352.5867676138878
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 508,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.2319917380809784,
+      "uv_px": [
+        668.2842040359974,
+        517.6943448185921
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 509,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1933813989162445,
+      "uv_px": [
+        667.343703687191,
+        516.0829401314259
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 510,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.17243538796901703,
+      "uv_px": [
+        677.5031663179398,
+        527.1220799982548
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 504,
+      "frame": 511,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1767825484275818,
+      "uv_px": [
+        680.1274167895317,
+        518.3955861032009
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0830241319999914
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 528,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.12793244421482086,
+      "uv_px": [
+        672.954107105732,
+        533.1505941152573
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 529,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1333971917629242,
+      "uv_px": [
+        674.8277302086353,
+        531.1706735789776
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 530,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.10752477496862411,
+      "uv_px": [
+        670.6799778342247,
+        530.845151245594
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 531,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08551127463579178,
+      "uv_px": [
+        667.5179064273834,
+        536.3027552068233
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 532,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08056309074163437,
+      "uv_px": [
+        664.5751039981842,
+        537.3546653687954
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 533,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.048604339361190796,
+      "uv_px": [
+        660.3461980819702,
+        540.8581706285477
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 534,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.04936647415161133,
+      "uv_px": [
+        451.6732193529606,
+        512.3922185301781
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 535,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.054849013686180115,
+      "uv_px": [
+        452.5091179907322,
+        509.4266949594021
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0675115660014853
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 528,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.24483171105384827,
+      "uv_px": [
+        1087.0706225633621,
+        361.02774211764336
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 529,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.23394575715065002,
+      "uv_px": [
+        1092.3792880773544,
+        359.5720723569393
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 530,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.22410617768764496,
+      "uv_px": [
+        1095.2213205695152,
+        355.72539073228836
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 531,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.18052679300308228,
+      "uv_px": [
+        1095.7758411765099,
+        350.0764543712139
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 532,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.16972897946834564,
+      "uv_px": [
+        1092.910818040371,
+        350.51339969038963
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 533,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1517970710992813,
+      "uv_px": [
+        1097.187077820301,
+        352.685649484396
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 534,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.14092400670051575,
+      "uv_px": [
+        452.00747014582157,
+        511.2275348007679
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 528,
+      "frame": 535,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.16385868191719055,
+      "uv_px": [
+        447.22338593006134,
+        507.18627294898033
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0529407750000246
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 768,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07207030802965164,
+      "uv_px": [
+        405.8311620503664,
+        532.7720453739166
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 769,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08617513626813889,
+      "uv_px": [
+        397.32004852592945,
+        532.7189868092537
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 770,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.03994186967611313,
+      "uv_px": [
+        399.07688830792904,
+        546.6233534812927
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 771,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.029278818517923355,
+      "uv_px": [
+        395.4787095487118,
+        546.3041660189629
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 772,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.03309638425707817,
+      "uv_px": [
+        531.9701595008373,
+        519.0465021431446
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 773,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.03469328209757805,
+      "uv_px": [
+        535.0940847396851,
+        518.6075309514999
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 774,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.04069089516997337,
+      "uv_px": [
+        537.1341898441315,
+        513.8757359981537
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 775,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.03392266854643822,
+      "uv_px": [
+        532.299806445837,
+        508.5548301935196
+      ],
+      "distance_px": null,
+      "window_seconds": 3.043367719001253
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 768,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07054594904184341,
+      "uv_px": [
+        549.6310918033123,
+        516.0433873832226
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 769,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.07693629711866379,
+      "uv_px": [
+        553.4272932112217,
+        527.8601407110691
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 770,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.06732744723558426,
+      "uv_px": [
+        548.5245669782162,
+        574.7390547394753
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 771,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.06996139883995056,
+      "uv_px": [
+        545.7396679520607,
+        575.0379834771156
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 772,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.11212743818759918,
+      "uv_px": [
+        542.5225219428539,
+        557.0306140780449
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 773,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.13289955258369446,
+      "uv_px": [
+        541.7407828569412,
+        519.8050145208836
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 774,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.12752379477024078,
+      "uv_px": [
+        542.3066844046116,
+        523.284530878067
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 768,
+      "frame": 775,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.13329081237316132,
+      "uv_px": [
+        544.0242342054844,
+        513.9468666315079
+      ],
+      "distance_px": null,
+      "window_seconds": 3.048175607000303
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 824,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.10018149763345718,
+      "uv_px": [
+        578.2077759802341,
+        581.7294080853462
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 825,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.12536945939064026,
+      "uv_px": [
+        561.0208970308304,
+        576.2913875579834
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 826,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08042781054973602,
+      "uv_px": [
+        561.1150900423527,
+        568.5365406870842
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 827,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.07396627962589264,
+      "uv_px": [
+        559.3197609484196,
+        584.6703960895538
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 828,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08789008855819702,
+      "uv_px": [
+        561.6914574801922,
+        574.2680876255035
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 829,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.11399181187152863,
+      "uv_px": [
+        559.8511193394661,
+        572.8677273988724
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 830,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.13655826449394226,
+      "uv_px": [
+        548.7397754192352,
+        560.5917119979858
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 831,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.13157226145267487,
+      "uv_px": [
+        559.9145437777042,
+        547.8886555433273
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0216482340001676
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 824,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4022634029388428,
+      "uv_px": [
+        788.3428338468075,
+        403.128362596035
+      ],
+      "distance_px": null,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 825,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.38238680362701416,
+      "uv_px": [
+        789.9446297585964,
+        397.00675481557846
+      ],
+      "distance_px": null,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 826,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.37458446621894836,
+      "uv_px": [
+        788.255103379488,
+        396.64798244833946
+      ],
+      "distance_px": null,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 827,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.33460089564323425,
+      "uv_px": [
+        790.0651876628399,
+        390.89235013723373
+      ],
+      "distance_px": null,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 828,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.42201095819473267,
+      "uv_px": [
+        782.7625127136707,
+        386.93951922655106
+      ],
+      "distance_px": null,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 829,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.48191824555397034,
+      "uv_px": [
+        788.1953963339329,
+        390.6445505619049
+      ],
+      "distance_px": null,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 830,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5473649501800537,
+      "uv_px": [
+        784.8832566440105,
+        391.99944120645523
+      ],
+      "distance_px": 212.0449091466068,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 824,
+      "frame": 831,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5373927354812622,
+      "uv_px": [
+        787.9937420785427,
+        391.71633356809616
+      ],
+      "distance_px": 205.12090010370846,
+      "window_seconds": 3.029758734999632
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 992,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.12710757553577423,
+      "uv_px": [
+        862.1623602211475,
+        451.44095119833946
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 993,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1159934476017952,
+      "uv_px": [
+        859.4237284362316,
+        448.64322131872177
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 994,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1269267499446869,
+      "uv_px": [
+        861.6342045068741,
+        437.5782917737961
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 995,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.10588908940553665,
+      "uv_px": [
+        862.3397084474564,
+        440.4189830124378
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 996,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07718002796173096,
+      "uv_px": [
+        872.0276913046837,
+        440.2808056473732
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 997,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07866720855236053,
+      "uv_px": [
+        866.8636609613895,
+        438.38729017972946
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 998,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.07023884356021881,
+      "uv_px": [
+        872.5740336477757,
+        435.0286508798599
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 999,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.05639194697141647,
+      "uv_px": [
+        874.6890013217926,
+        414.31452292203903
+      ],
+      "distance_px": null,
+      "window_seconds": 2.996701469000982
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 992,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.13966017961502075,
+      "uv_px": [
+        872.769053786993,
+        435.84961158037186
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 993,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.13265694677829742,
+      "uv_px": [
+        873.9780642688274,
+        429.7488413453102
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 994,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1418682485818863,
+      "uv_px": [
+        863.9909742772579,
+        425.51483219861984
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 995,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.11184874922037125,
+      "uv_px": [
+        864.0963194668293,
+        434.50620087981224
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 996,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.13729648292064667,
+      "uv_px": [
+        866.7669515609741,
+        423.31515273451805
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 997,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.15788453817367554,
+      "uv_px": [
+        872.9338200688362,
+        416.53024858236313
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 998,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.16334716975688934,
+      "uv_px": [
+        876.5931070446968,
+        427.49179431796074
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam0",
+      "window_start": 992,
+      "frame": 999,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.11948749423027039,
+      "uv_px": [
+        875.7665304839611,
+        417.91591319441795
+      ],
+      "distance_px": null,
+      "window_seconds": 3.08287389799807
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 0,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6785431504249573,
+      "uv_px": [
+        959.1374684274197,
+        642.4649360775948
+      ],
+      "distance_px": 7.898262712376411,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 1,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8322240710258484,
+      "uv_px": [
+        933.1628447473049,
+        622.2292355895042
+      ],
+      "distance_px": 6.643987697773964,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 2,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9540097713470459,
+      "uv_px": [
+        906.546827852726,
+        608.0682584047318
+      ],
+      "distance_px": 6.7846744662862175,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 3,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.964134693145752,
+      "uv_px": [
+        886.8724984824657,
+        591.2308785915375
+      ],
+      "distance_px": 3.5751917844083363,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 4,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.967706561088562,
+      "uv_px": [
+        865.110710144043,
+        577.8199244141579
+      ],
+      "distance_px": 5.477882171666754,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 5,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9752238392829895,
+      "uv_px": [
+        844.0771876275539,
+        564.7897699475288
+      ],
+      "distance_px": 7.558165262223937,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 6,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9610970616340637,
+      "uv_px": [
+        830.9976844489574,
+        550.4293568730354
+      ],
+      "distance_px": 3.073127608246291,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 7,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9190732836723328,
+      "uv_px": [
+        822.0040533542633,
+        539.150842487812
+      ],
+      "distance_px": 3.823624949451958,
+      "window_seconds": 3.0222630869975546
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 0,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9042436480522156,
+      "uv_px": [
+        946.9881712794304,
+        652.5454845428467
+      ],
+      "distance_px": 18.993661575661445,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 1,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9221107363700867,
+      "uv_px": [
+        931.4914478063583,
+        627.6482193470001
+      ],
+      "distance_px": 7.691825327789093,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 2,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9728376865386963,
+      "uv_px": [
+        905.7333479523659,
+        609.3402490615845
+      ],
+      "distance_px": 7.899626327713531,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 3,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9728621244430542,
+      "uv_px": [
+        885.3300092816353,
+        591.6462789177895
+      ],
+      "distance_px": 5.17247720656655,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 4,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9746080040931702,
+      "uv_px": [
+        865.2725025117397,
+        577.9904835820198
+      ],
+      "distance_px": 5.415990716566892,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 5,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9741426110267639,
+      "uv_px": [
+        842.7067279219627,
+        565.8146684765816
+      ],
+      "distance_px": 9.204831552121792,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 6,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9713982939720154,
+      "uv_px": [
+        831.875217884779,
+        551.6650747656822
+      ],
+      "distance_px": 2.484847629719732,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 0,
+      "frame": 7,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9470849633216858,
+      "uv_px": [
+        822.6623178124428,
+        540.1503372192383
+      ],
+      "distance_px": 4.287947945581514,
+      "window_seconds": 3.0150198739975167
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 96,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3316190838813782,
+      "uv_px": [
+        1336.2176005840302,
+        593.5271889567375
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 97,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.38238418102264404,
+      "uv_px": [
+        1354.6645612716675,
+        588.7807305455208
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 98,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.36930590867996216,
+      "uv_px": [
+        1350.8903210759163,
+        580.6032802462578
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 99,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.31326931715011597,
+      "uv_px": [
+        1353.2649915218353,
+        584.7396616339684
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 100,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3654020130634308,
+      "uv_px": [
+        1356.9720898866653,
+        590.2167204022408
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 101,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3822532296180725,
+      "uv_px": [
+        1371.2433319687843,
+        595.1852530241013
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 102,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.37856194376945496,
+      "uv_px": [
+        1357.7772199511528,
+        584.0008934736252
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 103,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.32902991771698,
+      "uv_px": [
+        1356.2307845950127,
+        582.1382484436035
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9953519580012653
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 96,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6346441507339478,
+      "uv_px": [
+        550.0227334201336,
+        432.0046342611313
+      ],
+      "distance_px": 4.991445975726694,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 97,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7091990113258362,
+      "uv_px": [
+        552.0189161002636,
+        431.01382184028625
+      ],
+      "distance_px": 5.950804415440576,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 98,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.607099711894989,
+      "uv_px": [
+        555.4280511438847,
+        433.70038598775864
+      ],
+      "distance_px": 11.611775576602806,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 99,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5421544313430786,
+      "uv_px": [
+        552.9676519036293,
+        423.3414890766144
+      ],
+      "distance_px": 4.916362047345987,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 100,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6754201650619507,
+      "uv_px": [
+        548.339669585228,
+        416.14472183585167
+      ],
+      "distance_px": 4.837078103504693,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 101,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6725642681121826,
+      "uv_px": [
+        551.1356064081192,
+        416.6952446401119
+      ],
+      "distance_px": 1.9914851672434695,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 102,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6879697442054749,
+      "uv_px": [
+        548.5978854000568,
+        415.23938193917274
+      ],
+      "distance_px": 2.6911558627028214,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 96,
+      "frame": 103,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.641462504863739,
+      "uv_px": [
+        550.1873853206635,
+        414.5707797110081
+      ],
+      "distance_px": 2.3595081657867425,
+      "window_seconds": 3.0426573069998994
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 232,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7371112108230591,
+      "uv_px": [
+        822.0658192634583,
+        506.717460334301
+      ],
+      "distance_px": 7.8326796032944195,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 233,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8505920171737671,
+      "uv_px": [
+        818.8426110446453,
+        501.36124646663666
+      ],
+      "distance_px": 2.807658814751541,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 234,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8865008354187012,
+      "uv_px": [
+        809.9928144514561,
+        493.1492277085781
+      ],
+      "distance_px": 4.799869774611114,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 235,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9247320890426636,
+      "uv_px": [
+        804.6819756925106,
+        490.8745588064194
+      ],
+      "distance_px": 1.582471863360203,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 236,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9470134377479553,
+      "uv_px": [
+        798.1628699302673,
+        486.489927649498
+      ],
+      "distance_px": 1.3808010787497995,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 237,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9380658864974976,
+      "uv_px": [
+        793.2778156101704,
+        483.7605950832367
+      ],
+      "distance_px": 0.5877001259963868,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 238,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.956423282623291,
+      "uv_px": [
+        787.7951761186123,
+        478.3774017393589
+      ],
+      "distance_px": 1.9267577854390892,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 239,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9586518406867981,
+      "uv_px": [
+        783.3784560859203,
+        478.3355658650398
+      ],
+      "distance_px": 2.0818275106270154,
+      "window_seconds": 3.1001634239983105
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 232,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9441426396369934,
+      "uv_px": [
+        825.8734016120434,
+        509.02695494890213
+      ],
+      "distance_px": 3.6667472934424965,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 233,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9635094404220581,
+      "uv_px": [
+        821.7554455697536,
+        506.9553234875202
+      ],
+      "distance_px": 4.449543346457721,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 234,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.965199887752533,
+      "uv_px": [
+        811.9105887413025,
+        493.4106938838959
+      ],
+      "distance_px": 3.471024378327518,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 235,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9655777215957642,
+      "uv_px": [
+        807.398531883955,
+        493.1042404770851
+      ],
+      "distance_px": 1.9686502960537806,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 236,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9770157933235168,
+      "uv_px": [
+        798.1560642421246,
+        489.05259200930595
+      ],
+      "distance_px": 1.9685001323689604,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 237,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9677308201789856,
+      "uv_px": [
+        793.7235023975372,
+        485.61278918385506
+      ],
+      "distance_px": 2.4049311994202367,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 238,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9649354219436646,
+      "uv_px": [
+        788.8748213350773,
+        480.7138115167618
+      ],
+      "distance_px": 1.9194928387697026,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 232,
+      "frame": 239,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9687936902046204,
+      "uv_px": [
+        783.6525137126446,
+        477.87318459153175
+      ],
+      "distance_px": 2.1489054112054666,
+      "window_seconds": 3.0447163120006735
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 400,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9653422832489014,
+      "uv_px": [
+        1121.4659985303879,
+        562.4490190148354
+      ],
+      "distance_px": 4.0052264300491895,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 401,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9650453925132751,
+      "uv_px": [
+        1126.2944912910461,
+        558.6036558151245
+      ],
+      "distance_px": 2.8690069908698987,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 402,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9617213606834412,
+      "uv_px": [
+        1129.1260007023811,
+        553.4018584489822
+      ],
+      "distance_px": 2.6772218137243518,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 403,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9707010388374329,
+      "uv_px": [
+        1135.788483440876,
+        553.5845728516579
+      ],
+      "distance_px": 3.8963225662501695,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 404,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9758532047271729,
+      "uv_px": [
+        1142.0521185398102,
+        551.7466241717339
+      ],
+      "distance_px": 4.42416772144059,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 405,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.973453164100647,
+      "uv_px": [
+        1150.3385871648788,
+        551.1905061006546
+      ],
+      "distance_px": 5.395471056493006,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 406,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.966535747051239,
+      "uv_px": [
+        1156.1527037024498,
+        547.9158601164818
+      ],
+      "distance_px": 4.0911555244884426,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 407,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9350630044937134,
+      "uv_px": [
+        1160.296624302864,
+        539.9997152090073
+      ],
+      "distance_px": 4.386209086775148,
+      "window_seconds": 3.0332149519999803
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 400,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.963478147983551,
+      "uv_px": [
+        1119.7634326815605,
+        560.9353385567665
+      ],
+      "distance_px": 1.9123417609210696,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 401,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9585034251213074,
+      "uv_px": [
+        1125.8822610378265,
+        557.0282344818115
+      ],
+      "distance_px": 1.2613096465024274,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 402,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.959211528301239,
+      "uv_px": [
+        1129.7242149710655,
+        553.5276554822922
+      ],
+      "distance_px": 2.110546574931441,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 403,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9657139778137207,
+      "uv_px": [
+        1136.79927110672,
+        553.9799073934555
+      ],
+      "distance_px": 3.831425892933525,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 404,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.97501140832901,
+      "uv_px": [
+        1142.905403137207,
+        551.7385206818581
+      ],
+      "distance_px": 4.066850913219532,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 405,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9718232154846191,
+      "uv_px": [
+        1150.0806573033333,
+        551.0299798250198
+      ],
+      "distance_px": 5.252822597889252,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 406,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9664440751075745,
+      "uv_px": [
+        1156.173978626728,
+        546.0673640370369
+      ],
+      "distance_px": 2.3797508075880196,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 400,
+      "frame": 407,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9411517381668091,
+      "uv_px": [
+        1160.8640699982643,
+        542.1338914632797
+      ],
+      "distance_px": 3.143367601065675,
+      "window_seconds": 3.0633716439988348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 504,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4523378908634186,
+      "uv_px": [
+        1262.4883210659027,
+        611.8382462859154
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 505,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.48814767599105835,
+      "uv_px": [
+        1255.5426301956177,
+        607.8946121931076
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 506,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.56417316198349,
+      "uv_px": [
+        1254.5599803328514,
+        607.58790153265
+      ],
+      "distance_px": 748.5417762537148,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 507,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.624401330947876,
+      "uv_px": [
+        1252.9985610246658,
+        610.1651971936226
+      ],
+      "distance_px": 749.5217588465304,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 508,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7257007956504822,
+      "uv_px": [
+        1250.760233104229,
+        613.4647967815399
+      ],
+      "distance_px": 749.9186862107987,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 509,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7088860869407654,
+      "uv_px": [
+        1252.0193426012993,
+        610.0822328925133
+      ],
+      "distance_px": 752.6938174803614,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 510,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5942700505256653,
+      "uv_px": [
+        1242.2527797818184,
+        603.9693074226379
+      ],
+      "distance_px": 744.2845764153079,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 511,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5822175145149231,
+      "uv_px": [
+        1241.3889721035957,
+        605.9572992920876
+      ],
+      "distance_px": 745.8539536998825,
+      "window_seconds": 3.0781426510002348
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 504,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3337780237197876,
+      "uv_px": [
+        1257.5914282798767,
+        614.962527513504
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 505,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3629782795906067,
+      "uv_px": [
+        1254.3291588425636,
+        603.1240362524986
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 506,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.42090195417404175,
+      "uv_px": [
+        1256.8915290236473,
+        608.0036877393723
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 507,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4456256926059723,
+      "uv_px": [
+        1259.3548449873924,
+        606.6798604726791
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 508,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.44109031558036804,
+      "uv_px": [
+        1250.7421608567238,
+        609.3890629410744
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 509,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.44358810782432556,
+      "uv_px": [
+        1253.937402844429,
+        609.3426929712296
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 510,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4017489552497864,
+      "uv_px": [
+        1245.0749099254608,
+        610.1749085187912
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 504,
+      "frame": 511,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.43721580505371094,
+      "uv_px": [
+        1240.8945016860962,
+        608.2810071706772
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0633825460026856
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 528,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.42632877826690674,
+      "uv_px": [
+        1221.1867157816887,
+        608.042018532753
+      ],
+      "distance_px": null,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 529,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5106803178787231,
+      "uv_px": [
+        1219.766443014145,
+        600.0295964479446
+      ],
+      "distance_px": 701.2653514202572,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 530,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5939841866493225,
+      "uv_px": [
+        1219.1607939600945,
+        601.7537103891373
+      ],
+      "distance_px": 697.3241447291599,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 531,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6299747824668884,
+      "uv_px": [
+        1222.173254609108,
+        600.258037686348
+      ],
+      "distance_px": 696.2981294974298,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 532,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6708647608757019,
+      "uv_px": [
+        1224.0884553194046,
+        597.6715452075005
+      ],
+      "distance_px": 693.320090499219,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 533,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6437715291976929,
+      "uv_px": [
+        1219.121446788311,
+        594.954110622406
+      ],
+      "distance_px": 683.5080576746054,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 534,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5814404487609863,
+      "uv_px": [
+        1223.530045747757,
+        592.5228064060211
+      ],
+      "distance_px": 683.0710648686751,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 535,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": true,
+      "confidence": 0.5549213886260986,
+      "uv_px": [
+        1232.1038402318954,
+        591.8197321891785
+      ],
+      "distance_px": null,
+      "window_seconds": 3.01354351199916
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 528,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.34635892510414124,
+      "uv_px": [
+        1237.0476293563843,
+        622.0887107849121
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 529,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3552820086479187,
+      "uv_px": [
+        1227.6150599718094,
+        606.9796895980835
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 530,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.36974504590034485,
+      "uv_px": [
+        1218.6021556258202,
+        607.3116754293442
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 531,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3263815641403198,
+      "uv_px": [
+        1224.3722353577614,
+        599.2776440382004
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 532,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3100503981113434,
+      "uv_px": [
+        1215.42773103714,
+        602.9911647439003
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 533,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.2976972758769989,
+      "uv_px": [
+        1221.313564658165,
+        593.6410880088806
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 534,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3918515741825104,
+      "uv_px": [
+        1169.9792312383652,
+        715.4306240081787
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 528,
+      "frame": 535,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": true,
+      "confidence": 0.6903774738311768,
+      "uv_px": [
+        1125.8126028180122,
+        639.9367115497589
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0531968959985534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 768,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.06712207943201065,
+      "uv_px": [
+        1162.578417122364,
+        922.2717528939247
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 769,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.058401938527822495,
+      "uv_px": [
+        1165.1761311292648,
+        916.2419203519821
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 770,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.05915587767958641,
+      "uv_px": [
+        1166.1784545779228,
+        912.5444779992104
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 771,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.059733010828495026,
+      "uv_px": [
+        1176.425304532051,
+        908.9903902411461
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 772,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.048686809837818146,
+      "uv_px": [
+        1178.0626730322838,
+        907.6477834582329
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 773,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.044434938579797745,
+      "uv_px": [
+        1187.9327509403229,
+        908.3201801776886
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 774,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.04085823521018028,
+      "uv_px": [
+        1403.3177967071533,
+        667.6738640666008
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 775,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.045593079179525375,
+      "uv_px": [
+        1406.7418013215065,
+        666.0712381601334
+      ],
+      "distance_px": null,
+      "window_seconds": 3.002046634999715
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 768,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6779590249061584,
+      "uv_px": [
+        841.0165152549744,
+        358.827741086483
+      ],
+      "distance_px": 303.17733065721984,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 769,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6589532494544983,
+      "uv_px": [
+        841.8510413169861,
+        356.9421683251858
+      ],
+      "distance_px": 306.547587411288,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 770,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5654927492141724,
+      "uv_px": [
+        842.5184562802315,
+        357.689200758934
+      ],
+      "distance_px": 307.2755819029244,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 771,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.43258029222488403,
+      "uv_px": [
+        855.3122921288013,
+        352.76305067539215
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 772,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4447484016418457,
+      "uv_px": [
+        854.5161981880665,
+        355.58367612957954
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 773,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4816508889198303,
+      "uv_px": [
+        856.3449266254902,
+        357.15504571795464
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 774,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5800039172172546,
+      "uv_px": [
+        854.8539090156555,
+        359.54776188731194
+      ],
+      "distance_px": 323.2172036370516,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 768,
+      "frame": 775,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7121404409408569,
+      "uv_px": [
+        852.4319990873337,
+        359.4442816078663
+      ],
+      "distance_px": 321.8697193245037,
+      "window_seconds": 3.0493090950003534
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 824,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.48187732696533203,
+      "uv_px": [
+        1347.9487768411636,
+        661.8744021654129
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 825,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5510307550430298,
+      "uv_px": [
+        1339.1129347682,
+        645.6498648524284
+      ],
+      "distance_px": 775.5732179203472,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 826,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6515613198280334,
+      "uv_px": [
+        1330.2237910032272,
+        648.3074236512184
+      ],
+      "distance_px": 765.2143266703443,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 827,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7374087572097778,
+      "uv_px": [
+        1328.9238473773003,
+        651.1145111322403
+      ],
+      "distance_px": 762.1449922926798,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 828,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7211955189704895,
+      "uv_px": [
+        1325.4367042779922,
+        648.140787601471
+      ],
+      "distance_px": 755.3496566372229,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 829,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7443941235542297,
+      "uv_px": [
+        1323.1974613070488,
+        648.6040371060371
+      ],
+      "distance_px": 750.4087062855631,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 830,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7229698300361633,
+      "uv_px": [
+        1312.293033182621,
+        650.270140349865
+      ],
+      "distance_px": 737.4933353561821,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 831,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7476471662521362,
+      "uv_px": [
+        1309.8190797567368,
+        652.2979422211647
+      ],
+      "distance_px": 732.4436335950867,
+      "window_seconds": 3.0078454750000674
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 824,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3296787142753601,
+      "uv_px": [
+        1348.9661986231804,
+        657.3714343309402
+      ],
+      "distance_px": null,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 825,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.383744478225708,
+      "uv_px": [
+        599.882748901844,
+        429.8342495560646
+      ],
+      "distance_px": null,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 826,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3748307228088379,
+      "uv_px": [
+        1335.4670304059982,
+        650.8530128002167
+      ],
+      "distance_px": null,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 827,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4358917772769928,
+      "uv_px": [
+        1333.0875559449196,
+        651.2254517674446
+      ],
+      "distance_px": null,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 828,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.43465572595596313,
+      "uv_px": [
+        1329.2126601934433,
+        648.6381232142448
+      ],
+      "distance_px": null,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 829,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.43552759289741516,
+      "uv_px": [
+        1326.946308851242,
+        648.548791885376
+      ],
+      "distance_px": null,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 830,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5387711524963379,
+      "uv_px": [
+        612.7353767454624,
+        449.9543145298958
+      ],
+      "distance_px": 9.820805668916119,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 824,
+      "frame": 831,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.6227057576179504,
+      "uv_px": [
+        607.452447026968,
+        445.0139833390713
+      ],
+      "distance_px": 5.980927392911828,
+      "window_seconds": 3.010726552998676
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 992,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.03389647975564003,
+      "uv_px": [
+        874.4036199450493,
+        0.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 993,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.02210606075823307,
+      "uv_px": [
+        0.0,
+        1079.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 994,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.020071376115083694,
+      "uv_px": [
+        0.0,
+        1079.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 995,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.018596386536955833,
+      "uv_px": [
+        894.5361608564854,
+        0.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 996,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.019652394577860832,
+      "uv_px": [
+        902.603188931942,
+        0.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 997,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.021913917735219002,
+      "uv_px": [
+        906.8844814896584,
+        0.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 998,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.02641371265053749,
+      "uv_px": [
+        947.5549306869507,
+        0.0
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 999,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.031086618080735207,
+      "uv_px": [
+        942.2247042953968,
+        8.656989185139537
+      ],
+      "distance_px": null,
+      "window_seconds": 3.039342223000858
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 992,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4664507806301117,
+      "uv_px": [
+        847.5766839087009,
+        359.55519008636475
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 993,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.475801944732666,
+      "uv_px": [
+        855.3480934798717,
+        359.25523233413696
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 994,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4805797040462494,
+      "uv_px": [
+        681.6216370761395,
+        413.8589588701725
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 995,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4725406765937805,
+      "uv_px": [
+        690.1644914150238,
+        418.3905461728573
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 996,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5033071637153625,
+      "uv_px": [
+        689.1700602769852,
+        417.9556267261505
+      ],
+      "distance_px": 151.71539413852216,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 997,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4711393117904663,
+      "uv_px": [
+        856.2988881468773,
+        358.40253296494484
+      ],
+      "distance_px": null,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 998,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5296000838279724,
+      "uv_px": [
+        852.3527328372002,
+        358.27332732081413
+      ],
+      "distance_px": 324.1574485813979,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam1",
+      "window_start": 992,
+      "frame": 999,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5294489860534668,
+      "uv_px": [
+        854.5526286363602,
+        357.66688400506973
+      ],
+      "distance_px": 326.41569048104896,
+      "window_seconds": 3.0469430670018482
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 0,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.47060397267341614,
+      "uv_px": [
+        1012.591916680336,
+        370.6692550778389
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 1,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4536267817020416,
+      "uv_px": [
+        1009.4210379123688,
+        354.7895341217518
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 2,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.33539754152297974,
+      "uv_px": [
+        1006.8179479837418,
+        350.33110332489014
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 3,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.2779183089733124,
+      "uv_px": [
+        1005.2167239785194,
+        357.22505086660385
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 4,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.40155693888664246,
+      "uv_px": [
+        988.4476227760315,
+        362.9054043292999
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 5,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5861536860466003,
+      "uv_px": [
+        990.6646757721901,
+        360.0797302722931
+      ],
+      "distance_px": 29.66803737899856,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 6,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.688565194606781,
+      "uv_px": [
+        990.2796682715416,
+        361.4553298354149
+      ],
+      "distance_px": 30.727306951873402,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 7,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.68068927526474,
+      "uv_px": [
+        989.0851842164993,
+        362.72301149368286
+      ],
+      "distance_px": 32.88926019767567,
+      "window_seconds": 2.9840442269996856
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 0,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4699474573135376,
+      "uv_px": [
+        1011.4467309713364,
+        380.5207191705704
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 1,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4162803292274475,
+      "uv_px": [
+        1004.0994473099709,
+        372.50260534882545
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 2,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.3259236514568329,
+      "uv_px": [
+        1001.6474550962448,
+        374.09516620635986
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 3,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.2729143500328064,
+      "uv_px": [
+        1002.1635435819626,
+        370.3383947312832
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 4,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3129369020462036,
+      "uv_px": [
+        993.2843509912491,
+        373.5021643936634
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 5,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3644573390483856,
+      "uv_px": [
+        984.4146520495415,
+        359.72578141093254
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 6,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3813263773918152,
+      "uv_px": [
+        990.165401339531,
+        358.31300869584084
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 0,
+      "frame": 7,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.4505946934223175,
+      "uv_px": [
+        1064.208428800106,
+        406.3450300395489
+      ],
+      "distance_px": null,
+      "window_seconds": 2.981672351997986
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 96,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.971464216709137,
+      "uv_px": [
+        1010.6521239876747,
+        344.4153306186199
+      ],
+      "distance_px": 2.6988856212532917,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 97,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9807674288749695,
+      "uv_px": [
+        1012.1179205179214,
+        338.8944744169712
+      ],
+      "distance_px": 2.867591064090346,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 98,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9702053666114807,
+      "uv_px": [
+        1012.5759032964706,
+        328.0761868059635
+      ],
+      "distance_px": 1.763026542861227,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 99,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9757850170135498,
+      "uv_px": [
+        1010.7357367277145,
+        324.559979647398
+      ],
+      "distance_px": 2.761569011990491,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 100,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.972905695438385,
+      "uv_px": [
+        1012.4825681447983,
+        314.6739792525768
+      ],
+      "distance_px": 0.6700562682434399,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 101,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9759716391563416,
+      "uv_px": [
+        1012.7726391553879,
+        310.69744884967804
+      ],
+      "distance_px": 2.0260337844835137,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 102,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9721996188163757,
+      "uv_px": [
+        1014.000980079174,
+        309.86304664611816
+      ],
+      "distance_px": 5.9460705445505,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 103,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9709699153900146,
+      "uv_px": [
+        1013.2868975400925,
+        304.2878777682781
+      ],
+      "distance_px": 6.0185657991868995,
+      "window_seconds": 3.033241599001485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 96,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9715113639831543,
+      "uv_px": [
+        1009.2810351848602,
+        346.2149485051632
+      ],
+      "distance_px": 0.5511396264325213,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 97,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.977597177028656,
+      "uv_px": [
+        1012.2668449878693,
+        338.59149393439293
+      ],
+      "distance_px": 2.83121117298053,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 98,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9725605249404907,
+      "uv_px": [
+        1012.2878911495209,
+        329.00551560521126
+      ],
+      "distance_px": 1.1259514530471033,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 99,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9749508500099182,
+      "uv_px": [
+        1011.6809839010239,
+        324.6059958934784
+      ],
+      "distance_px": 2.548192337577479,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 100,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9715386629104614,
+      "uv_px": [
+        1014.5828378200531,
+        315.91651436686516
+      ],
+      "distance_px": 1.8237898720690389,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 101,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.969710648059845,
+      "uv_px": [
+        1013.3062279820442,
+        311.1882566511631
+      ],
+      "distance_px": 2.1110975948172084,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 102,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9711280465126038,
+      "uv_px": [
+        1014.5278204083443,
+        307.11776435375214
+      ],
+      "distance_px": 3.1535152253551577,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 96,
+      "frame": 103,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9613533616065979,
+      "uv_px": [
+        1015.3582287430763,
+        302.952859967947
+      ],
+      "distance_px": 4.293304367568608,
+      "window_seconds": 3.0313651119977294
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 232,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.20978762209415436,
+      "uv_px": [
+        843.8103360235691,
+        627.37070697546
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 233,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.19055989384651184,
+      "uv_px": [
+        837.1006709933281,
+        625.6685882210732
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 234,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1615876853466034,
+      "uv_px": [
+        844.8024795353413,
+        627.4796538949013
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 235,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.0940101221203804,
+      "uv_px": [
+        821.7389174699783,
+        635.5690591335297
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 236,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.10395234078168869,
+      "uv_px": [
+        834.2393652498722,
+        630.6453529596329
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 237,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.08780090510845184,
+      "uv_px": [
+        835.557781457901,
+        639.5934708714485
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 238,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.10639997571706772,
+      "uv_px": [
+        874.7523113787174,
+        617.5202075839043
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 239,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.09809847921133041,
+      "uv_px": [
+        870.6967503428459,
+        617.4244449138641
+      ],
+      "distance_px": null,
+      "window_seconds": 3.005296956998791
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 232,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.28040918707847595,
+      "uv_px": [
+        1006.8383078575134,
+        368.3463189601898
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 233,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.27100157737731934,
+      "uv_px": [
+        998.1911949515343,
+        368.80689945816994
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 234,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.30228695273399353,
+      "uv_px": [
+        999.004560470581,
+        353.9783490598202
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 235,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.28173762559890747,
+      "uv_px": [
+        1000.7739250063896,
+        364.2821936905384
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 236,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.3326375186443329,
+      "uv_px": [
+        997.0823825001717,
+        362.740665525198
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 237,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3017056882381439,
+      "uv_px": [
+        999.0050179958344,
+        372.7473178803921
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 238,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.2390175610780716,
+      "uv_px": [
+        1000.7094139456749,
+        374.61025232076645
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 232,
+      "frame": 239,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.17877371609210968,
+      "uv_px": [
+        1007.4515060782433,
+        373.21484422683716
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9993431020011485
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 400,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1544327586889267,
+      "uv_px": [
+        705.944079875946,
+        620.4272381067276
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 401,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1441216766834259,
+      "uv_px": [
+        698.1819923818111,
+        634.3227295279503
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 402,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.10829617828130722,
+      "uv_px": [
+        693.0901938378811,
+        635.5460349321365
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 403,
+      "mode": "missing_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1305779218673706,
+      "uv_px": [
+        684.0404015183449,
+        633.1666959524155
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 404,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.17715837061405182,
+      "uv_px": [
+        696.6889159083366,
+        624.2012777328491
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 405,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.1942671835422516,
+      "uv_px": [
+        704.6145686805248,
+        622.6264352202415
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 406,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.31837499141693115,
+      "uv_px": [
+        702.530541151762,
+        622.9370046854019
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 407,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.30995458364486694,
+      "uv_px": [
+        707.5887115895748,
+        621.0073450803757
+      ],
+      "distance_px": null,
+      "window_seconds": 3.024964958000055
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 400,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.24222196638584137,
+      "uv_px": [
+        884.8166659474373,
+        394.9721357226372
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 401,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.21290849149227142,
+      "uv_px": [
+        879.2999980151653,
+        395.28756085038185
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 402,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.21777211129665375,
+      "uv_px": [
+        879.8681299984455,
+        392.82245993614197
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 403,
+      "mode": "saved_normalization",
+      "observed": false,
+      "detected": false,
+      "confidence": 0.1728108674287796,
+      "uv_px": [
+        880.2615445256233,
+        391.6543032824993
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 404,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.22986188530921936,
+      "uv_px": [
+        883.6760554909706,
+        370.78106394410133
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 405,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.30792534351348877,
+      "uv_px": [
+        882.522577136755,
+        370.4017112851143
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 406,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.3130745589733124,
+      "uv_px": [
+        881.4033559858799,
+        375.06047835946083
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 400,
+      "frame": 407,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.2636205852031708,
+      "uv_px": [
+        891.3082058131695,
+        371.48999068140984
+      ],
+      "distance_px": null,
+      "window_seconds": 3.054913048999879
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 504,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9720010161399841,
+      "uv_px": [
+        1082.8409159779549,
+        570.4979068040848
+      ],
+      "distance_px": 1.6109708334418444,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 505,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9793037176132202,
+      "uv_px": [
+        1085.5841230154037,
+        567.0515440106392
+      ],
+      "distance_px": 2.9041976807079095,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 506,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.972244143486023,
+      "uv_px": [
+        1089.4104067087173,
+        562.7467257976532
+      ],
+      "distance_px": 3.4800083839246927,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 507,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9633549451828003,
+      "uv_px": [
+        1094.4563383460045,
+        554.8846041560173
+      ],
+      "distance_px": 2.0761450774149792,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 508,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9767996668815613,
+      "uv_px": [
+        1097.3372604846954,
+        551.4948371648788
+      ],
+      "distance_px": 1.7248493630682211,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 509,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9784194231033325,
+      "uv_px": [
+        1101.4303957819939,
+        549.0521494746208
+      ],
+      "distance_px": 3.515835988925192,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 510,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9638338088989258,
+      "uv_px": [
+        1109.1998608708382,
+        540.890777528286
+      ],
+      "distance_px": 5.191882245987786,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 511,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9527996182441711,
+      "uv_px": [
+        1109.9245808720589,
+        539.3128158152103
+      ],
+      "distance_px": 2.157050702821693,
+      "window_seconds": 3.0311113349998777
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 504,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9460428953170776,
+      "uv_px": [
+        1083.9774087071419,
+        571.9779513478279
+      ],
+      "distance_px": 3.472840371917222,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 505,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9545276165008545,
+      "uv_px": [
+        1086.9560124874115,
+        568.7096723914146
+      ],
+      "distance_px": 4.7988191963773925,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 506,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9430301785469055,
+      "uv_px": [
+        1090.572177708149,
+        563.2394951581955
+      ],
+      "distance_px": 4.325634272529241,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 507,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9404391646385193,
+      "uv_px": [
+        1094.3324633836746,
+        554.5320380330086
+      ],
+      "distance_px": 1.913171228817563,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 508,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9625463485717773,
+      "uv_px": [
+        1097.4138959646225,
+        549.9580038785934
+      ],
+      "distance_px": 1.0389148542803825,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 509,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9682192206382751,
+      "uv_px": [
+        1104.5350477695465,
+        547.1550967693329
+      ],
+      "distance_px": 4.579534374894326,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 510,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9542664289474487,
+      "uv_px": [
+        1110.4009790420532,
+        545.0512764453888
+      ],
+      "distance_px": 7.252163231728486,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 504,
+      "frame": 511,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9410774111747742,
+      "uv_px": [
+        1112.498046040535,
+        543.3564894199371
+      ],
+      "distance_px": 6.927854493689384,
+      "window_seconds": 3.0754992789989046
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 528,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9785868525505066,
+      "uv_px": [
+        1041.5419414639473,
+        369.35459247231483
+      ],
+      "distance_px": 2.9828286025050623,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 529,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9689338803291321,
+      "uv_px": [
+        1036.633267402649,
+        357.8042896091938
+      ],
+      "distance_px": 1.765726754426793,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 530,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9746425151824951,
+      "uv_px": [
+        1029.0441816449165,
+        355.69934380054474
+      ],
+      "distance_px": 4.56359711028908,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 531,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9737011790275574,
+      "uv_px": [
+        1022.9656155109406,
+        342.5954218506813
+      ],
+      "distance_px": 3.1187581747914246,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 532,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9711345434188843,
+      "uv_px": [
+        1020.0999060869217,
+        340.74882301688194
+      ],
+      "distance_px": 2.426693011668868,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 533,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9735052585601807,
+      "uv_px": [
+        1017.2277913093567,
+        334.94337996840477
+      ],
+      "distance_px": 3.5890083914858,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 534,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9722051620483398,
+      "uv_px": [
+        1009.104773581028,
+        326.66457173228264
+      ],
+      "distance_px": 1.0154825785695414,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 535,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.96966952085495,
+      "uv_px": [
+        1004.3178012371063,
+        325.32723864912987
+      ],
+      "distance_px": 2.113509213722408,
+      "window_seconds": 3.0281957749975845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 528,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.976314902305603,
+      "uv_px": [
+        1040.778560578823,
+        370.26758566498756
+      ],
+      "distance_px": 4.134126894554714,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 529,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9733701348304749,
+      "uv_px": [
+        1037.350666999817,
+        358.10103169083595
+      ],
+      "distance_px": 1.2903331767182946,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 530,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9701903462409973,
+      "uv_px": [
+        1032.3469420671463,
+        356.5678642690182
+      ],
+      "distance_px": 5.10502342646818,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 531,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9732062816619873,
+      "uv_px": [
+        1023.5490745902061,
+        343.03654754161835
+      ],
+      "distance_px": 2.3931695533867265,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 532,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9662997722625732,
+      "uv_px": [
+        1020.6482501029968,
+        340.4725326001644
+      ],
+      "distance_px": 2.363773534753294,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 533,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9707446098327637,
+      "uv_px": [
+        1015.403294980526,
+        336.2866941988468
+      ],
+      "distance_px": 3.518107661796515,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 534,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.965720534324646,
+      "uv_px": [
+        1007.4232538938522,
+        328.3139213323593
+      ],
+      "distance_px": 2.0379259292519594,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 528,
+      "frame": 535,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9593828916549683,
+      "uv_px": [
+        1004.7945425510406,
+        327.51058250665665
+      ],
+      "distance_px": 4.2730279071430175,
+      "window_seconds": 3.0254676549993746
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 768,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9753603339195251,
+      "uv_px": [
+        861.6407814323902,
+        416.1849820315838
+      ],
+      "distance_px": 3.759746497284805,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 769,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9703357815742493,
+      "uv_px": [
+        862.9831605255604,
+        417.8753314316273
+      ],
+      "distance_px": 2.6488532195452774,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 770,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9720714092254639,
+      "uv_px": [
+        863.899926751852,
+        433.22028636932373
+      ],
+      "distance_px": 4.235405907797291,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 771,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9780176281929016,
+      "uv_px": [
+        863.7624404132366,
+        446.5654479265213
+      ],
+      "distance_px": 7.021366673943894,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 772,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.976559042930603,
+      "uv_px": [
+        863.3798349201679,
+        454.2853083014488
+      ],
+      "distance_px": 3.0097482993176983,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 773,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9684522151947021,
+      "uv_px": [
+        863.553923279047,
+        463.4910978972912
+      ],
+      "distance_px": 2.686747114060014,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 774,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9712569117546082,
+      "uv_px": [
+        864.3508750796318,
+        478.3542810678482
+      ],
+      "distance_px": 3.766141450823986,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 775,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9649708271026611,
+      "uv_px": [
+        864.7268464565277,
+        492.30369928479195
+      ],
+      "distance_px": 3.963256543870915,
+      "window_seconds": 3.0064296570017177
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 768,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9705712199211121,
+      "uv_px": [
+        861.9256480932236,
+        416.3901096582413
+      ],
+      "distance_px": 3.961264578771916,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 769,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9698001146316528,
+      "uv_px": [
+        861.5341780483723,
+        422.62494120001793
+      ],
+      "distance_px": 2.3833710383839,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 770,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.964410662651062,
+      "uv_px": [
+        862.1806040406227,
+        433.0840384066105
+      ],
+      "distance_px": 3.436192774999304,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 771,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9755266308784485,
+      "uv_px": [
+        860.6918740570545,
+        448.2768599689007
+      ],
+      "distance_px": 8.47466368743942,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 772,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9758859276771545,
+      "uv_px": [
+        861.7923366725445,
+        457.8993040025234
+      ],
+      "distance_px": 5.720056185630547,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 773,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9727634191513062,
+      "uv_px": [
+        860.7407720685005,
+        468.00252294540405
+      ],
+      "distance_px": 5.440216755672613,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 774,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9677618145942688,
+      "uv_px": [
+        861.8056049048901,
+        481.6474814713001
+      ],
+      "distance_px": 5.2267011360473346,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 768,
+      "frame": 775,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9637972712516785,
+      "uv_px": [
+        862.4263522922993,
+        497.6032851934433
+      ],
+      "distance_px": 7.361519818446164,
+      "window_seconds": 3.056010813001194
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 824,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7885002493858337,
+      "uv_px": [
+        597.8173083364964,
+        1008.3057331442833
+      ],
+      "distance_px": 788.91501176067,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 825,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7950947880744934,
+      "uv_px": [
+        599.459595233202,
+        1002.5897500514984
+      ],
+      "distance_px": 781.1844208557403,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 826,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.791365921497345,
+      "uv_px": [
+        611.1910002529621,
+        992.274521946907
+      ],
+      "distance_px": 764.2086471056631,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 827,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7879811525344849,
+      "uv_px": [
+        619.2179376780987,
+        986.589473605156
+      ],
+      "distance_px": 753.2250789552028,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 828,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8438442945480347,
+      "uv_px": [
+        627.8190121054649,
+        978.9919373393059
+      ],
+      "distance_px": 739.9746951260142,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 829,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8004604578018188,
+      "uv_px": [
+        636.4184851944447,
+        970.9899983406067
+      ],
+      "distance_px": 726.4742030118833,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 830,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7412172555923462,
+      "uv_px": [
+        645.3543537259102,
+        962.1665198206902
+      ],
+      "distance_px": 711.7528510501588,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 831,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": false,
+      "confidence": 0.49552640318870544,
+      "uv_px": [
+        634.5492657721043,
+        972.3822550773621
+      ],
+      "distance_px": null,
+      "window_seconds": 2.9919442089994845
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 824,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8961337804794312,
+      "uv_px": [
+        987.9220406413078,
+        327.0685885846615
+      ],
+      "distance_px": 3.900121844801174,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 825,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9378454089164734,
+      "uv_px": [
+        990.2406642436981,
+        327.136953741312
+      ],
+      "distance_px": 1.0567264529257498,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 826,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9416512846946716,
+      "uv_px": [
+        991.8738006353378,
+        329.0043901205063
+      ],
+      "distance_px": 0.718634516964973,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 827,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9419914484024048,
+      "uv_px": [
+        996.2178885340691,
+        337.80333307385445
+      ],
+      "distance_px": 6.308846464501216,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 828,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.943099856376648,
+      "uv_px": [
+        996.3669273853302,
+        340.3063145875931
+      ],
+      "distance_px": 5.115439983641268,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 829,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9297239184379578,
+      "uv_px": [
+        996.1876918673515,
+        342.9419103562832
+      ],
+      "distance_px": 4.266435963654271,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 830,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.938092827796936,
+      "uv_px": [
+        1000.916329741478,
+        344.21505865454674
+      ],
+      "distance_px": 6.155079137913495,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 824,
+      "frame": 831,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9307110905647278,
+      "uv_px": [
+        1003.0772215127945,
+        344.61666375398636
+      ],
+      "distance_px": 7.399477873415724,
+      "window_seconds": 3.0407668050029315
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 992,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9451407194137573,
+      "uv_px": [
+        841.3129344284534,
+        757.9896383285522
+      ],
+      "distance_px": 4.314090574904706,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 993,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9219854474067688,
+      "uv_px": [
+        838.0293328762054,
+        752.523062646389
+      ],
+      "distance_px": 2.499367011627584,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 994,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9399016499519348,
+      "uv_px": [
+        831.3766297399998,
+        752.7769076824188
+      ],
+      "distance_px": 1.7213811114339337,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 995,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9560201168060303,
+      "uv_px": [
+        824.7183219194412,
+        751.6505869030952
+      ],
+      "distance_px": 0.3186795490118783,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 996,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9645206928253174,
+      "uv_px": [
+        817.4222238957882,
+        754.4496995210648
+      ],
+      "distance_px": 2.987596316493455,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 997,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9633362889289856,
+      "uv_px": [
+        810.7327471673489,
+        759.5880195498466
+      ],
+      "distance_px": 6.457619629430789,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 998,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9339093565940857,
+      "uv_px": [
+        807.0501835942268,
+        760.9512709379196
+      ],
+      "distance_px": 6.631774207543908,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 999,
+      "mode": "missing_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.9389082193374634,
+      "uv_px": [
+        798.4212001264095,
+        765.3948774933815
+      ],
+      "distance_px": 9.47571646541509,
+      "window_seconds": 2.9770378600005643
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 992,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.5790011286735535,
+      "uv_px": [
+        842.8445574045181,
+        751.1542803049088
+      ],
+      "distance_px": 3.443770858816079,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 993,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7142647504806519,
+      "uv_px": [
+        839.6450261175632,
+        751.7203026413918
+      ],
+      "distance_px": 4.190114779623668,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 994,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7186957597732544,
+      "uv_px": [
+        829.7211318016052,
+        751.392368555069
+      ],
+      "distance_px": 0.4369051842545233,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 995,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7803921103477478,
+      "uv_px": [
+        825.7742902040482,
+        752.8971737623215
+      ],
+      "distance_px": 1.9033333802190953,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 996,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.8207385540008545,
+      "uv_px": [
+        820.574229747057,
+        751.3226528167725
+      ],
+      "distance_px": 2.483757765821452,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 997,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7931469082832336,
+      "uv_px": [
+        814.1674464344978,
+        750.2176197767258
+      ],
+      "distance_px": 3.7239231479727986,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 998,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.7273387312889099,
+      "uv_px": [
+        804.7312168478966,
+        749.8461455106735
+      ],
+      "distance_px": 4.732710927481658,
+      "window_seconds": 3.0267343499981507
+    },
+    {
+      "camera": "cam2",
+      "window_start": 992,
+      "frame": 999,
+      "mode": "saved_normalization",
+      "observed": true,
+      "detected": true,
+      "confidence": 0.732768177986145,
+      "uv_px": [
+        796.883457750082,
+        750.5660698413849
+      ],
+      "distance_px": 5.910512583664508,
+      "window_seconds": 3.0267343499981507
+    }
+  ]
+}

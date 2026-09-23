@@ -242,3 +242,37 @@ def test_legacy_load_declaration_cannot_override_the_runtime_contract(tmp_path) 
             load_path=tmp_path / "saved.json",
             load_keypoint_contract="physical_v1",
         )
+
+
+def test_video_reuses_selected_region_but_reruns_model_for_every_frame(tmp_path, monkeypatch) -> None:
+    import src.tennis_scene.pipeline.components.court_kp as component
+    from src.tasks.court_detection.inference.regions import (
+        CourtRegionSearchConfig,
+        CourtRegionSelection,
+    )
+    from tests.unit.tasks.court_detection.inference.test_unified_predictor import (
+        geometry_prediction,
+    )
+
+    calls = []
+    predictions = iter([geometry_prediction(), geometry_prediction(status="joint_optimization_failed")])
+
+    def predict(image, **kwargs):
+        calls.append(image.shape)
+        return next(predictions)
+
+    module = CourtKPModule(replace(make_court_kp_config(tmp_path), region_search=CourtRegionSearchConfig(enabled=True)))
+    module._predictor = cast(Any, SimpleNamespace(predict=predict, checkpoint_identity={"fixture": True}))
+    packets = [SimpleNamespace(frame=np.ones((20, 30, 3), np.uint8), index=i, original_size=(30, 20)) for i in range(2)]
+    monkeypatch.setattr(component, "probe_video_info", lambda _: SimpleNamespace(frame_count=2))
+    monkeypatch.setattr(component, "read_video_frame", lambda *args: packets[1])
+    monkeypatch.setattr(component, "select_court_region", lambda *args: CourtRegionSelection((5, 4, 17, 12), ()))
+    monkeypatch.setattr(component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
+    result = module._process_model_video([tmp_path / "video.mp4"], max_frames=None, region_frame_index=1)
+    assert calls == [(8, 12, 3), (8, 12, 3)]
+    assert result.visibility[0, 0].all()
+    assert not result.visibility[0, 1].any()
+    assert not result.keypoints[0, 1].any()
+    assert result.validate()[0]
+    assert result.diagnostics is not None
+    assert result.diagnostics["cameras"][0]["region_selection"]["frame_index"] == 1

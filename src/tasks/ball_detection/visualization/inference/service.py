@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, cast
 
 import cv2
 import numpy as np
@@ -260,7 +260,7 @@ class DetectionService:
             # A static scene is one labelled frame expanded by the store's own
             # static sampling mode, so its length never limits the window.
             return True
-        return ref.frames >= info.minimum_window
+        return bool(ref.frames >= info.minimum_window)
 
     # -------------------------------------------------------------- frames
 
@@ -409,7 +409,9 @@ class DetectionService:
             )
         images = self._window_tensor(resolved.frames, plan, size=size)
         with torch.no_grad():
-            call = loaded.adapter.prepare_model_call(images.to(loaded.device))
+            call = loaded.adapter.prepare_model_call(
+                images.to(loaded.device), image_normalization=loaded.image_normalization,
+            )
             logits = loaded.model(*call.model_args)
             heatmaps = loaded.adapter.probability_heatmaps(logits, call)
         heatmaps = heatmaps.detach().cpu()
@@ -758,7 +760,7 @@ class _ResolvedScene:
     @property
     def ref_mode(self) -> Literal["static", "temporal"]:
         """Return the dataset's sampling mode, not the frame accessor's."""
-        return self.frames.mode
+        return cast(Literal["static", "temporal"], self.frames.mode)
 
 
 def dataset_ids() -> tuple[str, ...]:
