@@ -2,13 +2,13 @@
 
 ## 対象と全フレームの確認
 
-主に撮影しているコートの試合・練習に参加するプレーヤーと、そこでプレー中のボールを注釈してください。
-サーブトスを含み、人数・球数は固定しません。非プレーヤー、隣接コートの選手・球、予備球・球拾い、コート形状は対象外です。参加者や対象コートを判別できない場合は不明点を記録します。
+Project Kitが指定する対象だけを注釈してください。プレーヤー用では、主に撮影しているコートで試合・練習に参加する全選手を対象にします。ボール用では、主なコートでサーブトスからプレー終了まで使われている球を対象にします。人数・球数は固定しません。
+非プレーヤー、隣接コートの選手・球、予備球・球拾い、コート形状は対象外です。対象を判別できない場合は不明点を記録します。
 
 動画名・解像度・総フレーム数Nは添付動画から取得してください。
 先頭から末尾まで、前後の参考区間も含めた全Nフレームを省略せず確認してください。
 framesには表示順の0〜N−1を各1件、昇順で記録します。代表フレームだけの確認や、未確認区間へのコピー・補間で代替しないでください。
-各フレームの両対象を確認した場合だけreviewed=trueとします。対象不在を確認した場合だけ空配列を使います。
+各フレームのProject Kitが指定した対象を確認した場合だけreviewed=trueとします。対象不在を確認した場合だけ空配列を使います。
 未確認フレームもreviewed=falseで残し、notesへ理由を記録してください。位置が不明な場合と未確認を区別し、座標を捏造しません。
 
 ## 注釈の定義
@@ -28,16 +28,43 @@ bbox_sourceはobserved / inferred / unresolved。遮蔽はoccluded、画面切�
 同じ対象のtrack_idを維持し、同一フレームの同種対象で重複させません。カット後に同一性が不明なら新しいIDを使います。
 不明点はそのフレームのnotes、全体の問題はissuesに記録します。問題がなければnotes=""、issues=[]です。
 全フレームを確認して未解決事項もない場合だけstatus=completed。それ以外はpartialとし、理由を残します。
-部分完了も同じ2ファイルを返してください。入力不一致や実行不能は理由を説明し、存在しない成果物を提示しません。
+成果物は注釈JSON、overlay動画、ZIPの3点です。ZIPには注釈JSONとoverlay動画だけを格納し、部分完了でも同じ3点を返してください。入力不一致や実行不能は理由を説明し、存在しない成果物を提示しません。
 
 ## 注釈JSON例
 
-以下は1フレームの例です。実際には入力の全Nフレームを記録します。clip_idは添付MP4のファイル名から拡張子だけを除いた名前です。
+Project Kitごとに異なるJSON Schemaを使います。ボール用は`tennis_chat_ball_annotation.v1`と`balls`、プレーヤー用は`tennis_chat_player_annotation.v1`と`players`だけを各フレームに含めます。もう一方の配列は含めません。
+以下は各形式の1フレーム例です。実際には入力の全Nフレームを記録します。clip_idは添付MP4のファイル名から拡張子だけを除いた名前です。
 例の全項目を必須とし、width・height・frame_countは入力と一致させます。未知の座標はnullとし、NaN、Infinity、重複キーは使いません。
 
 ```json
 {
-  "schema_version": "tennis_chat_annotation.v2",
+  "schema_version": "tennis_chat_ball_annotation.v1",
+  "clip_id": "source__run__clip",
+  "width": 1920,
+  "height": 1080,
+  "frame_count": 1,
+  "status": "completed",
+  "issues": [],
+  "frames": [{
+    "frame_index": 0,
+    "reviewed": true,
+    "balls": [{
+      "track_id": "b1",
+      "center_px": [900, 400],
+      "status": "visible",
+      "interpolation_frames": null
+    }],
+    "interpolation_break": false,
+    "notes": ""
+  }]
+}
+```
+
+プレーヤー用の例:
+
+```json
+{
+  "schema_version": "tennis_chat_player_annotation.v1",
   "clip_id": "source__run__clip",
   "width": 1920,
   "height": 1080,
@@ -54,13 +81,6 @@ bbox_sourceはobserved / inferred / unresolved。遮蔽はoccluded、画面切�
       "occluded": false,
       "truncated": false
     }],
-    "balls": [{
-      "track_id": "b1",
-      "center_px": [900, 400],
-      "status": "visible",
-      "interpolation_frames": null
-    }],
-    "interpolation_break": false,
     "notes": ""
   }]
 }
@@ -68,7 +88,7 @@ bbox_sourceはobserved / inferred / unresolved。遮蔽はoccluded、画面切�
 
 ## 成果物
 
-ZIP直下にはoverlay_{clip_id}.mp4とannotation_{clip_id}.jsonの2ファイルだけを入れます。
+ZIP直下にはoverlay_{clip_id}.mp4とannotation_{clip_id}.jsonの2ファイルだけを入れます。ZIP名は添付MP4のファイル名から拡張子を除いた`{clip_id}.zip`とし、元動画名とクリップを識別できるようにします。
 overlayは全Nフレーム・元の画角・順序・表示時間を保持し、JSONのbbox・球中心・IDを対応するフレームへ描きます。
 観測と推定・補間を見分けられるようにし、フレーム番号、凡例、未確認・未解決状態を表示します。null座標は描画しません。
 返却前に全フレームの欠落・重複、座標、入力との対応、JSONとoverlayの一致を確認してください。

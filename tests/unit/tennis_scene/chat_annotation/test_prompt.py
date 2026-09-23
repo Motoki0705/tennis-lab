@@ -14,14 +14,16 @@ def test_request_needs_no_video_catalog(tmp_path: Path) -> None:
     request = render_request(contents)
     assert "入力一覧" not in request
     assert "jsonl" not in request
-    assert "動画名・解像度・総フレーム数Nは添付動画から取得" in request
-    assert "両端の実時刻差は0.1秒以下" in request
+    assert "全フレーム" in request
+    assert "0.1秒以下" in request
     assert "{{" not in request
-    assert "$defs" not in request
-    assert len(request) < 3000
+    assert '"tennis_chat_ball_annotation.v1"' in request
+    assert "$defs" in request
+    assert "players" not in request
+    assert len(request) > 3000
 
 
-def test_gap_policy_is_in_the_shared_request_and_kit_identity(tmp_path: Path) -> None:
+def test_gap_policy_is_in_ball_request_and_kit_identity(tmp_path: Path) -> None:
     first, first_id = build_kit(
         tmp_path / "first" / "project_kits", Policies(ball_max_gap_seconds=0.1)
     )
@@ -29,5 +31,8 @@ def test_gap_policy_is_in_the_shared_request_and_kit_identity(tmp_path: Path) ->
         tmp_path / "second" / "project_kits", Policies(ball_max_gap_seconds=0.25)
     )
     assert first_id != second_id
-    assert first["annotation.schema.json"] == second["annotation.schema.json"]
-    assert "両端の実時刻差は0.25秒以下" in render_request(second)
+    assert first["ball_detection_annotation.schema.json"] == second[
+        "ball_detection_annotation.schema.json"
+    ]
+    assert "0.25秒以下" in render_request(second, "ball_detection")
+    assert "0.25秒以下" not in render_request(second, "player_detection")
