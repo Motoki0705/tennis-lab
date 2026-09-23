@@ -31,7 +31,6 @@ from src.tasks.base.generate_dataset import (
 )
 from src.tasks.plcs.court_keypoint_contract import (
     PLCSCourtKeypointRuntimeConfig,
-    align_selected_court_array,
     choose_reference_selection,
     court_keypoint_contract_document,
     normalized_headings_physical_to_target,
@@ -223,13 +222,8 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             if selection is None
             else selection.provenance
         )
-        reference_view = (
-            None
-            if selection is None
-            else selection.selected_views[selection.reference_view_index]
-        )
 
-        for local_index, cam_idx in enumerate(cams.indices):
+        for cam_idx in cams.indices:
             human_kp = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "human_kp_uv", window=window)
             ).float()
@@ -242,23 +236,8 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             court_vis_array = scene.get_camera_array(
                 cam_idx, "court_kp_vis", window=window
             )
-            source_view = views[local_index] if views else None
-            court_kp = torch.from_numpy(
-                align_selected_court_array(
-                    court_kp_array,
-                    source_view,
-                    reference_view,
-                    keypoint_axis=-2,
-                )
-            ).float()
-            court_vis = torch.from_numpy(
-                align_selected_court_array(
-                    court_vis_array,
-                    source_view,
-                    reference_view,
-                    keypoint_axis=-1,
-                )
-            ).float()
+            court_kp = torch.from_numpy(court_kp_array).float()
+            court_vis = torch.from_numpy(court_vis_array).float()
             court_kp = court_kp[..., : self.num_court_kp, :]
             court_vis = court_vis[..., : self.num_court_kp]
 

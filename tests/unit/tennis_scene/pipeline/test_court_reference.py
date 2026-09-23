@@ -10,7 +10,10 @@ import pytest
 from numpy.typing import NDArray
 
 import src.tennis_scene.pipeline.court_reference as court_reference_module
-from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
+from src.tasks.base.generate_dataset import (
+    build_court_view_record,
+    resolve_court_keypoint_contract,
+)
 from src.tennis_scene.pipeline.court_reference import (
     CourtReferenceRuntimeConfig,
     court_footpoint_polygon_px,
@@ -18,7 +21,6 @@ from src.tennis_scene.pipeline.court_reference import (
     reference_metadata,
 )
 from src.utils.schema.court import (
-    COURT_KP20_HALF_TURN_INDEX,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     CourtConfig,
@@ -37,7 +39,7 @@ def _camera_fit(half_turn: bool) -> dict[str, Any]:
     }
 
 
-def test_camera_view_reference_aligns_keypoints_and_visibility(
+def test_camera_view_reference_preserves_keypoints_and_visibility(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     half_turns = (False, False, True)
@@ -77,12 +79,10 @@ def test_camera_view_reference_aligns_keypoints_and_visibility(
     np.testing.assert_array_equal(context.keypoints[:2], keypoints[:2])
     np.testing.assert_array_equal(
         context.keypoints[2],
-        keypoints[2][:, COURT_KP20_HALF_TURN_INDEX[:14]],
+        keypoints[2],
     )
     np.testing.assert_array_equal(context.visibility[:2], visibility[:2])
-    np.testing.assert_array_equal(
-        context.visibility[2], visibility[2][:, COURT_KP20_HALF_TURN_INDEX[:14]]
-    )
+    np.testing.assert_array_equal(context.visibility[2], visibility[2])
     assert context.selection is not None
     assert context.document is not None
     assert context.provenance.reference_camera_id == "cam0"
@@ -155,8 +155,10 @@ def test_court_footpoint_polygon_projects_explicit_physical_margins() -> None:
 
 
 @pytest.mark.parametrize("baseline_margin", [1.0, 30.0])
+@pytest.mark.parametrize("half_turn", [False, True])
 def test_court_footpoint_region_matches_world_bounds_even_past_camera(
     baseline_margin: float,
+    half_turn: bool,
 ) -> None:
     # The camera plane is world y=-33.33. A 30m margin crosses it, although
     # the court itself remains entirely visible in this perspective image.
@@ -166,6 +168,12 @@ def test_court_footpoint_region_matches_world_bounds_even_past_camera(
     physical = court_keypoints_3d(CourtConfig(0.914, None)).numpy()[:14, :2]
     projected = cv2.perspectiveTransform(physical[None], homography)[0]
     keypoints = projected / [1280, 720]
+    view = build_court_view_record(
+        camera_id="cam0",
+        camera_center_court_m=[0.0, 12.0 if half_turn else -12.0, 5.0],
+        contract=resolve_court_keypoint_contract("camera_view_v2"),
+    )
+    keypoints = keypoints[np.asarray(view.semantic_to_physical[:14])]
     polygon = np.asarray(court_footpoint_polygon_px(
         keypoints, size=(1280, 720), sideline_margin_m=1.0,
         baseline_margin_m=baseline_margin,

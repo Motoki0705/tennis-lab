@@ -494,14 +494,24 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         if name == "blcs_multiview_axial_reference":
             from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
 
-            for key in ("target_frame_contract", "axial_rope_contract", "reference_selector_mode"):
+            for key in (
+                "target_frame_contract",
+                "axial_rope_contract",
+                "reference_selector_mode",
+            ):
                 keys.add(key)
                 if model.get(key) != AXIAL_REFERENCE_CONTRACT[key]:
-                    raise SemanticConfigurationError(f"Invalid axial reference model.{key}.")
+                    raise SemanticConfigurationError(
+                        f"Invalid axial reference model.{key}."
+                    )
             if int(model["rope_dim"]) < 6:
-                raise SemanticConfigurationError("Axial reference requires rope_dim >= 6.")
+                raise SemanticConfigurationError(
+                    "Axial reference requires rope_dim >= 6."
+                )
             if parse_court_keypoint_contract(config).selector != "camera_view_v2":
-                raise SemanticConfigurationError("Axial reference requires camera_view_v2.")
+                raise SemanticConfigurationError(
+                    "Axial reference requires camera_view_v2."
+                )
         _exact(model, keys, path="model")
         _validate_types(
             model,
@@ -540,7 +550,10 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "Invalid axial model profile, attention_type, or ffn_type."
             )
         result = AxialModelConfig(
-            name=cast("Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']", name),
+            name=cast(
+                "Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']",
+                name,
+            ),
             input_profile="multiview",
             hidden_dim=int(model["hidden_dim"]),
             num_layers=int(model["num_layers"]),
@@ -1595,7 +1608,9 @@ def validate_generator_sections(
         },
         path="camera",
     )
-    candidates = camera_candidate_indices(camera.get("fixed_camera_indices"), capacity=6)
+    candidates = camera_candidate_indices(
+        camera.get("fixed_camera_indices"), capacity=6
+    )
     if candidates is not None and camera["layout"] != "fixed":
         raise SemanticConfigurationError(
             "camera.fixed_camera_indices requires layout=fixed."
@@ -1817,50 +1832,18 @@ def validate_generator_sections(
                 "generation.maximum_physics_attempts_per_object must be positive."
             )
         timeline = require_config_mapping(generation, "timeline", path="generation")
-        _exact(
-            timeline,
-            {
-                "num_frames",
-                "min_tracks",
-                "max_tracks",
-                "max_concurrent",
-                "min_reuse_gap_frames",
-                "start_index_range",
-                "min_active_frames",
-                "overlap_probability",
-                "min_gap_frames",
-                "max_gap_frames",
-            },
-            path="generation.timeline",
-        )
+        keys = {
+            "min_tracks",
+            "max_tracks",
+            "max_concurrent",
+            "min_reuse_gap_frames",
+            "min_scene_frames",
+            "planning_iterations",
+        }
+        _exact(timeline, keys, path="generation.timeline")
         _validate_types(
-            timeline,
-            {
-                **{
-                    key: int
-                    for key in (
-                        "num_frames",
-                        "min_tracks",
-                        "max_tracks",
-                        "max_concurrent",
-                        "min_reuse_gap_frames",
-                        "min_active_frames",
-                        "min_gap_frames",
-                        "max_gap_frames",
-                    )
-                },
-                "start_index_range": list,
-                "overlap_probability": float,
-            },
-            path="generation.timeline",
+            timeline, {key: int for key in keys}, path="generation.timeline"
         )
-        _int_sequence(
-            timeline["start_index_range"], path="generation.timeline.start_index_range"
-        )
-        if len(cast("Sequence[object]", timeline["start_index_range"])) != 2:
-            raise SemanticConfigurationError(
-                "generation.timeline.start_index_range must contain two values."
-            )
         try:
             TimelineConfig.from_mapping(cast("Mapping[str, Any]", timeline))
         except (TypeError, ValueError) as error:
@@ -2084,8 +2067,13 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     if model.name == "blcs_multiview_axial_reference":
         data_keys.add("evaluation_reference_camera_id")
         evaluation_reference = data.get("evaluation_reference_camera_id")
-        if not isinstance(evaluation_reference, str) or not evaluation_reference.strip():
-            raise SemanticConfigurationError("Axial reference requires evaluation_reference_camera_id.")
+        if (
+            not isinstance(evaluation_reference, str)
+            or not evaluation_reference.strip()
+        ):
+            raise SemanticConfigurationError(
+                "Axial reference requires evaluation_reference_camera_id."
+            )
     _exact(data, data_keys, path="data")
     data_types: dict[str, type[object]] = {
         "backend": str,
@@ -2132,7 +2120,9 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 f"data.{name} must be a positive ordered range."
             )
-    if model.name == "blcs_multiview_axial_reference" and not (3 <= num_views_range[0] <= num_views_range[1] <= 4):
+    if model.name == "blcs_multiview_axial_reference" and not (
+        3 <= num_views_range[0] <= num_views_range[1] <= 4
+    ):
         raise SemanticConfigurationError("Axial reference requires 3 or 4 views.")
     batch_size = cast("int", data["batch_size"])
     num_workers = cast("int", data["num_workers"])

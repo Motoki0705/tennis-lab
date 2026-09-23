@@ -103,7 +103,7 @@ Issue #832より前のtracking checkpoint/resultは新しいassociation学習契
 
 disk schemaもruntimeと同じ略称に固定し、camera arrayは`cam_{i}_ball_vis.npy`と`cam_{i}_court_kp_vis.npy`を使用します。旧`*_visible.npy`名へのalias/fallbackはありません。観測fieldは`ball_uv`、`ball_vis`、`court_kp`、`court_vis`、`padding_mask`で、`padding_mask=True`だけをpadding極性として使います。version別の追加forward fieldは共有正本を参照してください。内部の`state_valid=True`と`attention_keep_mask=True`はmodel内でのみ導出します。
 
-multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。厳格なfull-physics着地点判定でrejectされたsource rallyだけは`generation.maximum_physics_attempts_per_object`の有限budget内で再提案し、予期しない例外やbudget枯渇はそのままhard errorにします。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
+multi-objectのsource全区間保持・可変長・bornの存在数調整は共有正本の「Full-source multi-object lifetimes」に従います。厳格なfull-physics着地点判定でrejectされたsource rallyだけは`generation.maximum_physics_attempts_per_object`の有限budget内で再提案し、予期しない例外やbudget枯渇はそのままhard errorにします。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
 # 固定train/val/testデータを事前生成
@@ -164,8 +164,8 @@ for authentication and artifact lifecycle.
 
 The axial-reference recipe uses **KP14** (`model.num_court_tokens=14`,
 `data.num_court_kp=14`). The generated dataset retains the complete 20-point
-camera_view_v2 representation; the loader aligns its semantic ordering to the
-reference camera **before** selecting the first 14 points. Disk schema version
+camera_view_v2 representation; the loader preserves each camera-local ordering.
+The first 14 channels are selected without reference-dependent reordering. Disk schema version
 and the number of model input tokens are independent. The earlier KP20 run is
 not a compatible initialization or resume checkpoint for this KP14 recipe.
 Use Colab job `blcs_axial_reference_kp14` for a new 50-epoch run (L4, BS16,

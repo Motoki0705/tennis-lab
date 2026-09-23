@@ -29,7 +29,6 @@ from src.tasks.base.generate_dataset import (
 )
 from src.tasks.plcs.court_keypoint_contract import (
     PLCSCourtKeypointRuntimeConfig,
-    align_selected_court_array,
     choose_reference_selection,
     court_keypoint_contract_document,
     normalized_headings_physical_to_target,
@@ -187,11 +186,6 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             if selection is None
             else selection.provenance
         )
-        reference_view = (
-            None
-            if selection is None
-            else selection.selected_views[selection.reference_view_index]
-        )
         position = normalized_points_physical_to_target(
             position,
             provenance,
@@ -215,7 +209,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         court_vis_rows: list[Tensor] = []
         camera_center_rows: list[Tensor] = []
         camera_rotation_rows: list[Tensor] = []
-        for local_index, camera_index in enumerate(cameras.indices):
+        for camera_index in cameras.indices:
             keypoints = torch.from_numpy(
                 scene.get_camera_array(camera_index, "human_kp_uv", window=window)
             ).float()
@@ -260,29 +254,18 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             kp_rows.append(keypoints)
             visible_rows.append(visible)
             index_rows.append(detection_index)
-            source_view = views[local_index] if views else None
             court_rows.append(
                 torch.from_numpy(
-                    align_selected_court_array(
-                        scene.get_camera_array(
-                            camera_index, "court_kp_uv", window=window
-                        ),
-                        source_view,
-                        reference_view,
-                        keypoint_axis=-2,
-                    )[:, :14]
+                    scene.get_camera_array(camera_index, "court_kp_uv", window=window)[
+                        :, :14
+                    ]
                 ).float()
             )
             court_vis_rows.append(
                 torch.from_numpy(
-                    align_selected_court_array(
-                        scene.get_camera_array(
-                            camera_index, "court_kp_vis", window=window
-                        ),
-                        source_view,
-                        reference_view,
-                        keypoint_axis=-1,
-                    )[:, :14]
+                    scene.get_camera_array(camera_index, "court_kp_vis", window=window)[
+                        :, :14
+                    ]
                 ).bool()
             )
             court_rows[-1], court_vis_rows[-1] = frame_rate_plan.masked_linear(

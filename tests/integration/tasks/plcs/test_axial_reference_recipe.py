@@ -99,7 +99,7 @@ def test_recipe_and_reference_adapter() -> None:
     output = binding.model(**prepared.call.kwargs)
     assert output["canonical_pose"].shape == (1, 8, 17, 3)
     batch["reference_view_index"] = torch.tensor([1])
-    with pytest.raises(ValueError, match="provenance"):
+    with pytest.raises(ValueError, match="reference_camera_id"):
         binding.adapter.build_call(batch)
     batch["reference_view_index"] = torch.tensor([2])
     batch["padding_mask"][0, 2, 3] = True
@@ -162,7 +162,14 @@ def test_motion_group_splits_keep_sources_disjoint(tmp_path: Path) -> None:
     assert len(seen) == 20
 
 
-@pytest.mark.parametrize("field,value", [("target_frame_contract", "physical_court_v1"), ("axial_rope_contract", "time_camera_role_v1"), ("reference_selector_mode", "disabled")])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("target_frame_contract", "physical_court_v1"),
+        ("axial_rope_contract", "time_camera_role_v1"),
+        ("reference_selector_mode", "disabled"),
+    ],
+)
 def test_recipe_rejects_mismatched_reference_semantics(field: str, value: str) -> None:
     config = recipe()
     config.model[field] = value
@@ -178,7 +185,9 @@ def test_recipe_rejects_invalid_sampling_pool(indices: list[int]) -> None:
         PLCSTrainingConfig.from_config(config)
 
 
-def test_lightning_checkpoint_roundtrip_and_weight_initialization(tmp_path: Path) -> None:
+def test_lightning_checkpoint_roundtrip_and_weight_initialization(
+    tmp_path: Path,
+) -> None:
     import pytorch_lightning as pl
 
     from src.tasks.plcs.training.lightning_module import PLCSLightningModule
@@ -194,7 +203,9 @@ def test_lightning_checkpoint_roundtrip_and_weight_initialization(tmp_path: Path
     module.on_save_checkpoint(checkpoint)
     path = tmp_path / "reference.ckpt"
     torch.save(checkpoint, path)
-    restored = PLCSLightningModule.load_from_checkpoint(path, map_location="cpu", weights_only=False)
+    restored = PLCSLightningModule.load_from_checkpoint(
+        path, map_location="cpu", weights_only=False
+    )
     assert type(restored.model) is type(module.model)
     for key, tensor in module.state_dict().items():
         torch.testing.assert_close(restored.state_dict()[key], tensor)
@@ -205,6 +216,8 @@ def test_lightning_checkpoint_roundtrip_and_weight_initialization(tmp_path: Path
     del checkpoint["axial_reference"]
     torch.save(checkpoint, path)
     with pytest.raises(ValueError, match="checkpoint contract"):
-        PLCSLightningModule.load_from_checkpoint(path, map_location="cpu", weights_only=False)
+        PLCSLightningModule.load_from_checkpoint(
+            path, map_location="cpu", weights_only=False
+        )
     with pytest.raises(ValueError, match="checkpoint contract"):
         PLCSTrainingRunner().maybe_load_init_weights(runtime, restored)

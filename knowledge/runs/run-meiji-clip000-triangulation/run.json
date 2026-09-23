@@ -1,0 +1,23 @@
+{
+  "provider": "codex",
+  "status": "done",
+  "experiment": "meiji-clip000-triangulation",
+  "device": "cpu",
+  "clip": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000",
+  "base_commit": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "branch": "codex/meiji-clip000-triangulation",
+  "method": "score-weighted DLT + 12 Gauss-Newton steps minimizing weighted pixel SSE",
+  "min_score": 0.3,
+  "source_sha256": {
+    "annotations/tennis_scene/scene.npz": "c23bddc364c0504ebd5ea0a1c5ddd9cbdf5045588598b795a197dbfb163029b0",
+    "annotations/tennis_scene/scene.metadata.json": "f65379c0d467964d73275e1d226089673bf015f8281de2046f4d8ef4a9ba72e9",
+    "clip.json": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138",
+    "annotations/manual_court_kp_result.json": "4b55bb9a857f55285e2aa2d33163d349d33e1affcd1eee618e9ac1dff6bd6a5b",
+    "annotations/player_association_result.json": "9d49a6e7fc75d137119a1e4c60834b03244efc847fc4b6e0e2a37408800ae272"
+  },
+  "artifact_dir": "/mnt/c/Users/kamim/.codex/visualizations/2026/09/20/01a0bf91-5494-74c0-8793-3424866618ed/meiji-clip000-triangulation",
+  "tests": "4 synthetic geometry tests passed; ruff passed; mypy passed (3 source files)",
+  "independent_3d_ground_truth": false,
+  "validator_requested": 0,
+  "uncommitted_source_snapshot": "uncommitted.patch"
+}

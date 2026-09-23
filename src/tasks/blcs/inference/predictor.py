@@ -18,7 +18,6 @@ from src.tasks.base.generate_dataset import (
     CourtKeypointContractMismatchError,
     CourtReferenceFrameProvenance,
     CourtViewRecord,
-    align_court_keypoints_to_reference,
     build_physical_court_provenance,
     resolve_court_keypoint_contract,
 )
@@ -407,18 +406,6 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
                 reference_camera_id=reference_camera_id,
             )
             frame = selection.provenance
-            reference_view = selected_views[selection.reference_view_index]
-            for camera, source_view in zip(
-                selected_cameras, selected_views, strict=True
-            ):
-                for key, axis in (("court_kp_uv", 0), ("court_kp_vis", 0)):
-                    aligned = align_court_keypoints_to_reference(
-                        np.asarray(camera[key]),
-                        source_view,
-                        reference_view,
-                        keypoint_axis=axis,
-                    )
-                    camera[key] = aligned
             inference_scene = {**scene, "cameras": selected_cameras}
             cameras = list(range(len(selected_cameras)))
             provenance = (frame,)

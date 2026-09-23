@@ -161,6 +161,17 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("Total scenes: %s", total_scenes)
     logger.info("=" * 60)
 
+    if generation_mode == "multi_object":
+        from src.tasks.base.generate_dataset.lifecycle_audit import (
+            audit_full_source_dataset,
+        )
+
+        audit_full_source_dataset(
+            output_dir,
+            max_concurrent=4,
+            require_uniform=num_scenes >= 100,
+        )
+
     return 0
 
 

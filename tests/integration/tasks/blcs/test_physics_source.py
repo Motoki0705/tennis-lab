@@ -50,8 +50,23 @@ def test_production_seed_695_is_complete_and_deterministic_after_rejection() -> 
     first = source.generate(scene_id=_SCENE_ID, seed=695)
     repeated = source.generate(scene_id=_SCENE_ID, seed=695)
 
-    assert first.frame_count == 1024
-    assert first.object_count == 8
+    assert first.frame_count >= source.settings.timeline.min_scene_frames
+    assert (
+        source.settings.timeline.min_tracks
+        <= first.object_count
+        <= source.settings.timeline.max_tracks
+    )
+    assert first.present[0].any()
+    assert first.present[-1].any()
+    assert int(first.present.sum(axis=1).max()) <= source.settings.timeline.max_concurrent
+    for track, provenance in zip(
+        first.tracks,
+        first.physics_provenance,
+        strict=True,
+    ):
+        assert tuple(
+            index for index in track.source_frame_indices if index is not None
+        ) == tuple(range(provenance.source_frame_count))
     assert any(
         "requested-side tolerance" in rejection.reason
         for diagnostic in first.proposal_diagnostics

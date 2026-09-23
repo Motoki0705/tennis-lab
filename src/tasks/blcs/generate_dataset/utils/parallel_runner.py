@@ -85,13 +85,6 @@ def _generate_scene_task(
         )
     torch.set_num_threads(1)
 
-    # Per-scene seeding: forked workers otherwise share the parent's RNG
-    # state, producing correlated scenes within each batch of workers. This
-    # also makes scenes reproducible regardless of worker scheduling.
-    torch.manual_seed(base_seed + scene_index)
-    random.seed(base_seed + scene_index)
-    np.random.seed(base_seed + scene_index)
-
     generator = _get_worker_scene_generator(
         generator_config,
         device,
@@ -99,6 +92,13 @@ def _generate_scene_task(
         timeline_config,
         maximum_physics_attempts_per_object,
     )
+    # Per-scene seeding: forked workers otherwise share the parent's RNG
+    # state, producing correlated scenes within each batch of workers. This
+    # also makes scenes reproducible regardless of worker scheduling.
+    torch.manual_seed(base_seed + scene_index)
+    random.seed(base_seed + scene_index)
+    np.random.seed(base_seed + scene_index)
+
     if isinstance(generator, MultiBallSceneGenerator):
         generator.composer.rng.seed(base_seed + scene_index)
         return generator.generate_scene(f"scene_{scene_index:06d}")
@@ -170,7 +170,7 @@ def generate_parallel_scenes(
             "maximum_physics_attempts_per_scene >= 1."
         )
 
-    yield from run_parallel_scene_generation(
+    results = run_parallel_scene_generation(
         _generate_scene_task,
         list(range(start_index, start_index + num_scenes)),
         generator_config,
@@ -183,3 +183,21 @@ def generate_parallel_scenes(
         num_workers=num_workers,
         chunksize=chunksize,
     )
+
+    if not multi_object:
+        yield from results
+        return
+    from src.tasks.base.generate_dataset.timeline_composer import (
+        TimelineComposer,
+        TimelineConfig,
+    )
+    from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
+        rebalance_scene_births,
+    )
+
+    if timeline_config is None:
+        raise ValueError("Multi-object generation requires a timeline")
+    composer = TimelineComposer(TimelineConfig.from_mapping(timeline_config))
+    for scene_index, scene in enumerate(results, start=start_index):
+        composer.rng.seed(seed + scene_index)
+        yield rebalance_scene_births(scene, composer)

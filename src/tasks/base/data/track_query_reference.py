@@ -171,6 +171,30 @@ class StableCameraIdTable:
 
 
 @dataclass(frozen=True, slots=True)
+class ReferenceCameraSelection:
+    """Inference camera identities, with no geometry or side-label dependency."""
+
+    camera_ids: tuple[str, ...]
+    reference_camera_id: str
+
+    def __post_init__(self) -> None:
+        _validate_camera_ids(self.camera_ids, location="camera_ids")
+        if self.reference_camera_id not in self.camera_ids:
+            raise ReferenceViewSelectionError(
+                "Reference camera is absent from selected views."
+            )
+
+    @property
+    def reference_view_index(self) -> int:
+        return self.camera_ids.index(self.reference_camera_id)
+
+    def as_tensor(self, *, device: torch.device | str = "cpu") -> Tensor:
+        return torch.tensor(
+            [self.reference_view_index], dtype=torch.int64, device=device
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ReferenceViewSelection:
     """One sample's typed reference, stable codec, views, and #799 provenance."""
 
@@ -387,9 +411,13 @@ def include_evaluation_reference_camera(
             "selected_camera_indices contain an index outside the complete "
             f"camera domain [0, {len(complete_ids)})."
         )
-    candidates = camera_candidate_indices(candidate_camera_indices, capacity=len(complete_ids))
+    candidates = camera_candidate_indices(
+        candidate_camera_indices, capacity=len(complete_ids)
+    )
     if candidates is not None and not set(indices) <= set(candidates):
-        raise ReferenceViewSelectionError("Selected cameras are outside camera_candidates.")
+        raise ReferenceViewSelectionError(
+            "Selected cameras are outside camera_candidates."
+        )
     if requested_camera_id is None:
         return indices
     if type(requested_camera_id) is not str or not requested_camera_id.strip():
@@ -404,7 +432,9 @@ def include_evaluation_reference_camera(
             f"complete camera domain {complete_ids!r}."
         ) from error
     if candidates is not None and required_index not in candidates:
-        raise ReferenceViewSelectionError("Evaluation reference camera is outside camera_candidates.")
+        raise ReferenceViewSelectionError(
+            "Evaluation reference camera is outside camera_candidates."
+        )
     if required_index in indices:
         return indices
     if not isinstance(rng, np.random.Generator):

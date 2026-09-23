@@ -57,24 +57,20 @@ def _camera_config() -> CameraConfig:
 
 def _timeline(*, min_tracks: int = 2) -> TimelineConfig:
     return TimelineConfig(
-        num_frames=12,
+        min_scene_frames=1,
+        planning_iterations=60,
         min_tracks=min_tracks,
         max_tracks=2,
         max_concurrent=2,
         min_reuse_gap_frames=4,
-        start_index_range=(-2, 8),
-        min_active_frames=2,
-        overlap_probability=0.5,
-        min_gap_frames=1,
-        max_gap_frames=3,
     )
 
 
-def _tracking_config() -> dict[str, object]:
+def _tracking_config(frames: int = 12) -> dict[str, object]:
     return {
         "court_keypoints": {"selector": "physical_v1"},
         "data": {
-            "seq_len_range": [12, 12],
+            "seq_len_range": [frames, frames],
             "num_views_range": [6, 6],
             "camera_mode": "first",
             "lifecycle": {
@@ -239,12 +235,12 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert source.required_fps_values == [None, 30.0]
     assert scene.num_persons == 2
     assert scene.person_present is not None
-    assert scene.position.shape == (12, 2, 3)
+    assert scene.position.shape == (len(scene.person_present), 2, 3)
     assert scene.meta["motion_sources"] == ["motion_0.npz", "motion_1.npz"]
     assert scene.meta["motion_source_kinds"] == ["accad", "accad"]
     assert scene.meta["motion_source_ids"] == ["motion_0", "motion_1"]
     assert scene.person_present[:, : scene.num_persons].any(0).all()
-    assert scene.cameras[0].human_kp_uv.shape == (12, 2, 17, 2)
+    assert scene.cameras[0].human_kp_uv.shape == (len(scene.person_present), 2, 17, 2)
     assert len(scene.track_instances) == 2
     assert not scene.cameras[0].human_kp_vis[~scene.person_present].any()
 
@@ -265,10 +261,10 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     sample = PLCSTrackingDataset(
         scene_dir=dataset_root,
         split_file="train.txt",
-        config=_tracking_config(),
+        config=_tracking_config(len(scene.person_present)),
         seed=0,
     )[0]
-    assert sample["human_kp"].shape[:4] == (6, 12, 2, 17)
+    assert sample["human_kp"].shape[:4] == (6, len(scene.person_present), 2, 17)
     assert "bbox" not in sample
     assert 1 <= int(sample["target_slot_mask"].sum()) <= 2
     assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1}
@@ -307,9 +303,39 @@ def test_multi_person_propagates_camera_view_mapping_exactly_once() -> None:
         assert result_camera.court_view == source_view
         np.testing.assert_array_equal(
             result_camera.court_kp_uv,
-            np.repeat(source_uv[:1], 12, axis=0),
+            np.repeat(source_uv[:1], len(scene.position), axis=0),
         )
         np.testing.assert_array_equal(
             result_camera.court_kp_vis,
-            np.repeat(source_vis[:1], 12, axis=0),
+            np.repeat(source_vis[:1], len(scene.position), axis=0),
         )
+
+
+def test_global_birth_replanning_preserves_every_source_value():
+    import copy
+    import random
+
+    from src.tasks.base.generate_dataset.timeline_composer import TimelineComposer
+    from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
+        rebalance_scene_births,
+    )
+
+    scene = MultiPersonSceneGenerator(
+        _MotionSceneStub(), timeline=_timeline(), rng=random.Random(2)
+    ).generate_scene("scene_000000")
+    original = copy.deepcopy(scene)
+    rebalance_scene_births(scene, TimelineComposer(_timeline(), rng=random.Random(17)))
+    for old, new in zip(original.track_instances, scene.track_instances, strict=True):
+        a = original.position[old["birth_frame"] : old["death_frame"], old["track_id"]]
+        b = scene.position[new["birth_frame"] : new["death_frame"], new["track_id"]]
+        np.testing.assert_array_equal(a, b)
+        for before, after in zip(original.cameras, scene.cameras, strict=True):
+            np.testing.assert_array_equal(
+                before.human_kp_uv[
+                    old["birth_frame"] : old["death_frame"], old["track_id"]
+                ],
+                after.human_kp_uv[
+                    new["birth_frame"] : new["death_frame"], new["track_id"]
+                ],
+            )
+    assert scene.person_present[0].any()
