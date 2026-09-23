@@ -211,7 +211,7 @@ def finalize(
     clip_id = annotation_clip_id(manifest)
     annotation_name = f"annotation_{clip_id}.json"
     overlay_name = f"overlay_{clip_id}.mp4"
-    archive_name = f"annotation_{clip_id}.zip"
+    archive_name = f"{clip_id}.zip"
     # Publish only after both deliverables and the ZIP have succeeded.
     with tempfile.TemporaryDirectory(
         prefix=".annotation-", dir=output.parent
