@@ -20,6 +20,7 @@ from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateCon
 from src.tasks.base.model_io.association_contracts import AssociationInferencePolicy
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
+from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -235,8 +236,13 @@ _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", field
     "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
     "side_min_support": ConfigField.of(float, int), "side_min_margin": ConfigField.of(float, int),
 })
+_PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
+    name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
+    for name in TemporalPlacementConfig.__dataclass_fields__
+})
 _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "joint_confidence": ConfigField.of(float, int),
+    "placement": ConfigField.mapping(_PLACEMENT_SCHEMA),
 })
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int), "ambiguity_ratio": ConfigField.of(float, int),
@@ -277,6 +283,7 @@ class PipelineRuntimeConfig:
     person_roi_margins: tuple[float, float]
     player_reprojection_px: float
     joint_confidence: float
+    player_placement: TemporalPlacementConfig
     ball_reprojection_px: float
     ball_min_frames: int
     ball_ambiguity_ratio: float
@@ -356,6 +363,7 @@ class PipelineRuntimeConfig:
             if not math.isfinite(error) or error <= 0:
                 raise SemanticConfigurationError("Reprojection thresholds must be finite and positive")
         joint_confidence = float(cast(float, player["joint_confidence"]))
+        placement = TemporalPlacementConfig(**cast(dict[str, Any], dict(_mapping(player["placement"], name="player_reconstruction.placement"))))
         ambiguity_ratio = float(cast(float, ball["ambiguity_ratio"]))
         _unit_interval(joint_confidence, name="joint_confidence")
         _unit_interval(ambiguity_ratio, name="ball ambiguity ratio")
@@ -369,7 +377,7 @@ class PipelineRuntimeConfig:
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])), resolver.resolve(PathRole.CHECKPOINT, cast(str, blcs["checkpoint"])),
-            inference_policy, geometry, visibility, margins, player_error, joint_confidence, ball_error, cast(int, ball["min_frames"]), ambiguity_ratio,
+            inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]), ambiguity_ratio,
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings)
 
 

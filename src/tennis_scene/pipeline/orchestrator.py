@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Sequence
-from dataclasses import asdict, fields
+from dataclasses import asdict, fields, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -383,7 +383,11 @@ class TennisSceneOrchestrator:
                         "runtime": json_value(cfg.people.runtime)}
                     cached = store.load("bodies", body_identity)
                     if cached is None:
-                        players = reconstruct_player_bodies(p_group, selected_people, skeleton, geometry.cameras, tuple(paths[i] for i in active), sample_frames, body=self.body, reprojection_px=cfg.player_reprojection_px * scale)
+                        placement_config = replace(cfg.player_placement,
+                            max_reprojection_rms_px=cfg.player_placement.max_reprojection_rms_px * scale,
+                            reprojection_weight_sigma_px=cfg.player_placement.reprojection_weight_sigma_px * scale)
+                        players = reconstruct_player_bodies(p_group, selected_people, skeleton, geometry.cameras, tuple(paths[i] for i in active), sample_frames,
+                            body=self.body, reprojection_px=cfg.player_reprojection_px * scale, placement_config=placement_config)
                         store.save("bodies", body_identity, {"players": players})
                     else:
                         players = ReconstructedPlayers(**cached["players"])

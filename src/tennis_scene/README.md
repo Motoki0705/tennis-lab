@@ -10,7 +10,7 @@ view_half_turnsの手動入力を要求しません。根拠不足は欠測ま�
 2. camera-local観測とreferenceから、新PLCS・BLCSがsideとclip内IDを推論。
 3. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
 4. 同一IDの実観測から人物COCO17・ラリーの1球を三角測量。
-5. GVHMR incamの身体を三角測量したhipsへ配置。
+5. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 6. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
 
 対応範囲は同期・同FPS・同解像度の3〜5 view、同時4物体、clip内10 IDです。
@@ -46,7 +46,7 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 | pipeline/components/view_association.py | task-owned predictorの遅延ロード・呼出し |
 | pipeline/components/camera_geometry.py | H代表frame、side評価、共通K/R/t |
 | pipeline/components/player_reconstruction.py / ball_reconstruction.py | ID別再構成、身体配置、球選択 |
-| motion_alignment/mesh_placement.py | hip/SMPL root差を補正しrendererへ変換 |
+| motion_alignment/ | COCO17への時系列配置とhip/SMPL root差を補正したrenderer変換 |
 | pipeline/assembly.py | maskを必須とするSceneResult v2構築 |
 | pipeline/artifacts.py | 入力・設定・重み・実装hashを検証するcache |
 | pipeline/utilts/ | Court reference・元frame対応などの補助 |
@@ -88,7 +88,7 @@ metadata.scene_schema_version=2では次を必須とし、無効座標は0で保
 | ball_3d_valid | T | 球の三角測量 |
 
 player_position/yawは三角測量とGVHMRによる配置です。smpl_vertices_localはroot中心の
-canonical posed vertices、smpl_global_orientは既存renderer式への配置用回転です。
+canonical posed verticesに人物共通scaleを適用した値、smpl_global_orientは既存renderer式への配置用回転です。
 元incamパラメータはbodies artifactに残し、v2ではgvhmr_aligned_*を使いません。
 
 P=0、部分joint欠測、mesh欠測を表現できます。rendererはmaskに従い、mesh不足frameでは
@@ -120,7 +120,7 @@ statusは要求branchに有効結果のあるok、一部だけのpartial、両ta
 - [clip_studio](clip_studio/README.md): 同期・ラリーclip切り出し。
 - [reference_pipeline](reference_pipeline/README.md): 旧referenceモデルの実験経路。
 - [dataset_pipeline](dataset_pipeline/README.md): SLCS専用実RGB教師生成。
-- [motion_alignment](motion_alignment/README.md): v1のGVHMR/PLCS比較表現。
+- [motion_alignment](motion_alignment/README.md): COCO17配置の目的関数・支持条件・診断とv1読込互換。
 
 reference/SLCS専用経路は既存設定を維持します。合成データ生成は
 [src/synthetic_data_generation](../synthetic_data_generation/README.md)が担当します。
