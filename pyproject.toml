@@ -380,6 +380,4 @@ package = "src"
     ".spin/cmds.py:lint",
     ".spin/cmds.py:typecheck",
     ".spin/cmds.py:test",
-    ".spin/cmds.py:ci",
-    ".spin/cmds.py:ci_update_durations",
 ]
