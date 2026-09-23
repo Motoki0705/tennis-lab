@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python",
+    "setup.py",
+    "build_ext",
+    "--build-lib",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib",
+    "--build-temp",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/temp",
+    "--force"
+  ],
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "CUDA_HOME": "/usr/local/cuda-13.0",
+    "TORCH_CUDA_ARCH_LIST": "12.0",
+    "MAX_JOBS": "2",
+    "TENNIS_LAB_BUILD_CUDA_OPS": "1",
+    "TENNIS_LAB_DINO_OPS_BUILD_CONFIG": "{\"paths\": {\"project_root\": \"/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup\", \"data_root\": \"/home/kamimura/projects/tennis-lab/data\", \"checkpoint_root\": \"/home/kamimura/projects/tennis-lab/ckpt\", \"artifact_root\": \"/home/kamimura/projects/tennis-lab/outputs\", \"output_root\": \"/home/kamimura/projects/tennis-lab/outputs\", \"cache_root\": \"/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/cache\", \"external_asset_root\": \"/home/kamimura/projects/tennis-lab/third_party\"}, \"source_role\": \"external_asset\", \"source\": \"DINO/models/dino/ops/src\", \"destination_role\": \"cache\", \"destination\": \"dino_ops_sources_torch_2_13\", \"compressed_time_local_bindings\": \"src/utils/models/components/ops/compressed_time_local/bindings.cpp\", \"compressed_time_local_kernels\": \"src/utils/models/components/ops/compressed_time_local/kernels.cu\"}",
+    "TENNIS_LAB_CUDA_OPS_BUILD_TARGET": "all"
+  }
+}

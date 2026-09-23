@@ -1,0 +1,183 @@
+{
+  "ball": {
+    "frame": 808,
+    "player": null,
+    "speed_m_s": 412.1759948730469,
+    "source_contact": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/figures/pipeline-ball-max-step-source.jpg",
+    "records": [
+      {
+        "camera": "cam0",
+        "frame": 807,
+        "observed": true,
+        "predicted": true,
+        "prediction_px": [
+          479.4792308360338,
+          466.4223102629185
+        ],
+        "reference_px": [
+          1056.97,
+          303.91
+        ]
+      },
+      {
+        "camera": "cam0",
+        "frame": 808,
+        "observed": false,
+        "predicted": true,
+        "prediction_px": [
+          472.7448308467865,
+          460.50550854206085
+        ],
+        "reference_px": null
+      },
+      {
+        "camera": "cam0",
+        "frame": 809,
+        "observed": false,
+        "predicted": true,
+        "prediction_px": [
+          472.1821033805609,
+          463.8871720433235
+        ],
+        "reference_px": null
+      },
+      {
+        "camera": "cam1",
+        "frame": 807,
+        "observed": true,
+        "predicted": false,
+        "prediction_px": [
+          0.0,
+          0.0
+        ],
+        "reference_px": [
+          563.45,
+          415.62
+        ]
+      },
+      {
+        "camera": "cam1",
+        "frame": 808,
+        "observed": true,
+        "predicted": false,
+        "prediction_px": [
+          0.0,
+          0.0
+        ],
+        "reference_px": [
+          565.02,
+          415.03
+        ]
+      },
+      {
+        "camera": "cam1",
+        "frame": 809,
+        "observed": true,
+        "predicted": false,
+        "prediction_px": [
+          0.0,
+          0.0
+        ],
+        "reference_px": [
+          566.46,
+          414.77
+        ]
+      },
+      {
+        "camera": "cam2",
+        "frame": 807,
+        "observed": true,
+        "predicted": true,
+        "prediction_px": [
+          968.0132867693901,
+          308.3601065278053
+        ],
+        "reference_px": [
+          967.85,
+          305.26
+        ]
+      },
+      {
+        "camera": "cam2",
+        "frame": 808,
+        "observed": true,
+        "predicted": true,
+        "prediction_px": [
+          1303.6478647589684,
+          343.016481757164
+        ],
+        "reference_px": [
+          969.88,
+          304.1
+        ]
+      },
+      {
+        "camera": "cam2",
+        "frame": 809,
+        "observed": true,
+        "predicted": true,
+        "prediction_px": [
+          1308.6425535678864,
+          336.369915753603
+        ],
+        "reference_px": [
+          971.46,
+          303.44
+        ]
+      }
+    ]
+  },
+  "player": {
+    "frame": 779,
+    "player": 1,
+    "speed_m_s": 36.56344223022461,
+    "source_contact": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/figures/pipeline-player-max-step-source.jpg",
+    "records": [
+      {
+        "camera": "cam0",
+        "frame": 778,
+        "visible_joints_at_015": 4
+      },
+      {
+        "camera": "cam0",
+        "frame": 779,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam0",
+        "frame": 780,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam1",
+        "frame": 778,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam1",
+        "frame": 779,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam1",
+        "frame": 780,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam2",
+        "frame": 778,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam2",
+        "frame": 779,
+        "visible_joints_at_015": 17
+      },
+      {
+        "camera": "cam2",
+        "frame": 780,
+        "visible_joints_at_015": 17
+      }
+    ]
+  }
+}

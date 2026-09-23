@@ -1,0 +1,37 @@
+INFO:src.tennis_scene.pipeline.components.court_kp:Loading Court KP model from /home/kamimura/projects/tennis-lab/outputs/court_detection/multiscale-depth3-local-rtx/logs/version_4/checkpoints/court-detection-epoch=17.ckpt
+INFO:dinov3:using base=100 for rope new
+INFO:dinov3:using min_period=None for rope new
+INFO:dinov3:using max_period=None for rope new
+INFO:dinov3:using normalize_coords=separate for rope new
+INFO:dinov3:using shift_coords=None for rope new
+INFO:dinov3:using rescale_coords=2 for rope new
+INFO:dinov3:using jitter_coords=None for rope new
+INFO:dinov3:using dtype=fp32 for rope new
+INFO:dinov3:using mlp layer as FFN
+INFO:src.tennis_scene.pipeline.components.court_kp:Camera 0 Court region: (600, 0, 1680, 540)
+INFO:src.tennis_scene.pipeline.components.court_kp:Camera 1 Court region: (0, 270, 1920, 1080)
+INFO:src.tennis_scene.pipeline.components.court_kp:Camera 2 Court region: (0, 270, 1920, 1080)
+INFO:src.tennis_scene.pipeline.components.court_kp:Saved CourtKP result to /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T131222Z/current_court_preflight.json
+CURRENT_COURT_CALIBRATION_PASSED
+INFO:src.tennis_scene.pipeline.components.ball_detection:Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+INFO:src.tennis_scene.pipeline.components.ball_detection:Running ball detection...
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T131222Z/current_inference_preflight.py", line 30, in <module>
+    ball=BallDetectionModule(ball_config).process(runtime.video_paths,max_frames=32,image_width=1920,image_height=1080)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/tennis_scene/pipeline/components/ball_detection.py", line 301, in process
+    ball_uv, score = self._predict_video(video_path, max_frames=max_frames)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/tennis_scene/pipeline/components/ball_detection.py", line 458, in _predict_video
+    prediction = self._pipeline.predict(batch.tensor)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/tasks/ball_detection/inference/predictor.py", line 98, in predict
+    call = self.adapter.prepare_model_call(images.to(self.device))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/tasks/ball_detection/model_io/adapters.py", line 284, in prepare_model_call
+    return self._prepare_model_call(self.prepare_images(images))
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/tasks/ball_detection/model_io/adapters.py", line 299, in prepare_images
+    raise BallModelIOError("images values must be in [0, 1].")
+src.tasks.ball_detection.model_io.contracts.BallModelIOError: images values must be in [0, 1].
+terminate called without an active exception

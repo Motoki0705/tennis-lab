@@ -1,0 +1,68 @@
+[
+  {
+    "camera": "cam0",
+    "frame0_raw_indexed_mean_error_px": 701.3568459131246,
+    "frame0_raw_permuted_mean_error_px": 587.8706580925917,
+    "optimal_index_mapping": [
+      4,
+      10,
+      6,
+      8,
+      12,
+      1,
+      13,
+      3,
+      0,
+      7,
+      2,
+      11,
+      9,
+      5
+    ],
+    "frame0_status": "no_jointly_supported_candidate"
+  },
+  {
+    "camera": "cam1",
+    "frame0_raw_indexed_mean_error_px": 180.88906481429157,
+    "frame0_raw_permuted_mean_error_px": 83.91135463602443,
+    "optimal_index_mapping": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      7,
+      6,
+      5,
+      8,
+      13,
+      10,
+      11,
+      12,
+      9
+    ],
+    "frame0_status": "joint_optimization_failed"
+  },
+  {
+    "camera": "cam2",
+    "frame0_raw_indexed_mean_error_px": 47.78015657335855,
+    "frame0_raw_permuted_mean_error_px": 47.78015657335855,
+    "optimal_index_mapping": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "frame0_status": "insufficient_line_support"
+  }
+]

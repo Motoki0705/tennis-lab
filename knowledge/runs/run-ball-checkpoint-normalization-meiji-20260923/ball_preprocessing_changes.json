@@ -1,0 +1,107 @@
+[
+  {
+    "path": "src/tennis_scene/README.md",
+    "before_sha256": "c7a067f3637d26bd82502a096a02047fb2a4383e48e1a4fd6c62fb305404e87c",
+    "after_sha256": "cc926843cc00320c4055297e6996667b59100e0adcac579f42067eafad29bb61"
+  },
+  {
+    "path": "src/tennis_scene/pipeline/components/ball_detection.py",
+    "before_sha256": "8347562f2d1979954a5e29f79c967ff384252937bc857933a3303845c33144c1",
+    "after_sha256": "7333a5c70c7de993034ebce2a7ea514b2886a6f0484830941b13b89c29c15be2"
+  },
+  {
+    "path": "src/tennis_scene/configs/pipeline.yaml",
+    "before_sha256": "d8347ea25c854d32eabfdb4584bd1f794b11cac7e4eeebaee9d20cbeeffbc924",
+    "after_sha256": "fbeb4b377d1f0f51ebeb1d383347fe5a26bbc2e6621189b3555f09f7f65649a7"
+  },
+  {
+    "path": "src/tasks/ball_detection/README.md",
+    "before_sha256": "83f49b889c89172435fdccabb4951e5d928d4a9863d2e564eaba85065a939296",
+    "after_sha256": "a71a85c333cdcd17434ac4045c0afdbbb8e9ba931bbee5fb167688c59c04b55f"
+  },
+  {
+    "path": "src/tasks/ball_detection/scripts/eval.py",
+    "before_sha256": "f7025f61ff5d32b03a9d28a0e13fe6677a2bb842d1d65ec23a5b52645311b537",
+    "after_sha256": "bee72287de2f638d6be45b0ce3544d6a0a333c69348330d36c336c8498cb51d5"
+  },
+  {
+    "path": "src/tasks/ball_detection/visualization/orchestrator.py",
+    "before_sha256": "cea2003ffba009bb89ca24c4b184480d8d3888bd6259de852a93bdf093da64ff",
+    "after_sha256": "9a8c0d7891b134d2cf4a335869b12dce97006970144fbd9dcda5aae1c4f58508"
+  },
+  {
+    "path": "src/tasks/ball_detection/visualization/inference/service.py",
+    "before_sha256": "5326e52df446afe94df95e36a5c8a3d133ca961d090ecceb8b04a82ef4b414fb",
+    "after_sha256": "a1fe1cd397632797ff454fb7ba97f0c903a933dd0fb99418a65caf056f08b618"
+  },
+  {
+    "path": "src/tasks/ball_detection/visualization/inference/loader.py",
+    "before_sha256": "4ed78471c4cc0e7ab39d2f556cb309aa9618e341574f683419ae23ff37ec6f6f",
+    "after_sha256": "8b657037cf697beee773d8b6186865c5233441d56189e4f5a936cae5ca063f3a"
+  },
+  {
+    "path": "src/tasks/ball_detection/visualization/api/predict.py",
+    "before_sha256": "26faf4d46d9de8c26ed3bc674baa543828d4436a12b2e359b5b53a6fc2223fa3",
+    "after_sha256": "f49f928d48d9f7ed264d368623c190110c01b2b1811ef008781aa42dc0786e94"
+  },
+  {
+    "path": "src/tasks/ball_detection/training/lightning_module.py",
+    "before_sha256": "26e5269714828e9ffbcdd6d18c95344c718accd089809d7e602c1239dfe02443",
+    "after_sha256": "88ac330fc0aa5b23724f3756a040344675cbe4045490b8c7ece204aac7486fb0"
+  },
+  {
+    "path": "src/tasks/ball_detection/model_io/evaluation.py",
+    "before_sha256": "a92a5f6b8e2a1894d77cdb47ea722468b4b53a0f904a2f25ae62df6125045684",
+    "after_sha256": "60e5004343657c6bc22249da0c451f38f30a051aa1df4d0f77c1780a162dd423"
+  },
+  {
+    "path": "src/tasks/ball_detection/model_io/normalization.py",
+    "before_sha256": null,
+    "after_sha256": "428eece3758970d1c3313b9e3cababea7412f03d30ec8bbd9b5cfcf9a1e65598"
+  },
+  {
+    "path": "src/tasks/ball_detection/model_io/adapters.py",
+    "before_sha256": "355ed2b2ef11e33e3b851b3b48329590ccd7d272efd9b454c9b81e24e87321b4",
+    "after_sha256": "f4f539e66b384e5b80f4d58cd384f053eaa04b2c1b7feb1a45884f944c739e72"
+  },
+  {
+    "path": "src/tasks/ball_detection/inference/checkpoint.py",
+    "before_sha256": "51b2f599728a0a6b255ef9e793f0824944d5a9c57ee5482340579c79718457a6",
+    "after_sha256": "c4f05c6017635c60637f9b03c8400567e63f56e865ef8f26a2db23d04992a4b5"
+  },
+  {
+    "path": "src/tasks/ball_detection/inference/predictor.py",
+    "before_sha256": "bfbed857d91451b84f14c71b0c2f81eddb9ce4ac463868e03480619c07a6b9d7",
+    "after_sha256": "b7b654736af42ac1cf8b1c74b84e56c45337271e0b64a72bfd4d9c139309c571"
+  },
+  {
+    "path": "tests/unit/tennis_scene/test_pipeline_configuration.py",
+    "before_sha256": "7e59302d20c811b5444d88ff9ee441ad08304f30c703f81ce68e61b7b173df4a",
+    "after_sha256": "2177ee60dde6a760fb333cb6229113a9cbe1c9854bf66eda3e2243072de4e60b"
+  },
+  {
+    "path": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py",
+    "before_sha256": "3e6daa045d1a2f3dd3b730c9551147c792e35417250910dd332ae25809302b96",
+    "after_sha256": "577c8c1ed3a9dd19d9cc3a5f99a245d08cba1e7890b59d4ba8868e45e3af1d7e"
+  },
+  {
+    "path": "tests/unit/tasks/ball_detection/visualization/conftest.py",
+    "before_sha256": "8a4c9b62a7155f02e6a5ea4466652e70867c2480bf6354dab9652d1a13f5b78e",
+    "after_sha256": "f05d9ebf36439f2a91dc8f4dabc21e3baa2da3c473a5cdf98848733b156db826"
+  },
+  {
+    "path": "tests/unit/tasks/ball_detection/visualization/inference/test_loader.py",
+    "before_sha256": "0c55c245f18f3e9349ab53c027b71c7aed0f61b7bb2b7f9e4e53186c6ec40943",
+    "after_sha256": "513257254ef37f7e4ffd1ed8d25d58669b09cf73d9d8b0935b720dcee087dc14"
+  },
+  {
+    "path": "tests/unit/tasks/ball_detection/visualization/inference/test_local_data.py",
+    "before_sha256": "203ea8769d1dce6adbedbe6e1a61ad3f56ddf3819e65797609d8abad1350be66",
+    "after_sha256": "a28e8b532b5fb4d8cf790965d1e1696dab74cf186d90275b22ffe916042ee2b3"
+  },
+  {
+    "path": "tests/unit/tasks/ball_detection/model_io/test_normalization.py",
+    "before_sha256": null,
+    "after_sha256": "ed774ecf1449316f88dcb945eb583c1f17f977f7d3a952752c4960b5b652b08e"
+  }
+]

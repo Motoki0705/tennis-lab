@@ -1,0 +1,97 @@
+{
+  "cam0": {
+    "court_distance_px": {
+      "mean": 9.927464882672615,
+      "median": 8.341543394414227,
+      "p95": 18.52688945349262,
+      "max": 44.01767230883697
+    },
+    "ball_observed": 841,
+    "ball_detected_on_observed": 134,
+    "ball_missing_rate": 0.8406658739595719,
+    "ball_distance_px": {
+      "mean": 115.48617694172202,
+      "median": 41.02329563791291,
+      "p95": 338.78958406996816,
+      "max": 583.6763868389623
+    },
+    "ball_error_gt20px_on_detected_observed": 73,
+    "worst_matched_ball_frames": [
+      460,
+      239,
+      240,
+      269,
+      537
+    ]
+  },
+  "cam1": {
+    "court_distance_px": {
+      "mean": 13.129072637822086,
+      "median": 10.388039341356777,
+      "p95": 28.20111653932178,
+      "max": 93.6845811757779
+    },
+    "ball_observed": 985,
+    "ball_detected_on_observed": 639,
+    "ball_missing_rate": 0.35126903553299493,
+    "ball_distance_px": {
+      "mean": 213.23990319393212,
+      "median": 6.199357577465914,
+      "p95": 761.7354540909001,
+      "max": 853.0465434516085
+    },
+    "ball_error_gt20px_on_detected_observed": 219,
+    "worst_matched_ball_frames": [
+      108,
+      107,
+      104,
+      106,
+      105
+    ]
+  },
+  "cam2": {
+    "court_distance_px": {
+      "mean": 8.374166851061755,
+      "median": 8.719633601111209,
+      "p95": 12.389126399105175,
+      "max": 17.832748872360646
+    },
+    "ball_observed": 941,
+    "ball_detected_on_observed": 519,
+    "ball_missing_rate": 0.44845908607863977,
+    "ball_distance_px": {
+      "mean": 98.9246485806418,
+      "median": 7.553292294748681,
+      "p95": 491.2193878919318,
+      "max": 788.9175957465424
+    },
+    "ball_error_gt20px_on_detected_observed": 174,
+    "worst_matched_ball_frames": [
+      828,
+      827,
+      826,
+      825,
+      824
+    ]
+  },
+  "dynamics_candidates": {
+    "player_position": {
+      "max_speed_m_s": 36.56344223022461,
+      "frame_after_max_step": 779,
+      "player": 1,
+      "z_below_zero_frames": 0
+    },
+    "gvhmr_aligned_player_position": {
+      "max_speed_m_s": 11.395439147949219,
+      "frame_after_max_step": 857,
+      "player": 1,
+      "z_below_zero_frames": 0
+    },
+    "ball_3d": {
+      "max_speed_m_s": 310.116455078125,
+      "frame_after_max_step": 865,
+      "player": null,
+      "z_below_zero_frames": 301
+    }
+  }
+}
