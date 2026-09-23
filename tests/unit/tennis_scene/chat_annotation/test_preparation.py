@@ -202,18 +202,24 @@ def test_clips_preserve_vfr_fractional_pts_and_frame_ownership(
     ):
         assert prepare(config) == root
     assert mtimes == {file: file.stat().st_mtime_ns for file in mtimes}
-    request_path = config.output / "project_kits" / "REQUEST.txt"
-    request_before = request_path.read_text(encoding="utf-8")
-    request_mtime = request_path.stat().st_mtime_ns
+    request_paths = [
+        config.output / "project_kits" / target / "REQUEST.txt"
+        for target in ("ball_detection", "player_detection")
+    ]
+    requests_before = [path.read_text(encoding="utf-8") for path in request_paths]
+    request_mtimes = [path.stat().st_mtime_ns for path in request_paths]
     assert prepare(replace(config, duration_seconds=0.8)) != root
-    request = request_path.read_text(encoding="utf-8")
     videos = list((config.output / "videos").glob("*/*"))
     assert all(path.is_file() and path.suffix == ".mp4" for path in videos)
     assert len(videos) > len(summary["clips"])
-    assert request == request_before
-    assert request_path.stat().st_mtime_ns == request_mtime
-    assert "入力一覧" not in request
-    assert all(path.name not in request for path in videos)
+    assert [path.read_text(encoding="utf-8") for path in request_paths] == requests_before
+    assert [path.stat().st_mtime_ns for path in request_paths] == request_mtimes
+    assert all("入力一覧" not in path.read_text(encoding="utf-8") for path in request_paths)
+    assert all(
+        path.name not in request_path.read_text(encoding="utf-8")
+        for request_path in request_paths
+        for path in videos
+    )
 
 
 def test_capacity_splits_without_quality_reduction_and_rejects_impossible_limit(
@@ -433,10 +439,13 @@ def test_clips_are_grouped_by_source_video_filename(
         folder = video_path(config.output, manifest).parent
         assert {path.name for path in folder.iterdir()} == {manifest.filename}
         assert all(path.is_file() for path in folder.iterdir())
-    request = (config.output / "project_kits" / "REQUEST.txt").read_text(
-        encoding="utf-8"
-    )
-    assert all(m.filename not in request for m in manifests)
+    requests = [
+        (config.output / "project_kits" / target / "REQUEST.txt").read_text(
+            encoding="utf-8"
+        )
+        for target in ("ball_detection", "player_detection")
+    ]
+    assert all(m.filename not in request for request in requests for m in manifests)
 
 
 def test_shared_request_rejects_mixed_gap_policies(
@@ -445,9 +454,12 @@ def test_shared_request_rejects_mixed_gap_policies(
     write_video(tmp_path / "source.mp4", [i * 3000 for i in range(4)], Fraction(30))
     config = PrepareConfig.from_config(cfg)
     prepare(config)
-    request_path = config.output / "project_kits" / "REQUEST.txt"
-    previous = request_path.read_bytes()
+    request_paths = [
+        config.output / "project_kits" / target / "REQUEST.txt"
+        for target in ("ball_detection", "player_detection")
+    ]
+    previous = [path.read_bytes() for path in request_paths]
     cfg.annotation.ball_max_gap_seconds = 0.25
     with pytest.raises(ValueError, match="different request version"):
         prepare(PrepareConfig.from_config(cfg))
-    assert request_path.read_bytes() == previous
+    assert [path.read_bytes() for path in request_paths] == previous

@@ -55,7 +55,13 @@ def _source(url: str, root: Path) -> tuple[Path, SourceInfo]:
 
 
 def _patch_kit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    kit = {"PROTOCOL.md": b"requirements"}
+    kit = {
+        "PROTOCOL.md": b"requirements",
+        "ball_detection_REQUEST.txt": b"ball request",
+        "player_detection_REQUEST.txt": b"player request",
+        "ball_detection_annotation.schema.json": b"{}",
+        "player_detection_annotation.schema.json": b"{}",
+    }
     monkeypatch.setattr(batch, "build_kit", lambda _root, _policies: (kit, "b" * 64))
 
 
@@ -98,7 +104,9 @@ def test_batch_bounds_parallel_downloads_and_overlaps_sequential_encoding(
         kit_contents: dict[str, bytes],
         kit_id: str,
     ) -> Path:
-        assert kit_contents == {"PROTOCOL.md": b"requirements"} and kit_id == "b" * 64
+        assert kit_contents["PROTOCOL.md"] == b"requirements" and kit_id == "b" * 64
+        assert "ball_detection_annotation.schema.json" in kit_contents
+        assert "player_detection_annotation.schema.json" in kit_contents
         assert source.is_file()
         if not prepared:
             assert blocked_downloads.wait(timeout=5)
