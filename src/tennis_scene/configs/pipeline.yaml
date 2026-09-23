@@ -128,6 +128,18 @@ player_reconstruction:
   enabled: true
   reprojection_px: 40.0
   joint_confidence: 0.3
+  placement:
+    data_sigma_m: 0.1
+    root_acceleration_sigma: 10.0
+    yaw_acceleration_sigma: 20.0
+    temporal_weight: 0.05
+    min_joints: 5
+    min_scale_pairs: 6
+    min_scale: 0.7
+    max_scale: 1.4
+    max_reprojection_rms_px: 10.0
+    reprojection_weight_sigma_px: 5.0
+    max_nfev: 200
 ball_reconstruction:
   enabled: true
   reprojection_px: 20.0
