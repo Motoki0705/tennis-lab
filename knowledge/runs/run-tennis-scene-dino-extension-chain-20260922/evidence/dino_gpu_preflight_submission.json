@@ -1,0 +1,5 @@
+{
+  "name": "tennis-scene-cleanup-dino-gvhmr-preflight-20260922T1915Z",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_gvhmr_gpu_preflight.py",
+  "result": "queued: 1790104562109950397_877659_tennis-scene-cleanup-dino-gvhmr-preflight-20260922T1915Z.job\n"
+}

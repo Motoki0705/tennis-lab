@@ -1,0 +1,46 @@
+{
+  "device": "cpu",
+  "torch_threads": 1,
+  "scope": "3 diagnostic frames; no CUDA work; CPU total is not GPU forward timing; geometry is the same NumPy/SciPy path used in GPU runs",
+  "records": [
+    {
+      "camera": "cam0",
+      "frame": 0,
+      "region": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "hybrid_geometry_seconds_unprofiled": 1.9628667990000395,
+      "full_prediction_seconds_on_cpu": 6.119708039001125,
+      "status": "ok"
+    },
+    {
+      "camera": "cam1",
+      "frame": 0,
+      "region": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "hybrid_geometry_seconds_unprofiled": 1.7667060069979925,
+      "full_prediction_seconds_on_cpu": 5.311005671999737,
+      "status": "ok"
+    },
+    {
+      "camera": "cam2",
+      "frame": 0,
+      "region": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "hybrid_geometry_seconds_unprofiled": 2.581103645999974,
+      "full_prediction_seconds_on_cpu": 6.11983970700021,
+      "status": "ok"
+    }
+  ]
+}

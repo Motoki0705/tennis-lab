@@ -1,0 +1,35 @@
+{
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "assignments": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "reviewed_at_utc": "2026-09-22T23:49:54.898719+00:00",
+  "reason": "Parent inspected all three full-view contact sheets at the lowest trajectory margins, normal-time full views, and five-timepoint old/new person crops for all cameras. The light-blue-shirt player corresponds to cam0/cam1 axis0 and cam2 axis1; the dark-shirt player to cam0/cam1 axis1 and cam2 axis0. All 1010 frames favor the same local-axis pairing in bbox+pose cost; minimum alternative-minus-chosen margin is 6.72 bbox-normalized units. cam0 is numerically identical, cam1 differs only at floating-point scale, cam2 far-person changes are small and retain the same subject. Track numbers were not used as identity proof.",
+  "quality_limits": [
+    "Far players are small or dark in some views, and the tracker interpolates missing detections.",
+    "cam2 far-player keypoints at frame 1009 are visibly displaced from the person; identity correspondence is supported by the full trajectory and other views, but this is not a claim of correct pose on every frame."
+  ],
+  "evidence_sha256": {
+    "identity_full_timeline.json": "6f7fdc7346b35971bec24b2a0d05020532599e5e9dcc1febb69217b3b76ff056",
+    "identity_source_crops_cam2.jpg": "4c59dee0eb6c2639d3d19404d8cb41c338caad48d156c3616d915c5bc9d94d2c",
+    "identity_lowest_margins_cam2.jpg": "a4034fed99ad2693c8e2f734ab337994fa07bd866c66a941d038985fba124ab3",
+    "identity_source_crops_cam0.jpg": "3e1d9e80a758ed660e7b0cf0d55317f785af4fa581a9ad85ba34ebd61cd83568",
+    "identity_lowest_margins_cam0.jpg": "7ae5663bdd09140e674c0dea47d4d6727e191eb4f338f212ae94c60ac9c4cf82",
+    "identity_lowest_margins_cam1.jpg": "a5bdf0c9b1ed5ee0842876599e8de64b510f0659caf7e86d77c640c42a1f19c4",
+    "identity_contact_sheet.jpg": "3ba79fb1a4651704fe45d61809d49b6324f6c84eaf0e70c429dab21710ba5ed5",
+    "identity_source_crops_cam1.jpg": "4ba9596fd993e3a3adcc7d48f3041821aea919e71f1e5647e54258523e24db03"
+  }
+}

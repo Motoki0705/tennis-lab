@@ -1,0 +1,18 @@
+{
+  "cam0": {
+    "all_visible_frames": 1010,
+    "mean_error_px": 9.927464882672615,
+    "p95_error_px": 18.52688945349262
+  },
+  "cam1": {
+    "all_visible_frames": 1010,
+    "mean_error_px": 13.129072637822086,
+    "p95_error_px": 28.20111653932178
+  },
+  "cam2": {
+    "all_visible_frames": 1010,
+    "mean_error_px": 8.374166851061755,
+    "p95_error_px": 12.389126399105175
+  },
+  "repeat_difference_normalized_max": 0.0
+}

@@ -1,0 +1,3019 @@
+{
+  "input_receipt": {
+    "court": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+      "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+      "bytes": 1320569176
+    },
+    "dino": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "bytes": 2611369517
+    },
+    "vitpose": {
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+      "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+      "bytes": 2549075546
+    },
+    "hmr2": {
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt",
+      "sha256": "2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e",
+      "bytes": 2709494041
+    },
+    "gvhmr": {
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt",
+      "sha256": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91",
+      "bytes": 163508011
+    },
+    "plcs": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/plcs/real-rgb-meiji-foot-e60-v1.ckpt",
+      "sha256": "e851a8fe3fbc8273ed86fcf7876c34e941b77761e4ab2f264495228b5c12919a",
+      "bytes": 940592845
+    },
+    "blcs": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/blcs/real-rgb-meiji-e60-v1.ckpt",
+      "sha256": "dd0e54d296604f43f52fd33ebf53abc4ac71cbc441f86d49cea2d1dd17e0bf32",
+      "bytes": 621079077
+    },
+    "ball": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt",
+      "sha256": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+      "bytes": 250620009
+    },
+    "video_cam0": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+      "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+      "bytes": 11850811
+    },
+    "video_cam1": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+      "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+      "bytes": 19479451
+    },
+    "video_cam2": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+      "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+      "bytes": 19787313
+    },
+    "manual_association": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/manual_reference.json",
+      "sha256": "9d49a6e7fc75d137119a1e4c60834b03244efc847fc4b6e0e2a37408800ae272",
+      "bytes": 367
+    },
+    "clip_manifest": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/clip.json",
+      "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138",
+      "bytes": 1730
+    },
+    "dataset_manifest": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/dataset.json",
+      "sha256": "df6f3b354fcec99216e52a844eaa46223d3a53d97ec022b857d782ea396b6264",
+      "bytes": 15969
+    },
+    "manual_court_reference": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/manual_court_kp_result.json",
+      "sha256": "4b55bb9a857f55285e2aa2d33163d349d33e1affcd1eee618e9ac1dff6bd6a5b",
+      "bytes": 4066303
+    },
+    "smpl_faces": {
+      "path": "/home/kamimura/projects/tennis-lab/data/smplh/neutral/model.npz",
+      "sha256": "a60a7e29d33f09ef1a6352907e2f485e161f471330ca40592764374063e751df",
+      "bytes": 87259106
+    },
+    "smpl_joint_regressor": {
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt",
+      "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf",
+      "bytes": 662187
+    },
+    "dino_cuda_extension": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib/MultiScaleDeformableAttention.so",
+      "sha256": "8e5e7388243434107aa14380dcc4689053ba2e5443dd862794aa6b52add8d2e7",
+      "bytes": 12098320
+    },
+    "ball_reference_cam0": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/outsource/cam0_annotations.json",
+      "sha256": "d87f2f100afb82badd555b3cfb3b9d2a1015cfe40a06af7b51a9001c0c2f2979",
+      "bytes": 617133
+    },
+    "identity_reference_cam0": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/identity_reference_cam0.npz",
+      "sha256": "2355ebe476b42332c9062900cfb0e284ba90ac95e0155ce146e55d64fadac377",
+      "bytes": 362679
+    },
+    "ball_reference_cam1": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/outsource/cam1_annotations.json",
+      "sha256": "6f7b89b591ae6bbc097317e78b8c43384b78eef52f2070d9a67b17dd916a2cc0",
+      "bytes": 628353
+    },
+    "identity_reference_cam1": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/identity_reference_cam1.npz",
+      "sha256": "441822ee945ec249a3a8a54e7e6f87d9af26afb741160f9fe03ef2040add3a26",
+      "bytes": 368123
+    },
+    "ball_reference_cam2": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/outsource/cam2_annotations.json",
+      "sha256": "c624cc007c068a8ada161bad0aa9e4ba2e266219a8f7c83ef1a05a1e9930b3e1",
+      "bytes": 620482
+    },
+    "identity_reference_cam2": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/identity_reference_cam2.npz",
+      "sha256": "83004c389ed4a5b9bb6a68a6f06f08df9bc4bced113e7fb81437e09cac4a836a",
+      "bytes": 370219
+    },
+    "gvhmr_asset_hmr2_mean_params": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz",
+      "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd",
+      "bytes": 1310
+    },
+    "gvhmr_asset_smplx_to_smpl": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt",
+      "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06",
+      "bytes": 208935
+    },
+    "gvhmr_asset_smpl_coco17_regressor": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt",
+      "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f",
+      "bytes": 469227
+    },
+    "gvhmr_asset_smplx_verts437": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt",
+      "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d",
+      "bytes": 4203
+    },
+    "gvhmr_asset_smpl_neutral_joint_regressor": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt",
+      "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf",
+      "bytes": 662187
+    },
+    "smplx_neutral": {
+      "path": "/home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/body_models/smplx/SMPLX_NEUTRAL.npz",
+      "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992",
+      "bytes": 108752058
+    },
+    "reused_court_pipeline": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/court_kp_result.json",
+      "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+      "bytes": 18534316
+    },
+    "reused_court_dataset": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/court_kp_result.json",
+      "sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+      "bytes": 18534316
+    },
+    "reused_human_cam0": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/gvhmr_result_cam0.json",
+      "sha256": "8fa6d69e3b6e09ace0dcbe90979be5690bfde1710e51c95993d229e6a8aea9cd",
+      "bytes": 1527838690
+    },
+    "reused_human_cam1": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/gvhmr_result_cam1.json",
+      "sha256": "814c560b989414dfb97fb2d80b499743b3a246200bd4a2c4afac76f91d0d66b1",
+      "bytes": 1536628058
+    },
+    "reused_human_cam2": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/gvhmr_result_cam2.json",
+      "sha256": "cbaeba12f4e6cdfa0e5e1eb403058b98682097c31af2c83ba95af6e6950a238c",
+      "bytes": 1547458652
+    }
+  },
+  "manifest": {
+    "version": 2,
+    "clip_id": "video_000/clip_000",
+    "clip_name": "clip_000",
+    "fps": 59.94006,
+    "num_frames": 1010,
+    "width": 1920,
+    "height": 1080,
+    "global_start_sec": 37.338406601390844,
+    "global_end_sec": 54.18857326805711,
+    "camera_ids": [
+      "cam0",
+      "cam1",
+      "cam2"
+    ],
+    "video_paths": [
+      "media/cam0.mp4",
+      "media/cam1.mp4",
+      "media/cam2.mp4"
+    ],
+    "cameras": [
+      {
+        "camera_id": "cam0",
+        "video": "media/cam0.mp4",
+        "source_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/raw/meiji_3cam/video_000/cam0.mp4",
+        "offset_sec": 0.0,
+        "source_fps": 59.94005994005994,
+        "source_frame_start": 2238,
+        "source_frame_end": 3247,
+        "letterbox": {
+          "scale": 1.125,
+          "pad_x": 240,
+          "pad_y": 0,
+          "scaled_width": 1440,
+          "scaled_height": 1080
+        }
+      },
+      {
+        "camera_id": "cam1",
+        "video": "media/cam1.mp4",
+        "source_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/raw/meiji_3cam/video_000/cam1.mp4",
+        "offset_sec": 48.465083333332295,
+        "source_fps": 59.94005994005994,
+        "source_frame_start": 5143,
+        "source_frame_end": 6152,
+        "letterbox": null
+      },
+      {
+        "camera_id": "cam2",
+        "video": "media/cam2.mp4",
+        "source_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/raw/meiji_3cam/video_000/cam2.mp4",
+        "offset_sec": -31.998633333333203,
+        "source_fps": 59.94005994005994,
+        "source_frame_start": 320,
+        "source_frame_end": 1329,
+        "letterbox": null
+      }
+    ],
+    "sync_source": "clip_studio",
+    "exported_at": "2026-07-13T23:43:53.467690+00:00",
+    "dataset_id": "meiji_3cam",
+    "video_id": "video_000"
+  },
+  "source_sha256": {
+    "cam0": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+    "cam1": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+    "cam2": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+  },
+  "scenes": {
+    "pipeline": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/scene.npz",
+      "sha256": "75f130891158758ae1635b494e842a1a7cec2df650375ea13ef64a2da5bcef34",
+      "arrays": {
+        "num_frames": {
+          "shape": [],
+          "dtype": "int64",
+          "nonfinite": 0
+        },
+        "fps": {
+          "shape": [],
+          "dtype": "float64",
+          "nonfinite": 0
+        },
+        "width": {
+          "shape": [],
+          "dtype": "int64",
+          "nonfinite": 0
+        },
+        "height": {
+          "shape": [],
+          "dtype": "int64",
+          "nonfinite": 0
+        },
+        "court_kp": {
+          "shape": [
+            3,
+            1010,
+            14,
+            2
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "court_vis": {
+          "shape": [
+            3,
+            1010,
+            14
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "player_position": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "player_yaw": {
+          "shape": [
+            2,
+            1010
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_body_pose": {
+          "shape": [
+            2,
+            1010,
+            63
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_global_orient": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_betas": {
+          "shape": [
+            2,
+            10
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_vertices_local": {
+          "shape": [
+            2,
+            1010,
+            6890,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_player_position": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_player_yaw": {
+          "shape": [
+            2,
+            1010
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_smpl_global_orient": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_smpl_vertices_local": {
+          "shape": [
+            2,
+            1010,
+            6890,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "ball_uv": {
+          "shape": [
+            3,
+            1010,
+            2
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "ball_vis": {
+          "shape": [
+            3,
+            1010
+          ],
+          "dtype": "bool",
+          "nonfinite": 0
+        },
+        "ball_3d": {
+          "shape": [
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "human_kp_2d": {
+          "shape": [
+            2,
+            3,
+            1010,
+            17,
+            2
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "human_kp_vis": {
+          "shape": [
+            2,
+            3,
+            1010,
+            17
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "player_track_ids": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32",
+          "nonfinite": 0
+        }
+      },
+      "court": {
+        "cam0": {
+          "visible_points": 14140,
+          "distance_px": {
+            "count": 14140,
+            "nonfinite": 0,
+            "min": 0.21458648136541797,
+            "max": 44.01767230883697,
+            "mean": 9.927464882672615,
+            "median": 8.341543394414227,
+            "p95": 18.52688945349262
+          },
+          "first_frame_distance_px": {
+            "count": 14,
+            "nonfinite": 0,
+            "min": 2.037162258701187,
+            "max": 21.94858994767839,
+            "mean": 10.782743083086343,
+            "median": 7.946491240667075,
+            "p95": 20.390637061599083
+          },
+          "frames_with_all_points": 1010
+        },
+        "cam1": {
+          "visible_points": 14140,
+          "distance_px": {
+            "count": 14140,
+            "nonfinite": 0,
+            "min": 0.14010483278370806,
+            "max": 93.6845811757779,
+            "mean": 13.129072637822086,
+            "median": 10.388039341356777,
+            "p95": 28.20111653932178
+          },
+          "first_frame_distance_px": {
+            "count": 14,
+            "nonfinite": 0,
+            "min": 5.263144694735719,
+            "max": 47.03060522333165,
+            "mean": 16.645575434270395,
+            "median": 12.252270894621073,
+            "p95": 42.59600372560292
+          },
+          "frames_with_all_points": 1010
+        },
+        "cam2": {
+          "visible_points": 14140,
+          "distance_px": {
+            "count": 14140,
+            "nonfinite": 0,
+            "min": 0.4438186386639316,
+            "max": 17.832748872360646,
+            "mean": 8.374166851061755,
+            "median": 8.719633601111209,
+            "p95": 12.389126399105175
+          },
+          "first_frame_distance_px": {
+            "count": 14,
+            "nonfinite": 0,
+            "min": 2.275659921838611,
+            "max": 11.78276328169203,
+            "mean": 8.0536277785548,
+            "median": 8.614629639428342,
+            "p95": 11.35367701224453
+          },
+          "frames_with_all_points": 1010
+        }
+      },
+      "ball": {
+        "cam0": {
+          "observed_frames": 841,
+          "predicted_on_observed": 315,
+          "missing_on_observed": 526,
+          "coverage": 0.3745541022592152,
+          "distance_px": {
+            "count": 315,
+            "nonfinite": 0,
+            "min": 0.5683202856612275,
+            "max": 603.1554044679996,
+            "mean": 87.42156312563017,
+            "median": 7.635747936174171,
+            "p95": 475.8777984685381
+          }
+        },
+        "cam1": {
+          "observed_frames": 985,
+          "predicted_on_observed": 651,
+          "missing_on_observed": 334,
+          "coverage": 0.6609137055837564,
+          "distance_px": {
+            "count": 651,
+            "nonfinite": 0,
+            "min": 0.20794450719940027,
+            "max": 674.7675210726283,
+            "mean": 30.62403336462159,
+            "median": 4.2954947491485935,
+            "p95": 311.5866299183623
+          }
+        },
+        "cam2": {
+          "observed_frames": 941,
+          "predicted_on_observed": 621,
+          "missing_on_observed": 320,
+          "coverage": 0.6599362380446334,
+          "distance_px": {
+            "count": 621,
+            "nonfinite": 0,
+            "min": 0.4294790837151572,
+            "max": 551.6911459221734,
+            "mean": 40.971066792846884,
+            "median": 6.620660786347368,
+            "p95": 336.7002860406026
+          }
+        }
+      },
+      "dynamics": {
+        "player_position": {
+          "position_m": {
+            "x": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -2.9071590900421143,
+              "max": 3.113588809967041,
+              "mean": -0.05564273148775101,
+              "median": 0.008626903407275677,
+              "p95": 1.9824049472808838
+            },
+            "y": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -15.913203239440918,
+              "max": 16.54229164123535,
+              "mean": -0.18830977380275726,
+              "median": 3.726533889770508,
+              "p95": 15.543706893920898
+            },
+            "z": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": 0.8440054655075073,
+              "max": 0.8531634211540222,
+              "mean": 0.8517792224884033,
+              "median": 0.8518726825714111,
+              "p95": 0.8526028394699097
+            }
+          },
+          "speed_m_s": {
+            "count": 2018,
+            "nonfinite": 0,
+            "min": 0.1145765483379364,
+            "max": 36.56344223022461,
+            "mean": 3.583163261413574,
+            "median": 2.6917970180511475,
+            "p95": 9.566351890563965
+          }
+        },
+        "gvhmr_aligned_player_position": {
+          "position_m": {
+            "x": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -5.109407424926758,
+              "max": 4.348639488220215,
+              "mean": 0.08718464523553848,
+              "median": -0.07243890315294266,
+              "p95": 3.496934652328491
+            },
+            "y": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -16.625154495239258,
+              "max": 15.63811206817627,
+              "mean": -0.16579227149486542,
+              "median": 2.032227039337158,
+              "p95": 14.500100135803223
+            },
+            "z": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": 0.3776388168334961,
+              "max": 2.0428590774536133,
+              "mean": 0.8637280464172363,
+              "median": 0.8388859629631042,
+              "p95": 1.2529661655426025
+            }
+          },
+          "speed_m_s": {
+            "count": 2018,
+            "nonfinite": 0,
+            "min": 0.04533867537975311,
+            "max": 11.395439147949219,
+            "mean": 1.6173499822616577,
+            "median": 1.3677171468734741,
+            "p95": 3.653559446334839
+          }
+        },
+        "ball_3d": {
+          "position_m": {
+            "x": {
+              "count": 1010,
+              "nonfinite": 0,
+              "min": -9.440958976745605,
+              "max": 7.24210262298584,
+              "mean": -0.7858373522758484,
+              "median": -0.6729384660720825,
+              "p95": 3.7340192794799805
+            },
+            "y": {
+              "count": 1010,
+              "nonfinite": 0,
+              "min": -14.356021881103516,
+              "max": 11.356245994567871,
+              "mean": -2.6937992572784424,
+              "median": -3.5328047275543213,
+              "p95": 9.407319068908691
+            },
+            "z": {
+              "count": 1010,
+              "nonfinite": 0,
+              "min": -0.7501033544540405,
+              "max": 4.452001571655273,
+              "mean": 1.523030400276184,
+              "median": 1.4559037685394287,
+              "p95": 3.201798439025879
+            }
+          },
+          "speed_m_s": {
+            "count": 1009,
+            "nonfinite": 0,
+            "min": 0.458052396774292,
+            "max": 412.1759948730469,
+            "mean": 25.0928955078125,
+            "median": 18.306201934814453,
+            "p95": 67.10973358154297
+          }
+        }
+      },
+      "pose_visibility_conversion": {
+        "source": "vitpose_heatmap_peak",
+        "conversion": "clip_0_1",
+        "raw_min": 0.008529607206583023,
+        "raw_max": 1.0204548835754395,
+        "saturated_below_zero_count": 0,
+        "saturated_above_one_count": 39
+      },
+      "court_comparison_contract": "Camera-local KP14 from the stage JSON, before the reference-camera permutation, compared in the manual annotation channel order; no fitted permutation is chosen from GT.",
+      "metadata": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/scene.metadata.json",
+        "sha256": "47c4f091f8eb91877d57f7c5923dd0e7ea71339f53f71f92190523fbbe652e0f",
+        "enabled_stages": [
+          "court_kp",
+          "gvhmr",
+          "ball_detection",
+          "plcs",
+          "blcs"
+        ],
+        "court_reference": {
+          "camera_ids": [
+            "cam0",
+            "cam1",
+            "cam2"
+          ],
+          "reference_camera": "cam0",
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "calibration_frame_index": 0,
+          "court_keypoint_views": [
+            {
+              "schema_version": 1,
+              "camera_id": "cam0",
+              "contract_id": "camera_view_courtkp20_rzpi_v1",
+              "semantic_to_physical": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19
+              ],
+              "canonical_from_physical": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "camera_center_court_m": [
+                8.216462669401464,
+                -18.259608716850803,
+                2.783249839003846
+              ],
+              "coordinate_frame": "physical_court"
+            },
+            {
+              "schema_version": 1,
+              "camera_id": "cam1",
+              "contract_id": "camera_view_courtkp20_rzpi_v1",
+              "semantic_to_physical": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19
+              ],
+              "canonical_from_physical": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "camera_center_court_m": [
+                -7.0015227857800815,
+                -18.236040615829094,
+                2.700867111369324
+              ],
+              "coordinate_frame": "physical_court"
+            },
+            {
+              "schema_version": 1,
+              "camera_id": "cam2",
+              "contract_id": "camera_view_courtkp20_rzpi_v1",
+              "semantic_to_physical": [
+                3,
+                2,
+                1,
+                0,
+                7,
+                6,
+                5,
+                4,
+                11,
+                10,
+                9,
+                8,
+                13,
+                12,
+                14,
+                17,
+                18,
+                15,
+                16,
+                19
+              ],
+              "canonical_from_physical": [
+                [
+                  -1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  -1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "camera_center_court_m": [
+                -0.2534973493640684,
+                19.176661691639982,
+                2.750599781416109
+              ],
+              "coordinate_frame": "physical_court"
+            }
+          ],
+          "camera_fits": [
+            {
+              "camera_center_court_m": [
+                8.216462669401464,
+                -18.259608716850803,
+                2.783249839003846
+              ],
+              "K": [
+                [
+                  569.7651655890149,
+                  0.0,
+                  960.0
+                ],
+                [
+                  0.0,
+                  569.7651655890149,
+                  540.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "R": [
+                [
+                  0.8800585610019735,
+                  0.45561330449197907,
+                  -0.1338411221450105
+                ],
+                [
+                  0.05555672909620618,
+                  -0.3787031445950398,
+                  -0.9238492182850833
+                ],
+                [
+                  -0.47160404902764264,
+                  0.8056056386618256,
+                  -0.358593329409521
+                ]
+              ],
+              "t": [
+                1.460865634517249,
+                -4.8001478427436375,
+                19.583015631974728
+              ],
+              "rmse_px": 0.3839922984159241,
+              "calibration": "approximate single-plane pinhole; no distortion correction"
+            },
+            {
+              "camera_center_court_m": [
+                -7.0015227857800815,
+                -18.236040615829094,
+                2.700867111369324
+              ],
+              "K": [
+                [
+                  1045.0430672521127,
+                  0.0,
+                  960.0
+                ],
+                [
+                  0.0,
+                  1045.0430672521127,
+                  540.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "R": [
+                [
+                  0.8277934708864989,
+                  -0.5607741316554964,
+                  -0.017039449043525334
+                ],
+                [
+                  -0.08122316583453343,
+                  -0.08973636154869154,
+                  -0.9926480659064513
+                ],
+                [
+                  0.5551222990382378,
+                  0.8230915858408628,
+                  -0.119831024482288
+                ]
+              ],
+              "t": [
+                -4.384463705326609,
+                0.47588873412876037,
+                19.220280688497905
+              ],
+              "rmse_px": 4.327622346450561,
+              "calibration": "approximate single-plane pinhole; no distortion correction"
+            },
+            {
+              "camera_center_court_m": [
+                -0.2534973493640684,
+                19.176661691639982,
+                2.750599781416109
+              ],
+              "K": [
+                [
+                  1098.7691138038504,
+                  0.0,
+                  960.0
+                ],
+                [
+                  0.0,
+                  1098.7691138038504,
+                  540.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "R": [
+                [
+                  -0.9992989248714765,
+                  0.03697375016648607,
+                  -0.005882223162835721
+                ],
+                [
+                  0.013410852384584783,
+                  0.206821017649929,
+                  -0.9782868780151182
+                ],
+                [
+                  -0.034954367238300935,
+                  -0.9776799110429109,
+                  -0.20717187008398585
+                ]
+              ],
+              "t": [
+                -0.9461730853452665,
+                -1.2718613978305504,
+                19.309622957907543
+              ],
+              "rmse_px": 0.2957142347293593,
+              "calibration": "approximate single-plane pinhole; no distortion correction"
+            }
+          ],
+          "court_reference_provenance": {
+            "schema_version": 1,
+            "contract_id": "camera_view_courtkp20_rzpi_v1",
+            "target_frame_id": "reference_camera_court_rzpi_v1",
+            "reference_camera_id": "cam0",
+            "reference_camera_local_index": 0,
+            "reference_from_physical": [
+              [
+                1.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "physical_from_reference": [
+              [
+                1.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          },
+          "court_keypoints": {
+            "schema_version": 1,
+            "contract_id": "camera_view_courtkp20_rzpi_v1",
+            "target_frame_id": "reference_camera_court_rzpi_v1",
+            "num_keypoints": 20
+          }
+        },
+        "player_association": {
+          "camera_ids": [
+            "cam0",
+            "cam1",
+            "cam2"
+          ],
+          "canonical_player_ids": [
+            0,
+            1
+          ],
+          "segments": [
+            {
+              "start_frame": 0,
+              "end_frame": 1010,
+              "assignments": [
+                [
+                  0,
+                  0,
+                  1
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ]
+              ]
+            }
+          ],
+          "reference_camera": "cam0"
+        },
+        "gvhmr_alignment": {
+          "scale_mode": "fixed",
+          "players": [
+            {
+              "track_id": 0,
+              "scale": 1.0,
+              "yaw_rad": -2.3266822206952154,
+              "yaw_deg": -133.3090715139618,
+              "position_residual_m": {
+                "median": 1.506836323062595,
+                "rmse": 1.6913527542332083,
+                "p90": 2.4805541434665996,
+                "count": 1010
+              },
+              "heading_residual_deg": {
+                "median": 10.66075026609079,
+                "rmse": 21.31052787610804,
+                "p90": 26.170934050667455,
+                "count": 1010
+              },
+              "fit": {
+                "success": true,
+                "nfev": 11,
+                "optimality": 0.009052554729534368,
+                "jacobian_rank": 4,
+                "n_free_parameters": 4,
+                "initializer": "heading_circular_mean"
+              },
+              "confidence_clipped": true
+            },
+            {
+              "track_id": 1,
+              "scale": 1.0,
+              "yaw_rad": -1.9944450692539748,
+              "yaw_deg": -114.27328493892995,
+              "position_residual_m": {
+                "median": 2.142847011458225,
+                "rmse": 2.2173260677136035,
+                "p90": 3.184184164090865,
+                "count": 1010
+              },
+              "heading_residual_deg": {
+                "median": 54.69742233142921,
+                "rmse": 62.65744484006743,
+                "p90": 94.86720988421114,
+                "count": 1010
+              },
+              "fit": {
+                "success": true,
+                "nfev": 10,
+                "optimality": 0.006495699913823039,
+                "jacobian_rank": 4,
+                "n_free_parameters": 4,
+                "initializer": "heading_circular_mean"
+              },
+              "confidence_clipped": false
+            }
+          ]
+        }
+      },
+      "alignment_position_difference_m": {
+        "count": 2020,
+        "nonfinite": 0,
+        "min": 0.24213337898254395,
+        "max": 4.335554599761963,
+        "mean": 1.749412178993225,
+        "median": 1.622803807258606,
+        "p95": 3.2471108436584473
+      },
+      "yaw_step_deg": {
+        "count": 2018,
+        "nonfinite": 0,
+        "min": 0.0008640188607387245,
+        "max": 58.215248107910156,
+        "mean": 1.560752511024475,
+        "median": 0.887162983417511,
+        "p95": 4.708800792694092
+      },
+      "inspection_candidates": [
+        {
+          "frame": 779,
+          "reason": "player_position: largest interframe speed",
+          "value_m_s": 36.56344223022461,
+          "player": 1
+        },
+        {
+          "frame": 281,
+          "reason": "player_position: largest interframe speed",
+          "value_m_s": 36.4857063293457,
+          "player": 1
+        },
+        {
+          "frame": 786,
+          "reason": "player_position: largest interframe speed",
+          "value_m_s": 34.75767135620117,
+          "player": 1
+        },
+        {
+          "frame": 933,
+          "reason": "player_position: minimum height",
+          "value_m": 0.8440054655075073,
+          "player": 1
+        },
+        {
+          "frame": 1005,
+          "reason": "player_position: maximum height",
+          "value_m": 0.8531634211540222,
+          "player": 0
+        },
+        {
+          "frame": 857,
+          "reason": "gvhmr_aligned_player_position: largest interframe speed",
+          "value_m_s": 11.395439147949219,
+          "player": 1
+        },
+        {
+          "frame": 353,
+          "reason": "gvhmr_aligned_player_position: largest interframe speed",
+          "value_m_s": 6.464354515075684,
+          "player": 1
+        },
+        {
+          "frame": 568,
+          "reason": "gvhmr_aligned_player_position: largest interframe speed",
+          "value_m_s": 6.285938739776611,
+          "player": 1
+        },
+        {
+          "frame": 38,
+          "reason": "gvhmr_aligned_player_position: minimum height",
+          "value_m": 0.3776388168334961,
+          "player": 0
+        },
+        {
+          "frame": 1009,
+          "reason": "gvhmr_aligned_player_position: maximum height",
+          "value_m": 2.0428590774536133,
+          "player": 0
+        },
+        {
+          "frame": 808,
+          "reason": "ball_3d: largest interframe speed",
+          "value_m_s": 412.1759948730469,
+          "player": null
+        },
+        {
+          "frame": 796,
+          "reason": "ball_3d: largest interframe speed",
+          "value_m_s": 315.2147216796875,
+          "player": null
+        },
+        {
+          "frame": 816,
+          "reason": "ball_3d: largest interframe speed",
+          "value_m_s": 237.75376892089844,
+          "player": null
+        },
+        {
+          "frame": 58,
+          "reason": "ball_3d: minimum height",
+          "value_m": -0.7501033544540405,
+          "player": null
+        },
+        {
+          "frame": 660,
+          "reason": "ball_3d: maximum height",
+          "value_m": 4.452001571655273,
+          "player": null
+        }
+      ]
+    },
+    "dataset": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.npz",
+      "sha256": "f1d7d25972fd6b47d3f58ecb81ff407b2cee3148f4b33d3bdb2f66e315238533",
+      "arrays": {
+        "num_frames": {
+          "shape": [],
+          "dtype": "int64",
+          "nonfinite": 0
+        },
+        "fps": {
+          "shape": [],
+          "dtype": "float64",
+          "nonfinite": 0
+        },
+        "width": {
+          "shape": [],
+          "dtype": "int64",
+          "nonfinite": 0
+        },
+        "height": {
+          "shape": [],
+          "dtype": "int64",
+          "nonfinite": 0
+        },
+        "court_kp": {
+          "shape": [
+            3,
+            1010,
+            14,
+            2
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "court_vis": {
+          "shape": [
+            3,
+            1010,
+            14
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "player_position": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "player_yaw": {
+          "shape": [
+            2,
+            1010
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_body_pose": {
+          "shape": [
+            2,
+            1010,
+            63
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_global_orient": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_betas": {
+          "shape": [
+            2,
+            10
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "smpl_vertices_local": {
+          "shape": [
+            2,
+            1010,
+            6890,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_player_position": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_player_yaw": {
+          "shape": [
+            2,
+            1010
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_smpl_global_orient": {
+          "shape": [
+            2,
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "gvhmr_aligned_smpl_vertices_local": {
+          "shape": [
+            2,
+            1010,
+            6890,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "ball_uv": {
+          "shape": [
+            3,
+            1010,
+            2
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "ball_vis": {
+          "shape": [
+            3,
+            1010
+          ],
+          "dtype": "bool",
+          "nonfinite": 0
+        },
+        "ball_3d": {
+          "shape": [
+            1010,
+            3
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "human_kp_2d": {
+          "shape": [
+            2,
+            3,
+            1010,
+            17,
+            2
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "human_kp_vis": {
+          "shape": [
+            2,
+            3,
+            1010,
+            17
+          ],
+          "dtype": "float32",
+          "nonfinite": 0
+        },
+        "player_track_ids": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32",
+          "nonfinite": 0
+        }
+      },
+      "court": {
+        "cam0": {
+          "visible_points": 14140,
+          "distance_px": {
+            "count": 14140,
+            "nonfinite": 0,
+            "min": 0.21458648136541797,
+            "max": 44.01767230883697,
+            "mean": 9.927464882672615,
+            "median": 8.341543394414227,
+            "p95": 18.52688945349262
+          },
+          "first_frame_distance_px": {
+            "count": 14,
+            "nonfinite": 0,
+            "min": 2.037162258701187,
+            "max": 21.94858994767839,
+            "mean": 10.782743083086343,
+            "median": 7.946491240667075,
+            "p95": 20.390637061599083
+          },
+          "frames_with_all_points": 1010
+        },
+        "cam1": {
+          "visible_points": 14140,
+          "distance_px": {
+            "count": 14140,
+            "nonfinite": 0,
+            "min": 0.14010483278370806,
+            "max": 93.6845811757779,
+            "mean": 13.129072637822086,
+            "median": 10.388039341356777,
+            "p95": 28.20111653932178
+          },
+          "first_frame_distance_px": {
+            "count": 14,
+            "nonfinite": 0,
+            "min": 5.263144694735719,
+            "max": 47.03060522333165,
+            "mean": 16.645575434270395,
+            "median": 12.252270894621073,
+            "p95": 42.59600372560292
+          },
+          "frames_with_all_points": 1010
+        },
+        "cam2": {
+          "visible_points": 14140,
+          "distance_px": {
+            "count": 14140,
+            "nonfinite": 0,
+            "min": 0.4438186386639316,
+            "max": 17.832748872360646,
+            "mean": 8.374166851061755,
+            "median": 8.719633601111209,
+            "p95": 12.389126399105175
+          },
+          "first_frame_distance_px": {
+            "count": 14,
+            "nonfinite": 0,
+            "min": 2.275659921838611,
+            "max": 11.78276328169203,
+            "mean": 8.0536277785548,
+            "median": 8.614629639428342,
+            "p95": 11.35367701224453
+          },
+          "frames_with_all_points": 1010
+        }
+      },
+      "ball": {
+        "cam0": {
+          "observed_frames": 841,
+          "predicted_on_observed": 315,
+          "missing_on_observed": 526,
+          "coverage": 0.3745541022592152,
+          "distance_px": {
+            "count": 315,
+            "nonfinite": 0,
+            "min": 0.5683202856612275,
+            "max": 603.1554044679996,
+            "mean": 87.42156312563017,
+            "median": 7.635747936174171,
+            "p95": 475.8777984685381
+          }
+        },
+        "cam1": {
+          "observed_frames": 985,
+          "predicted_on_observed": 651,
+          "missing_on_observed": 334,
+          "coverage": 0.6609137055837564,
+          "distance_px": {
+            "count": 651,
+            "nonfinite": 0,
+            "min": 0.20794450719940027,
+            "max": 674.7675210726283,
+            "mean": 30.62403336462159,
+            "median": 4.2954947491485935,
+            "p95": 311.5866299183623
+          }
+        },
+        "cam2": {
+          "observed_frames": 941,
+          "predicted_on_observed": 621,
+          "missing_on_observed": 320,
+          "coverage": 0.6599362380446334,
+          "distance_px": {
+            "count": 621,
+            "nonfinite": 0,
+            "min": 0.4294790837151572,
+            "max": 551.6911459221734,
+            "mean": 40.971059489619925,
+            "median": 6.620660786347368,
+            "p95": 336.7002860406026
+          }
+        }
+      },
+      "dynamics": {
+        "player_position": {
+          "position_m": {
+            "x": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -2.9071598052978516,
+              "max": 3.113588809967041,
+              "mean": -0.05564173310995102,
+              "median": 0.008632629178464413,
+              "p95": 1.9824057817459106
+            },
+            "y": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -15.913202285766602,
+              "max": 16.54229164123535,
+              "mean": -0.18830107152462006,
+              "median": 3.7265329360961914,
+              "p95": 15.543699264526367
+            },
+            "z": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": 0.8440054655075073,
+              "max": 0.8531634211540222,
+              "mean": 0.8517792224884033,
+              "median": 0.8518727421760559,
+              "p95": 0.8526028394699097
+            }
+          },
+          "speed_m_s": {
+            "count": 2018,
+            "nonfinite": 0,
+            "min": 0.11458344757556915,
+            "max": 36.56314468383789,
+            "mean": 3.583343505859375,
+            "median": 2.6918396949768066,
+            "p95": 9.566337585449219
+          }
+        },
+        "gvhmr_aligned_player_position": {
+          "position_m": {
+            "x": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -5.110203266143799,
+              "max": 4.336155891418457,
+              "mean": 0.08679459244012833,
+              "median": -0.06661544740200043,
+              "p95": 3.4840102195739746
+            },
+            "y": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": -16.62388038635254,
+              "max": 15.64460277557373,
+              "mean": -0.16719765961170197,
+              "median": 2.0271477699279785,
+              "p95": 14.511027336120605
+            },
+            "z": {
+              "count": 2020,
+              "nonfinite": 0,
+              "min": 0.37765735387802124,
+              "max": 2.0428478717803955,
+              "mean": 0.8637346029281616,
+              "median": 0.8394198417663574,
+              "p95": 1.2529504299163818
+            }
+          },
+          "speed_m_s": {
+            "count": 2018,
+            "nonfinite": 0,
+            "min": 0.04532443732023239,
+            "max": 11.395194053649902,
+            "mean": 1.616910457611084,
+            "median": 1.3693504333496094,
+            "p95": 3.643717050552368
+          }
+        },
+        "ball_3d": {
+          "position_m": {
+            "x": {
+              "count": 1010,
+              "nonfinite": 0,
+              "min": -9.440958976745605,
+              "max": 7.24210262298584,
+              "mean": -0.7858374118804932,
+              "median": -0.6729384660720825,
+              "p95": 3.7340192794799805
+            },
+            "y": {
+              "count": 1010,
+              "nonfinite": 0,
+              "min": -14.356021881103516,
+              "max": 11.356245994567871,
+              "mean": -2.693798780441284,
+              "median": -3.5328047275543213,
+              "p95": 9.407319068908691
+            },
+            "z": {
+              "count": 1010,
+              "nonfinite": 0,
+              "min": -0.7501038312911987,
+              "max": 4.452001571655273,
+              "mean": 1.5230305194854736,
+              "median": 1.4559037685394287,
+              "p95": 3.201798439025879
+            }
+          },
+          "speed_m_s": {
+            "count": 1009,
+            "nonfinite": 0,
+            "min": 0.458052396774292,
+            "max": 412.1759948730469,
+            "mean": 25.092893600463867,
+            "median": 18.306209564208984,
+            "p95": 67.10973358154297
+          }
+        }
+      },
+      "pose_visibility_conversion": {
+        "source": "vitpose_heatmap_peak",
+        "conversion": "clip_0_1",
+        "raw_min": 0.008529607206583023,
+        "raw_max": 1.0204548835754395,
+        "saturated_below_zero_count": 0,
+        "saturated_above_one_count": 39
+      },
+      "court_comparison_contract": "Camera-local KP14 from the stage JSON, before the reference-camera permutation, compared in the manual annotation channel order; no fitted permutation is chosen from GT.",
+      "metadata": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.metadata.json",
+        "sha256": "503a79e6cfaff5a38b65b7fe9b564840447fa437728ee00d4afb79ec5de062d8",
+        "enabled_stages": [
+          "court_kp",
+          "gvhmr",
+          "ball_detection",
+          "plcs",
+          "blcs"
+        ],
+        "court_reference": {
+          "camera_ids": [
+            "cam0",
+            "cam1",
+            "cam2"
+          ],
+          "reference_camera": "cam0",
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "calibration_frame_index": 0,
+          "court_keypoint_views": [
+            {
+              "schema_version": 1,
+              "camera_id": "cam0",
+              "contract_id": "camera_view_courtkp20_rzpi_v1",
+              "semantic_to_physical": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19
+              ],
+              "canonical_from_physical": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "camera_center_court_m": [
+                8.216462669401464,
+                -18.259608716850803,
+                2.783249839003846
+              ],
+              "coordinate_frame": "physical_court"
+            },
+            {
+              "schema_version": 1,
+              "camera_id": "cam1",
+              "contract_id": "camera_view_courtkp20_rzpi_v1",
+              "semantic_to_physical": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19
+              ],
+              "canonical_from_physical": [
+                [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "camera_center_court_m": [
+                -7.0015227857800815,
+                -18.236040615829094,
+                2.700867111369324
+              ],
+              "coordinate_frame": "physical_court"
+            },
+            {
+              "schema_version": 1,
+              "camera_id": "cam2",
+              "contract_id": "camera_view_courtkp20_rzpi_v1",
+              "semantic_to_physical": [
+                3,
+                2,
+                1,
+                0,
+                7,
+                6,
+                5,
+                4,
+                11,
+                10,
+                9,
+                8,
+                13,
+                12,
+                14,
+                17,
+                18,
+                15,
+                16,
+                19
+              ],
+              "canonical_from_physical": [
+                [
+                  -1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  -1.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "camera_center_court_m": [
+                -0.2534973493640684,
+                19.176661691639982,
+                2.750599781416109
+              ],
+              "coordinate_frame": "physical_court"
+            }
+          ],
+          "camera_fits": [
+            {
+              "camera_center_court_m": [
+                8.216462669401464,
+                -18.259608716850803,
+                2.783249839003846
+              ],
+              "K": [
+                [
+                  569.7651655890149,
+                  0.0,
+                  960.0
+                ],
+                [
+                  0.0,
+                  569.7651655890149,
+                  540.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "R": [
+                [
+                  0.8800585610019735,
+                  0.45561330449197907,
+                  -0.1338411221450105
+                ],
+                [
+                  0.05555672909620618,
+                  -0.3787031445950398,
+                  -0.9238492182850833
+                ],
+                [
+                  -0.47160404902764264,
+                  0.8056056386618256,
+                  -0.358593329409521
+                ]
+              ],
+              "t": [
+                1.460865634517249,
+                -4.8001478427436375,
+                19.583015631974728
+              ],
+              "rmse_px": 0.3839922984159241,
+              "calibration": "approximate single-plane pinhole; no distortion correction"
+            },
+            {
+              "camera_center_court_m": [
+                -7.0015227857800815,
+                -18.236040615829094,
+                2.700867111369324
+              ],
+              "K": [
+                [
+                  1045.0430672521127,
+                  0.0,
+                  960.0
+                ],
+                [
+                  0.0,
+                  1045.0430672521127,
+                  540.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "R": [
+                [
+                  0.8277934708864989,
+                  -0.5607741316554964,
+                  -0.017039449043525334
+                ],
+                [
+                  -0.08122316583453343,
+                  -0.08973636154869154,
+                  -0.9926480659064513
+                ],
+                [
+                  0.5551222990382378,
+                  0.8230915858408628,
+                  -0.119831024482288
+                ]
+              ],
+              "t": [
+                -4.384463705326609,
+                0.47588873412876037,
+                19.220280688497905
+              ],
+              "rmse_px": 4.327622346450561,
+              "calibration": "approximate single-plane pinhole; no distortion correction"
+            },
+            {
+              "camera_center_court_m": [
+                -0.2534973493640684,
+                19.176661691639982,
+                2.750599781416109
+              ],
+              "K": [
+                [
+                  1098.7691138038504,
+                  0.0,
+                  960.0
+                ],
+                [
+                  0.0,
+                  1098.7691138038504,
+                  540.0
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "R": [
+                [
+                  -0.9992989248714765,
+                  0.03697375016648607,
+                  -0.005882223162835721
+                ],
+                [
+                  0.013410852384584783,
+                  0.206821017649929,
+                  -0.9782868780151182
+                ],
+                [
+                  -0.034954367238300935,
+                  -0.9776799110429109,
+                  -0.20717187008398585
+                ]
+              ],
+              "t": [
+                -0.9461730853452665,
+                -1.2718613978305504,
+                19.309622957907543
+              ],
+              "rmse_px": 0.2957142347293593,
+              "calibration": "approximate single-plane pinhole; no distortion correction"
+            }
+          ],
+          "court_reference_provenance": {
+            "schema_version": 1,
+            "contract_id": "camera_view_courtkp20_rzpi_v1",
+            "target_frame_id": "reference_camera_court_rzpi_v1",
+            "reference_camera_id": "cam0",
+            "reference_camera_local_index": 0,
+            "reference_from_physical": [
+              [
+                1.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "physical_from_reference": [
+              [
+                1.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          },
+          "court_keypoints": {
+            "schema_version": 1,
+            "contract_id": "camera_view_courtkp20_rzpi_v1",
+            "target_frame_id": "reference_camera_court_rzpi_v1",
+            "num_keypoints": 20
+          }
+        },
+        "player_association": {
+          "camera_ids": [
+            "cam0",
+            "cam1",
+            "cam2"
+          ],
+          "canonical_player_ids": [
+            0,
+            1
+          ],
+          "segments": [
+            {
+              "start_frame": 0,
+              "end_frame": 1010,
+              "assignments": [
+                [
+                  0,
+                  0,
+                  1
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ]
+              ]
+            }
+          ],
+          "reference_camera": "cam0"
+        },
+        "gvhmr_alignment": {
+          "scale_mode": "fixed",
+          "players": [
+            {
+              "track_id": 0,
+              "scale": 1.0,
+              "yaw_rad": -2.325818866645415,
+              "yaw_deg": -133.25960497068272,
+              "position_residual_m": {
+                "median": 1.505074914310164,
+                "rmse": 1.6927050583916503,
+                "p90": 2.4798665954041126,
+                "count": 1010
+              },
+              "heading_residual_deg": {
+                "median": 10.576898335343426,
+                "rmse": 21.301422763942135,
+                "p90": 26.143632453110726,
+                "count": 1010
+              },
+              "fit": {
+                "success": true,
+                "nfev": 11,
+                "optimality": 0.009047816631557737,
+                "jacobian_rank": 4,
+                "n_free_parameters": 4,
+                "initializer": "heading_circular_mean"
+              },
+              "confidence_clipped": true
+            },
+            {
+              "track_id": 1,
+              "scale": 1.0,
+              "yaw_rad": -1.9982098076113066,
+              "yaw_deg": -114.48898855777607,
+              "position_residual_m": {
+                "median": 2.140835103337557,
+                "rmse": 2.213240734962118,
+                "p90": 3.177105829415087,
+                "count": 1010
+              },
+              "heading_residual_deg": {
+                "median": 54.84059342350335,
+                "rmse": 62.680727246572665,
+                "p90": 94.97653088464031,
+                "count": 1010
+              },
+              "fit": {
+                "success": true,
+                "nfev": 10,
+                "optimality": 0.006774347854196616,
+                "jacobian_rank": 4,
+                "n_free_parameters": 4,
+                "initializer": "heading_circular_mean"
+              },
+              "confidence_clipped": false
+            }
+          ]
+        }
+      },
+      "alignment_position_difference_m": {
+        "count": 2020,
+        "nonfinite": 0,
+        "min": 0.24082407355308533,
+        "max": 4.349400997161865,
+        "mean": 1.7477054595947266,
+        "median": 1.6285474300384521,
+        "p95": 3.2344892024993896
+      },
+      "yaw_step_deg": {
+        "count": 2018,
+        "nonfinite": 0,
+        "min": 0.0008503585122525692,
+        "max": 58.21599578857422,
+        "mean": 1.5605268478393555,
+        "median": 0.8871681094169617,
+        "p95": 4.708812236785889
+      },
+      "inspection_candidates": [
+        {
+          "frame": 779,
+          "reason": "player_position: largest interframe speed",
+          "value_m_s": 36.56314468383789,
+          "player": 1
+        },
+        {
+          "frame": 281,
+          "reason": "player_position: largest interframe speed",
+          "value_m_s": 36.48593521118164,
+          "player": 1
+        },
+        {
+          "frame": 786,
+          "reason": "player_position: largest interframe speed",
+          "value_m_s": 34.757728576660156,
+          "player": 1
+        },
+        {
+          "frame": 933,
+          "reason": "player_position: minimum height",
+          "value_m": 0.8440054655075073,
+          "player": 1
+        },
+        {
+          "frame": 1005,
+          "reason": "player_position: maximum height",
+          "value_m": 0.8531634211540222,
+          "player": 0
+        },
+        {
+          "frame": 857,
+          "reason": "gvhmr_aligned_player_position: largest interframe speed",
+          "value_m_s": 11.395194053649902,
+          "player": 1
+        },
+        {
+          "frame": 353,
+          "reason": "gvhmr_aligned_player_position: largest interframe speed",
+          "value_m_s": 6.464724063873291,
+          "player": 1
+        },
+        {
+          "frame": 568,
+          "reason": "gvhmr_aligned_player_position: largest interframe speed",
+          "value_m_s": 6.288468360900879,
+          "player": 1
+        },
+        {
+          "frame": 38,
+          "reason": "gvhmr_aligned_player_position: minimum height",
+          "value_m": 0.37765735387802124,
+          "player": 0
+        },
+        {
+          "frame": 1009,
+          "reason": "gvhmr_aligned_player_position: maximum height",
+          "value_m": 2.0428478717803955,
+          "player": 0
+        },
+        {
+          "frame": 808,
+          "reason": "ball_3d: largest interframe speed",
+          "value_m_s": 412.1759948730469,
+          "player": null
+        },
+        {
+          "frame": 796,
+          "reason": "ball_3d: largest interframe speed",
+          "value_m_s": 315.2147216796875,
+          "player": null
+        },
+        {
+          "frame": 816,
+          "reason": "ball_3d: largest interframe speed",
+          "value_m_s": 237.75376892089844,
+          "player": null
+        },
+        {
+          "frame": 58,
+          "reason": "ball_3d: minimum height",
+          "value_m": -0.7501038312911987,
+          "player": null
+        },
+        {
+          "frame": 660,
+          "reason": "ball_3d: maximum height",
+          "value_m": 4.452001571655273,
+          "player": null
+        }
+      ],
+      "completion_marker": {
+        "version": 1,
+        "clip_id": "video_000/clip_000",
+        "generator": "src.tennis_scene",
+        "generated_at": "2026-09-23T02:59:30.347337+00:00",
+        "scene_result": "scene.npz",
+        "pipeline_config": "pipeline_config.yaml",
+        "clip_manifest_sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138",
+        "arrays": {
+          "court_kp": {
+            "shape": [
+              3,
+              1010,
+              14,
+              2
+            ],
+            "dtype": "float32"
+          },
+          "court_vis": {
+            "shape": [
+              3,
+              1010,
+              14
+            ],
+            "dtype": "float32"
+          },
+          "player_position": {
+            "shape": [
+              2,
+              1010,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "player_yaw": {
+            "shape": [
+              2,
+              1010
+            ],
+            "dtype": "float32"
+          },
+          "smpl_body_pose": {
+            "shape": [
+              2,
+              1010,
+              63
+            ],
+            "dtype": "float32"
+          },
+          "smpl_global_orient": {
+            "shape": [
+              2,
+              1010,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "smpl_betas": {
+            "shape": [
+              2,
+              10
+            ],
+            "dtype": "float32"
+          },
+          "smpl_vertices_local": {
+            "shape": [
+              2,
+              1010,
+              6890,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "gvhmr_aligned_player_position": {
+            "shape": [
+              2,
+              1010,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "gvhmr_aligned_player_yaw": {
+            "shape": [
+              2,
+              1010
+            ],
+            "dtype": "float32"
+          },
+          "gvhmr_aligned_smpl_global_orient": {
+            "shape": [
+              2,
+              1010,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "gvhmr_aligned_smpl_vertices_local": {
+            "shape": [
+              2,
+              1010,
+              6890,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "ball_uv": {
+            "shape": [
+              3,
+              1010,
+              2
+            ],
+            "dtype": "float32"
+          },
+          "ball_vis": {
+            "shape": [
+              3,
+              1010
+            ],
+            "dtype": "bool"
+          },
+          "ball_3d": {
+            "shape": [
+              1010,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "human_kp_2d": {
+            "shape": [
+              2,
+              3,
+              1010,
+              17,
+              2
+            ],
+            "dtype": "float32"
+          },
+          "human_kp_vis": {
+            "shape": [
+              2,
+              3,
+              1010,
+              17
+            ],
+            "dtype": "float32"
+          },
+          "player_track_ids": {
+            "shape": [
+              2
+            ],
+            "dtype": "int32"
+          }
+        }
+      }
+    }
+  },
+  "comparison": {
+    "num_frames": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 1,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "fps": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 1,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "width": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 1,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "height": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 1,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "court_kp": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 84840,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "court_vis": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 42420,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "player_position": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 6060,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.012410163879394531,
+        "mean": 4.7422664162392415e-06,
+        "median": 5.960464477539063e-08,
+        "p95": 5.7220458984375e-06
+      }
+    },
+    "player_yaw": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 2020,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.005775928497314453,
+        "mean": 7.65782242668516e-05,
+        "median": 3.520399332046509e-07,
+        "p95": 0.0002610534429550168
+      },
+      "circular_difference_degrees": {
+        "count": 2020,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.3309363256654578,
+        "mean": 0.004387609053096899,
+        "median": 2.0170402392693905e-05,
+        "p95": 0.014957260508681656
+      }
+    },
+    "smpl_body_pose": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 127260,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.11824880726635456,
+        "mean": 3.6079264754946344e-05,
+        "median": 5.364418029785156e-07,
+        "p95": 4.9234181642532175e-05
+      }
+    },
+    "smpl_global_orient": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 6060,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0007777214050292969,
+        "mean": 5.121630251343461e-06,
+        "median": 3.5762786865234375e-07,
+        "p95": 1.4781951904296875e-05
+      }
+    },
+    "smpl_betas": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 20,
+        "nonfinite": 0,
+        "min": 4.172325134277344e-07,
+        "max": 2.7477741241455078e-05,
+        "mean": 8.976459503173828e-06,
+        "median": 5.811452865600586e-06,
+        "p95": 2.4136900901794436e-05
+      }
+    },
+    "smpl_vertices_local": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 41753400,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.027841567993164062,
+        "mean": 3.438009085129663e-05,
+        "median": 9.5367431640625e-07,
+        "p95": 5.91278076171875e-05
+      }
+    },
+    "gvhmr_aligned_player_position": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 6060,
+        "nonfinite": 0,
+        "min": 4.76837158203125e-07,
+        "max": 0.02470874786376953,
+        "mean": 0.003568593747687154,
+        "median": 0.0008315294981002808,
+        "p95": 0.013101845979690552
+      }
+    },
+    "gvhmr_aligned_player_yaw": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 2020,
+        "nonfinite": 0,
+        "min": 2.3365020751953125e-05,
+        "max": 6.281831741333008,
+        "mean": 0.009403065517216248,
+        "median": 0.0024683475494384766,
+        "p95": 0.009354132413864135
+      },
+      "circular_difference_degrees": {
+        "count": 2020,
+        "nonfinite": 0,
+        "min": 0.0013387170773224992,
+        "max": 0.5858663062470137,
+        "mean": 0.1824740318139523,
+        "median": 0.141425896954284,
+        "p95": 0.5358054592537808
+      }
+    },
+    "gvhmr_aligned_smpl_global_orient": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 6060,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.00032503344118595123,
+        "mean": 1.5364724445614717e-06,
+        "median": 2.5331974029541016e-07,
+        "p95": 5.021877586841584e-06
+      }
+    },
+    "gvhmr_aligned_smpl_vertices_local": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 41753400,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.028123602271080017,
+        "mean": 1.1494855235870569e-05,
+        "median": 3.8743019104003906e-07,
+        "p95": 1.5124678611755371e-05
+      }
+    },
+    "ball_uv": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 6060,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 3.9637088775634766e-06,
+        "mean": 1.8392852430689847e-09,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "ball_vis": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 3030,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    },
+    "ball_3d": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 3030,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 6.097555160522461e-05,
+        "mean": 1.5639795279345497e-07,
+        "median": 0.0,
+        "p95": 4.76837158203125e-07
+      }
+    },
+    "human_kp_2d": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 206040,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.009400725364685059,
+        "mean": 1.1096570161309572e-07,
+        "median": 0.0,
+        "p95": 5.960464477539063e-08
+      }
+    },
+    "human_kp_vis": {
+      "equal": false,
+      "absolute_difference": {
+        "count": 103020,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.004207253456115723,
+        "mean": 2.9111541666624223e-06,
+        "median": 0.0,
+        "p95": 2.9206275939941406e-06
+      }
+    },
+    "player_track_ids": {
+      "equal": true,
+      "absolute_difference": {
+        "count": 2,
+        "nonfinite": 0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0
+      }
+    }
+  },
+  "videos": {
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualization/scene.mp4": {
+      "width": 1200,
+      "height": 800,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "662507635edbe60ee86d097f0688fc018a105e9efb610452cca6451da24d1233",
+      "contact_sheet_sha256": "91596a92bf266c00ed2b053ff1bcce24425c1694a778e16a02c6b8307a14ca44",
+      "extreme_frame_contact_sheet_sha256": "e64d3ef158117d52bd1ef47e4d06d0d37e551676d23d5e742b491f01531bcfa8",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-scene-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-scene-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualize_tasks/ball_detection_viz.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997/50",
+      "duration": "16.850184",
+      "nb_frames": "1010",
+      "sha256": "0438d306f13a8fa41b3fa24e81f65ebd2b6d07628048cc89bd955020aec68ce9",
+      "contact_sheet_sha256": "c4d7971a2adf77be2961be15537b144c5f40f7f9e45f46c38ef0c126ab5d7f91",
+      "extreme_frame_contact_sheet_sha256": "d11f8313d7eb07fba170ce8d637921a0625b4f972dc2fd584f02d249ef416f57",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-ball_detection_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-ball_detection_viz-extremes.jpg",
+      "fps_difference": -6.0000000004833964e-05,
+      "duration_difference_seconds": 1.735018349791062e-05,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualize_tasks/blcs_viz.mp4": {
+      "width": 1300,
+      "height": 800,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "dbb16d2bca27b33b4be51a84a3f30f7d88cb01ea511691fa33c3eeee88da3059",
+      "contact_sheet_sha256": "2a13e9e4734072a7ed4eb92953c9d3e2c5fc124de37f4fb557c2d86922674214",
+      "extreme_frame_contact_sheet_sha256": "ac77abef11b5bd4c7b88bb80fc99347f1fd1cd2d954305e3f408c87f11b9609e",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-blcs_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-blcs_viz-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualize_tasks/court_kp_viz.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997/50",
+      "duration": "16.850184",
+      "nb_frames": "1010",
+      "sha256": "0e689b2b46b839209409fc26e1f010db852dd0d9ed69c5d85ed434d117b51684",
+      "contact_sheet_sha256": "bc3d2838f1cbe67e3ebf5167c00431b09f862751583fb84c3e1e9c478025383d",
+      "extreme_frame_contact_sheet_sha256": "649434865ebb34d4e27df25ca1bac11f881b8fbe8bc5e617e42d08067ca74254",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-court_kp_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-court_kp_viz-extremes.jpg",
+      "fps_difference": -6.0000000004833964e-05,
+      "duration_difference_seconds": 1.735018349791062e-05,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualize_tasks/gvhmr_alignment_viz.mp4": {
+      "width": 700,
+      "height": 900,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "8acde8cc2e9c91a6f4f36ae6ff79b209af76feb750b52d9e0116adab5645a2fe",
+      "contact_sheet_sha256": "6ec4e371a27ec8d8fc67e105f55732eaa3fc0d58de8671031b24456d2aaf88eb",
+      "extreme_frame_contact_sheet_sha256": "e63e5f97543f353baedcbec9b2f03396d2664682c2df579a26c940a82a7c807a",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_alignment_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_alignment_viz-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualize_tasks/gvhmr_viz.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997/50",
+      "duration": "16.850184",
+      "nb_frames": "1010",
+      "sha256": "d536e480deb85d2bd87052c0adc16dcea8ccc235e5401a434490de44b354fdde",
+      "contact_sheet_sha256": "c224549f9d9a17676163427ea6637ffecbd1b0a63eb2efbe4e5a32f453d61718",
+      "extreme_frame_contact_sheet_sha256": "3150801952238d3892f70571fd3e118ce3e70c03291ac7cc34b46870e1841444",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_viz-extremes.jpg",
+      "fps_difference": -6.0000000004833964e-05,
+      "duration_difference_seconds": 1.735018349791062e-05,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-pipeline-visualize_tasks/plcs_viz.mp4": {
+      "width": 700,
+      "height": 900,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "52b91999035d8896d2e954133917023df48e15cbe0de5079d614e30a22d03155",
+      "contact_sheet_sha256": "49203c8d8b2ce7a62ed89229ab7fdc68030b108431c6e476df449e9612e2b2d7",
+      "extreme_frame_contact_sheet_sha256": "cff8b7f2ecae2141861f1aa5bb74ad1e225f427b581e1a66b6a29550e3df3162",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-plcs_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-plcs_viz-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualization/scene.mp4": {
+      "width": 1200,
+      "height": 800,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "70955500825b8b93f73893bceaca6ed001214a291f071e21fe535ad658acd81e",
+      "contact_sheet_sha256": "58c51e0020d99a238f8885983296f2ba308f6dcea3660ddddaa4619c0727bd1f",
+      "extreme_frame_contact_sheet_sha256": "de989798e1ed1558dddb6a031631d6c9857695e43a1f046564f4a8156ce672b8",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-scene-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-scene-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualize_tasks/ball_detection_viz.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997/50",
+      "duration": "16.850184",
+      "nb_frames": "1010",
+      "sha256": "0438d306f13a8fa41b3fa24e81f65ebd2b6d07628048cc89bd955020aec68ce9",
+      "contact_sheet_sha256": "c4d7971a2adf77be2961be15537b144c5f40f7f9e45f46c38ef0c126ab5d7f91",
+      "extreme_frame_contact_sheet_sha256": "d11f8313d7eb07fba170ce8d637921a0625b4f972dc2fd584f02d249ef416f57",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-ball_detection_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-ball_detection_viz-extremes.jpg",
+      "fps_difference": -6.0000000004833964e-05,
+      "duration_difference_seconds": 1.735018349791062e-05,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualize_tasks/blcs_viz.mp4": {
+      "width": 1300,
+      "height": 800,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "bd03cffd579db7aafac561aaac49b30de6b4916721335d49d0f9c0ff3273c6ca",
+      "contact_sheet_sha256": "2a13e9e4734072a7ed4eb92953c9d3e2c5fc124de37f4fb557c2d86922674214",
+      "extreme_frame_contact_sheet_sha256": "ac77abef11b5bd4c7b88bb80fc99347f1fd1cd2d954305e3f408c87f11b9609e",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-blcs_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-blcs_viz-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualize_tasks/court_kp_viz.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997/50",
+      "duration": "16.850184",
+      "nb_frames": "1010",
+      "sha256": "0e689b2b46b839209409fc26e1f010db852dd0d9ed69c5d85ed434d117b51684",
+      "contact_sheet_sha256": "bc3d2838f1cbe67e3ebf5167c00431b09f862751583fb84c3e1e9c478025383d",
+      "extreme_frame_contact_sheet_sha256": "649434865ebb34d4e27df25ca1bac11f881b8fbe8bc5e617e42d08067ca74254",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-court_kp_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-court_kp_viz-extremes.jpg",
+      "fps_difference": -6.0000000004833964e-05,
+      "duration_difference_seconds": 1.735018349791062e-05,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualize_tasks/gvhmr_alignment_viz.mp4": {
+      "width": 700,
+      "height": 900,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "bb606e4728c58e5c63f52a97aefb5294cddd70c905fc7b1dc7c58df94d6ded25",
+      "contact_sheet_sha256": "b1a77b4d502ca2a1e3c58fe97652c78f875123b7465650c4be1de9b6347cf31f",
+      "extreme_frame_contact_sheet_sha256": "e15f625a19529fede67c7d1aca6493118f3a08ff52fd4c76ff7d928c3021995c",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_alignment_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_alignment_viz-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualize_tasks/gvhmr_viz.mp4": {
+      "width": 1920,
+      "height": 1080,
+      "avg_frame_rate": "2997/50",
+      "duration": "16.850184",
+      "nb_frames": "1010",
+      "sha256": "ede72acdde4fd0095b7fd1f98d79407fad0ab57a2608f2900e5d013abf607a1f",
+      "contact_sheet_sha256": "c224549f9d9a17676163427ea6637ffecbd1b0a63eb2efbe4e5a32f453d61718",
+      "extreme_frame_contact_sheet_sha256": "3150801952238d3892f70571fd3e118ce3e70c03291ac7cc34b46870e1841444",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_viz-extremes.jpg",
+      "fps_difference": -6.0000000004833964e-05,
+      "duration_difference_seconds": 1.735018349791062e-05,
+      "verification_reused_after_hash_check": true
+    },
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/responsibility_cleanup/20260923T020139Z-dataset-visualize_tasks/plcs_viz.mp4": {
+      "width": 700,
+      "height": 900,
+      "avg_frame_rate": "979001/16333",
+      "duration": "16.850167",
+      "nb_frames": "1010",
+      "sha256": "ce7570e2c1289500dda019a1ba229d75909a85716b1a94423829cd6c0d7388e8",
+      "contact_sheet_sha256": "dce7a4137c86fe56735f4a2f972caf7ecc1e7a151aa4a0157c756ba9a504ed83",
+      "extreme_frame_contact_sheet_sha256": "600e82e148f2b437167a07a969ecdbfb5e479be9dffc2d7a333c7060b8ab9d3d",
+      "decoded_frames": 1010,
+      "blank_frames": 0,
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-plcs_viz-contact.jpg",
+      "extreme_frame_contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-plcs_viz-extremes.jpg",
+      "fps_difference": 1.2245138236721687e-09,
+      "duration_difference_seconds": 3.5018349819893047e-07,
+      "verification_reused_after_hash_check": true
+    }
+  },
+  "limits": [
+    "No measured 3D ground truth. Court/ball annotations are reference observations, not proof of 3D accuracy.",
+    "Court uses static manual points across the full clip; repeated frames are correlated, not independent accuracy evidence.",
+    "Ball distances use observed annotation frames only and report detection coverage separately."
+  ],
+  "configuration_comparison": {
+    "differences": [
+      {
+        "setting": "ball_detection.output_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/ball_detection_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/ball_detection_result.json"
+      },
+      {
+        "setting": "blcs.output_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/blcs_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/blcs_result.json"
+      },
+      {
+        "setting": "court_kp.load_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/court_kp_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/court_kp_result.json"
+      },
+      {
+        "setting": "court_kp.output_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/court_kp_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/court_kp_result.json"
+      },
+      {
+        "setting": "gvhmr.load_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/gvhmr_result.json",
+        "dataset": null
+      },
+      {
+        "setting": "gvhmr.output_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/gvhmr_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/gvhmr_result.json"
+      },
+      {
+        "setting": "gvhmr.source",
+        "pipeline": "load",
+        "dataset": "execute"
+      },
+      {
+        "setting": "output_directory",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset"
+      },
+      {
+        "setting": "player_association.load_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/inputs/player_association_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/inputs/player_association_result.json"
+      },
+      {
+        "setting": "player_association.output_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/player_association_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/player_association_result.json"
+      },
+      {
+        "setting": "plcs.output_path",
+        "pipeline": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-pipeline/plcs_result.json",
+        "dataset": "tennis_scene/generate/responsibility_cleanup/20260923T020139Z-dataset/plcs_result.json"
+      },
+      {
+        "setting": "video_paths",
+        "pipeline": [
+          "tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+          "tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+          "tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4"
+        ],
+        "dataset": [
+          "samples/cam0.mp4",
+          "samples/cam1.mp4",
+          "samples/cam2.mp4"
+        ]
+      }
+    ],
+    "note": "generate_dataset takes actual video_paths and camera_ids from clip.json; the saved base pipeline config retains its example video_paths. Actual scene metadata inputs are compared independently.",
+    "actual_video_paths_equal": true,
+    "actual_camera_ids_equal": true
+  },
+  "slcs_reader": {
+    "accepted": true,
+    "player_valid_frames": [
+      1010,
+      1010
+    ],
+    "ball_valid_frames": 978
+  }
+}

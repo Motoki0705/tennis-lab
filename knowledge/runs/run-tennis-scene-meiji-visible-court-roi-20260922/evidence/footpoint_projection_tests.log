@@ -1,0 +1,63 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [25 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tennis_scene/pipeline/test_court_reference.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+tests/unit/tennis_scene/pipeline/test_court_reference.py::test_camera_view_reference_aligns_keypoints_and_visibility 
+[gw1] [  4%] PASSED tests/unit/tennis_scene/pipeline/test_court_reference.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+tests/unit/tennis_scene/pipeline/test_court_reference.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[1.0] 
+[gw1] [  8%] PASSED tests/unit/tennis_scene/pipeline/test_court_reference.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[1.0] 
+tests/unit/tennis_scene/pipeline/test_court_reference.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[30.0] 
+[gw1] [ 12%] PASSED tests/unit/tennis_scene/pipeline/test_court_reference.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[30.0] 
+tests/unit/submodules/models/tracker/test_dino_tracker.py::test_bot_sort_exposes_integer_ids_and_pixel_boxes_per_local_run 
+[gw0] [ 16%] PASSED tests/unit/tennis_scene/pipeline/test_court_reference.py::test_camera_view_reference_aligns_keypoints_and_visibility 
+tests/unit/tennis_scene/pipeline/test_court_reference.py::test_camera_view_reference_rejects_invisible_calibration_point 
+[gw0] [ 20%] PASSED tests/unit/tennis_scene/pipeline/test_court_reference.py::test_camera_view_reference_rejects_invisible_calibration_point 
+tests/unit/tennis_scene/pipeline/test_court_reference.py::test_physical_reference_rejects_unused_camera_view_declarations 
+[gw0] [ 24%] PASSED tests/unit/tennis_scene/pipeline/test_court_reference.py::test_physical_reference_rejects_unused_camera_view_declarations 
+tests/unit/submodules/models/tracker/test_dino_tracker.py::test_yolo_rejects_dino_only_playing_area 
+[gw0] [ 28%] PASSED tests/unit/submodules/models/tracker/test_dino_tracker.py::test_yolo_rejects_dino_only_playing_area 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_defaults_to_camera_view_models_with_explicit_orientation 
+[gw1] [ 32%] PASSED tests/unit/submodules/models/tracker/test_dino_tracker.py::test_bot_sort_exposes_integer_ids_and_pixel_boxes_per_local_run 
+tests/unit/submodules/models/tracker/test_dino_tracker.py::test_completed_dino_track_interpolates_then_smooths_missing_frames 
+[gw1] [ 36%] PASSED tests/unit/submodules/models/tracker/test_dino_tracker.py::test_completed_dino_track_interpolates_then_smooths_missing_frames 
+tests/unit/submodules/models/tracker/test_dino_tracker.py::test_playing_area_filters_by_feet_and_preserves_scores 
+[gw1] [ 40%] PASSED tests/unit/submodules/models/tracker/test_dino_tracker.py::test_playing_area_filters_by_feet_and_preserves_scores 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_region_search_is_explicit_and_validated 
+[gw0] [ 44%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_defaults_to_camera_view_models_with_explicit_orientation 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_ball_preprocessing_outside_predictor_contract 
+[gw0] [ 48%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_ball_preprocessing_outside_predictor_contract 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_camera_view_reference_requires_explicit_orientation 
+[gw1] [ 52%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_region_search_is_explicit_and_validated 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_composes_shared_camera_view_reference 
+[gw0] [ 56%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_camera_view_reference_requires_explicit_orientation 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_footpoint_filter_requires_dino_detector 
+[gw1] [ 60%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_composes_shared_camera_view_reference 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_share_identity_across_distinct_roots 
+[gw0] [ 64%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_court_footpoint_filter_requires_dino_detector 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_output_directory[../escape] 
+[gw1] [ 68%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_share_identity_across_distinct_roots 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_output_directory[/tmp/escape] 
+[gw0] [ 72%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_output_directory[../escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_output_directory[outputs/repeated] 
+[gw1] [ 76%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_output_directory[/tmp/escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_reference_declarations_before_loading[overrides0] 
+[gw0] [ 80%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_output_directory[outputs/repeated] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_reference_declarations_before_loading[overrides1] 
+[gw1] [ 84%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_reference_declarations_before_loading[overrides0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_reference_declarations_before_loading[overrides2] 
+[gw0] [ 88%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_reference_declarations_before_loading[overrides1] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_parses_explicit_legacy_input_contract[camera_view_v2] 
+[gw1] [ 92%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_rejects_invalid_reference_declarations_before_loading[overrides2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_parses_explicit_legacy_input_contract[physical_v1] 
+[gw0] [ 96%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_parses_explicit_legacy_input_contract[camera_view_v2] 
+[gw1] [100%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_parses_explicit_legacy_input_contract[physical_v1] 
+
+============================= 25 passed in 12.68s ==============================

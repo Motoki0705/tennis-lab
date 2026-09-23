@@ -1,4 +1,4 @@
-<!-- knowledge-review: 31ecfb5b9c5c9b492cf8af2b68510fdf58505507ae87a2bff8cd4a124e269aa7 on 2026-09-21 -->
+<!-- knowledge-review: ce3b1f56c576c18f79def76a9ac754e68a2e098b7dc6e0336e629ac8e3a44de3 on 2026-09-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
@@ -10,6 +10,10 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-23の統合パイプライン確認
+
+[Meiji clip_000の既定Court再生成](nodes/tennis_scene/000003-run-tennis-scene-cleanup-meiji-court-model-20260922.md)では、3camera×1010 frameに共通の完全14点校正frameがなく、後段の3D推論前に停止した。実行時checkpoint SHAは事前記録と一致した。既定hybridへの移行を実動画E2Eの精度保証とみなさない判断を維持する。[画像だけによる領域探索](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)では、既存b863…checkpointと固定grid選択で27/27のhybrid推論・3camera校正が通った。手動点と外注ballは推論入力にしていない。[全3030frame](nodes/tennis_scene/000004-run-tennis-scene-meiji-court-regions-dino-block-20260922.md)でも全camera・全frameのKP14と校正が成立した。後段は旧DINO拡張のdeprecated APIで停止し、[正規buildと32frame chain確認](nodes/tennis_scene/000005-run-tennis-scene-dino-extension-chain-20260922.md)で演算互換性を確認した。[再実行の人物照合](nodes/tennis_scene/000006-run-tennis-scene-meiji-auto-person-mismatch-20260922.md)で、同じtrack IDでも隣接コート人物を選ぶauto選択を検出し、公開前に中止した。[モデルCourtの5m filter](nodes/tennis_scene/000007-run-tennis-scene-meiji-court-filter-5m-20260922.md)では対象へ戻った一方、cam2遠方選手の境界欠損と、広いROIの投影反転が判明した。[可視ROI修正と10m margin](nodes/tennis_scene/000008-run-tennis-scene-meiji-visible-court-roi-20260922.md)では、cam2遠方選手の直接観測が298→925frameとなり、全cameraで既存対象への軌跡対応を確認した。補間区間は残るため、次は全段生成時の姿勢照合と3D/動画評価を行う。
 
 ## 2026-09-21の追加確認
 
@@ -72,7 +76,13 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 3DGS augmentationでは、固定checkpoint・split・decodeによる比較基盤 [`run-i618-3dgs-blcs-real-baseline-v1`](nodes/ball_detection/000011-run-i618-3dgs-blcs-real-baseline-v1.md) が整備されています。simple-sphereを1/12混合したtreatmentは単一seedのgame9で`+0.018454 F1`でしたが、残りseedとgame10 final testが未完了のため、効果は確立していません。
 
+[Meijiの全scene診断](nodes/tennis_scene/000009-run-tennis-scene-meiji-raw-ball-baseline-20260923.md)ではscene/7動画の構造・decodeは成立したが、Ball欠損と非物理的3D軌道が大きかった。[保存前処理の照合](nodes/ball_detection/000018-run-ball-checkpoint-normalization-meiji-20260923.md)で、公開RGB APIとcheckpointのImageNet正規化の接続漏れを確認した。修正はdataset前処理と実model入力が完全一致し、Meiji選定窓の大誤検出は減ったが、recall改善は一様でなくTrackNet 8frameの4px一致数は5→4だった。前処理復元と精度向上を同一視せず、次は修正後の全区間GPU・3D・動画を再評価する。
+
+[修正版の単発scene](nodes/tennis_scene/000010-run-tennis-scene-meiji-corrected-pipeline-20260923.md)と[独立dataset生成](nodes/tennis_scene/000011-run-tennis-scene-meiji-corrected-dataset-20260923.md)は完了し、両sceneの構造と全14動画の全frame decode、既存SLCS reader受理を確認した。Courtは全区間で成立したが、Ball欠損は62.5/33.9/34.0%、3D ballの負高さ50frame・最大412m/s、PLCS/GVHMR整合残差が残る。窓境界不整合の証拠はなく、2D観測/pose mask急変が異常と同時にある。scene公開の成立を高品質教師や3D精度保証とみなさず、次は観測の同一性・可視性の安定性と独立3D評価を分けて検証する。
+
 ### Court Detection
+
+[Meiji全frame処理の時間分解](nodes/court_detection/000033-run-court-meiji-hybrid-cpu-profile-20260923.md)では、3030frameのCourt工程が約116分だったのに対し、3cameraの各1frameでもCPU hybrid geometry単体が1.77–2.58秒を要した。GPU推論だけの所要時間とは扱わない。精度評価と並行して、同じframeごとの推定契約を保つCPU後処理並列化・GPU batch化を検証する価値がある。静止frameの複製や間引きによる結果変更とは区別する。
 
 KP14 detectorは実pipelineで利用可能な水準ですが、`1.708886 px`は`test_dataloader`がvalidation dataを読む条件の再評価値であり、独立testではありません。次の品質更新にはrecording-disjoint test、geometry valid率、line support、処理時間、PLCS / BLCSへのE2E影響が必要です。
 

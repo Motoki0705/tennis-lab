@@ -1,0 +1,253 @@
+{
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "records": [
+    {
+      "camera": "cam0",
+      "old_to_new_proposal": [
+        0,
+        1
+      ],
+      "old_track_ids": [
+        1,
+        2
+      ],
+      "new_track_ids": [
+        1,
+        2
+      ],
+      "chosen_cost": {
+        "min": 0.0,
+        "median": 2.395601256810181e-07,
+        "p95": 1.3377569636184674e-06,
+        "max": 0.020456045951696054
+      },
+      "alternative_cost": {
+        "min": 15.91299722350049,
+        "median": 33.77279978159712,
+        "p95": 40.63414341270276,
+        "max": 52.64658855608762
+      },
+      "alternative_minus_chosen_margin": {
+        "min": 15.912996901423506,
+        "median": 33.772799532457086,
+        "p95": 40.63414324836888,
+        "max": 52.64658801179285
+      },
+      "frames_where_opposite_order_is_better": [],
+      "matched_bbox_cost": [
+        {
+          "min": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 5.8542044501171096e-06
+        },
+        {
+          "min": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 8.652418244756033e-06
+        }
+      ],
+      "matched_pose_cost": [
+        {
+          "min": 0.0,
+          "median": 6.47209415715254e-08,
+          "p95": 1.879856408914544e-07,
+          "max": 7.111672974577763e-05
+        },
+        {
+          "min": 0.0,
+          "median": 1.6465507344834324e-07,
+          "p95": 1.050474546753608e-06,
+          "max": 0.02045599392302636
+        }
+      ],
+      "pose_supported_frames": [
+        1010,
+        950
+      ],
+      "inspection_frames": [
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset/identity_lowest_margins_cam0.jpg"
+    },
+    {
+      "camera": "cam1",
+      "old_to_new_proposal": [
+        0,
+        1
+      ],
+      "old_track_ids": [
+        1,
+        2
+      ],
+      "new_track_ids": [
+        1,
+        2
+      ],
+      "chosen_cost": {
+        "min": 0.0,
+        "median": 1.6157312834873898e-07,
+        "p95": 3.181371539382871e-07,
+        "max": 8.032419584892953e-07
+      },
+      "alternative_cost": {
+        "min": 10.632007819422196,
+        "median": 26.903671636827205,
+        "p95": 33.52971421345564,
+        "max": 36.21832930000054
+      },
+      "alternative_minus_chosen_margin": {
+        "min": 10.632007666523883,
+        "median": 26.903671478532562,
+        "p95": 33.52971406718329,
+        "max": 36.218329042686925
+      },
+      "frames_where_opposite_order_is_better": [],
+      "matched_bbox_cost": [
+        {
+          "min": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        {
+          "min": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      ],
+      "matched_pose_cost": [
+        {
+          "min": 0.0,
+          "median": 5.761824429094338e-08,
+          "p95": 1.5083232594631084e-07,
+          "max": 2.870692591474885e-07
+        },
+        {
+          "min": 0.0,
+          "median": 9.473594217036277e-08,
+          "p95": 2.2997755678390202e-07,
+          "max": 6.619643627013297e-07
+        }
+      ],
+      "pose_supported_frames": [
+        1010,
+        1010
+      ],
+      "inspection_frames": [
+        958,
+        959,
+        960,
+        961,
+        962,
+        963,
+        964,
+        965
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset/identity_lowest_margins_cam1.jpg"
+    },
+    {
+      "camera": "cam2",
+      "old_to_new_proposal": [
+        0,
+        1
+      ],
+      "old_track_ids": [
+        1,
+        2
+      ],
+      "new_track_ids": [
+        1,
+        2
+      ],
+      "chosen_cost": {
+        "min": 0.0,
+        "median": 1.7379315994502174e-07,
+        "p95": 0.00047968730397547605,
+        "max": 0.024642576042570852
+      },
+      "alternative_cost": {
+        "min": 6.725324562514272,
+        "median": 9.519626130559502,
+        "p95": 18.806192238349315,
+        "max": 22.346265984109642
+      },
+      "alternative_minus_chosen_margin": {
+        "min": 6.724961803491295,
+        "median": 9.519625985467925,
+        "p95": 18.806192141744557,
+        "max": 22.346265907479744
+      },
+      "frames_where_opposite_order_is_better": [],
+      "matched_bbox_cost": [
+        {
+          "min": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "max": 5.964728176401666e-07
+        },
+        {
+          "min": 0.0,
+          "median": 0.0,
+          "p95": 0.00013858979170949077,
+          "max": 0.00952815113799777
+        }
+      ],
+      "matched_pose_cost": [
+        {
+          "min": 0.0,
+          "median": 6.339313416003792e-08,
+          "p95": 1.4314313276648967e-07,
+          "max": 1.676964889769607e-05
+        },
+        {
+          "min": 0.0,
+          "median": 1.0719361317428893e-07,
+          "p95": 0.00029833321231197493,
+          "max": 0.015114364030605532
+        }
+      ],
+      "pose_supported_frames": [
+        1010,
+        999
+      ],
+      "inspection_frames": [
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        143
+      ],
+      "contact_sheet": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset/identity_lowest_margins_cam2.jpg"
+    }
+  ],
+  "proposed_global_assignments": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      0
+    ]
+  ],
+  "decision": "Not applied. Parent must inspect source images and all-frame evidence before creating verified_mapping.json."
+}
