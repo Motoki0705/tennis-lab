@@ -7,10 +7,14 @@ from pathlib import Path
 import pytest
 
 from src.tennis_scene.chat_annotation.kit import build_kit
-from src.tennis_scene.chat_annotation.runtime.contracts import Annotation, Policies
+from src.tennis_scene.chat_annotation.runtime.contracts import (
+    BallAnnotation,
+    PlayerAnnotation,
+    Policies,
+)
 
 
-def test_request_uses_valid_short_example_and_only_two_project_texts(
+def test_request_embeds_target_schema_in_each_project_kit(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "project_kits"
@@ -20,24 +24,27 @@ def test_request_uses_valid_short_example_and_only_two_project_texts(
     assert kit_id == other_id
     assert contents == other
     assert {path.name for path in root.iterdir()} == {
-        "PROJECT_INSTRUCTIONS.txt",
-        "REQUEST.txt",
+        "ball_detection",
+        "player_detection",
     }
-    assert all(path.is_file() for path in root.iterdir())
-    request = (root / "REQUEST.txt").read_text(encoding="utf-8")
-    example = re.search(r"```json\n(.*?)\n```", request, re.S)
-    assert example is not None
-    Annotation.model_validate(json.loads(example.group(1)))
-    for name in (
-        "annotation.schema.json",
-        "court_definition.json",
-        "kit_manifest.json",
+    for target, model in (
+        ("ball_detection", BallAnnotation),
+        ("player_detection", PlayerAnnotation),
     ):
-        assert name not in request
+        directory = root / target
+        assert {path.name for path in directory.iterdir()} == {
+            "PROJECT_INSTRUCTIONS.txt",
+            "REQUEST.txt",
+        }
+        request = (directory / "REQUEST.txt").read_text(encoding="utf-8")
+        schema_match = re.search(r"```json\n(.*?)\n```", request, re.S)
+        assert schema_match is not None
+        schema = json.loads(schema_match.group(1))
+        assert schema == model.model_json_schema()
+        assert f"tennis_chat_{target.removesuffix('_detection')}_annotation.v1" in request
+        assert len(request) > 3000
     assert "court_definition.json" not in contents
-    assert contents["PROTOCOL.md"].decode() in request
-    assert len(request) < 4000
-    mtimes = {path: path.stat().st_mtime_ns for path in root.iterdir()}
+    mtimes = {path: path.stat().st_mtime_ns for path in root.rglob("*") if path.is_file()}
     assert build_kit(root, policies) == (contents, kit_id)
     assert mtimes == {path: path.stat().st_mtime_ns for path in mtimes}
 

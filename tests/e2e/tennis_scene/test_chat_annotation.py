@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import sys
 import zipfile
-from copy import deepcopy
 from pathlib import Path
 
 import av
@@ -18,8 +17,9 @@ import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.chat_annotation.runtime.contracts import (
-    Annotation,
     ClipManifest,
+    PlayerAnnotation,
+    make_template,
     read_json,
     write_json,
 )
@@ -77,8 +77,8 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     ] == list(range(155))
     project_texts = tmp_path / "output" / "chat_annotation" / "project_kits"
     assert {path.name for path in project_texts.iterdir()} == {
-        "PROJECT_INSTRUCTIONS.txt",
-        "REQUEST.txt",
+        "ball_detection",
+        "player_detection",
     }
     assert "project_kit_directory" not in summary
     directory = tmp_path / "chat_upload"
@@ -92,32 +92,37 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     assert len(list(videos.iterdir())) == 3
     video = directory / manifests[0].filename
     shutil.copyfile(videos / video.name, video)
-    request = (project_texts / "REQUEST.txt").read_text(encoding="utf-8")
+    request = (project_texts / "player_detection" / "REQUEST.txt").read_text(
+        encoding="utf-8"
+    )
     (directory / "REQUEST.txt").write_text(request, encoding="utf-8")
     assert {p.name for p in directory.iterdir()} == {video.name, "REQUEST.txt"}
     # A Chat can construct the result from its video and the concise request alone.
     # Source mapping remains local for validation after receiving that result.
-    example_match = re.search(r"```json\n(.*?)\n```", request, re.S)
-    assert example_match is not None
+    schema_match = re.search(r"```json\n(.*?)\n```", request, re.S)
+    assert schema_match is not None
     assert "入力一覧" not in request and video.name not in request
-    example = json.loads(example_match.group(1))
+    schema = json.loads(schema_match.group(1))
+    assert "players" in schema["$defs"]["PlayerFrameAnnotation"]["properties"]
+    assert "balls" not in schema["$defs"]["PlayerFrameAnnotation"]["properties"]
     timeline = probe_video(video)
     frame_count = len(timeline.pts)
-    annotation = deepcopy(example)
-    annotation.update(
-        clip_id=video.stem,
-        width=timeline.width,
-        height=timeline.height,
-        frame_count=frame_count,
+    annotation = make_template(manifests[0], target="player").model_dump(
+        mode="json"
     )
-    annotation["frames"] = [
-        dict(deepcopy(example["frames"][0]), frame_index=index)
-        for index in range(frame_count)
-    ]
+    annotation["status"] = "completed"
     for row in annotation["frames"]:
-        row["players"][0]["bbox_xyxy"] = [40, 40, 110, 300]
-        row["balls"][0]["center_px"] = [302, 172]
-    Annotation.model_validate(annotation)
+        row["reviewed"] = True
+        row["players"] = [
+            {
+                "track_id": "p1",
+                "bbox_xyxy": [40, 40, 110, 300],
+                "bbox_source": "observed",
+                "occluded": False,
+                "truncated": False,
+            }
+        ]
+    PlayerAnnotation.model_validate(annotation)
     annotation_path = directory / f"annotation_{video.stem}.json"
     write_json(annotation_path, annotation)
     manifest_path = (
@@ -142,7 +147,16 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     common = ["--manifest", str(manifest_path)]
     run("preflight", *common, "--video", str(video))
     template_path = tmp_path / "template.json"
-    run("init", *common, "--video", str(video), "--output", str(template_path))
+    run(
+        "init",
+        *common,
+        "--video",
+        str(video),
+        "--output",
+        str(template_path),
+        "--target",
+        "player",
+    )
     template = read_json(template_path)
     assert len(template["frames"]) == frame_count
     assert all(not row["reviewed"] for row in template["frames"])
@@ -182,7 +196,7 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
             str(output),
         )
         assert expected_status in response.stdout
-        archive = output / f"annotation_{video.stem}.zip"
+        archive = output / f"{video.stem}.zip"
         expected = {f"overlay_{video.stem}.mp4", annotation_path.name}
         assert {p.name for p in output.iterdir()} == expected | {archive.name}
         with zipfile.ZipFile(archive) as bundle:

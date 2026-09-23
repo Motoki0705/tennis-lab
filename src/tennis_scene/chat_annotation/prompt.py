@@ -1,4 +1,4 @@
-"""A shared request whose video information comes from the attachment."""
+"""Target-specific requests whose video information comes from the attachment."""
 
 from __future__ import annotations
 
@@ -9,14 +9,12 @@ from .layout import video_path
 from .runtime.contracts import ClipManifest, read_json, sha256_file
 
 
-def render_request(contents: dict[str, bytes]) -> str:
-    resources = Path(__file__).parent / "resources"
-    return "\n".join(
-        (
-            (resources / "REQUEST.txt").read_text(encoding="utf-8"),
-            contents["PROTOCOL.md"].decode("utf-8"),
-        )
-    )
+def render_request(contents: dict[str, bytes], target: str = "ball_detection") -> str:
+    if target not in {"ball_detection", "player_detection"}:
+        raise ValueError(f"unsupported annotation target: {target}")
+    request = contents[f"{target}_REQUEST.txt"].decode("utf-8")
+    schema = contents[f"{target}_annotation.schema.json"].decode("utf-8")
+    return f"{request}\n\n## JSON Schema\n\n```json\n{schema.rstrip()}\n```\n"
 
 
 def write_request(
@@ -65,12 +63,16 @@ def write_request(
         )
     if set(videos) != expected_paths:
         raise ValueError("video catalog is incomplete or contains an unpublished video")
-    value = render_request(contents)
-    path = (
+    directory = (
         project_directory if project_directory is not None else root / "project_kits"
-    ) / "REQUEST.txt"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists() or path.read_text(encoding="utf-8") != value:
-        temporary = path.with_suffix(".txt.partial")
-        temporary.write_text(value, encoding="utf-8")
-        temporary.replace(path)
+    )
+    for target in ("ball_detection", "player_detection"):
+        value = render_request(contents, target)
+        path = directory / target / "REQUEST.txt"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists() or path.read_text(encoding="utf-8") != value:
+            temporary = path.with_suffix(".txt.partial")
+            temporary.write_text(value, encoding="utf-8")
+            temporary.replace(path)
+    for legacy_name in ("PROJECT_INSTRUCTIONS.txt", "REQUEST.txt"):
+        (directory / legacy_name).unlink(missing_ok=True)

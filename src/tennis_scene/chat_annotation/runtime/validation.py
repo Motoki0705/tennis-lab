@@ -4,12 +4,23 @@ from __future__ import annotations
 
 import numpy as np
 
-from .contracts import Annotation, ClipManifest, ValidationReport, annotation_clip_id
+from .contracts import (
+    Annotation,
+    Ball,
+    BallAnnotation,
+    BallFrameAnnotation,
+    ClipManifest,
+    Player,
+    PlayerFrameAnnotation,
+    SupportedAnnotation,
+    ValidationReport,
+    annotation_clip_id,
+)
 from .geometry import interpolation_values
 
 
 def validate_annotation(
-    annotation: Annotation, manifest: ClipManifest
+    annotation: SupportedAnnotation, manifest: ClipManifest
 ) -> ValidationReport:
     errors: list[str] = []
     issues = list(annotation.issues)
@@ -38,11 +49,22 @@ def validate_annotation(
             issues.append(f"{label}: not fully reviewed")
         if frame.notes:
             issues.append(f"{label}: {frame.notes}")
-        for kind, objects in (("player", frame.players), ("ball", frame.balls)):
+        players: list[Player]
+        balls: list[Ball]
+        if isinstance(frame, PlayerFrameAnnotation):
+            players = frame.players
+            balls = []
+        elif isinstance(frame, BallFrameAnnotation):
+            players = []
+            balls = frame.balls
+        else:
+            players = frame.players
+            balls = frame.balls
+        for kind, objects in (("player", players), ("ball", balls)):
             ids = [obj.track_id for obj in objects]
             if len(ids) != len(set(ids)):
                 errors.append(f"{label}: duplicate {kind} track ID")
-        for player in frame.players:
+        for player in players:
             if player.bbox_xyxy is None:
                 issues.append(
                     f"{label} player {player.track_id}: unresolved full-body bbox"
@@ -56,7 +78,7 @@ def validate_annotation(
                 errors.append(
                     f"{label}: amodal bbox outside image must be marked truncated"
                 )
-        for ball in frame.balls:
+        for ball in balls:
             if ball.center_px is None and ball.status != "out_of_frame":
                 issues.append(f"{label} ball {ball.track_id}: unresolved location")
             if ball.center_px is not None and not (
@@ -68,8 +90,15 @@ def validate_annotation(
                 try:
                     if ball.interpolation_frames is None:
                         raise ValueError("missing interpolation endpoints")
+                    if not isinstance(annotation, (Annotation, BallAnnotation)):
+                        raise ValueError(
+                            "interpolated balls require a ball annotation"
+                        )
                     values = interpolation_values(
-                        annotation, manifest, ball.track_id, *ball.interpolation_frames
+                        annotation,
+                        manifest,
+                        ball.track_id,
+                        *ball.interpolation_frames,
                     )
                     if (
                         index not in values
