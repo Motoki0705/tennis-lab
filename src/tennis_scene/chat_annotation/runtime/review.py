@@ -15,10 +15,17 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .contracts import (
-    Annotation,
+    Ball,
+    BallAnnotation,
+    BallFrameAnnotation,
     ClipManifest,
+    Player,
+    PlayerAnnotation,
+    PlayerFrameAnnotation,
+    SupportedAnnotation,
     ValidationReport,
     annotation_clip_id,
+    parse_annotation,
     read_json,
 )
 from .media import check_clip, decode_range, encode_video
@@ -61,7 +68,10 @@ def _line(
 
 
 def render_overlay(
-    video: Path, manifest: ClipManifest, annotation: Annotation, output: Path
+    video: Path,
+    manifest: ClipManifest,
+    annotation: SupportedAnnotation,
+    output: Path,
 ) -> None:
     timeline = check_clip(video, manifest)
     footer_height = 80
@@ -74,7 +84,18 @@ def render_overlay(
                 np.uint8, copy=False
             )
             row = annotation.frames[index]
-            for player in row.players:
+            players: list[Player]
+            balls: list[Ball]
+            if isinstance(row, PlayerFrameAnnotation):
+                players = row.players
+                balls = []
+            elif isinstance(row, BallFrameAnnotation):
+                players = []
+                balls = row.balls
+            else:
+                players = row.players
+                balls = row.balls
+            for player in players:
                 if player.bbox_xyxy is None:
                     continue
                 x1, y1, x2, y2 = player.bbox_xyxy
@@ -95,7 +116,7 @@ def render_overlay(
                     color,
                     1,
                 )
-            for ball in row.balls:
+            for ball in balls:
                 if ball.center_px is None:
                     continue
                 center = tuple(map(round, ball.center_px))
@@ -114,10 +135,10 @@ def render_overlay(
             timestamp = float(mapped.clip_pts * Fraction(manifest.time_base))
             unresolved = (
                 bool(row.notes)
-                or any(p.bbox_xyxy is None for p in row.players)
+                or any(p.bbox_xyxy is None for p in players)
                 or any(
                     b.center_px is None and b.status != "out_of_frame"
-                    for b in row.balls
+                    for b in balls
                 )
             )
             state = (
@@ -129,10 +150,24 @@ def render_overlay(
                 (manifest.height + footer_height, manifest.width, 3), dtype=np.uint8
             )
             canvas[: manifest.height] = image
+            if isinstance(annotation, BallAnnotation):
+                legends = (
+                    "Ball: yellow=visible orange=occluded magenta=interpolated",
+                    "null is not drawn",
+                )
+            elif isinstance(annotation, PlayerAnnotation):
+                legends = (
+                    "Player: solid=observed dashed=inferred",
+                    "null bbox is not drawn",
+                )
+            else:
+                legends = (
+                    "Player: solid=observed dashed=inferred | Ball: yellow=visible",
+                    "Ball: orange=occluded magenta=interpolated | null is not drawn",
+                )
             labels = (
                 f"frame {index}/{len(manifest.frames) - 1} | {timestamp:.3f}s | {annotation.status} | {state}",
-                "Player: solid=observed dashed=inferred | Ball: yellow=visible",
-                "Ball: orange=occluded magenta=interpolated | null is not drawn",
+                *legends,
             )
             for number, text in enumerate(labels):
                 cv2.putText(
@@ -166,7 +201,7 @@ def finalize(
     video: Path, manifest_path: Path, annotation_path: Path, output: Path
 ) -> tuple[Path, ValidationReport]:
     manifest = ClipManifest.model_validate(read_json(manifest_path))
-    annotation = Annotation.model_validate(read_json(annotation_path))
+    annotation = parse_annotation(read_json(annotation_path))
     report = validate_annotation(annotation, manifest)
     if report.errors:
         raise ValueError("annotation validation failed: " + "; ".join(report.errors))

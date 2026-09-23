@@ -22,8 +22,14 @@ class _AfterModelValidator(Protocol):
 
 _after_model_validator = cast(_AfterModelValidator, model_validator(mode="after"))
 
-KIT_VERSION = "4.1.0"
+KIT_VERSION = "4.2.0"
 SCHEMA_VERSION: Literal["tennis_chat_annotation.v2"] = "tennis_chat_annotation.v2"
+BALL_SCHEMA_VERSION: Literal["tennis_chat_ball_annotation.v1"] = (
+    "tennis_chat_ball_annotation.v1"
+)
+PLAYER_SCHEMA_VERSION: Literal["tennis_chat_player_annotation.v1"] = (
+    "tennis_chat_player_annotation.v1"
+)
 Point = Annotated[list[float], Field(min_length=2, max_length=2)]
 Box = Annotated[list[float], Field(min_length=4, max_length=4)]
 Identifier = Annotated[str, Field(min_length=1, pattern=r"^[A-Za-z0-9_-]+$")]
@@ -129,10 +135,14 @@ class Player(StrictModel):
     """Only participants on the target court; full-body, amodal boxes."""
 
     track_id: Identifier
-    bbox_xyxy: Box | None
-    bbox_source: Literal["observed", "inferred", "unresolved"]
-    occluded: bool
-    truncated: bool
+    bbox_xyxy: Box | None = Field(
+        description="Full-body [x_min,y_min,x_max,y_max] box in source-image pixels."
+    )
+    bbox_source: Literal["observed", "inferred", "unresolved"] = Field(
+        description="Whether the full-body box was seen, inferred, or cannot be located."
+    )
+    occluded: bool = Field(description="True when another object hides part of the player.")
+    truncated: bool = Field(description="True when the player extends beyond the image.")
 
     @_after_model_validator
     def consistent(self) -> Self:
@@ -148,10 +158,20 @@ class Player(StrictModel):
 
 
 class Ball(StrictModel):
+    """A ball active in play on the target court."""
+
     track_id: Identifier
-    center_px: Point | None
-    status: Literal["visible", "occluded", "interpolated", "out_of_frame", "unresolved"]
-    interpolation_frames: Annotated[list[int], Field(min_length=2, max_length=2)] | None
+    center_px: Point | None = Field(
+        description="Ball center [x,y] in source-image pixels, or null when unavailable."
+    )
+    status: Literal[
+        "visible", "occluded", "interpolated", "out_of_frame", "unresolved"
+    ] = Field(description="Observation or inference state for this ball in this frame.")
+    interpolation_frames: Annotated[
+        list[int], Field(min_length=2, max_length=2)
+    ] | None = Field(
+        description="Visible endpoint frame indices for interpolation; otherwise null."
+    )
 
     @_after_model_validator
     def consistent(self) -> Self:
@@ -186,6 +206,82 @@ class Annotation(StrictModel):
     status: Literal["completed", "partial"]
     issues: list[str]
     frames: list[FrameAnnotation]
+
+
+class BallFrameAnnotation(StrictModel):
+    """One frame in a ball-only annotation; reviewed applies to balls."""
+
+    frame_index: int = Field(ge=0)
+    reviewed: bool = Field(description="Whether the ball target was reviewed in this frame.")
+    balls: list[Ball]
+    interpolation_break: bool = Field(
+        description="True on a hit, bounce, cut, or play boundary that interpolation cannot cross."
+    )
+    notes: str
+
+
+class BallAnnotation(StrictModel):
+    """Clip-level ball-only annotation payload."""
+
+    schema_version: Literal["tennis_chat_ball_annotation.v1"]
+    clip_id: FileName
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    frame_count: int = Field(gt=0)
+    status: Literal["completed", "partial"] = Field(
+        description="Completed only when every frame was reviewed and no issue remains."
+    )
+    issues: list[str] = Field(description="Clip-wide unresolved issues, or an empty list.")
+    frames: list[BallFrameAnnotation] = Field(
+        description="One entry per video frame in display order."
+    )
+
+
+class PlayerFrameAnnotation(StrictModel):
+    """One frame in a player-only annotation; reviewed applies to players."""
+
+    frame_index: int = Field(ge=0)
+    reviewed: bool = Field(
+        description="Whether the player target was reviewed in this frame."
+    )
+    players: list[Player]
+    notes: str
+
+
+class PlayerAnnotation(StrictModel):
+    """Clip-level player-only annotation payload."""
+
+    schema_version: Literal["tennis_chat_player_annotation.v1"]
+    clip_id: FileName
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+    frame_count: int = Field(gt=0)
+    status: Literal["completed", "partial"] = Field(
+        description="Completed only when every frame was reviewed and no issue remains."
+    )
+    issues: list[str] = Field(description="Clip-wide unresolved issues, or an empty list.")
+    frames: list[PlayerFrameAnnotation] = Field(
+        description="One entry per video frame in display order."
+    )
+
+
+SupportedAnnotation = Annotation | BallAnnotation | PlayerAnnotation
+
+
+def parse_annotation(value: Any) -> SupportedAnnotation:
+    if not isinstance(value, dict):
+        raise ValueError("annotation must be a JSON object")
+    schema_version = value.get("schema_version")
+    if schema_version == BALL_SCHEMA_VERSION:
+        ball_annotation: BallAnnotation = BallAnnotation.model_validate(value)
+        return ball_annotation
+    if schema_version == PLAYER_SCHEMA_VERSION:
+        player_annotation: PlayerAnnotation = PlayerAnnotation.model_validate(value)
+        return player_annotation
+    if schema_version == SCHEMA_VERSION:
+        combined_annotation: Annotation = Annotation.model_validate(value)
+        return combined_annotation
+    raise ValueError(f"unsupported annotation schema version: {schema_version!r}")
 
 
 class ValidationReport(StrictModel):
@@ -238,15 +334,51 @@ def annotation_clip_id(manifest: ClipManifest) -> str:
     return Path(manifest.filename).stem
 
 
-def make_template(manifest: ClipManifest) -> Annotation:
+def make_template(
+    manifest: ClipManifest, target: str = "combined"
+) -> SupportedAnnotation:
+    common: dict[str, Any] = {
+        "clip_id": annotation_clip_id(manifest),
+        "width": manifest.width,
+        "height": manifest.height,
+        "frame_count": len(manifest.frames),
+        "status": "partial",
+        "issues": [],
+    }
+    if target == "ball":
+        return BallAnnotation(
+            schema_version=BALL_SCHEMA_VERSION,
+            **common,
+            frames=[
+                BallFrameAnnotation(
+                    frame_index=frame.frame_index,
+                    reviewed=False,
+                    balls=[],
+                    interpolation_break=False,
+                    notes="",
+                )
+                for frame in manifest.frames
+            ],
+        )
+    if target == "player":
+        return PlayerAnnotation(
+            schema_version=PLAYER_SCHEMA_VERSION,
+            **common,
+            frames=[
+                PlayerFrameAnnotation(
+                    frame_index=frame.frame_index,
+                    reviewed=False,
+                    players=[],
+                    notes="",
+                )
+                for frame in manifest.frames
+            ],
+        )
+    if target != "combined":
+        raise ValueError(f"unsupported annotation target: {target}")
     return Annotation(
         schema_version=SCHEMA_VERSION,
-        clip_id=annotation_clip_id(manifest),
-        width=manifest.width,
-        height=manifest.height,
-        frame_count=len(manifest.frames),
-        status="partial",
-        issues=[],
+        **common,
         frames=[
             FrameAnnotation(
                 frame_index=frame.frame_index,

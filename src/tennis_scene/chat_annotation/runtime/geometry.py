@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-from .contracts import Annotation, Ball, ClipManifest
+from .contracts import Annotation, Ball, BallAnnotation, ClipManifest
+
+BallCapableAnnotation = Annotation | BallAnnotation
 
 
 def interpolation_values(
-    annotation: Annotation,
+    annotation: BallCapableAnnotation,
     manifest: ClipManifest,
     track_id: str,
     start: int,
@@ -69,10 +71,14 @@ def interpolation_values(
 
 
 def interpolate_ball(
-    annotation: Annotation, manifest: ClipManifest, track_id: str, start: int, stop: int
-) -> Annotation:
+    annotation: BallCapableAnnotation,
+    manifest: ClipManifest,
+    track_id: str,
+    start: int,
+    stop: int,
+) -> BallCapableAnnotation:
     values = interpolation_values(annotation, manifest, track_id, start, stop)
-    result: Annotation = annotation.model_copy(deep=True)
+    result: BallCapableAnnotation = annotation.model_copy(deep=True)
     for frame in result.frames:
         if frame.frame_index not in values:
             continue

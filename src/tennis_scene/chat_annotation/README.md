@@ -5,7 +5,7 @@ MP4と、Chatへ貼り付ける短いリクエスト本文を作る。対象は�
 プレー中のボールで、参考区間を含む添付動画の全フレームを処理する。
 アノテーションの正本・座標・補間・可視化・返却形式は
 [PROTOCOL.md](resources/PROTOCOL.md)、機械契約は
-[runtime/contracts.py](runtime/contracts.py)を参照する。JSON Schemaは内部の版識別用に生成し、Chatへは渡さない。
+[runtime/contracts.py](runtime/contracts.py)を参照する。対象別REQUESTには機械契約から生成したJSON Schemaを含める。
 
 ## 実行
 
@@ -74,8 +74,12 @@ worktreeから共通データと出力を使う場合、`paths.data_root`と`pat
 outputs/chat_annotation/             # output_directoryで変更可能
   sources/                         # 保存した元動画、取得metadata、ハッシュ記録
   project_kits/
-    PROJECT_INSTRUCTIONS.txt       # Project instructions用
-    REQUEST.txt                    # 全クリップ共通の短い要求・JSON例
+    ball_detection/
+      PROJECT_INSTRUCTIONS.txt     # ボール注釈Project用
+      REQUEST.txt                  # ボール用依頼文とJSON Schema
+    player_detection/
+      PROJECT_INSTRUCTIONS.txt     # プレーヤー注釈Project用
+      REQUEST.txt                  # プレーヤー用依頼文とJSON Schema
   videos/<source-video-name>/      # 保存したソース動画のファイル名（拡張子なし）
     <source-id>__<run-hash>__<clip-id>.mp4
     ...                            # 同じソースのクリップを並べる
@@ -85,21 +89,22 @@ outputs/chat_annotation/             # output_directoryで変更可能
     clips/<clip-id>/clip_manifest.json
 ```
 
-1. Projectを使う場合は`project_kits/PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
+1. 注釈対象に応じて`project_kits/ball_detection/`または`project_kits/player_detection/`を選び、その`PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
 2. クリップごとのChatでgpt-6-astraを選び、`videos/<source-video-name>/`からクリップ1本だけを添付する。
-3. `project_kits/REQUEST.txt`の全文をプロンプトとして貼り付ける。
+3. 選んだディレクトリの`REQUEST.txt`全文をプロンプトとして貼り付ける。
 4. 返却ZIP内の注釈JSONと重畳動画を確認する。部分完了もJSONに明示される。
 
-REQUESTには要求と短いJSON例を含める。動画名・解像度・総フレーム数は添付動画から取得する。
-同じREQUESTを全クリップで共通に使い、動画が増えても本文は変わらない。
-補間上限は設定値を要求文へ直接埋め込むため、異なる上限を使う場合も新しいoutput_directoryを使う。
-動画はファイル名を変更せず添付する。別のJSONやPROTOCOLファイルの添付は不要。
+各REQUESTには対象別の要求と専用JSON Schemaを含める。ボール用JSONはボール情報だけ、プレーヤー用JSONはプレーヤー情報だけを含む。動画名・解像度・総フレーム数は添付動画から取得する。
+同じ対象のREQUESTを全クリップで共通に使い、動画が増えても本文は変わらない。
+動画はファイル名を変更せず添付する。別のJSON SchemaやPROTOCOLファイルの添付は不要。
 元動画の出典・ハッシュ・全PTS・フレーム対応はローカルのmanifestに保持する。
-Pythonコードは配布せず、実装はgpt-6-astraに任せる。PROTOCOLは要求文書とJSON例の
-唯一の保守元で、REQUESTへ組み込む。実装方法・ライブラリ・作業順序・応答の行数は指定しない。
+Pythonコードは配布せず、実装はgpt-6-astraに任せる。各REQUESTの対象別依頼文は
+`resources/ball_detection/`または`resources/player_detection/`、JSON Schemaは
+`runtime/contracts.py`から対象別に生成する。実装方法・ライブラリ・作業順序・応答の行数は指定しない。
 
 `_preparation/`のmanifestと完成マーカーはローカルでの再実行検証用で、Chatには渡さない。
-`project_kits/`には常に2つのテキストを生成し、ハッシュ付きキットディレクトリは作らない。
+`project_kits/ball_detection/`と`project_kits/player_detection/`に、それぞれ2つのテキストを生成する。
+各REQUESTのJSONは対象クラスの配列だけを含める。
 複数動画・複数URLの準備でも、公開済み動画の整合性はローカルmetadataで検証する。
 要求の版が異なる既存動画と混在する場合は明示的に失敗するため、新しいoutput_directoryを使う。
 実際のChatでの動画処理・コード実行・ダウンロードは利用環境で確認が必要。
@@ -130,7 +135,7 @@ source_frame_index/is_targetで所有範囲を識別できる。1フレーム＋
 ## 実装とテスト
 
 - configuration/prepare/preparation: 厳密な設定、既存YouTube取得API、容量検査と公開。
-- kit/prompt: 注釈型・補間上限・要求文書で版を識別し、全クリップ共通のREQUESTを生成。
+- kit/prompt: 注釈型・補間上限・対象別要求文書で版を識別し、全クリップ共通のREQUESTを生成。
 - runtime: repo内で使用する型、動画I/O、補完、検証、描画、ZIP処理。Chatには配布しない。
 - resources: Project指示・成果物要求の唯一の保守元。
 
@@ -152,6 +157,16 @@ GPTが独自に作るコードやChat上での注釈結果そのものは自動�
   --manifest /absolute/path/clip_manifest.json \
   --annotations /absolute/path/annotation_CLIP.json \
   --report /absolute/path/report.json
+```
+
+注釈の初期JSONは対象を指定して作成する。
+
+```bash
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.annotate init \
+  --manifest /absolute/path/clip_manifest.json \
+  --video /absolute/path/clip.mp4 \
+  --output /absolute/path/annotation_CLIP.json \
+  --target ball # or player
 ```
 
 同CLIの`finalize`は`--video`、`--manifest`、`--annotations`、`--output`を受け取り、

@@ -19,8 +19,10 @@ from src.utils.configuration.paths import (
 from ..runtime.contracts import (
     KIT_VERSION,
     Annotation,
+    BallAnnotation,
     ClipManifest,
     make_template,
+    parse_annotation,
     read_json,
     write_json,
 )
@@ -93,6 +95,10 @@ def parser() -> argparse.ArgumentParser:
         command.add_argument("--manifest", required=True, type=Path)
         if name in {"preflight", "init", "frames", "finalize"}:
             command.add_argument("--video", required=True, type=Path)
+        if name == "init":
+            command.add_argument(
+                "--target", choices=("ball", "player"), required=True
+            )
         if name in {"interpolate", "validate", "finalize"}:
             command.add_argument("--annotations", required=True, type=Path)
         if name in {"init", "frames", "finalize"}:
@@ -163,7 +169,10 @@ def main() -> int:
             check_clip(args.video, manifest)
             if args.output.exists():
                 raise FileExistsError("init will not overwrite an annotation")
-            write_json(args.output, make_template(manifest).model_dump(mode="json"))
+            write_json(
+                args.output,
+                make_template(manifest, args.target).model_dump(mode="json"),
+            )
             return 0
         if args.command == "frames":
             crop = tuple(args.crop) if args.crop else None
@@ -185,7 +194,7 @@ def main() -> int:
             )
             print(archive)
             return 0
-        annotation = Annotation.model_validate(read_json(args.annotations))
+        annotation = parse_annotation(read_json(args.annotations))
         report = validate_annotation(annotation, manifest)
         if args.command == "validate":
             write_json(args.report, report.model_dump(mode="json"))
@@ -193,6 +202,8 @@ def main() -> int:
             return 1 if report.errors else 0
         if report.errors:
             raise ValueError("; ".join(report.errors))
+        if not isinstance(annotation, (Annotation, BallAnnotation)):
+            raise ValueError("interpolation is only available for ball annotations")
         annotation = interpolate_ball(
             annotation, manifest, args.track_id, args.start, args.stop
         )
