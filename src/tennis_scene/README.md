@@ -1,80 +1,216 @@
-# `src/tennis_scene`
+# Tennis Scene
 
-`src/tasks/ball_detection`, `src/tasks/court_detection`, `src/submodules`（GVHMR）, `src/tasks/plcs`, `src/tasks/blcs` をつないで、同期済みマルチカメラ動画から 1 つの `SceneResult` を組み立てる統合パイプラインです。カメラは固定（静止カメラ、カメラ回転推定なし）を前提とします。
+同期済みマルチカメラ動画から `SceneResult` を組み立て、NPZとmetadataへ保存します。
+入力動画の準備、sceneの増分生成、保存結果の可視化を担当します。固定カメラを前提とします。
+SLCS向けの特徴抽出・学習split準備は [SLCS生成ガイド](../tasks/slcs/generate_dataset/README.md)、
+再構成sceneからの合成学習データ生成は [synthetic_data_generation](../synthetic_data_generation/README.md) が担当します。
 
-再構成済み3D sceneを使った学習データ生成は、責務を分離した[`src/synthetic_data_generation`](../synthetic_data_generation/README.md)が担当します。
+## パスと公開入口
 
-## Referenceモデルによる実クリップ検証
+以下の5つが実行入口です。コマンドはrepoルートの `.venv/bin/python -m src.tennis_scene.scripts.<入口>` で実行します。
+このREADMEを5入口の入出力構造の正本とします。
 
-DINO → ViTPose → PLCSと外部ボール観測 → BLCSを接続する経路は
-[`reference_pipeline/README.md`](reference_pipeline/README.md)を参照してください。
-SMPLを実行せず、canonical poseと3D関節を保存できます。
+| 表記 | 設定 | 既定root | 用途 |
+|---|---|---|---|
+| DATA | `paths.data_root` | `data/` | 元動画、構造化dataset、dataset付属scene |
+| ARTIFACT | `paths.artifact_root` | `outputs/` | 保存済みscene・中間結果の読み込みとstage別結果の保存 |
+| OUTPUT | `paths.output_root` | `outputs/` | 単発scene、可視化、実行ログ |
+| CHECKPOINT | `paths.checkpoint_root` | `ckpt/` | Court・DINO detector・PLCS・BLCS・ballの重み |
+| EXTERNAL_ASSET | `paths.external_asset_root` | `third_party/` | GVHMR関連重み、DINO source、描画用regressor |
 
-PLCSのコート軌道とGVHMRのincam SMPLを従来フィールドへ保存し、それらを使った
-GVHMRワールドモーションの整合もパイプライン内で常に実行します。整合結果は
-`gvhmr_aligned_*`フィールドへ追加し、PLCS配置を上書きしません。下流は両方から用途に
-合う表現を選べます。フィールド契約、設定値、残差診断は
-[`motion_alignment/README.md`](motion_alignment/README.md)を参照してください。
+引数のパスは各rootからの相対fragmentです。`data/` や `outputs/` を重ねず、絶対パスは
+`paths.*_root` に指定します。専用worktreeでは入力rootをメインrepoの絶対パスへ明示します。
+共通のrun命名規則は [タスク出力規約](../tasks/OUTPUTS.md) を参照してください。
 
-## Modules
+## 1. clip_studio — 入力動画を同期・切り出す
 
-### dataset_pipeline/
-実RGB clipから品質重み付き3D教師・DINOv3特徴・固定splitを作る経路。
-1コマンド生成、入力と重み、品質判定、再開と再学習は
-[`dataset_pipeline/README.md`](dataset_pipeline/README.md)を参照。
+入力は必ず次の構造です。`video_id` は `video_000` のような3桁以上の数字、camera番号は
+`cam0` から欠番なしとします。直下の別名MP4、番号の欠番、標準外の階層はエラーです。
+`tennis_multivew` は現行のディレクトリ名をそのまま使用します。
 
-### clip_studio/
-長時間・非同期のマルチカメラ動画を同期してラリークリップを切り出し、追記可能な構造化データセットへエクスポートするGUI。詳細は `clip_studio/README.md`。
+```text
+<DATA>/tennis_multivew/
+├── raw/<dataset_id>/<video_id>/
+│   ├── cam0.mp4
+│   ├── cam1.mp4
+│   └── ...
+└── processed/<dataset_id>/                     # 以下を作成・更新
+    ├── projects.json                          # 同期offset・clip編集状態
+    └── dataset/
+        ├── dataset.json                       # clip一覧
+        └── videos/<video_id>/clips/<clip_name>/
+            ├── clip.json                      # camera順・動画・時間の契約
+            └── media/<camera_id>.mp4           # 同期済み動画
+```
 
-### generate_dataset/
-構造化クリップのうち未処理分へパイプラインを適用し、BLCS/PLCS用観測と3D出力を含む `SceneResult` を監査可能な疑似アノテーションとして追加する。詳細は `generate_dataset/README.md`。
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.clip_studio \
+  source_directory=tennis_multivew/raw/meiji_3cam/video_000
+```
 
-### schema.py / archive.py
-- **`schema.SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)の唯一の定義。
-- **`archive.save_scene_result()` / `load_scene_result()`**: `.npz` と必須 `*.metadata.json` サイドカーを明示的に保存・読込する唯一のarchive I/O。sidecar欠落・非object metadataはエラーにし、旧module/methodへ転送しない。
+sourceからproject・datasetの保存先を一意に導出します。再起動は保存済みprojectを復元します。
+GUIの書き出しは、編集内容と全動画を検証できた完成clipを再利用し、不完全・不一致の出力を拒否します。
+再出力は `export.overwrite=true` で明示します。操作・同期・キャンセルの詳細は
+[Clip Studio](clip_studio/README.md) を参照してください。ヘッドレス書き出し・旧layout移行CLIは提供しません。
 
-### pipeline/
-- **`orchestrator.py`**: `TennisSceneOrchestrator`。全stageの構築・同期検証・実行・`SceneResult`組み立てを統括。
-- **`dependency_graph.py`**: `PipelineDependencyGraph`。stage依存(`PLCS<-COURT_KP,GVHMR`等)の解決・循環検出。
-- **`model_io/gvhmr.py`**: GVHMR chainの型付きrequest/result、検証adapter、composition factoryの唯一の定義。factoryがDINO/YOLOを一度だけ選択してsubmodule chainを構築し、adapterがvideo metadata・track・keypoints・boxes・features・SMPL keysを各model境界の前で検証する。
-- **`components/court_kp.py`**: `CourtKPModule`。手動UIまたはモデル推論でコートkeypointを取得。
-- **`components/gvhmr.py`**: `GVHMRModule`。composition rootから解決済みのGVHMR chainを受け取り、typed requestを渡すか保存済みresultを読む。model class、detector variant、tensor layout、raw output keyを認識しない。
-- **`components/player_association.py`**: `PlayerAssociationModule`。カメラ間player対応付け(手動UI)を正準player軸へ整列。
-- **`components/plcs.py`**: `PLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionをwindow集約する。
-- **`components/ball_detection.py`**: `BallDetectionModule`。スライディングウィンドウ推論とオーバーラップ集約。
-- **`components/blcs.py`**: `BLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionから3D軌道を集約する。
+## 2. generate_dataset — datasetの各clipへsceneを追加する
 
-### rendering/
-- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。カメラ・テーマ・レイヤ規約・HUD・ミニマップなどの描画プリミティブは `src.utils.rendering`(`camera_view`/`theme`/`layers`/`hud`/`minimap`/`effects`)を直接利用し、ここには `SceneResult` 固有の変換(SMPL→コート座標、HUD行の選択、ミニマップ配列抽出)だけを持つ。
+入力は上記の `dataset.json`、各 `clip.json`、`media/` を持つ構造化datasetです。
+`clip_ids` は `<video_id>/<clip_name>` 形式で、省略すると全clipを対象にします。
 
-### scripts/
-- **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。
-- **`visualization.py`**: 保存済み `SceneResult` の3D可視化エントリポイント。
-- **`visualize_tasks.py`**: stage別タスク動画(`plcs`/`gvhmr_alignment`/`blcs`等)を保存済み `SceneResult` から書き出すエントリポイント。`gvhmr_alignment`は`gvhmr_aligned_*`とPLCS配置を重ねる。
-- **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
-- **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
-- **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
+```text
+<DATA>/<dataset_directory>/
+├── dataset.json
+└── videos/<video_id>/clips/<clip_name>/
+    ├── clip.json
+    ├── media/<camera_id>.mp4
+    └── annotations/
+        ├── tennis_scene/
+        │   ├── scene.npz
+        │   ├── scene.metadata.json             # 必須sidecar
+        │   ├── annotation.json                 # 完成マーカー
+        │   └── pipeline_config.yaml            # 解決済み生成設定
+        └── tennis_scene.failure.json           # 失敗した場合
+```
 
-### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`player_motion`/`ball_detection`/`plcs`/`blcs`)の実行設定。整列は常時実行し、`player_motion.scale_mode`・`alignment`が推定方法を制御する。`court_keypoints.selector`と`court_reference`はPLCS/BLCSが共有するreference-frame設定であり、camera-view checkpointではcamera IDと各viewの半回転を明示する。
-- **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
-- **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.generate_dataset \
+  dataset_directory=tennis_multivew/processed/meiji_3cam/dataset \
+  clip_ids='[video_000/clip_000]' \
+  'pipeline_overrides=["court_reference.reference_camera=cam0","court_reference.view_half_turns=[false,false,true]","court_kp.save_result=false","gvhmr.save_result=false","player_association.save_result=false","ball_detection.save_result=false","plcs.save_result=false","blcs.save_result=false"]'
+```
 
-## 座標系メモ
+`pipeline.yaml` を共通設定として使い、差分は `pipeline_overrides` で指定します。
+CLIでpipeline_overridesを指定するとリスト全体を置換します。例では中間保存を無効にする指定も含めています。
+実clipの動画とcamera順は `clip.json` から取得します。保存する `pipeline_config.yaml` は共通設定であり、
+実際に使用した動画の絶対パスとcamera順は `scene.metadata.json` に記録します。
+モデル生成には既定checkpointと3〜4台の同期動画が必要です。選手対応の既定は手動UIです。
+保存済み対応を使う場合は `player_association.source=load` とARTIFACT相対の `load_path` を明示し、
+再推論後のlocal player軸が同じ人物を表すことを確認してください。
+`gvhmr.track_selection=auto` は累積bbox面積の上位を選ぶため、隣接コートの人物が入る場合があります。
+DINOでは `gvhmr.court_footpoint_filter.enabled=true` で推定コート周辺へ検出を限定できます。
+track IDが同じでも人物一致を意味しないため、保存済み対応の適用前に軌跡と元映像を照合します。
 
-- `player_position` / `gvhmr_aligned_player_position` / `ball_3d`: コート座標系。XY平面が地面、+Zが上。
-- `smpl_vertices_local` / `smpl_global_orient` / `smpl_body_pose`: GVHMR/SMPL由来の人体座標系。人体のup軸はY。
-- 可視化時は、SMPL頂点をroot中心化した後に `src.utils.geometry.matrices.smpl_y_up_to_court_z_up` でY-upからコートZ-upへ明示変換し、その後 `player_yaw` をコート+Z軸まわりに適用する。
-- `gvhmr_aligned_*`も既存レンダラーと同じ配置規則を使う。整列済みの4フィールドがworld頂点の直接相似変換を再現することの契約は[`motion_alignment/README.md`](motion_alignment/README.md)を参照。
+完成マーカーがあるclipは既定でskipし、再生成は `overwrite=true` に限定します。
+不完全な生成ディレクトリは自動採用しません。失敗理由を保存し、CLIは非0で終了します。
+`continue_on_error=false` は最初の失敗で停止します。既定ではstage別の自動結果保存を無効化し、
+scene一式だけをclipへ追加します。詳しい公開トランザクションは
+[生成処理](generate_dataset/README.md) を参照してください。
 
-## Courtモデル推論のKP・LINE共同推定
+## 3. run_pipeline — 指定動画から単発sceneを保存する
 
-モデル実行は共通`CourtPredictor`のhybrid結果を使います。旧KP-only再推定・座標ごとのtemporal medianは適用しません。raw KP/scoreは診断へ残し、下流の`court_kp`はHによる再投影14点です。画像外座標をclipせず不可視とし、H失敗はゼロ座標＋全不可視にします。完全な14点を必要とするreference calibrationやfootpoint filterの条件は維持します。
+動画の格納階層は任意ですが、すべてDATA配下の既存ファイルで、FPS・フレーム数・解像度が一致し、
+同期済みである必要があります。`video_paths` と `camera_ids` は同じ順・同じ数にします。
 
-既定のCourt・PLCS・BLCSを`camera_view_v2`へ統一しました。PLCSは`real-rgb-meiji-foot-e60-v1.ckpt`、BLCSは`real-rgb-meiji-e60-v1.ckpt`を使い、windowは128フレームです。いずれもMeiji実画像でfine-tuneした重みであり、他会場への精度を保証する評価ではありません。BLCSは3〜4台の同期カメラを要求します。
+```text
+<DATA>/<任意のclip階層>/cam0.mp4, cam1.mp4, cam2.mp4
 
-`pipeline.yaml`の動画パスは3台の例です。実動画と`camera_ids`を指定し、`court_reference.reference_camera`と`view_half_turns`を必ず設定してください。`view_half_turns`はcamera_ids順で、referenceは`false`、反対側のbaselineに向いたviewは`true`です。例えば向きが確認できた3台なら`court_reference.view_half_turns=[false,false,true]`と指定します。未設定・カメラ数不一致ではモデルロード前に停止します。共通predictorは各画像のcamera-view順を保ち、`court_reference`が一度だけreference-camera順へ変換します。
+<OUTPUT>/<output_directory>/
+├── <output_name>.npz
+├── <output_name>.metadata.json
+└── hydra/                                     # 実行ログ
 
-手動入力と`source=load`はモデル補正を通りません。旧physical順の入力・保存結果には`court_keypoints.selector=physical_v1`、対応する旧PLCS/BLCS重み、`court_reference.reference_camera=null`・`view_half_turns=null`を明示してください。新Court checkpointをphysical順として使うことは拒否します。 契約情報のない旧artifactをcamera-view順として読む場合だけ、内容の順序を確認したうえで`court_kp.load_keypoint_contract=camera_view_v2`を明示します。保存済み契約の上書きや元artifactの書換えは行いません。
+<ARTIFACT>/<output_directory>/                  # 各stageのsave_result=trueの場合
+├── court_kp_result.json
+├── gvhmr_result_cam0.json, gvhmr_result_cam1.json, ...
+├── player_association_result.json              # 対応を新規作成・保存した場合
+├── ball_detection_result.json
+├── plcs_result.json
+└── blcs_result.json
+```
 
-新規Court結果と`SceneResult.metadata.court_detection`にはcheckpoint識別情報、後処理設定、入力KP schema、採用点、H生成可否を保存します。採用点のmask（最大8点）を再投影14点のvisibilityとして使うことはありません。
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
+  'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
+  'camera_ids=[cam0,cam1,cam2]' \
+  output_name=scene \
+  'court_reference.view_half_turns=[false,false,true]'
+```
+
+既定の `output_directory` は `tennis_scene/generate/pipeline/<run-id>`、`output_name` は
+`tennis_clip` です。各stageの `output_path` は個別指定もできます。
+単発保存にはdatasetの完成マーカーはありません。既存ファイルを指定すると保存時に上書きするため、
+比較実行には別runを使います。`source=execute` は推論、`source=load` は保存済みstage結果を読み込みます。
+
+全画面ではコートが小さい・複数面が写る固定カメラは、`court_kp.region_search.enabled=true` で
+画像からの領域探索を明示できます。`court_kp.frame_index` のモデル出力からcameraごとに領域を決め、
+その領域で全frameを再推論します。選択領域・候補の採否・各frameのcrop/native/元画像サイズは
+`court_kp_result.json` のdiagnosticsへ記録します。checkpointは `court_kp.checkpoint` で指定します。
+領域選択と座標変換の契約は [Court推論](../tasks/court_detection/README.md#共通推論と幾何補正) を参照してください。
+`generate_dataset` では同じ指定を `pipeline_overrides` に入れます。
+
+## 4. visualization — 保存sceneの3D動画を作る
+
+必須入力はARTIFACT相対の `input` と同名の `.metadata.json` です。SMPL表示・skeleton表示とも、
+現行入口は `smpl_vertices_local`、`smpl_global_orient`、選手位置・yawを必要とします。
+描画用facesはDATA相対の `assets.smpl_faces`、regressorはEXTERNAL_ASSET相対です。
+
+```text
+<ARTIFACT>/<input>.npz
+<ARTIFACT>/<input>.metadata.json
+<OUTPUT>/<output>                              # MP4/GIFなど
+<OUTPUT>/<preview_output>                      # output=nullかつdisplay=falseの場合
+```
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.visualization \
+  input=tennis_scene/generate/pipeline/<run-id>/scene.npz \
+  output=tennis_scene/visualize/visualization/<run-id>/scene.mp4
+```
+
+dataset内のsceneは `paths.artifact_root=/absolute/path/to/data` とし、
+`input=tennis_multivew/processed/<dataset>/dataset/videos/<video>/clips/<clip>/annotations/tennis_scene/scene.npz`
+で指定します。出力rootは別途OUTPUTです。`display=true` は画面表示を有効にし、
+`output=null display=false` は開始frameのPNGを保存します。保存先の既存ファイルは上書きされます。
+
+## 5. visualize_tasks — stageごとの結果を描画する
+
+ARTIFACT相対の `scene_path` と必須metadata、DATA相対の `video_paths` を明示します。
+scene metadataから元動画を自動選択しません。2D描画は `video_paths[0]` とsceneの先頭cameraを使用します。
+
+```text
+<OUTPUT>/<output_directory>/
+├── ball_detection_viz.mp4
+├── court_kp_viz.mp4
+├── gvhmr_viz.mp4
+├── plcs_viz.mp4
+├── gvhmr_alignment_viz.mp4
+└── blcs_viz.mp4
+```
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.visualize_tasks \
+  scene_path=tennis_scene/generate/pipeline/<run-id>/scene.npz \
+  'video_paths=[samples/cam0.mp4]' \
+  output_directory=tennis_scene/visualize/visualize_tasks/<run-id>
+```
+
+`tasks` で出力対象を選べます。指定stageの配列がない場合はエラーにします。
+3Dだけを描画する場合も `video_paths` 設定は必要ですが、元動画のdecodeは2Dタスク選択時だけです。
+同名の出力動画は上書きされます。
+
+## ログ、スキーマ、モデル契約
+
+HydraログはOUTPUT内の `tennis_scene/<generate|visualize>/<入口の設定名>/<run-id>/hydra/` に置きます。
+`run_pipeline` の設定名は `pipeline` です。`run_pipeline` と `visualize_tasks` では
+明示した `output_directory` がログ保存先の基準にもなります。
+
+`schema.SceneResult` と `archive.save_scene_result/load_scene_result` がsceneの唯一の定義・I/Oです。
+metadata sidecarの欠落はエラーです。ボールなど無効にしたstageの配列は省略されるため、
+下流は必要な配列を検証します。SLCSに必要な追加契約はSLCS側が所有します。
+
+ViTPoseの生ヒートマップピークは確率ではなく1を超えることがあります。sceneと下流推論に渡す
+姿勢visibilityは有限性を検証して `[0,1]` へ飽和させ、元の範囲・飽和件数を
+`metadata.pose_visibility_conversion` に記録します。GVHMRのstage保存結果は生値を保持します。
+
+BallのRGB入力はpredictorへ未正規化の `[0,1]` で渡し、重みに保存されたImageNet正規化をpredictor内で適用します。
+`ball_detection.normalize_imagenet` は保存設定と一致することを確認する指定で、mean/stdはcheckpointから読みます。
+設定の不一致や保存情報の不足はエラーです。
+
+`pipeline/` は各task-owned predictorを統合します。既定のCourt・PLCS・BLCSは `camera_view_v2` で、
+PLCS/BLCSのwindowは128 frameです。camera ID、reference camera、各viewの半回転を明示します。
+旧physical順のartifactを使う場合は契約と対応checkpointを明示し、camera-view順と混在させません。
+
+PLCS配置とGVHMRの整列済み配置は別フィールドに保存します。
+座標系・整列契約は [motion_alignment](motion_alignment/README.md) を参照してください。
+コート座標はXY平面・Z-up、SMPL人体座標はY-upです。

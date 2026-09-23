@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,6 +27,9 @@ from src.tennis_scene.generate_dataset.pseudo_annotation import (
 )
 from src.tennis_scene.schema import SceneResult
 from src.utils.video import probe_video_info, save_video_rgb
+
+FIXTURE_DINO_CHECKPOINT_BYTES = b"SLCS fake encoder checkpoint for CPU fixtures\n"
+FIXTURE_DINO_CHECKPOINT_SHA256 = hashlib.sha256(FIXTURE_DINO_CHECKPOINT_BYTES).hexdigest()
 
 DEFAULT_FIXTURE_DINO_SPEC = DinoTokenSpec(
     backbone="dinov3_vitb16",
@@ -222,13 +226,18 @@ def build_slcs_dataset_fixture(
             manifest,
             tokens_by_camera,
             cfg.dino_spec,
-            generator={"fixture": "tests.support.tasks.slcs.dataset"},
+            generator={
+                "fixture": "tests.support.tasks.slcs.dataset",
+                "checkpoint_sha256": FIXTURE_DINO_CHECKPOINT_SHA256,
+            },
         )
     return SLCSDataIndex.load(root)
 
 
 __all__ = [
     "DEFAULT_FIXTURE_DINO_SPEC",
+    "FIXTURE_DINO_CHECKPOINT_BYTES",
+    "FIXTURE_DINO_CHECKPOINT_SHA256",
     "SLCSFixtureDatasetConfig",
     "build_slcs_dataset_fixture",
     "make_fixture_scene",

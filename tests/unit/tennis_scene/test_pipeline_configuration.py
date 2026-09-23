@@ -29,6 +29,29 @@ def test_pipeline_defaults_to_camera_view_models_with_explicit_orientation() -> 
     assert len(runtime.camera_ids) == 3
     assert runtime.court_reference.reference_camera == "cam0"
     assert runtime.gvhmr.court_footpoint_filter.enabled is False
+    assert runtime.ball_detection.normalize_imagenet is True
+    assert runtime.court_kp.region_search.enabled is False
+
+
+def test_pipeline_accepts_explicit_ball_preprocessing_expectation() -> None:
+    runtime = _runtime([
+        "court_reference.view_half_turns=[false,false,true]",
+        "ball_detection.normalize_imagenet=false",
+    ])
+    assert runtime.ball_detection.normalize_imagenet is False
+
+
+def test_pipeline_region_search_is_explicit_and_validated() -> None:
+    runtime = _runtime([
+        "court_reference.view_half_turns=[false,false,true]",
+        "court_kp.region_search.enabled=true",
+    ])
+    assert runtime.court_kp.region_search.enabled
+    with pytest.raises(ValueError, match="min_inliers"):
+        _runtime([
+            "court_reference.view_half_turns=[false,false,true]",
+            "court_kp.region_search.min_inliers=3",
+        ])
 
 
 def test_pipeline_composes_shared_camera_view_reference() -> None:

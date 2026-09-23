@@ -90,8 +90,7 @@ staged ball trainingは `train/staged/phase1`〜`phase4` を明示的なrun-id�
 同じ新しい実験名に揃える。
 
 データ内容・split・座標契約・教師checkpoint・生成seedを変える場合は新しい
-dataset-versionを作る。`tennis_scene` の実RGB build/assembleでは、同一recipe・入力hashを
-検証して固定seedの出力を再利用し、完了状態を最後に記録する。旧BLCS/PLCS generatorや
+dataset-versionを作る。SLCSのscene起点生成では、既存sceneを検証し、入力・設定が一致する特徴・splitを再利用する。旧BLCS/PLCS generatorや
 各データ変換CLIに同じ再開保証があるわけではない。各入口のoverwrite/resume契約を確認する。
 配布元データや過去の結果を新規runの都合で改名・移動しない。
 旧成果物の利用は入力rootと旧相対パスを明示する。
@@ -127,20 +126,15 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 | ball `convert_web_dataset` | DATA / `convert.output_dir`。既存共有dataset `tennis/web/unified` を維持 |
 | ball/court YouTube準備・annotation、ball SSL画像抽出・clip予測 | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
 | court `generate_masks`、`generate_line_masks`、`materialize_targets` | DATA配下の派生教師・target store。line maskのpreviewはOUTPUT / `generate_line_masks.preview_dir`（同じgenerate run内の `preview/`）。`materialize_targets` のログ用途はprecompute |
+| SLCS `generate_dataset` | DATA / `data.dataset_root` のsceneを検証し、同datasetへDINO特徴とsplitを追記。HydraログはOUTPUTのgenerate run |
 | SLCS `make_splits` | DATA / `data.split_file` |
 | SLCS `precompute_dino_tokens` | DATA / `data.dataset_root` 内のmanifestが示すclipの特徴ファイル。ログはprecompute run |
 | tennis_scene `pipeline` | 最終NPZはOUTPUT / `output_directory` / `<output_name>.npz`。stage JSONはARTIFACT / 各stageの `output_path`。既定では同じrunの相対階層 |
 | tennis_scene `reference_clip` | OUTPUT / `output_dir`。既定はgenerate/reference_clip run |
-| tennis_scene `build_slcs_dataset`（broadcast profileを含む） | DATA / `dataset_output_directory` に版固定の教師・RGB特徴。生成記録はOUTPUT / `output_dir`、再利用する観測cacheはOUTPUT / `observation_directory` |
-| tennis_scene `assemble_slcs_dataset` | DATA / `dataset_directory` に統合dataset・固定split・`assembly.json`。実行configとHydraログはOUTPUT / `output_dir` |
-| tennis_scene `report_slcs_dataset_quality` | OUTPUT / `output_dir` に品質JSON・CSV・実行configとHydraログ（analyze run） |
-| tennis_scene `build_real_rgb` | 共有queueへ既存stageのコマンド列を投入。成果物rootは各stageの設定を使い、queue状態は元repoの `.training_queue/` に統一 |
-| tennis_scene `import_broadcast_ball` / `prepare_blcs_real_dataset` | DATA / `destination` に固定データ版と入力・recipeのreceipt。Hydraのファイルログ・設定dumpは無効 |
-| tennis_scene `render_reconstruction_review` | 絶対 `--output-root` / `--output tennis_scene/visualize/<experiment>/<run-id>`。入力はmodeごとの絶対DATA/ARTIFACT root。既存runは拒否 |
 | tennis_scene `visualization`、`visualize_tasks` | OUTPUT / `output`・`preview_output`、`output_directory`。入力sceneはARTIFACT |
-| tennis_scene `clip_studio`、`export_clips`、`generate_dataset` | DATAのsource/dataset/clipに付随する編集・生成データ。HydraログだけOUTPUTのgenerate run |
+| tennis_scene `clip_studio`、`generate_dataset` | DATAのsource/dataset/clipに付随する編集・生成データ。HydraログだけOUTPUTのgenerate run |
 
-実RGBの生成・統合・品質レポートの手順は[生成ガイド](../tennis_scene/dataset_pipeline/README.md)を参照。
+sceneを入力とするSLCS学習準備は[生成ガイド](slcs/generate_dataset/README.md)を参照。
 これまでの学習結果・採否・残課題は[実RGB SLCS総括](../../knowledge/reports/slcs-real-rgb.md)へ集約する。
 実験履歴の旧トップレベルCLI名・command・patchは当時の実行証拠なので書き換えない。
 履歴の再実行にはそのrunが記録したcommitを使い、現在のcheckoutでは上表と生成ガイドの`src.*`入口を使う。
