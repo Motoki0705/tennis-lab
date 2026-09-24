@@ -28,6 +28,7 @@ def main() -> None:
     parser.add_argument("--scene-dir", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--small", action="store_true")
+    parser.add_argument("--compile", action="store_true", help="Explicitly exercise torch.compile; no automatic fallback")
     args = parser.parse_args()
     pl.seed_everything(42, workers=True)
     torch.set_num_threads(4)
@@ -35,7 +36,7 @@ def main() -> None:
         f"paths.output_root={args.output.parent}", f"run.output_dir={args.output.name}",
         "data.num_workers=0", "data.batch_size=4", "training.trainer.max_epochs=2",
         "training.trainer.accumulate_grad_batches=1", "training.warmup_steps=0",
-        f"training.compile.enabled={'true' if args.device == 'cuda' else 'false'}"]
+        f"training.compile.enabled={'true' if args.compile else 'false'}"]
     if args.small:
         overrides += ["model.hidden_dim=32", "model.ffn_dim=64", "model.num_heads=4",
             "model.rope_dim=8", "model.num_stages=2", "data.seq_len_range=[32,32]"]
@@ -47,11 +48,12 @@ def main() -> None:
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA diagnostic requires a CUDA device")
         torch.cuda.reset_peak_memory_stats()
+    if args.compile:
         compile_modules(module.compilation_targets(), module.training_config.compile)
     args.output.mkdir(parents=True, exist_ok=True)
     callback = ModelCheckpoint(dirpath=args.output / "checkpoints", monitor="val/loss", save_top_k=1, filename="reid-smoke")
     trainer = pl.Trainer(accelerator="gpu" if args.device == "cuda" else "cpu", devices=1,
-        max_epochs=2, limit_train_batches=4, limit_val_batches=2, limit_test_batches=2,
+        max_epochs=2, limit_train_batches=4, limit_val_batches=1.0, limit_test_batches=2,
         num_sanity_val_steps=2, precision="bf16-mixed" if args.device == "cuda" else "32-true",
         callbacks=[callback], logger=TensorBoardLogger(str(args.output), name="logs"),
         enable_progress_bar=False, log_every_n_steps=1, gradient_clip_val=1.)
@@ -64,7 +66,7 @@ def main() -> None:
         output = restored.model_io.run(batch)
     if not all(torch.isfinite(value).all() for value in output.values()):
         raise RuntimeError("Reloaded model emitted non-finite output")
-    report = {"device": args.device, "seconds": time.monotonic() - start, "checkpoint": callback.best_model_path,
+    report = {"device": args.device, "compiled": args.compile, "seconds": time.monotonic() - start, "checkpoint": callback.best_model_path,
         "test": test, "matching_threshold": float(restored.matching_threshold),
         "parameters": sum(p.numel() for p in module.model.parameters()),
         "peak_reserved_bytes": torch.cuda.max_memory_reserved() if args.device == "cuda" else 0,
