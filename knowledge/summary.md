@@ -1,7 +1,7 @@
-<!-- knowledge-review: f466b04cb7251a9b76b30da034bacd867f34b19b9425a12525a25fd0bda699ec on 2026-09-22 -->
+<!-- knowledge-review: a75fbbbd24408aed45d300605ffd22fce17f37f6becc9f5b8ddbe85fb624fc75 on 2026-09-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-22（PLCS・BLCS associationの実行確認を追加）
+更新日: 2026-09-23（自動scene統合のCPU検証と品質未達を追加）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,10 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-23の自動scene統合確認
+
+標準tennis_sceneを手動side・人物対応なしのassociation→三角測量→GVHMR経路へ接続した。実重みの[PLCS全clip CPU検証](nodes/tennis_scene/000003-run-tennis-scene-plcs-association-cpu-fullclip.md)と[BLCS全clip CPU検証](nodes/tennis_scene/000004-run-tennis-scene-blcs-association-cpu-fullclip.md)では、512前後/約1024 frame、3/5 viewが有限値で完走した。一方、side/ID品質は本番採用基準に未達であり、新association配布重みを承認した結果ではない。ID棄却を含む指標と従来の学習時指標を区別する。以下の3D baselineは履歴として維持し、現在の標準設定の変更を精度改善やdeploy認定と解釈しない。次は学習安定性の解決とvalidation評価、その後に実動画の校正・3D有効率まで含む受入を行う。
 
 ## 2026-09-22の追加確認
 
@@ -53,7 +57,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 | `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/blcs/000011-run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
 | `slcs` | [全体版のval5条件](nodes/slcs/000062-run-slcs-full-no-smooth-gap-rgb-val-v2.md) | 全61clipの固定split、60epoch、入力条件・train定数baseline比較 | ball低分散崩壊を脱しRGBの寄与を確認。欠損・裾・時間的スパイクは残り、頑健なdeployとは未認定 |
 
-[pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpoint（2026-09-21、下流移行後）は次です。
+2026-09-21時点の旧pipelineが参照したcheckpointは次です。現在の標準設定はassociation契約へ移行しており、この表は過去の配置記録です。
 
 | stage | checkpoint |
 |---|---|
@@ -66,7 +70,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 [run-court-hybrid-downstream-migration](nodes/court_detection/000031-run-court-hybrid-downstream-migration.md)では、ユーザー指定の残差head checkpointへ共通KP＋LINE推論を接続し、下流もcamera_view_v2へ移行した。8画像のH採用は3例であり、推定完了率の改善や実動画E2E精度は未確立。既定の変更は入力契約の統一であって、旧モデルへの精度優位の証明ではない。B00〜B03の保存alignmentと生成データは再publicationしていない。
 
-以下の既存baseline比較は元のas-of commitに基づく履歴として保持する。現在のpipeline checkpointは下表へ更新し、PLCS/BLCSはMeiji fine-tune版・window128・明示したreference-camera契約を使う。他会場の汎化、独立正解Hでの誤採用率、下流E2E評価を次の課題とする。
+以下の既存baseline比較は元のas-of commitに基づく履歴として保持する。当時のpipeline checkpointはMeiji fine-tune版・window128・明示したreference-camera契約を使用した。他会場の汎化、独立正解Hでの誤採用率、下流E2E評価を次の課題とする。
 
 ## タスク別の主要な知見と判断保留事項
 

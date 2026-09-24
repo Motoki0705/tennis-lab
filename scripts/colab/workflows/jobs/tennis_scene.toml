@@ -13,41 +13,29 @@ protected_override_keys = [
   "video_paths",
   "camera_ids",
   "output_name",
+  "output_directory",
   "device",
   "court_kp.checkpoint",
-  "court_kp.mode",
-  "court_kp.output_path",
-  "gvhmr.gvhmr_checkpoint",
-  "gvhmr.yolo_checkpoint",
-  "gvhmr.dino_checkpoint",
-  "gvhmr.dino_repository",
-  "gvhmr.vitpose_checkpoint",
-  "gvhmr.hmr2_checkpoint",
-  "gvhmr.body_models_dir",
-  "gvhmr.track_selection",
-  "gvhmr.output_path",
-  "player_association.source",
-  "player_association.mode",
-  "player_association.output_path",
-  "player_association.load_path",
+  "people_models.dino_checkpoint",
+  "people_models.dino_repository",
+  "people_models.vitpose_checkpoint",
+  "people_models.hmr2_checkpoint",
+  "people_models.gvhmr_checkpoint",
+  "people_models.body_models_dir",
   "ball_detection.checkpoint",
-  "ball_detection.output_path",
-  "plcs.checkpoint",
-  "plcs.output_path",
-  "blcs.checkpoint",
-  "blcs.output_path",
+  "plcs_association.checkpoint",
+  "cache.directory",
 ]
-outputs = ["outputs/colab/tennis_scene/run.npz", "outputs/colab/tennis_scene/run.metadata.json"]
+outputs = ["outputs/colab/tennis_scene"]
 
 [command]
 module = "src.tennis_scene.scripts.run_pipeline"
 args = [
   "paths.output_root=outputs/colab",
-  "paths.artifact_root=data",
+  "paths.artifact_root=outputs/colab",
   "output_name=run",
   "device=cuda",
-  "player_association.source=load",
-  "player_association.load_path=tennis_scene/player_association_result.json",
+  "output_directory=tennis_scene",
 ]
 
 [[inputs]]
@@ -58,11 +46,6 @@ writable = false
 [[inputs]]
 source = "ckpt"
 destination = "ckpt"
-writable = false
-
-[[inputs]]
-source = "data/tennis_scene/player_association_result.json"
-destination = "data/tennis_scene/player_association_result.json"
 writable = false
 
 [[inputs]]

@@ -272,7 +272,7 @@ def _render_gvhmr_pose(
                 )
         cv2.putText(
             frame,
-            f"gvhmr 2D pose  frame {t}",
+            f"{'person observations' if scene.schema_version == 2 else 'gvhmr 2D pose'}  frame {t}",
             (8, 20),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -305,17 +305,22 @@ def _render_plcs(
 
     from src.utils.rendering.court_renderer import CourtRenderer
 
-    pos = scene.player_position  # (P, T, 3)
-    yaw = scene.player_yaw  # (P, T)
+    pos = scene.player_position.copy()  # (P, T, 3)
+    if scene.player_valid is not None:
+        pos[~scene.player_valid] = np.nan
+    yaw = scene.player_yaw.copy()  # (P, T)
+    if scene.player_heading_valid is not None:
+        yaw[~scene.player_heading_valid] = np.nan
     track_ids = [int(v) for v in _require_array(scene, "player_track_ids").tolist()]
     num_players = pos.shape[0]
 
     court = CourtRenderer()
     xmin, xmax, ymin, ymax = _court_limits()
-    x_lo = min(xmin, float(pos[..., 0].min())) - 2.0
-    x_hi = max(xmax, float(pos[..., 0].max())) + 2.0
-    y_lo = min(ymin, float(pos[..., 1].min())) - 2.0
-    y_hi = max(ymax, float(pos[..., 1].max())) + 2.0
+    finite_positions = pos[np.isfinite(pos).all(-1)]
+    x_lo = min(xmin, float(finite_positions[:, 0].min()) if len(finite_positions) else xmin) - 2.0
+    x_hi = max(xmax, float(finite_positions[:, 0].max()) if len(finite_positions) else xmax) + 2.0
+    y_lo = min(ymin, float(finite_positions[:, 1].min()) if len(finite_positions) else ymin) - 2.0
+    y_hi = max(ymax, float(finite_positions[:, 1].max()) if len(finite_positions) else ymax) + 2.0
 
     fig, ax = plt.subplots(figsize=(7, 9))
 
@@ -326,6 +331,8 @@ def _render_plcs(
         ax.set_ylim(y_lo, y_hi)
         ax.set_aspect("equal")
         for p in range(num_players):
+            if not np.isfinite(pos[p, t]).all():
+                continue
             rgb = _to_rgb01(_player_bgr(p))
             s = max(frame_range.start, t - trail_length)
             ax.plot(
@@ -337,18 +344,19 @@ def _render_plcs(
             )
             x, y, hd = pos[p, t, 0], pos[p, t, 1], yaw[p, t]
             ax.scatter([x], [y], color=rgb, s=60, zorder=5)
-            ax.arrow(
-                x,
-                y,
-                np.sin(hd) * 1.5,
-                np.cos(hd) * 1.5,
-                color=rgb,
-                width=0.06,
-                head_width=0.35,
-                zorder=6,
-            )
+            if np.isfinite(hd):
+                ax.arrow(
+                    x,
+                    y,
+                    np.sin(hd) * 1.5,
+                    np.cos(hd) * 1.5,
+                    color=rgb,
+                    width=0.06,
+                    head_width=0.35,
+                    zorder=6,
+                )
             ax.text(x + 0.3, y + 0.3, f"P{track_ids[p]}", color=rgb, fontsize=9)
-        ax.set_title(f"plcs (position + yaw)  frame {t}")
+        ax.set_title(f"{'player reconstruction' if scene.schema_version == 2 else 'plcs (position + yaw)'}  frame {t}")
         ax.set_xlabel("court x [m]")
         ax.set_ylabel("court y [m]")
         return []
@@ -560,17 +568,19 @@ def _render_blcs(
 
     from src.utils.rendering.court_renderer import CourtRenderer
 
-    ball = _require_array(scene, "ball_3d")  # (T, 3)
+    ball = _require_array(scene, "ball_3d").copy()  # (T, 3)
+    if scene.ball_3d_valid is not None:
+        ball[~scene.ball_3d_valid] = np.nan
     finite = np.isfinite(ball).all(axis=-1)
 
     court = CourtRenderer()
     xmin, xmax, ymin, ymax = _court_limits()
     fin = ball[finite]
-    x_lo = min(xmin, float(fin[:, 0].min())) - 2.0
-    x_hi = max(xmax, float(fin[:, 0].max())) + 2.0
-    y_lo = min(ymin, float(fin[:, 1].min())) - 2.0
-    y_hi = max(ymax, float(fin[:, 1].max())) + 2.0
-    z_hi = max(4.0, float(fin[:, 2].max())) + 0.5
+    x_lo = min(xmin, (float(fin[:, 0].min()) if len(fin) else xmin)) - 2.0
+    x_hi = max(xmax, (float(fin[:, 0].max()) if len(fin) else xmax)) + 2.0
+    y_lo = min(ymin, (float(fin[:, 1].min()) if len(fin) else ymin)) - 2.0
+    y_hi = max(ymax, (float(fin[:, 1].max()) if len(fin) else ymax)) + 2.0
+    z_hi = max(4.0, (float(fin[:, 2].max()) if len(fin) else 4.0)) + 0.5
 
     fig, (ax_top, ax_side) = plt.subplots(1, 2, figsize=(13, 8))
     ball_rgb = _to_rgb01(_BALL_BGR)
@@ -594,10 +604,10 @@ def _render_blcs(
         seg_ok = np.isfinite(seg).all(axis=-1)
         if seg_ok.sum() > 1:
             ax_top.plot(
-                seg[seg_ok, 0], seg[seg_ok, 1], color=ball_rgb, alpha=0.6, linewidth=1.5
+                seg[:, 0], seg[:, 1], color=ball_rgb, alpha=0.6, linewidth=1.5
             )
             ax_side.plot(
-                seg[seg_ok, 1], seg[seg_ok, 2], color=ball_rgb, alpha=0.6, linewidth=1.5
+                seg[:, 1], seg[:, 2], color=ball_rgb, alpha=0.6, linewidth=1.5
             )
         if finite[t]:
             ax_top.scatter(
@@ -617,7 +627,7 @@ def _render_blcs(
                 edgecolors="k",
             )
 
-        ax_top.set_title(f"blcs top view (x-y)  frame {t}")
+        ax_top.set_title(f"{'ball reconstruction' if scene.schema_version == 2 else 'blcs'} top view (x-y)  frame {t}")
         ax_top.set_xlabel("court x [m]")
         ax_top.set_ylabel("court y [m]")
         ax_side.set_title("blcs side view (y-z, height)")
@@ -631,8 +641,8 @@ def _render_blcs(
     LOGGER.info("wrote %s", out_path)
 
 
-_VIDEO_TASKS = {"ball_detection", "court_kp", "gvhmr"}
-_PLOT_TASKS = {"plcs", "blcs", "gvhmr_alignment"}
+_VIDEO_TASKS = {"ball_detection", "court_kp", "gvhmr", "person_observations"}
+_PLOT_TASKS = {"plcs", "blcs", "gvhmr_alignment", "player_reconstruction", "ball_reconstruction"}
 
 
 @hydra_main(
@@ -687,20 +697,20 @@ def main(cfg: DictConfig) -> int:
                 fps=fps,
                 frame_range=frame_range,
             )
-        if "gvhmr" in tasks:
+        if "gvhmr" in tasks or "person_observations" in tasks:
             _render_gvhmr_pose(
                 frames,
                 scene,
-                output_dir / "gvhmr_viz.mp4",
+                output_dir / ("person_observations_viz.mp4" if "person_observations" in tasks else "gvhmr_viz.mp4"),
                 fps=fps,
                 frame_range=frame_range,
                 conf_threshold=runtime.kp_conf_threshold,
             )
 
-    if "plcs" in tasks:
+    if "plcs" in tasks or "player_reconstruction" in tasks:
         _render_plcs(
             scene,
-            output_dir / "plcs_viz.mp4",
+            output_dir / ("player_reconstruction_viz.mp4" if "player_reconstruction" in tasks else "plcs_viz.mp4"),
             fps=fps,
             frame_range=frame_range,
             dpi=runtime.dpi,
@@ -715,10 +725,10 @@ def main(cfg: DictConfig) -> int:
             dpi=runtime.dpi,
             trail_length=trail_length,
         )
-    if "blcs" in tasks:
+    if "blcs" in tasks or "ball_reconstruction" in tasks:
         _render_blcs(
             scene,
-            output_dir / "blcs_viz.mp4",
+            output_dir / ("ball_reconstruction_viz.mp4" if "ball_reconstruction" in tasks else "blcs_viz.mp4"),
             fps=fps,
             frame_range=frame_range,
             dpi=runtime.dpi,

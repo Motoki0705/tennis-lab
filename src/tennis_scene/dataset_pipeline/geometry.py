@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from src.tennis_scene.dataset_pipeline.quality import project
+from src.utils.geometry.triangulation import solve_homogeneous_dlt
 
 
 @dataclass(frozen=True)
@@ -68,13 +69,9 @@ def triangulate_ball(
             * visibility[:, selected, None, None]
         )
         design = design.transpose(1, 0, 2, 3).reshape(len(selected), -1, 4)
-        _, singular, vectors = np.linalg.svd(design)
-        homogeneous = vectors[:, -1]
-        independent = (singular[:, -2] > 1e-7) & (np.abs(homogeneous[:, 3]) > 1e-9)
+        solved, independent = solve_homogeneous_dlt(design)
         codes[selected[~independent]] = 2
-        positions[selected[independent]] = (
-            homogeneous[independent, :3] / homogeneous[independent, 3:]
-        )
+        positions[selected[independent]] = solved[independent]
     errors = np.full(visibility.shape, np.nan)
     in_front_all = np.ones(total, bool)
     for view, camera in enumerate(cameras):

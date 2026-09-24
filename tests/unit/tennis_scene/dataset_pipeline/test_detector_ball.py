@@ -44,7 +44,7 @@ def recipe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> DictConfig:
     ball = OmegaConf.load(
         root / "src/tennis_scene/configs/pipeline.yaml"
     ).ball_detection
-    for key in ("enabled", "source", "save_result", "output_path", "load_path"):
+    for key in ("enabled",):
         del ball[key]
     checkpoint = tmp_path / "ball.ckpt"
     checkpoint.write_bytes(b"model bytes")

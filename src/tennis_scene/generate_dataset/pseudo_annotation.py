@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
+import json
 import shutil
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 
@@ -17,8 +17,15 @@ from src.tennis_scene.generate_dataset.manifest import (
     DatasetClipRecord,
     load_dataset_manifest,
 )
+from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.dependency_graph import Stage
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.schema import (
+    SCENE_MASK_FIELDS,
+    SCENE_REASON_FIELDS,
+    SceneResult,
+    validate_scene_result_arrays,
+)
+from src.utils.checksum import dual_sha256
 from src.utils.io import save_json_atomic, utc_now_iso
 
 ANNOTATION_SCHEMA_VERSION = 1
@@ -38,11 +45,7 @@ class AnnotationGenerationResult:
 
 
 def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return cast(str, dual_sha256(path))
 
 
 def _shape_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
@@ -67,6 +70,7 @@ def _shape_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
         "player_track_ids": result.player_track_ids,
         "player_kp_3d": result.player_kp_3d,
     }
+    arrays.update({name: getattr(result, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS)})
     return {
         name: {"shape": list(array.shape), "dtype": str(array.dtype)}
         for name, array in arrays.items()
@@ -75,6 +79,7 @@ def _shape_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
 
 
 def _validate_result(result: SceneResult, record: DatasetClipRecord) -> None:
+    validate_scene_result_arrays(result)
     problems: list[str] = []
     expected_n = record.num_cameras
     expected_t = record.num_frames
@@ -179,7 +184,10 @@ def _publish_annotation(
     clip_manifest_path: Path,
     pipeline_config_yaml: str,
     overwrite: bool,
+    publication_identity: Mapping[str, object] | None = None,
 ) -> Path:
+    if result.schema_version == 2 and publication_identity is None:
+        raise ValueError("v2 annotations require an explicit pipeline publication identity")
     record_path: object = record.path
     if type(record_path) is not str:
         raise TypeError(
@@ -216,6 +224,7 @@ def _publish_annotation(
     (staging / "pipeline_config.yaml").write_text(
         pipeline_config_yaml, encoding="utf-8"
     )
+    _, source_paths, source_camera_ids = _resolve_clip_inputs(dataset_dir, record)
     annotation = {
         "version": ANNOTATION_SCHEMA_VERSION,
         "clip_id": record.clip_id,
@@ -225,6 +234,11 @@ def _publish_annotation(
         "pipeline_config": "pipeline_config.yaml",
         "clip_manifest_sha256": _sha256_file(clip_manifest_path),
         "arrays": _shape_manifest(result),
+        "scene_schema_version": result.schema_version,
+        "result_status": result.metadata.get("status", "legacy"),
+        "validity_statistics": result.metadata.get("validity_statistics"),
+        "publication_identity_sha256": None if publication_identity is None else document_digest(publication_identity),
+        "media_sha256": {camera: _sha256_file(path) for camera, path in zip(source_camera_ids, source_paths, strict=True)},
     }
     save_json_atomic(annotation, staging / "annotation.json")
 
@@ -247,6 +261,7 @@ def generate_pseudo_annotations(
     clip_ids: Sequence[str] | None = None,
     overwrite: bool = False,
     continue_on_error: bool = True,
+    publication_identity: Mapping[str, object] | None = None,
 ) -> list[AnnotationGenerationResult]:
     """Generate missing pseudo annotations while preserving per-clip outcomes."""
     if (
@@ -267,20 +282,30 @@ def generate_pseudo_annotations(
     for clip_id in selected_ids:
         record = dataset.clips[clip_id]
         destination = root / record.path / ANNOTATION_RELATIVE_DIR / "annotation.json"
-        if destination.exists() and not overwrite:
-            outcomes.append(
-                AnnotationGenerationResult(
-                    clip_id=clip_id,
-                    status="skipped",
-                    annotation_path=destination,
-                )
-            )
-            continue
         try:
+            if destination.exists() and not overwrite and publication_identity is None:
+                old_marker = json.loads(destination.read_text())
+                if old_marker.get("scene_schema_version", 1) == 2:
+                    raise ValueError("v2 annotation reuse requires a publication identity")
+                outcomes.append(AnnotationGenerationResult(clip_id, "skipped", destination))
+                continue
             clip_manifest_path, video_paths, camera_ids = _resolve_clip_inputs(
                 root, record
             )
+            manifest_before = _sha256_file(clip_manifest_path)
+            media_before = {camera: _sha256_file(path) for camera, path in zip(camera_ids, video_paths, strict=True)}
+            if destination.exists() and not overwrite:
+                marker = json.loads(destination.read_text())
+                expected_media = {camera: _sha256_file(path) for camera, path in zip(camera_ids, video_paths, strict=True)}
+                if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
+                    or marker.get("clip_manifest_sha256") != _sha256_file(clip_manifest_path)
+                    or marker.get("media_sha256") != expected_media):
+                    raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
+                outcomes.append(AnnotationGenerationResult(clip_id, "skipped", destination))
+                continue
             result = runner(video_paths, camera_ids)
+            if _sha256_file(clip_manifest_path) != manifest_before or any(_sha256_file(path) != media_before[camera] for camera, path in zip(camera_ids, video_paths, strict=True)):
+                raise ValueError("Clip inputs changed during reconstruction")
             _validate_result(result, record)
             annotation_path = _publish_annotation(
                 dataset_dir=root,
@@ -289,6 +314,7 @@ def generate_pseudo_annotations(
                 clip_manifest_path=clip_manifest_path,
                 pipeline_config_yaml=pipeline_config_yaml,
                 overwrite=overwrite,
+                publication_identity=publication_identity,
             )
             outcomes.append(
                 AnnotationGenerationResult(

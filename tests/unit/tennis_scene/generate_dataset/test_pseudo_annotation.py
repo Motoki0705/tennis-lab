@@ -53,6 +53,23 @@ def test_generate_publishes_complete_annotation_and_then_skips(
     assert calls == 1
 
 
+def test_completed_annotation_cannot_hide_changed_weights(
+    structured_dataset: Path, valid_scene_result: SceneResult,
+) -> None:
+    calls = []
+    def runner(_paths: Sequence[Path], _ids: Sequence[str]) -> SceneResult:
+        calls.append(1)
+        return valid_scene_result
+    first = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
+    assert first[0].status == "generated"
+    same = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
+    assert same[0].status == "skipped"
+    changed = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-two"})
+    assert changed[0].status == "failed"
+    assert "Stale annotation" in str(changed[0].error)
+    assert len(calls) == 1
+
+
 def test_contract_mismatch_records_failure_without_completion_marker(
     structured_dataset: Path, valid_scene_result: SceneResult
 ) -> None:
