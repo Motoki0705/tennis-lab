@@ -71,7 +71,10 @@ noise・joint/track欠測はtrack同一性を壊しません。FPは未割当slo
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_reid
 ```
 
-初期recipeはD256、4stage、8head、FFN768、T512、batch4、勾配蓄積4、60epoch、seed42です。
+初期recipeはD256、4stage、8head、FFN768、T512、batch4、勾配蓄積4、60epoch、seed42、bf16です。
+現在のCUDA stackではcompiled masked attentionの反復実行でNaNを再現したため、
+`training.compile.enabled=false`を明示します。自動fallbackは行いません。
+非有限lossはsample index付きで即時errorにし、学習・評価を継続しません。
 最低val/lossのcheckpointを選び、testでpair precision/recall/F1、整合的matchingのprecision/recall/F1、
 group正解率を計算します。教師・embedding・予測group・test split indexをpred_test.npzに保存します。
 checkpointは各runのlogs/version_*/checkpoints、集計はassociation_metrics.jsonlとpredictionsに保存します。
