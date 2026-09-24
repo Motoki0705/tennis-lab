@@ -1,0 +1,1215 @@
+{
+  "selection": "fixed grid, original image geometry and raw inlier evidence; no annotation-derived proposal or ranking",
+  "records": [
+    {
+      "box": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 0,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        0,
+        1680,
+        1080
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 1,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        0,
+        1680,
+        810
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 2,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        270,
+        1680,
+        1080
+      ],
+      "status": "insufficient_line_support",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 3,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        0,
+        1320,
+        540
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 4,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        270,
+        1320,
+        810
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 5,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        540,
+        1320,
+        1080
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 6,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        420,
+        0,
+        1500,
+        540
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 5.885870456695557,
+      "area_fraction": 0.027878546905698902,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 7,
+      "manual_mean_error_px": 7.367704252004278
+    },
+    {
+      "box": [
+        420,
+        270,
+        1500,
+        810
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 8,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        420,
+        540,
+        1500,
+        1080
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 9,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 10,
+      "inlier_score": 7.8169660568237305,
+      "area_fraction": 0.02821542737778437,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "proposal": 10,
+      "manual_mean_error_px": 10.818395639356348
+    },
+    {
+      "box": [
+        600,
+        270,
+        1680,
+        810
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 11,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        600,
+        540,
+        1680,
+        1080
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "proposal": 12,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 5.5116119384765625,
+      "area_fraction": 0.10621566371095177,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 0,
+      "manual_mean_error_px": 18.844062021857727
+    },
+    {
+      "box": [
+        0,
+        0,
+        1920,
+        810
+      ],
+      "status": "ok",
+      "inliers": 6,
+      "inlier_score": 4.779183387756348,
+      "area_fraction": 0.10421913252131196,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 1,
+      "manual_mean_error_px": 12.476028485005214
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 5.895888328552246,
+      "area_fraction": 0.10670118162566836,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "proposal": 2,
+      "manual_mean_error_px": 16.591805660630158
+    },
+    {
+      "box": [
+        0,
+        0,
+        1440,
+        540
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 3,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 5.583321571350098,
+      "area_fraction": 0.10547747716411704,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "proposal": 4,
+      "manual_mean_error_px": 9.395491484431627
+    },
+    {
+      "box": [
+        0,
+        540,
+        1440,
+        1080
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 5,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 5,
+      "inlier_score": 1.9945216178894043,
+      "area_fraction": 0.029224141781715045,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 6,
+      "manual_mean_error_px": 121.33807669827566
+    },
+    {
+      "box": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "status": "ok",
+      "inliers": 6,
+      "inlier_score": 3.752239227294922,
+      "area_fraction": 0.10499700707944601,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 7,
+      "manual_mean_error_px": 9.217410334978736
+    },
+    {
+      "box": [
+        240,
+        540,
+        1680,
+        1080
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 8,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        480,
+        0,
+        1920,
+        540
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 9,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        480,
+        270,
+        1920,
+        810
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 10,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        480,
+        540,
+        1920,
+        1080
+      ],
+      "status": "insufficient_line_support",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "proposal": 11,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 11,
+      "inlier_score": 10.444352149963379,
+      "area_fraction": 0.14421841084191778,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 0,
+      "manual_mean_error_px": 4.439230796851101
+    },
+    {
+      "box": [
+        0,
+        0,
+        1920,
+        810
+      ],
+      "status": "ok",
+      "inliers": 14,
+      "inlier_score": 12.428560256958008,
+      "area_fraction": 0.14326929516641995,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 1,
+      "manual_mean_error_px": 4.879324635790009
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 14,
+      "inlier_score": 12.581525802612305,
+      "area_fraction": 0.14245046071951634,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 2,
+      "manual_mean_error_px": 8.067428710765252
+    },
+    {
+      "box": [
+        0,
+        0,
+        1440,
+        540
+      ],
+      "status": "ok",
+      "inliers": 6,
+      "inlier_score": 5.615917682647705,
+      "area_fraction": 0.15943673130812266,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam2",
+      "proposal": 3,
+      "manual_mean_error_px": 18.85191045225485
+    },
+    {
+      "box": [
+        0,
+        270,
+        1440,
+        810
+      ],
+      "status": "ok",
+      "inliers": 12,
+      "inlier_score": 10.858725547790527,
+      "area_fraction": 0.14402659494667597,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 4,
+      "manual_mean_error_px": 4.173396258320871
+    },
+    {
+      "box": [
+        0,
+        540,
+        1440,
+        1080
+      ],
+      "status": "joint_optimization_failed",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam2",
+      "proposal": 5,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        240,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 5,
+      "inlier_score": 4.790132522583008,
+      "area_fraction": 0.15094959621628057,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam2",
+      "proposal": 6,
+      "manual_mean_error_px": 8.608759945360472
+    },
+    {
+      "box": [
+        240,
+        270,
+        1680,
+        810
+      ],
+      "status": "ok",
+      "inliers": 13,
+      "inlier_score": 11.416887283325195,
+      "area_fraction": 0.14385763785123548,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 7,
+      "manual_mean_error_px": 4.629761616737642
+    },
+    {
+      "box": [
+        240,
+        540,
+        1680,
+        1080
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam2",
+      "proposal": 8,
+      "manual_mean_error_px": null
+    },
+    {
+      "box": [
+        480,
+        0,
+        1920,
+        540
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 6.444177150726318,
+      "area_fraction": 0.26643369818891915,
+      "convex": true,
+      "inside_image": false,
+      "accepted": false,
+      "camera": "cam2",
+      "proposal": 9,
+      "manual_mean_error_px": 90.45426250999812
+    },
+    {
+      "box": [
+        480,
+        270,
+        1920,
+        810
+      ],
+      "status": "ok",
+      "inliers": 12,
+      "inlier_score": 10.801063537597656,
+      "area_fraction": 0.14484568065247722,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 10,
+      "manual_mean_error_px": 5.382629538044034
+    },
+    {
+      "box": [
+        480,
+        540,
+        1920,
+        1080
+      ],
+      "status": "no_jointly_supported_candidate",
+      "inliers": 0,
+      "inlier_score": 0.0,
+      "area_fraction": 0.0,
+      "convex": false,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam2",
+      "proposal": 11,
+      "manual_mean_error_px": null
+    }
+  ],
+  "selected": {
+    "cam0": {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 10,
+      "inlier_score": 7.8169660568237305,
+      "area_fraction": 0.02821542737778437,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "proposal": 10,
+      "manual_mean_error_px": 10.818395639356348
+    },
+    "cam1": {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 5.895888328552246,
+      "area_fraction": 0.10670118162566836,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "proposal": 2,
+      "manual_mean_error_px": 16.591805660630158
+    },
+    "cam2": {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 14,
+      "inlier_score": 12.581525802612305,
+      "area_fraction": 0.14245046071951634,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "proposal": 2,
+      "manual_mean_error_px": 8.067428710765252
+    }
+  },
+  "temporal": [
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 10,
+      "inlier_score": 7.8169660568237305,
+      "area_fraction": 0.02821542737778437,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "frame": 0,
+      "manual_mean_error_px": 10.818395639356348
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 5.673167705535889,
+      "area_fraction": 0.02754148621027267,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "frame": 126,
+      "manual_mean_error_px": 10.777309247424443
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 6.452898025512695,
+      "area_fraction": 0.02769876140646779,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "frame": 252,
+      "manual_mean_error_px": 10.31449218032645
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 9,
+      "inlier_score": 6.874807357788086,
+      "area_fraction": 0.027387790067888867,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "frame": 378,
+      "manual_mean_error_px": 10.090911367538775
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 6.2368268966674805,
+      "area_fraction": 0.027513180635598676,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "frame": 504,
+      "manual_mean_error_px": 10.155432339680093
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 6.22712516784668,
+      "area_fraction": 0.02779418101117991,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "frame": 630,
+      "manual_mean_error_px": 11.319383739451245
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 5.753377437591553,
+      "area_fraction": 0.027891589128741522,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "frame": 756,
+      "manual_mean_error_px": 9.240964760083015
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 6.126716136932373,
+      "area_fraction": 0.027646658596396142,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam0",
+      "frame": 882,
+      "manual_mean_error_px": 8.92547851931105
+    },
+    {
+      "box": [
+        600,
+        0,
+        1680,
+        540
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 5.058965682983398,
+      "area_fraction": 0.028236921780876008,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam0",
+      "frame": 1009,
+      "manual_mean_error_px": 11.427415423158008
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 5.895888328552246,
+      "area_fraction": 0.10670118162566836,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "frame": 0,
+      "manual_mean_error_px": 16.591805660630158
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 6,
+      "inlier_score": 4.728362560272217,
+      "area_fraction": 0.10461516617988735,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "frame": 126,
+      "manual_mean_error_px": 13.766041737722196
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 6.426661491394043,
+      "area_fraction": 0.10782249475750211,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "frame": 252,
+      "manual_mean_error_px": 17.179122279667123
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 9,
+      "inlier_score": 6.716954231262207,
+      "area_fraction": 0.1031926909687399,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "frame": 378,
+      "manual_mean_error_px": 10.969249182922733
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 6.0073771476745605,
+      "area_fraction": 0.10371828976433195,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "frame": 504,
+      "manual_mean_error_px": 10.710424702666348
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 5.800991058349609,
+      "area_fraction": 0.1043124184885438,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "frame": 630,
+      "manual_mean_error_px": 9.839903472853626
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 8,
+      "inlier_score": 5.562343597412109,
+      "area_fraction": 0.10374520937567636,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam1",
+      "frame": 756,
+      "manual_mean_error_px": 10.976869305099274
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 7,
+      "inlier_score": 5.863221645355225,
+      "area_fraction": 0.10605496114898953,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "frame": 882,
+      "manual_mean_error_px": 15.753685666329659
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 4,
+      "inlier_score": 2.868589401245117,
+      "area_fraction": 0.10393670225193305,
+      "convex": true,
+      "inside_image": true,
+      "accepted": false,
+      "camera": "cam1",
+      "frame": 1009,
+      "manual_mean_error_px": 17.043759656996993
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 14,
+      "inlier_score": 12.581525802612305,
+      "area_fraction": 0.14245046071951634,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 0,
+      "manual_mean_error_px": 8.067428710765252
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 11,
+      "inlier_score": 10.032504081726074,
+      "area_fraction": 0.142268666277496,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 126,
+      "manual_mean_error_px": 9.346050060941048
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 12,
+      "inlier_score": 10.954059600830078,
+      "area_fraction": 0.14281939952047706,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 252,
+      "manual_mean_error_px": 6.609679927080691
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 14,
+      "inlier_score": 12.08103084564209,
+      "area_fraction": 0.14173835979804017,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 378,
+      "manual_mean_error_px": 8.626612583011996
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 14,
+      "inlier_score": 12.808695793151855,
+      "area_fraction": 0.14206191984059033,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 504,
+      "manual_mean_error_px": 8.258349542661348
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 12,
+      "inlier_score": 10.865033149719238,
+      "area_fraction": 0.14222772529627756,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 630,
+      "manual_mean_error_px": 8.892918121186712
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 11,
+      "inlier_score": 9.940816879272461,
+      "area_fraction": 0.14168647760344535,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 756,
+      "manual_mean_error_px": 6.37155350084457
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 13,
+      "inlier_score": 11.954387664794922,
+      "area_fraction": 0.14174916356162331,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 882,
+      "manual_mean_error_px": 8.703019402222298
+    },
+    {
+      "box": [
+        0,
+        270,
+        1920,
+        1080
+      ],
+      "status": "ok",
+      "inliers": 13,
+      "inlier_score": 11.746724128723145,
+      "area_fraction": 0.14166404834065371,
+      "convex": true,
+      "inside_image": true,
+      "accepted": true,
+      "camera": "cam2",
+      "frame": 1009,
+      "manual_mean_error_px": 8.95860246960032
+    }
+  ]
+}

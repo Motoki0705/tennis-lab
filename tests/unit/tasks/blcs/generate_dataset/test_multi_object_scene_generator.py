@@ -63,24 +63,20 @@ def _camera_config() -> CameraConfig:
 
 def _timeline(*, min_tracks: int = 2) -> TimelineConfig:
     return TimelineConfig(
-        num_frames=12,
+        min_scene_frames=1,
+        planning_iterations=60,
         min_tracks=min_tracks,
         max_tracks=2,
         max_concurrent=2,
         min_reuse_gap_frames=4,
-        start_index_range=(-2, 8),
-        min_active_frames=2,
-        overlap_probability=0.5,
-        min_gap_frames=1,
-        max_gap_frames=3,
     )
 
 
-def _tracking_config() -> dict[str, object]:
+def _tracking_config(frames: int = 12) -> dict[str, object]:
     return {
         "court_keypoints": {"selector": "physical_v1"},
         "data": {
-            "seq_len_range": [12, 12],
+            "seq_len_range": [frames, frames],
             "num_views_range": [6, 6],
             "camera_mode": "first",
             "lifecycle": {
@@ -260,9 +256,9 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     scene = _multi_ball_generator(_PhysicalSceneStub()).generate_scene("scene_000000")
     assert scene.num_balls == 2
     assert scene.ball_present is not None
-    assert scene.ball_pos_world.shape == (12, 2, 3)
+    assert scene.ball_pos_world.shape == (len(scene.ball_present), 2, 3)
     assert scene.ball_present[:, : scene.num_balls].any(0).all()
-    assert scene.cameras[0].ball_uv.shape == (12, 2, 2)
+    assert scene.cameras[0].ball_uv.shape == (len(scene.ball_present), 2, 2)
     assert len(scene.track_instances) == 2
     assert not scene.cameras[0].ball_vis[~scene.ball_present.numpy()].any()
 
@@ -284,13 +280,13 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     sample = BLCSTrackingDataset(
         scene_dir=dataset_root,
         split_file="train.txt",
-        config=_tracking_config(),
+        config=_tracking_config(len(scene.ball_present)),
         seed=0,
     )[0]
-    assert sample["ball_uv"].shape == (6, 12, 2, 2)
+    assert sample["ball_uv"].shape == (6, len(scene.ball_present), 2, 2)
     candidate_ids = sample["candidate_gt_index"]
     assigned = candidate_ids >= 0
-    assert candidate_ids.shape == assigned.shape == (6, 12, 2)
+    assert candidate_ids.shape == assigned.shape == (6, len(scene.ball_present), 2)
     assert not bool((sample["ball_vis"] & ~assigned).any())
     assert not bool((sample["clean_ball_vis"] & ~assigned).any())
 
@@ -332,7 +328,7 @@ def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
         set(view_candidate_ids[:, slot][assigned[0, :, slot]].tolist())
         for slot in range(view_candidate_ids.shape[1])
     ]
-    assert set(range(scene.num_balls)) in active_ids_by_slot
+    assert set.union(*active_ids_by_slot) == set(range(scene.num_balls))
 
     persisted_uv = torch.from_numpy(np.load(scene_path / "cam_0_ball_uv.npy"))
     persisted_vis = torch.from_numpy(np.load(scene_path / "cam_0_ball_vis.npy"))

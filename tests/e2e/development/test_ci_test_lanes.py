@@ -1,70 +1,106 @@
-"""The actual Actions matrix must partition every eligible test exactly once."""
+"""Actions must preserve CPU test coverage and propagate pytest failures."""
 
 from __future__ import annotations
 
+import os
+import shlex
+import shutil
 import subprocess
 import sys
-from collections import Counter
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import yaml
 
-from src.automation.ci.sharding import CI_EXCLUDED_FILES, discover_test_files
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _list_tests(*args: str) -> tuple[str, ...]:
-    completed = subprocess.run(
-        [sys.executable, "-m", "spin", "ci", *args, "--list-tests"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return tuple(completed.stdout.splitlines())
-
-
-def test_actions_matrix_covers_every_ci_test_once_and_excludes_manual_integration() -> (
-    None
-):
+def _ci_job() -> dict[str, Any]:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
-    matrix = workflow["jobs"]["lint-and-test"]["strategy"]["matrix"]["shard"]
-    assert matrix == list(range(1, len(matrix) + 1))
-    groups = [
-        _list_tests("--shard", str(index), "--shards", str(len(matrix)))
-        for index in matrix
+    assert set(workflow["jobs"]) == {"lint-and-test"}
+    return cast(dict[str, Any], workflow["jobs"]["lint-and-test"])
+
+
+def test_actions_use_one_cpu_job_with_bounded_parallelism() -> None:
+    job = _ci_job()
+    assert "strategy" not in job
+    assert job["timeout-minutes"] == 60
+    assert job["env"]["PYTEST_XDIST_AUTO_NUM_WORKERS"] == "2"
+    for variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        assert job["env"][variable] == "1"
+
+    commands = [
+        shlex.split(step["run"])
+        for step in job["steps"]
+        if step.get("run", "").startswith(".venv/bin/python -m spin ")
     ]
-    counts = Counter(path for group in groups for path in group)
-    expected = set(discover_test_files(REPO_ROOT)) - CI_EXCLUDED_FILES.keys()
-    assert set(counts) == expected
-    assert set(counts.values()) == {1}
-    assert set(_list_tests()) == expected
-    for group in groups:
-        assert group
-        assert group == tuple(sorted(group))
-    assert set(CI_EXCLUDED_FILES) == {
-        "tests/integration/synthetic_data_generation/test_court_dataset.py",
-        "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
-    }
+    assert len(commands) == 2
+    assert commands[0] == [".venv/bin/python", "-m", "spin", "lint"]
+    assert commands[1][:4] == [".venv/bin/python", "-m", "spin", "test"]
+    assert "uv sync --locked --no-group gpu --group cpu" in [
+        step.get("run") for step in job["steps"]
+    ]
 
 
-@pytest.mark.parametrize(
-    "args", [("--shard", "1"), ("--shards", "4"), ("--shard", "5", "--shards", "4")]
-)
-def test_invalid_shard_arguments_fail_before_running_tests(
-    args: tuple[str, ...],
+@pytest.mark.parametrize("failing_test", [False, True], ids=["success", "failure"])
+def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code(
+    tmp_path: Path, failing_test: bool
 ) -> None:
+    job = _ci_job()
+    command = shlex.split(
+        next(step["run"] for step in job["steps"] if step["name"] == "Test")
+    )
+    # Use the repository CLI and pytest settings with a small independent suite.
+    (tmp_path / ".spin").mkdir()
+    shutil.copy2(REPO_ROOT / ".spin/cmds.py", tmp_path / ".spin/cmds.py")
+    shutil.copy2(REPO_ROOT / "pyproject.toml", tmp_path / "pyproject.toml")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/__init__.py").touch()
+    excluded_files = {
+        "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
+        "tests/integration/synthetic_data_generation/test_court_dataset.py",
+    }
+    assert {
+        arg.removeprefix("--ignore=")
+        for arg in command
+        if arg.startswith("--ignore=")
+    } == excluded_files
+    assert all((REPO_ROOT / path).is_file() for path in excluded_files)
+    samples = {
+        "tests/unit/test_unit.py": "def test_unit(): pass\n",
+        "tests/integration/test_integration.py": "def test_integration(): pass\n",
+        "tests/e2e/test_e2e.py": "def test_e2e(): pass\n",
+        "tests/newly_added_test.py": f"def test_new(): assert {not failing_test}\n",
+        "tests/test_environmental.py": (
+            "import pytest\n"
+            "@pytest.mark.local_data\n"
+            "def test_local_data(): raise AssertionError('local data must be excluded')\n"
+            "@pytest.mark.cuda\n"
+            "def test_cuda(): raise AssertionError('CUDA must be excluded')\n"
+        ),
+        **dict.fromkeys(
+            excluded_files,
+            "raise AssertionError('manual integration must not be collected')\n",
+        ),
+    }
+    for relative, source in samples.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source, encoding="utf-8")
+
     completed = subprocess.run(
-        [sys.executable, "-m", "spin", "ci", *args, "--list-tests"],
-        cwd=REPO_ROOT,
+        [sys.executable, *command[1:]],
+        cwd=tmp_path,
         check=False,
         capture_output=True,
         text=True,
+        env={**os.environ, **job["env"]},
     )
-    assert completed.returncode != 0
-    assert "Error:" in completed.stderr
+    output = completed.stdout + completed.stderr
+    assert completed.returncode == int(failing_test), output
+    assert "2 workers [4 items]" in output
+    assert ("1 failed, 3 passed" if failing_test else "4 passed") in output
 
 
 def test_cpu_dependency_group_preserves_default_gpu_environment() -> None:

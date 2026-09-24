@@ -13,96 +13,112 @@ from src.tasks.base.generate_dataset.timeline_composer import (
 )
 
 
-def _config(**overrides: object) -> TimelineConfig:
-    values = {
-        "num_frames": 64,
-        "min_tracks": 4,
-        "max_tracks": 4,
-        "max_concurrent": 2,
-        "min_reuse_gap_frames": 4,
-        "start_index_range": (-16, 56),
-        "min_active_frames": 8,
-        "overlap_probability": 0.5,
-        "min_gap_frames": 4,
-        "max_gap_frames": 12,
-    }
-    values.update(overrides)
-    return TimelineConfig(**values)  # type: ignore[arg-type]
-
-
-def test_composer_builds_fixed_timeline_and_never_exceeds_concurrency() -> None:
-    composer = TimelineComposer(_config(), rng=random.Random(7))
-    result = composer.compose(
-        [f"source_{index}" for index in range(4)],
-        [24, 20, 28, 18],
-    )
-
-    assert result.present.shape == (64, 4)
-    assert result.present.sum(axis=1).max() <= 2
-    occupancy: NDArray[np.int64] = np.zeros(64, dtype=np.int64)
-    for placement in result.placements:
-        occupancy[
-            placement.birth_frame : min(64, placement.death_frame + 4)
-        ] += 1
-    assert occupancy.max() <= 2
-    assert all(placement.num_active_frames >= 8 for placement in result.placements)
-    assert [placement.track_id for placement in result.placements] == list(range(4))
-    for placement in result.placements:
-        assert placement.source_end - placement.source_start == placement.num_active_frames
-
-
-def test_composition_places_numpy_and_tensor_sources_with_zero_inactive_values() -> None:
-    composer = TimelineComposer(
-        _config(min_tracks=2, max_tracks=2, max_concurrent=1),
-        rng=random.Random(11),
-    )
-    sources_np: list[NDArray[np.float32]] = [
-        np.full((20, 3), index + 1, dtype=np.float32) for index in range(2)
-    ]
-    result = composer.compose(["a", "b"], [20, 20])
-    composed_np = result.compose_numpy(sources_np)
-    composed_tensor = result.compose_tensor(
-        [torch.from_numpy(source) for source in sources_np]
-    )
-
-    assert composed_np.shape == (64, 2, 3)
-    np.testing.assert_array_equal(composed_np, composed_tensor.numpy())
-    for placement in result.placements:
-        active = result.present[:, placement.track_id]
-        assert np.all(composed_np[active, placement.track_id] == placement.track_id + 1)
-        assert np.all(composed_np[~active, placement.track_id] == 0)
-
-
-def test_composer_rejects_sources_shorter_than_minimum_active_interval() -> None:
-    composer = TimelineComposer(
-        _config(min_tracks=1, max_tracks=1, max_concurrent=1)
-    )
-    with pytest.raises(ValueError, match="min_active_frames"):
-        composer.compose(["short"], [7])
-
-
-def test_composer_subclips_many_long_sources_to_keep_timeline_feasible() -> None:
-    composer = TimelineComposer(
-        TimelineConfig(
-            num_frames=1024,
-            min_tracks=10,
+def config(**overrides):
+    return TimelineConfig(
+        **dict(
+            min_tracks=4,
             max_tracks=10,
             max_concurrent=4,
             min_reuse_gap_frames=4,
-            start_index_range=(-128, 992),
-            min_active_frames=32,
-            overlap_probability=0.3,
-            min_gap_frames=8,
-            max_gap_frames=256,
-        ),
-        rng=random.Random(34),
+            min_scene_frames=1,
+            planning_iterations=80,
+        )
+        | overrides
     )
 
-    result = composer.compose(
-        [f"long_{index}" for index in range(10)],
-        [742] * 10,
+
+def test_complete_sources_and_variable_length_with_first_birth_at_zero():
+    lengths = [742] * 10
+    plan = TimelineComposer(config(), rng=random.Random(34)).compose(
+        [str(i) for i in range(10)], lengths
+    )
+    assert len(plan.present) > 1024
+    assert plan.present[0].any()
+    assert len(plan.present) == max(p.death_frame for p in plan.placements)
+    assert plan.present.sum(1).max() <= 4
+    reserved: NDArray[np.int64] = np.zeros(len(plan.present) + 4, dtype=int)
+    sources: list[NDArray[np.float32]] = [
+        np.arange(n * 3, dtype=np.float32).reshape(n, 3) + i
+        for i, n in enumerate(lengths)
+    ]
+    actual = plan.compose_numpy(sources)
+    torch.testing.assert_close(
+        plan.compose_tensor([torch.from_numpy(s) for s in sources]),
+        torch.from_numpy(actual),
+    )
+    for p, source in zip(plan.placements, sources, strict=True):
+        assert p.source_start == 0 and p.source_end == len(source)
+        assert p.death_frame - p.birth_frame == len(source)
+        np.testing.assert_array_equal(
+            actual[p.birth_frame : p.death_frame, p.track_id], source
+        )
+        assert not actual[~plan.present[:, p.track_id], p.track_id].any()
+        reserved[p.birth_frame : p.death_frame + 4] += 1
+    assert reserved.max() <= 4
+
+
+def test_short_sources_are_not_arbitrarily_dropped_or_extended():
+    plan = TimelineComposer(
+        config(min_tracks=1, max_tracks=1, max_concurrent=1)
+    ).compose(["short"], [7])
+    assert plan.present.shape == (7, 1)
+    assert plan.placements[0].source_end == 7
+    with pytest.raises(ValueError, match="positive"):
+        TimelineComposer(config(min_tracks=1)).compose(["x"] * 4, [7, 3, 1, 0])
+
+
+def test_birth_optimization_is_repeatable_and_balances_aggregate_occupancy():
+    counts = np.zeros(5)
+    for seed in range(8):
+        lengths = [400 + 100 * ((seed + i) % 5) for i in range(6)]
+        a = TimelineComposer(config(), rng=random.Random(seed)).compose(
+            [str(i) for i in range(6)], lengths
+        )
+        b = TimelineComposer(config(), rng=random.Random(seed)).compose(
+            [str(i) for i in range(6)], lengths
+        )
+        assert a.placements == b.placements
+        counts += np.bincount(a.present.sum(1), minlength=5)
+    np.testing.assert_allclose(counts[1:] / counts[1:].sum(), 0.25, atol=0.04, rtol=0)
+
+
+def test_legacy_truncation_knobs_are_rejected():
+    with pytest.raises(ValueError, match="exactly"):
+        TimelineConfig.from_mapping({"min_active_frames": 32})
+
+
+def test_dataset_ledger_balances_unequal_lengths_and_rates():
+    composer = TimelineComposer(config(planning_iterations=120), rng=random.Random(5))
+    sources = [[683, 281, 296, 1039], [400] * 8, [981, 242, 265, 379], [600] * 8]
+    for index, lengths in enumerate(sources):
+        composer.rng.seed(index)
+        composer.compose(
+            [str(i) for i in range(len(lengths))],
+            lengths,
+            fps=30.0 if index % 2 else 120.0,
+            balance_dataset=True,
+        )
+    seconds = composer.occupancy_seconds[1:]
+    np.testing.assert_allclose(seconds / seconds.sum(), 0.25, atol=0.025, rtol=0)
+
+
+def test_dataset_ledger_does_not_reward_a_long_low_occupancy_scene():
+    composer = TimelineComposer(config(min_reuse_gap_frames=64), rng=random.Random(71))
+    composer.occupancy_seconds[:] = [
+        8.316666666666666,
+        130.59166666666667,
+        118.34166666666667,
+        106.075,
+        105.9,
+    ]
+
+    plan = composer.compose(
+        [str(i) for i in range(6)],
+        [284, 476, 387, 1273, 387, 529],
+        fps=120.0,
+        balance_dataset=True,
     )
 
-    assert result.present.sum(1).max() <= 4
-    assert all(placement.num_active_frames >= 32 for placement in result.placements)
-    assert any(placement.source_start > 0 for placement in result.placements)
+    assert plan.present.sum(1).max() == 3
+    seconds = composer.occupancy_seconds[1:]
+    np.testing.assert_allclose(seconds / seconds.sum(), 0.25, atol=0.04, rtol=0)

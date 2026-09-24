@@ -435,6 +435,16 @@ SLCS_ANALYSIS_BOUNDARY_SCHEMA = _schema(
     },
 )
 
+SLCS_GENERATION_BOUNDARY_SCHEMA = _schema(
+    "slcs.generate_dataset",
+    {
+        "paths": _mapping(SLCS_PATHS_SCHEMA),
+        "data": _mapping(SLCS_DATA_SCHEMA),
+        "precompute": _mapping(SLCS_PRECOMPUTE_SCHEMA),
+        "splits": _mapping(SLCS_SPLITS_SCHEMA),
+    },
+)
+
 
 def _container(config: DictConfig) -> dict[str, object]:
     value = OmegaConf.to_container(config, resolve=True)
@@ -1127,6 +1137,39 @@ class SLCSSplitConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class SLCSGenerationConfig:
+    """Compose the existing feature and split contracts for a scene dataset."""
+
+    precompute: SLCSPrecomputeConfig
+    splits: SLCSSplitConfig
+
+    @classmethod
+    def from_config(cls, config: DictConfig) -> SLCSGenerationConfig:
+        _validate_boundary(config, SLCS_GENERATION_BOUNDARY_SCHEMA)
+        precompute = SLCSPrecomputeConfig.from_config(
+            OmegaConf.masked_copy(config, ["paths", "data", "precompute"])
+        )
+        splits = SLCSSplitConfig.from_config(
+            OmegaConf.masked_copy(config, ["paths", "data", "splits"])
+        )
+        data = precompute.data
+        if not data.pipeline.require_dino or data.pipeline.on_incomplete != "error":
+            raise SemanticConfigurationError(
+                "SLCS generation requires data.require_dino=true and "
+                "data.on_incomplete=error."
+            )
+        if not data.split_file.is_relative_to(data.dataset_root):
+            raise SemanticConfigurationError(
+                "data.split_file must be inside data.dataset_root."
+            )
+        if data.overfit != splits.overfit:
+            raise SemanticConfigurationError(
+                "data.overfit and splits.overfit must agree."
+            )
+        return cls(precompute=precompute, splits=splits)
+
+
+@dataclass(frozen=True, slots=True)
 class SLCSAnalysisConfig:
     arrays: Path
     calibration_bins: int
@@ -1188,12 +1231,18 @@ def validate_analysis_boundary(config: DictConfig) -> None:
     SLCSAnalysisConfig.from_config(config)
 
 
+def validate_generation_boundary(config: DictConfig) -> None:
+    """Validate scene-to-SLCS preparation before reading or writing datasets."""
+    SLCSGenerationConfig.from_config(config)
+
+
 register_boundary_validator("slcs.train", validate_training_boundary)
 register_boundary_validator("slcs.evaluate", validate_evaluation_boundary)
 register_boundary_validator("slcs.predict_clip", validate_prediction_boundary)
 register_boundary_validator("slcs.precompute_dino_tokens", validate_precompute_boundary)
 register_boundary_validator("slcs.make_splits", validate_split_boundary)
 register_boundary_validator("slcs.analyze_predictions", validate_analysis_boundary)
+register_boundary_validator("slcs.generate_dataset", validate_generation_boundary)
 
 
 __all__ = [
@@ -1219,6 +1268,7 @@ __all__ = [
     "SLCS_TRAINING_SCHEMA",
     "SLCS_VISUALIZATION_SCHEMA",
     "SLCSAnalysisConfig",
+    "SLCSGenerationConfig",
     "SLCSDataRuntimeConfig",
     "SLCSEvaluationConfig",
     "SLCSModelConfig",
@@ -1228,6 +1278,7 @@ __all__ = [
     "SLCSTrainingRuntimeConfig",
     "SLCSVisualizationConfig",
     "validate_analysis_boundary",
+    "validate_generation_boundary",
     "validate_evaluation_boundary",
     "validate_precompute_boundary",
     "validate_prediction_boundary",

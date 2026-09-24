@@ -1,0 +1,7 @@
+root_weight: 1.0
+relative_weight: 1.0
+world_weight: 0.5
+reprojection_weight: 10.0
+velocity_weight: 0.02
+bone_weight: 0.1
+huber_delta_m: 0.1

@@ -1,15 +1,7 @@
-"""Run the tennis scene 3D reconstruction pipeline.
+"""Run the configured reconstruction stages and save one SceneResult archive.
 
-Usage:
-    python -m src.tennis_scene.scripts.run_pipeline video_paths='[inputs/demo/cam0.mp4,inputs/demo/cam1.mp4]'
-    python -m src.tennis_scene.scripts.run_pipeline video_paths='[cam0.mp4,cam1.mp4]' max_frames=100
-
-Notes:
-    - The pipeline combines court keypoint detection, GVHMR, ball detection, PLCS,
-      and BLCS.
-    - Input videos must already be synchronized and share FPS, frame count, and resolution.
-    - Configuration is loaded from `src/tennis_scene/configs/pipeline.yaml`.
-    - Hydra handles runtime overrides.
+See src/tennis_scene/README.md for the canonical input/output layout, path
+roots, required files, and executable examples.
 """
 
 from __future__ import annotations

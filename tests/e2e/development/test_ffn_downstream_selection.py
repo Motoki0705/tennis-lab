@@ -20,6 +20,8 @@ _EXPECTED_DIRECT_CONSUMERS = frozenset(
     {
         "src/tasks/ball_detection/models/dinov3_rope.py",
         "src/tasks/base/models/view_association.py",
+
+        "src/tasks/plcs/models/triangulation_residual.py",
         "src/tasks/blcs/models/blcs_model.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
         "src/tasks/blcs/models/blcs_track_query_model.py",

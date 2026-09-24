@@ -1832,50 +1832,18 @@ def validate_generator_sections(
                 "generation.maximum_physics_attempts_per_object must be positive."
             )
         timeline = require_config_mapping(generation, "timeline", path="generation")
-        _exact(
-            timeline,
-            {
-                "num_frames",
-                "min_tracks",
-                "max_tracks",
-                "max_concurrent",
-                "min_reuse_gap_frames",
-                "start_index_range",
-                "min_active_frames",
-                "overlap_probability",
-                "min_gap_frames",
-                "max_gap_frames",
-            },
-            path="generation.timeline",
-        )
+        keys = {
+            "min_tracks",
+            "max_tracks",
+            "max_concurrent",
+            "min_reuse_gap_frames",
+            "min_scene_frames",
+            "planning_iterations",
+        }
+        _exact(timeline, keys, path="generation.timeline")
         _validate_types(
-            timeline,
-            {
-                **{
-                    key: int
-                    for key in (
-                        "num_frames",
-                        "min_tracks",
-                        "max_tracks",
-                        "max_concurrent",
-                        "min_reuse_gap_frames",
-                        "min_active_frames",
-                        "min_gap_frames",
-                        "max_gap_frames",
-                    )
-                },
-                "start_index_range": list,
-                "overlap_probability": float,
-            },
-            path="generation.timeline",
+            timeline, {key: int for key in keys}, path="generation.timeline"
         )
-        _int_sequence(
-            timeline["start_index_range"], path="generation.timeline.start_index_range"
-        )
-        if len(cast("Sequence[object]", timeline["start_index_range"])) != 2:
-            raise SemanticConfigurationError(
-                "generation.timeline.start_index_range must contain two values."
-            )
         try:
             TimelineConfig.from_mapping(cast("Mapping[str, Any]", timeline))
         except (TypeError, ValueError) as error:

@@ -12,19 +12,15 @@ concurrency:
 
 jobs:
   lint-and-test:
-    name: Python / shard-${{ matrix.shard }}
+    name: Python
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
-      # Keep two workers per shard; native libraries use one thread each.
+      # Keep two pytest workers; native libraries use one thread each.
       PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -57,14 +53,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg rclone
 
-      - name: Project checks for shard ${{ matrix.shard }}
-        run: .venv/bin/python -m spin ci --shard "${{ matrix.shard }}" --shards "${{ strategy.job-total }}"
+      - name: Lint
+        run: .venv/bin/python -m spin lint
 
-      - name: Upload test results and timings
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: ci-shard-${{ matrix.shard }}
-          path: artifacts/ci/shard-${{ matrix.shard }}/
-          if-no-files-found: error
-          retention-days: 14
+      - name: Test
+        # Long dataset generation/recovery integrations are run explicitly.
+        run: >-
+          .venv/bin/python -m spin test -q --no-cov --dist=worksteal
+          --ignore=tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py
+          --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py

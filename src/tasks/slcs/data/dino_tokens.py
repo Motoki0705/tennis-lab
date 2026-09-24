@@ -168,6 +168,10 @@ def write_dino_tokens(
             f"manifest declares {sorted(manifest.camera_ids)}."
         )
     ensure_dir(out_dir)
+    # An interrupted overwrite must never leave an old completion marker
+    # certifying a mixture of old and newly written camera archives.
+    if overwrite:
+        marker_path.unlink(missing_ok=True)
 
     cameras: dict[str, dict[str, Any]] = {}
     for camera_id, (tokens, frame_idx) in tokens_by_camera.items():
@@ -232,6 +236,14 @@ def _validate_token_arrays(
             f"{context}: frame_idx range [{int(frame_idx[0])}, {int(frame_idx[-1])}] "
             f"outside clip frames [0, {num_frames})."
         )
+    expected_frames = sample_frame_indices(num_frames, spec.frame_stride)
+    if not np.array_equal(frame_idx, expected_frames):
+        raise DatasetManifestError(
+            f"{context}: frame_idx does not match the configured sampling "
+            f"sequence sample_frame_indices({num_frames}, {spec.frame_stride}); "
+            f"expected {len(expected_frames)} samples, got {len(frame_idx)}. "
+            "Regenerate the DINO token cache with explicit overwrite."
+        )
     if not np.isfinite(tokens.astype(np.float32)).all():
         raise DatasetManifestError(f"{context}: tokens contain non-finite values.")
 
@@ -268,6 +280,7 @@ def load_dino_tokens(
     camera_id: str,
     *,
     expected_spec: DinoTokenSpec | None = None,
+    expected_checkpoint_sha256: str | None = None,
 ) -> tuple[NDArray[np.float32], NDArray[np.int64], DinoTokenSpec]:
     """Load validated tokens for one camera.
 
@@ -281,6 +294,36 @@ def load_dino_tokens(
             f"expected spec {asdict(expected_spec)}."
         )
     manifest.camera_index(camera_id)  # validates the camera id
+    marker = load_json(dino_dir(manifest.clip_dir) / DINO_ANNOTATION_FILENAME)
+    if marker.get("input_manifest_digest") != manifest.digest():
+        raise DatasetManifestError(
+            f"{manifest.clip_id}: DINO input manifest digest does not match clip.json."
+        )
+    if expected_checkpoint_sha256 is not None:
+        generator = marker.get("generator")
+        if (
+            not isinstance(generator, dict)
+            or generator.get("checkpoint_sha256") != expected_checkpoint_sha256
+        ):
+            raise DatasetManifestError(
+                f"{manifest.clip_id}: DINO checkpoint SHA-256 is missing or does not "
+                "match the configured checkpoint contents. "
+                "Set precompute.overwrite=true to regenerate."
+            )
+    cameras = marker.get("cameras")
+    if not isinstance(cameras, dict) or set(cameras) != set(manifest.camera_ids):
+        raise DatasetManifestError(
+            f"{manifest.clip_id}: DINO camera inventory does not match clip.json."
+        )
+    for name, entry in cameras.items():
+        if (
+            not isinstance(entry, dict)
+            or entry.get("file") != f"{name}.npz"
+            or type(entry.get("num_samples")) is not int
+        ):
+            raise DatasetManifestError(
+                f"{manifest.clip_id}: invalid DINO camera entry for {name!r}."
+            )
     npz_path = dino_dir(manifest.clip_dir) / f"{camera_id}.npz"
     if not npz_path.is_file():
         raise DatasetManifestError(
@@ -292,8 +335,12 @@ def load_dino_tokens(
                 raise DatasetManifestError(
                     f"{npz_path}: archive must contain 'tokens' and 'frame_idx' arrays."
                 )
-            tokens = np.asarray(data["tokens"], dtype=np.float16)
-            frame_idx = np.asarray(data["frame_idx"], dtype=np.int64)
+            tokens = data["tokens"]
+            frame_idx = data["frame_idx"]
+            if tokens.dtype != np.float16 or frame_idx.dtype != np.int64:
+                raise DatasetManifestError(
+                    f"{npz_path}: expected float16 tokens and int64 frame_idx."
+                )
     except (OSError, EOFError, BadZipFile, ZlibError) as error:
         raise DatasetManifestError(
             f"Failed to read DINO token archive: clip_id={manifest.clip_id!r}, "
@@ -306,6 +353,10 @@ def load_dino_tokens(
         num_frames=manifest.num_frames,
         context=f"{manifest.clip_id}/{camera_id}",
     )
+    if cameras[camera_id]["num_samples"] != len(frame_idx):
+        raise DatasetManifestError(
+            f"{manifest.clip_id}/{camera_id}: DINO sample count does not match marker."
+        )
     return tokens.astype(np.float32), frame_idx, spec
 
 

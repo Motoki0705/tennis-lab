@@ -1,0 +1,106 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-ball-preprocessing
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 241 items
+
+tests/unit/tasks/ball_detection/data/components/test_affine_augmentation.py . [  0%]
+                                                                         [  0%]
+tests/unit/tasks/ball_detection/data/components/test_source_mix_sampler.py . [  0%]
+........                                                                 [  4%]
+tests/unit/tasks/ball_detection/data/test_mixed_tracknet_datamodule.py . [  4%]
+.....                                                                    [  6%]
+tests/unit/tasks/ball_detection/data/test_staged_datamodule.py .....     [  8%]
+tests/unit/tasks/ball_detection/data/test_staged_sampler.py ............ [ 13%]
+......                                                                   [ 16%]
+tests/unit/tasks/ball_detection/evaluation/test_runner_contract.py ..... [ 18%]
+                                                                         [ 18%]
+tests/unit/tasks/ball_detection/inference/test_trajectory_gate.py ...... [ 20%]
+.                                                                        [ 21%]
+tests/unit/tasks/ball_detection/model_io/test_adapters.py .............. [ 26%]
+.                                                                        [ 27%]
+tests/unit/tasks/ball_detection/model_io/test_normalization.py ......... [ 31%]
+...                                                                      [ 32%]
+tests/unit/tasks/ball_detection/models/test_dinov3_rope.py ...           [ 33%]
+tests/unit/tasks/ball_detection/test_configuration_paths.py .......      [ 36%]
+tests/unit/tasks/ball_detection/test_configuration_semantics.py ........ [ 39%]
+.............................                                            [ 51%]
+tests/unit/tasks/ball_detection/training/test_lightning_module.py ....   [ 53%]
+tests/unit/tasks/ball_detection/training/test_metrics.py ..              [ 54%]
+tests/unit/tasks/ball_detection/training/test_staged_calibration.py .    [ 54%]
+tests/unit/tasks/ball_detection/training/test_staged_runner.py .         [ 55%]
+tests/unit/tasks/ball_detection/visualization/inference/test_empty_matches.py . [ 55%]
+                                                                         [ 55%]
+tests/unit/tasks/ball_detection/visualization/inference/test_loader.py . [ 56%]
+..........                                                               [ 60%]
+tests/unit/tasks/ball_detection/visualization/inference/test_local_data.py . [ 60%]
+F                                                                        [ 60%]
+tests/unit/tasks/ball_detection/visualization/inference/test_peaks.py .. [ 61%]
+.......                                                                  [ 64%]
+tests/unit/tasks/ball_detection/visualization/inference/test_service.py . [ 65%]
+.................                                                        [ 72%]
+tests/unit/tasks/ball_detection/visualization/inference/test_service_refresh.py . [ 72%]
+..........                                                               [ 76%]
+tests/unit/tasks/ball_detection/visualization/review/test_checkpoints.py . [ 77%]
+..................                                                       [ 84%]
+tests/unit/tasks/ball_detection/visualization/review/test_datasets.py .. [ 85%]
+.........                                                                [ 89%]
+tests/unit/tasks/ball_detection/visualization/review/test_web_references.py . [ 89%]
+                                                                         [ 89%]
+tests/unit/tasks/ball_detection/visualization/test_orchestrator.py ..    [ 90%]
+tests/unit/tasks/ball_detection/visualization/test_predict_mdd.py ..     [ 91%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py ..... [ 93%]
+.                                                                        [ 93%]
+tests/unit/tennis_scene/test_pipeline_configuration.py ...............   [100%]
+
+=================================== FAILURES ===================================
+_________ test_cpu_window_inference_matches_labels_in_original_pixels __________
+
+    def test_cpu_window_inference_matches_labels_in_original_pixels() -> None:
+        service = DetectionService(REPO_ROOT)
+        info = curated_checkpoint(service)
+        checkpoint = info.id
+        scenes = service.scenes("tracknet", limit=1)
+        if not scenes["items"]:
+            pytest.skip("No TrackNet scene is available")
+        scene = scenes["items"][0]["id"]
+        start = 20
+        service.validate(checkpoint, scene, start=start, count=8, device="cpu")
+        result = service.infer(
+            checkpoint, scene, start=start, count=8, threshold=0.5, device="cpu"
+        )
+        preview = service.preview(scene, start=start, count=8)
+        assert result["metrics"]["window"]["mode"] == "temporal"
+        assert [item["index"] for item in result["items"]] == list(range(start, start + 8))
+    
+        ground_truth = {
+            item["index"]: item["gt"]["points"] for item in preview["items"]
+        }
+        matched = 0
+        distances: list[float] = []
+        for item in result["items"]:
+            predictions = item["pred"]["points"]
+            targets = ground_truth[item["index"]]
+            assert item["pred"]["rasters"][0]["name"] == "probability"
+            if not predictions or not targets:
+                continue
+            best = min(
+                float(((p["x"] - t["x"]) ** 2 + (p["y"] - t["y"]) ** 2) ** 0.5)
+                for p in predictions
+                for t in targets
+            )
+            distances.append(best)
+            if best <= info.metrics.ball_distance_threshold:
+                matched += 1
+        # The checkpoint's own metric threshold is 4 px in *original* pixels, which
+        # is strict on a 1280x720 clip; the epoch-13 checkpoint still lands most
+        # frames inside it. A broken resize or MDD path collapses this to near zero.
+        assert len(distances) == 8
+>       assert matched >= 5
+E       assert 4 >= 5
+
+tests/unit/tasks/ball_detection/visualization/inference/test_local_data.py:94: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/tasks/ball_detection/visualization/inference/test_local_data.py::test_cpu_window_inference_matches_labels_in_original_pixels
+================== 1 failed, 240 passed, 2 warnings in 16.58s ==================

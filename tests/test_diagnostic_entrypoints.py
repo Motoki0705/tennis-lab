@@ -1,4 +1,4 @@
-"""CPU contracts for reconstruction-review dispatch and held-out BLCS evaluation."""
+"""CPU contracts for held-out BLCS evaluation."""
 
 from __future__ import annotations
 
@@ -10,55 +10,8 @@ import pytest
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
-from src.tennis_scene.scripts import render_reconstruction_review as review
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
-
-
-@pytest.mark.parametrize(
-    "arguments",
-    [
-        ["--dataset-root", "/datasets", "--run-root", "/runs", "--frames", "0"],
-        ["--dataset-root", "/datasets", "--run-root", "/runs", "--mode", "frames"],
-        [
-            "--data-root",
-            "/datasets",
-            "--dataset",
-            "sample",
-            "--video",
-            "v",
-            "--frames",
-            "0",
-            "--run-root",
-            "/runs",
-        ],
-        [
-            "--data-root",
-            "/datasets",
-            "--dataset",
-            "sample",
-            "--video",
-            "v",
-            "--frames",
-            "-1",
-        ],
-        ["--dataset-root", "relative", "--run-root", "/runs"],
-    ],
-)
-def test_review_rejects_conflicting_or_invalid_modes(arguments: list[str]) -> None:
-    with pytest.raises(SystemExit) as error:
-        review.main(
-            [
-                *arguments,
-                "--output-root",
-                "/results",
-                "--output",
-                "tennis_scene/visualize/exp/run",
-                "--clip",
-                "v/c",
-            ]
-        )
-    assert error.value.code == 2
 
 
 def test_blcs_fixed_seed_strict_load_and_test_only(

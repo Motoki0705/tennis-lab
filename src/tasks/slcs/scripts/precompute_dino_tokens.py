@@ -13,7 +13,8 @@ Notes:
     - Dataset, checkpoint, and DINO repository paths are resolved from their
       declared runtime roots before the encoder is loaded.
     - Tokens are written to `annotations/dino_v3/` per clip with a completion
-      marker written last; completed clips are skipped unless overwrite=true.
+      marker written last; compatible completed clips are reused unless overwrite=true.
+      Reuse checks the checkpoint contents as well as manifests, specs and arrays.
     - Per-clip failures are reported at the end and the exit code is non-zero
       if any clip failed.
 """
@@ -27,6 +28,7 @@ from omegaconf import DictConfig
 from src.tasks.slcs.configuration import SLCSPrecomputeConfig
 from src.tasks.slcs.data.dino_precompute import run_precompute
 from src.tasks.slcs.model_io.factory import create_slcs_frame_token_encoder
+from src.utils.checksum import dual_sha256
 from src.utils.hydra import hydra_main
 
 
@@ -34,6 +36,7 @@ def run(config: DictConfig) -> int:
     """Execute precompute; returns a process exit code."""
     runtime = SLCSPrecomputeConfig.from_config(config)
     spec = runtime.data.pipeline.dino_spec
+    checkpoint_sha256 = dual_sha256(runtime.checkpoint_path)
     encoder = create_slcs_frame_token_encoder(runtime)
 
     report = run_precompute(
@@ -42,6 +45,7 @@ def run(config: DictConfig) -> int:
         spec,
         batch_size=runtime.batch_size,
         overwrite=runtime.overwrite,
+        checkpoint_sha256=checkpoint_sha256,
         generator={
             "script": "src/tasks/slcs/scripts/precompute_dino_tokens.py",
             "backbone": spec.backbone,

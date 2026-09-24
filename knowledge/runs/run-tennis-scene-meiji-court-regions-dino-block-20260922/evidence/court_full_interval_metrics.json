@@ -1,0 +1,26 @@
+{
+  "cam0": {
+    "all_visible_frames": 1010,
+    "visible_points": 14140,
+    "mean_error_px": 9.927464882672615,
+    "median_error_px": 8.341543394414227,
+    "p95_error_px": 18.52688945349262,
+    "first_frame_mean_px": 10.782743083086343
+  },
+  "cam1": {
+    "all_visible_frames": 1010,
+    "visible_points": 14140,
+    "mean_error_px": 13.129072637822086,
+    "median_error_px": 10.388039341356777,
+    "p95_error_px": 28.20111653932178,
+    "first_frame_mean_px": 16.645575434270395
+  },
+  "cam2": {
+    "all_visible_frames": 1010,
+    "visible_points": 14140,
+    "mean_error_px": 8.374166851061755,
+    "median_error_px": 8.719633601111209,
+    "p95_error_px": 12.389126399105175,
+    "first_frame_mean_px": 8.0536277785548
+  }
+}

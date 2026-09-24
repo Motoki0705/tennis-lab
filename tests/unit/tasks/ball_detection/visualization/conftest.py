@@ -197,7 +197,7 @@ def tiny_model_config(
         # backbone, so it is deliberately outside this cheap fixture.
         raise ValueError(f"tiny_model_config does not support {model_name!r}.")
     return OmegaConf.create(
-        {"model": model, "data": {"image_size": list(image_size)}}
+        {"model": model, "data": {"image_size": list(image_size), "augmentation": {"normalize_imagenet": {"enabled": False}}}}
     )
 
 

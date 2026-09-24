@@ -1,0 +1,178 @@
+{
+  "court_input": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T191934Z-pipeline/court_kp_result.json",
+  "court_sha256": "e193110c5e332834631237a826104be4cf0615c0cb4a5472ccd31ba83f784923",
+  "filter": "existing court_footpoint_filter enabled; margins 1m sideline / 5m baseline; model-derived Court only",
+  "records": [
+    {
+      "camera": "cam0",
+      "seconds": 312.8618838789989,
+      "polygon_px": [
+        [
+          1013.6500244140625,
+          358.87127685546875
+        ],
+        [
+          1241.7001953125,
+          334.8659362792969
+        ],
+        [
+          852.569091796875,
+          938.6590576171875
+        ],
+        [
+          210.9071502685547,
+          616.5291137695312
+        ]
+      ],
+      "old_ids": [
+        1,
+        2
+      ],
+      "new_ids": [
+        1,
+        2
+      ],
+      "old_to_new_proposal": [
+        0,
+        1
+      ],
+      "bbox_costs_median": [
+        [
+          0.0,
+          4.359797477722168
+        ],
+        [
+          12.638323783874512,
+          0.0
+        ]
+      ],
+      "matched_bbox_median": [
+        0.0,
+        0.0
+      ],
+      "matched_bbox_p95": [
+        0.0,
+        0.0
+      ],
+      "opposite_order_better_frames": [],
+      "observed_counts": [
+        1010,
+        684
+      ]
+    },
+    {
+      "camera": "cam1",
+      "seconds": 305.47398695599986,
+      "polygon_px": [
+        [
+          289.8787841796875,
+          523.3621826171875
+        ],
+        [
+          712.0733642578125,
+          492.8092041015625
+        ],
+        [
+          2243.991943359375,
+          718.98779296875
+        ],
+        [
+          785.984619140625,
+          1876.3182373046875
+        ]
+      ],
+      "old_ids": [
+        1,
+        2
+      ],
+      "new_ids": [
+        1,
+        2
+      ],
+      "old_to_new_proposal": [
+        0,
+        1
+      ],
+      "bbox_costs_median": [
+        [
+          0.0,
+          2.858095645904541
+        ],
+        [
+          10.375598907470703,
+          0.0
+        ]
+      ],
+      "matched_bbox_median": [
+        0.0,
+        0.0
+      ],
+      "matched_bbox_p95": [
+        0.0,
+        0.013167819008231163
+      ],
+      "opposite_order_better_frames": [],
+      "observed_counts": [
+        1010,
+        940
+      ]
+    },
+    {
+      "camera": "cam2",
+      "seconds": 305.50307176099886,
+      "polygon_px": [
+        [
+          3175.67333984375,
+          1306.9114990234375
+        ],
+        [
+          -1963.234619140625,
+          1532.2940673828125
+        ],
+        [
+          711.2093505859375,
+          395.3953552246094
+        ],
+        [
+          1109.581787109375,
+          392.3114318847656
+        ]
+      ],
+      "old_ids": [
+        1,
+        2
+      ],
+      "new_ids": [
+        1,
+        2
+      ],
+      "old_to_new_proposal": [
+        0,
+        1
+      ],
+      "bbox_costs_median": [
+        [
+          0.0,
+          0.8372650742530823
+        ],
+        [
+          4.1237311363220215,
+          0.21369752287864685
+        ]
+      ],
+      "matched_bbox_median": [
+        0.0,
+        0.21369752287864685
+      ],
+      "matched_bbox_p95": [
+        0.0,
+        0.9612497091293335
+      ],
+      "opposite_order_better_frames": [],
+      "observed_counts": [
+        1010,
+        298
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "python": "3.11.15",
+  "packages": {
+    "torch": "2.13.0",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "opencv-python": "5.0.0.93",
+    "hydra-core": "1.3.6",
+    "omegaconf": "2.3.1",
+    "matplotlib": "3.11.1"
+  },
+  "dino_source_commit": "d84a491d41898b3befd8294d1cf2614661fc0953",
+  "inference_gpu": {
+    "visible_device": "0",
+    "name": "NVIDIA GeForce RTX 5060 Ti",
+    "compute_capability": "12.0",
+    "dino_extension_cubin": "sm_120",
+    "verification": "nvidia-smi compute_cap and cuobjdump --list-elf"
+  }
+}

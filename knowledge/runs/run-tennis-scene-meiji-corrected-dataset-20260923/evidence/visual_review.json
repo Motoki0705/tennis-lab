@@ -1,0 +1,142 @@
+{
+  "reviewed_at_utc": "2026-09-23T10:09:27.108828+00:00",
+  "inspected_images": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-ball_detection_viz-contact.jpg",
+      "sha256": "c4d7971a2adf77be2961be15537b144c5f40f7f9e45f46c38ef0c126ab5d7f91"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-blcs_viz-contact.jpg",
+      "sha256": "2a13e9e4734072a7ed4eb92953c9d3e2c5fc124de37f4fb557c2d86922674214"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-court_kp_viz-contact.jpg",
+      "sha256": "bc3d2838f1cbe67e3ebf5167c00431b09f862751583fb84c3e1e9c478025383d"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_alignment_viz-contact.jpg",
+      "sha256": "6ec4e371a27ec8d8fc67e105f55732eaa3fc0d58de8671031b24456d2aaf88eb"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_alignment_viz-contact.jpg",
+      "sha256": "b1a77b4d502ca2a1e3c58fe97652c78f875123b7465650c4be1de9b6347cf31f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_viz-contact.jpg",
+      "sha256": "c224549f9d9a17676163427ea6637ffecbd1b0a63eb2efbe4e5a32f453d61718"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-plcs_viz-contact.jpg",
+      "sha256": "49203c8d8b2ce7a62ed89229ab7fdc68030b108431c6e476df449e9612e2b2d7"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-plcs_viz-contact.jpg",
+      "sha256": "dce7a4137c86fe56735f4a2f972caf7ecc1e7a151aa4a0157c756ba9a504ed83"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-scene-contact.jpg",
+      "sha256": "91596a92bf266c00ed2b053ff1bcce24425c1694a778e16a02c6b8307a14ca44"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-scene-contact.jpg",
+      "sha256": "58c51e0020d99a238f8885983296f2ba308f6dcea3660ddddaa4619c0727bd1f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-ball_detection_viz-extremes.jpg",
+      "sha256": "d11f8313d7eb07fba170ce8d637921a0625b4f972dc2fd584f02d249ef416f57"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-blcs_viz-extremes.jpg",
+      "sha256": "ac77abef11b5bd4c7b88bb80fc99347f1fd1cd2d954305e3f408c87f11b9609e"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-court_kp_viz-extremes.jpg",
+      "sha256": "649434865ebb34d4e27df25ca1bac11f881b8fbe8bc5e617e42d08067ca74254"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_alignment_viz-extremes.jpg",
+      "sha256": "e63e5f97543f353baedcbec9b2f03396d2664682c2df579a26c940a82a7c807a"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_alignment_viz-extremes.jpg",
+      "sha256": "e15f625a19529fede67c7d1aca6493118f3a08ff52fd4c76ff7d928c3021995c"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_viz-extremes.jpg",
+      "sha256": "3150801952238d3892f70571fd3e118ce3e70c03291ac7cc34b46870e1841444"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-plcs_viz-extremes.jpg",
+      "sha256": "cff8b7f2ecae2141861f1aa5bb74ad1e225f427b581e1a66b6a29550e3df3162"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-plcs_viz-extremes.jpg",
+      "sha256": "600e82e148f2b437167a07a969ecdbfb5e479be9dffc2d7a333c7060b8ab9d3d"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-scene-extremes.jpg",
+      "sha256": "e64d3ef158117d52bd1ef47e4d06d0d37e551676d23d5e742b491f01531bcfa8"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-scene-extremes.jpg",
+      "sha256": "de989798e1ed1558dddb6a031631d6c9857695e43a1f046564f4a8156ce672b8"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/figures/pipeline-ball-max-step-source.jpg",
+      "sha256": "4ab48011c3dfde8b1cb0085fae57bfeffa1ca6ed7e729bc46b8b1bb9af71669d"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/figures/pipeline-player-max-step-crops.jpg",
+      "sha256": "f328fc36d5447e909bf715e4001d5b1dc592e932a88a3a526db72c5ee71410d0"
+    }
+  ],
+  "byte_identical_other_phase_images": [
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-ball_detection_viz-contact.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-ball_detection_viz-contact.jpg",
+      "sha256": "c4d7971a2adf77be2961be15537b144c5f40f7f9e45f46c38ef0c126ab5d7f91"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-blcs_viz-contact.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-blcs_viz-contact.jpg",
+      "sha256": "2a13e9e4734072a7ed4eb92953c9d3e2c5fc124de37f4fb557c2d86922674214"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-court_kp_viz-contact.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-court_kp_viz-contact.jpg",
+      "sha256": "bc3d2838f1cbe67e3ebf5167c00431b09f862751583fb84c3e1e9c478025383d"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_viz-contact.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_viz-contact.jpg",
+      "sha256": "c224549f9d9a17676163427ea6637ffecbd1b0a63eb2efbe4e5a32f453d61718"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-ball_detection_viz-extremes.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-ball_detection_viz-extremes.jpg",
+      "sha256": "d11f8313d7eb07fba170ce8d637921a0625b4f972dc2fd584f02d249ef416f57"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-blcs_viz-extremes.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-blcs_viz-extremes.jpg",
+      "sha256": "ac77abef11b5bd4c7b88bb80fc99347f1fd1cd2d954305e3f408c87f11b9609e"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-court_kp_viz-extremes.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-court_kp_viz-extremes.jpg",
+      "sha256": "649434865ebb34d4e27df25ca1bac11f881b8fbe8bc5e617e42d08067ca74254"
+    },
+    {
+      "inspected": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/pipeline-gvhmr_viz-extremes.jpg",
+      "equivalent": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260923T020139Z/dataset-gvhmr_viz-extremes.jpg",
+      "sha256": "3150801952238d3892f70571fd3e118ce3e70c03291ac7cc34b46870e1841444"
+    }
+  ],
+  "findings": [
+    "All entrypoint graphics appear at normal and candidate-anomaly times; both players and predicted court are represented.",
+    "Ball overlays are absent at selected normal cam0 frames when ball_vis is false, and appear at predicted frames; false positions and large trails occur.",
+    "3D scene and BLCS views show out-of-court excursions and discontinuities.",
+    "PLCS and aligned GVHMR positions/headings visibly disagree; solver success is not accuracy.",
+    "Extreme contact sheets use overview thumbnails; original movies and trajectory plots retain full dimensions/axes."
+  ]
+}

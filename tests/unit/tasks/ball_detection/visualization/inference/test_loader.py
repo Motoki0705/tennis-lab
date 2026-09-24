@@ -8,10 +8,13 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.ball_detection.visualization.inference.loader import (
+from src.tasks.ball_detection.inference.checkpoint import (
     BallInferenceCheckpointError,
-    load_ball_model,
+    load_ball_checkpoint,
 )
+from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
+from src.tasks.ball_detection.visualization.inference.loader import load_ball_model
+from src.utils.configuration import PathResolver, RuntimePathRoots
 
 
 def test_loads_tiny_checkpoint_strictly(
@@ -70,3 +73,77 @@ def test_cuda_request_without_cuda_is_rejected(
     path = make_tiny_checkpoint(tmp_path / "run.ckpt")
     with pytest.raises(RuntimeError, match="CUDA is unavailable"):
         load_ball_model(path, device="cuda")
+
+
+@pytest.mark.parametrize("normalize", [False, True])
+def test_predictor_restores_model_only_checkpoint_and_matches_ui(
+    tmp_path: Path, make_tiny_checkpoint: Callable[..., Path], monkeypatch: pytest.MonkeyPatch, normalize: bool
+) -> None:
+    path = make_tiny_checkpoint(tmp_path / "ckpt" / "run.ckpt", num_frames=2)
+    raw = torch.load(path, weights_only=False)
+    raw["hyper_parameters"]["config"]["data"]["augmentation"]["normalize_imagenet"] = {
+        "enabled": normalize, "mean": [.1, .2, .3], "std": [.2, .4, .8],
+    }
+    torch.save(raw, path)
+    roots = RuntimePathRoots(
+        project_root=tmp_path,
+        checkpoint_root=tmp_path / "ckpt",
+        data_root=tmp_path / "data",
+        artifact_root=tmp_path / "artifacts",
+        output_root=tmp_path / "outputs",
+        cache_root=tmp_path / "cache",
+        external_asset_root=tmp_path / "external",
+    )
+
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Inference must not construct a Lightning training module")
+
+    monkeypatch.setattr(BallDetectionPredictor, "_load_single_lightning_module", forbidden)
+    predictor = BallDetectionPredictor.load_from_checkpoint(
+        path, resolver=PathResolver(roots), device="cpu", subpixel_refine=True,
+        strict=True, weights_only=False,
+    )
+    ui = load_ball_model(path, device="cpu")
+    assert predictor.configured_frames == ui.num_frames == 2
+    assert predictor.image_normalization.enabled is normalize
+    if normalize:
+        assert predictor.image_normalization.mean == (.1, .2, .3)
+        assert predictor.image_normalization.std == (.2, .4, .8)
+    assert not predictor.model.training
+    images = torch.rand(1, 2, 3, 64, 128)
+    actual = predictor.predict(images)
+    with torch.no_grad():
+        call = ui.adapter.prepare_model_call(images, image_normalization=ui.image_normalization)
+        expected = ui.adapter.prediction(ui.model(*call.model_args), call, subpixel_refine=True)
+    torch.testing.assert_close(actual.heatmaps, expected.heatmaps)
+    torch.testing.assert_close(actual.coords, expected.coords)
+
+
+def test_core_checkpoint_requires_model_and_declared_preprocessing(
+    tmp_path: Path, make_tiny_checkpoint: Callable[..., Path]
+) -> None:
+    path = make_tiny_checkpoint(tmp_path / "run.ckpt")
+    raw = torch.load(path, weights_only=False)
+    raw["hyper_parameters"]["config"].pop("data")
+    torch.save(raw, path)
+    with pytest.raises(BallInferenceCheckpointError, match="normalize_imagenet"):
+        load_ball_checkpoint(path)
+
+
+def test_surplus_model_weight_is_rejected(
+    tmp_path: Path, make_tiny_checkpoint: Callable[..., Path]
+) -> None:
+    path = make_tiny_checkpoint(
+        tmp_path / "run.ckpt",
+        state_transform=lambda state: {**state, "model.unexpected": torch.zeros(1)},
+    )
+    with pytest.raises(BallInferenceCheckpointError, match="Unexpected key"):
+        load_ball_checkpoint(path)
+
+
+def test_core_checkpoint_forbids_non_strict_loading(
+    tmp_path: Path, make_tiny_checkpoint: Callable[..., Path]
+) -> None:
+    path = make_tiny_checkpoint(tmp_path / "run.ckpt")
+    with pytest.raises(ValueError, match="requires strict"):
+        load_ball_checkpoint(path, strict=False)

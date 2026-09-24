@@ -103,7 +103,9 @@ def build_mdd_frames(
     consumes to stay faithful to the model input.
     """
     with torch.no_grad():
-        features = predictor.adapter.mdd_features(clip.model_images.unsqueeze(0))
+        features = predictor.adapter.mdd_features(
+            clip.model_images.unsqueeze(0), image_normalization=predictor.image_normalization,
+        )
     brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()
     darken = features[0, 1].clamp(0.0, 1.0).cpu().numpy()
 

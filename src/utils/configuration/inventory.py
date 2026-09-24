@@ -137,9 +137,8 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+    "src.tennis_scene.chat_annotation.scripts.prepare": "tennis_scene.chat_annotation.prepare",
     "src.tasks.blcs.scripts.evaluate_real": "blcs.evaluate_real",
-    "src.tennis_scene.scripts.import_broadcast_ball": "tennis_scene.import_broadcast_ball",
-    "src.tennis_scene.scripts.prepare_blcs_real_dataset": "tennis_scene.prepare_blcs_real_dataset",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
@@ -184,20 +183,18 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.plcs.scripts.preview_augmentation": "plcs.preview_augmentation",
     "src.tasks.plcs.scripts.train": "plcs.train",
     "src.tasks.plcs.scripts.train_association": "plcs.association",
+
+    "src.tasks.plcs.scripts.train_triangulation_residual": "plcs.triangulation_residual.train",
     "src.tasks.plcs.scripts.visualize": "plcs.visualize",
     "src.tasks.slcs.scripts.analyze_predictions": "slcs.analyze_predictions",
     "src.tasks.slcs.scripts.evaluate": "slcs.evaluate",
+    "src.tasks.slcs.scripts.generate_dataset": "slcs.generate_dataset",
     "src.tasks.slcs.scripts.make_splits": "slcs.make_splits",
     "src.tasks.slcs.scripts.precompute_dino_tokens": "slcs.precompute_dino_tokens",
     "src.tasks.slcs.scripts.predict_clip": "slcs.predict_clip",
     "src.tasks.slcs.scripts.train": "slcs.train",
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
-    "src.tennis_scene.scripts.export_clips": "tennis_scene.export_clips",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
-    "src.tennis_scene.scripts.build_slcs_dataset": "tennis_scene.build_slcs_dataset",
-    "src.tennis_scene.scripts.assemble_slcs_dataset": "tennis_scene.assemble_slcs_dataset",
-    "src.tennis_scene.scripts.report_slcs_dataset_quality": "tennis_scene.report_slcs_dataset_quality",
-    "src.tennis_scene.scripts.reconstruct_reference_clip": "tennis_scene.reference_clip",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
     "src.tennis_scene.scripts.visualize_tasks": "tennis_scene.visualize_tasks",
@@ -205,9 +202,8 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+    "src.tennis_scene.chat_annotation.scripts.prepare": "src.tennis_scene.chat_annotation.configuration.validate_prepare_config",
     "src.tasks.blcs.scripts.evaluate_real": "src.tasks.blcs.evaluation.configuration.validate_real_evaluation",
-    "src.tennis_scene.scripts.import_broadcast_ball": "src.tennis_scene.dataset_pipeline.preparation.validate_broadcast_import_config",
-    "src.tennis_scene.scripts.prepare_blcs_real_dataset": "src.tennis_scene.dataset_pipeline.preparation.validate_blcs_preparation_config",
     "src.synthetic_data_generation.scripts.run_appearance_variant": (
         "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary"
     ),
@@ -262,20 +258,18 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
     "src.tasks.plcs.scripts.train_association": "src.tasks.plcs.configuration.validate_association_config",
+
+    "src.tasks.plcs.scripts.train_triangulation_residual": "src.tasks.plcs.configuration._validate_residual_boundary",
     "src.tasks.plcs.scripts.visualize": "src.tasks.plcs.configuration._validate_visualization_boundary",
     "src.tasks.slcs.scripts.analyze_predictions": "src.tasks.slcs.configuration.validate_analysis_boundary",
     "src.tasks.slcs.scripts.evaluate": "src.tasks.slcs.configuration.validate_evaluation_boundary",
+    "src.tasks.slcs.scripts.generate_dataset": "src.tasks.slcs.configuration.validate_generation_boundary",
     "src.tasks.slcs.scripts.make_splits": "src.tasks.slcs.configuration.validate_split_boundary",
     "src.tasks.slcs.scripts.precompute_dino_tokens": "src.tasks.slcs.configuration.validate_precompute_boundary",
     "src.tasks.slcs.scripts.predict_clip": "src.tasks.slcs.configuration.validate_prediction_boundary",
     "src.tasks.slcs.scripts.train": "src.tasks.slcs.configuration.validate_training_boundary",
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
-    "src.tennis_scene.scripts.export_clips": "src.tennis_scene.configuration.validate_export_clips_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
-    "src.tennis_scene.scripts.build_slcs_dataset": "src.tennis_scene.dataset_pipeline.configuration.validate_build_config",
-    "src.tennis_scene.scripts.assemble_slcs_dataset": "src.tennis_scene.dataset_pipeline.assemble.validate_assembly_config",
-    "src.tennis_scene.scripts.report_slcs_dataset_quality": "src.tennis_scene.dataset_pipeline.quality_report.validate_quality_report_config",
-    "src.tennis_scene.scripts.reconstruct_reference_clip": "src.tennis_scene.configuration.validate_reference_clip_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
     "src.tennis_scene.scripts.visualize_tasks": "src.tennis_scene.configuration.validate_visualize_tasks_boundary",
@@ -314,12 +308,12 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.tennis_scene.scripts.build_real_rgb": (
-        "tennis_scene.build_real_rgb",
+    "src.tennis_scene.chat_annotation.scripts.annotate": (
+        "tennis_scene.chat_annotation.tools",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tennis_scene.scripts.render_reconstruction_review": (
-        "tennis_scene.reconstruction_review",
+    "src.tasks.plcs.scripts.migrate_residual_checkpoint": (
+        "plcs.residual_checkpoint_migration",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     **{
@@ -331,6 +325,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     },
     "src.tasks.court_detection.scripts.audit_hybrid_inference": (
         "court_detection.hybrid_inference_audit",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.plcs.scripts.infer_triangulation_residual": (
+        "plcs.triangulation_residual.inference",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.base.scripts.inference_worker": (
@@ -381,10 +379,6 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "blcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tennis_scene.scripts.migrate_video_clip_layout": (
-        "tennis_scene.video_clip_migration",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
 }
 
 
@@ -417,6 +411,14 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.annotate", "main", domain="tennis_scene", executable_module=True),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.chat_annotation.scripts.prepare"),
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.migrate_residual_checkpoint",
+        "main",
+        domain="plcs",
+        executable_module=True,
+    ),
     _non_hydra_boundary(
         "src.tasks.court_detection.scripts.audit_hybrid_inference",
         "main",
@@ -428,6 +430,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.run_appearance_variant",
         path_authority="src.synthetic_data_generation.appearance.configuration.require_absolute_path",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.infer_triangulation_residual",
+        "main",
+        domain="plcs",
+        executable_module=True,
     ),
     _non_hydra_boundary(
         "src.tasks.base.scripts.inference_worker",
@@ -487,12 +495,6 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "src.tasks.blcs.scripts.inference_ui",
         "main",
         domain="blcs",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.scripts.migrate_video_clip_layout",
-        "main",
-        domain="tennis_scene",
         executable_module=True,
     ),
     _runtime_boundary(
@@ -596,24 +598,18 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.preview_augmentation"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train_association"),
+
+    _runtime_boundary("plcs", "src.tasks.plcs.scripts.train_triangulation_residual"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.visualize"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.analyze_predictions"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.evaluate"),
+    _runtime_boundary("slcs", "src.tasks.slcs.scripts.generate_dataset"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.make_splits"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.precompute_dino_tokens"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.predict_clip"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.train"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
-    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_clips"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
-    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.build_slcs_dataset"),
-    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.assemble_slcs_dataset"),
-    _runtime_boundary(
-        "tennis_scene", "src.tennis_scene.scripts.report_slcs_dataset_quality"
-    ),
-    _runtime_boundary(
-        "tennis_scene", "src.tennis_scene.scripts.reconstruct_reference_clip"
-    ),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualization"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualize_tasks"),
@@ -644,22 +640,6 @@ _RUNTIME_BOUNDARIES += tuple(
 
 _RUNTIME_BOUNDARIES += (
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.evaluate_real"),
-    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.import_broadcast_ball"),
-    _runtime_boundary(
-        "tennis_scene", "src.tennis_scene.scripts.prepare_blcs_real_dataset"
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.scripts.build_real_rgb",
-        "main",
-        domain="tennis_scene",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.scripts.render_reconstruction_review",
-        "main",
-        domain="tennis_scene",
-        executable_module=True,
-    ),
 )
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES

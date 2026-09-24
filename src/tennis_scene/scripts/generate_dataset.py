@@ -105,7 +105,10 @@ def main(cfg: DictConfig) -> int:
         else:
             LOGGER.info(f"{outcome.clip_id}: {outcome.status}")
     failed = sum(outcome.status == "failed" for outcome in outcomes)
-    return 1 if failed else 0
+    # A task return value is discarded by Hydra's command-line wrapper.
+    if failed:
+        raise SystemExit(1)
+    return 0
 
 
 if __name__ == "__main__":

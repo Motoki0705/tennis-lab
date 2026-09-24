@@ -30,7 +30,6 @@ def test_help_lists_project_workflows() -> None:
 
     assert result.returncode == 0, result.stderr
     for command in (
-        "ci",
         "doctor",
         "lint",
         "setup",
