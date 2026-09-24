@@ -7,19 +7,19 @@ view_half_turnsの手動入力を要求しません。根拠不足は欠測ま�
 ## 標準経路
 
 1. Court hybrid推論、DINO＋BoT-SORT＋ViTPose、ボール検出。
-2. camera-local観測とreferenceから、PLCSがsideと人物のclip内IDを推論。ボールは各camera/frameの単一検出を使用。
+2. camera-local観測とreferenceから、PLCSの独立した人物Re-ID・court sideモデルを推論。ボールは各camera/frameの単一検出を使用。
 3. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
 4. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
 5. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 6. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
 
-対応範囲は同期・同FPS・同解像度の3〜5 view、同時4物体、clip内10 IDです。
-associationは約30fpsでclip全体を各1回処理します。短い入力は512へpadし、
+対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計4人物、球は各camera/frame高々1検出です。
+各モデルは約30fpsでclip全体を各1回処理します。短い入力は512へpadし、
 実入力の上限は1024です。時間圧縮や暗黙のwindow分割は行いません。
 reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
 
 設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。
-PLCS association checkpointはcamera-local v2契約を必要とします。既定の配布名は配置規約であり、
+Re-IDとsideは別checkpointです。新sideのアーキテクチャは暫定で、今回はRe-IDだけを学習します。既定の配布名は配置規約であり、
 重みを自動取得・自動選定する処理はありません。旧3Dモデルへのfallbackもありません。
 モデル規模とtracking設定はcheckpointが所有します。
 
@@ -28,7 +28,8 @@ PLCS association checkpointはcamera-local v2契約を必要とします。既�
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' \
-  plcs_association.checkpoint=plcs/view-association-global-mha-mhc-v2.ckpt
+  plcs_reid.checkpoint=plcs/player-reid-v1.ckpt \
+  court_side.checkpoint=plcs/court-side-v1.ckpt
 ```
 
 動画はDATA、checkpointはCHECKPOINT、外部モデルはEXTERNAL_ASSET、sceneはOUTPUT、
@@ -42,7 +43,7 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 | pipeline/orchestrator.py | 構築・同期検証・reference・実行receipt |
 | pipeline/model_io/observations.py | pixel観測、confidence、実検出mask、raw検出対応 |
 | pipeline/model_io/people.py / body.py | 2D観測と身体復元のtyped adapter |
-| pipeline/components/view_association.py | task-owned predictorの遅延ロード・呼出し |
+| pipeline/components/person_association.py | task-owned predictorの遅延ロード・呼出し |
 | pipeline/components/camera_geometry.py | H代表frame、side評価、共通K/R/t |
 | pipeline/components/player_reconstruction.py / ball_reconstruction.py | 人物ID別再構成、身体配置、単一球の三角測量 |
 | motion_alignment/ | COCO17への時系列配置とhip/SMPL root差を補正したrenderer変換 |
@@ -51,8 +52,7 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 | pipeline/utilts/ | Court reference・元frame対応などの補助 |
 
 汎用三角測量は[src/utils/geometry/triangulation.py](../utils/geometry/triangulation.py)、
-associationモデルは[共有文書](../tasks/base/ASSOCIATION.md)が正本です。
-association_state.pyはwindow用helperであり、標準経路には接続しません。
+人物モデルの契約は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)が正本です。
 
 ## 座標・対応
 
@@ -62,10 +62,9 @@ CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけ�
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
 task全体の検出0件ではassociationをロード・実行しません。
-IDは一対一割当後、確率と次善割当との差で採否判定します。FP・欠測・曖昧性を
-別理由で記録し、不確定IDを幾何や時間伝播へ使用しません。
-元frameへは両端の同じ確定IDと、実検出の一意な位置対応がある場合だけIDを戻します。
-観測座標や3Dを外挿して欠測を埋める処理はありません。
+Re-IDはcosineでcamera間の人物groupを作り、元動画のID復元にはtracker IDを使います。
+補間やUV距離による別の人物trackingを挟みません。無観測の人物にIDは割り当てません。
+ボールにはID推論・side推論・候補選択モデルを置きません。
 
 PLCSが推定したsideには、最低evidence、referenceとの接続性、絶対的な幾何品質を
 要求します。ボール観測も幾何検証に使いますがside/IDモデルは持ちません。Courtは成功したHのmedoidを選び、
@@ -108,18 +107,12 @@ statusは要求branchに有効結果のあるok、一部だけのpartial、両ta
 校正・対応・3Dを成立させられないfailedです。okは全frameの有効性を保証しません。
 有効frame数を別記し、emptyではsideや3D provenanceを捏造しません。
 
-実重みの長さ・view数・確度判定の検証は
-[association_integration.py](../../tests/benchmarks/association_integration.py)を使用します。
-棄却IDも不正解へ算入します。60epoch完了、side/ID精度、GPUメモリ、実動画の校正・
-3D有効率を確認してから配布重みを選定します。スモーク完走だけを本番合格としません。
+モデルと固定slotの検証は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)を参照してください。
+学習完了と実動画での校正・3D精度は別に評価します。sideの学習済み新checkpointは未作成です。
 
 ## 他の入口
 
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。
 - [clip_studio](clip_studio/README.md): 同期・ラリーclip切り出し。
-- [reference_pipeline](reference_pipeline/README.md): 旧referenceモデルの実験経路。
-- [dataset_pipeline](dataset_pipeline/README.md): SLCS専用実RGB教師生成。
-- [motion_alignment](motion_alignment/README.md): COCO17配置の目的関数・支持条件・診断とv1読込互換。
-
-reference/SLCS専用経路は既存設定を維持します。合成データ生成は
-[src/synthetic_data_generation](../synthetic_data_generation/README.md)が担当します。
+- [motion_alignment](motion_alignment/README.md): COCO17への身体配置。
+- [synthetic_data_generation](../synthetic_data_generation/README.md): 合成データ生成。

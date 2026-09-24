@@ -54,15 +54,6 @@ def compose_blcs_training(
     generator_config: GeneratorConfig | None,
 ) -> BLCSTrainingComposition:
     """Select the complete standard or tracking runtime before any loop starts."""
-    if str(config.model.name) == "blcs_view_association":
-        from src.tasks.blcs.data.association_datamodule import BLCSAssociationDataModule
-        from src.tasks.blcs.training.association_lightning_module import (
-            BLCSAssociationLightningModule,
-        )
-
-        return BLCSTrainingComposition(
-            BLCSAssociationDataModule(config), BLCSAssociationLightningModule(config)
-        )
     binding = compose_blcs_model_io(config)
     backend = str(config.data.backend)
     adapter = binding.adapter

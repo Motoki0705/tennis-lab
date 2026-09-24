@@ -13,7 +13,7 @@ from src.tasks.plcs.data.augmentation.residual import (
     fit_court_rig,
     fixed_six_camera_rig,
 )
-from src.tennis_scene.pipeline.court_reference import fit_camera
+from src.tennis_scene.pipeline.utilts.court_reference import fit_camera
 from src.utils.geometry.planar_camera import (
     PlanarCameraFailure,
     PlanarCameraFit,

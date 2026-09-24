@@ -23,6 +23,7 @@ from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
     build_plcs_lightning_module,
 )
+from src.utils.configuration import PathRole
 from src.utils.schema.court_normalization import validate_court_coordinate_normalization
 
 
@@ -30,10 +31,10 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS."""
 
     def prepare_config(self, config: Any) -> None:
-        if str(config.model.name) == "plcs_view_association":
-            from src.tasks.plcs.configuration import validate_association_config
+        if str(config.model.name) in {"plcs_player_reid", "plcs_court_side"}:
+            from src.tasks.plcs.association_configuration import validate_person_config
 
-            validate_association_config(config)
+            validate_person_config(config)
         elif config.model.name == "plcs_triangulation_residual":
             validate_residual_config(config)
         else:
@@ -67,7 +68,7 @@ class PLCSTrainingRunner(BaseTrainingRunner):
             )
             if not isinstance(checkpoint, dict):
                 raise ValueError(f"Invalid PLCS init_weights checkpoint: {init_path}.")
-            if str(lightning_module.config.model.name) in {"plcs_view_association", "plcs_triangulation_residual"}:
+            if str(lightning_module.config.model.name) in {"plcs_player_reid", "plcs_court_side", "plcs_triangulation_residual"}:
                 lightning_module.on_load_checkpoint(checkpoint)
                 lightning_module.load_state_dict(checkpoint["state_dict"], strict=True)
                 return
@@ -112,7 +113,7 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     ) -> list[Any]:
         extras: list[Any] = super().callbacks_extra(config, datamodule, logger)
 
-        if str(config.model.name) in {"plcs_view_association", "plcs_triangulation_residual"}:
+        if str(config.model.name) in {"plcs_player_reid", "plcs_court_side", "plcs_triangulation_residual"}:
             return extras
         runtime = PLCSTrainingConfig.from_config(config)
         if runtime.data.backend != "chunked":
@@ -132,10 +133,23 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         callbacks: list[Any],
     ) -> None:
+        from src.tasks.plcs.training.association_lightning_module import (
+            PLCSAssociationLightningModule,
+        )
         from src.tasks.plcs.training.residual_lightning_module import (
             ResidualLightningModule,
         )
 
+        if isinstance(lightning_module, PLCSAssociationLightningModule):
+            monitored = [c for c in callbacks if isinstance(c, ModelCheckpoint) and c.monitor == "val/loss"]
+            if len(monitored) != 1 or not monitored[0].best_model_path:
+                raise RuntimeError("Person model testing requires a validation-selected checkpoint")
+            best = Path(monitored[0].best_model_path)
+            results = trainer.test(lightning_module, datamodule=datamodule, ckpt_path=str(best), weights_only=False)
+            output = lightning_module.path_resolver.resolve(PathRole.OUTPUT, str(lightning_module.config.run.output_dir))
+            (output / "evaluation.json").write_text(json.dumps({"checkpoint": str(best), "selection": "minimum val/loss", "test": results}, indent=2))
+            print(f"BEST_CHECKPOINT={best}", flush=True)
+            return
         if not isinstance(lightning_module, ResidualLightningModule):
             super().test_after_fit(trainer, lightning_module, datamodule, callbacks)
             return

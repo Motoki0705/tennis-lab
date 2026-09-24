@@ -23,7 +23,8 @@ protected_override_keys = [
   "people_models.gvhmr_checkpoint",
   "people_models.body_models_dir",
   "ball_detection.checkpoint",
-  "plcs_association.checkpoint",
+  "plcs_reid.checkpoint",
+  "court_side.checkpoint",
   "cache.directory",
 ]
 outputs = ["outputs/colab/tennis_scene"]

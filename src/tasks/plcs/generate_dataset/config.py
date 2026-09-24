@@ -65,6 +65,7 @@ class PLCSGenerationConfig:
     val_ratio: float
     test_ratio: float
     split_group: str
+    require_uniform_occupancy: bool
 
     OUTPUT_ROLE: ClassVar[PathRole] = PathRole.DATA
 
@@ -104,9 +105,11 @@ class PLCSGenerationConfig:
                 "val_ratio",
                 "test_ratio",
                 "split_group",
+                "require_uniform_occupancy",
             },
             path="run",
         )
+        require_uniform = cast(bool, require_config_value(run, "require_uniform_occupancy", bool, path="run"))
         split_group = run.get("split_group", "scene")
         if split_group not in {"scene", "motion_source"}:
             raise SemanticConfigurationError(
@@ -189,6 +192,7 @@ class PLCSGenerationConfig:
             val_ratio=ratios[1],
             test_ratio=ratios[2],
             split_group=split_group,
+            require_uniform_occupancy=require_uniform,
         )
 
 

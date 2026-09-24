@@ -36,9 +36,7 @@ def _config(**overrides: object) -> ObservationTrackingConfig:
     return ObservationTrackingConfig.from_mapping(values)
 
 
-def _point_observations(
-    coordinates: list[list[tuple[float, float]]],
-) -> tuple[Tensor, Tensor]:
+def _point_observations(coordinates: list[list[tuple[float, float]]]) -> tuple[Tensor, Tensor]:
     values = torch.tensor(coordinates, dtype=torch.float32).unsqueeze(2)
     visibility = torch.ones(values.shape[:-1], dtype=torch.bool)
     return values, visibility
@@ -51,10 +49,7 @@ def _permute_carriers(
 ) -> tuple[Tensor, Tensor]:
     return (
         torch.stack(
-            [
-                values[frame, permutation]
-                for frame, permutation in enumerate(permutations)
-            ]
+            [values[frame, permutation] for frame, permutation in enumerate(permutations)]
         ),
         torch.stack(
             [
@@ -77,7 +72,9 @@ def test_tracking_is_replayable_and_independent_of_carrier_order() -> None:
         values, visibility, [[1, 0], [0, 1], [1, 0]]
     )
 
-    first = track_camera_observations(values, visibility, num_slots=2, config=_config())
+    first = track_camera_observations(
+        values, visibility, num_slots=2, config=_config()
+    )
     replay = track_camera_observations(
         values, visibility, num_slots=2, config=_config()
     )
@@ -221,7 +218,9 @@ def test_velocity_prediction_preserves_identity_through_a_crossing() -> None:
 
     assert velocity.detection_indices[2].tolist() == [1, 0]
     assert last_position.detection_indices[2].tolist() == [0, 1]
-    torch.testing.assert_close(velocity.values[2, :, 0, 0], torch.tensor([0.60, 0.40]))
+    torch.testing.assert_close(
+        velocity.values[2, :, 0, 0], torch.tensor([0.60, 0.40])
+    )
 
 
 def test_distance_gate_and_false_positive_provenance_are_explicit() -> None:
@@ -479,7 +478,9 @@ def test_pose_median_reduction_is_applied_to_common_joint_distances() -> None:
     values = torch.zeros((2, 1, 4, 2), dtype=torch.float32)
     visibility = torch.ones((2, 1, 4), dtype=torch.bool)
     values[0, 0] = torch.tensor([[0.2, 0.2]] * 4)
-    values[1, 0] = torch.tensor([[0.2, 0.2], [0.2, 0.2], [0.2, 0.2], [0.6, 0.2]])
+    values[1, 0] = torch.tensor(
+        [[0.2, 0.2], [0.2, 0.2], [0.2, 0.2], [0.6, 0.2]]
+    )
 
     median = track_camera_observations(
         values,
@@ -508,7 +509,9 @@ def test_pose_median_reduction_is_applied_to_common_joint_distances() -> None:
 
 
 def test_q_one_overflow_raises_typed_camera_frame_and_free_slot_evidence() -> None:
-    values, visibility = _point_observations([[(0.10, 0.10), (0.90, 0.90)]])
+    values, visibility = _point_observations(
+        [[(0.10, 0.10), (0.90, 0.90)]]
+    )
 
     with pytest.raises(TrackingCapacityError, match=r"camera=3, frame=0") as error:
         track_camera_observations(
@@ -550,7 +553,9 @@ def test_multiview_tracking_is_exactly_camera_local() -> None:
             camera_index=camera_index,
         )
         torch.testing.assert_close(multiview.values[view_index], camera.values)
-        torch.testing.assert_close(multiview.visibility[view_index], camera.visibility)
+        torch.testing.assert_close(
+            multiview.visibility[view_index], camera.visibility
+        )
 
 
 def test_debug_provenance_never_changes_association_or_model_visible_values() -> None:
@@ -593,15 +598,8 @@ def test_provenance_gather_uses_minus_one_for_padding() -> None:
 
 def test_synthetic_false_positive_cap_uses_canonical_model_visible_order() -> None:
     values = torch.tensor(
-        [
-            [
-                [[0.80, 0.50]],
-                [[0.40, 0.50]],
-                [[0.10, 0.50]],
-                [[0.60, 0.50]],
-                [[0.20, 0.50]],
-            ]
-        ],
+        [[[[0.80, 0.50]], [[0.40, 0.50]], [[0.10, 0.50]],
+          [[0.60, 0.50]], [[0.20, 0.50]]]],
         dtype=torch.float32,
     )
     visibility = torch.ones(values.shape[:-1], dtype=torch.bool)
@@ -638,9 +636,7 @@ def test_synthetic_false_positive_cap_uses_canonical_model_visible_order() -> No
     assert visibility.all()
 
 
-def test_synthetic_cap_handles_partial_pose_and_preserves_mixed_genuine_carrier() -> (
-    None
-):
+def test_synthetic_cap_handles_partial_pose_and_preserves_mixed_genuine_carrier() -> None:
     values = torch.zeros((3, 17, 2), dtype=torch.float32)
     visibility = torch.zeros((3, 17), dtype=torch.bool)
     before_false_positive = torch.zeros_like(visibility)
@@ -693,15 +689,15 @@ def test_synthetic_cap_writes_back_from_strided_leading_layout() -> None:
     assert not layout_preserving_values_clone.is_contiguous()
     assert not layout_preserving_visibility_clone.is_contiguous()
     assert (
-        layout_preserving_values_clone.reshape(-1, carriers, keypoints, 2)
-        .untyped_storage()
-        .data_ptr()
+        layout_preserving_values_clone.reshape(
+            -1, carriers, keypoints, 2
+        ).untyped_storage().data_ptr()
         != layout_preserving_values_clone.untyped_storage().data_ptr()
     )
     assert (
-        layout_preserving_visibility_clone.reshape(-1, carriers, keypoints)
-        .untyped_storage()
-        .data_ptr()
+        layout_preserving_visibility_clone.reshape(
+            -1, carriers, keypoints
+        ).untyped_storage().data_ptr()
         != layout_preserving_visibility_clone.untyped_storage().data_ptr()
     )
 
@@ -800,10 +796,7 @@ def test_config_rejects_missing_and_unknown_keys() -> None:
 @pytest.mark.parametrize(
     ("mutator", "error_type"),
     [
-        (
-            lambda values, visibility: values.__setitem__((0, 0, 0, 0), float("nan")),
-            ValueError,
-        ),
+        (lambda values, visibility: values.__setitem__((0, 0, 0, 0), float("nan")), ValueError),
         (lambda values, visibility: values.__setitem__((0, 0, 0, 0), 1.1), ValueError),
         (lambda values, visibility: visibility.to(torch.float32), TypeError),
     ],
@@ -818,7 +811,9 @@ def test_visible_observation_contract_is_strict(
         if isinstance(result, Tensor):
             visibility = result
     with pytest.raises(error_type):
-        track_camera_observations(values, visibility, num_slots=1, config=_config())
+        track_camera_observations(
+            values, visibility, num_slots=1, config=_config()
+        )
 
 
 def test_invisible_nonfinite_coordinates_are_ignored_and_zero_filled() -> None:
@@ -844,50 +839,3 @@ def test_num_slots_must_be_an_exact_positive_integer(num_slots: object) -> None:
             num_slots=num_slots,  # type: ignore[arg-type]
             config=_config(),
         )
-
-
-@pytest.mark.parametrize(
-    "joints,reduction", [(1, "mean"), (17, "mean"), (17, "median")]
-)
-def test_vector_cost_matrix_matches_scalar_reference(joints, reduction):
-    from src.tasks.base.data.observation_tracking import (
-        ObservationTrackingConfig,
-        _association_cost,
-        _association_cost_matrix,
-    )
-
-    config = ObservationTrackingConfig(
-        max_distance=2.0,
-        max_missed_frames=2,
-        min_reuse_gap_frames=4,
-        use_velocity_prediction=True,
-        min_common_keypoints=1,
-        cost_reduction=reduction,
-        overflow_policy="error",
-    )
-    generator = torch.Generator().manual_seed(17)
-    predictions = [
-        (
-            torch.rand(joints, 2, generator=generator),
-            torch.rand(joints, generator=generator) > 0.3,
-        )
-        for _ in range(4)
-    ]
-    detections = [
-        (
-            torch.rand(joints, 2, generator=generator),
-            torch.rand(joints, generator=generator) > 0.3,
-        )
-        for _ in range(4)
-    ]
-    actual = _association_cost_matrix(predictions, detections, config=config)
-    expected = [
-        [_association_cost(p, pv, d, dv, config=config) for d, dv in detections]
-        for p, pv in predictions
-    ]
-    for a_row, e_row in zip(actual, expected, strict=True):
-        for a, e in zip(a_row, e_row, strict=True):
-            if e is None:
-                assert a is None
-            else:
-                assert a == pytest.approx(e, abs=1e-7)

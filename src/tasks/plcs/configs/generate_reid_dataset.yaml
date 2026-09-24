@@ -1,0 +1,20 @@
+defaults:
+  - generate_dataset_camera_view_v2
+  - override generation: multi_object
+  - _self_
+generation:
+  timeline:
+    min_tracks: 1
+    max_tracks: 4
+    max_concurrent: 4
+    min_scene_frames: 1
+simulation:
+  num_scenes: 1000
+run:
+  output_dir: plcs/tracked_person_reid_v1
+  seed: 42
+  device: cpu
+  num_workers: 8
+  split_group: scene
+  # A scene with 1..4 permanent identities cannot balance 1..4-person occupancy.
+  require_uniform_occupancy: false

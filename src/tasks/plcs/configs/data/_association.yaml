@@ -1,17 +1,21 @@
-defaults:
-  - _augmentation
-  - _observation_tracking
-  - _self_
 backend: default
-scene_dir: plcs/multi_object_camera_view_v2
+scene_dir: plcs/tracked_person_reid_v1
 camera_mode: random
 camera_candidates: null
 num_views_range: [3, 5]
 seq_len_range: [512, 512]
-batch_size: 2
+target_fps: 30.0
+batch_size: 4
 num_workers: 4
 pin_memory: true
 evaluation_reference_camera_id: camera_1
-validation_cache_size: 64
+validation_cache_size: 100
 persistent_workers: true
 prefetch_factor: 2
+augmentation:
+  pose_noise: 0.003
+  court_noise: 0.0001
+  joint_dropout: 0.08
+  court_dropout: 0.05
+  track_dropout: 0.3
+  false_track_probability: 0.3

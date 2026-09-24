@@ -248,12 +248,11 @@ the shared reference-frame contract. Direct scene inference requires a stable
 filtered train splitの全scene名を正の有限重みに対応させる。固定dataset backendのみ対応し、
 val/test loaderには適用しない。未指定時は従来のshuffleを使う。
 
-## Side / object association before triangulation
+## 固定trackの人物Re-ID
 
-`src.tasks.plcs.scripts.train_association` はcamera-local観測から各viewのsideと
-観測objectの共通IDを学習します。アーキテクチャ、教師・loss、推論APIと下流への
-接続は[共通association仕様](../base/ASSOCIATION.md)を参照してください。
-
+`train_reid`は2D tracking IDで固定した人物slotから、カメラ間で照合する特徴を学習します。
+入力・モデル・教師・matching・独立sideモデルの境界は[PLCS association仕様](ASSOCIATION.md)が正本です。
+既存の3D tracking/lifecycleモデルとは異なる契約です。
 
 ## Triangulation residual
 

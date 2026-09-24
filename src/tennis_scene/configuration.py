@@ -17,10 +17,10 @@ from src.submodules.configuration import (
     SubmoduleRuntimeConfig,
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
-from src.tasks.base.model_io.association_contracts import AssociationInferencePolicy
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
+from src.tasks.plcs.model_io.person_association import PersonInferencePolicy
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -238,7 +238,7 @@ _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observ
 })
 _AUTO_BALL_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_detection", fields={k: v for k, v in _BALL_SCHEMA.fields.items() if k not in _STAGE_IO_FIELDS})
 _INFERENCE_SCHEMA = StrictConfigSchema(name="tennis_scene.association", fields={
-    "min_probability": ConfigField.of(float, int), "min_assignment_gap": ConfigField.of(float, int),
+    "cosine_threshold": ConfigField.of(float, int, type(None)), "min_player_probability": ConfigField.of(float, int),
     "min_frames": ConfigField.of(int), "max_frames": ConfigField.of(int), "padded_views": ConfigField.of(int),
 })
 _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={
@@ -265,7 +265,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_AUTO_BALL_SCHEMA),
-    "plcs_association": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA),
+    "plcs_reid": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA), "court_side": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA),
     "association": ConfigField.mapping(_INFERENCE_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
@@ -286,8 +286,9 @@ class PipelineRuntimeConfig:
     court_kp: CourtKPConfig
     people: PeopleModelConfig
     ball_detection: BallDetectionConfig
-    plcs_checkpoint: Path
-    inference_policy: AssociationInferencePolicy
+    plcs_reid_checkpoint: Path
+    court_side_checkpoint: Path
+    inference_policy: PersonInferencePolicy
     camera_geometry: CameraGeometryConfig
     human_vis_threshold: float
     person_roi_margins: tuple[float, float]
@@ -353,8 +354,9 @@ class PipelineRuntimeConfig:
         )
         ball_settings = dict(_mapping(value["ball_detection"], name="ball_detection"))
         ball_config = build_ball_detection_config({**ball_settings, "source": "execute", "save_result": False, "load_path": None, "output_path": str(cache["directory"]) + "/ball.component.json"}, resolver, device=device)
-        plcs = _mapping(value["plcs_association"], name="plcs_association")
-        inference_policy = AssociationInferencePolicy(**cast(dict[str, Any], dict(_mapping(value["association"], name="association"))))
+        plcs = _mapping(value["plcs_reid"], name="plcs_reid")
+        side = _mapping(value["court_side"], name="court_side")
+        inference_policy = PersonInferencePolicy(**cast(dict[str, Any], dict(_mapping(value["association"], name="association"))))
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
             raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
@@ -375,7 +377,7 @@ class PipelineRuntimeConfig:
         placement = TemporalPlacementConfig(**cast(dict[str, Any], dict(_mapping(player["placement"], name="player_reconstruction.placement"))))
         _unit_interval(joint_confidence, name="joint_confidence")
         _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
-        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_association", "player_reconstruction", "ball_reconstruction", "gvhmr")}
+        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_reid", "court_side", "player_reconstruction", "ball_reconstruction", "gvhmr")}
         enabled.update(court_kp=True, camera_geometry=True)
         from src.tennis_scene.pipeline.dependency_graph import (
             build_default_dependency_graph,
@@ -383,7 +385,7 @@ class PipelineRuntimeConfig:
         build_default_dependency_graph(enabled).resolve_from_enabled(enabled)
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])),
+            resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])), resolver.resolve(PathRole.CHECKPOINT, cast(str, side["checkpoint"])),
             inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings)
 
