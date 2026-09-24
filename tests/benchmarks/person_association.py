@@ -33,7 +33,7 @@ def main() -> None:
     torch.set_num_threads(4)
     overrides = [f"paths.data_root={args.data_root}", f"data.scene_dir={args.scene_dir}",
         f"paths.output_root={args.output.parent}", f"run.output_dir={args.output.name}",
-        "data.num_workers=0", "data.batch_size=2", "training.trainer.max_epochs=1",
+        "data.num_workers=0", "data.batch_size=4", "training.trainer.max_epochs=2",
         "training.trainer.accumulate_grad_batches=1", "training.warmup_steps=0",
         f"training.compile.enabled={'true' if args.device == 'cuda' else 'false'}"]
     if args.small:
@@ -51,8 +51,8 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
     callback = ModelCheckpoint(dirpath=args.output / "checkpoints", monitor="val/loss", save_top_k=1, filename="reid-smoke")
     trainer = pl.Trainer(accelerator="gpu" if args.device == "cuda" else "cpu", devices=1,
-        max_epochs=1, limit_train_batches=4, limit_val_batches=2, limit_test_batches=2,
-        num_sanity_val_steps=0, precision="bf16-mixed" if args.device == "cuda" else "32-true",
+        max_epochs=2, limit_train_batches=4, limit_val_batches=2, limit_test_batches=2,
+        num_sanity_val_steps=2, precision="bf16-mixed" if args.device == "cuda" else "32-true",
         callbacks=[callback], logger=TensorBoardLogger(str(args.output), name="logs"),
         enable_progress_bar=False, log_every_n_steps=1, gradient_clip_val=1.)
     start = time.monotonic()

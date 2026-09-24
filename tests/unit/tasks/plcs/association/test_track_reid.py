@@ -10,6 +10,7 @@ import torch.nn.functional as F
 
 from src.tasks.plcs.data.tracked_slots import FixedTrackRegistry
 from src.tasks.plcs.model_io.track_matching import match_track_embeddings
+from src.tasks.plcs.models.components.track_query import keep_mask
 from src.tasks.plcs.models.court_side_model import CourtSideModel
 from src.tasks.plcs.models.person_tokens import PersonModelConfig
 from src.tasks.plcs.models.player_reid_model import PlayerReIDModel
@@ -72,6 +73,21 @@ def test_attention_axes_feedback_and_finite_empty_tracks():
     empty = model(**batch)
     assert not empty["track_valid"].any() and not empty["track_embedding"].any()
     assert torch.isfinite(empty["is_player_logit"]).all()
+
+
+def test_invalid_row_safety_preserves_visible_attention_and_gradients():
+    valid = torch.tensor([[True, False, True], [False, False, False]])
+    torch.manual_seed(17)
+    query = torch.randn(2, 1, 3, 8, requires_grad=True)
+    dense_mask = valid[:, :, None] & valid[:, None, :]
+    ordinary = F.scaled_dot_product_attention(query, query, query, attn_mask=dense_mask[:, None])
+    safe = F.scaled_dot_product_attention(query, query, query, attn_mask=keep_mask(valid)[:, None])
+    safe = safe.masked_fill(~valid[:, None, :, None], 0)
+    torch.testing.assert_close(safe, ordinary)
+    original_gradient = torch.autograd.grad(ordinary.square().sum(), query, retain_graph=True)[0]
+    safe_gradient = torch.autograd.grad(safe.square().sum(), query)[0]
+    torch.testing.assert_close(safe_gradient, original_gradient)
+    assert keep_mask(valid).any(-1).all()
 
 
 def test_camera_and_independent_slot_permutations_and_missing_values():
