@@ -1,0 +1,14 @@
+{
+  "loss": 1.3110194206237793,
+  "pair_precision": 0.3499999940395355,
+  "pair_recall": 1.0,
+  "pair_f1": 0.5185185074806213,
+  "pair_balanced_accuracy": 0.5,
+  "player_accuracy": 1.0,
+  "cosine_threshold": 0.44999998807907104,
+  "matching_precision": 0.5,
+  "matching_recall": 0.5,
+  "matching_f1": 0.5,
+  "group_accuracy": 0.375,
+  "track_acceptance_recall": 1.0
+}

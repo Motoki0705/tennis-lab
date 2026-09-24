@@ -1,0 +1,43 @@
+{
+  "device": "cuda",
+  "compiled": false,
+  "seconds": 13.892964931001188,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/plcs/diagnostics/tracked_reid_eager_smoke_20260924/checkpoints/reid-smoke.ckpt",
+  "test": [
+    {
+      "test/loss": 1.3110194206237793,
+      "test/pair_precision": 0.3499999940395355,
+      "test/pair_recall": 1.0,
+      "test/pair_f1": 0.5185185074806213,
+      "test/pair_balanced_accuracy": 0.5,
+      "test/player_accuracy": 1.0,
+      "test/cosine_threshold": 0.44999998807907104,
+      "test/matching_precision": 0.5,
+      "test/matching_recall": 0.5,
+      "test/matching_f1": 0.5,
+      "test/group_accuracy": 0.375,
+      "test/track_acceptance_recall": 1.0
+    }
+  ],
+  "matching_threshold": 0.44999998807907104,
+  "parameters": 6976257,
+  "peak_reserved_bytes": 3334471680,
+  "shapes": {
+    "track_embedding": [
+      4,
+      5,
+      4,
+      256
+    ],
+    "track_valid": [
+      4,
+      5,
+      4
+    ],
+    "is_player_logit": [
+      4,
+      5,
+      4
+    ]
+  }
+}
