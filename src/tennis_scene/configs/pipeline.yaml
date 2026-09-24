@@ -106,9 +106,6 @@ ball_detection:
 plcs_association:
   enabled: true
   checkpoint: plcs/view-association-global-mha-mhc-v2.ckpt
-blcs_association:
-  enabled: true
-  checkpoint: blcs/view-association-global-mha-mhc-v2.ckpt
 association:
   min_probability: 0.5
   min_assignment_gap: 0.6931471805599453
@@ -144,7 +141,6 @@ ball_reconstruction:
   enabled: true
   reprojection_px: 20.0
   min_frames: 5
-  ambiguity_ratio: 0.8
 gvhmr:
   enabled: true
 cache:

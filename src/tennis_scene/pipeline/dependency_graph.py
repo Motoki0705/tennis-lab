@@ -17,7 +17,6 @@ class Stage(StrEnum):
     BLCS = "blcs"
     PERSON_OBSERVATIONS = "person_observations"
     PLCS_ASSOCIATION = "plcs_association"
-    BLCS_ASSOCIATION = "blcs_association"
     CAMERA_GEOMETRY = "camera_geometry"
     PLAYER_RECONSTRUCTION = "player_reconstruction"
     BALL_RECONSTRUCTION = "ball_reconstruction"
@@ -31,19 +30,15 @@ class ResolutionPolicy(StrEnum):
 
 
 def build_default_dependency_graph(enabled: Mapping[str, bool]) -> PipelineDependencyGraph:
-    """Bind the shared geometry's OR input to the explicitly selected branches."""
-    association = tuple(stage for stage in (Stage.PLCS_ASSOCIATION, Stage.BLCS_ASSOCIATION) if enabled.get(stage.value, False))
-    if not association:
-        raise ValueError("At least one association branch must be enabled")
+    """PLCS supplies camera side; the ball detector supplies one observation stream."""
     specs = {
         Stage.COURT_KP: StageSpec(Stage.COURT_KP, "court_kp", required=True),
         Stage.PERSON_OBSERVATIONS: StageSpec(Stage.PERSON_OBSERVATIONS, "person_observations", (Stage.COURT_KP,)),
         Stage.BALL_DETECTION: StageSpec(Stage.BALL_DETECTION, "ball_detection"),
         Stage.PLCS_ASSOCIATION: StageSpec(Stage.PLCS_ASSOCIATION, "plcs_association", (Stage.PERSON_OBSERVATIONS, Stage.COURT_KP)),
-        Stage.BLCS_ASSOCIATION: StageSpec(Stage.BLCS_ASSOCIATION, "blcs_association", (Stage.BALL_DETECTION, Stage.COURT_KP)),
-        Stage.CAMERA_GEOMETRY: StageSpec(Stage.CAMERA_GEOMETRY, "camera_geometry", (Stage.COURT_KP, *association), required=True),
+        Stage.CAMERA_GEOMETRY: StageSpec(Stage.CAMERA_GEOMETRY, "camera_geometry", (Stage.COURT_KP, Stage.PLCS_ASSOCIATION), required=True),
         Stage.PLAYER_RECONSTRUCTION: StageSpec(Stage.PLAYER_RECONSTRUCTION, "player_reconstruction", (Stage.PLCS_ASSOCIATION, Stage.CAMERA_GEOMETRY)),
-        Stage.BALL_RECONSTRUCTION: StageSpec(Stage.BALL_RECONSTRUCTION, "ball_reconstruction", (Stage.BLCS_ASSOCIATION, Stage.CAMERA_GEOMETRY)),
+        Stage.BALL_RECONSTRUCTION: StageSpec(Stage.BALL_RECONSTRUCTION, "ball_reconstruction", (Stage.BALL_DETECTION, Stage.CAMERA_GEOMETRY)),
         Stage.GVHMR: StageSpec(Stage.GVHMR, "gvhmr", (Stage.PLAYER_RECONSTRUCTION,)),
     }
     return PipelineDependencyGraph(specs, ResolutionPolicy.STRICT)

@@ -94,7 +94,7 @@ def test_empty_observations_never_load_an_association_checkpoint(tmp_path, monke
     def forbidden(*args, **kwargs):
         raise AssertionError("No checkpoint load for zero observations")
     monkeypatch.setattr("src.tasks.plcs.inference.association_predictor.PLCSAssociationPredictor.load", forbidden)
-    module = ViewAssociationModule(tmp_path / "absent.ckpt", task="plcs", device="cpu")
+    module = ViewAssociationModule(tmp_path / "absent.ckpt", device="cpu")
     req = request()
     req = replace(req, object_vis=torch.zeros_like(req.object_vis))
     assert module.process_observations(req, policy=AssociationInferencePolicy()) is None

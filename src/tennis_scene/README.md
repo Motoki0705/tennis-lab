@@ -7,9 +7,9 @@ view_half_turnsの手動入力を要求しません。根拠不足は欠測ま�
 ## 標準経路
 
 1. Court hybrid推論、DINO＋BoT-SORT＋ViTPose、ボール検出。
-2. camera-local観測とreferenceから、新PLCS・BLCSがsideとclip内IDを推論。
+2. camera-local観測とreferenceから、PLCSがsideと人物のclip内IDを推論。ボールは各camera/frameの単一検出を使用。
 3. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
-4. 同一IDの実観測から人物COCO17・ラリーの1球を三角測量。
+4. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
 5. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 6. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
 
@@ -19,7 +19,7 @@ associationは約30fpsでclip全体を各1回処理します。短い入力は51
 reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
 
 設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。
-両association checkpointはcamera-local v2契約を必要とします。既定の配布名は配置規約であり、
+PLCS association checkpointはcamera-local v2契約を必要とします。既定の配布名は配置規約であり、
 重みを自動取得・自動選定する処理はありません。旧3Dモデルへのfallbackもありません。
 モデル規模とtracking設定はcheckpointが所有します。
 
@@ -28,8 +28,7 @@ reference未指定時は校正可能camera IDの辞書順先頭を選びます�
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' \
-  plcs_association.checkpoint=plcs/view-association-global-mha-mhc-v2.ckpt \
-  blcs_association.checkpoint=blcs/view-association-global-mha-mhc-v2.ckpt
+  plcs_association.checkpoint=plcs/view-association-global-mha-mhc-v2.ckpt
 ```
 
 動画はDATA、checkpointはCHECKPOINT、外部モデルはEXTERNAL_ASSET、sceneはOUTPUT、
@@ -45,7 +44,7 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 | pipeline/model_io/people.py / body.py | 2D観測と身体復元のtyped adapter |
 | pipeline/components/view_association.py | task-owned predictorの遅延ロード・呼出し |
 | pipeline/components/camera_geometry.py | H代表frame、side評価、共通K/R/t |
-| pipeline/components/player_reconstruction.py / ball_reconstruction.py | ID別再構成、身体配置、球選択 |
+| pipeline/components/player_reconstruction.py / ball_reconstruction.py | 人物ID別再構成、身体配置、単一球の三角測量 |
 | motion_alignment/ | COCO17への時系列配置とhip/SMPL root差を補正したrenderer変換 |
 | pipeline/assembly.py | maskを必須とするSceneResult v2構築 |
 | pipeline/artifacts.py | 入力・設定・重み・実装hashを検証するcache |
@@ -68,8 +67,8 @@ IDは一対一割当後、確率と次善割当との差で採否判定します
 元frameへは両端の同じ確定IDと、実検出の一意な位置対応がある場合だけIDを戻します。
 観測座標や3Dを外挿して欠測を埋める処理はありません。
 
-side一致・片taskの場合にも、最低evidence、referenceとの接続性、絶対的な幾何品質を
-要求します。不一致時には候補間の差も要求します。Courtは成功したHのmedoidを選び、
+PLCSが推定したsideには、最低evidence、referenceとの接続性、絶対的な幾何品質を
+要求します。ボール観測も幾何検証に使いますがside/IDモデルは持ちません。Courtは成功したHのmedoidを選び、
 点ごとのmedianで形を作り直しません。校正は単一平面pinhole・無歪みの近似です。
 
 ## SceneResult v2

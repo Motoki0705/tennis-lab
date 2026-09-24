@@ -24,7 +24,6 @@ protected_override_keys = [
   "people_models.body_models_dir",
   "ball_detection.checkpoint",
   "plcs_association.checkpoint",
-  "blcs_association.checkpoint",
   "cache.directory",
 ]
 outputs = ["outputs/colab/tennis_scene"]
