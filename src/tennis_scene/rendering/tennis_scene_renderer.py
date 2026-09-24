@@ -145,6 +145,7 @@ class TennisSceneRenderer:
             skeleton_type="smpl",
             style=self.style.skeleton_style,
         )
+        self.coco_renderer = SkeletonRenderer("coco17", style=self.style.skeleton_style)
         self.hud_style = self.style.hud_style
         if self.hud_style is None:
             self.hud_style = HudStyle(text_color=self.theme.text_color)
@@ -218,7 +219,19 @@ class TennisSceneRenderer:
         return [int(track_id) for track_id in scene.player_track_ids.tolist()]
 
     def _get_players_position(self, scene: SceneResult) -> NDArray[np.float32]:
-        return scene.player_position
+        result = scene.player_position.copy()
+        if scene.player_valid is not None:
+            result[~scene.player_valid] = np.nan
+        return result
+
+    @staticmethod
+    def _ball_positions(scene: SceneResult) -> NDArray[np.float32] | None:
+        if scene.ball_3d is None:
+            return None
+        result = scene.ball_3d.copy()
+        if scene.ball_3d_valid is not None:
+            result[~scene.ball_3d_valid] = np.nan
+        return result
 
     def _validate_required_smpl_fields(self, scene: SceneResult) -> None:
         missing: list[str] = []
@@ -288,6 +301,10 @@ class TennisSceneRenderer:
         return verts_court
 
     def _get_players_kp_3d(self, scene: SceneResult) -> NDArray[np.float32]:
+        if scene.schema_version == 2:
+            if scene.player_kp_3d is None:
+                raise ValueError("v2 scene requires triangulated COCO17 joints")
+            return scene.player_kp_3d
         cache_key = id(scene)
         cached = self._scene_joints_cache.get(cache_key)
         if cached is not None:
@@ -313,7 +330,14 @@ class TennisSceneRenderer:
         cache_key = id(scene)
         cached = self._scene_ball_speeds_cache.get(cache_key)
         if cached is None:
-            cached = compute_speeds(scene.ball_3d, scene.fps)
+            positions = self._ball_positions(scene)
+            assert positions is not None
+            if scene.ball_3d_valid is None:
+                cached = compute_speeds(positions, scene.fps)
+            else:
+                cached = np.full(scene.num_frames, np.nan, np.float32)
+                supported = np.flatnonzero(scene.ball_3d_valid[1:] & scene.ball_3d_valid[:-1]) + 1
+                cached[supported] = np.linalg.norm(positions[supported] - positions[supported - 1], axis=-1) * scene.fps
             self._scene_ball_speeds_cache[cache_key] = cached
         return cached
 
@@ -324,7 +348,12 @@ class TennisSceneRenderer:
         cache_key = id(scene)
         cached = self._scene_bounce_frames_cache.get(cache_key)
         if cached is None:
-            cached = detect_bounces(scene.ball_3d)
+            positions = self._ball_positions(scene)
+            assert positions is not None
+            cached = detect_bounces(positions)
+            if scene.ball_3d_valid is not None:
+                keep = [i for i in cached if 0 < i < scene.num_frames - 1 and scene.ball_3d_valid[i - 1:i + 2].all()]
+                cached = np.asarray(keep, np.int64)
             self._scene_bounce_frames_cache[cache_key] = cached
         return cached
 
@@ -433,6 +462,8 @@ class TennisSceneRenderer:
         """Extract plain arrays for the current frame and draw the minimap."""
         dots: list[tuple[tuple[float, float], str]] = []
         for player_idx in range(scene.player_position.shape[0]):
+            if scene.player_valid is not None and not scene.player_valid[player_idx, frame_idx]:
+                continue
             pos = scene.player_position[player_idx, frame_idx]
             dots.append(
                 ((float(pos[0]), float(pos[1])), self._player_color(player_idx))
@@ -449,9 +480,12 @@ class TennisSceneRenderer:
                 event_marks_xy = scene.ball_3d[past, :2]
 
             trail_start = max(0, frame_idx - _MINIMAP_BALL_TRAIL_FRAMES)
-            trails.append((scene.ball_3d[trail_start : frame_idx + 1, :2], ball_color))
+            positions = self._ball_positions(scene)
+            assert positions is not None
+            trails.append((positions[trail_start : frame_idx + 1, :2], ball_color))
             ball_pos = scene.ball_3d[frame_idx]
-            trail_dots.append(((float(ball_pos[0]), float(ball_pos[1])), ball_color))
+            if scene.ball_3d_valid is None or scene.ball_3d_valid[frame_idx]:
+                trail_dots.append(((float(ball_pos[0]), float(ball_pos[1])), ball_color))
 
         self.minimap_renderer.render(
             minimap_ax,
@@ -486,6 +520,9 @@ class TennisSceneRenderer:
             )
 
     def _render_players(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+        if scene.schema_version == 2:
+            self._render_players_v2(ax, scene, frame_idx)
+            return
         track_ids = self._get_player_tracks(scene)
         players_position = self._get_players_position(scene)
         players_smpl = self._build_players_smpl_vertices_court(scene)
@@ -565,16 +602,48 @@ class TennisSceneRenderer:
                 color=color,
             )
 
+    def _render_players_v2(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+        if scene.player_valid is None or scene.player_smpl_valid is None or scene.player_kp_3d_vis is None or scene.player_kp_3d is None:
+            raise ValueError("v2 rendering requires explicit player validity")
+        tracks = self._get_player_tracks(scene)
+        positions = self._get_players_position(scene)
+        mesh = None
+        if self.style.player_representation == "smpl" and scene.player_smpl_valid[:, frame_idx].any():
+            mesh = self._build_players_smpl_vertices_court(scene)
+        for row, identity in enumerate(tracks):
+            root_valid = scene.player_valid[row, frame_idx]
+            joints_valid = scene.player_kp_3d_vis[row, frame_idx]
+            if not root_valid and not joints_valid.any():
+                continue
+            color = self._player_color(row)
+            point = positions[row, frame_idx] if root_valid else scene.player_kp_3d[row, frame_idx, joints_valid].mean(0)
+            if self.style.show_player_trail:
+                first = max(0, frame_idx - self.style.player_trail_length)
+                trail = positions[row, first:frame_idx + 1].copy()
+                trail[:, 2] = .02
+                render_fading_line_3d(ax, trail, color=color, zorder=SceneLayer.GROUND)
+            if self.style.show_player_shadow and root_valid:
+                render_ground_shadow(ax, (float(point[0]), float(point[1])), radius=_PLAYER_SHADOW_RADIUS, alpha=.28, zorder=SceneLayer.GROUND)
+            if mesh is not None and scene.player_smpl_valid[row, frame_idx]:
+                if self._mesh_renderer is None:
+                    raise RuntimeError("SMPL mesh renderer is not initialized")
+                self._mesh_renderer.render_3d(ax, mesh[row, frame_idx], color=color, alpha=self.style.mesh_alpha, zorder=SceneLayer.PLAYER)
+            elif joints_valid.any():
+                self.coco_renderer.render_3d(ax, scene.player_kp_3d[row, frame_idx], visibility=joints_valid, style_override=SkeletonStyle(joint_color=color, bone_color=color))
+            ax.text(point[0], point[1], point[2] + 1., f"P{identity}", color=color)
+
     def _render_ball(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
         if scene.ball_3d is None:
             return
 
         ball_pos = scene.ball_3d[frame_idx]
-        ball_valid = bool(np.isfinite(ball_pos).all())
+        ball_valid = bool(np.isfinite(ball_pos).all()) and (scene.ball_3d_valid is None or bool(scene.ball_3d_valid[frame_idx]))
 
         if self.style.show_trail:
             start_idx = max(0, frame_idx - self.style.trail_length)
-            trail = scene.ball_3d[start_idx : frame_idx + 1]
+            positions = self._ball_positions(scene)
+            assert positions is not None
+            trail = positions[start_idx : frame_idx + 1]
             render_fading_line_3d(
                 ax,
                 trail,
@@ -607,7 +676,7 @@ class TennisSceneRenderer:
             return
         lines = [format_frame_clock(frame_idx, scene.num_frames, scene.fps)]
         speeds = self._get_ball_speeds(scene)
-        if speeds is not None:
+        if speeds is not None and np.isfinite(speeds[frame_idx]):
             lines.append(f"Ball speed {format_speed_kmh(float(speeds[frame_idx]))}")
         bounce_frames = self._get_bounce_frames(scene)
         if bounce_frames is not None:

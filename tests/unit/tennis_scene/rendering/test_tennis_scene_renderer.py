@@ -46,6 +46,40 @@ def _make_renderer(
     )
 
 
+def test_v2_skeleton_does_not_require_a_recovered_mesh(tiny_scene, smpl_renderer_assets, monkeypatch) -> None:
+    import matplotlib.pyplot as plt
+    tiny_scene.metadata["scene_schema_version"] = 2
+    tiny_scene.player_position[:] = 0
+    tiny_scene.player_valid = np.zeros((1, 5), bool)
+    tiny_scene.player_smpl_valid = np.zeros((1, 5), bool)
+    tiny_scene.player_kp_3d = np.ones((1, 5, 17, 3), np.float32)
+    tiny_scene.player_kp_3d_vis = np.zeros((1, 5, 17), bool)
+    tiny_scene.player_kp_3d_vis[0, 2, :6] = True
+    tiny_scene.smpl_vertices_local = None
+    tiny_scene.smpl_global_orient = None
+    renderer = _make_renderer(TennisSceneStyle(), smpl_renderer_assets)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Triangulated skeleton must not require a mesh")
+    monkeypatch.setattr(renderer, "_build_players_smpl_vertices_court", forbidden)
+    seen = []
+    monkeypatch.setattr(renderer.coco_renderer, "render_3d", lambda *a, **kw: seen.append(kw["visibility"]))
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    renderer._render_players(ax, tiny_scene, 2)
+    assert len(seen) == 1 and int(seen[0].sum()) == 6
+    plt.close(fig)
+
+
+def test_v2_speed_and_bounce_do_not_bridge_missing_3d(tiny_scene, smpl_renderer_assets) -> None:
+    tiny_scene.metadata["scene_schema_version"] = 2
+    tiny_scene.ball_3d_valid = np.array([True, False, True, False, True])
+    renderer = _make_renderer(TennisSceneStyle(), smpl_renderer_assets)
+    speeds = renderer._get_ball_speeds(tiny_scene)
+    assert speeds is not None and np.isnan(speeds).all()
+    bounces = renderer._get_bounce_frames(tiny_scene)
+    assert bounces is not None and len(bounces) == 0
+
+
 def test_build_players_smpl_vertices_court_maps_smpl_y_up_to_court_z_up() -> None:
     renderer = _make_renderer_with_fake_regressor()
     scene = SceneResult(

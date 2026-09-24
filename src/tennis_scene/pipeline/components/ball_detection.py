@@ -230,6 +230,11 @@ class BallDetectionModule(BasePipelineModule):
         """Check if the model is loaded."""
         return self._pipeline is not None
 
+    def unload(self) -> None:
+        from src.tennis_scene.pipeline.components.base import release_inference_memory
+        self._pipeline = None
+        release_inference_memory(self.config.device)
+
     def process(
         self,
         video_paths: Sequence[Path],

@@ -31,10 +31,12 @@ sideは定義上falseなのでside損失・正解率から除きます。
 現行predictor/pipelineには未接続です。predictor自身は入力を自動分割しません。
 重複区間に現れない新しいIDは呼び出し側が新規scene IDを割り当てます。
 
-下流の`src.tennis_scene.pipeline.components.view_association.ViewAssociationModule`
-はstable camera IDからreferenceを指定し、結果を返します。結果の
-`geometry_context()`で推論済みsideによるカメラ校正、`group_observations()`で
-同一IDの観測をまとめます。3Dの三角測量・補正は下流の責任です。
+実観測の入口はtask-owned `predict_observations(AssociationObservationRequest)`です。
+学習と同じcamera-local trackingでraw carrierを4 slotへ変換し、5 viewへのpadと
+元検出へのID逆対応を行います。新APIでは割当IDの確率0.5以上・次善割当との差ln(2)以上を
+要求し、不確定ID・FP・欠測を別理由として返します。学習loss・既存decoderは変更しません。
+標準tennis_sceneの時間軸復元、side統合、3D再構成、保存契約は
+[tennis_scene README](../../tennis_scene/README.md)を参照してください。
 
 ```bash
 # ローカルGPUではtraining-queue経由で実行する。

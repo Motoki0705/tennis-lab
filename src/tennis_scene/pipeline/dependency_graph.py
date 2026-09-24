@@ -15,6 +15,11 @@ class Stage(StrEnum):
     BALL_DETECTION = "ball_detection"
     PLCS = "plcs"
     BLCS = "blcs"
+    PERSON_OBSERVATIONS = "person_observations"
+    PLCS_ASSOCIATION = "plcs_association"
+    CAMERA_GEOMETRY = "camera_geometry"
+    PLAYER_RECONSTRUCTION = "player_reconstruction"
+    BALL_RECONSTRUCTION = "ball_reconstruction"
 
 
 class ResolutionPolicy(StrEnum):
@@ -22,6 +27,21 @@ class ResolutionPolicy(StrEnum):
 
     STRICT = "strict"
     LENIENT = "lenient"
+
+
+def build_default_dependency_graph(enabled: Mapping[str, bool]) -> PipelineDependencyGraph:
+    """PLCS supplies camera side; the ball detector supplies one observation stream."""
+    specs = {
+        Stage.COURT_KP: StageSpec(Stage.COURT_KP, "court_kp", required=True),
+        Stage.PERSON_OBSERVATIONS: StageSpec(Stage.PERSON_OBSERVATIONS, "person_observations", (Stage.COURT_KP,)),
+        Stage.BALL_DETECTION: StageSpec(Stage.BALL_DETECTION, "ball_detection"),
+        Stage.PLCS_ASSOCIATION: StageSpec(Stage.PLCS_ASSOCIATION, "plcs_association", (Stage.PERSON_OBSERVATIONS, Stage.COURT_KP)),
+        Stage.CAMERA_GEOMETRY: StageSpec(Stage.CAMERA_GEOMETRY, "camera_geometry", (Stage.COURT_KP, Stage.PLCS_ASSOCIATION), required=True),
+        Stage.PLAYER_RECONSTRUCTION: StageSpec(Stage.PLAYER_RECONSTRUCTION, "player_reconstruction", (Stage.PLCS_ASSOCIATION, Stage.CAMERA_GEOMETRY)),
+        Stage.BALL_RECONSTRUCTION: StageSpec(Stage.BALL_RECONSTRUCTION, "ball_reconstruction", (Stage.BALL_DETECTION, Stage.CAMERA_GEOMETRY)),
+        Stage.GVHMR: StageSpec(Stage.GVHMR, "gvhmr", (Stage.PLAYER_RECONSTRUCTION,)),
+    }
+    return PipelineDependencyGraph(specs, ResolutionPolicy.STRICT)
 
 
 @dataclass(frozen=True)
@@ -178,39 +198,3 @@ class PipelineDependencyGraph:
         for stage in self.specs:
             dfs(stage)
         return order
-
-
-def build_default_dependency_graph(
-    policy: ResolutionPolicy = ResolutionPolicy.LENIENT,
-) -> PipelineDependencyGraph:
-    """Construct the default dependency graph for tennis scene pipeline."""
-    specs = {
-        Stage.COURT_KP: StageSpec(
-            stage=Stage.COURT_KP,
-            config_key="court_kp",
-            required=True,
-        ),
-        Stage.GVHMR: StageSpec(
-            stage=Stage.GVHMR,
-            config_key="gvhmr",
-            default_enabled=True,
-        ),
-        Stage.BALL_DETECTION: StageSpec(
-            stage=Stage.BALL_DETECTION,
-            config_key="ball_detection",
-            default_enabled=True,
-        ),
-        Stage.PLCS: StageSpec(
-            stage=Stage.PLCS,
-            config_key="plcs",
-            depends_on=(Stage.COURT_KP, Stage.GVHMR),
-            required=True,
-        ),
-        Stage.BLCS: StageSpec(
-            stage=Stage.BLCS,
-            config_key="blcs",
-            depends_on=(Stage.COURT_KP, Stage.BALL_DETECTION),
-            default_enabled=True,
-        ),
-    }
-    return PipelineDependencyGraph(specs=specs, policy=policy)

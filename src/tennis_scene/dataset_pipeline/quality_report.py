@@ -340,6 +340,10 @@ def audit_clip(
         ball_3d=scene.ball_3d,
         config=quality,
         teacher_quality=evidence,
+        scene_schema_version=scene.schema_version,
+        player_reconstruction_valid=scene.player_valid,
+        player_heading_valid=scene.player_heading_valid,
+        ball_reconstruction_valid=scene.ball_3d_valid,
     )
     validate_input_identity(clip, identity, source_manifest_sha256)
     player = masks["player_label_weight"] > 0

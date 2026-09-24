@@ -7,8 +7,15 @@ from pathlib import Path
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
+from src.tasks.base.inference.association import predict_association_observations
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.model_io.association_contracts import INPUT_KEYS
+from src.tasks.base.model_io.association_contracts import (
+    INPUT_KEYS,
+    AssociationInferencePolicy,
+    AssociationObservationRequest,
+    AssociationObservationResult,
+)
 from src.tasks.base.model_io.association_decoding import decode_association
 from src.tasks.plcs.training.association_lightning_module import (
     PLCSAssociationLightningModule,
@@ -33,7 +40,9 @@ class PLCSAssociationPredictor(BasePredictor[dict[str, Tensor]]):
     def predict(self, observations: dict[str, Tensor]) -> dict[str, Tensor]:
         if set(observations) != set(INPUT_KEYS):
             raise ValueError("Expected exactly the six observation/reference tensors")
-        with torch.no_grad():
+        with torch.no_grad(), torch.autocast(
+            self.device.type, dtype=torch.bfloat16, enabled=self.device.type == "cuda"
+        ):
             inputs = {k: v.to(self.device) for k, v in observations.items()}
             raw = self.module.model_io.run(inputs)
             cpu = {k: v.detach().cpu() for k, v in raw.items()}
@@ -46,3 +55,17 @@ class PLCSAssociationPredictor(BasePredictor[dict[str, Tensor]]):
                 view_valid=(~inputs["padding_mask"]).any(-1).cpu(),
                 side_threshold=float(self.module.config.metrics.side_threshold),
             )
+
+    def predict_observations(
+        self,
+        request: AssociationObservationRequest,
+        *,
+        policy: AssociationInferencePolicy | None = None,
+    ) -> AssociationObservationResult:
+        if int(self.module.config.model.num_slots) != 4 or int(self.module.config.model.max_identities) != 10:
+            raise ValueError("Integrated association requires four slots and ten identity classes")
+        return predict_association_observations(
+            self.predict, request,
+            tracking=ObservationTrackingConfig.from_mapping(self.module.config.data.association),
+            policy=AssociationInferencePolicy() if policy is None else policy, joints=17,
+        )

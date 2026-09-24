@@ -246,6 +246,11 @@ class CourtKPModule(BasePipelineModule):
                 f"camera_view_v2 requires a camera-view KP14 checkpoint schema, got {schema!r}"
             )
 
+    def unload(self) -> None:
+        from src.tennis_scene.pipeline.components.base import release_inference_memory
+        self._predictor = None
+        release_inference_memory(self.device)
+
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""

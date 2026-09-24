@@ -1,81 +1,125 @@
-# `src/tennis_scene`
+# tennis_scene
 
-`src/tasks/ball_detection`, `src/tasks/court_detection`, `src/submodules`（GVHMR）, `src/tasks/plcs`, `src/tasks/blcs` をつないで、同期済みマルチカメラ動画から 1 つの `SceneResult` を組み立てる統合パイプラインです。カメラは固定（静止カメラ、カメラ回転推定なし）を前提とします。
+同期済みの固定カメラ動画から、camera-local CourtV2観測、物体対応、三角測量、
+GVHMRの身体復元を組み合わせてSceneResultを作ります。標準経路はコート点、人物対応、
+view_half_turnsの手動入力を要求しません。根拠不足は欠測または理由付き失敗として保存します。
 
-再構成済み3D sceneを使った学習データ生成は、責務を分離した[`src/synthetic_data_generation`](../synthetic_data_generation/README.md)が担当します。
+## 標準経路
 
-## Referenceモデルによる実クリップ検証
+1. Court hybrid推論、DINO＋BoT-SORT＋ViTPose、ボール検出。
+2. camera-local観測とreferenceから、PLCSがsideと人物のclip内IDを推論。ボールは各camera/frameの単一検出を使用。
+3. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
+4. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
+5. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
+6. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
 
-DINO → ViTPose → PLCSと外部ボール観測 → BLCSを接続する経路は
-[`reference_pipeline/README.md`](reference_pipeline/README.md)を参照してください。
-SMPLを実行せず、canonical poseと3D関節を保存できます。
+対応範囲は同期・同FPS・同解像度の3〜5 view、同時4物体、clip内10 IDです。
+associationは約30fpsでclip全体を各1回処理します。短い入力は512へpadし、
+実入力の上限は1024です。時間圧縮や暗黙のwindow分割は行いません。
+reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
 
-PLCSのコート軌道とGVHMRのincam SMPLを従来フィールドへ保存し、それらを使った
-GVHMRワールドモーションの整合もパイプライン内で常に実行します。整合結果は
-`gvhmr_aligned_*`フィールドへ追加し、PLCS配置を上書きしません。下流は両方から用途に
-合う表現を選べます。フィールド契約、設定値、残差診断は
-[`motion_alignment/README.md`](motion_alignment/README.md)を参照してください。
+設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。
+PLCS association checkpointはcamera-local v2契約を必要とします。既定の配布名は配置規約であり、
+重みを自動取得・自動選定する処理はありません。旧3Dモデルへのfallbackもありません。
+モデル規模とtracking設定はcheckpointが所有します。
 
-## Modules
+```bash
+# GPU実行は、このコマンドを共有training queueへ登録する。
+.venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
+  'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
+  'camera_ids=[cam0,cam1,cam2]' \
+  plcs_association.checkpoint=plcs/view-association-global-mha-mhc-v2.ckpt
+```
 
-### dataset_pipeline/
-実RGB clipから品質重み付き3D教師・DINOv3特徴・固定splitを作る経路。
-1コマンド生成、入力と重み、品質判定、再開と再学習は
-[`dataset_pipeline/README.md`](dataset_pipeline/README.md)を参照。
+動画はDATA、checkpointはCHECKPOINT、外部モデルはEXTERNAL_ASSET、sceneはOUTPUT、
+stage cacheはARTIFACTのrootから解決します。[タスク出力パス](../tasks/OUTPUTS.md)を参照。
+dataset生成は実clipから入力を束縛し、設定中のサンプル動画名には依存しません。
 
-### clip_studio/
-長時間・非同期のマルチカメラ動画を同期してラリークリップを切り出し、追記可能な構造化データセットへエクスポートするGUI。詳細は `clip_studio/README.md`。
+## モジュール
 
-### generate_dataset/
-構造化クリップのうち未処理分へパイプラインを適用し、BLCS/PLCS用観測と3D出力を含む `SceneResult` を監査可能な疑似アノテーションとして追加する。詳細は `generate_dataset/README.md`。
+| 場所 | 責任 |
+|---|---|
+| pipeline/orchestrator.py | 構築・同期検証・reference・実行receipt |
+| pipeline/model_io/observations.py | pixel観測、confidence、実検出mask、raw検出対応 |
+| pipeline/model_io/people.py / body.py | 2D観測と身体復元のtyped adapter |
+| pipeline/components/view_association.py | task-owned predictorの遅延ロード・呼出し |
+| pipeline/components/camera_geometry.py | H代表frame、side評価、共通K/R/t |
+| pipeline/components/player_reconstruction.py / ball_reconstruction.py | 人物ID別再構成、身体配置、単一球の三角測量 |
+| motion_alignment/ | COCO17への時系列配置とhip/SMPL root差を補正したrenderer変換 |
+| pipeline/assembly.py | maskを必須とするSceneResult v2構築 |
+| pipeline/artifacts.py | 入力・設定・重み・実装hashを検証するcache |
+| pipeline/utilts/ | Court reference・元frame対応などの補助 |
 
-### schema.py / archive.py
-- **`schema.SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)の唯一の定義。
-- **`archive.save_scene_result()` / `load_scene_result()`**: `.npz` と必須 `*.metadata.json` サイドカーを明示的に保存・読込する唯一のarchive I/O。sidecar欠落・非object metadataはエラーにし、旧module/methodへ転送しない。
+汎用三角測量は[src/utils/geometry/triangulation.py](../utils/geometry/triangulation.py)、
+associationモデルは[共有文書](../tasks/base/ASSOCIATION.md)が正本です。
+association_state.pyはwindow用helperであり、標準経路には接続しません。
 
-### pipeline/
-- **`utilts/`**: [`court_reference.py`](pipeline/utilts/court_reference.py)と[`association_state.py`](pipeline/utilts/association_state.py)を配置する共通helper。
-- **`orchestrator.py`**: `TennisSceneOrchestrator`。全stageの構築・同期検証・実行・`SceneResult`組み立てを統括。
-- **`dependency_graph.py`**: `PipelineDependencyGraph`。stage依存(`PLCS<-COURT_KP,GVHMR`等)の解決・循環検出。
-- **`model_io/gvhmr.py`**: GVHMR chainの型付きrequest/result、検証adapter、composition factoryの唯一の定義。factoryがDINO/YOLOを一度だけ選択してsubmodule chainを構築し、adapterがvideo metadata・track・keypoints・boxes・features・SMPL keysを各model境界の前で検証する。
-- **`components/court_kp.py`**: `CourtKPModule`。手動UIまたはモデル推論でコートkeypointを取得。
-- **`components/gvhmr.py`**: `GVHMRModule`。composition rootから解決済みのGVHMR chainを受け取り、typed requestを渡すか保存済みresultを読む。model class、detector variant、tensor layout、raw output keyを認識しない。
-- **`components/player_association.py`**: `PlayerAssociationModule`。カメラ間player対応付け(手動UI)を正準player軸へ整列。
-- **`components/plcs.py`**: `PLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionをwindow集約する。
-- **`components/ball_detection.py`**: `BallDetectionModule`。スライディングウィンドウ推論とオーバーラップ集約。
-- **`components/blcs.py`**: `BLCSModule`。task-owned multiview I/O adapterを持つpredictorへ観測を渡し、typed predictionから3D軌道を集約する。
+## 座標・対応
 
-### rendering/
-- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。カメラ・テーマ・レイヤ規約・HUD・ミニマップなどの描画プリミティブは `src.utils.rendering`(`camera_view`/`theme`/`layers`/`hud`/`minimap`/`effects`)を直接利用し、ここには `SceneResult` 固有の変換(SMPL→コート座標、HUD行の選択、ミニマップ配列抽出)だけを持つ。
+観測の正本はpixel座標、モデル入力とsceneの2D座標はpixel/(width,height)です。
+Court componentの既存W-1/H-1形式は境界で明示変換します。
+CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
-### scripts/
-- **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。
-- **`visualization.py`**: 保存済み `SceneResult` の3D可視化エントリポイント。
-- **`visualize_tasks.py`**: stage別タスク動画(`plcs`/`gvhmr_alignment`/`blcs`等)を保存済み `SceneResult` から書き出すエントリポイント。`gvhmr_alignment`は`gvhmr_aligned_*`とPLCS配置を重ねる。
-- **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
-- **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
-- **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
+補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
+task全体の検出0件ではassociationをロード・実行しません。
+IDは一対一割当後、確率と次善割当との差で採否判定します。FP・欠測・曖昧性を
+別理由で記録し、不確定IDを幾何や時間伝播へ使用しません。
+元frameへは両端の同じ確定IDと、実検出の一意な位置対応がある場合だけIDを戻します。
+観測座標や3Dを外挿して欠測を埋める処理はありません。
 
-### configs/
-- **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`player_motion`/`ball_detection`/`plcs`/`blcs`)の実行設定。整列は常時実行し、`player_motion.scale_mode`・`alignment`が推定方法を制御する。`court_keypoints.selector`と`court_reference`はPLCS/BLCSが共有するreference-frame設定であり、camera-view checkpointではcamera IDと各viewの半回転を明示する。
-- **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
-- **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
+PLCSが推定したsideには、最低evidence、referenceとの接続性、絶対的な幾何品質を
+要求します。ボール観測も幾何検証に使いますがside/IDモデルは持ちません。Courtは成功したHのmedoidを選び、
+点ごとのmedianで形を作り直しません。校正は単一平面pinhole・無歪みの近似です。
 
-## 座標系メモ
+## SceneResult v2
 
-- `player_position` / `gvhmr_aligned_player_position` / `ball_3d`: コート座標系。XY平面が地面、+Zが上。
-- `smpl_vertices_local` / `smpl_global_orient` / `smpl_body_pose`: GVHMR/SMPL由来の人体座標系。人体のup軸はY。
-- 可視化時は、SMPL頂点をroot中心化した後に `src.utils.geometry.matrices.smpl_y_up_to_court_z_up` でY-upからコートZ-upへ明示変換し、その後 `player_yaw` をコート+Z軸まわりに適用する。
-- `gvhmr_aligned_*`も既存レンダラーと同じ配置規則を使う。整列済みの4フィールドがworld頂点の直接相似変換を再現することの契約は[`motion_alignment/README.md`](motion_alignment/README.md)を参照。
+[schema.py](schema.py)と[archive.py](archive.py)がスキーマ・I/Oを所有します。
+metadata.scene_schema_version=2では次を必須とし、無効座標は0で保存します。
+座標値0から有効性を推定しません。
 
-## Courtモデル推論のKP・LINE共同推定
+| mask | shape | 意味 |
+|---|---|---|
+| player_observed | P,T | 確定IDの実2D観測 |
+| player_valid | P,T | SMPL joint0のcourt配置 |
+| player_heading_valid | P,T | yaw |
+| player_kp_3d_vis | P,T,17 | 三角測量したCOCO17 |
+| player_smpl_valid | P,T | 配置した身体mesh |
+| ball_3d_valid | T | 球の三角測量 |
 
-モデル実行は共通`CourtPredictor`のhybrid結果を使います。旧KP-only再推定・座標ごとのtemporal medianは適用しません。raw KP/scoreは診断へ残し、下流の`court_kp`はHによる再投影14点です。画像外座標をclipせず不可視とし、H失敗はゼロ座標＋全不可視にします。完全な14点を必要とするreference calibrationやfootpoint filterの条件は維持します。
+player_position/yawは三角測量とGVHMRによる配置です。smpl_vertices_localはroot中心の
+canonical posed verticesに人物共通scaleを適用した値、smpl_global_orientは既存renderer式への配置用回転です。
+元incamパラメータはbodies artifactに残し、v2ではgvhmr_aligned_*を使いません。
 
-既定のCourt・PLCS・BLCSを`camera_view_v2`へ統一しました。PLCSは`real-rgb-meiji-foot-e60-v1.ckpt`、BLCSは`real-rgb-meiji-e60-v1.ckpt`を使い、windowは128フレームです。いずれもMeiji実画像でfine-tuneした重みであり、他会場への精度を保証する評価ではありません。BLCSは3〜4台の同期カメラを要求します。
+P=0、部分joint欠測、mesh欠測を表現できます。rendererはmaskに従い、mesh不足frameでは
+有効COCO17を描画します。軌跡・速度・bounceは欠測を跨ぎません。
+SLCS教師maskにはplayer_valid AND player_heading_valid、ball_3d_validを必ずANDします。
+2D可視性で無効3Dのweightを復活させません。SLCSの人物数などの適格性制約は維持します。
 
-`pipeline.yaml`の動画パスは3台の例です。実動画と`camera_ids`を指定し、`court_reference.reference_camera`と`view_half_turns`を必ず設定してください。`view_half_turns`はcamera_ids順で、referenceは`false`、反対側のbaselineに向いたviewは`true`です。例えば向きが確認できた3台なら`court_reference.view_half_turns=[false,false,true]`と指定します。未設定・カメラ数不一致ではモデルロード前に停止します。共通predictorは各画像のcamera-view順を保ち、`court_reference`が一度だけreference-camera順へ変換します。
+versionのない旧archiveはv1です。v2でmaskが欠けた場合は拒否し、旧artifactは書換えません。
 
-手動入力と`source=load`はモデル補正を通りません。旧physical順の入力・保存結果には`court_keypoints.selector=physical_v1`、対応する旧PLCS/BLCS重み、`court_reference.reference_camera=null`・`view_half_turns=null`を明示してください。新Court checkpointをphysical順として使うことは拒否します。 契約情報のない旧artifactをcamera-view順として読む場合だけ、内容の順序を確認したうえで`court_kp.load_keypoint_contract=camera_view_v2`を明示します。保存済み契約の上書きや元artifactの書換えは行いません。
+## 再開と検証
 
-新規Court結果と`SceneResult.metadata.court_detection`にはcheckpoint識別情報、後処理設定、入力KP schema、採用点、H生成可否を保存します。採用点のmask（最大8点）を再投影14点のvisibilityとして使うことはありません。
+cache.source=executeは同一identityの完了cacheを再利用します。
+cache.source=loadは必要なcacheがなければ失敗し、モデルを実行しません。
+内容・入力・設定・重みが違うcacheは拒否し、更新にはcache.overwrite=trueを指定します。
+cache.directoryの入力hash配下へstage artifactとrun.jsonを保存します。
+
+statusは要求branchに有効結果のあるok、一部だけのpartial、両task無観測のempty、
+校正・対応・3Dを成立させられないfailedです。okは全frameの有効性を保証しません。
+有効frame数を別記し、emptyではsideや3D provenanceを捏造しません。
+
+実重みの長さ・view数・確度判定の検証は
+[association_integration.py](../../tests/benchmarks/association_integration.py)を使用します。
+棄却IDも不正解へ算入します。60epoch完了、side/ID精度、GPUメモリ、実動画の校正・
+3D有効率を確認してから配布重みを選定します。スモーク完走だけを本番合格としません。
+
+## 他の入口
+
+- [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。
+- [clip_studio](clip_studio/README.md): 同期・ラリーclip切り出し。
+- [reference_pipeline](reference_pipeline/README.md): 旧referenceモデルの実験経路。
+- [dataset_pipeline](dataset_pipeline/README.md): SLCS専用実RGB教師生成。
+- [motion_alignment](motion_alignment/README.md): COCO17配置の目的関数・支持条件・診断とv1読込互換。
+
+reference/SLCS専用経路は既存設定を維持します。合成データ生成は
+[src/synthetic_data_generation](../synthetic_data_generation/README.md)が担当します。
