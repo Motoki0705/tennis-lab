@@ -17,6 +17,12 @@ from src.tasks.court_detection.geometry.hybrid_homography import (
 from src.tasks.court_detection.inference.contracts import (
     validate_hybrid_inference_config,
 )
+from src.tasks.court_detection.inference.regions import (
+    CourtRegionSearchConfig,
+    Region,
+    predict_court_region,
+    select_court_region,
+)
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.configuration import PathResolver
 from src.utils.io import load_json, save_json
@@ -60,6 +66,7 @@ class CourtKPConfig:
     resolver: PathResolver
     output_keypoint_contract: str = "camera_view_v2"
     load_keypoint_contract: str | None = None
+    region_search: CourtRegionSearchConfig = CourtRegionSearchConfig()
 
     def __post_init__(self) -> None:
         validate_hybrid_inference_config(self.postprocess)
@@ -405,7 +412,9 @@ class CourtKPModule(BasePipelineModule):
                 annotation_frame_index=annotation_frame_index,
             )
         else:
-            result = self._process_model_video(video_paths, max_frames=max_frames)
+            result = self._process_model_video(
+                video_paths, max_frames=max_frames, region_frame_index=annotation_frame_index
+            )
 
         is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
         if not is_valid:
@@ -503,6 +512,7 @@ class CourtKPModule(BasePipelineModule):
         video_paths: Sequence[Path],
         *,
         max_frames: int | None,
+        region_frame_index: int = 0,
     ) -> CourtKPResult:
         """Run model inference for every selected frame in each camera video."""
         if not self.is_loaded:
@@ -512,6 +522,25 @@ class CourtKPModule(BasePipelineModule):
         postprocess_diagnostics: list[dict[str, Any]] = []
         expected_frame_indices: NDArray[np.int32] | None = None
         for camera_index, video_path in enumerate(video_paths):
+            region: Region | None = None
+            selection_diagnostics: dict[str, Any] | None = None
+            if self.config.region_search.enabled:
+                info = probe_video_info(video_path)
+                selected_frames = info.frame_count if max_frames is None else min(info.frame_count, max_frames)
+                if not 0 <= region_frame_index < selected_frames:
+                    raise ValueError("Court region selection frame is outside selected video frames")
+                sample = read_video_frame(video_path, region_frame_index)
+                rgb = cast("NDArray[np.uint8]", cv2.cvtColor(sample.frame, cv2.COLOR_BGR2RGB))
+                assert self._predictor is not None
+                selection = select_court_region(self._predictor, rgb, self.config.region_search)
+                region = selection.region
+                selection_diagnostics = {
+                    "frame_index": region_frame_index,
+                    "region_xyxy": list(region),
+                    "candidates": list(selection.candidates),
+                    "original_size_hw": list(rgb.shape[:2]),
+                }
+                LOGGER.info("Camera %s Court region: %s", camera_index, region)
             keypoints_px: list[NDArray[np.float32]] = []
             frame_diagnostics: list[dict[str, Any]] = []
             validities: list[NDArray[np.bool_]] = []
@@ -525,6 +554,8 @@ class CourtKPModule(BasePipelineModule):
                 )
                 frame_keypoints_px, frame_valid, frame_diagnostic = (
                     self._predict_frame_geometry(frame_rgb)
+                    if region is None
+                    else self._predict_frame_geometry(frame_rgb, region=region)
                 )
                 keypoints_px.append(frame_keypoints_px)
                 frame_diagnostics.append(
@@ -564,6 +595,7 @@ class CourtKPModule(BasePipelineModule):
                 {
                     "camera_index": int(camera_index),
                     "video_path": str(video_path),
+                    "region_selection": selection_diagnostics,
                     "frames": frame_diagnostics,
                 }
             )
@@ -587,6 +619,7 @@ class CourtKPModule(BasePipelineModule):
             "schema": "court_kp_hybrid_v1",
             "checkpoint": self._predictor.checkpoint_identity,
             "postprocess": asdict(self.postprocess),
+            "region_search": asdict(self.config.region_search),
             "output_keypoint_contract": self.config.output_keypoint_contract,
             "cameras": postprocess_diagnostics,
         }
@@ -600,19 +633,28 @@ class CourtKPModule(BasePipelineModule):
     def _predict_frame_geometry(
         self,
         frame_rgb: NDArray[np.uint8],
+        *,
+        region: Region | None = None,
     ) -> tuple[NDArray[np.float32], NDArray[np.bool_], dict[str, Any]]:
         if self._predictor is None:
             raise RuntimeError("Court predictor is not loaded")
-        prediction = self._predictor.predict(
-            frame_rgb, postprocess="hybrid", heads=("kp", "line")
-        )
-        points, visible = prediction.downstream_keypoints()
+        if region is None:
+            prediction = self._predictor.predict(
+                frame_rgb, postprocess="hybrid", heads=("kp", "line")
+            )
+            points, visible = prediction.downstream_keypoints()
+            diagnostic = prediction.geometry_diagnostics()
+            schema = prediction.keypoint_schema
+        else:
+            region_prediction = predict_court_region(self._predictor, frame_rgb, region)
+            points, visible = region_prediction.downstream_keypoints()
+            diagnostic = region_prediction.geometry_diagnostics()
+            schema = region_prediction.cropped.keypoint_schema
         if points.shape != (self.num_keypoints, 2) or visible.shape != (
             self.num_keypoints,
         ):
             raise ValueError("Hybrid court geometry must contain ordered KP14")
-        self._require_keypoint_contract(prediction.keypoint_schema)
-        diagnostic = prediction.geometry_diagnostics()
+        self._require_keypoint_contract(schema)
         diagnostic["output_keypoint_contract"] = self.config.output_keypoint_contract
         return points, visible, diagnostic
 

@@ -1,0 +1,6 @@
+defaults:
+  - base
+  - _self_
+
+dataset_root: ???
+split_file: ${data.dataset_root}/splits.json

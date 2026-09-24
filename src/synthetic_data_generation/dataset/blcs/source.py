@@ -64,7 +64,9 @@ class BLCSTrajectorySourceSettings:
         if sum(counts.values()) != self.scene_count:
             raise ValueError("BLCS split counts must sum exactly to scene_count.")
         if self.multi_object is not True:
-            raise ValueError("Production BLCS trajectory generation must be multi-object.")
+            raise ValueError(
+                "Production BLCS trajectory generation must be multi-object."
+            )
         if not isinstance(self.timeline, BLCSTimelineSpec):
             raise TypeError("BLCS source timeline must be a BLCSTimelineSpec.")
         physics_settings = self.physics_settings()
@@ -167,18 +169,21 @@ class PhysicsBLCSTrajectoryProvider:
     def load(self, *, scene_id: str, seed: int) -> Sequence[BLCSTrajectory]:
         """Generate through the public API and retain each complete source scene."""
         source = self._source()
+        splits = self.settings.split_sequence()
+        requests = tuple(
+            (f"{scene_id}-blcs-{index:06d}", seed + index)
+            for index in range(len(splits))
+        )
         trajectories = tuple(
-            _adapt_source_scene(
-                source.generate(
-                    scene_id=f"{scene_id}-blcs-{index:06d}",
-                    seed=seed + index,
-                ),
-                split=split,
+            _adapt_source_scene(scene, split=split)
+            for scene, split in zip(
+                source.generate_sequence(requests), splits, strict=True
             )
-            for index, split in enumerate(self.settings.split_sequence())
         )
         if len(trajectories) != self.settings.scene_count:
-            raise ValueError("BLCS physics source returned an incomplete scene inventory.")
+            raise ValueError(
+                "BLCS physics source returned an incomplete scene inventory."
+            )
         if len({trajectory.trajectory_id for trajectory in trajectories}) != len(
             trajectories
         ):

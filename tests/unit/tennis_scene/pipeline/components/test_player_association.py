@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from src.tennis_scene.pipeline.components import player_association as module_under_test
 from src.tennis_scene.pipeline.components.player_association import (
@@ -18,6 +20,46 @@ from src.utils.video import VideoInfo
 from tests.unit.tennis_scene.pipeline.config_factories import (
     make_player_association_config,
 )
+
+
+@pytest.mark.parametrize(
+    ("saved_cameras", "saved_reference", "message"),
+    [
+        (["cam1", "cam0"], "cam0", "camera_ids"),
+        (["cam0", "cam1"], "cam1", "reference_camera"),
+    ],
+)
+def test_loaded_association_rejects_different_camera_contract(
+    tmp_path: Path,
+    saved_cameras: list[str],
+    saved_reference: str,
+    message: str,
+) -> None:
+    path = tmp_path / "association.json"
+    PlayerAssociationResult(
+        camera_ids=saved_cameras,
+        canonical_player_ids=np.array([0, 1], dtype=np.int32),
+        segments=[
+            PlayerAssociationSegment(
+                0, 3, np.array([[0, 0], [1, 1]], dtype=np.int32)
+            )
+        ],
+        reference_camera=saved_reference,
+    ).save(path)
+    module = PlayerAssociationModule(
+        replace(
+            make_player_association_config(tmp_path, reference_camera="cam0"),
+            source="load",
+            load_path=path,
+        )
+    )
+    with pytest.raises(ValueError, match=message):
+        module.process(
+            gvhmr_results=[_make_gvhmr_result(), _make_gvhmr_result()],
+            video_paths=[tmp_path / "cam0.mp4", tmp_path / "cam1.mp4"],
+            video_infos=[VideoInfo(fps=30, width=640, height=360, frame_count=3)] * 2,
+            camera_ids=["cam0", "cam1"],
+        )
 
 
 def _make_gvhmr_result(*, num_players: int = 2, num_frames: int = 3) -> GVHMRResult:

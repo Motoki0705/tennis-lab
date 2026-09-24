@@ -1,0 +1,16 @@
+{
+  "run_id": "1790096996294984088_57107_tennis-scene-cleanup-20260922T170847Z-pipeline",
+  "name": "tennis-scene-cleanup-20260922T170847Z-pipeline",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:/home/kamimura/projects/tennis-lab/build/lib.linux-x86_64-cpython-311 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/checked_entrypoint.py /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/pipeline.json",
+  "provider": "codex",
+  "session": "01a0c8c3-d190-7c51-b671-ded223340a2f",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "fa8798a4c19f7efc6b123f4819130d57fe14b565",
+  "branch": "codex/tennis-scene-responsibility-cleanup",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup",
+  "captured_at": "2026-09-23T02:10:19+09:00"
+}

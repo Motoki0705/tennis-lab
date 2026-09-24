@@ -5,14 +5,16 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from dataclasses import fields as dataclass_fields
 from pathlib import Path
 from types import MappingProxyType
-from typing import ClassVar, Literal, TypeAlias, cast
+from typing import Any, ClassVar, Literal, TypeAlias, TypeVar, cast
 
 from omegaconf import DictConfig, OmegaConf
 
 import src.tasks.plcs.configuration_contracts as configuration_contracts
 from src.tasks.base.configuration import (
+    BaseTrainingConfig,
     ChunkDataConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
@@ -27,6 +29,16 @@ from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
     parse_view_3d,
+)
+
+# The residual profile has its own strict physical-COCO17 configuration contract.
+from src.tasks.plcs.configuration_contracts import (
+    ResidualAugmentationConfig,
+    ResidualConfig,
+    ResidualDataConfig,
+    ResidualInitializerConfig,
+    ResidualLossConfig,
+    ResidualModelConfig,
 )
 from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.utils.configuration import (
@@ -2274,3 +2286,161 @@ def validate_association_config(config: object) -> object:
     return validate_association_configuration(
         config, model_name="plcs_view_association"
     )
+
+ResidualT = TypeVar("ResidualT")
+
+
+def _residual_section(cls: type[ResidualT], value: Any) -> ResidualT:
+    import math
+    from typing import get_type_hints
+
+    raw = dict(value)
+    expected = {f.name for f in dataclass_fields(cls)}  # type: ignore[arg-type]
+    if set(raw) != expected:
+        raise ValueError(
+            f"{cls.__name__}: missing={expected - set(raw)}, unknown={set(raw) - expected}"
+        )
+    hints = get_type_hints(cls)
+    for key, val in raw.items():
+        hint = hints[key]
+        if hint is float:
+            if type(val) not in (int, float) or not math.isfinite(val):
+                raise ValueError(f"{cls.__name__}.{key} must be finite numeric")
+            raw[key] = float(val)
+        elif type(val) is not hint:
+            raise ValueError(f"{cls.__name__}.{key} must have type {hint}")
+    return cls(**raw)
+
+
+def validate_residual_config(config: DictConfig) -> ResidualConfig:
+    root = OmegaConf.to_container(config, resolve=True)
+    if not isinstance(root, dict):
+        raise ValueError("Residual config must be a mapping")
+    keys = {
+        "model",
+        "data",
+        "initializer",
+        "augmentation",
+        "loss",
+        "training",
+        "run",
+        "paths",
+        "court_keypoints",
+    }
+    if set(root) != keys:
+        raise ValueError(f"Residual config keys differ: {set(root) ^ keys}")
+    runtime = TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
+    BaseTrainingConfig.from_mapping(root["training"])
+    result = ResidualConfig(
+        _residual_section(ResidualModelConfig, root["model"]),
+        _residual_section(ResidualDataConfig, root["data"]),
+        _residual_section(ResidualInitializerConfig, root["initializer"]),
+        _residual_section(ResidualAugmentationConfig, root["augmentation"]),
+        _residual_section(ResidualLossConfig, root["loss"]),
+        runtime,
+    )
+    model, data, noise = result.model, result.data, result.augmentation
+    if model.name != "plcs_triangulation_residual":
+        raise ValueError("Expected the PLCS triangulation residual model")
+    if model.ffn_type not in SUPPORTED_FFN_TYPES:
+        raise ValueError(f"Unsupported ffn_type={model.ffn_type}")
+    if (
+        model.hidden_dim <= 0
+        or model.num_heads <= 0
+        or model.hidden_dim % model.num_heads
+        or (model.hidden_dim // model.num_heads) % 2
+    ):
+        raise ValueError("Even head dimension and divisible hidden_dim required")
+    if (
+        model.num_layers < 1
+        or model.ffn_dim < model.hidden_dim
+        or not 0 <= model.dropout < 1
+        or model.rope_base <= 0
+    ):
+        raise ValueError("Invalid residual architecture settings")
+    if (
+        data.batch_size < 1
+        or data.num_workers < 0
+        or data.sequence_length < 4
+        or data.target_fps <= 0
+    ):
+        raise ValueError("Invalid loader or time sampling settings")
+    if not 2 <= data.min_views <= data.max_views or data.cache_scenes < 0:
+        raise ValueError("Residual triangulation needs 2 or more cameras")
+    if min(data.train_limit, data.val_limit, data.test_limit) < 0:
+        raise ValueError("Scene limits must be nonnegative; 0 means complete split")
+    if (
+        not 0 <= result.initializer.min_score <= 1
+        or result.initializer.refinement_steps < 0
+    ):
+        raise ValueError("Invalid triangulation settings")
+    for field in dataclass_fields(noise):
+        value = getattr(noise, field.name)
+        if not isinstance(value, str) and (
+            value < 0 or (field.name.endswith("probability") and value > 1)
+        ):
+            raise ValueError(f"Invalid corruption setting {field.name}")
+    if (
+        noise.clean_probability + noise.hard_probability > 1
+        or not 0 < noise.focal_scale_min <= noise.focal_scale_max
+    ):
+        raise ValueError("Invalid corruption mixture/focal range")
+    if (
+        any(getattr(result.loss, f.name) < 0 for f in dataclass_fields(result.loss))
+        or result.loss.huber_delta_m <= 0
+    ):
+        raise ValueError("Loss weights must be nonnegative and Huber delta positive")
+    if result.loss.root_weight == 0 or result.loss.relative_weight == 0:
+        raise ValueError("Both requested residual heads need direct supervision")
+    if runtime.training.gan.enabled or runtime.training.qualitative_logging.enabled:
+        raise ValueError(
+            "GAN and legacy qualitative rendering are not part of this profile"
+        )
+    if runtime.training.checkpoint.monitor != "val/world_mpjpe_m":
+        raise ValueError("Select checkpoints using held-out world 3D error")
+    if dict(config.court_keypoints) != {"selector": "physical_v1"}:
+        raise ValueError("Residual inputs/outputs use the physical court contract")
+    _validate_residual_augmentation(noise, data)
+    return result
+
+
+def _validate_residual_augmentation(
+    config: ResidualAugmentationConfig, data: ResidualDataConfig
+) -> None:
+    if config.camera_preset != "four_corners_front_pair":
+        raise ValueError("Residual requires four corners and the near-fence front pair")
+    if not 2 <= config.evaluation_views <= data.max_views <= 6:
+        raise ValueError(
+            "Residual evaluation/train view counts must fit the six-camera rig"
+        )
+    if config.error_mode not in {
+        "mixed",
+        "clean",
+        "calibration",
+        "observation",
+        "temporal",
+        "persistent",
+        "combined",
+    }:
+        raise ValueError("Unknown residual corruption experiment")
+    for field in dataclass_fields(config):
+        value = getattr(config, field.name)
+        if not isinstance(value, str) and (
+            value < 0 or (field.name.endswith("probability") and value > 1)
+        ):
+            raise ValueError(f"Invalid augmentation setting {field.name}")
+    if not 6 <= config.calibration_min_points <= 14:
+        raise ValueError(
+            "This calibration profile needs 6..14 noncollinear court points"
+        )
+    if not 0 < config.persistent_min_seconds <= config.persistent_max_seconds:
+        raise ValueError("Persistent event durations must be positive and ordered")
+
+
+def _validate_residual_boundary(config: DictConfig) -> None:
+    validate_residual_config(config)
+
+
+register_boundary_validator(
+    "plcs.triangulation_residual.train", _validate_residual_boundary
+)

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
+from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
 from src.tasks.base.generate_dataset import PHYSICAL_COURT_TARGET_FRAME_ID
@@ -39,10 +40,10 @@ def default_data_config(dataset_root: Path) -> SLCSDataConfig:
         external_asset_root=dataset_root,
     )
     resolver = PathResolver(roots)
-    path = resolver.resolve(
-        PathRole.PROJECT, "src/tasks/slcs/configs/data/default.yaml"
-    )
-    raw = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
+    path = resolver.resolve(PathRole.PROJECT, "src/tasks/slcs/configs")
+    with initialize_config_dir(config_dir=str(path), version_base="1.3"):
+        config = compose(config_name="data/default")
+    raw = OmegaConf.to_container(config.data, resolve=True)
     if not isinstance(raw, dict):
         raise ValueError(f"{path}: expected a data configuration object.")
     validated = SLCS_DATA_SCHEMA.validate(cast(dict[str, object], raw))

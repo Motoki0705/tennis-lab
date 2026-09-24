@@ -1,0 +1,95 @@
+cam0 0 done
+cam0 96 done
+cam0 232 done
+cam0 400 done
+cam0 504 done
+cam0 528 done
+cam0 768 done
+cam0 824 done
+cam0 992 done
+cam1 0 done
+cam1 96 done
+cam1 232 done
+cam1 400 done
+cam1 504 done
+cam1 528 done
+cam1 768 done
+cam1 824 done
+cam1 992 done
+cam2 0 done
+cam2 96 done
+cam2 232 done
+cam2 400 done
+cam2 504 done
+cam2 528 done
+cam2 768 done
+cam2 824 done
+cam2 992 done
+{
+  "cam0": {
+    "missing_normalization": {
+      "observed": 55,
+      "detected_on_observed": 14,
+      "missing_rate": 0.7454545454545455,
+      "distance_px": {
+        "mean": 191.13477032279474,
+        "median": 238.24751405352907,
+        "p95": 338.1685482943887
+      }
+    },
+    "saved_normalization": {
+      "observed": 55,
+      "detected_on_observed": 18,
+      "missing_rate": 0.6727272727272727,
+      "distance_px": {
+        "mean": 41.993790356247914,
+        "median": 6.583340740949266,
+        "p95": 206.15950146014322
+      }
+    }
+  },
+  "cam1": {
+    "missing_normalization": {
+      "observed": 71,
+      "detected_on_observed": 43,
+      "missing_rate": 0.3943661971830986,
+      "distance_px": {
+        "mean": 326.1350869942494,
+        "median": 7.558165262223937,
+        "p95": 761.4654587271341
+      }
+    },
+    "saved_normalization": {
+      "observed": 71,
+      "detected_on_observed": 42,
+      "missing_rate": 0.4084507042253521,
+      "distance_px": {
+        "mean": 60.15796960673705,
+        "median": 4.8767200754253395,
+        "p95": 323.1498294214242
+      }
+    }
+  },
+  "cam2": {
+    "missing_normalization": {
+      "observed": 62,
+      "detected_on_observed": 50,
+      "missing_rate": 0.19354838709677424,
+      "distance_px": {
+        "mean": 109.8701069143359,
+        "median": 3.497922186424942,
+        "p95": 759.2660414379559
+      }
+    },
+    "saved_normalization": {
+      "observed": 62,
+      "detected_on_observed": 48,
+      "missing_rate": 0.22580645161290325,
+      "distance_px": {
+        "mean": 3.783591637483692,
+        "median": 3.8120224963869864,
+        "p95": 7.323245013094976
+      }
+    }
+  }
+}

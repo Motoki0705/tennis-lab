@@ -58,8 +58,6 @@ annotation.json
 annotations/
 *.csv
 *.json
-!.spin/ci-durations.json
-/artifacts/ci/
 *.xml
 !.devcontainer/devcontainer.json
 

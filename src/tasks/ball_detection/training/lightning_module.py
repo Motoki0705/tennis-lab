@@ -12,6 +12,7 @@ from torch import Tensor
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
 from src.tasks.ball_detection.model_io.contracts import BallTrainingCall
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
+from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
 from src.tasks.ball_detection.models import build_ball_detection_discriminator
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
@@ -81,6 +82,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         loss_cfg = self.config.loss
         metrics_cfg = self.config.metrics
 
+        self.image_normalization = BallImageNormalization.from_config(self.config)
         model_pair = build_ball_detection_pair(self.config)
         self.model = model_pair.model
         self.model_io = cast(BallModelIOAdapter, model_pair.adapter)
@@ -109,7 +111,9 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self, images: Tensor, target_size_hw: tuple[int, int]
     ) -> Tensor:
         """Predict per-frame heatmap logits resized to the target heatmap size."""
-        call = self.model_io.prepare_model_call(images)
+        call = self.model_io.prepare_model_call(
+            images, image_normalization=self.image_normalization, preprocessed=True,
+        )
         logits = self.model(*call.model_args)
         return self.model_io.resized_logits(
             logits,
@@ -147,7 +151,9 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         stage: str,
     ) -> BallStepResult:
         """Compute forward pass, supervised loss, metrics, and GAN sequences."""
-        call = self.model_io.prepare_training_batch(batch)
+        call = self.model_io.prepare_training_batch(
+            batch, image_normalization=self.image_normalization,
+        )
         raw_logits = self.model(*call.model_call.model_args)
         logits = self.model_io.training_logits(raw_logits, call)
         target_heatmaps = call.target_heatmaps

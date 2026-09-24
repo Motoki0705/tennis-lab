@@ -21,6 +21,10 @@ from src.tasks.ball_detection.model_io.contracts import (
     BallPrediction,
     BallTrainingCall,
 )
+from src.tasks.ball_detection.model_io.normalization import (
+    IDENTITY_NORMALIZATION,
+    BallImageNormalization,
+)
 from src.tasks.base.model_io import ModelCall
 from src.utils.data.heatmaps import (
     heatmaps_to_argmax,
@@ -279,24 +283,34 @@ class BallModelIOAdapter:
         if self.execution_boundary is not None:
             self.execution_boundary.bind_model(model)
 
-    def prepare_model_call(self, images: Tensor) -> BallModelCall:
+    def prepare_model_call(
+        self, images: Tensor, *,
+        image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
+        preprocessed: bool = False,
+    ) -> BallModelCall:
         """Build the complete validated argument list before model entry."""
-        return self._prepare_model_call(self.prepare_images(images))
+        return self._prepare_model_call(self.prepare_images(
+            images, image_normalization=image_normalization, preprocessed=preprocessed,
+        ))
 
     @staticmethod
     def _prepare_direct_model_call(call: BallModelCall) -> BallModelCall:
         return call
 
-    def prepare_images(self, images: Tensor) -> BallModelCall:
-        """Validate raw ``(B,T,3,H,W)`` images before model execution."""
+    def prepare_images(
+        self, images: Tensor, *,
+        image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
+        preprocessed: bool = False,
+    ) -> BallModelCall:
+        """Validate RGB and apply its declared transform before layout/MDD conversion."""
+        if type(preprocessed) is not bool:
+            raise BallModelIOError("preprocessed must be a boolean.")
         _require_float_tensor(images, name="images", rank=5)
         if images.dtype != torch.float32:
             raise BallModelIOError(
                 f"images must use torch.float32, got {images.dtype}."
             )
         _require_finite(images, name="images")
-        if bool(torch.any((images < 0.0) | (images > 1.0))):
-            raise BallModelIOError("images values must be in [0, 1].")
         batch_size, frame_count, channels, height, width = images.shape
         if batch_size <= 0:
             raise BallModelIOError("images must contain at least one sample.")
@@ -326,6 +340,12 @@ class BallModelIOAdapter:
                 f"{self.spec.model_name} requires H and W >= "
                 f"{self.minimum_spatial_size}, got {(height, width)}."
             )
+        if preprocessed:
+            image_normalization.validate_preprocessed_range(images)
+        else:
+            IDENTITY_NORMALIZATION.validate_preprocessed_range(images)
+            images = image_normalization.apply(images)
+        _require_finite(images, name="preprocessed images")
         model_input = self._to_model_input(images)
         return BallModelCall(
             images=images,
@@ -338,6 +358,7 @@ class BallModelIOAdapter:
     def prepare_training_batch(
         self,
         batch: Mapping[str, Any],
+        *, image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
     ) -> BallTrainingCall:
         """Validate every tensor used by training before the forward pass."""
         images = _required_tensor(batch, "images")
@@ -345,7 +366,9 @@ class BallModelIOAdapter:
         coords = _required_tensor(batch, "coords")
         visibility = _required_tensor(batch, "visibility")
         original_size = _required_tensor(batch, "original_size")
-        model_call = self.prepare_model_call(images)
+        model_call = self.prepare_model_call(
+            images, image_normalization=image_normalization, preprocessed=True,
+        )
 
         _require_float_tensor(target_heatmaps, name="heatmaps", rank=4)
         _require_float_tensor(coords, name="coords", rank=4)
@@ -451,9 +474,12 @@ class BallModelIOAdapter:
             heatmaps=heatmaps.cpu(),
         )
 
-    def mdd_features(self, images: Tensor) -> Tensor:
+    def mdd_features(
+        self, images: Tensor, *,
+        image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
+    ) -> Tensor:
         """Build canonical ``(B,2,T,H,W)`` MDD features for visualization."""
-        call = self.prepare_images(images)
+        call = self.prepare_images(images, image_normalization=image_normalization)
         return self._rgb_frames_to_mdd(call.images)
 
     def _to_model_input(self, images: Tensor) -> Tensor:

@@ -1,0 +1,103 @@
+{
+  "extension": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib/MultiScaleDeformableAttention.so",
+  "torch": "2.13.0+cu130",
+  "device": "NVIDIA GeForce RTX 5060 Ti",
+  "forward_max_abs_difference": 2.384185791015625e-07,
+  "backward_max_abs_differences": [
+    2.384185791015625e-07,
+    2.384185791015625e-07,
+    2.384185791015625e-07
+  ],
+  "chain": {
+    "seconds": 42.39212903000043,
+    "arrays": {
+      "smpl_body_pose": {
+        "shape": [
+          2,
+          32,
+          63
+        ],
+        "finite": true
+      },
+      "smpl_global_orient": {
+        "shape": [
+          2,
+          32,
+          3
+        ],
+        "finite": true
+      },
+      "smpl_betas": {
+        "shape": [
+          2,
+          10
+        ],
+        "finite": true
+      },
+      "smpl_vertices_local": {
+        "shape": [
+          2,
+          32,
+          6890,
+          3
+        ],
+        "finite": true
+      },
+      "human_kp_2d": {
+        "shape": [
+          2,
+          32,
+          17,
+          2
+        ],
+        "finite": true
+      },
+      "human_kp_vis": {
+        "shape": [
+          2,
+          32,
+          17
+        ],
+        "finite": true
+      },
+      "bbx_xys": {
+        "shape": [
+          2,
+          32,
+          3
+        ],
+        "finite": true
+      },
+      "track_ids": {
+        "shape": [
+          2
+        ],
+        "finite": true
+      },
+      "smpl_transl_incam": {
+        "shape": [
+          2,
+          32,
+          3
+        ],
+        "finite": true
+      },
+      "smpl_transl_world": {
+        "shape": [
+          2,
+          32,
+          3
+        ],
+        "finite": true
+      },
+      "smpl_global_orient_world": {
+        "shape": [
+          2,
+          32,
+          3
+        ],
+        "finite": true
+      }
+    }
+  }
+}

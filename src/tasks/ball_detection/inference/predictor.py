@@ -9,14 +9,17 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
+from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
 from src.tasks.ball_detection.model_io.contracts import BallModelIOError, BallPrediction
-from src.tasks.ball_detection.training.lightning_module import (
-    BallDetectionLightningModule,
+from src.tasks.ball_detection.model_io.normalization import (
+    IDENTITY_NORMALIZATION,
+    BallImageNormalization,
 )
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.model_io import BoundModelIO, bind_model_io
+from src.tasks.base.model_io import BoundModelIO
 from src.utils.configuration import PathResolver
+from src.utils.device import resolve_device
 
 
 class BallDetectionPredictor(BasePredictor[BallPrediction]):
@@ -38,6 +41,7 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         device: torch.device,
         *,
         subpixel_refine: bool,
+        image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
     ) -> None:
         if not isinstance(model_io.adapter, BallModelIOAdapter):
             raise BallModelIOError(
@@ -48,6 +52,7 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         self.adapter = model_io.adapter
         self.device = device
         self.subpixel_refine = subpixel_refine
+        self.image_normalization = image_normalization
 
         self.adapter.validate_model_pair(self.model)
         self.model.to(self.device)
@@ -65,37 +70,21 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         weights_only: bool,
         **kwargs: Any,
     ) -> Self:
-        """Load predictor from a Lightning checkpoint.
-
-        Args:
-            checkpoint_path: Path to checkpoint file(s).
-            device: Device for inference.
-            **kwargs: ``subpixel_refine`` forwards to the constructor;
-                remaining arguments are unused.
-
-        Returns:
-            BallDetectionPredictor instance.
-
-        Raises:
-            FileNotFoundError: If checkpoint file does not exist.
-        """
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoint_path,
-            BallDetectionLightningModule,
-            resolver=resolver,
-            device=device,
-            strict=strict,
-            weights_only=weights_only,
-            **kwargs,
-        )
-
-        adapter = lightning_module.model_io
-        adapter.validate_model_pair(lightning_module.model)
-
+        """Restore one checkpoint's model and adapter without training state."""
+        if kwargs:
+            raise TypeError(f"Unsupported Ball checkpoint options: {sorted(kwargs)}")
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, got {len(checkpoints)} checkpoints."
+            )
+        resolved_device = resolve_device(device)
+        loaded = load_ball_checkpoint(checkpoints[0], strict=strict, weights_only=weights_only)
         return cls(
-            model_io=bind_model_io(lightning_module.model, adapter),
+            model_io=loaded.model_io,
             device=resolved_device,
             subpixel_refine=subpixel_refine,
+            image_normalization=loaded.image_normalization,
         )
 
     def predict(
@@ -107,13 +96,16 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         Args:
             images: Input frames of shape ``(B, T, 3, H, W)`` as float32 in
                 ``[0, 1]``. Already resized and scaled from raw RGB values.
+                The checkpoint's saved normalization is applied internally.
         Returns:
             Typed coordinates, confidence, and probability heatmaps on CPU.
         """
         if not isinstance(images, Tensor):
             raise BallModelIOError("Ball detector input must be a Tensor.")
         with torch.no_grad():
-            call = self.adapter.prepare_model_call(images.to(self.device))
+            call = self.adapter.prepare_model_call(
+                images.to(self.device), image_normalization=self.image_normalization,
+            )
             logits = self.model(*call.model_args)
             return self.adapter.prediction(
                 logits,
@@ -124,4 +116,4 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
     @property
     def configured_frames(self) -> int:
         """Return the checkpoint's declared sequence length contract."""
-        return self.adapter.spec.configured_frames
+        return int(self.adapter.spec.configured_frames)
