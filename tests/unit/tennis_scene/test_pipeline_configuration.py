@@ -25,7 +25,7 @@ def test_default_requires_no_side_annotation() -> None:
     assert runtime.court_kp.mode == "model"
     assert runtime.camera_geometry.reference_camera is None
     assert runtime.plcs_checkpoint.name == "view-association-global-mha-mhc-v2.ckpt"
-    assert runtime.blcs_checkpoint.name == "view-association-global-mha-mhc-v2.ckpt"
+    assert "blcs_association" not in runtime.enabled
     assert len(runtime.camera_ids) == 3
     assert runtime.player_placement.temporal_weight == 0.05
     assert runtime.player_placement.min_joints == 5

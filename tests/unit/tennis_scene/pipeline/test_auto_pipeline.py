@@ -116,8 +116,8 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
     cfg = runtime(tmp_path)
     data = inputs(empty=empty)
     stages = [FixedStage(x) for x in data]
-    plcs, blcs = KnownAssociation(cfg.plcs_checkpoint, 17), KnownAssociation(cfg.blcs_checkpoint, 1)
-    pipeline = TennisSceneOrchestrator(cfg, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, plcs), blcs=cast(Any, blcs), body=None)
+    plcs = KnownAssociation(cfg.plcs_checkpoint, 17)
+    pipeline = TennisSceneOrchestrator(cfg, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, plcs), body=None)
     paths = tuple(tmp_path / f"cam{i}.mp4" for i in range(3))
     for path in paths:
         path.write_bytes(b"video fixture")
@@ -126,7 +126,7 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
         raise AssertionError("Automatic pipeline attempted human interaction")
     monkeypatch.setattr("builtins.input", forbidden)
     monkeypatch.setattr(cv2, "namedWindow", forbidden)
-    return pipeline, paths, [*stages, plcs, blcs]
+    return pipeline, paths, [*stages, plcs]
 
 
 def test_headless_clip_once_and_v2_archive_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -136,8 +136,10 @@ def test_headless_clip_once_and_v2_archive_roundtrip(tmp_path: Path, monkeypatch
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     assert scene.player_kp_3d_vis is not None and scene.player_kp_3d_vis.all()
     assert scene.ball_3d_valid is not None and scene.ball_3d_valid.all()
+    assert "blcs_association" not in scene.metadata["stage_status"]
+    assert "blcs_association" not in pipeline.publication_identity()["checkpoints"]
     assert scene.player_valid is not None and not scene.player_valid.any()
-    assert [stage.calls for stage in stages] == [1, 1, 1, 1, 1]
+    assert [stage.calls for stage in stages] == [1, 1, 1, 1]
     output = tmp_path / "scene.npz"
     save_scene_result(scene, output)
     restored = load_scene_result(output)
@@ -146,17 +148,17 @@ def test_headless_clip_once_and_v2_archive_roundtrip(tmp_path: Path, monkeypatch
     pipeline.config = replace(pipeline.config, cache_source="load")
     again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
     np.testing.assert_array_equal(again.ball_3d, scene.ball_3d)
-    assert [stage.calls for stage in stages] == [1, 1, 1, 1, 1]
+    assert [stage.calls for stage in stages] == [1, 1, 1, 1]
 
 
-def test_zero_detections_skip_both_association_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_zero_detections_skip_player_association(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch, empty=True)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
     assert scene.metadata["status"] == "empty"
     assert scene.metadata["court_reference"] is None
     assert scene.player_position.shape == (0, 24, 3)
     assert scene.ball_3d_valid is not None and not scene.ball_3d_valid.any()
-    assert [stage.calls for stage in stages[-2:]] == [0, 0]
+    assert stages[-1].calls == 0
     save_scene_result(scene, tmp_path / "empty.npz")
     assert load_scene_result(tmp_path / "empty.npz").schema_version == 2
 
@@ -168,6 +170,35 @@ def test_v2_missing_mask_rejected_before_any_archive_write(tmp_path: Path, monke
     with pytest.raises(ValueError, match="ball_3d_valid"):
         save_scene_result(scene, tmp_path / "bad.npz")
     assert not (tmp_path / "bad.npz").exists()
+
+
+def test_single_ball_missing_views_remain_invalid_without_identity_inference(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
+    detected = stages[2].result
+    detected.visibility[1:, 7] = False
+    detected.score[1:, 7] = 0
+    detected.ball_uv[1:, 7] = 0
+    detected.ball_uv_px[1:, 7] = 0
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    assert scene.ball_3d_valid is not None
+    assert not scene.ball_3d_valid[7]
+    assert scene.ball_3d_valid.sum() == 23
+    assert not scene.ball_3d[7].any()
+    assert "blcs_association" not in scene.metadata["artifacts"]
+
+
+def test_ball_boundary_rejects_multiple_detections() -> None:
+    from src.tennis_scene.pipeline.components.ball_reconstruction import (
+        single_ball_observations,
+    )
+
+    _, people, _ = inputs()
+    ball = ObjectObservations(people.camera_ids, people.size, people.fps,
+        np.repeat(people.uv_px[..., :1, :], 2, axis=2),
+        np.repeat(people.confidence[..., :1], 2, axis=2),
+        np.repeat(people.observed, 2, axis=2), np.zeros((3, 2), np.int64))
+    with pytest.raises(ValueError, match="at most one"):
+        single_ball_observations(ball, threshold=.5)
 
 
 @pytest.mark.parametrize("missing_hips", [False, True])
@@ -216,7 +247,7 @@ def test_complete_body_path_corrects_yaw_from_coco17_and_keeps_pose(tmp_path: Pa
             self.unloaded = True
     body = KnownBody()
     config = replace(pipeline.config, enabled={**pipeline.config.enabled, "gvhmr": True}, processing_settings={**pipeline.config.processing_settings, "gvhmr": {"enabled": True}})
-    pipeline = TennisSceneOrchestrator(config, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, stages[3]), blcs=cast(Any, stages[4]), body=body)
+    pipeline = TennisSceneOrchestrator(config, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, stages[3]), body=body)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
     assert scene.player_valid is not None and scene.player_valid.all()
     assert scene.player_heading_valid is not None and scene.player_heading_valid.all()

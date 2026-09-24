@@ -85,8 +85,7 @@ def assemble_automatic_scene(
         "track_ids": identities.tolist(),
         "identity_scope": "one_model_input_clip",
         "body_placement": body_metadata,
-        "ball_identity": None if ball is None else ball.identity,
-        "ball_identity_support": {} if ball is None else ball.candidate_counts,
+        "ball_observation_contract": "single_detection_per_camera_frame",
         "validity_statistics": {
             "player_root_frames": root_valid.sum(-1).tolist(), "player_joint_frames": point_valid.any(-1).sum(-1).tolist(),
             "player_smpl_frames": mesh_valid.sum(-1).tolist(), "ball_3d_frames": int(ball_valid.sum()),

@@ -155,7 +155,7 @@ def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     assert runtime.inference_policy.max_frames == 1024
     assert runtime.camera_geometry.reference_camera is None
     assert runtime.people.runtime.static_cam
-    assert runtime.enabled["plcs_association"] and runtime.enabled["blcs_association"]
+    assert runtime.enabled["plcs_association"] and "blcs_association" not in runtime.enabled
 
 
 @pytest.mark.parametrize("override", ["+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui"])

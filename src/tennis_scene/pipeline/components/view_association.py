@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 import torch
 
@@ -13,23 +12,20 @@ from src.tasks.base.model_io.association_contracts import (
     AssociationObservationRequest,
     AssociationObservationResult,
 )
-from src.tasks.blcs.inference.association_predictor import BLCSAssociationPredictor
 from src.tasks.plcs.inference.association_predictor import PLCSAssociationPredictor
 
 
 class ViewAssociationModule:
-    """Inference on unassociated camera-local player/ball observations."""
+    """Inference on unassociated camera-local player observations."""
 
-    def __init__(self, checkpoint: Path, *, task: Literal["plcs", "blcs"], device: str = "cpu") -> None:
-        if task not in ("plcs", "blcs"):
-            raise ValueError("Unknown association task")
-        self.checkpoint, self.task, self.device = checkpoint, task, device
-        self.predictor: PLCSAssociationPredictor | BLCSAssociationPredictor | None = None
+    def __init__(self, checkpoint: Path, *, device: str = "cpu") -> None:
+        self.checkpoint, self.device = checkpoint, device
+        self.predictor: PLCSAssociationPredictor | None = None
         self.tracking: ObservationTrackingConfig | None = None
 
     def load(self) -> None:
         if self.predictor is None:
-            self.predictor = (PLCSAssociationPredictor.load(self.checkpoint, device=self.device) if self.task == "plcs" else BLCSAssociationPredictor.load(self.checkpoint, device=self.device))
+            self.predictor = PLCSAssociationPredictor.load(self.checkpoint, device=self.device)
             self.tracking = ObservationTrackingConfig.from_mapping(self.predictor.module.config.data.association)
 
     def unload(self) -> None:

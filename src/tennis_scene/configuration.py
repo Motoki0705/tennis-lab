@@ -245,7 +245,7 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
     "placement": ConfigField.mapping(_PLACEMENT_SCHEMA),
 })
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
-    "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int), "ambiguity_ratio": ConfigField.of(float, int),
+    "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
@@ -254,7 +254,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_AUTO_BALL_SCHEMA),
-    "plcs_association": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA), "blcs_association": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA),
+    "plcs_association": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA),
     "association": ConfigField.mapping(_INFERENCE_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
@@ -276,7 +276,6 @@ class PipelineRuntimeConfig:
     people: PeopleModelConfig
     ball_detection: BallDetectionConfig
     plcs_checkpoint: Path
-    blcs_checkpoint: Path
     inference_policy: AssociationInferencePolicy
     camera_geometry: CameraGeometryConfig
     human_vis_threshold: float
@@ -286,7 +285,6 @@ class PipelineRuntimeConfig:
     player_placement: TemporalPlacementConfig
     ball_reprojection_px: float
     ball_min_frames: int
-    ball_ambiguity_ratio: float
     cache_directory: Path
     cache_source: str
     cache_overwrite: bool
@@ -344,7 +342,6 @@ class PipelineRuntimeConfig:
         ball_settings = dict(_mapping(value["ball_detection"], name="ball_detection"))
         ball_config = build_ball_detection_config({**ball_settings, "source": "execute", "save_result": False, "load_path": None, "output_path": str(cache["directory"]) + "/ball.component.json"}, resolver, device=device)
         plcs = _mapping(value["plcs_association"], name="plcs_association")
-        blcs = _mapping(value["blcs_association"], name="blcs_association")
         inference_policy = AssociationInferencePolicy(**cast(dict[str, Any], dict(_mapping(value["association"], name="association"))))
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
@@ -364,11 +361,9 @@ class PipelineRuntimeConfig:
                 raise SemanticConfigurationError("Reprojection thresholds must be finite and positive")
         joint_confidence = float(cast(float, player["joint_confidence"]))
         placement = TemporalPlacementConfig(**cast(dict[str, Any], dict(_mapping(player["placement"], name="player_reconstruction.placement"))))
-        ambiguity_ratio = float(cast(float, ball["ambiguity_ratio"]))
         _unit_interval(joint_confidence, name="joint_confidence")
-        _unit_interval(ambiguity_ratio, name="ball ambiguity ratio")
         _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
-        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_association", "blcs_association", "player_reconstruction", "ball_reconstruction", "gvhmr")}
+        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_association", "player_reconstruction", "ball_reconstruction", "gvhmr")}
         enabled.update(court_kp=True, camera_geometry=True)
         from src.tennis_scene.pipeline.dependency_graph import (
             build_default_dependency_graph,
@@ -376,8 +371,8 @@ class PipelineRuntimeConfig:
         build_default_dependency_graph(enabled).resolve_from_enabled(enabled)
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])), resolver.resolve(PathRole.CHECKPOINT, cast(str, blcs["checkpoint"])),
-            inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]), ambiguity_ratio,
+            resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])),
+            inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings)
 
 

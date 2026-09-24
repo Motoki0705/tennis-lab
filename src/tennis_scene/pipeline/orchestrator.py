@@ -30,7 +30,8 @@ from src.tennis_scene.pipeline.components.ball_detection import (
 )
 from src.tennis_scene.pipeline.components.ball_reconstruction import (
     BallReconstructionResult,
-    reconstruct_rally_ball,
+    reconstruct_ball,
+    single_ball_observations,
 )
 from src.tennis_scene.pipeline.components.camera_geometry import (
     SideEvidence,
@@ -89,12 +90,11 @@ class TennisSceneOrchestrator:
         people: PersonObservationModule | None,
         ball: BallDetectionModule | None,
         plcs: ViewAssociationModule | None,
-        blcs: ViewAssociationModule | None,
         body: BodyRecovery | None,
     ) -> None:
         self.config = config
         self.court, self.people, self.ball = court, people, ball
-        self.plcs, self.blcs, self.body = plcs, blcs, body
+        self.plcs, self.body = plcs, body
         self.resolution = build_default_dependency_graph(config.enabled).resolve_from_enabled(config.enabled)
         self.enabled_stages = self.resolution.enabled_set
         self.execution_order = self.resolution.enabled_order
@@ -115,8 +115,7 @@ class TennisSceneOrchestrator:
             cfg, court=CourtKPModule(cfg.court_kp),
             people=people if cfg.enabled["person_observations"] else None,
             ball=BallDetectionModule(cfg.ball_detection) if cfg.enabled["ball_detection"] else None,
-            plcs=ViewAssociationModule(cfg.plcs_checkpoint, task="plcs", device=cfg.device) if cfg.enabled["plcs_association"] else None,
-            blcs=ViewAssociationModule(cfg.blcs_checkpoint, task="blcs", device=cfg.device) if cfg.enabled["blcs_association"] else None,
+            plcs=ViewAssociationModule(cfg.plcs_checkpoint, device=cfg.device) if cfg.enabled["plcs_association"] else None,
             body=body,
         )
 
@@ -142,7 +141,7 @@ class TennisSceneOrchestrator:
             "court": cfg.court_kp.checkpoint, "dino": cfg.people.dino_checkpoint,
             "vitpose": cfg.people.vitpose_checkpoint, "hmr2": cfg.people.hmr2_checkpoint,
             "gvhmr": cfg.people.gvhmr_checkpoint, "plcs_association": cfg.plcs_checkpoint,
-            "blcs_association": cfg.blcs_checkpoint, "ball_detection": cfg.ball_detection.checkpoint,
+            "ball_detection": cfg.ball_detection.checkpoint,
             "smplx": cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
             "root_regressor": cfg.people.bundled_assets.smpl_neutral_joint_regressor,
         }
@@ -318,9 +317,9 @@ class TennisSceneOrchestrator:
                 balls = ObjectObservations(ids, (info.width, info.height), info.fps, detected.ball_uv_px[:, :, None, None], detected.score[:, :, None, None].astype(np.float32), detected.visibility[:, :, None], np.zeros((len(ids), 1), np.int64))
             timings["ball_detection"] = time.monotonic() - tick
             has_people = self.plcs is not None and people.visibility(cfg.human_vis_threshold).any()
-            has_ball = self.blcs is not None and balls.visibility(cfg.ball_detection.score_threshold).any()
+            has_ball = self.ball is not None and balls.visibility(cfg.ball_detection.score_threshold).any()
             if not has_people and not has_ball:
-                for stage in ("plcs_association", "blcs_association", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr"):
+                for stage in ("plcs_association", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr"):
                     if cfg.enabled[stage]:
                         statuses[stage] = "skipped_no_observations"
                 scene = assemble_automatic_scene(video_paths=paths, camera_ids=ids, info=info, court=court, active_indices=(), geometry=None, grouped_people=None, skeleton=None, players=None, ball=None,
@@ -339,12 +338,9 @@ class TennisSceneOrchestrator:
                     predictions.append(p_result)
                     torso = [5, 6, 11, 12]
                     evidence.append(SideEvidence("plcs", p_group.uv_px[:, :, sample_frames][:, :, :, torso], (p_group.visibility & (p_group.confidence >= cfg.joint_confidence))[:, :, sample_frames][:, :, :, torso], cfg.player_reprojection_px * scale))
-                tick = time.monotonic()
-                b_result, b_group = self._associate(self.blcs, "blcs", selected_balls, court, active, sample_frames, reference, store, common, statuses)
-                timings["blcs_association"] = time.monotonic() - tick
-                if b_result is not None:
-                    predictions.append(b_result)
-                    evidence.append(SideEvidence("blcs", b_group.uv_px[:, :, sample_frames], b_group.visibility[:, :, sample_frames], cfg.ball_reprojection_px * scale))
+                b_group = single_ball_observations(selected_balls, threshold=cfg.ball_detection.score_threshold)
+                if b_group.visibility.any():
+                    evidence.append(SideEvidence("ball", b_group.uv_px[:, :, sample_frames], b_group.visibility[:, :, sample_frames], cfg.ball_reprojection_px * scale))
                 if not predictions:
                     raise ReconstructionUnavailable("no_observations_in_calibrated_views", "No model input in accepted camera views")
                 tick = time.monotonic()
@@ -352,19 +348,19 @@ class TennisSceneOrchestrator:
                 geometry = resolve_camera_geometry(calibration, reference, tuple(p.view_half_turns.numpy() for p in predictions), tuple(evidence), config=cfg.camera_geometry)
                 statuses["camera_geometry"] = "executed"
                 timings["camera_geometry"] = time.monotonic() - tick
-                reconstruction_identity = {**common, "associations": {k: v for k, v in store.references.items() if k.endswith("_association")}, "geometry": geometry.document,
+                reconstruction_identity = {**common, "ball_observations": store.references.get("ball"), "ball_contract": "single_detection_v1", "associations": {k: v for k, v in store.references.items() if k.endswith("_association")}, "geometry": geometry.document,
                     "settings": {key: cfg.processing_settings[key] for key in ("player_reconstruction", "ball_reconstruction", "gvhmr")}}
                 tick = time.monotonic()
                 self.last_receipt["active_stage"] = "triangulation"
                 cached = store.load("triangulation", reconstruction_identity)
                 if cached is None:
                     skeleton = triangulate_players(p_group, geometry.cameras, reprojection_px=cfg.player_reprojection_px * scale, joint_confidence=cfg.joint_confidence) if cfg.enabled["player_reconstruction"] else None
-                    ball = reconstruct_rally_ball(b_group, geometry.cameras, fps=info.fps, reprojection_px=cfg.ball_reprojection_px * scale, min_frames=cfg.ball_min_frames, ambiguity_ratio=cfg.ball_ambiguity_ratio) if cfg.enabled["ball_reconstruction"] else None
+                    ball = reconstruct_ball(b_group, geometry.cameras, fps=info.fps, reprojection_px=cfg.ball_reprojection_px * scale, min_frames=cfg.ball_min_frames) if cfg.enabled["ball_reconstruction"] else None
                     store.save("triangulation", reconstruction_identity, {"skeleton": skeleton, "ball": ball})
                 else:
                     skeleton = None if cached["skeleton"] is None else PlayerSkeleton(**cached["skeleton"])
                     b = cached["ball"]
-                    ball = None if b is None else BallReconstructionResult(**{**b, "trajectory": TriangulatedPoints(**b["trajectory"]), "candidate_counts": {int(k): int(v) for k, v in b["candidate_counts"].items()}})
+                    ball = None if b is None else BallReconstructionResult(**{**b, "trajectory": TriangulatedPoints(**b["trajectory"])})
                 if cfg.enabled["player_reconstruction"]:
                     statuses["player_reconstruction"] = "ok" if skeleton is not None and skeleton.valid.any() else "insufficient_support"
                 if cfg.enabled["ball_reconstruction"]:
@@ -402,7 +398,7 @@ class TennisSceneOrchestrator:
                 scene = assemble_automatic_scene(video_paths=paths, camera_ids=ids, info=info, court=court, active_indices=active, geometry=geometry, grouped_people=p_group, skeleton=skeleton, players=players, ball=ball,
                     metadata={"status": status, "enabled_stages": [s.value for s in self.execution_order], "stage_status": statuses, "artifacts": store.references,
                         "source_frame_indices": sample_frames.tolist(), "source_identity": source, "code_sha256": self.code_identity,
-                        "side_logits": {task: result.side_logits.tolist() for task, result in (("plcs", p_result), ("blcs", b_result)) if result is not None}})
+                        "side_logits": {} if p_result is None else {"plcs": p_result.side_logits.tolist()}})
             self.last_receipt["active_stage"] = None
             self.last_receipt.update(status=scene.metadata["status"], artifacts=store.references, validity=scene.metadata["validity_statistics"])
             timings["total"] = time.monotonic() - started

@@ -13,24 +13,24 @@ from src.utils.video import VideoInfo
 
 
 def flags() -> dict[str, bool]:
-    return {key: True for key in ("court_kp", "person_observations", "ball_detection", "plcs_association", "blcs_association", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr")}
+    return {key: True for key in ("court_kp", "person_observations", "ball_detection", "plcs_association", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr")}
 
 
-def test_both_associations_precede_one_geometry_and_body_stage() -> None:
+def test_player_association_supplies_side_and_ball_uses_detector() -> None:
     enabled = flags()
     result = build_default_dependency_graph(enabled).resolve_from_enabled(enabled)
     order = list(result.enabled_order)
     assert order.index(Stage.PLCS_ASSOCIATION) < order.index(Stage.CAMERA_GEOMETRY)
-    assert order.index(Stage.BLCS_ASSOCIATION) < order.index(Stage.CAMERA_GEOMETRY)
+    assert order.index(Stage.BALL_DETECTION) < order.index(Stage.BALL_RECONSTRUCTION)
     assert order.index(Stage.CAMERA_GEOMETRY) < order.index(Stage.GVHMR)
 
 
 def test_ball_only_pipeline_and_strict_missing_dependencies() -> None:
     enabled = flags()
-    for key in ("person_observations", "plcs_association", "player_reconstruction", "gvhmr"):
+    for key in ("player_reconstruction", "gvhmr"):
         enabled[key] = False
     result = build_default_dependency_graph(enabled).resolve_from_enabled(enabled)
-    assert Stage.PLCS_ASSOCIATION not in result.enabled_set
+    assert Stage.PLCS_ASSOCIATION in result.enabled_set
     assert Stage.CAMERA_GEOMETRY in result.enabled_set
     enabled["ball_detection"] = False
     with pytest.raises(ValueError, match="missing dependency"):
