@@ -1,0 +1,3 @@
+ M knowledge/nodes/plcs/.sequence
+?? knowledge/nodes/plcs/000114-run-plcs-track-reid-gpu-smoke-20260924.md
+?? knowledge/runs/run-plcs-track-reid-gpu-smoke-20260924/

@@ -1,0 +1,20 @@
+{
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/fixed_track_reid_eager_v1_s42/logs/version_0/checkpoints/plcs-epoch=41.ckpt",
+  "selection": "minimum val/loss",
+  "test": [
+    {
+      "test/loss": 0.1066877692937851,
+      "test/pair_precision": 0.9797570705413818,
+      "test/pair_recall": 0.9490196108818054,
+      "test/pair_f1": 0.9641434550285339,
+      "test/pair_balanced_accuracy": 0.9693498611450195,
+      "test/player_accuracy": 0.8395522236824036,
+      "test/cosine_threshold": 0.7749999761581421,
+      "test/matching_precision": 0.9973822236061096,
+      "test/matching_recall": 0.7470588088035583,
+      "test/matching_f1": 0.8542600870132446,
+      "test/group_accuracy": 0.33000001311302185,
+      "test/track_acceptance_recall": 0.8395522236824036
+    }
+  ]
+}

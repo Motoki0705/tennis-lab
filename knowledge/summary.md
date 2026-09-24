@@ -1,7 +1,7 @@
-<!-- knowledge-review: 44c84000a008f24ffae83b1bffbeab28e6ababa325fa5baa6327c85126f46bcd on 2026-09-24 -->
+<!-- knowledge-review: ba49c4c947315741ca81502c15a989b674d6834f80b2cec55d0520e843e96a87 on 2026-09-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-23（自動scene統合のCPU検証と品質未達を追加）
+更新日: 2026-09-24（固定track Re-IDの学習・数値診断を追加）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,12 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-24の固定track Re-ID
+
+PR #915はPLCS専用へ変更し、2D trackerが再登場も含め同一人物IDを維持する前提で、cameraごと累計4人・非再利用slotへ切り替えた。BLCS associationとtasks/base共通化を撤去し、PR #920の下流も単一2D球を直接三角測量する構成へ統合した。sideは独立境界に分離した暫定構成で、今回は学習しない。
+
+[初回GPUスモーク](nodes/plcs/000114-run-plcs-track-reid-gpu-smoke-20260924.md)は完走したが、[compiled本学習](nodes/plcs/000115-run-plcs-fixed-track-reid-e60-s42-20260924.md)はvalidation NaNで停止した。[fresh推論](nodes/plcs/000116-run-plcs-reid-validation-numeric-probe-20260924.md)は有限で、[モード切替](nodes/plcs/000117-run-plcs-reid-mode-transition-probe-20260924.md)、[optimizer更新前](nodes/plcs/000118-run-plcs-reid-mode-cache-probe-20260924.md)、[反復評価とmask](nodes/plcs/000119-run-plcs-reid-sdpa-probe-20260924.md)を切り分けた。全無効行の自己参照化だけでは[実データGPU検証](nodes/plcs/000120-run-plcs-reid-safe-mask-gpu-smoke-20260924.md)の非有限値を解消できなかったため、compile=falseを明示し、自動fallbackは導入していない。[eagerの2epoch/全validation検証](nodes/plcs/000121-run-plcs-reid-eager-gpu-smoke-20260924.md)後に[新規60epoch学習](nodes/plcs/000122-run-plcs-fixed-track-reid-eager-e60-s42-20260924.md)を完了した。最低val/lossの42epoch目を固定した100scene testでは、cosineペアF1=0.9641、補助headを含む既定matchingはprecision=0.9974・recall=0.7471・F1=0.8543、group完全一致33%だった。同一embedding/閾値で補助headだけを使わない診断ではmatching F1=0.9642・group完全一致77%となり、真の人物trackの棄却が主な取りこぼし要因である。これは既定pipelineの成績ではなくpost-hoc診断で、testでcheckpointや閾値は選び直していない。FP追加と欠測augmentationの順序が補助headのshortcutになる可能性はあるが、直接検証は未実施。入力を対象人物trackだけとするか誤検出除外も担当するかを確定し、対応付けと選別を分けて扱うことを次の判断とする。生成は3〜4view・scene内1〜4人の固定scene splitで、未見motion・実動画・5view以上の精度や本番採用を主張しない。独立sideは未学習で、Re-ID評価を踏まえて構造を再検討する。
 
 ## 2026-09-23の自動scene統合確認
 

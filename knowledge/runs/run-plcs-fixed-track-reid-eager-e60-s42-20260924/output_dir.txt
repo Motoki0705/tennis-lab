@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/train/fixed_track_reid_eager_v1_s42/logs/version_0/checkpoints

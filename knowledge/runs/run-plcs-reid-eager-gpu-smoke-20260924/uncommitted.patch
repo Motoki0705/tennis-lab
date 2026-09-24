@@ -1,0 +1,7 @@
+diff --git a/knowledge/nodes/plcs/.sequence b/knowledge/nodes/plcs/.sequence
+index 9b252fd0..ee977b5e 100644
+--- a/knowledge/nodes/plcs/.sequence
++++ b/knowledge/nodes/plcs/.sequence
+@@ -1 +1 @@
+-113
++115
