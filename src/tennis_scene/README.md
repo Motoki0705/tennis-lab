@@ -21,7 +21,8 @@ reference未指定時は校正可能camera IDの辞書順先頭を選びます�
 設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。
 Re-IDとsideは別checkpointです。新sideのアーキテクチャは暫定で、今回はRe-IDだけを学習します。既定の配布名は配置規約であり、
 重みを自動取得・自動選定する処理はありません。旧3Dモデルへのfallbackもありません。
-モデル規模とtracking設定はcheckpointが所有します。
+モデル規模とvalidationで選んだRe-ID閾値はcheckpointが所有します。
+2D trackerの設定はpipelineのpeople_modelsが所有します。
 
 ```bash
 # GPU実行は、このコマンドを共有training queueへ登録する。
@@ -61,7 +62,7 @@ Court componentの既存W-1/H-1形式は境界で明示変換します。
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-task全体の検出0件ではassociationをロード・実行しません。
+人物観測0件ではRe-IDを省略します。人物・球の両方が0件ならsideを含む再構成を省略します。
 Re-IDはcosineでcamera間の人物groupを作り、元動画のID復元にはtracker IDを使います。
 補間やUV距離による別の人物trackingを挟みません。無観測の人物にIDは割り当てません。
 ボールにはID推論・side推論・候補選択モデルを置きません。
