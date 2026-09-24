@@ -56,9 +56,11 @@ class PLCSAssociationLightningModule(BaseLightningModule):
                     for z, valid in zip(output["track_embedding"], accepted, strict=True)]).to(labels.device)
                 flat = ids.flatten(1)
                 matched = flat[:, :, None].eq(flat[:, None, :]) & flat[:, :, None].ge(0) & flat[:, None, :].ge(0)
-                values.update(match_tp=(matched & labels & mask).sum(), match_fp=(matched & ~labels & mask).sum(), match_fn=(~matched & labels & mask).sum(),
-                    group_correct=((matched.eq(labels) | ~mask).flatten(1).all(-1) & mask.flatten(1).any(-1)).sum(),
-                    group_count=mask.flatten(1).any(-1).sum())
+                target_present = output["track_valid"] & batch["track_person_id"].ge(0)
+                complete = (ids.ge(0) | ~target_present).flatten(1).all(-1)
+                values.update(track_accepted=(accepted & target_present).sum(), track_count=target_present.sum(), match_tp=(matched & labels & mask).sum(), match_fp=(matched & ~labels & mask).sum(), match_fn=(~matched & labels & mask).sum(),
+                    group_correct=((matched.eq(labels) | ~mask).flatten(1).all(-1) & complete & target_present.flatten(1).any(-1)).sum(),
+                    group_count=target_present.flatten(1).any(-1).sum())
                 self._save_arrays({"track_embedding": output["track_embedding"], "track_valid": output["track_valid"],
                     "is_player_logit": output["is_player_logit"], "slot_global_ids": ids,
                     "track_person_id": batch["track_person_id"], "sample_index": batch["sample_index"],
@@ -116,7 +118,7 @@ class PLCSAssociationLightningModule(BaseLightningModule):
             if stage == "test":
                 a, b, c = (state[f"match_{key}"].float() for key in ("tp", "fp", "fn"))
                 metrics.update(matching_precision=a / (a + b).clamp_min(1), matching_recall=a / (a + c).clamp_min(1),
-                    matching_f1=2 * a / (2 * a + b + c).clamp_min(1), group_accuracy=ratio("group_correct", "group_count"))
+                    matching_f1=2 * a / (2 * a + b + c).clamp_min(1), group_accuracy=ratio("group_correct", "group_count"), track_acceptance_recall=ratio("track_accepted", "track_count"))
         else:
             metrics = {"loss": ratio("side_loss_sum", "side_count") * float(self.config.loss.weight),
                 "side_balanced_accuracy": .5 * (ratio("same_correct", "same_count") + ratio("opposite_correct", "opposite_count")),
