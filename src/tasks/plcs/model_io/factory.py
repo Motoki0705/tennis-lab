@@ -289,23 +289,17 @@ __all__ = [
 ]
 
 
-def compose_plcs_association_model_io(config: object) -> Any:
-    """Bind the association model to its task-specific input dimensions."""
-    from typing import cast
-
-    from src.tasks.base.model_io.association_contracts import AssociationIOAdapter
-    from src.tasks.base.models.view_association import ViewQueryModelConfig
-    from src.tasks.plcs.configuration import validate_association_config
-    from src.tasks.plcs.models.plcs_view_association_model import (
-        PLCSViewAssociationModel,
+def compose_plcs_person_model_io(config: Any) -> Any:
+    """Bind one independently trained PLCS Re-ID or court-side model."""
+    from src.tasks.plcs.association_configuration import validate_person_config
+    from src.tasks.plcs.model_io.person_association import (
+        REID_MODEL,
+        PersonModelIOAdapter,
     )
+    from src.tasks.plcs.models.court_side_model import CourtSideModel
+    from src.tasks.plcs.models.player_reid_model import PlayerReIDModel
 
-    model_config = cast(ViewQueryModelConfig, validate_association_config(config))
-    model = PLCSViewAssociationModel(model_config)
-    adapter = AssociationIOAdapter(
-        PLCSViewAssociationModel,
-        joints=17,
-        slots=model_config.num_slots,
-        identities=model_config.max_identities,
-    )
-    return bind_model_io(model, adapter)
+    cfg = validate_person_config(config)
+    model_type = PlayerReIDModel if str(config.model.name) == REID_MODEL else CourtSideModel
+    model = model_type(cfg)
+    return bind_model_io(model, PersonModelIOAdapter(model_type, name=str(config.model.name), slots=cfg.num_slots))

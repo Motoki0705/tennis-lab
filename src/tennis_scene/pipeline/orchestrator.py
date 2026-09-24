@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Sequence
-from dataclasses import asdict, fields, replace
+from dataclasses import fields, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -13,9 +13,10 @@ import numpy as np
 import torch
 
 from src.submodules.models import SmplCoco17Reconstructor
-from src.tasks.base.model_io.association_contracts import (
-    AssociationObservationRequest,
-    AssociationObservationResult,
+from src.tasks.plcs.model_io.person_association import (
+    CourtSideResult,
+    PersonObservationRequest,
+    PersonReIDResult,
 )
 from src.tennis_scene.pipeline.artifacts import (
     PipelineArtifactStore,
@@ -39,6 +40,10 @@ from src.tennis_scene.pipeline.components.camera_geometry import (
     resolve_camera_geometry,
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPResult
+from src.tennis_scene.pipeline.components.person_association import (
+    CourtSideModule,
+    PlayerReIDModule,
+)
 from src.tennis_scene.pipeline.components.person_observations import (
     PersonObservationModule,
 )
@@ -49,7 +54,6 @@ from src.tennis_scene.pipeline.components.player_reconstruction import (
     reconstruct_player_bodies,
     triangulate_players,
 )
-from src.tennis_scene.pipeline.components.view_association import ViewAssociationModule
 from src.tennis_scene.pipeline.dependency_graph import (
     build_default_dependency_graph,
 )
@@ -66,7 +70,6 @@ from src.tennis_scene.pipeline.model_io.people import (
 )
 from src.tennis_scene.pipeline.utilts.timeline import (
     association_frame_indices,
-    restore_source_ids,
 )
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
@@ -89,12 +92,13 @@ class TennisSceneOrchestrator:
         court: CourtKPModule,
         people: PersonObservationModule | None,
         ball: BallDetectionModule | None,
-        plcs: ViewAssociationModule | None,
+        plcs: PlayerReIDModule | None,
+        side: CourtSideModule,
         body: BodyRecovery | None,
     ) -> None:
         self.config = config
         self.court, self.people, self.ball = court, people, ball
-        self.plcs, self.body = plcs, body
+        self.plcs, self.side, self.body = plcs, side, body
         self.resolution = build_default_dependency_graph(config.enabled).resolve_from_enabled(config.enabled)
         self.enabled_stages = self.resolution.enabled_set
         self.execution_order = self.resolution.enabled_order
@@ -115,7 +119,8 @@ class TennisSceneOrchestrator:
             cfg, court=CourtKPModule(cfg.court_kp),
             people=people if cfg.enabled["person_observations"] else None,
             ball=BallDetectionModule(cfg.ball_detection) if cfg.enabled["ball_detection"] else None,
-            plcs=ViewAssociationModule(cfg.plcs_checkpoint, device=cfg.device) if cfg.enabled["plcs_association"] else None,
+            plcs=PlayerReIDModule(cfg.plcs_reid_checkpoint, device=cfg.device) if cfg.enabled["plcs_reid"] else None,
+            side=CourtSideModule(cfg.court_side_checkpoint, device=cfg.device),
             body=body,
         )
 
@@ -140,7 +145,7 @@ class TennisSceneOrchestrator:
         checkpoints = {
             "court": cfg.court_kp.checkpoint, "dino": cfg.people.dino_checkpoint,
             "vitpose": cfg.people.vitpose_checkpoint, "hmr2": cfg.people.hmr2_checkpoint,
-            "gvhmr": cfg.people.gvhmr_checkpoint, "plcs_association": cfg.plcs_checkpoint,
+            "gvhmr": cfg.people.gvhmr_checkpoint, "plcs_reid": cfg.plcs_reid_checkpoint, "court_side": cfg.court_side_checkpoint,
             "ball_detection": cfg.ball_detection.checkpoint,
             "smplx": cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
             "root_regressor": cfg.people.bundled_assets.smpl_neutral_joint_regressor,
@@ -168,50 +173,62 @@ class TennisSceneOrchestrator:
             raise ValueError("Automatic reconstruction requires nonempty synchronized videos at >=28fps")
         return infos
 
-    def _associate(
-        self, module: ViewAssociationModule | None, task: str, raw: ObjectObservations,
-        court: CourtKPResult, active_indices: tuple[int, ...], sample_frames: np.ndarray,
-        reference: str, store: PipelineArtifactStore, common: dict[str, Any], statuses: dict[str, str],
-    ) -> tuple[AssociationObservationResult | None, GroupedObservations]:
-        threshold = self.config.human_vis_threshold if task == "plcs" else self.config.ball_detection.score_threshold
-        uv, visible = raw.normalized(threshold)
-        stage = f"{task}_association"
+    def _person_request(self, raw: ObjectObservations, court: CourtKPResult, active_indices: tuple[int, ...], sample_frames: np.ndarray, reference: str) -> PersonObservationRequest:
+        uv, visible = raw.normalized(self.config.human_vis_threshold)
+        size = np.asarray(raw.size, np.float32)
+        court_uv = court.keypoints[list(active_indices)][:, sample_frames] * (np.maximum(size - 1, 1) / size)
+        return PersonObservationRequest(torch.from_numpy(uv[:, sample_frames]), torch.from_numpy(visible[:, sample_frames]),
+            torch.from_numpy(raw.local_track_ids), torch.from_numpy(court_uv.astype(np.float32)),
+            torch.from_numpy(court.visibility[list(active_indices)][:, sample_frames].astype(bool)),
+            raw.camera_ids, reference, torch.from_numpy(sample_frames))
+
+    def _reidentify(self, request: PersonObservationRequest, raw: ObjectObservations,
+                   store: PipelineArtifactStore, common: dict[str, Any], statuses: dict[str, str]) -> tuple[PersonReIDResult | None, GroupedObservations]:
+        threshold = self.config.human_vis_threshold
+        stage = "plcs_reid"
         self.last_receipt["active_stage"] = stage
-        if module is None or not visible.any():
-            statuses[stage] = "disabled" if module is None else "skipped_no_observations"
+        if self.plcs is None or not request.human_vis.any():
+            statuses[stage] = "disabled" if self.plcs is None else "skipped_no_observations"
             return None, group_observations(raw, np.full(raw.observed.shape, -1, np.int64), threshold=threshold)
-        identity = {
-            **common, "stage": stage, "checkpoint": self._file_identity(module.checkpoint),
-            "observations": store.references.get("people" if task == "plcs" else "ball"),
-            "court": store.references["court"], "policy": json_value(self.config.inference_policy),
-            "camera_ids": list(raw.camera_ids), "reference": reference, "source_frames": sample_frames.tolist(),
-            "visibility_threshold": threshold,
-        }
+        identity = {**common, "stage": stage, "checkpoint": self._file_identity(self.plcs.checkpoint),
+            "observations": store.references.get("people"), "court": store.references["court"],
+            "policy": json_value(self.config.inference_policy), "camera_ids": list(raw.camera_ids),
+            "source_frames": request.frame_indices.tolist(), "visibility_threshold": threshold}
         cached = store.load(stage, identity)
         if cached is None:
-            size = np.asarray(raw.size, np.float32)
-            court_uv = court.keypoints[list(active_indices)][:, sample_frames] * (np.maximum(size - 1, 1) / size)
-            request = AssociationObservationRequest(
-                torch.from_numpy(uv[:, sample_frames]), torch.from_numpy(visible[:, sample_frames]),
-                torch.from_numpy(court_uv.astype(np.float32)),
-                torch.from_numpy(court.visibility[list(active_indices)][:, sample_frames].astype(bool)),
-                raw.camera_ids, reference, torch.from_numpy(sample_frames),
-            )
-            result = module.process_observations(request, policy=self.config.inference_policy)
-            if result is None or module.tracking is None:
-                raise RuntimeError("Nonempty association input returned no inference result")
-            tracking = module.tracking
-            result_fields = {field.name: (getattr(result, field.name).numpy() if isinstance(getattr(result, field.name), torch.Tensor) else getattr(result, field.name)) for field in fields(result)}
-            dense_ids = restore_source_ids(uv, visible, result.raw_ids.numpy(), sample_frames, tracking=tracking)
-            store.save(stage, identity, {"result": result_fields, "tracking": asdict(tracking), "source_ids": dense_ids})
+            result = self.plcs.process_observations(request, policy=self.config.inference_policy)
+            if result is None:
+                raise RuntimeError("Nonempty tracked person input returned no Re-ID result")
+            # Stable upstream IDs permit exact propagation to every original observed frame.
+            dense_ids = np.broadcast_to(result.raw_track_ids.numpy()[:, None], raw.observed.shape).copy()
+            dense_ids[~raw.visibility(threshold).any(-1)] = -1
+            values = {field.name: (getattr(result, field.name).numpy() if isinstance(getattr(result, field.name), torch.Tensor) else getattr(result, field.name)) for field in fields(result)}
+            store.save(stage, identity, {"result": values, "source_ids": dense_ids})
             statuses[stage] = "executed"
         else:
-            values = cached["result"]
-            restored: dict[str, Any] = {name: (torch.from_numpy(value) if isinstance(value, np.ndarray) else tuple(value) if name == "camera_ids" else value) for name, value in values.items()}
-            result = AssociationObservationResult(**restored)
+            result = PersonReIDResult(**{k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in cached["result"].items()})
             dense_ids = np.asarray(cached["source_ids"], np.int64)
             statuses[stage] = "loaded"
         return result, group_observations(raw, dense_ids, threshold=threshold)
+
+    def _estimate_side(self, request: PersonObservationRequest, store: PipelineArtifactStore,
+                       common: dict[str, Any], statuses: dict[str, str]) -> CourtSideResult:
+        stage = "court_side"
+        self.last_receipt["active_stage"] = stage
+        identity = {**common, "stage": stage, "checkpoint": self._file_identity(self.side.checkpoint),
+            "observations": store.references.get("people"), "court": store.references["court"],
+            "policy": json_value(self.config.inference_policy), "camera_ids": list(request.camera_ids),
+            "reference": request.reference_camera, "source_frames": request.frame_indices.tolist(),
+            "visibility_threshold": self.config.human_vis_threshold}
+        cached = store.load(stage, identity)
+        if cached is None:
+            result = self.side.process_observations(request, policy=self.config.inference_policy)
+            store.save(stage, identity, {"side_logits": result.side_logits.numpy(), "view_half_turns": result.view_half_turns.numpy()})
+            statuses[stage] = "executed"
+        else:
+            result = CourtSideResult(torch.from_numpy(cached["side_logits"]), torch.from_numpy(cached["view_half_turns"]))
+            statuses[stage] = "loaded"
+        return result
 
     def run(
         self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
@@ -319,7 +336,7 @@ class TennisSceneOrchestrator:
             has_people = self.plcs is not None and people.visibility(cfg.human_vis_threshold).any()
             has_ball = self.ball is not None and balls.visibility(cfg.ball_detection.score_threshold).any()
             if not has_people and not has_ball:
-                for stage in ("plcs_association", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr"):
+                for stage in ("plcs_reid", "court_side", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr"):
                     if cfg.enabled[stage]:
                         statuses[stage] = "skipped_no_observations"
                 scene = assemble_automatic_scene(video_paths=paths, camera_ids=ids, info=info, court=court, active_indices=(), geometry=None, grouped_people=None, skeleton=None, players=None, ball=None,
@@ -328,27 +345,27 @@ class TennisSceneOrchestrator:
                 reference = calibration.reference(cfg.camera_geometry)
                 active = tuple(local.source_index for local in calibration.views)
                 selected_people, selected_balls = people.select_views(active), balls.select_views(active)
-                predictions: list[AssociationObservationResult] = []
                 evidence: list[SideEvidence] = []
                 scale = np.hypot(info.width, info.height) / np.hypot(1920, 1080)
                 tick = time.monotonic()
-                p_result, p_group = self._associate(self.plcs, "plcs", selected_people, court, active, sample_frames, reference, store, common, statuses)
-                timings["plcs_association"] = time.monotonic() - tick
+                request = self._person_request(selected_people, court, active, sample_frames, reference)
+                p_result, p_group = self._reidentify(request, selected_people, store, common, statuses)
+                timings["plcs_reid"] = time.monotonic() - tick
+                tick = time.monotonic()
+                side_result = self._estimate_side(request, store, common, statuses)
+                timings["court_side"] = time.monotonic() - tick
                 if p_result is not None:
-                    predictions.append(p_result)
                     torso = [5, 6, 11, 12]
                     evidence.append(SideEvidence("plcs", p_group.uv_px[:, :, sample_frames][:, :, :, torso], (p_group.visibility & (p_group.confidence >= cfg.joint_confidence))[:, :, sample_frames][:, :, :, torso], cfg.player_reprojection_px * scale))
                 b_group = single_ball_observations(selected_balls, threshold=cfg.ball_detection.score_threshold)
                 if b_group.visibility.any():
                     evidence.append(SideEvidence("ball", b_group.uv_px[:, :, sample_frames], b_group.visibility[:, :, sample_frames], cfg.ball_reprojection_px * scale))
-                if not predictions:
-                    raise ReconstructionUnavailable("no_observations_in_calibrated_views", "No model input in accepted camera views")
                 tick = time.monotonic()
                 self.last_receipt["active_stage"] = "camera_geometry"
-                geometry = resolve_camera_geometry(calibration, reference, tuple(p.view_half_turns.numpy() for p in predictions), tuple(evidence), config=cfg.camera_geometry)
+                geometry = resolve_camera_geometry(calibration, reference, (side_result.view_half_turns.numpy(),), tuple(evidence), config=cfg.camera_geometry)
                 statuses["camera_geometry"] = "executed"
                 timings["camera_geometry"] = time.monotonic() - tick
-                reconstruction_identity = {**common, "ball_observations": store.references.get("ball"), "ball_contract": "single_detection_v1", "associations": {k: v for k, v in store.references.items() if k.endswith("_association")}, "geometry": geometry.document,
+                reconstruction_identity = {**common, "ball_observations": store.references.get("ball"), "ball_contract": "single_detection_v1", "associations": {k: v for k, v in store.references.items() if k in {"plcs_reid", "court_side"}}, "geometry": geometry.document,
                     "settings": {key: cfg.processing_settings[key] for key in ("player_reconstruction", "ball_reconstruction", "gvhmr")}}
                 tick = time.monotonic()
                 self.last_receipt["active_stage"] = "triangulation"
@@ -398,7 +415,7 @@ class TennisSceneOrchestrator:
                 scene = assemble_automatic_scene(video_paths=paths, camera_ids=ids, info=info, court=court, active_indices=active, geometry=geometry, grouped_people=p_group, skeleton=skeleton, players=players, ball=ball,
                     metadata={"status": status, "enabled_stages": [s.value for s in self.execution_order], "stage_status": statuses, "artifacts": store.references,
                         "source_frame_indices": sample_frames.tolist(), "source_identity": source, "code_sha256": self.code_identity,
-                        "side_logits": {} if p_result is None else {"plcs": p_result.side_logits.tolist()}})
+                        "side_logits": {"plcs_court_side": side_result.side_logits.tolist()}})
             self.last_receipt["active_stage"] = None
             self.last_receipt.update(status=scene.metadata["status"], artifacts=store.references, validity=scene.metadata["validity_statistics"])
             timings["total"] = time.monotonic() - started

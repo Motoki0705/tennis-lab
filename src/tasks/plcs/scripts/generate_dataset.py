@@ -145,7 +145,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         audit_full_source_dataset(
             output_dir,
             max_concurrent=4,
-            require_uniform=num_scenes >= 100,
+            require_uniform=runtime.require_uniform_occupancy and num_scenes >= 100,
         )
 
     return 0

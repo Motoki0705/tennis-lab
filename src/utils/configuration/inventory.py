@@ -171,7 +171,6 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.blcs.scripts.generate_dataset_samples": "blcs.generate_dataset_samples",
     "src.tasks.blcs.scripts.preview_augmentation": "blcs.preview_augmentation",
     "src.tasks.blcs.scripts.train": "blcs.train",
-    "src.tasks.blcs.scripts.train_association": "blcs.association",
     "src.tasks.blcs.scripts.visualize": "blcs.visualize",
     "src.tasks.plcs.scripts.analysis.analyze_angle_velocity": "plcs.analyze_angle_velocity",
     "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution": "plcs.analyze_dataset_distribution",
@@ -182,7 +181,6 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "plcs.generate_dataset_samples",
     "src.tasks.plcs.scripts.preview_augmentation": "plcs.preview_augmentation",
     "src.tasks.plcs.scripts.train": "plcs.train",
-    "src.tasks.plcs.scripts.train_association": "plcs.association",
 
     "src.tasks.plcs.scripts.train_triangulation_residual": "plcs.triangulation_residual.train",
     "src.tasks.plcs.scripts.visualize": "plcs.visualize",
@@ -246,7 +244,6 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.blcs.scripts.generate_dataset_samples": "src.tasks.blcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.blcs.scripts.preview_augmentation": "src.tasks.blcs.configuration.validate_preview_boundary",
     "src.tasks.blcs.scripts.train": "src.tasks.blcs.configuration._validate_training_for_hydra",
-    "src.tasks.blcs.scripts.train_association": "src.tasks.blcs.configuration.validate_association_config",
     "src.tasks.blcs.scripts.visualize": "src.tasks.blcs.configuration.validate_visualization_boundary",
     "src.tasks.plcs.scripts.analysis.analyze_angle_velocity": "src.tasks.plcs.configuration._validate_angle_velocity_boundary",
     "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution": "src.tasks.plcs.configuration._validate_distribution_boundary",
@@ -257,7 +254,6 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "src.tasks.plcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
-    "src.tasks.plcs.scripts.train_association": "src.tasks.plcs.configuration.validate_association_config",
 
     "src.tasks.plcs.scripts.train_triangulation_residual": "src.tasks.plcs.configuration._validate_residual_boundary",
     "src.tasks.plcs.scripts.visualize": "src.tasks.plcs.configuration._validate_visualization_boundary",
@@ -555,7 +551,6 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.generate_dataset_samples"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.preview_augmentation"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.train"),
-    _runtime_boundary("blcs", "src.tasks.blcs.scripts.train_association"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.visualize"),
     _runtime_boundary(
         "court_detection",
@@ -597,7 +592,6 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.generate_dataset_samples"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.preview_augmentation"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train"),
-    _runtime_boundary("plcs", "src.tasks.plcs.scripts.train_association"),
 
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train_triangulation_residual"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.visualize"),

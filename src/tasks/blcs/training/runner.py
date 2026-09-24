@@ -38,11 +38,12 @@ class BLCSTrainingRunner(BaseTrainingRunner):
     """
 
     def __init__(self, *, generator_config: GeneratorConfig | None = None) -> None:
-        self._association = False
         self.generator_config = generator_config
         self._composition: BLCSTrainingComposition | None = None
         self._court_keypoint_contract: CourtKeypointContract | None = None
-        self._track_query_reference_contract: TrackQueryReferenceContract | None = None
+        self._track_query_reference_contract: (
+            TrackQueryReferenceContract | None
+        ) = None
 
     def _runtime(self, config: Any) -> BLCSTrainingComposition:
         if self._composition is None:
@@ -86,12 +87,6 @@ class BLCSTrainingRunner(BaseTrainingRunner):
 
     def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
         """Validate shared and BLCS-specific contracts before runner side effects."""
-        if str(config.model.name) == "blcs_view_association":
-            from src.tasks.blcs.configuration import validate_association_config
-
-            validate_association_config(config)
-            self._association = True
-            return super().validate_runtime_config(config)
         validate_training_boundary(config)
         self._court_keypoint_contract = parse_court_keypoint_contract(config)
         self._track_query_reference_contract = (
@@ -108,16 +103,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         """Reject CourtKP-incompatible full-state resumes before fit."""
         path: str | None = super().resolve_resume(config, output_dir)
         resume_path = config.run.resume
-        if resume_path is not None and self._association:
-            from src.tasks.base.model_io.association_contracts import (
-                validate_association_checkpoint,
-            )
-
-            validate_association_checkpoint(
-                torch.load(resume_path, map_location="cpu", weights_only=False),
-                model_name="blcs_view_association",
-            )
-        elif resume_path is not None:
+        if resume_path is not None:
             validate_checkpoint_path(
                 resume_path,
                 self._require_court_keypoint_contract(),
@@ -131,22 +117,13 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         lightning_module: pl.LightningModule,
     ) -> None:
         """Reject CourtKP-incompatible fine-tune weights before loading."""
-        if self._association and config.run.init_weights is not None:
-            checkpoint = torch.load(
-                config.run.init_weights, map_location="cpu", weights_only=False
-            )
-            lightning_module.on_load_checkpoint(checkpoint)
-            lightning_module.load_state_dict(checkpoint["state_dict"], strict=True)
-            return
         if config.run.init_weights is not None:
             validate_checkpoint_path(
                 config.run.init_weights,
                 self._require_court_keypoint_contract(),
                 self._track_query_reference_contract,
             )
-            checkpoint = torch.load(
-                config.run.init_weights, map_location="cpu", weights_only=False
-            )
+            checkpoint = torch.load(config.run.init_weights, map_location="cpu", weights_only=False)
             model_name = str(lightning_module.config.model.name)
             validate_axial_reference_checkpoint(checkpoint, model_name=model_name)
             if model_name == "blcs_multiview_axial_reference":

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import cv2
@@ -13,12 +14,12 @@ import torch
 from hydra import compose, initialize_config_dir
 from numpy.typing import NDArray
 
-from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
-from src.tasks.base.inference.association import predict_association_observations
-from src.tasks.base.model_io.association_contracts import (
-    AssociationInferencePolicy,
-    AssociationObservationRequest,
-    AssociationObservationResult,
+from src.tasks.plcs.inference.person_predictor import PlayerReIDPredictor
+from src.tasks.plcs.model_io.person_association import (
+    CourtSideResult,
+    PersonInferencePolicy,
+    PersonObservationRequest,
+    PersonReIDResult,
 )
 from src.tennis_scene.archive import load_scene_result, save_scene_result
 from src.tennis_scene.configuration import PipelineRuntimeConfig
@@ -63,19 +64,30 @@ class FixedStage:
         pass
 
 
-class KnownAssociation:
-    def __init__(self, checkpoint: Path, joints: int) -> None:
-        self.checkpoint, self.joints, self.calls = checkpoint, joints, 0
-        self.tracking = ObservationTrackingConfig(.08 if joints == 17 else .04, 8 if joints == 17 else 2, 4, True, 4 if joints == 17 else 1, "median" if joints == 17 else "mean", "error")
-    def process_observations(self, request: AssociationObservationRequest, *, policy: AssociationInferencePolicy) -> AssociationObservationResult:
+class KnownReID(PlayerReIDPredictor):
+    def __init__(self, checkpoint: Path) -> None:
+        self.checkpoint, self.calls = checkpoint, 0
+        self.module = cast(Any, SimpleNamespace(config=SimpleNamespace(model=SimpleNamespace(num_slots=4)), matching_threshold=torch.tensor(.5)))
+
+    def predict(self, values: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        b, v, _, p = values["human_kp"].shape[:4]
+        valid = values["human_vis"].any(-1).any(2)
+        return {"track_embedding": torch.eye(p)[None, None].expand(b, v, p, p).masked_fill(~valid[..., None], 0),
+                "track_valid": valid, "is_player_logit": torch.full((b, v, p), 8.)}
+
+    def process_observations(self, request: PersonObservationRequest, *, policy: PersonInferencePolicy) -> PersonReIDResult:
         self.calls += 1
-        def predict(values: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-            logits = torch.full((*values["object_uv"].shape[:4], 11), -8.)
-            for slot in range(4):
-                logits[..., slot, slot] = 8.
-            sides = torch.tensor([[False, False, True, False, False]])
-            return {"object_id_logits": logits, "side_logits": torch.where(sides, 8., -8.), "view_half_turns": sides}
-        return predict_association_observations(predict, request, tracking=self.tracking, policy=policy, joints=self.joints)
+        return self.predict_observations(request, policy=policy)
+
+
+class KnownSide:
+    def __init__(self, checkpoint: Path) -> None:
+        self.checkpoint, self.calls = checkpoint, 0
+
+    def process_observations(self, request: PersonObservationRequest, *, policy: PersonInferencePolicy) -> CourtSideResult:
+        self.calls += 1
+        sides = torch.tensor([False, False, True])
+        return CourtSideResult(torch.where(sides, 8., -8.), sides)
 
 
 def inputs(*, empty: bool = False) -> tuple[CourtKPResult, ObjectObservations, BallDetectionResult]:
@@ -116,8 +128,9 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
     cfg = runtime(tmp_path)
     data = inputs(empty=empty)
     stages = [FixedStage(x) for x in data]
-    plcs = KnownAssociation(cfg.plcs_checkpoint, 17)
-    pipeline = TennisSceneOrchestrator(cfg, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, plcs), body=None)
+    plcs = KnownReID(cfg.plcs_reid_checkpoint)
+    side = KnownSide(cfg.court_side_checkpoint)
+    pipeline = TennisSceneOrchestrator(cfg, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, plcs), side=cast(Any, side), body=None)
     paths = tuple(tmp_path / f"cam{i}.mp4" for i in range(3))
     for path in paths:
         path.write_bytes(b"video fixture")
@@ -126,7 +139,7 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
         raise AssertionError("Automatic pipeline attempted human interaction")
     monkeypatch.setattr("builtins.input", forbidden)
     monkeypatch.setattr(cv2, "namedWindow", forbidden)
-    return pipeline, paths, [*stages, plcs]
+    return pipeline, paths, [*stages, plcs, side]
 
 
 def test_headless_clip_once_and_v2_archive_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -139,7 +152,7 @@ def test_headless_clip_once_and_v2_archive_roundtrip(tmp_path: Path, monkeypatch
     assert "blcs_association" not in scene.metadata["stage_status"]
     assert "blcs_association" not in pipeline.publication_identity()["checkpoints"]
     assert scene.player_valid is not None and not scene.player_valid.any()
-    assert [stage.calls for stage in stages] == [1, 1, 1, 1]
+    assert [stage.calls for stage in stages] == [1, 1, 1, 1, 1]
     output = tmp_path / "scene.npz"
     save_scene_result(scene, output)
     restored = load_scene_result(output)
@@ -148,7 +161,7 @@ def test_headless_clip_once_and_v2_archive_roundtrip(tmp_path: Path, monkeypatch
     pipeline.config = replace(pipeline.config, cache_source="load")
     again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
     np.testing.assert_array_equal(again.ball_3d, scene.ball_3d)
-    assert [stage.calls for stage in stages] == [1, 1, 1, 1]
+    assert [stage.calls for stage in stages] == [1, 1, 1, 1, 1]
 
 
 def test_zero_detections_skip_player_association(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -158,7 +171,7 @@ def test_zero_detections_skip_player_association(tmp_path: Path, monkeypatch: py
     assert scene.metadata["court_reference"] is None
     assert scene.player_position.shape == (0, 24, 3)
     assert scene.ball_3d_valid is not None and not scene.ball_3d_valid.any()
-    assert stages[-1].calls == 0
+    assert stages[-1].calls == stages[-2].calls == 0
     save_scene_result(scene, tmp_path / "empty.npz")
     assert load_scene_result(tmp_path / "empty.npz").schema_version == 2
 
@@ -247,7 +260,7 @@ def test_complete_body_path_corrects_yaw_from_coco17_and_keeps_pose(tmp_path: Pa
             self.unloaded = True
     body = KnownBody()
     config = replace(pipeline.config, enabled={**pipeline.config.enabled, "gvhmr": True}, processing_settings={**pipeline.config.processing_settings, "gvhmr": {"enabled": True}})
-    pipeline = TennisSceneOrchestrator(config, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, stages[3]), body=body)
+    pipeline = TennisSceneOrchestrator(config, court=cast(Any, stages[0]), people=cast(Any, stages[1]), ball=cast(Any, stages[2]), plcs=cast(Any, stages[3]), side=cast(Any, stages[4]), body=body)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
     assert scene.player_valid is not None and scene.player_valid.all()
     assert scene.player_heading_valid is not None and scene.player_heading_valid.all()

@@ -35,15 +35,14 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
             video_role: PathRole,
             camera_ids: Sequence[str],
             max_frames: int | None,
-            frame_index: int,
         ) -> SceneResult:
-            del camera_ids, max_frames, frame_index
+            del camera_ids, max_frames
             for path in video_paths:
                 runtime.resolver.validate(video_role, path)
             calls.append(video_role)
             return valid_scene_result
 
-        return SimpleNamespace(run=run)
+        return SimpleNamespace(run=run, publication_identity=lambda: {"test": "fixed"}, last_receipt={})
 
     monkeypatch.setattr(TennisSceneOrchestrator, "from_runtime_config", create)
     with initialize_config_dir(
@@ -55,7 +54,7 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
                 f"paths.data_root={structured_dataset.parent}",
                 f"paths.artifact_root={structured_dataset.parent / 'artifacts'}",
                 "dataset_directory=dataset",
-                'pipeline_overrides=["court_reference.view_half_turns=[false,false,true]"]',
+                'pipeline_overrides=[]',
             ],
         )
         assert inspect.unwrap(main)(cfg) == 0
@@ -79,7 +78,7 @@ def fail(**kwargs):
     raise ValueError("deliberate clip failure")
 
 with patch.object(TennisSceneOrchestrator, "from_runtime_config",
-                  return_value=SimpleNamespace(run=fail)):
+                  return_value=SimpleNamespace(run=fail, publication_identity=lambda: {"test": "fixed"}, last_receipt={})):
     runpy.run_module("src.tennis_scene.scripts.generate_dataset", run_name="__main__")
 """
     completed = subprocess.run(
@@ -88,7 +87,7 @@ with patch.object(TennisSceneOrchestrator, "from_runtime_config",
             f"paths.data_root={structured_dataset.parent}",
             f"paths.output_root={structured_dataset.parent / 'logs'}",
             "dataset_directory=dataset",
-            'pipeline_overrides=["court_reference.view_half_turns=[false,false,true]"]',
+            'pipeline_overrides=[]',
         ],
         cwd=PROJECT_ROOT,
         env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},

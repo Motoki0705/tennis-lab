@@ -2488,10 +2488,7 @@ def validate_preview_boundary(config: object) -> None:
 
 
 def _validate_training_for_hydra(config: DictConfig) -> None:
-    if str(config.model.name) == "blcs_view_association":
-        validate_association_config(config)
-    else:
-        validate_training_boundary(config)
+    validate_training_boundary(config)
 
 
 register_boundary_validator("blcs.train", _validate_training_for_hydra)
@@ -2666,14 +2663,3 @@ __all__ = [
     "validate_training_boundary",
     "validate_visualization_boundary",
 ]
-
-
-def validate_association_config(config: object) -> object:
-    """Validate the task-owned Global-MHA association recipe."""
-    from src.tasks.base.association_configuration import (
-        validate_association_configuration,
-    )
-
-    return validate_association_configuration(
-        config, model_name="blcs_view_association"
-    )

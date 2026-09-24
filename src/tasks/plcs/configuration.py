@@ -1469,8 +1469,10 @@ class PLCSTrainingConfig:
 
 
 def _validate_training_boundary(config: DictConfig) -> None:
-    if str(config.model.name) == "plcs_view_association":
-        validate_association_config(config)
+    if str(config.model.name) in {"plcs_player_reid", "plcs_court_side"}:
+        from src.tasks.plcs.association_configuration import validate_person_config
+
+        validate_person_config(config)
     else:
         PLCSTrainingConfig.from_config(config)
 
@@ -2277,15 +2279,6 @@ __all__ = [
 ]
 
 
-def validate_association_config(config: object) -> object:
-    """Validate the task-owned Global-MHA association recipe."""
-    from src.tasks.base.association_configuration import (
-        validate_association_configuration,
-    )
-
-    return validate_association_configuration(
-        config, model_name="plcs_view_association"
-    )
 
 ResidualT = TypeVar("ResidualT")
 

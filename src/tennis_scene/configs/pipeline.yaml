@@ -108,12 +108,15 @@ ball_detection:
     k_support: 2
     max_support_gap: 5
     max_passes: 2
-plcs_association:
+plcs_reid:
   enabled: true
-  checkpoint: plcs/view-association-global-mha-mhc-v2.ckpt
+  checkpoint: plcs/player-reid-v1.ckpt
+court_side:
+  enabled: true
+  checkpoint: plcs/court-side-v1.ckpt
 association:
-  min_probability: 0.5
-  min_assignment_gap: 0.6931471805599453
+  cosine_threshold: null
+  min_player_probability: 0.5
   min_frames: 512
   max_frames: 1024
   padded_views: 5

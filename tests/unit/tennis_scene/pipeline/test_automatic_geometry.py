@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tennis_scene.pipeline.components.camera_geometry import (
     CalibrationSet,
     CameraGeometryConfig,
@@ -17,7 +16,6 @@ from src.tennis_scene.pipeline.components.camera_geometry import (
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.utilts.timeline import (
     association_frame_indices,
-    restore_source_ids,
 )
 from src.utils.geometry.triangulation import (
     PinholeCamera,
@@ -96,11 +94,3 @@ def test_full_clip_grid_preserves_duration_without_windowing() -> None:
     assert indices[0] == 0 and indices[-1] < 1607 and (np.diff(indices) > 0).all()
     with pytest.raises(ReconstructionUnavailable, match="maximum"):
         association_frame_indices(2050, 30.)
-
-
-def test_id_lifting_requires_two_matching_anchors_and_keeps_missing_tail() -> None:
-    tracking = ObservationTrackingConfig(.08, 8, 4, True, 1, "mean", "error")
-    uv: NDArray[np.float32] = np.full((1, 6, 1, 1, 2), .5, np.float32)
-    visible: NDArray[np.bool_] = np.ones(uv.shape[:-1], bool)
-    out = restore_source_ids(uv, visible, np.array([[[3], [3], [4]]], np.int64), np.array([0, 2, 4]), tracking=tracking)
-    assert out.ravel().tolist() == [3, 3, 3, -1, 4, -1]
