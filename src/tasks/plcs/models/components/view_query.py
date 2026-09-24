@@ -5,17 +5,13 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
+from src.tasks.plcs.models.components.track_query import keep_mask
 from src.utils.models import RMSNorm, TransformerBlock, TransformerBlockConfig
 from src.utils.models.components.ffn_layers import build_ffn
 from src.utils.models.components.mhc import (
     ManifoldConstrainedHyperConnection,
     MHCConfig,
 )
-
-
-def _keep(valid: Tensor) -> Tensor:
-    # SDPA True=keep. Invalid query rows remain finite, then are zeroed explicitly.
-    return valid[:, :, None] & valid[:, None, :]
 
 
 class TemporalViewQueryStage(nn.Module):
@@ -49,7 +45,7 @@ class TemporalViewQueryStage(nn.Module):
             b * v, t + 1
         )
         time_values = self.temporal(
-            time_values, freqs_cis=time_freqs, attn_mask=_keep(time_valid)
+            time_values, freqs_cis=time_freqs, attn_mask=keep_mask(time_valid)
         )
         time_values = time_values * time_valid[..., None]
         time_values = time_values.reshape(b, v, t + 1, d)
@@ -57,7 +53,7 @@ class TemporalViewQueryStage(nn.Module):
         spatial_values = time_values[:, :, 1:].permute(0, 2, 1, 3).reshape(b * t, v, d)
         spatial_valid = valid.permute(0, 2, 1).reshape(b * t, v)
         spatial_values = self.spatial(
-            spatial_values, freqs_cis=spatial_freqs, attn_mask=_keep(spatial_valid)
+            spatial_values, freqs_cis=spatial_freqs, attn_mask=keep_mask(spatial_valid)
         )
         spatial_values = spatial_values * spatial_valid[..., None]
         update = spatial_values.reshape(b, t, v, d).permute(0, 2, 1, 3)

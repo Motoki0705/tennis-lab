@@ -9,7 +9,12 @@ from src.utils.models import TransformerBlock, TransformerBlockConfig
 
 
 def keep_mask(valid: Tensor) -> Tensor:
-    return valid[:, :, None] & valid[:, None, :]
+    # Fully masked rows can produce NaNs on repeated compiled CUDA forwards.
+    # Invalid queries attend only to themselves; their outputs are discarded.
+    # Valid queries still cannot read any invalid key.
+    observed = valid[:, :, None] & valid[:, None, :]
+    diagonal = torch.eye(valid.shape[-1], dtype=torch.bool, device=valid.device)[None]
+    return observed | (diagonal & ~valid[:, :, None])
 
 
 class TrackQueryStage(nn.Module):

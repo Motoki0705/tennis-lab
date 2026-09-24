@@ -72,6 +72,8 @@ class PLCSAssociationLightningModule(BaseLightningModule):
             if stage == "test":
                 self._save_arrays({"side_logits": output["side_logits"], "side_target": batch["side_target"],
                     "reference_view_index": batch["reference_view_index"], "sample_index": batch["sample_index"]})
+        if not bool(torch.isfinite(values["loss"])):
+            raise FloatingPointError(f"{stage}: non-finite person loss; sample_indices={batch['sample_index'].tolist()}")
         state = self._statistics.setdefault(stage, {})
         for key, value in values.items():
             if key != "loss":
@@ -129,7 +131,7 @@ class PLCSAssociationLightningModule(BaseLightningModule):
             path = self.path_resolver.resolve(PathRole.OUTPUT, str(self.config.run.output_dir), "association_metrics.jsonl")
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a") as stream:
-                stream.write(json.dumps({"stage": stage, "epoch": self.current_epoch, "step": self.global_step, **record}) + "\n")
+                stream.write(json.dumps({"stage": stage, "epoch": self.current_epoch, "step": self.global_step, **record}, allow_nan=False) + "\n")
         return record
 
     def on_train_epoch_end(self) -> None:
