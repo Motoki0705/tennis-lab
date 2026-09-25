@@ -46,6 +46,7 @@ dependencies = [
     "fastapi>=0.135.3",
     "requests>=2.34.2",
     "lap>=0.5.12",
+    "mcp==1.26.0",
 ]
 
 [tool.uv]
@@ -91,7 +92,8 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt"]
+"src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
+"src.tennis_scene.chat_annotation.artifacts" = ["Dockerfile", "Dockerfile.dockerignore", "compose.yaml"]
 "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
