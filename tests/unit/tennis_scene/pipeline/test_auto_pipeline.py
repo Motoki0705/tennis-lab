@@ -73,7 +73,7 @@ class KnownReID(PlayerReIDPredictor):
         b, v, _, p = values["human_kp"].shape[:4]
         valid = values["human_vis"].any(-1).any(2)
         return {"track_embedding": torch.eye(p)[None, None].expand(b, v, p, p).masked_fill(~valid[..., None], 0),
-                "track_valid": valid, "is_player_logit": torch.full((b, v, p), 8.)}
+                "track_valid": valid}
 
     def process_observations(self, request: PersonObservationRequest, *, policy: PersonInferencePolicy) -> PersonReIDResult:
         self.calls += 1

@@ -238,7 +238,7 @@ _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observ
 })
 _AUTO_BALL_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_detection", fields={k: v for k, v in _BALL_SCHEMA.fields.items() if k not in _STAGE_IO_FIELDS})
 _INFERENCE_SCHEMA = StrictConfigSchema(name="tennis_scene.association", fields={
-    "cosine_threshold": ConfigField.of(float, int, type(None)), "min_player_probability": ConfigField.of(float, int),
+    "cosine_threshold": ConfigField.of(float, int, type(None)),
     "min_frames": ConfigField.of(int), "max_frames": ConfigField.of(int), "padded_views": ConfigField.of(int),
 })
 _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={

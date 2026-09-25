@@ -109,15 +109,6 @@ class PLCSAssociationDataset(SceneDatasetBase[dict[str, Tensor]]):
                         first = int(self.rng.integers(length))
                         last = min(length, first + int(self.rng.integers(1, max(2, length // 3))))
                         visible[view, first:last, slot] = False
-                vacant = target[view].lt(0).nonzero().flatten()
-                if len(vacant) and self.rng.random() < float(cfg.false_track_probability):
-                    slot = int(vacant[0])
-                    # One persistent false track consumes one otherwise unallocated slot.
-                    center = self.rng.uniform(.1, .9, (1, 1, 2))
-                    pose = center + self.rng.normal(0, .025, (1, 17, 2))
-                    noise = self.rng.normal(0, .003, (length, 17, 2))
-                    kp[view, :, slot] = torch.from_numpy(pose + noise).float()
-                    visible[view, :, slot] = True
             visible &= ((kp >= 0) & (kp <= 1)).all(-1)
             cv &= ((court >= 0) & (court <= 1)).all(-1)
         v, p = len(views), self.num_slots

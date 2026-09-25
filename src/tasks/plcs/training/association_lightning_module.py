@@ -39,7 +39,7 @@ class PLCSAssociationLightningModule(BaseLightningModule):
         output = self.model_io.run(batch)
         if self.is_reid:
             values = reid_loss(output, batch["track_person_id"], temperature=float(self.config.loss.temperature),
-                margin=float(self.config.loss.margin), player_weight=float(self.config.loss.player_weight))
+                margin=float(self.config.loss.margin))
             with torch.no_grad():
                 scores, labels, mask = reid_pairs(output, batch["track_person_id"])
                 thresholds = self.calibration_candidates if stage == "val" else self.matching_threshold[None]
@@ -48,21 +48,18 @@ class PLCSAssociationLightningModule(BaseLightningModule):
                 axes = (0, 1, 2)
                 values.update(pair_tp=(pred & same & selected).sum(axes), pair_fp=(pred & ~same & selected).sum(axes),
                     pair_fn=(~pred & same & selected).sum(axes), pair_tn=(~pred & ~same & selected).sum(axes))
-                predicted_player = output["is_player_logit"].sigmoid().ge(float(self.config.metrics.player_threshold))
-                values["player_correct"] = (predicted_player.eq(batch["track_person_id"].ge(0)) & output["track_valid"]).sum()
             if stage == "test":
-                accepted = output["track_valid"] & predicted_player
                 ids = torch.stack([match_track_embeddings(z, valid, threshold=float(self.matching_threshold.cpu()))
-                    for z, valid in zip(output["track_embedding"], accepted, strict=True)]).to(labels.device)
+                    for z, valid in zip(output["track_embedding"], output["track_valid"], strict=True)]).to(labels.device)
                 flat = ids.flatten(1)
                 matched = flat[:, :, None].eq(flat[:, None, :]) & flat[:, :, None].ge(0) & flat[:, None, :].ge(0)
                 target_present = output["track_valid"] & batch["track_person_id"].ge(0)
                 complete = (ids.ge(0) | ~target_present).flatten(1).all(-1)
-                values.update(track_accepted=(accepted & target_present).sum(), track_count=target_present.sum(), match_tp=(matched & labels & mask).sum(), match_fp=(matched & ~labels & mask).sum(), match_fn=(~matched & labels & mask).sum(),
+                values.update(match_tp=(matched & labels & mask).sum(), match_fp=(matched & ~labels & mask).sum(), match_fn=(~matched & labels & mask).sum(),
                     group_correct=((matched.eq(labels) | ~mask).flatten(1).all(-1) & complete & target_present.flatten(1).any(-1)).sum(),
                     group_count=target_present.flatten(1).any(-1).sum())
                 self._save_arrays({"track_embedding": output["track_embedding"], "track_valid": output["track_valid"],
-                    "is_player_logit": output["is_player_logit"], "slot_global_ids": ids,
+                    "slot_global_ids": ids,
                     "track_person_id": batch["track_person_id"], "sample_index": batch["sample_index"],
                     "side_target": batch["side_target"], "reference_view_index": batch["reference_view_index"],
                     "track_observation_count": batch["human_vis"].any(-1).sum(2)})
@@ -112,15 +109,14 @@ class PLCSAssociationLightningModule(BaseLightningModule):
                 self.matching_threshold.copy_(self.calibration_candidates[chosen])
             terms = (state["positive_count"] > 0).float() + (state["negative_count"] > 0).float()
             loss = (ratio("positive_loss_sum", "positive_count") + ratio("negative_loss_sum", "negative_count")) / terms.clamp_min(1)
-            loss += float(self.config.loss.player_weight) * ratio("player_loss_sum", "player_count")
             metrics = {"loss": loss, "pair_precision": tp[chosen] / (tp[chosen] + fp[chosen]).clamp_min(1),
                 "pair_recall": tp[chosen] / (tp[chosen] + fn[chosen]).clamp_min(1), "pair_f1": f1[chosen],
                 "pair_balanced_accuracy": .5 * (tp[chosen] / (tp[chosen] + fn[chosen]).clamp_min(1) + tn[chosen] / (tn[chosen] + fp[chosen]).clamp_min(1)),
-                "player_accuracy": ratio("player_correct", "player_count"), "cosine_threshold": self.matching_threshold}
+                "cosine_threshold": self.matching_threshold}
             if stage == "test":
                 a, b, c = (state[f"match_{key}"].float() for key in ("tp", "fp", "fn"))
                 metrics.update(matching_precision=a / (a + b).clamp_min(1), matching_recall=a / (a + c).clamp_min(1),
-                    matching_f1=2 * a / (2 * a + b + c).clamp_min(1), group_accuracy=ratio("group_correct", "group_count"), track_acceptance_recall=ratio("track_accepted", "track_count"))
+                    matching_f1=2 * a / (2 * a + b + c).clamp_min(1), group_accuracy=ratio("group_correct", "group_count"))
         else:
             metrics = {"loss": ratio("side_loss_sum", "side_count") * float(self.config.loss.weight),
                 "side_balanced_accuracy": .5 * (ratio("same_correct", "same_count") + ratio("opposite_correct", "opposite_count")),
@@ -155,3 +151,5 @@ class PLCSAssociationLightningModule(BaseLightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         validate_person_checkpoint(checkpoint, model_name=str(self.config.model.name))
+        if checkpoint.get("weights_only_export") and self.config.run.resume is not None:
+            raise ValueError("Exported Re-ID weights support inference or run.init_weights, not optimizer resume")

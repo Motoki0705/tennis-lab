@@ -24,7 +24,7 @@ def test_default_requires_no_side_annotation() -> None:
     assert runtime.court_kp.output_keypoint_contract == "camera_view_v2"
     assert runtime.court_kp.mode == "model"
     assert runtime.camera_geometry.reference_camera is None
-    assert runtime.plcs_reid_checkpoint.name == "player-reid-v1.ckpt"
+    assert runtime.plcs_reid_checkpoint.name == "player-reid-v2.ckpt"
     assert runtime.court_side_checkpoint.name == "court-side-v1.ckpt"
     assert "blcs_association" not in runtime.enabled
     assert len(runtime.camera_ids) == 3

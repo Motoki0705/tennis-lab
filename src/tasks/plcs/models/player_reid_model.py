@@ -24,7 +24,6 @@ class PlayerReIDModel(nn.Module):
         self.frequency = RotaryFrequencyComputer(dim=config.rope_dim, base=10000., n_axes=1)
         self.norm = RMSNorm(config.hidden_dim)
         self.projection = nn.Linear(config.hidden_dim, config.hidden_dim, bias=False)
-        self.player_head = nn.Linear(config.hidden_dim, 1)
 
     def forward(self, human_kp: Tensor, human_vis: Tensor, court_kp: Tensor, court_vis: Tensor, padding_mask: Tensor) -> dict[str, Tensor]:
         tokens, observed, _ = self.encoder(human_kp, human_vis, court_kp, court_vis, padding_mask)
@@ -41,5 +40,4 @@ class PlayerReIDModel(nn.Module):
         valid = observed.any(-1)
         features = self.norm(queries)
         embedding = F.normalize(self.projection(features).float(), dim=-1).masked_fill(~valid[..., None], 0)
-        return {"track_embedding": embedding, "track_valid": valid,
-                "is_player_logit": self.player_head(features).squeeze(-1).float().masked_fill(~valid, 0)}
+        return {"track_embedding": embedding, "track_valid": valid}

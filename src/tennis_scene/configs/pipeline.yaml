@@ -110,13 +110,12 @@ ball_detection:
     max_passes: 2
 plcs_reid:
   enabled: true
-  checkpoint: plcs/player-reid-v1.ckpt
+  checkpoint: plcs/player-reid-v2.ckpt
 court_side:
   enabled: true
   checkpoint: plcs/court-side-v1.ckpt
 association:
   cosine_threshold: null
-  min_player_probability: 0.5
   min_frames: 512
   max_frames: 1024
   padded_views: 5
