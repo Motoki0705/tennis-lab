@@ -247,7 +247,10 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     )
     assert "failed" in result.stdout and not failed.exists()
     # Malformed JSON is not converted to a plausible empty overlay.
-    annotation_path.write_text('{"bad":true}', encoding="utf-8")
+    annotation_path.write_text(
+        json.dumps({"schema_version": annotation["schema_version"], "bad": True}),
+        encoding="utf-8",
+    )
     result = run(
         "finalize",
         *common,
