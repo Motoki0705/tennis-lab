@@ -221,6 +221,8 @@ ZIPは圧縮後16 MiB以下、展開後合計64 MiB以下、直下のJSON 1〜25
 
 リモートPCのrepo/worktree rootで実行する。DockerはCPU専用の小さな依存環境で動く。
 `CHAT_ANNOTATION_ROOT`は既存の準備済み動画があるrootの絶対パスにする。
+CLI入口は`scripts/serve_artifacts.py`と`scripts/sync_done.py`。`--root`は必須の絶対パスで、
+共通のパス契約で検証してから保存・移動処理へ渡す。
 
 ```bash
 export CHAT_ANNOTATION_ROOT=/home/kamimura/projects/tennis-lab/outputs/chat_annotation
@@ -266,11 +268,11 @@ ChatGPTのdeveloper-mode appで接続方式Tunnelと対象tunnelを選ぶ。
 ツール一覧にsave_artifactが現れ、小さいJSON ZIPを送ってrawのSHA-256が応答と一致することを確認する。
 このrepoへの実装だけではTunnelの作成・認証設定・ChatGPT接続は行われない。
 
-Dockerを使わずに検証する場合は、通常のrepo環境を同期する。MCPの依存版はpyproject.tomlを正本とし、DockerもそこからMCP依存だけをインストールする。
+Dockerを使わずに検証する場合は、通常のrepo環境を同期する。MCPの依存版はpyproject.tomlを正本とし、DockerもそこからMCPと共通パス検証に必要なOmegaConfだけをインストールする。
 
 ```bash
 uv sync --locked
-.venv/bin/python -m src.tennis_scene.chat_annotation.artifacts.server \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.serve_artifacts \
   --root "$CHAT_ANNOTATION_ROOT/annotated/raw"
 ```
 
@@ -289,13 +291,13 @@ videos/doneは同じファイルシステムに置く。移動はlink→unlink�
 
 ```bash
 # AIの整理後に1回実行。dry-runはready一覧だけを表示する。
-.venv/bin/python -m src.tennis_scene.chat_annotation.artifacts.completion \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.sync_done \
   --root "$CHAT_ANNOTATION_ROOT" --dry-run
-.venv/bin/python -m src.tennis_scene.chat_annotation.artifacts.completion \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.sync_done \
   --root "$CHAT_ANNOTATION_ROOT"
 
 # 常駐させる場合: 5秒ごとに両対象がそろったクリップから移動する。
-.venv/bin/python -m src.tennis_scene.chat_annotation.artifacts.completion \
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.sync_done \
   --root "$CHAT_ANNOTATION_ROOT" --watch-seconds 5
 ```
 

@@ -1,7 +1,14 @@
 **
 !pyproject.toml
 !src/
+!src/__init__.py
+!src/utils/
+!src/utils/__init__.py
+!src/utils/paths.py
+!src/utils/configuration/
+!src/utils/configuration/**
 !src/tennis_scene/
+!src/tennis_scene/__init__.py
 !src/tennis_scene/chat_annotation/
 !src/tennis_scene/chat_annotation/**
 **/__pycache__

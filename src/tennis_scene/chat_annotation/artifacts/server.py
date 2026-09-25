@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import argparse
 import ipaddress
 import logging
-import os
 import socket
 from pathlib import Path
 from typing import Any
@@ -149,27 +147,3 @@ def create_server(
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     )
     return server
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--root", type=Path, default=Path("outputs/chat_annotation/annotated/raw")
-    )
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
-    args = parser.parse_args()
-    hosts = frozenset(
-        value.strip().lower()
-        for value in os.environ.get("ARTIFACT_DOWNLOAD_HOSTS", "").split(",")
-        if value.strip()
-    )
-    # httpx INFO messages include signed URLs; suppress those access logs.
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    create_server(args.root, hosts, args.host, args.port).run(
-        transport="streamable-http"
-    )
-
-
-if __name__ == "__main__":
-    main()
