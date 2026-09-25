@@ -237,6 +237,10 @@ docker compose -f src/tennis_scene/chat_annotation/artifacts/compose.yaml up -d 
 認証はTunnelの組織・workspaceアクセスとruntime API keyを使用する。ローカルMCPには
 独自Bearer認証を追加していないため、ポートの公開範囲を広げない。
 許可ホスト以外・private IP・HTTP・redirectを拒否し、署名付きURLを保存しない。
+取得URLの診断はサーバーログの`file download URL`行で行う。記録するのは
+`scheme`・`hostname`・`port`だけで、URLのパス・署名クエリ・認証情報は含めない。
+ホスト不一致の場合は実際の配信元を確認して許可リストと照合する。`sandbox`の場合は
+ChatGPTから実際のファイル参照が渡っていないため、許可ホストを追加しても解決しない。
 
 Tunnelの作成・ChatGPT workspaceへの関連付け・権限は
 [公式Secure MCP Tunnel手順](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)に従う。

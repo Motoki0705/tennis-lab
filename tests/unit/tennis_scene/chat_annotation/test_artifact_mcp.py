@@ -166,3 +166,49 @@ def test_download_is_bounded_and_does_not_follow_redirects(
                 "https://files.example.com/f", frozenset({"files.example.com"})
             )
         assert "secret signed URL" not in str(result.value)
+
+
+@pytest.mark.parametrize(
+    ("url", "scheme", "hostname", "port"),
+    [
+        (
+            "https://user:secret-password@unlisted.example:444/private-secret?token=secret-token#secret-fragment",
+            "https",
+            "unlisted.example",
+            444,
+        ),
+        ("sandbox:/mnt/data/private-secret.zip", "sandbox", None, None),
+        (
+            "https://unlisted.example:secret-port/private-secret?token=secret-token",
+            "https",
+            "unlisted.example",
+            "invalid",
+        ),
+        ("https://[secret-invalid/private-secret", None, None, "invalid"),
+    ],
+)
+def test_download_url_diagnostics_exclude_secrets(
+    url: str,
+    scheme: str | None,
+    hostname: str | None,
+    port: int | str | None,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected_network(*_args: Any, **_kwargs: Any) -> Any:
+        pytest.fail("a rejected URL must not reach the network")
+
+    monkeypatch.setattr(server.socket, "getaddrinfo", unexpected_network)
+    with (
+        caplog.at_level("INFO", logger=server.__name__),
+        pytest.raises(ValueError) as error,
+    ):
+        server.download_zip(url, frozenset({"files.example.com"}))
+    records = [record for record in caplog.records if record.name == server.__name__]
+    assert len(records) == 1
+    assert records[0].args == (scheme, hostname, port)
+    assert records[0].getMessage() == (
+        f"file download URL scheme={scheme!r} hostname={hostname!r} port={port!r}"
+    )
+    assert "secret" not in caplog.text + str(error.value)
+    assert url not in caplog.text + str(error.value)
