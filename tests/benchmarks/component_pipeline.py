@@ -55,15 +55,15 @@ def main() -> None:
     overrides = [f'paths.project_root={repo}', f'paths.data_root={repo / "data"}',
         f'paths.checkpoint_root={repo}', f'paths.external_asset_root={repo / "third_party"}',
         f'paths.artifact_root={repo / "outputs"}', f'paths.output_root={repo / "outputs"}',
-        f'device={args.device}', 'court_kp.checkpoint=ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt',
+        f'device={args.device}', "court_kp.checkpoint='ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt'",
         'court_kp.region_search.enabled=true', 'people_models.dino_checkpoint=ckpt/dino/checkpoint0029_4scale_swin.pth',
         'plcs_reid.checkpoint=outputs/plcs/exports/player-reid-headless-v2-s42.ckpt',
         'execution.ball_detection=load', 'execution.court_side=load', 'camera_geometry.reference_camera=cam0',
         'person_observations.sideline_margin_m=1.0', 'person_observations.baseline_margin_m=10.0']
     with initialize_config_dir(version_base='1.3', config_dir=str(Path('src/tennis_scene/configs').resolve())):
         config = compose(config_name='pipeline', overrides=overrides)
-    (report / 'pipeline_config.yaml').write_text(OmegaConf.to_yaml(config, resolve=True))
     runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+    (report / 'pipeline_config.yaml').write_text(OmegaConf.to_yaml(config, resolve=True))
     application = TennisSceneOrchestrator(runtime)
     store = ClipStore(clip / 'annotations/tennis_scene', json_value(source))
     imported = import_ball_annotations(source, clip / 'outsource', store)
