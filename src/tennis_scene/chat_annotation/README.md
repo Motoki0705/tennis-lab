@@ -90,9 +90,9 @@ outputs/chat_annotation/             # output_directoryで変更可能
 ```
 
 1. 注釈対象に応じて`project_kits/ball_detection/`または`project_kits/player_detection/`を選び、その`PROJECT_INSTRUCTIONS.txt`をProject instructionsへ貼る。
-2. Chatでgpt-6-astraを選び、`videos/<source-video-name>/`からクリップを1本または複数本添付する。
+2. 対象別のChatでgpt-6-astraを選び、`videos/<source-video-name>/`から注釈するクリップを添付する（複数本可）。
 3. 選んだディレクトリの`REQUEST.txt`全文をプロンプトとして貼り付ける。
-4. 動画が1本の場合は、注釈JSON、重畳動画、両方を格納したZIPの3点を受け取る。ZIP名は添付MP4のファイル名と同じbasenameを使う。複数動画の場合は、動画ごとの注釈JSONをまとめた1つのZIPと、各動画の重畳動画を受け取る（詳細は対象別REQUEST）。部分完了もJSONに明示される。
+4. 動画ごとの注釈JSONをまとめたZIPをMCPへ提出させ、保存結果を確認する。overlay動画はChat上で個別に確認する。詳細な提出契約は対象別REQUESTを参照。
 
 各REQUESTには対象別の要求と専用JSON Schemaを含める。ボール用JSONはボール情報だけ、プレーヤー用JSONはプレーヤー情報だけを含む。動画名・解像度・総フレーム数は添付動画から取得する。
 同じ対象のREQUESTを全クリップで共通に使い、動画が増えても本文は変わらない。
@@ -107,6 +107,8 @@ Pythonコードは配布せず、実装はgpt-6-astraに任せる。各REQUEST�
 各REQUESTのJSONは対象クラスの配列だけを含める。
 複数動画・複数URLの準備でも、公開済み動画の整合性はローカルmetadataで検証する。
 要求の版が異なる既存動画と混在する場合は明示的に失敗するため、新しいoutput_directoryを使う。
+MCP提出版はキット5.0.0であり、4.xの準備済みmanifestを同じrootで再生成しない。旧動画を
+新REQUESTで注釈する場合もmanifestは保持し、返却JSONはその元manifestで照合する。
 実際のChatでの動画処理・コード実行・ダウンロードは利用環境で確認が必要。
 機械検証は注釈の意味的精度を保証しない。
 
@@ -147,7 +149,7 @@ source_frame_index/is_targetで所有範囲を識別できる。1フレーム＋
 
 YouTube取得はテストではmockにし、動画分割と配布キットは実際にエンコード・デコードする。
 E2Eは動画とREQUEST本文の例から合成注釈を作り、ローカルmanifestを使って返却ZIPを検証する。
-CFR/VFRの全フレーム・表示時間、参考区間の描画、単一動画のJSON/overlay/ZIPの3成果物、ZIP内2ファイル構成、無効入力の拒否を確認する。
+CFR/VFRの全フレーム・表示時間、参考区間の描画、JSON/overlay/ZIPの3成果物、ZIP内2ファイル構成、無効入力の拒否を確認する。
 GPTが独自に作るコードやChat上での注釈結果そのものは自動テストの対象外。
 
 ローカルで返却注釈を検証する場合は、元のmanifestを指定する（すべて絶対パス）。
@@ -170,5 +172,136 @@ GPTが独自に作るコードやChat上での注釈結果そのものは自動�
 ```
 
 同CLIの`finalize`は単一動画用で、`--video`、`--manifest`、`--annotations`、`--output`を受け取り、
-有効なcompleted/partialだけを注釈JSON、overlay動画、ZIPとして生成する。ZIPには前2点だけを格納する。構造・入力エラーや
+有効なcompleted/partialだけをローカル確認用の注釈JSON、overlay動画、ZIPとして生成する。
+このローカル確認用ZIPには前2点を格納するため、そのままMCPへ提出できない。MCPにはJSONのみをまとめ直して提出する。構造・入力エラーや
 動画生成失敗ではZIPを公開せず非0終了する。既存の出力ディレクトリは上書きしない。
+
+
+## MCP受領と注釈の整理
+
+最小構成は **受領用MCP + ホスト上のtunnel-client + ローカルAI + 完了移動CLI**。
+DB・ジョブキューは設けず、原本ZIP、採用済みJSON、AIの処理記録をファイルで保持する。
+
+```text
+ChatGPT → OpenAI Secure MCP Tunnel ← outbound HTTPS ← tunnel-client（remote PC）
+                                                        ↓ localhost:8000/mcp
+                                                   Docker: artifact-mcp-server
+                                                        ↓ /artifacts bind mount
+outputs/chat_annotation/
+  annotated/
+    raw/<sha256>.zip                        # JSONのみの提出原本、不変
+    processing/<sha256>.json                # AIの判断・出典・保留・再開記録
+    processed/ball/<clip_id>.json           # AIが検証・採用したボール注釈
+    processed/player/<clip_id>.json         # AIが検証・採用した選手注釈
+  videos/<source-video-name>/<clip_id>.mp4
+  done/<source-video-name>/<clip_id>.mp4     # 両対象の完了後、機械的に移動
+```
+
+`artifacts/server.py`はStreamable HTTPの`/mcp`を提供する。公開ツールは次の3つ。
+
+| ツール | 入力と結果 |
+| --- | --- |
+| `save_artifact(file, filename)` | ChatGPTのファイル参照からZIPを取得し、rawへ保存。artifact_id・SHA-256・サイズ・member一覧を返す |
+| `list_artifacts(offset=0, limit=50)` | 受領ZIPの一覧。最大100件ずつ取得 |
+| `read_artifact(artifact_id)` | ZIPのハッシュと内容を再検査し、member名とサイズを返す。JSON本文の取得・整理はローカルAIが担当 |
+
+ChatGPTの[ファイル引数](https://developers.openai.com/plugins/reference#file-apis)を使い、
+`file`を`openai/fileParams`へ宣言する。ChatGPTから渡されるdownload_urlのZIPをサーバーが取得する。
+`sandbox:/...`やChatの表示リンクはリモートPCのファイルパスではない。
+ZIP本体はTunnelのJSON引数に埋め込まず、許可したファイル配信ホストから別途HTTPSで取得する。
+ファイル参照を渡せないChatGPT環境では未提出となるため、実環境で小さいZIPによる受入確認が必要。
+
+ZIPは圧縮後16 MiB以下、展開後合計64 MiB以下、直下のJSON 1〜256件。
+パス付きmember・symlink・暗号化・同名member・不正JSON・重複キーを拒否する。
+スキーマや注釈の意味の判断は受領後のAIと既存validator関数が担当する。
+保存名はZIPのSHA-256とし、同一バイトの再送を冪等に扱い、別内容は別原本として保存する。
+処理途中のファイルを一覧に出さず、既存原本を上書きしない。
+
+### 起動とTunnel接続
+
+リモートPCのrepo/worktree rootで実行する。DockerはCPU専用の小さな依存環境で動く。
+`CHAT_ANNOTATION_ROOT`は既存の準備済み動画があるrootの絶対パスにする。
+CLI入口は`scripts/serve_artifacts.py`と`scripts/sync_done.py`。`--root`は必須の絶対パスで、
+共通のパス契約で検証してから保存・移動処理へ渡す。
+
+```bash
+export CHAT_ANNOTATION_ROOT=/home/kamimura/projects/tennis-lab/outputs/chat_annotation
+mkdir -p "$CHAT_ANNOTATION_ROOT/annotated/raw"
+export ARTIFACT_UID="$(id -u)"
+export ARTIFACT_GID="$(id -g)"
+# 実際に使用するChatGPTファイル配信ホストを確認し、完全一致のホスト名を設定する。
+# 以下は例。署名付きURL全体やワイルドカードは設定しない。
+export ARTIFACT_DOWNLOAD_HOSTS=files.oaiusercontent.com,oaisdmntprcentralus.blob.core.windows.net,oaisdmntprjapaneast.blob.core.windows.net,oaisdmntprwestus3.blob.core.windows.net,oaisdmntprkoreacentral.blob.core.windows.net
+docker compose -f src/tennis_scene/chat_annotation/artifacts/compose.yaml up -d --build
+```
+
+ホストの127.0.0.1:8000だけに公開し、rawのみをコンテナにマウントする。
+認証はTunnelの組織・workspaceアクセスとruntime API keyを使用する。ローカルMCPには
+独自Bearer認証を追加していないため、ポートの公開範囲を広げない。
+許可ホスト以外・private IP・HTTP・redirectを拒否し、署名付きURLを保存しない。
+取得URLの診断はサーバーログの`file download URL`行で行う。記録するのは
+`scheme`・`hostname`・`port`だけで、URLのパス・署名クエリ・認証情報は含めない。
+URL条件による拒否時はMCPエラーにもこの3項目と拒否条件名を返す。
+`rejected=allowed_host`ならホスト未登録、`scheme`ならHTTPS以外、`port`なら非標準ポート、
+`userinfo`/`fragment`なら禁止された認証情報/フラグメントを含むURLを意味する。
+ホスト不一致の場合は実際の配信元を確認して許可リストと照合する。`sandbox`の場合は
+ChatGPTから実際のファイル参照が渡っていないため、許可ホストを追加しても解決しない。
+上記のAzure Blob 4ホストはChatGPTからの実提出で観測した配信先。環境・リージョンにより
+配信先が異なる場合も、確認できた完全一致ホストだけを追加し、`*.blob.core.windows.net`のような
+共有ドメインの一括許可は行わない。設定変更後は同じComposeコマンドでコンテナを再作成する。
+
+Tunnelの作成・ChatGPT workspaceへの関連付け・権限は
+[公式Secure MCP Tunnel手順](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)に従う。
+`tunnel-client`は[公式release](https://github.com/openai/tunnel-client/releases/latest)から取得し、
+リモートPC上で次を実行する。runtime用API keyは秘密管理から環境変数へ設定する。
+
+```bash
+# CONTROL_PLANE_API_KEYを環境に設定済みであること。
+tunnel-client init --sample sample_mcp_remote_no_auth --profile chat-annotation \
+  --tunnel-id tunnel_REPLACE_ME \
+  --mcp-server-url http://127.0.0.1:8000/mcp
+tunnel-client doctor --profile chat-annotation --explain
+tunnel-client run --profile chat-annotation
+```
+
+ChatGPTのdeveloper-mode appで接続方式Tunnelと対象tunnelを選ぶ。
+ツール一覧にsave_artifactが現れ、小さいJSON ZIPを送ってrawのSHA-256が応答と一致することを確認する。
+このrepoへの実装だけではTunnelの作成・認証設定・ChatGPT接続は行われない。
+
+Dockerを使わずに検証する場合は、通常のrepo環境を同期する。MCPの依存版はpyproject.tomlを正本とし、DockerもそこからMCPと共通パス検証に必要なOmegaConfだけをインストールする。
+
+```bash
+uv sync --locked
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.serve_artifacts \
+  --root "$CHAT_ANNOTATION_ROOT/annotated/raw"
+```
+
+### AI処理と完了判定
+
+raw→processedのAI作業の正本は[PROCESS_RAW.md](resources/PROCESS_RAW.md)。
+AIの新しいセッションにはこのファイルとoutput rootを渡す。判断結果・出典ZIP/member・
+出力ハッシュ・保留理由を`annotated/processing/`へ残すため、会話履歴に依存せず再開できる。
+MCP受領後のAI起動はこの最小構成には含まれない。
+
+完了判定は`artifacts/completion.py`で行う。対象ごとに正しいスキーマで、clip_id・解像度・
+全フレーム・座標・補間が元manifestに適合し、ball/playerともcompletedの場合だけ移動する。
+partial・片方未着はpending、不正JSONや競合はerrorsとして表示する。
+準備receiptと動画SHA-256も検証する。doneの同名別ファイルを上書きせず、元のソース別階層を保持する。
+videos/doneは同じファイルシステムに置く。移動はlink→unlinkで行い、中断後の再実行で再開する。
+
+```bash
+# AIの整理後に1回実行。dry-runはready一覧だけを表示する。
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.sync_done \
+  --root "$CHAT_ANNOTATION_ROOT" --dry-run
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.sync_done \
+  --root "$CHAT_ANNOTATION_ROOT"
+
+# 常駐させる場合: 5秒ごとに両対象がそろったクリップから移動する。
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.sync_done \
+  --root "$CHAT_ANNOTATION_ROOT" --watch-seconds 5
+```
+
+同じrootの複数completion実行はファイルロックで直列化する。単発実行でerrorsがあれば非0終了。
+watcherはerrorsを標準出力へ報告して次周期も検査する。manifest自体の破損は処理を停止する。
+processedはAIが一時ファイルからatomic renameで公開し、done移動済みの注釈の差替えは別途判断する。
+準備処理の再実行はvideos/done両方の現所在とハッシュを検査する（同一キット版の範囲）。

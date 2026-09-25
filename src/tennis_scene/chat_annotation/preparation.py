@@ -16,7 +16,7 @@ from src.utils.video.youtube import download_youtube_video
 
 from .configuration import PrepareConfig, youtube_id
 from .kit import build_kit
-from .layout import video_path
+from .layout import published_video_path, video_path
 from .prompt import write_request
 from .runtime.contracts import (
     KIT_VERSION,
@@ -131,7 +131,7 @@ def _verify_published(directory: Path) -> ClipManifest:
         path = (
             directory / name
             if name == "clip_manifest.json"
-            else video_path(_output_root(directory), manifest)
+            else published_video_path(_output_root(directory), manifest)
         )
         if (
             Path(name).name != name
