@@ -8,9 +8,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+import torch
 
 from scripts.visualize_component_store import Review
+from src.tasks.plcs.model_io.person_association import PersonReIDResult
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
+from src.tennis_scene.pipeline.components.person_association import PlayerReIDOutput
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
@@ -100,3 +103,48 @@ def test_review_hides_descendants_of_superseded_artifacts(tmp_path: Path, monkey
     assert manifest["ball_detection/cam0"]["status"] == "rendered"
     assert manifest["person_detection/cam0"]["status"] == "stale"
     assert manifest["person_tracking/cam0"]["status"] == "stale"
+
+
+def test_review_exports_raw_model_cosine_numbers(tmp_path: Path) -> None:
+    cameras = ("cam0", "cam1", "cam2")
+    source = {"clip_id": "cosine-fixture", "videos": [
+        {"camera_id": camera, "path": str(tmp_path / f"{camera}.mp4"),
+         "num_frames": 4, "fps": 10., "width": 64, "height": 48} for camera in cameras
+    ]}
+    store = ClipStore(tmp_path / "store", source)
+    embeddings = torch.tensor([[[1., 0.]], [[.6, .8]], [[0., 0.]]])
+    valid = torch.tensor([[True], [True], [False]])
+    ids = torch.tensor([[0], [1], [-1]])
+    local = torch.tensor([[1], [2], [-1]])
+    value = PlayerReIDOutput(cameras, PersonReIDResult(ids, ids, local, embeddings, valid, .775))
+    reference = store.publish("person_reid", value, ArtifactCodec(PlayerReIDOutput),
+        schema="person_identities", version=1, identity={"model": 1}, dependencies={},
+        provenance={"origin": "component"})
+
+    report = Review(store.index_path, tmp_path / "review").build()
+
+    raw = json.loads((report.parent / "reid_raw_cosine.json").read_text())
+    assert raw["embedding_artifact_id"] == reference.artifact_id
+    assert raw["cosine_threshold"] == .775
+    assert raw["similarity"][0][1] == pytest.approx(.6)
+    assert raw["similarity"][1][0] == pytest.approx(.6)
+    assert "reid_raw_cosine.csv" in report.read_text()
+
+
+def test_confirmed_review_labels_non_target_tracks(tmp_path: Path) -> None:
+    cameras = ("cam0", "cam1", "cam2")
+    source = {"clip_id": "target-fixture", "videos": [
+        {"camera_id": camera, "path": str(tmp_path / f"{camera}.mp4"),
+         "num_frames": 4, "fps": 10., "width": 64, "height": 48} for camera in cameras
+    ]}
+    store = ClipStore(tmp_path / "store", source)
+    raw_ids = torch.tensor([[0, -1], [1, -1], [1, -1]])
+    result = PersonReIDResult(raw_ids, raw_ids.clone(), torch.tensor([[1, 2]] * 3),
+        torch.zeros((3, 2, 2)), torch.tensor([[True, True]] * 3), .775)
+    store.publish("person_reid", PlayerReIDOutput(cameras, result), ArtifactCodec(PlayerReIDOutput),
+        schema="person_identities", version=1, identity={"confirmed": True}, dependencies={},
+        provenance={"origin": "confirmed_person_association"})
+
+    review = Review(store.index_path, tmp_path / "review")
+
+    assert review.confirmed_track_labels("cam0", np.array([1, 2])) == {1: 0, 2: -1}

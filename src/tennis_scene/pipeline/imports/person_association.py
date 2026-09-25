@@ -32,6 +32,7 @@ from src.utils.checksum import dual_sha256
 MIN_MATCH_OBSERVATIONS = 30
 MAX_MEDIAN_CENTER_DISTANCE_BOX_SIZES = .25
 MIN_NEXT_BEST_MARGIN_BOX_SIZES = .5
+MIN_NON_TARGET_DISTANCE_BOX_SIZES = .5
 
 
 def _legacy_numeric_field(path: Path, name: str, *, max_bytes: int) -> Any:
@@ -94,6 +95,15 @@ def _match_current_tracks(legacy_boxes: np.ndarray, current: PersonTrackingOutpu
     return tuple(selected), evidence
 
 
+def _nearest_legacy_axis_distance(legacy_boxes: np.ndarray, current: PersonTrackingOutput, row: int) -> float:
+    observed = current.observed[row]
+    if int(observed.sum()) < MIN_MATCH_OBSERVATIONS:
+        raise ValueError("A model-valid non-target track needs enough observations for identity exclusion")
+    center = (current.boxes_xyxy[row, :, :2] + current.boxes_xyxy[row, :, 2:]) / 2
+    return min(float(np.median((np.linalg.norm(old[:, :2] - center, axis=1) / old[:, 2])[observed]))
+               for old in legacy_boxes)
+
+
 def import_confirmed_person_association(
     node: ComponentNode,
     store: ClipStore,
@@ -136,6 +146,7 @@ def import_confirmed_person_association(
     matched: dict[str, tuple[int, ...]] = {}
     comparisons: dict[str, list[dict[str, Any]]] = {}
     legacy_digests: dict[str, str] = {}
+    legacy_bboxes: dict[str, np.ndarray] = {}
     for camera in source.camera_ids:
         reference = store.active(f"person_tracking/{camera}")
         if reference is None:
@@ -143,8 +154,8 @@ def import_confirmed_person_association(
         track_refs[camera] = reference
         current[camera] = store.load(reference, ArtifactCodec(PersonTrackingOutput))
         path = legacy_gvhmr_directory / f"gvhmr_result_{camera}.json"
-        legacy_ids[camera], legacy_boxes, legacy_digests[camera] = _legacy_tracks(path, source.num_frames)
-        matched[camera], comparisons[camera] = _match_current_tracks(legacy_boxes, current[camera])
+        legacy_ids[camera], legacy_bboxes[camera], legacy_digests[camera] = _legacy_tracks(path, source.num_frames)
+        matched[camera], comparisons[camera] = _match_current_tracks(legacy_bboxes[camera], current[camera])
     valid, errors = association.validate(num_frames=source.num_frames,
         local_player_counts=[len(legacy_ids[camera]) for camera in source.camera_ids])
     if not valid or len(np.unique(association.canonical_player_ids)) != len(association.canonical_player_ids) or (association.canonical_player_ids < 0).any():
@@ -163,8 +174,7 @@ def import_confirmed_person_association(
     slot_valid = result.track_valid.detach().cpu().numpy()
     raw_ids = np.full(result.raw_track_ids.shape, -1, np.int64)
     slot_ids = np.full(result.slot_global_ids.shape, -1, np.int64)
-    extras: dict[str, list[dict[str, int | bool]]] = {}
-    next_id = max((int(value) for value in association.canonical_player_ids), default=-1) + 1
+    extras: dict[str, list[dict[str, Any]]] = {}
     for view, camera in enumerate(source.camera_ids):
         tracks = current[camera]
         if tracks.camera_id != camera or len(tracks.track_ids) > raw_ids.shape[1]:
@@ -182,11 +192,15 @@ def import_confirmed_person_association(
                     raise ValueError(f"Confirmed {camera} track {track_id} has no model-valid pose")
                 label = label_by_track[camera][track_id]
             elif has_pose:
-                label = next_id
-                next_id += 1
-                extras[camera].append({"track_id": track_id, "global_id": label, "model_valid": True})
+                nearest = _nearest_legacy_axis_distance(legacy_bboxes[camera], tracks, row)
+                if nearest < MIN_NON_TARGET_DISTANCE_BOX_SIZES:
+                    raise ValueError(f"Unconfirmed {camera} track {track_id} resembles a target player")
+                extras[camera].append({"track_id": track_id, "global_id": -1, "model_valid": True,
+                                       "disposition": "excluded_non_target", "nearest_legacy_axis_median": nearest})
+                continue
             else:
-                extras[camera].append({"track_id": track_id, "global_id": -1, "model_valid": False})
+                extras[camera].append({"track_id": track_id, "global_id": -1, "model_valid": False,
+                                       "disposition": "excluded_no_valid_pose"})
                 continue
             raw_ids[view, row] = label
             slot_ids[view, slot] = label
@@ -206,7 +220,8 @@ def import_confirmed_person_association(
         "axis_to_current_track": {camera: list(ids) for camera, ids in matched.items()},
         "trace_comparisons": comparisons,
         "confirmed_assignments": {camera: {str(key): value for key, value in labels.items()} for camera, labels in label_by_track.items()},
-        "unassigned_track_policy": "model-valid tracks retain distinct singleton IDs; invalid tracks remain -1",
+        "confirmed_target_ids": association.canonical_player_ids.tolist(),
+        "unassigned_track_policy": "Only confirmed target tracks receive global IDs; other tracks remain -1 with explicit exclusion evidence",
         "extra_tracks": extras,
         "model_artifact": json_value(model_reference),
         "model_raw_track_ids": result.raw_track_ids.tolist(),

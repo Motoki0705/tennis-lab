@@ -287,6 +287,22 @@ class Review:
         details.insert(2, ("schema", f"{self.references[node].schema} v{self.references[node].version}"))
         return images, details
 
+    def confirmed_track_labels(self, camera: str, local_ids: np.ndarray) -> dict[int, int] | None:
+        """Only a confirmed import can label a raw person track as a target."""
+        if "person_reid" not in self.references or self.stale_dependencies("person_reid"):
+            return None
+        reference = self.references["person_reid"]
+        if self.store.descriptor(reference)["provenance"].get("origin") != "confirmed_person_association":
+            return None
+        value, _ = self.payload("person_reid")
+        if value["result"] is None:
+            raise ValueError("Confirmed person association has no output")
+        view = value["camera_ids"].index(camera)
+        raw_ids = _array(value["result"]["raw_track_ids"])
+        if len(local_ids) > raw_ids.shape[1]:
+            raise ValueError("Confirmed person assignments do not cover tracking rows")
+        return {int(track_id): int(raw_ids[view, row]) for row, track_id in enumerate(local_ids)}
+
     def render_court_detection(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         points, visible = _array(value["keypoints"])[0, 0], _array(value["visibility"])[0, 0]
         if _array(value["frame_indices"]).tolist() != [0]:
@@ -365,18 +381,21 @@ class Review:
 
     def render_person_tracking(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         boxes, observed, ids = (_array(value[key]) for key in ("boxes_xyxy", "observed", "track_ids"))
+        confirmed = self.confirmed_track_labels(camera, ids)
         def draw(image: np.ndarray, frame: int) -> None:
             for row, track_id in enumerate(ids):
                 box = boxes[row, frame]
-                color = COLORS_BGR[row % len(COLORS_BGR)]
+                global_id = None if confirmed is None else confirmed[int(track_id)]
+                color = (150, 150, 150) if global_id == -1 else COLORS_BGR[row % len(COLORS_BGR)]
+                label = f"track {track_id}" if global_id is None else (f"excluded track {track_id}" if global_id < 0 else f"player {global_id} / track {track_id}")
                 if not observed[row, frame]:
                     frames = np.flatnonzero(observed[row])
                     if len(frames) and frames[0] < frame < frames[-1]:
                         _dashed_box(image, box, color)
-                        _text(image, f"ID {track_id} interp", tuple(np.rint(box[:2]).astype(int)), color)
+                        _text(image, f"{label} interp", tuple(np.rint(box[:2]).astype(int)), color)
                     continue
                 cv2.rectangle(image, tuple(np.rint(box[:2]).astype(int)), tuple(np.rint(box[2:]).astype(int)), color, 4)
-                _text(image, f"ID {track_id}", tuple(np.rint(box[:2]).astype(int)), color)
+                _text(image, label, tuple(np.rint(box[:2]).astype(int)), color)
         frames = self.track_samples(boxes, observed, value["source_track_ids"], value["tracklet_links"])
         image = self.sheet(node, camera, draw, frames=frames)
         self.movie(node, camera, draw)
@@ -388,6 +407,8 @@ class Review:
             ax.grid(axis="x", alpha=.2)
         timeline = _save_plot(self.output / "images" / f"{camera}_tracks_timeline.png", plot)
         details = [(f"ID {track_id}", f"{_count(observed[row])} observed frames; source tracklets {value['source_track_ids'][row]}") for row, track_id in enumerate(ids)]
+        if confirmed is not None:
+            details += [(f"track {track_id} target selection", "excluded from triangulation/GVHMR/scene" if confirmed[int(track_id)] < 0 else f"confirmed player {confirmed[int(track_id)]}") for track_id in ids]
         for item in value["tracklet_links"]:
             overlap = (f"overlap span {item['overlap_span_frames']} frames, {item['shared_observation_frames']} shared observations, "
                        f"containment {item['duplicate_containment']:.2f}; ") if item.get("overlap_span_frames") else ""
@@ -401,11 +422,13 @@ class Review:
         confidence = _array(value["confidence"])[0]
         observed = _array(value["observed"])[0]
         ids = _array(value["local_track_ids"])[0]
+        confirmed = self.confirmed_track_labels(camera, ids)
         def draw(image: np.ndarray, frame: int) -> None:
             for row, track_id in enumerate(ids):
                 if not observed[frame, row]:
                     continue
-                color = COLORS_BGR[row % len(COLORS_BGR)]
+                global_id = None if confirmed is None else confirmed[int(track_id)]
+                color = (150, 150, 150) if global_id == -1 else COLORS_BGR[row % len(COLORS_BGR)]
                 valid = confidence[frame, row] >= .15
                 for a, b in SKELETON:
                     if valid[a] and valid[b]:
@@ -415,7 +438,8 @@ class Review:
                     cv2.circle(image, tuple(np.rint(point).astype(int)), 6, color, -1)
                 if valid.any():
                     anchor = tuple(np.rint(points[frame, row, valid][0]).astype(int))
-                    _text(image, f"ID {track_id}", anchor, color)
+                    label = f"track {track_id}" if global_id is None else (f"excluded track {track_id}" if global_id < 0 else f"player {global_id} / track {track_id}")
+                    _text(image, label, anchor, color)
         image = self.sheet(node, camera, draw)
         self.movie(node, camera, draw)
         def plot(ax: Any) -> None:
@@ -433,6 +457,10 @@ class Review:
         descriptor = self.store.descriptor(self.references[node])
         if "model_raw_track_ids" in descriptor["provenance"]:
             details.append(("model-inferred IDs before confirmation", str(descriptor["provenance"]["model_raw_track_ids"])))
+            details.append(("model embedding artifact", str(descriptor["provenance"]["model_artifact_id"])))
+            confirmation = descriptor["provenance"]["confirmation"]
+            details.append(("confirmed target IDs", str(confirmation["confirmed_target_ids"])))
+            details.append(("excluded raw tracks", str(confirmation["extra_tracks"])))
         def plot(ax: Any) -> None:
             if result is None:
                 ax.text(.5, .5, "No valid person embeddings", ha="center", va="center", transform=ax.transAxes)
@@ -471,7 +499,10 @@ class Review:
             local = _array(result["local_track_ids"])
             global_ids = _array(result["slot_global_ids"])
             valid: np.ndarray = _array(result["track_valid"]).astype(bool)
-            details += [(str(value["camera_ids"][v]), ", ".join(f"local {int(local[v, p])} → global {int(global_ids[v, p])}" for p in np.flatnonzero(valid[v])))
+            details += [(str(value["camera_ids"][v]), ", ".join(
+                f"local {int(local[v, p])} → global {int(global_ids[v, p])}" if int(global_ids[v, p]) >= 0
+                else f"local {int(local[v, p])} → excluded from target reconstruction"
+                for p in np.flatnonzero(valid[v])))
                         for v in range(len(value["camera_ids"]))]
             details.append(("cosine threshold", str(result["cosine_threshold"])))
         images = [image]

@@ -23,13 +23,15 @@ from src.tennis_scene.pipeline.imports.person_association import (
 )
 from src.tennis_scene.pipeline.input_assembly.observations import (
     PersonAssociationInputAssembler,
+    identified_people,
 )
+from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.runner import ComponentNode
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 
 
-def _fixture(tmp_path: Path) -> tuple[ClipStore, ClipSource, ComponentNode, Path, Path]:
+def _fixture(tmp_path: Path, *, extra_cam0: bool = False) -> tuple[ClipStore, ClipSource, ComponentNode, Path, Path]:
     cameras = ("cam0", "cam1", "cam2")
     source = ClipSource("confirmed-clip", tuple(SourceVideo(camera, tmp_path / f"{camera}.mp4", camera,
         40, 30., 100, 80) for camera in cameras))
@@ -40,11 +42,15 @@ def _fixture(tmp_path: Path) -> tuple[ClipStore, ClipSource, ComponentNode, Path
         pose_name = f"pose_estimation/{camera}"
         dependencies[f"pose_{camera}"] = store.publish(pose_name, {"camera": camera}, ArtifactCodec(dict),
             schema="person_poses", version=1, identity={"camera": camera}, dependencies={}, provenance={"origin": "test"})
-        boxes: np.ndarray = np.zeros((2, 40, 4), np.float32)
+        count = 3 if camera == "cam0" and extra_cam0 else 2
+        boxes: np.ndarray = np.zeros((count, 40, 4), np.float32)
         boxes[0] = [10, 10, 20, 30]
         boxes[1] = [70, 10, 80, 30]
-        tracks = PersonTrackingOutput(camera, np.array([1, 2], np.int64), boxes,
-            np.ones((2, 40), bool), ((1,), (2,)), ())
+        if count == 3:
+            boxes[2] = [40, 10, 50, 30]
+        ids: np.ndarray = np.arange(1, count + 1, dtype=np.int64)
+        tracks = PersonTrackingOutput(camera, ids, boxes,
+            np.ones((count, 40), bool), tuple((int(track_id),) for track_id in ids), ())
         store.publish(f"person_tracking/{camera}", tracks, ArtifactCodec(PersonTrackingOutput),
             schema="person_tracks", version=3, identity={"camera": camera}, dependencies={}, provenance={"origin": "test"})
     legacy = tmp_path / "legacy"
@@ -63,11 +69,17 @@ def _fixture(tmp_path: Path) -> tuple[ClipStore, ClipSource, ComponentNode, Path
         PersonAssociationInputAssembler(.5), {"calibration": "court_calibration",
         **{f"pose_{camera}": f"pose_estimation/{camera}" for camera in cameras}},
         AssemblyContext(source), {}, "test-implementation", "load")
-    model = PersonReIDResult(torch.tensor([[0, 1], [2, 0], [2, 0]], dtype=torch.int64),
-        torch.tensor([[0, 1], [2, 0], [2, 0]], dtype=torch.int64),
-        torch.tensor([[1, 2]] * 3, dtype=torch.int64),
-        torch.nn.functional.normalize(torch.arange(1, 25, dtype=torch.float32).reshape(3, 2, 4), dim=-1),
-        torch.ones((3, 2), dtype=torch.bool), .775)
+    if extra_cam0:
+        raw_ids = torch.tensor([[0, 1, 2], [2, 0, -1], [2, 0, -1]], dtype=torch.int64)
+        local_ids = torch.tensor([[1, 2, 3], [1, 2, -1], [1, 2, -1]], dtype=torch.int64)
+        valid = torch.tensor([[True, True, True], [True, True, False], [True, True, False]])
+        embeddings = torch.nn.functional.normalize(torch.arange(1, 37, dtype=torch.float32).reshape(3, 3, 4), dim=-1)
+    else:
+        raw_ids = torch.tensor([[0, 1], [2, 0], [2, 0]], dtype=torch.int64)
+        local_ids = torch.tensor([[1, 2]] * 3, dtype=torch.int64)
+        valid = torch.ones((3, 2), dtype=torch.bool)
+        embeddings = torch.nn.functional.normalize(torch.arange(1, 25, dtype=torch.float32).reshape(3, 2, 4), dim=-1)
+    model = PersonReIDResult(raw_ids, raw_ids.clone(), local_ids, embeddings, valid, .775)
     store.publish("person_reid", PlayerReIDOutput(cameras, model), ArtifactCodec(PlayerReIDOutput),
         schema="person_identities", version=1, identity={"model": 1},
         dependencies=dependencies, provenance={"origin": "component"})
@@ -109,3 +121,27 @@ def test_rejects_legacy_axis_without_unique_track_match(tmp_path: Path) -> None:
         import_confirmed_person_association(node, store, source, model_reference=model_ref,
             historical_association=association, legacy_gvhmr_directory=legacy)
     assert store.active("person_reid") == model_ref
+
+
+def test_excludes_confirmed_non_target_from_downstream_ids(tmp_path: Path) -> None:
+    store, source, node, association, legacy = _fixture(tmp_path, extra_cam0=True)
+    model_ref = store.active("person_reid")
+    assert model_ref is not None
+
+    reference, confirmation = import_confirmed_person_association(node, store, source,
+        model_reference=model_ref, historical_association=association, legacy_gvhmr_directory=legacy)
+
+    imported = store.load(reference, ArtifactCodec(PlayerReIDOutput))
+    assert imported.result is not None
+    assert imported.result.raw_track_ids.tolist() == [[0, 1, -1], [0, 1, -1], [1, 0, -1]]
+    assert imported.result.track_valid[0, 2]
+    assert confirmation["confirmed_target_ids"] == [0, 1]
+    assert confirmation["extra_tracks"]["cam0"][0]["disposition"] == "excluded_non_target"
+    assert confirmation["extra_tracks"]["cam0"][0]["nearest_legacy_axis_median"] > .5
+    observed: np.ndarray = np.ones((3, 40, 3), bool)
+    observed[1:, :, 2] = False
+    raw = ObjectObservations(source.camera_ids, (100, 80), 30.,
+        np.full((3, 40, 3, 17, 2), 20., np.float32),
+        np.ones((3, 40, 3, 17), np.float32), observed,
+        np.array([[1, 2, 3], [1, 2, -1], [1, 2, -1]], np.int64))
+    assert identified_people(raw, imported, .15).identities.tolist() == [0, 1]
