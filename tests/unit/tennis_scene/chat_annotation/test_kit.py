@@ -41,6 +41,8 @@ def test_request_embeds_target_schema_in_each_project_kit(
         assert schema_match is not None
         schema = json.loads(schema_match.group(1))
         assert schema == model.model_json_schema()
+        assert "動画1本につき1つの注釈JSON" in request
+        assert "1つのZIPにまとめて提示" in request
         assert f"tennis_chat_{target.removesuffix('_detection')}_annotation.v1" in request
         assert len(request) > 3000
     assert "court_definition.json" not in contents
