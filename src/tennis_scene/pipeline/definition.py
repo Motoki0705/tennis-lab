@@ -29,8 +29,11 @@ from src.tennis_scene.pipeline.components.scene_assembly import SceneAssemblyMod
 from src.tennis_scene.pipeline.components.tracking_identity import (
     MAX_APPEARANCE_LAB_DISTANCE,
     MAX_CENTER_DISTANCE_DIAGONALS,
+    MAX_DUPLICATE_SIZE_RATIO,
     MAX_GAP_FRAMES,
+    MAX_OVERLAP_SPAN_FRAMES,
     MAX_SIZE_RATIO,
+    MIN_DUPLICATE_CONTAINMENT,
 )
 from src.tennis_scene.pipeline.components.triangulation import (
     BallTriangulationModule,
@@ -113,6 +116,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             {"detections": f"person_detection/{camera}"}, {"algorithm": "botsort_then_unique_tracklet_links",
                 "max_link_gap_frames": MAX_GAP_FRAMES, "max_center_distance_box_diagonals": MAX_CENTER_DISTANCE_DIAGONALS,
                 "max_size_ratio": MAX_SIZE_RATIO, "max_appearance_lab_distance": MAX_APPEARANCE_LAB_DISTANCE,
+                "max_duplicate_overlap_span_frames": MAX_OVERLAP_SPAN_FRAMES,
+                "min_duplicate_containment": MIN_DUPLICATE_CONTAINMENT,
+                "max_duplicate_size_ratio": MAX_DUPLICATE_SIZE_RATIO,
                 "cumulative_capacity": 4}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people), PoseEstimationInputAssembler(),
             {"tracks": f"person_tracking/{camera}"}, {"checkpoint": file_identity(cfg.people.vitpose_checkpoint),

@@ -37,7 +37,8 @@ GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 人物detectorはDINO/YOLOを選べる。trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
 ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは4以下、ID/slotの再利用や暗黙統合は行わない。
 BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する。
-元のID、欠落frame数、照合距離を`person_tracks` v2に残す。複数候補や累計4人超では明示的に停止する。
+1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。
+元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計4人超では明示的に停止する。
 モデルの人物同一性の正しさは可視化でも検証する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
@@ -92,3 +93,9 @@ component storeをdirectoryごと置換しない。SLCS・review・residual read
 
 実clip qualificationの入口は`tests/benchmarks/component_pipeline.py`。GPU実行は共有training queueを使う。
 外部ballと確認済みsideをloadし、他の処理を動画から実行してscene exportとload-only再開を検証する。
+
+保存済みcomponent出力の目視確認は、repo rootから
+`.venv/bin/python -m scripts.visualize_component_store --clip <clip directory> --output <review directory>`
+で行う。出力先の`index.html`にcomponent別の画像・timeline・診断値が並び、`manifest.json`に使用artifact IDを記録する。
+`scene.json`に未生成のcomponentは未生成と表示する。新しいartifactが増えたら同じコマンドで再生成する。
+`--videos`を付けると、ball・人物検出・tracking・poseの全frame overlay動画も生成する。

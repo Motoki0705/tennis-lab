@@ -59,7 +59,7 @@ class PersonTrackingOutput:
 
 class PersonTrackingModule:
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
-        {"detections": InputPort("person_detections")}, "person_tracks", version=2)
+        {"detections": InputPort("person_detections")}, "person_tracks", version=3)
 
     def process(self, inputs: PersonTrackingInput) -> PersonTrackingOutput:
         if inputs.detections.camera_id != inputs.video.camera_id or len(inputs.detections.frame_offsets) != inputs.video.num_frames + 1:
