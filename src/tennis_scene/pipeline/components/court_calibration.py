@@ -34,17 +34,19 @@ class CourtCalibrationModule:
     def __init__(self, camera_ids: tuple[str, ...], config: CameraGeometryConfig, *, roi_margins: tuple[float, float] = (1., 5.)) -> None:
         self.config, self.roi_margins = config, roi_margins
         self.io = ComponentIO("court_calibration", CourtCalibrationInput, CourtCalibrationOutput,
-            {camera: InputPort("court_observations") for camera in camera_ids}, "local_court_calibration")
+            {camera: InputPort("court_observations", 2) for camera in camera_ids}, "local_court_calibration")
 
     def process(self, inputs: CourtCalibrationInput) -> CourtCalibrationOutput:
         if len(inputs.courts) != len(inputs.source.videos):
             raise ValueError("Court calibration camera count mismatch")
         diagnostics = []
         for court in inputs.courts:
-            if court.keypoints.shape != (1, inputs.source.num_frames, 14, 2) or not np.array_equal(court.frame_indices, np.arange(inputs.source.num_frames)):
-                raise ValueError("Court output source timeline mismatch")
+            if court.keypoints.shape != (1, 1, 14, 2) or not np.array_equal(court.frame_indices, [0]):
+                raise ValueError("Static court calibration requires exactly the first source frame")
             if court.diagnostics is None or court.diagnostics.get("output_keypoint_contract") != "camera_view_v2":
                 raise ValueError("Court output must declare camera-local schema")
+            if court.diagnostics.get("temporal_policy") != "static_first_frame":
+                raise ValueError("Court output must declare its static first-frame policy")
             diagnostics.extend(court.diagnostics["cameras"])
         result = CourtKPResult(np.concatenate([c.keypoints for c in inputs.courts]),
             np.concatenate([c.visibility for c in inputs.courts]), inputs.courts[0].frame_indices,
@@ -56,4 +58,11 @@ class CourtCalibrationModule:
             result.keypoints[by_camera[camera].source_index, by_camera[camera].frame_index] * (np.maximum(size - 1, 1) / size),
             size=inputs.source.size, sideline_margin_m=self.roi_margins[0], baseline_margin_m=self.roi_margins[1])
             if camera in by_camera else None for camera in inputs.source.camera_ids}
-        return CourtCalibrationOutput(result, calibration, calibration.reference(self.config), polygons)
+        # Fixed-camera court geometry is broadcast explicitly; these are derived
+        # coordinates, not a claim that later frames were independently inferred.
+        expanded = CourtKPResult(np.repeat(result.keypoints, inputs.source.num_frames, axis=1),
+            np.repeat(result.visibility, inputs.source.num_frames, axis=1),
+            np.arange(inputs.source.num_frames, dtype=np.int32),
+            {**(result.diagnostics or {}), "temporal_policy": "static_first_frame_broadcast",
+             "observed_frame_indices": [0], "source_frame_count": inputs.source.num_frames})
+        return CourtCalibrationOutput(expanded, calibration, calibration.reference(self.config), polygons)

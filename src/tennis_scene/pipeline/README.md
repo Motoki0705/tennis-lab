@@ -18,7 +18,9 @@
 ## 処理単位
 
 `court_detection`・`person_detection`・`person_tracking`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
-`court_calibration`はコート観測をまとめ、初期校正と画像内へclipした人物ROIを出す。
+`court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
+`court_calibration`はこの1frameから初期校正・ROIを作り、固定cameraのコート座標を全frameへ明示的にbroadcastする。
+`observed_frame_indices=[0]`と`temporal_policy`を保存し、他frameでモデルを実行したとは扱わない。
 
 ```text
 動画 → court_detection → court_calibration

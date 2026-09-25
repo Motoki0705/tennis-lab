@@ -158,8 +158,9 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
         stage.io = io
         stages[name] = stage
     for v, camera in enumerate(people.camera_ids):
-        local_court = CourtKPResult(court.keypoints[v:v+1], court.visibility[v:v+1], court.frame_indices,
-            {"output_keypoint_contract": "camera_view_v2", "cameras": [court.diagnostics["cameras"][v]]})
+        local_court = CourtKPResult(court.keypoints[v:v+1, :1], court.visibility[v:v+1, :1], np.array([0], np.int32),
+            {"output_keypoint_contract": "camera_view_v2", "temporal_policy": "static_first_frame",
+             "cameras": [{"frames": [court.diagnostics["cameras"][v]["frames"][0]]}]})
         fixed(f"court_detection/{camera}", CourtKPModule.io, local_court)
         fixed(f"ball_detection/{camera}", BallDetectionModule.io, BallDetectionOutput(camera,
             np.arange(24, dtype=np.int64), balls.ball_uv_px[v], balls.score[v], balls.visibility[v], balls.visibility[v].astype(np.uint8), "model_score"))

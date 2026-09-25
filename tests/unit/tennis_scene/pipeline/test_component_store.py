@@ -129,3 +129,20 @@ def test_source_mismatch_cannot_reuse_another_clip(tmp_path: Path) -> None:
     ClipStore(tmp_path, {"clip": "a"})
     with pytest.raises(ValueError, match="source/schema"):
         ClipStore(tmp_path, {"clip": "b"})
+
+
+def test_replacing_implementation_uses_same_io_and_invalidates_its_outputs(tmp_path: Path) -> None:
+    class ChangedModel(Model):
+        def process(self, inputs: Input) -> Values:
+            self.calls += 1
+            return Values(np.arange(4, dtype=np.float32) + 10, ("cam0", "cam1"))
+    old, new, downstream = Model(), ChangedModel(), Model(downstream=True)
+    ctx = context(tmp_path)
+    store = ClipStore(tmp_path / "store", {"clip": "clip"})
+    original = [node("first", old, ctx), node("second", downstream, ctx, "first")]
+    ComponentRunner(original, store).run()
+    replaced = [node("first", new, ctx), original[1]]
+    runner = ComponentRunner(replaced, store)
+    runner.run()
+    np.testing.assert_array_equal(runner.output("second").numbers, (np.arange(4) + 10) * 2)
+    assert old.calls == new.calls == 1 and downstream.calls == 2
