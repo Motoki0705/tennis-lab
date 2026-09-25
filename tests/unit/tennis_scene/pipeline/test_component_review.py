@@ -7,9 +7,12 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytest
 
 from scripts.visualize_component_store import Review
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
+from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
+from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 
@@ -48,3 +51,52 @@ def test_partial_component_store_produces_review_with_provenance(
     capture = cv2.VideoCapture(str(movie))
     assert capture.get(cv2.CAP_PROP_FRAME_COUNT) == 4
     capture.release()
+
+
+def test_track_contact_sheet_samples_identity_handoffs() -> None:
+    review = Review.__new__(Review)
+    review.frame_count = 20
+    boxes: np.ndarray = np.zeros((1, 20, 4), np.float32)
+    boxes[..., 2] = 20
+    boxes[..., 3] = 40
+    boxes[:, 15:, 2] = 10
+    observed: np.ndarray = np.ones((1, 20), bool)
+    observed[:, 6:9] = False
+
+    samples = review.track_samples(boxes, observed, [[2, 9]],
+                                   [{"earlier_id": 2, "later_id": 9, "overlap_span_frames": 3}])
+
+    assert {5, 7, 9, 11, 14, 15, 17}.issubset(samples)
+
+
+def test_review_hides_descendants_of_superseded_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = {"clip_id": "stale-fixture", "videos": [
+        {"camera_id": camera, "path": str(tmp_path / f"{camera}.mp4"),
+         "num_frames": 4, "fps": 10., "width": 64, "height": 48} for camera in ("cam0", "cam1", "cam2")
+    ]}
+    store = ClipStore(tmp_path / "store", source)
+    ball = BallDetectionOutput("cam0", np.arange(4, dtype=np.int64),
+        np.zeros((4, 2), np.float32), np.zeros(4, np.float32),
+        np.zeros(4, bool), np.zeros(4, np.uint8), "observed_acceptance_weight")
+    old_ball = store.publish("ball_detection/cam0", ball, ArtifactCodec(BallDetectionOutput),
+        schema="ball_detections", version=1, identity={"revision": 1}, dependencies={}, provenance={"origin": "test"})
+    detection = PersonDetectionOutput("cam0", np.zeros(5, np.int64),
+        np.zeros((0, 4), np.float32), np.zeros(0, np.float32))
+    old_detection = store.publish("person_detection/cam0", detection, ArtifactCodec(PersonDetectionOutput),
+        schema="person_detections", version=1, identity={"revision": 1},
+        dependencies={"ball": old_ball}, provenance={"origin": "test"})
+    tracking = PersonTrackingOutput("cam0", np.zeros(0, np.int64),
+        np.zeros((0, 4, 4), np.float32), np.zeros((0, 4), bool), (), ())
+    store.publish("person_tracking/cam0", tracking, ArtifactCodec(PersonTrackingOutput),
+        schema="person_tracks", version=3, identity={"revision": 1},
+        dependencies={"detections": old_detection}, provenance={"origin": "test"})
+    store.publish("ball_detection/cam0", ball, ArtifactCodec(BallDetectionOutput),
+        schema="ball_detections", version=1, identity={"revision": 2}, dependencies={}, provenance={"origin": "test"})
+    monkeypatch.setattr(Review, "frame", lambda self, camera, index: np.zeros((48, 64, 3), np.uint8))
+
+    report = Review(store.index_path, tmp_path / "review").build()
+
+    manifest = json.loads((report.parent / "manifest.json").read_text())["components"]
+    assert manifest["ball_detection/cam0"]["status"] == "rendered"
+    assert manifest["person_detection/cam0"]["status"] == "stale"
+    assert manifest["person_tracking/cam0"]["status"] == "stale"

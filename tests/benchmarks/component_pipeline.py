@@ -1,13 +1,15 @@
-"""Full clip qualification with explicitly imported ball observations and confirmed sides.
+"""Full clip qualification with confirmed ball, side and person assignments.
 
 Run GPU execution through the shared training queue. External annotations never
-enter the ball predictor; side confirmation is a recorded validation fixture.
+enter the ball predictor. Model Re-ID embeddings are evaluated and saved first;
+the separately confirmed historical assignments are imported for downstream load.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import replace
 from itertools import product
 from pathlib import Path
 from typing import Any
@@ -33,6 +35,9 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 from src.tennis_scene.pipeline.definition import standard_definition
 from src.tennis_scene.pipeline.imports.ball_annotations import import_ball_annotations
 from src.tennis_scene.pipeline.imports.court_side import import_confirmed_side
+from src.tennis_scene.pipeline.imports.person_association import (
+    import_confirmed_person_association,
+)
 from src.tennis_scene.pipeline.input_assembly.observations import gather_balls
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import ComponentRunner
@@ -58,7 +63,8 @@ def main() -> None:
         f'device={args.device}', "court_kp.checkpoint='court_detection/multiscale_depth3/b863df1f01f0.ckpt'",
         'court_kp.region_search.enabled=true', 'people_models.dino_checkpoint=dino/checkpoint0029_4scale_swin.pth',
         'plcs_reid.checkpoint=plcs/player-reid-headless-v2-s42.ckpt',
-        'execution.ball_detection=load', 'execution.court_side=load', 'camera_geometry.reference_camera=cam0',
+        'execution.ball_detection=load', 'execution.court_side=load', 'execution.person_reid=load',
+        'camera_geometry.reference_camera=cam0',
         'person_observations.sideline_margin_m=1.0', 'person_observations.baseline_margin_m=10.0']
     with initialize_config_dir(version_base='1.3', config_dir=str(Path('src/tennis_scene/configs').resolve())):
         config = compose(config_name='pipeline', overrides=overrides)
@@ -68,14 +74,17 @@ def main() -> None:
     store = ClipStore(clip / 'annotations/tennis_scene', json_value(source))
     imported = import_ball_annotations(source, clip / 'outsource', store)
     nodes = standard_definition(runtime, source, code_identity=application.code_identity)
-    runner = ComponentRunner(nodes, store)
+    preparation_nodes = tuple(replace(node, source='execute') if node.name == 'person_reid' else node for node in nodes)
+    runner = ComponentRunner(preparation_nodes, store)
     receipt: dict[str, Any] = {'source': json_value(source), 'ball_imports': json_value(imported), 'status': 'running'}
     try:
-        # This executes video-based court/detection/tracking/pose/Re-ID once and
-        # leaves immutable artifacts for the explicitly confirmed side fixture.
+        # Preserve model Re-ID embeddings and inferred IDs as an immutable artifact
+        # before the independently confirmed association takes the active slot.
         runner.run(targets=('person_reid',))
         receipt['preparation_status'] = dict(runner.statuses)
         receipt['preparation_seconds'] = dict(runner.seconds)
+        model_reid_reference = runner.references['person_reid']
+        receipt['model_reid_artifact'] = json_value(model_reid_reference)
         calibration: CourtCalibrationOutput = runner.output('court_calibration')
         ball_artifacts = {f'ball_{v.camera_id}': store.load(imported[f'ball_detection/{v.camera_id}'], ArtifactCodec(BallDetectionOutput)) for v in source.videos}
         raw = gather_balls(source, ball_artifacts).select_views(tuple(v.source_index for v in calibration.calibration.views))
@@ -96,6 +105,15 @@ def main() -> None:
         receipt['side_confirmation'] = confirmation
         receipt['side_artifact'] = json_value(side_ref)
         write_json_atomic(report / 'side_confirmation.json', confirmation)
+        reid_node = next(n for n in nodes if n.name == 'person_reid')
+        person_ref, person_confirmation = import_confirmed_person_association(reid_node, store, source,
+            model_reference=model_reid_reference,
+            historical_association=clip / 'annotations/player_association_result.json',
+            legacy_gvhmr_directory=clip / 'annotations')
+        receipt['person_confirmation'] = person_confirmation
+        receipt['confirmed_person_artifact'] = json_value(person_ref)
+        write_json_atomic(report / 'person_confirmation.json', person_confirmation)
+        runner = ComponentRunner(nodes, store)
         runner.run()
         scene = runner.output('scene_assembly')
         application._export(scene, runner, store)
@@ -109,13 +127,12 @@ def main() -> None:
             ball_observed={k: int(v.observed.sum()) for k, v in ball_artifacts.items()},
             player_ids=scene.player_track_ids.tolist(), export=str(store.index_path))
         # Load-only resume must never call any process implementation.
-        from dataclasses import replace
         reload_runner = ComponentRunner([replace(n, source='load') for n in nodes], ClipStore(store.root, json_value(source), memory_entries=0))
         reload_runner.run()
         np.testing.assert_array_equal(reload_runner.output('scene_assembly').ball_3d, scene.ball_3d)
         receipt['load_only_resume'] = reload_runner.statuses
-        if runner.statuses['court_side'] != 'loaded' or any(runner.statuses[f'ball_detection/{v.camera_id}'] != 'loaded' for v in source.videos):
-            raise AssertionError('Validation must skip ball and side model inference')
+        if runner.statuses['court_side'] != 'loaded' or runner.statuses['person_reid'] != 'loaded' or any(runner.statuses[f'ball_detection/{v.camera_id}'] != 'loaded' for v in source.videos):
+            raise AssertionError('Validation must load imported ball, side and confirmed person assignments')
     except Exception as error:
         receipt.update(status='failed', error=str(error), error_type=type(error).__name__,
             active_stage=runner.active_node, stage_status=runner.statuses, stage_seconds=runner.seconds,
