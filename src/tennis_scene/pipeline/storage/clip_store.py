@@ -12,7 +12,7 @@ from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, Protocol, TypeVar, cast
 
 from src.tennis_scene.pipeline.artifacts import (
     document_digest,
@@ -20,9 +20,19 @@ from src.tennis_scene.pipeline.artifacts import (
     write_json_atomic,
 )
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.tennis_scene.pipeline.storage.scene_index import (
+    assert_current_component_lineage,
+)
 from src.utils.checksum import dual_sha256
 
 OutputT = TypeVar("OutputT")
+OutputCo = TypeVar("OutputCo", covariant=True)
+
+
+class ArtifactReader(Protocol[OutputCo]):
+    @property
+    def output_type(self) -> type[OutputCo]: ...
+    def load(self, payload: Any, directory: Path, arrays: Mapping[str, Any]) -> OutputCo: ...
 
 
 @dataclass(frozen=True)
@@ -99,7 +109,7 @@ class ClipStore:
             raise ValueError("Component descriptor disagrees with scene index")
         return cast(dict[str, Any], value)
 
-    def load(self, reference: ArtifactRef, codec: ArtifactCodec[OutputT]) -> OutputT:
+    def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT]) -> OutputT:
         descriptor = self.descriptor(reference)
         # Validate bytes on every disk read; a memory hit refers to the same immutable ID.
         if reference.artifact_id in self._memory:
@@ -147,7 +157,13 @@ class ClipStore:
                 reference = ArtifactRef(artifact_id, str(descriptor_path.relative_to(self.root)),
                     dual_sha256(descriptor_path), schema, version, execution_key)
                 index = self._index()
-                index["artifacts"][node] = json_value(reference)
+                encoded = json_value(reference)
+                if index["artifacts"].get(node) != encoded:
+                    # The published scene is a snapshot of one complete input
+                    # lineage. Keep old export bytes immutable, but withdraw its
+                    # active pointer as soon as any adopted component changes.
+                    index["exports"].clear()
+                index["artifacts"][node] = encoded
                 index["revision"] += 1
                 write_json_atomic(self.index_path, index)
             # The first consumer uses the same decoded representation as a restarted run.
@@ -160,6 +176,10 @@ class ClipStore:
     def record_export(self, name: str, files: Mapping[str, Path], inputs: Mapping[str, ArtifactRef]) -> None:
         with self._lock():
             index = self._index()
+            for node, reference in inputs.items():
+                if index["artifacts"].get(node) != json_value(reference):
+                    raise ValueError(f"Cannot export a superseded component artifact: {node}")
+            assert_current_component_lineage(index, self.root, json_value(inputs))
             index["exports"][name] = {"files": {key: {"path": str(path.resolve().relative_to(self.root)), "sha256": dual_sha256(path)} for key, path in files.items()},
                 "inputs": json_value(inputs)}
             index["revision"] += 1

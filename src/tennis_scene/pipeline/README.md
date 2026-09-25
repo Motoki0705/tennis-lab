@@ -68,6 +68,8 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 出力は一時directoryで完了してから公開し、clip単位のlockを取って`scene.json`を更新する。
 中断途中の出力を下流へ渡さず、既存の完成artifactを上書きしない。
 `scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力とその入力版を指す。
+採用componentが差し替わった時点で旧exportへの公開参照を外す。既存のimmutableなexportファイルは保持し、
+`scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
 
@@ -89,7 +91,8 @@ confidenceは観測1/それ以外0の採用weightで、検出確率ではない�
 sideの明示importは確認根拠を記録し、モデルlogitsは生成しない。
 実clip検証では、学習済みRe-IDの推論artifactを先に保存した後、既存の人手人物対応を別の同schema artifactとして明示importできる。
 旧GVHMRのplayer軸と現track IDはbbox時系列で一意に照合する。import後もモデルのembedding・valid mask・cosine閾値はそのまま保持し、
-モデルが推論したIDと確認済みIDを両方記録する。確認済みIDをモデルの予測精度とは扱わない。
+モデルが推論したIDと確認済みIDを両方記録する。確認済みの対象2名以外は明示的に`-1`とし、元の検出・追跡成果物には残すが、
+三角測量・GVHMR・sceneのplayer軸には含めない。確認済みIDをモデルの予測精度とは扱わない。
 
 datasetへの公開は、既存の`annotation.json`完成markerを維持しつつ、`scene_result`でimmutableなexportを指定する。
 component storeをdirectoryごと置換しない。SLCS・review・residual readerも対応する公開参照を読む。

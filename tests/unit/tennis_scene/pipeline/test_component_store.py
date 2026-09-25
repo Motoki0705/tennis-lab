@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
+from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.tennis_scene.pipeline.contracts import (
     AssemblyContext,
     ClipSource,
@@ -20,6 +22,7 @@ from src.tennis_scene.pipeline.contracts import (
 from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 
 
 @dataclass(frozen=True)
@@ -146,3 +149,38 @@ def test_replacing_implementation_uses_same_io_and_invalidates_its_outputs(tmp_p
     runner.run()
     np.testing.assert_array_equal(runner.output("second").numbers, (np.arange(4) + 10) * 2)
     assert old.calls == new.calls == 1 and downstream.calls == 2
+
+
+def test_upstream_replacement_invalidates_scene_export_and_legacy_stale_index(tmp_path: Path) -> None:
+    ctx = context(tmp_path)
+    nodes = [node("first", Model(), ctx), node("second", Model(downstream=True), ctx, "first")]
+    store = ClipStore(tmp_path / "store", {"clip": "clip"})
+    runner = ComponentRunner(nodes, store)
+    runner.run()
+    export = store.root / "exports" / "fixture"
+    export.mkdir(parents=True)
+    scene = export / "scene.npz"
+    metadata = export / "scene.metadata.json"
+    scene.write_bytes(b"scene fixture")
+    metadata.write_text("{}")
+    store.record_export("scene", {"scene": scene, "metadata": metadata},
+                        {"second": runner.references["second"]})
+    assert indexed_scene_path(store.index_path) == scene
+    old_export = json.loads(store.index_path.read_text())["exports"]["scene"]
+
+    ComponentRunner([replace(nodes[0], settings={"revision": 2})], store).run()
+
+    current = json.loads(store.index_path.read_text())
+    assert current["exports"] == {}
+    with pytest.raises(ValueError, match="no completed scene export"):
+        indexed_scene_path(store.index_path)
+    with pytest.raises(ValueError, match="superseded"):
+        store.record_export("scene", {"scene": scene, "metadata": metadata},
+                            {"second": runner.references["second"]})
+
+    # Read old indexes defensively too: an export may have been left published
+    # before invalidation-on-publish existed, even when its direct scene ref remains.
+    current["exports"]["scene"] = old_export
+    write_json_atomic(store.index_path, current)
+    with pytest.raises(ValueError, match="superseded"):
+        indexed_scene_path(store.index_path)

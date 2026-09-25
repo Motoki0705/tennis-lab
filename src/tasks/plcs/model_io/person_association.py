@@ -70,7 +70,7 @@ class PersonObservationRequest:
 
 @dataclass(frozen=True)
 class PersonReIDResult:
-    raw_track_ids: Tensor  # (V,D), global IDs or -1 for tracks without observed pose
+    raw_track_ids: Tensor  # (V,D), global IDs or -1 for unobserved/explicitly excluded tracks
     slot_global_ids: Tensor  # (V,P)
     local_track_ids: Tensor  # (V,P)
     track_embedding: Tensor  # (V,P,D)

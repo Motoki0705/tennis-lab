@@ -116,6 +116,15 @@ def main() -> None:
         runner = ComponentRunner(nodes, store)
         runner.run()
         scene = runner.output('scene_assembly')
+        expected_players = person_confirmation['confirmed_target_ids']
+        if scene.player_track_ids.tolist() != expected_players:
+            raise AssertionError('Scene player axis must contain exactly the confirmed target players')
+        selected = runner.output('body_view_selection')
+        if [item.person_id for item in selected.selections] != expected_players:
+            raise AssertionError('GVHMR view selection must contain exactly the confirmed target players')
+        recovered = runner.output('gvhmr')
+        if [item.person_id for item in recovered.bodies] != expected_players:
+            raise AssertionError('GVHMR recovery must contain exactly the confirmed target players')
         application._export(scene, runner, store)
         restored = load_scene_result(store.index_path)
         np.testing.assert_array_equal(scene.ball_3d, restored.ball_3d)
@@ -125,7 +134,8 @@ def main() -> None:
             camera_ids=source.camera_ids, frame_count=source.num_frames,
             confirmed_half_turns=confirmed.view_half_turns,
             ball_observed={k: int(v.observed.sum()) for k, v in ball_artifacts.items()},
-            player_ids=scene.player_track_ids.tolist(), export=str(store.index_path))
+            player_ids=scene.player_track_ids.tolist(), target_player_ids=expected_players,
+            export=str(store.index_path))
         # Load-only resume must never call any process implementation.
         reload_runner = ComponentRunner([replace(n, source='load') for n in nodes], ClipStore(store.root, json_value(source), memory_entries=0))
         reload_runner.run()
