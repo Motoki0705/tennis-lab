@@ -13,8 +13,11 @@ from numpy.typing import NDArray
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 
 MAX_GAP_FRAMES = 60
+MAX_OVERLAP_SPAN_FRAMES = 3
+MIN_DUPLICATE_CONTAINMENT = .95
 MAX_CENTER_DISTANCE_DIAGONALS = 1.0
 MAX_SIZE_RATIO = 2.0
+MAX_DUPLICATE_SIZE_RATIO = 2.5
 MAX_APPEARANCE_LAB_DISTANCE = 20.0
 ENDPOINT_OBSERVATIONS = 10
 
@@ -24,6 +27,9 @@ class TrackletLink:
     earlier_id: int
     later_id: int
     missing_frames: int
+    overlap_span_frames: int
+    shared_observation_frames: int
+    duplicate_containment: float | None
     center_distance_diagonals: float
     size_ratio: float
     appearance_lab_distance: float
@@ -85,8 +91,22 @@ def _tracklets(history: list[list[dict[str, Any]]]) -> dict[int, _Tracklet]:
 
 def _candidate(earlier: _Tracklet, later: _Tracklet) -> TrackletLink | None:
     gap = later.frames[0] - earlier.frames[-1] - 1
-    if gap < 0 or gap > MAX_GAP_FRAMES:
+    if gap > MAX_GAP_FRAMES:
         return None
+    overlap_span = max(0, -gap)
+    containment: float | None = None
+    shared = set(earlier.frames) & set(later.frames)
+    if overlap_span:
+        if overlap_span > MAX_OVERLAP_SPAN_FRAMES or later.frames[-1] <= earlier.frames[-1] or len(shared) != 1:
+            return None
+        frame = next(iter(shared))
+        first = earlier.boxes[earlier.frames.index(frame)]
+        second = later.boxes[later.frames.index(frame)]
+        shared_size = np.maximum(np.minimum(first[2:], second[2:]) - np.maximum(first[:2], second[:2]), 0)
+        intersection = float(np.prod(shared_size))
+        containment = intersection / min(float(np.prod(first[2:] - first[:2])), float(np.prod(second[2:] - second[:2])))
+        if containment < MIN_DUPLICATE_CONTAINMENT:
+            return None
     before, after = earlier.boxes[-1], later.boxes[0]
     center_distance = float(np.linalg.norm((before[:2] + before[2:] - after[:2] - after[2:]) / 2))
     mean_diagonal = float(np.linalg.norm(((before[2:] - before[:2]) + (after[2:] - after[:2])) / 2))
@@ -96,10 +116,12 @@ def _candidate(earlier: _Tracklet, later: _Tracklet) -> TrackletLink | None:
     before_color = np.median(earlier.appearance_lab[-ENDPOINT_OBSERVATIONS:], axis=0)
     after_color = np.median(later.appearance_lab[:ENDPOINT_OBSERVATIONS], axis=0)
     appearance_distance = float(np.linalg.norm(before_color - after_color))
-    if (normalized_distance > MAX_CENTER_DISTANCE_DIAGONALS or size_ratio > MAX_SIZE_RATIO
+    allowed_ratio = MAX_DUPLICATE_SIZE_RATIO if overlap_span else MAX_SIZE_RATIO
+    if (normalized_distance > MAX_CENTER_DISTANCE_DIAGONALS or size_ratio > allowed_ratio
             or appearance_distance > MAX_APPEARANCE_LAB_DISTANCE):
         return None
-    return TrackletLink(earlier.track_id, later.track_id, gap, normalized_distance, size_ratio, appearance_distance)
+    return TrackletLink(earlier.track_id, later.track_id, max(0, gap), overlap_span, len(shared), containment,
+                        normalized_distance, size_ratio, appearance_distance)
 
 
 def link_tracklets(history: list[list[dict[str, Any]]]) -> LinkedTracklets:
@@ -130,8 +152,19 @@ def link_tracklets(history: list[list[dict[str, Any]]]) -> LinkedTracklets:
     members: dict[int, list[int]] = defaultdict(list)
     for tracklet in ordered:
         members[root(tracklet.track_id)].append(tracklet.track_id)
-    linked = [[{**observation, "id": root(int(observation["id"]))} for observation in frame]
-              for frame in history]
-    if any(len({int(row["id"]) for row in frame}) != len(frame) for frame in linked):
-        raise ReconstructionUnavailable("person_identity_overlap", "Linked tracks overlap in a source frame")
+    linked: list[list[dict[str, Any]]] = []
+    for frame in history:
+        retained: dict[int, dict[str, Any]] = {}
+        for observation in sorted(frame, key=lambda row: (tracklets[int(row["id"])].frames[0], int(row["id"]))):
+            track_id = int(observation["id"])
+            stable_id = root(track_id)
+            if stable_id in retained:
+                # A shared frame is accepted only after the duplicate-box
+                # containment check above. Preserve the older source tracklet.
+                previous = int(retained[stable_id]["source_track_id"])
+                if (previous, track_id) not in {(link.earlier_id, link.later_id) for link in candidates}:
+                    raise ReconstructionUnavailable("person_identity_overlap", "Linked tracks overlap without direct duplicate evidence")
+                continue
+            retained[stable_id] = {**observation, "id": stable_id, "source_track_id": track_id}
+        linked.append(list(retained.values()))
     return LinkedTracklets(linked, {track_id: tuple(ids) for track_id, ids in members.items()}, tuple(candidates))
