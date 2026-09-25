@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import logging
 import os
 import socket
 from pathlib import Path
@@ -17,6 +18,8 @@ from pydantic import BaseModel, ConfigDict
 
 from .store import MAX_ZIP_BYTES, ArtifactStore, simple_name
 
+logger = logging.getLogger(__name__)
+
 
 class OpenAIFile(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -27,7 +30,26 @@ class OpenAIFile(BaseModel):
 
 
 def download_zip(url: str, allowed_hosts: frozenset[str]) -> bytes:
-    parts = urlsplit(url)
+    scheme: str | None = None
+    hostname: str | None = None
+    try:
+        parts = urlsplit(url)
+        scheme, hostname = parts.scheme, parts.hostname
+        port = parts.port
+    except ValueError:
+        # urllib's exceptions may echo invalid ports or authority values.
+        logger.warning(
+            "file download URL scheme=%r hostname=%r port=%r",
+            scheme,
+            hostname,
+            "invalid",
+        )
+        raise ValueError("invalid file download URL") from None
+    # Never log the URL, path, query, fragment, userinfo, file_id or headers.
+    # repr escapes control characters so each diagnostic stays on one log line.
+    logger.info(
+        "file download URL scheme=%r hostname=%r port=%r", scheme, hostname, port
+    )
     if (
         parts.scheme != "https"
         or parts.hostname not in allowed_hosts
@@ -85,15 +107,20 @@ def create_server(
         Identical ZIP bytes are idempotent. Saving does not mark a clip done.
         """
         simple_name(filename, ".zip")
-        return store.save(filename, download_zip(file.download_url, allowed_hosts))
+        result: dict[str, Any] = store.save(
+            filename, download_zip(file.download_url, allowed_hosts)
+        )
+        return result
 
     def list_artifacts(offset: int = 0, limit: int = 50) -> dict[str, Any]:
         """List received ZIP receipts, with pagination."""
-        return store.list(offset, limit)
+        result: dict[str, Any] = store.list(offset, limit)
+        return result
 
     def read_artifact(artifact_id: str) -> dict[str, Any]:
         """Verify a raw ZIP receipt and return its JSON member names (not file contents)."""
-        return store.read(artifact_id)
+        result: dict[str, Any] = store.read(artifact_id)
+        return result
 
     server.add_tool(
         save_artifact,
@@ -130,8 +157,6 @@ def main() -> None:
         if value.strip()
     )
     # httpx INFO messages include signed URLs; suppress those access logs.
-    import logging
-
     logging.getLogger("httpx").setLevel(logging.WARNING)
     create_server(args.root, hosts, args.host, args.port).run(
         transport="streamable-http"
