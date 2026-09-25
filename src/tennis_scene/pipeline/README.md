@@ -36,7 +36,9 @@ GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 
 人物detectorはDINO/YOLOを選べる。trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
 ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは4以下、ID/slotの再利用や暗黙統合は行わない。
-追跡IDが分裂して容量を超えた場合は明示的に停止する。モデルの人物同一性の正しさは別途検証が必要。
+BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する。
+元のID、欠落frame数、照合距離を`person_tracks` v2に残す。複数候補や累計4人超では明示的に停止する。
+モデルの人物同一性の正しさは可視化でも検証する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
 `gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
