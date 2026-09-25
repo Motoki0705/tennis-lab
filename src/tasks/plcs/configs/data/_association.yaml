@@ -18,4 +18,3 @@ augmentation:
   joint_dropout: 0.08
   court_dropout: 0.05
   track_dropout: 0.3
-  false_track_probability: 0.3

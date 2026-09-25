@@ -11,6 +11,8 @@ def reid_pairs(output: dict[str, Tensor], identities: Tensor) -> tuple[Tensor, T
     embeddings, valid = output["track_embedding"], output["track_valid"]
     if identities.shape != valid.shape:
         raise ValueError("Person identity teachers must have shape (B,V,P)")
+    if bool((valid & identities.lt(0)).any()):
+        raise ValueError("Every observed training track requires a person identity")
     b, v, p, d = embeddings.shape
     z, ids = embeddings.reshape(b, v * p, d).float(), identities.reshape(b, v * p)
     present = (valid & identities.ge(0)).reshape(b, v * p)
@@ -20,7 +22,7 @@ def reid_pairs(output: dict[str, Tensor], identities: Tensor) -> tuple[Tensor, T
     return z @ z.transpose(-1, -2), ids[:, :, None].eq(ids[:, None, :]), mask
 
 
-def reid_loss(output: dict[str, Tensor], identities: Tensor, *, temperature: float, margin: float, player_weight: float) -> dict[str, Tensor]:
+def reid_loss(output: dict[str, Tensor], identities: Tensor, *, temperature: float, margin: float) -> dict[str, Tensor]:
     scores, same, mask = reid_pairs(output, identities)
     positive, negative = mask & same, mask & ~same
     pair_loss = F.binary_cross_entropy_with_logits((scores - margin) / temperature, same.float(), reduction="none")
@@ -28,13 +30,9 @@ def reid_loss(output: dict[str, Tensor], identities: Tensor, *, temperature: flo
     positive_count, negative_count = positive.sum(), negative.sum()
     terms = (positive_count > 0).float() + (negative_count > 0).float()
     metric_loss = (positive_sum / positive_count.clamp_min(1) + negative_sum / negative_count.clamp_min(1)) / terms.clamp_min(1)
-    valid = output["track_valid"]
-    player_losses = F.binary_cross_entropy_with_logits(output["is_player_logit"].float(), identities.ge(0).float(), reduction="none")
-    player_sum, player_count = (player_losses * valid).sum(), valid.sum()
-    return {"loss": metric_loss + player_weight * player_sum / player_count.clamp_min(1),
+    return {"loss": metric_loss,
         "positive_loss_sum": positive_sum, "negative_loss_sum": negative_sum,
-        "positive_count": positive_count, "negative_count": negative_count,
-        "player_loss_sum": player_sum, "player_count": player_count}
+        "positive_count": positive_count, "negative_count": negative_count}
 
 
 def court_side_loss(output: dict[str, Tensor], side: Tensor, padding: Tensor, reference: Tensor) -> dict[str, Tensor]:

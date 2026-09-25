@@ -65,14 +65,15 @@ def test_attention_axes_feedback_and_finite_empty_tracks():
     for hook in hooks:
         hook.remove()
     assert seen == [torch.Size([24, 8, 32]), torch.Size([2, 12, 32])]
-    loss = reid_loss(output, torch.arange(4)[None, None].expand(2, 3, 4), temperature=.1, margin=.5, player_weight=.1)["loss"]
+    loss = reid_loss(output, torch.arange(4)[None, None].expand(2, 3, 4), temperature=.1, margin=.5)["loss"]
     loss.backward()
     assert model.track_query.grad is not None and model.track_query.grad.norm() > 0
     assert all(torch.isfinite(p.grad).all() for p in model.parameters() if p.grad is not None)
     batch["human_vis"].zero_()
     empty = model(**batch)
     assert not empty["track_valid"].any() and not empty["track_embedding"].any()
-    assert torch.isfinite(empty["is_player_logit"]).all()
+    assert set(empty) == {"track_embedding", "track_valid"}
+    assert not hasattr(model, "player_head")
 
 
 def test_invalid_row_safety_preserves_visible_attention_and_gradients():
@@ -126,15 +127,19 @@ def test_side_is_a_separate_model_with_permutation_invariant_person_pooling():
 
 def test_pair_loss_uses_correspondence_not_numeric_labels():
     z = torch.eye(2)[None, None].expand(1, 3, 2, 2).clone().requires_grad_()
-    output = dict(track_embedding=z, track_valid=torch.ones(1, 3, 2, dtype=torch.bool), is_player_logit=torch.ones(1, 3, 2) * 10)
+    output = dict(track_embedding=z, track_valid=torch.ones(1, 3, 2, dtype=torch.bool))
     identities = torch.tensor([[[12, 99], [12, 99], [12, 99]]])
     def loss(ids):
-        return reid_loss(output, ids, temperature=.1, margin=.5, player_weight=.1)["loss"]
+        return reid_loss(output, ids, temperature=.1, margin=.5)["loss"]
     assert loss(identities) < .01
     torch.testing.assert_close(loss(identities), loss(identities * 7))
     bad = identities.clone()
     bad[:, 1] = bad[:, 1].flip(-1)
     assert loss(bad) > 2
+    unlabeled = identities.clone()
+    unlabeled[:, 0, 0] = -1
+    with pytest.raises(ValueError, match="person identity"):
+        loss(unlabeled)
     output["track_valid"].zero_()
     empty = loss(identities)
     assert empty == 0

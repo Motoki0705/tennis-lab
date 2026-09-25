@@ -50,15 +50,14 @@ class PlayerReIDPredictor(_PersonPredictor):
         output = self.predict(batch)
         views = len(request.camera_ids)
         embeddings, valid = output["track_embedding"][0, :views], output["track_valid"][0, :views]
-        probability = output["is_player_logit"][0, :views].sigmoid()
         threshold = float(self.module.matching_threshold.cpu()) if policy.cosine_threshold is None else policy.cosine_threshold
-        global_ids = match_track_embeddings(embeddings, valid & probability.ge(policy.min_player_probability), threshold=threshold)
+        global_ids = match_track_embeddings(embeddings, valid, threshold=threshold)
         raw = torch.full(request.local_track_ids.shape, -1, dtype=torch.int64)
         for view in range(views):
             for slot, local_id in enumerate(packed.local_track_ids[view].tolist()):
                 if local_id >= 0:
                     raw[view, request.local_track_ids[view].eq(local_id)] = global_ids[view, slot]
-        return PersonReIDResult(raw, global_ids, packed.local_track_ids, embeddings, valid, probability, threshold)
+        return PersonReIDResult(raw, global_ids, packed.local_track_ids, embeddings, valid, threshold)
 
 
 class CourtSidePredictor(_PersonPredictor):

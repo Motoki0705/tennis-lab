@@ -36,20 +36,20 @@ def validate_person_config(config: Any) -> PersonModelConfig:
     if type(config.data.persistent_workers) is not bool or not math.isfinite(config.data.target_fps) or config.data.target_fps <= 0:
         raise ValueError("Invalid loader/timebase configuration")
     aug = config.data.augmentation
-    exact_config_mapping(aug, path="PLCS person augmentation", required_keys=frozenset({"pose_noise", "court_noise", "joint_dropout", "court_dropout", "track_dropout", "false_track_probability"}))
+    exact_config_mapping(aug, path="PLCS person augmentation", required_keys=frozenset({"pose_noise", "court_noise", "joint_dropout", "court_dropout", "track_dropout"}))
     for key, value in aug.items():
         if type(value) not in (int, float) or not math.isfinite(value) or value < 0 or ("noise" not in key and value > 1):
             raise ValueError(f"Invalid augmentation.{key}")
     reid = name == REID_MODEL
-    exact_config_mapping(config.loss, path="PLCS person loss", required_keys=frozenset({"temperature", "margin", "player_weight"} if reid else {"weight"}))
-    exact_config_mapping(config.metrics, path="PLCS person metrics", required_keys=frozenset({"cosine_threshold", "player_threshold"} if reid else {"side_threshold"}))
+    exact_config_mapping(config.loss, path="PLCS person loss", required_keys=frozenset({"temperature", "margin"} if reid else {"weight"}))
+    exact_config_mapping(config.metrics, path="PLCS person metrics", required_keys=frozenset({"cosine_threshold"} if reid else {"side_threshold"}))
     for value in config.loss.values():
         if type(value) not in (int, float) or not math.isfinite(value):
             raise ValueError("Person loss settings must be finite numbers")
     if reid:
-        if config.loss.temperature <= 0 or config.loss.player_weight < 0 or not -1 < config.loss.margin < 1:
+        if config.loss.temperature <= 0 or not -1 < config.loss.margin < 1:
             raise ValueError("Invalid Re-ID loss settings")
-        if not -1 < config.metrics.cosine_threshold < 1 or not 0 < config.metrics.player_threshold < 1:
+        if not -1 < config.metrics.cosine_threshold < 1:
             raise ValueError("Invalid Re-ID decision thresholds")
     elif config.loss.weight <= 0 or not 0 < config.metrics.side_threshold < 1:
         raise ValueError("Invalid side loss/threshold")

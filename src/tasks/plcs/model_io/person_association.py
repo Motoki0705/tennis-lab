@@ -15,14 +15,13 @@ from src.tasks.base.models import validate_reference_context_mask
 
 REID_MODEL = "plcs_player_reid"
 SIDE_MODEL = "plcs_court_side"
-MODEL_CONTRACTS = {REID_MODEL: "plcs_fixed_track_reid_v1", SIDE_MODEL: "plcs_independent_court_side_v1"}
+MODEL_CONTRACTS = {REID_MODEL: "plcs_fixed_track_reid_v2", SIDE_MODEL: "plcs_independent_court_side_v1"}
 OBSERVATION_KEYS = ("human_kp", "human_vis", "court_kp", "court_vis", "padding_mask")
 
 
 @dataclass(frozen=True)
 class PersonInferencePolicy:
     cosine_threshold: float | None = None
-    min_player_probability: float = .5
     min_frames: int = 512
     max_frames: int = 1024
     padded_views: int = 5
@@ -30,8 +29,6 @@ class PersonInferencePolicy:
     def __post_init__(self) -> None:
         if self.cosine_threshold is not None and (not math.isfinite(self.cosine_threshold) or not -1 < self.cosine_threshold < 1):
             raise ValueError("Cosine threshold must be finite in (-1,1)")
-        if not 0 < self.min_player_probability <= 1:
-            raise ValueError("Player probability must be in (0,1]")
         if not 1 <= self.min_frames <= self.max_frames or not 2 <= self.padded_views <= 5:
             raise ValueError("Invalid person inference frame/view budget")
 
@@ -73,12 +70,11 @@ class PersonObservationRequest:
 
 @dataclass(frozen=True)
 class PersonReIDResult:
-    raw_track_ids: Tensor  # (V,D), global IDs or -1 rejected/no observed pose
+    raw_track_ids: Tensor  # (V,D), global IDs or -1 for tracks without observed pose
     slot_global_ids: Tensor  # (V,P)
     local_track_ids: Tensor  # (V,P)
     track_embedding: Tensor  # (V,P,D)
     track_valid: Tensor  # (V,P)
-    player_probability: Tensor  # (V,P)
     cosine_threshold: float
 
 
@@ -117,8 +113,10 @@ class PersonModelIOAdapter:
 
     def decode_output(self, output: Mapping[str, Tensor]) -> dict[str, Tensor]:
         if self.name == REID_MODEL:
+            if set(output) != {"track_embedding", "track_valid"}:
+                raise ValueError("Re-ID output requires exactly embeddings and observation validity")
             z, valid = output["track_embedding"], output["track_valid"]
-            if z.ndim != 4 or z.shape[-2] != self.slots or valid.shape != z.shape[:-1] or valid.dtype != torch.bool or output["is_player_logit"].shape != valid.shape:
+            if z.ndim != 4 or z.shape[-2] != self.slots or valid.shape != z.shape[:-1] or valid.dtype != torch.bool:
                 raise ValueError("Invalid PLCS track embedding output")
         elif output["side_logits"].ndim != 2:
             raise ValueError("Side output must be (B,V)")
@@ -127,4 +125,4 @@ class PersonModelIOAdapter:
 
 def validate_person_checkpoint(checkpoint: Mapping[str, Any], *, model_name: str) -> None:
     if checkpoint.get("person_association_contract") != MODEL_CONTRACTS[model_name] or checkpoint.get("person_association_model") != model_name:
-        raise ValueError("PLCS person checkpoint contract/model mismatch; retraining required")
+        raise ValueError("PLCS person checkpoint contract/model mismatch; use a matching checkpoint or an explicit export")

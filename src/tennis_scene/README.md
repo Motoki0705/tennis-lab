@@ -6,12 +6,13 @@ view_half_turnsの手動入力を要求しません。根拠不足は欠測ま�
 
 ## 標準経路
 
-1. Court hybrid推論、DINO＋BoT-SORT＋ViTPose、ボール検出。
-2. camera-local観測とreferenceから、PLCSの独立した人物Re-ID・court sideモデルを推論。ボールは各camera/frameの単一検出を使用。
-3. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
-4. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
-5. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
-6. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
+1. Court hybridでCourtKP14を取得し、camera-localの初期校正から人物検出ROIを作る。
+2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
+3. camera-local観測とreferenceから、PLCSの独立した人物Re-ID・court sideモデルを推論。ボールは各camera/frameの単一検出を使用。
+4. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
+5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
+6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
+7. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
 
 対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計4人物、球は各camera/frame高々1検出です。
 各モデルは約30fpsでclip全体を各1回処理します。短い入力は512へpadし、
@@ -29,7 +30,7 @@ Re-IDとsideは別checkpointです。新sideのアーキテクチャは暫定で
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' \
-  plcs_reid.checkpoint=plcs/player-reid-v1.ckpt \
+  plcs_reid.checkpoint=plcs/player-reid-v2.ckpt \
   court_side.checkpoint=plcs/court-side-v1.ckpt
 ```
 
@@ -44,8 +45,10 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 | pipeline/orchestrator.py | 構築・同期検証・reference・実行receipt |
 | pipeline/model_io/observations.py | pixel観測、confidence、実検出mask、raw検出対応 |
 | pipeline/model_io/people.py / body.py | 2D観測と身体復元のtyped adapter |
-| pipeline/components/person_association.py | task-owned predictorの遅延ロード・呼出し |
-| pipeline/components/camera_geometry.py | H代表frame、side評価、共通K/R/t |
+| pipeline/components/person_observations.py | camera-local追跡ID・bbox・2D pose・実観測maskの収集 |
+| pipeline/components/ball_detection.py | 各camera/frameで高々1点の球UV・score・visibility |
+| pipeline/components/person_association.py | 独立したPLCS Re-ID/side predictorの遅延ロード・呼出し |
+| pipeline/components/camera_geometry.py | Courtから初期校正・ROIを作り、対応人物/球でsideを検証して共通K/R/tを確定 |
 | pipeline/components/player_reconstruction.py / ball_reconstruction.py | 人物ID別再構成、身体配置、単一球の三角測量 |
 | motion_alignment/ | COCO17への時系列配置とhip/SMPL root差を補正したrenderer変換 |
 | pipeline/assembly.py | maskを必須とするSceneResult v2構築 |
@@ -55,6 +58,9 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 汎用三角測量は[src/utils/geometry/triangulation.py](../utils/geometry/triangulation.py)、
 人物モデルの契約は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)が正本です。
 
+標準orchestratorの身体復元は`pipeline/model_io/body.py`のadapterを通ります。
+`components/plcs.py`・`blcs.py`・`gvhmr.py`・`player_association.py`は、上記標準経路からは呼びません。
+
 ## 座標・対応
 
 観測の正本はpixel座標、モデル入力とsceneの2D座標はpixel/(width,height)です。
@@ -63,7 +69,8 @@ CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけ�
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
 人物観測0件ではRe-IDを省略します。人物・球の両方が0件ならsideを含む再構成を省略します。
-Re-IDはcosineでcamera間の人物groupを作り、元動画のID復元にはtracker IDを使います。
+Re-IDは有効な全人物trackをcosineでcamera間の人物groupへまとめ、元動画のID復元にはtracker IDを使います。
+人物らしさの補助headや確率閾値によるtrack除外はありません。
 補間やUV距離による別の人物trackingを挟みません。無観測の人物にIDは割り当てません。
 ボールにはID推論・side推論・候補選択モデルを置きません。
 

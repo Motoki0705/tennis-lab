@@ -158,13 +158,13 @@ def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     assert runtime.enabled["plcs_reid"] and "blcs_association" not in runtime.enabled
 
 
-@pytest.mark.parametrize("override", ["+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui"])
+@pytest.mark.parametrize("override", ["+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5"])
 def test_automatic_pipeline_rejects_removed_manual_and_3d_settings(tmp_path: Path, override: str) -> None:
     with pytest.raises(UnknownConfigurationKeyError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
 
 
-@pytest.mark.parametrize("override", ["association.min_player_probability=0.0", "association.cosine_threshold=1.0", "association.max_frames=100", "camera_geometry.side_max_cost=-1", "person_observations.sideline_margin_m=-1"])
+@pytest.mark.parametrize("override", ["association.cosine_threshold=1.0", "association.max_frames=100", "camera_geometry.side_max_cost=-1", "person_observations.sideline_margin_m=-1"])
 def test_automatic_pipeline_rejects_invalid_operating_thresholds(tmp_path: Path, override: str) -> None:
     with pytest.raises(ValueError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))

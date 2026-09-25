@@ -1,6 +1,7 @@
 # PLCS固定track Re-ID
 
 人物Re-IDとcourt sideは別モデル・別重み・別optimizer・別checkpointです。
+Re-IDは上流で選別・追跡された対象人物trackの対応付けを担当し、人物/誤検出の分類headは持ちません。
 BLCSのassociation機能とtasks/baseへのassociation共通化は廃止しました。
 汎用のDataset/Lightning/attention基盤だけを既存共通実装から利用します。
 
@@ -33,8 +34,9 @@ RGBは使わず、特徴はpose・動き・court contextから抽出します。
 全欠測trackをattention/matchingから除き、欠測値の数値を特徴に使いません。
 
 同一scene内の異なるcameraの同一人物を正例、別人物を負例とするbalanced pair BCEで
-cosineを学習します。温度・marginはloss設定で明示します。補助is_player headは
-FP trackを区別し、教師-1同士を同一人物の正例にしません。
+cosineを学習します。温度・marginはloss設定で明示します。
+有効観測のある全trackをmatchingへ渡します。相手がないtrackは単独groupとして保持します。
+学習では有効trackに人物教師が必須で、教師-1は未観測slotだけに使います。
 validation pair F1でcosine閾値を選び、checkpointのmatching_thresholdへ保存します。
 同点の閾値は高い方を選びます。testには保存済み閾値を適用します。
 
@@ -61,7 +63,7 @@ scene splitであり、未見人物/未見source motionのholdout精度ではあ
 cameraごとに独立なランダムlocal IDを付け、時系列内では固定します。
 capacityはcrop前の全sceneのcamera別観測人物から検査します。
 教師physical IDはtrack_person_id `(B,V,P)`にだけ残します。
-noise・joint/track欠測はtrack同一性を壊しません。FPは未割当slotを一つ消費する継続trackです。
+noise・joint/track欠測はtrack同一性を壊しません。誤検出trackを追加するaugmentationはありません。
 短いsourceも保持してpaddingします。固定人数のため同時人数の均等化は要求せず、
 `run.require_uniform_occupancy=false`を明示します。full-source区間・同時人数上限は監査します。
 
@@ -78,7 +80,13 @@ noise・joint/track欠測はtrack同一性を壊しません。FPは未割当slo
 最低val/lossのcheckpointを選び、testでpair precision/recall/F1、整合的matchingのprecision/recall/F1、
 group正解率を計算します。教師・embedding・予測group・test split indexをpred_test.npzに保存します。
 checkpointは各runのlogs/version_*/checkpoints、集計はassociation_metrics.jsonlとpredictionsに保存します。
-旧association checkpointからの自動移行はありません。
+Re-ID checkpoint契約は`plcs_fixed_track_reid_v2`です。旧checkpointは自動変換しません。
+補助head付きの固定track Re-ID v1だけは、
+[`export_headless_reid_checkpoint()`](model_io/reid_checkpoint.py)を明示的に呼び出してv2へ書き出せます。
+保持する全tensorとmatching閾値を変えず、補助headの2tensor・補助設定・optimizer stateを除きます。
+元学習のconfig・checkpoint SHAをprovenanceに残すため、再学習した重みとは扱いません。
+exportは推論または`run.init_weights`用で、旧optimizerの`run.resume`には使えません。
+旧のside/ID同時推定モデルはこのexportの対象外です。
 
 推論はPlayerReIDPredictorとCourtSidePredictor、pipeline接続は
 [person_association.py](../../tennis_scene/pipeline/components/person_association.py)です。

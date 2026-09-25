@@ -278,17 +278,6 @@ def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSBoundModelIO:
     return cast(PLCSBoundModelIO, bind_plcs_model_io(model, adapter))
 
 
-__all__ = [
-    "PLCSBoundModelIO",
-    "PLCSModelIOConfig",
-    "PLCSRawOutput",
-    "PLCSStandardBoundModelIO",
-    "PLCSTrackingBoundModelIO",
-    "bind_plcs_model_io",
-    "build_plcs_model_io",
-]
-
-
 def compose_plcs_person_model_io(config: Any) -> Any:
     """Bind one independently trained PLCS Re-ID or court-side model."""
     from src.tasks.plcs.association_configuration import validate_person_config
@@ -303,3 +292,15 @@ def compose_plcs_person_model_io(config: Any) -> Any:
     model_type = PlayerReIDModel if str(config.model.name) == REID_MODEL else CourtSideModel
     model = model_type(cfg)
     return bind_model_io(model, PersonModelIOAdapter(model_type, name=str(config.model.name), slots=cfg.num_slots))
+
+
+__all__ = [
+    "PLCSBoundModelIO",
+    "PLCSModelIOConfig",
+    "PLCSRawOutput",
+    "PLCSStandardBoundModelIO",
+    "PLCSTrackingBoundModelIO",
+    "bind_plcs_model_io",
+    "build_plcs_model_io",
+    "compose_plcs_person_model_io",
+]

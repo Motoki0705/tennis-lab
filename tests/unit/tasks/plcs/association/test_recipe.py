@@ -43,7 +43,7 @@ def test_task_composition_and_checkpoint_model_ownership(mode, name):
     validate_person_checkpoint(checkpoint, model_name=name)
     with pytest.raises(ValueError, match="mismatch"):
         validate_person_checkpoint(checkpoint, model_name=SIDE_MODEL if name == REID_MODEL else REID_MODEL)
-    with pytest.raises(ValueError, match="retraining"):
+    with pytest.raises(ValueError, match="mismatch"):
         validate_person_checkpoint({"association_contract": "camera_local_global_mha_mhc_association_v2"}, model_name=name)
     assert module.compilation_targets() == {"model": module.model}
 
