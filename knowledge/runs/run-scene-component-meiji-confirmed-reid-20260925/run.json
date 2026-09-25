@@ -1,0 +1,16 @@
+{
+  "run_id": "1790342273367562285_977574_scene-component-meiji-confirmed-reid-20260925",
+  "name": "scene-component-meiji-confirmed-reid-20260925",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 PYTHONPATH=.:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib .venv/bin/python tests/benchmarks/component_pipeline.py --repo /home/kamimura/projects/tennis-lab --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/clip_components_meiji_confirmed_reid_20260925 --device cuda",
+  "provider": "codex",
+  "session": "01a0d81f-1a8d-7462-b0f8-d827f54c6a4a",
+  "issue": "915",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "d236a7184651d354a8c684eb45e4324868bc48c9",
+  "branch": "codex/clip-component-store",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-component-store",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-component-store",
+  "captured_at": "2026-09-25T22:18:19+09:00"
+}
