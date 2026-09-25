@@ -2,23 +2,51 @@ from __future__ import annotations
 
 import io
 import zipfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from starlette.testclient import TestClient
 
 from src.tennis_scene.chat_annotation.artifacts import server
 
 
+@pytest.mark.parametrize(
+    "download_host",
+    [
+        "oaisdmntprwestus2.blob.core.windows.net",
+        "oaisdmntprindiasocentral.blob.core.windows.net",
+        "oaisdmntprseasia.blob.core.windows.net",
+        "oaisdmntprwestcentralus.blob.core.windows.net",
+        "attachments.example.org",
+    ],
+)
 def test_real_http_mcp_discovery_and_save(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, download_host: str
 ) -> None:
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w") as archive:
         archive.writestr("clip__ball.json", '{"clip_id":"clip"}')
-    monkeypatch.setattr(server, "download_zip", lambda *_: stream.getvalue())
-    mcp = server.create_server(tmp_path, frozenset({"files.example.com"}))
+    download_url = f"https://{download_host}/signed"
+    monkeypatch.setattr(
+        server.socket,
+        "getaddrinfo",
+        lambda *_a, **_k: [(2, 1, 6, "", ("8.8.8.8", 443))],
+    )
+
+    @contextmanager
+    def download_stream(
+        method: str, url: str, **kwargs: Any
+    ) -> Iterator[httpx.Response]:
+        assert method == "GET" and url == download_url
+        assert kwargs["follow_redirects"] is False
+        yield httpx.Response(200, content=stream.getvalue())
+
+    monkeypatch.setattr(server.httpx, "stream", download_stream)
+    mcp = server.create_server(tmp_path)
     with TestClient(
         mcp.streamable_http_app(), base_url="http://127.0.0.1:8000"
     ) as client:
@@ -64,7 +92,7 @@ def test_real_http_mcp_discovery_and_save(
                 "name": "save_artifact",
                 "arguments": {
                     "file": {
-                        "download_url": "https://files.example.com/signed",
+                        "download_url": download_url,
                         "file_id": "file_test",
                     },
                     "filename": "batch.zip",
@@ -80,7 +108,7 @@ def test_real_http_mcp_discovery_and_save(
                 "name": "save_artifact",
                 "arguments": {
                     "file": {
-                        "download_url": "https://files.example.com/signed",
+                        "download_url": download_url,
                         "file_id": "file_test",
                     },
                     "filename": "../batch.zip",
@@ -94,15 +122,15 @@ def test_real_http_mcp_discovery_and_save(
     "url",
     [
         "http://files.example.com/f",
-        "https://evil.example/f",
+        "https:///f",
         "https://files.example.com:444/f",
         "https://user:password@files.example.com/f",
         "sandbox:/mnt/data/a.zip",
     ],
 )
-def test_untrusted_download_url_is_rejected(url: str) -> None:
+def test_invalid_download_url_is_rejected(url: str) -> None:
     with pytest.raises(ValueError, match="HTTPS"):
-        server.download_zip(url, frozenset({"files.example.com"}))
+        server.download_zip(url)
 
 
 def test_private_download_address_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -112,9 +140,7 @@ def test_private_download_address_is_rejected(monkeypatch: pytest.MonkeyPatch) -
         lambda *_a, **_k: [(2, 1, 6, "", ("127.0.0.1", 443))],
     )
     with pytest.raises(ValueError, match="public"):
-        server.download_zip(
-            "https://files.example.com/f", frozenset({"files.example.com"})
-        )
+        server.download_zip("https://files.example.com/f")
 
 
 @pytest.mark.parametrize("mode", ["success", "redirect", "too_large", "timeout"])
@@ -154,17 +180,10 @@ def test_download_is_bounded_and_does_not_follow_redirects(
 
     monkeypatch.setattr(server.httpx, "stream", stream)
     if mode == "success":
-        assert (
-            server.download_zip(
-                "https://files.example.com/f", frozenset({"files.example.com"})
-            )
-            == b"zip"
-        )
+        assert server.download_zip("https://files.example.com/f") == b"zip"
     else:
         with pytest.raises(ValueError) as result:
-            server.download_zip(
-                "https://files.example.com/f", frozenset({"files.example.com"})
-            )
+            server.download_zip("https://files.example.com/f")
         assert "secret signed URL" not in str(result.value)
 
 
@@ -203,7 +222,7 @@ def test_download_url_diagnostics_exclude_secrets(
         caplog.at_level("INFO", logger=server.__name__),
         pytest.raises(ValueError) as error,
     ):
-        server.download_zip(url, frozenset({"files.example.com"}))
+        server.download_zip(url)
     records = [record for record in caplog.records if record.name == server.__name__]
     assert len(records) == 1
     assert records[0].args == (scheme, hostname, port)
@@ -217,7 +236,7 @@ def test_download_url_diagnostics_exclude_secrets(
 @pytest.mark.parametrize(
     ("url", "reason"),
     [
-        ("https://other.example/private?token=secret", "allowed_host"),
+        ("https:///private?token=secret", "hostname"),
         ("http://files.example.com/private?token=secret", "scheme"),
         ("https://files.example.com:444/private?token=secret", "port"),
         ("https://user:secret@files.example.com/private", "userinfo"),
@@ -228,7 +247,7 @@ def test_download_error_identifies_only_safe_rejection_details(
     url: str, reason: str
 ) -> None:
     with pytest.raises(ValueError) as result:
-        server.download_zip(url, frozenset({"files.example.com"}))
+        server.download_zip(url)
     message = str(result.value)
     assert f"rejected={reason};" in message
     assert "scheme=" in message and "hostname=" in message and "port=" in message

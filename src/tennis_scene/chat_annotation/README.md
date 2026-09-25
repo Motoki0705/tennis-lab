@@ -208,7 +208,7 @@ outputs/chat_annotation/
 ChatGPTの[ファイル引数](https://developers.openai.com/plugins/reference#file-apis)を使い、
 `file`を`openai/fileParams`へ宣言する。ChatGPTから渡されるdownload_urlのZIPをサーバーが取得する。
 `sandbox:/...`やChatの表示リンクはリモートPCのファイルパスではない。
-ZIP本体はTunnelのJSON引数に埋め込まず、許可したファイル配信ホストから別途HTTPSで取得する。
+ZIP本体はTunnelのJSON引数に埋め込まず、ChatGPTが渡すファイル配信URLから別途HTTPSで取得する。
 ファイル参照を渡せないChatGPT環境では未提出となるため、実環境で小さいZIPによる受入確認が必要。
 
 ZIPは圧縮後16 MiB以下、展開後合計64 MiB以下、直下のJSON 1〜256件。
@@ -229,26 +229,21 @@ export CHAT_ANNOTATION_ROOT=/home/kamimura/projects/tennis-lab/outputs/chat_anno
 mkdir -p "$CHAT_ANNOTATION_ROOT/annotated/raw"
 export ARTIFACT_UID="$(id -u)"
 export ARTIFACT_GID="$(id -g)"
-# 実際に使用するChatGPTファイル配信ホストを確認し、完全一致のホスト名を設定する。
-# 以下は例。署名付きURL全体やワイルドカードは設定しない。
-export ARTIFACT_DOWNLOAD_HOSTS=files.oaiusercontent.com,oaisdmntprcentralus.blob.core.windows.net,oaisdmntprjapaneast.blob.core.windows.net,oaisdmntprwestus3.blob.core.windows.net,oaisdmntprkoreacentral.blob.core.windows.net
 docker compose -f src/tennis_scene/chat_annotation/artifacts/compose.yaml up -d --build
 ```
 
 ホストの127.0.0.1:8000だけに公開し、rawのみをコンテナにマウントする。
 認証はTunnelの組織・workspaceアクセスとruntime API keyを使用する。ローカルMCPには
 独自Bearer認証を追加していないため、ポートの公開範囲を広げない。
-許可ホスト以外・private IP・HTTP・redirectを拒否し、署名付きURLを保存しない。
+認証済みTunnel経由のファイル提出を受け付け、ダウンロード先のホスト名による許可リストは設けない。
+配信リージョンが変わってもホストの追加設定は不要。HTTPS・標準ポート・公開IP・redirect禁止、
+容量制限とZIP内容検査は維持する。任意の呼出元に公開するサーバーとしては運用しない。
 取得URLの診断はサーバーログの`file download URL`行で行う。記録するのは
 `scheme`・`hostname`・`port`だけで、URLのパス・署名クエリ・認証情報は含めない。
 URL条件による拒否時はMCPエラーにもこの3項目と拒否条件名を返す。
-`rejected=allowed_host`ならホスト未登録、`scheme`ならHTTPS以外、`port`なら非標準ポート、
-`userinfo`/`fragment`なら禁止された認証情報/フラグメントを含むURLを意味する。
-ホスト不一致の場合は実際の配信元を確認して許可リストと照合する。`sandbox`の場合は
-ChatGPTから実際のファイル参照が渡っていないため、許可ホストを追加しても解決しない。
-上記のAzure Blob 4ホストはChatGPTからの実提出で観測した配信先。環境・リージョンにより
-配信先が異なる場合も、確認できた完全一致ホストだけを追加し、`*.blob.core.windows.net`のような
-共有ドメインの一括許可は行わない。設定変更後は同じComposeコマンドでコンテナを再作成する。
+`scheme`はHTTPS以外、`hostname`はホスト名欠落、`port`は非標準ポート、
+`userinfo`/`fragment`は認証情報/フラグメントを含むURLを意味する。
+`sandbox`の場合はChatGPTから実際のファイル参照が渡っていないため、HTTPSのファイル参照で再提出する。
 
 Tunnelの作成・ChatGPT workspaceへの関連付け・権限は
 [公式Secure MCP Tunnel手順](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)に従う。
