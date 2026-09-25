@@ -5,8 +5,6 @@ services:
       dockerfile: src/tennis_scene/chat_annotation/artifacts/Dockerfile
     restart: unless-stopped
     user: "${ARTIFACT_UID:-1000}:${ARTIFACT_GID:-1000}"
-    environment:
-      ARTIFACT_DOWNLOAD_HOSTS: "${ARTIFACT_DOWNLOAD_HOSTS:?Set trusted HTTPS file download hosts (comma-separated)}"
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

@@ -198,3 +198,36 @@ def test_interrupted_move_resumes_without_overwriting(
     os.link(video_path(tmp_path, manifest), dest)
     assert sync_done(tmp_path)["moved"] == ["sample"]
     assert not video_path(tmp_path, manifest).exists()
+
+
+@pytest.mark.parametrize(
+    "member",
+    ["output/", "output/annotation_clip.json", "nested.zip", "annotation clip.json"],
+)
+def test_member_name_error_identifies_zip_contents_and_received_bytes(
+    tmp_path: Path, member: str
+) -> None:
+    import hashlib
+
+    data = zip_bytes({member: b"{}"})
+    digest = hashlib.sha256(data).hexdigest()
+    with pytest.raises(ValueError) as result:
+        ArtifactStore(tmp_path).save("annotations_ball_batch.zip", data)
+    message = str(result.value)
+    assert f"sha256={digest}" in message
+    assert f"bytes={len(data)}" in message
+    assert f"invalid ZIP member {member!r}" in message
+    assert "not the submitted ZIP name" in message
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_download_duplicate_suffix_is_preserved_in_zip(tmp_path: Path) -> None:
+    member = "annotation_2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621(1).json"
+    data = zip_bytes({member: b'{"clip_id":"clip"}'})
+    store = ArtifactStore(tmp_path)
+    receipt = store.save("annotations_ball_batch(1).zip", data)
+    assert receipt["created"] is True
+    assert receipt["members"] == [member]
+    assert (tmp_path / receipt["artifact_id"]).read_bytes() == data
+    assert store.read(receipt["artifact_id"])["members"] == [member]
+    assert store.save("annotations_ball_batch(1).zip", data)["created"] is False

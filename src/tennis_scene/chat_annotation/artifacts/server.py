@@ -27,7 +27,7 @@ class OpenAIFile(BaseModel):
     file_name: str = ""
 
 
-def download_zip(url: str, allowed_hosts: frozenset[str]) -> bytes:
+def download_zip(url: str) -> bytes:
     scheme: str | None = None
     hostname: str | None = None
     try:
@@ -52,7 +52,7 @@ def download_zip(url: str, allowed_hosts: frozenset[str]) -> bytes:
         condition
         for condition, failed in (
             ("scheme", scheme != "https"),
-            ("allowed_host", hostname not in allowed_hosts),
+            ("hostname", not hostname),
             ("port", port not in (None, 443)),
             ("userinfo", parts.username is not None or parts.password is not None),
             ("fragment", bool(parts.fragment)),
@@ -61,7 +61,7 @@ def download_zip(url: str, allowed_hosts: frozenset[str]) -> bytes:
     ]
     if rejected:
         raise ValueError(
-            "file download requires HTTPS on an explicitly allowed host; "
+            "file download requires a valid HTTPS URL; "
             f"rejected={','.join(rejected)}; "
             f"scheme={scheme!r} hostname={hostname!r} port={port!r}"
         )
@@ -89,13 +89,7 @@ def download_zip(url: str, allowed_hosts: frozenset[str]) -> bytes:
     return bytes(data)
 
 
-def create_server(
-    root: Path, allowed_hosts: frozenset[str], host: str = "127.0.0.1", port: int = 8000
-) -> FastMCP:
-    if not allowed_hosts:
-        raise ValueError(
-            "ARTIFACT_DOWNLOAD_HOSTS must explicitly list trusted file hosts"
-        )
+def create_server(root: Path, host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
     store = ArtifactStore(root)
     server = FastMCP(
         "artifact-mcp-server",
@@ -113,9 +107,7 @@ def create_server(
         Identical ZIP bytes are idempotent. Saving does not mark a clip done.
         """
         simple_name(filename, ".zip")
-        result: dict[str, Any] = store.save(
-            filename, download_zip(file.download_url, allowed_hosts)
-        )
+        result: dict[str, Any] = store.save(filename, download_zip(file.download_url))
         return result
 
     def list_artifacts(offset: int = 0, limit: int = 50) -> dict[str, Any]:

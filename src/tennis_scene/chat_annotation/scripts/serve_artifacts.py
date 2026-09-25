@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 from pathlib import Path
 
 from src.utils.configuration.paths import (
@@ -46,14 +45,9 @@ def main() -> None:
     paths = PATH_BOUNDARY.validate(
         {"root": root}, resolver=artifact_path_resolver(root)
     )
-    hosts = frozenset(
-        value.strip().lower()
-        for value in os.environ.get("ARTIFACT_DOWNLOAD_HOSTS", "").split(",")
-        if value.strip()
-    )
     # httpx INFO messages include signed URLs; suppress those access logs.
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    create_server(paths.declared("root").path, hosts, args.host, args.port).run(
+    create_server(paths.declared("root").path, args.host, args.port).run(
         transport="streamable-http"
     )
 

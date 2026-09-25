@@ -36,12 +36,9 @@ def test_server_uses_validated_directory(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "raw"
     create = Mock()
     monkeypatch.setattr(serve_artifacts, "create_server", create)
-    monkeypatch.setenv("ARTIFACT_DOWNLOAD_HOSTS", "files.example.com")
     monkeypatch.setattr("sys.argv", ["serve_artifacts", "--root", str(root)])
     serve_artifacts.main()
-    create.assert_called_once_with(
-        root, frozenset({"files.example.com"}), "127.0.0.1", 8000
-    )
+    create.assert_called_once_with(root, "127.0.0.1", 8000)
     create.return_value.run.assert_called_once_with(transport="streamable-http")
     assert not root.exists()
 
