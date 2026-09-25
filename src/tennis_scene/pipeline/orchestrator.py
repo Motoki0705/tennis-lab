@@ -1,435 +1,111 @@
-"""Unattended camera-local association, triangulation and calibrated body recovery."""
+"""Application boundary for the declared component runner and clip store."""
 
 from __future__ import annotations
 
-import logging
-import time
+import json
+import os
+import shutil
+import tempfile
 from collections.abc import Sequence
-from dataclasses import fields, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-import torch
-
-from src.submodules.models import SmplCoco17Reconstructor
-from src.tasks.plcs.model_io.person_association import (
-    CourtSideResult,
-    PersonObservationRequest,
-    PersonReIDResult,
-)
+from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.pipeline.artifacts import (
-    PipelineArtifactStore,
     document_digest,
     json_value,
     write_json_atomic,
 )
-from src.tennis_scene.pipeline.assembly import assemble_automatic_scene
-from src.tennis_scene.pipeline.components.ball_detection import (
-    BallDetectionModule,
-    BallDetectionResult,
-)
-from src.tennis_scene.pipeline.components.ball_reconstruction import (
-    BallReconstructionResult,
-    reconstruct_ball,
-    single_ball_observations,
-)
-from src.tennis_scene.pipeline.components.camera_geometry import (
-    SideEvidence,
-    calibrate_local_courts,
-    resolve_camera_geometry,
-)
-from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPResult
-from src.tennis_scene.pipeline.components.person_association import (
-    CourtSideModule,
-    PlayerReIDModule,
-)
-from src.tennis_scene.pipeline.components.person_observations import (
-    PersonObservationModule,
-)
-from src.tennis_scene.pipeline.components.player_reconstruction import (
-    BodyRecovery,
-    PlayerSkeleton,
-    ReconstructedPlayers,
-    reconstruct_player_bodies,
-    triangulate_players,
-)
-from src.tennis_scene.pipeline.dependency_graph import (
-    build_default_dependency_graph,
-)
-from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
-from src.tennis_scene.pipeline.model_io.body import BodyRecoveryAdapter
-from src.tennis_scene.pipeline.model_io.observations import (
-    GroupedObservations,
-    ObjectObservations,
-    group_observations,
-)
-from src.tennis_scene.pipeline.model_io.people import (
-    PersonObservationAdapter,
-    build_people_chain,
-)
-from src.tennis_scene.pipeline.utilts.timeline import (
-    association_frame_indices,
-)
+from src.tennis_scene.pipeline.definition import file_identity, standard_definition
+from src.tennis_scene.pipeline.runner import ComponentRunner
+from src.tennis_scene.pipeline.source import build_clip_source
+from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
-from src.utils.geometry.triangulation import TriangulatedPoints
 from src.utils.paths import PROJECT_ROOT
-from src.utils.video import VideoInfo, probe_video_info
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
     from src.tennis_scene.configuration import PipelineRuntimeConfig
 
-LOGGER = logging.getLogger(__name__)
-
 
 class TennisSceneOrchestrator:
-    def __init__(
-        self, config: PipelineRuntimeConfig, *,
-        court: CourtKPModule,
-        people: PersonObservationModule | None,
-        ball: BallDetectionModule | None,
-        plcs: PlayerReIDModule | None,
-        side: CourtSideModule,
-        body: BodyRecovery | None,
-    ) -> None:
-        self.config = config
-        self.court, self.people, self.ball = court, people, ball
-        self.plcs, self.side, self.body = plcs, side, body
-        self.resolution = build_default_dependency_graph(config.enabled).resolve_from_enabled(config.enabled)
-        self.enabled_stages = self.resolution.enabled_set
-        self.execution_order = self.resolution.enabled_order
+    def __init__(self, config: PipelineRuntimeConfig, *, components: dict[str, Any] | None = None) -> None:
+        self.config, self.components = config, components
         self.last_receipt: dict[str, Any] = {}
-        self._file_identities: dict[Path, tuple[tuple[int, int, int, int, int], str]] = {}
+        self.last_runner: ComponentRunner | None = None
+        self.last_store: ClipStore | None = None
         source = PROJECT_ROOT / "src"
         self.code_identity = document_digest({str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))})
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
-        chain = build_people_chain(cfg.people) if cfg.enabled["person_observations"] or cfg.enabled["gvhmr"] else None
-        people = None if chain is None else PersonObservationModule(PersonObservationAdapter(chain, bbox_enlarge=cfg.people.runtime.tracking.bbox_enlarge))
-        body = None
-        if chain is not None and cfg.enabled["gvhmr"]:
-            coco = SmplCoco17Reconstructor(cfg.people.body_models_dir, device=cfg.device, bundled_assets=cfg.people.bundled_assets)
-            body = BodyRecoveryAdapter(chain, coco, cfg.people.bundled_assets.smpl_neutral_joint_regressor)
-        return cls(
-            cfg, court=CourtKPModule(cfg.court_kp),
-            people=people if cfg.enabled["person_observations"] else None,
-            ball=BallDetectionModule(cfg.ball_detection) if cfg.enabled["ball_detection"] else None,
-            plcs=PlayerReIDModule(cfg.plcs_reid_checkpoint, device=cfg.device) if cfg.enabled["plcs_reid"] else None,
-            side=CourtSideModule(cfg.court_side_checkpoint, device=cfg.device),
-            body=body,
-        )
+        return cls(cfg)
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> TennisSceneOrchestrator:
         from src.tennis_scene.configuration import PipelineRuntimeConfig
         return cls.from_runtime_config(PipelineRuntimeConfig.from_config(cfg))
 
-    def _file_identity(self, path: Path) -> dict[str, Any]:
-        if not path.is_file():
-            return {"path": str(path), "sha256": None, "state": "absent"}
-        stat = path.stat()
-        version = stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
-        cached = self._file_identities.get(path)
-        if cached is None or cached[0] != version:
-            self._file_identities[path] = version, dual_sha256(path)
-        return {"path": str(path), "sha256": self._file_identities[path][1]}
-
     def publication_identity(self) -> dict[str, Any]:
-        """Functional settings and asset bytes, independent of output directories."""
         cfg = self.config
-        checkpoints = {
-            "court": cfg.court_kp.checkpoint, "dino": cfg.people.dino_checkpoint,
-            "vitpose": cfg.people.vitpose_checkpoint, "hmr2": cfg.people.hmr2_checkpoint,
-            "gvhmr": cfg.people.gvhmr_checkpoint, "plcs_reid": cfg.plcs_reid_checkpoint, "court_side": cfg.court_side_checkpoint,
-            "ball_detection": cfg.ball_detection.checkpoint,
-            "smplx": cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
-            "root_regressor": cfg.people.bundled_assets.smpl_neutral_joint_regressor,
-        }
-        return {"schema": "automatic_pipeline_v2", "code_sha256": self.code_identity,
-                "settings": json_value(cfg.processing_settings),
-                "checkpoints": {name: self._file_identity(path) for name, path in checkpoints.items()}}
+        checkpoints = {"court": cfg.court_kp.checkpoint, "detector": cfg.people.dino_checkpoint if cfg.people.detector == "dino" else cfg.people.yolo_checkpoint,
+            "vitpose": cfg.people.vitpose_checkpoint, "hmr2": cfg.people.hmr2_checkpoint, "gvhmr": cfg.people.gvhmr_checkpoint,
+            "reid": cfg.plcs_reid_checkpoint, "side": cfg.court_side_checkpoint, "ball": cfg.ball_detection.checkpoint,
+            "body_model": cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz"}
+        return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
+            "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
+            "checkpoints": {key: file_identity(path) for key, path in checkpoints.items()}}
 
-    @staticmethod
-    def _empty_objects(ids: tuple[str, ...], info: VideoInfo, frames: int, joints: int) -> ObjectObservations:
-        shape = (len(ids), frames, 0, joints)
-        return ObjectObservations(ids, (info.width, info.height), info.fps, np.zeros((*shape, 2), np.float32), np.zeros(shape, np.float32), np.zeros(shape[:3], bool), np.empty((len(ids), 0), np.int64))
-
-    def _probe_synced_video_infos(self, video_paths: Sequence[Path], *, max_frames: int | None) -> list[VideoInfo]:
-        infos = [probe_video_info(path) for path in video_paths]
-        if not infos:
-            raise ValueError("No source videos")
-        first = infos[0]
-        expected = first.frame_count if max_frames is None else min(first.frame_count, max_frames)
-        for info in infos:
-            frames = info.frame_count if max_frames is None else min(info.frame_count, max_frames)
-            if frames != expected or abs(info.fps - first.fps) > 1e-6 or (info.width, info.height) != (first.width, first.height):
-                raise ValueError("Videos must have synchronized frame counts, FPS and image size")
-        if expected < 1 or first.fps < 28:
-            raise ValueError("Automatic reconstruction requires nonempty synchronized videos at >=28fps")
-        return infos
-
-    def _person_request(self, raw: ObjectObservations, court: CourtKPResult, active_indices: tuple[int, ...], sample_frames: np.ndarray, reference: str) -> PersonObservationRequest:
-        uv, visible = raw.normalized(self.config.human_vis_threshold)
-        size = np.asarray(raw.size, np.float32)
-        court_uv = court.keypoints[list(active_indices)][:, sample_frames] * (np.maximum(size - 1, 1) / size)
-        return PersonObservationRequest(torch.from_numpy(uv[:, sample_frames]), torch.from_numpy(visible[:, sample_frames]),
-            torch.from_numpy(raw.local_track_ids), torch.from_numpy(court_uv.astype(np.float32)),
-            torch.from_numpy(court.visibility[list(active_indices)][:, sample_frames].astype(bool)),
-            raw.camera_ids, reference, torch.from_numpy(sample_frames))
-
-    def _reidentify(self, request: PersonObservationRequest, raw: ObjectObservations,
-                   store: PipelineArtifactStore, common: dict[str, Any], statuses: dict[str, str]) -> tuple[PersonReIDResult | None, GroupedObservations]:
-        threshold = self.config.human_vis_threshold
-        stage = "plcs_reid"
-        self.last_receipt["active_stage"] = stage
-        if self.plcs is None or not request.human_vis.any():
-            statuses[stage] = "disabled" if self.plcs is None else "skipped_no_observations"
-            return None, group_observations(raw, np.full(raw.observed.shape, -1, np.int64), threshold=threshold)
-        identity = {**common, "stage": stage, "checkpoint": self._file_identity(self.plcs.checkpoint),
-            "observations": store.references.get("people"), "court": store.references["court"],
-            "policy": json_value(self.config.inference_policy), "camera_ids": list(raw.camera_ids),
-            "source_frames": request.frame_indices.tolist(), "visibility_threshold": threshold}
-        cached = store.load(stage, identity)
-        if cached is None:
-            result = self.plcs.process_observations(request, policy=self.config.inference_policy)
-            if result is None:
-                raise RuntimeError("Nonempty tracked person input returned no Re-ID result")
-            # Stable upstream IDs permit exact propagation to every original observed frame.
-            dense_ids = np.broadcast_to(result.raw_track_ids.numpy()[:, None], raw.observed.shape).copy()
-            dense_ids[~raw.visibility(threshold).any(-1)] = -1
-            values = {field.name: (getattr(result, field.name).numpy() if isinstance(getattr(result, field.name), torch.Tensor) else getattr(result, field.name)) for field in fields(result)}
-            store.save(stage, identity, {"result": values, "source_ids": dense_ids})
-            statuses[stage] = "executed"
-        else:
-            result = PersonReIDResult(**{k: torch.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in cached["result"].items()})
-            dense_ids = np.asarray(cached["source_ids"], np.int64)
-            statuses[stage] = "loaded"
-        return result, group_observations(raw, dense_ids, threshold=threshold)
-
-    def _estimate_side(self, request: PersonObservationRequest, store: PipelineArtifactStore,
-                       common: dict[str, Any], statuses: dict[str, str]) -> CourtSideResult:
-        stage = "court_side"
-        self.last_receipt["active_stage"] = stage
-        identity = {**common, "stage": stage, "checkpoint": self._file_identity(self.side.checkpoint),
-            "observations": store.references.get("people"), "court": store.references["court"],
-            "policy": json_value(self.config.inference_policy), "camera_ids": list(request.camera_ids),
-            "reference": request.reference_camera, "source_frames": request.frame_indices.tolist(),
-            "visibility_threshold": self.config.human_vis_threshold}
-        cached = store.load(stage, identity)
-        if cached is None:
-            result = self.side.process_observations(request, policy=self.config.inference_policy)
-            store.save(stage, identity, {"side_logits": result.side_logits.numpy(), "view_half_turns": result.view_half_turns.numpy()})
-            statuses[stage] = "executed"
-        else:
-            result = CourtSideResult(torch.from_numpy(cached["side_logits"]), torch.from_numpy(cached["view_half_turns"]))
-            statuses[stage] = "loaded"
-        return result
-
-    def run(
-        self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
-        max_frames: int | None = None,
-    ) -> SceneResult:
-        self.last_receipt = {}
+    def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
+            max_frames: int | None = None, clip_id: str | None = None, store_root: Path | None = None) -> SceneResult:
+        paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
+        # Structured clips retain one store next to their source manifest.
+        clip_directory = paths[0].parent.parent if paths else None
+        if clip_directory is not None and (clip_directory / "clip.json").is_file():
+            manifest = json.loads((clip_directory / "clip.json").read_text())
+            clip_id = manifest["clip_id"] if clip_id is None else clip_id
+            store_root = clip_directory / "annotations/tennis_scene" if store_root is None else store_root
+        source = build_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id)
+        if self.config.camera_geometry.reference_camera is not None and self.config.camera_geometry.reference_camera not in source.camera_ids:
+            raise ValueError("Reference camera is not a source camera")
+        source_document = json_value(source)
+        root = store_root or self.config.cache_directory / document_digest(source_document)[:20]
+        store = ClipStore(root, source_document)
+        nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components)
+        runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)
+        self.last_runner, self.last_store = runner, store
+        self.last_receipt = {"schema": "tennis_scene_run_v3", "status": "running", "clip_id": source.clip_id,
+            "source": source_document, "scene_index": str(store.index_path)}
         try:
-            return self._run(video_paths, video_role=video_role, camera_ids=camera_ids, max_frames=max_frames)
-        except Exception as exc:
-            if not self.last_receipt:
-                reason = exc.reason if isinstance(exc, ReconstructionUnavailable) else "input_contract_error"
-                self.last_receipt = {"schema": "tennis_scene_run_v2", "status": "failed", "reason": reason,
-                    "error": str(exc), "video_paths": [str(path) for path in video_paths], "camera_ids": list(camera_ids)}
-                key = document_digest({"paths": [str(path) for path in video_paths], "ids": list(camera_ids), "max_frames": max_frames})[:20]
-                write_json_atomic(self.config.cache_directory / "preflight" / key / "run.json", self.last_receipt)
-            raise
-
-    def _run(
-        self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
-        max_frames: int | None = None,
-    ) -> SceneResult:
-        cfg = self.config
-        paths = tuple(cfg.resolver.validate(video_role, Path(path)) for path in video_paths)
-        ids = tuple(camera_ids)
-        if not 3 <= len(paths) <= 5 or len(ids) != len(paths) or len(set(ids)) != len(ids) or any(not x for x in ids):
-            raise ValueError("Automatic reconstruction requires 3..5 unique camera IDs and videos")
-        if max_frames is not None and max_frames < 1:
-            raise ValueError("max_frames must be positive")
-        if cfg.camera_geometry.reference_camera is not None and cfg.camera_geometry.reference_camera not in ids:
-            raise ValueError("Reference camera is not in the source camera IDs")
-        infos = self._probe_synced_video_infos(paths, max_frames=max_frames)
-        info = infos[0]
-        frames = info.frame_count if max_frames is None else min(info.frame_count, max_frames)
-        sample_frames = association_frame_indices(frames, info.fps, max_frames=cfg.inference_policy.max_frames)
-        source = {"videos": [self._file_identity(path) for path in paths], "camera_ids": list(ids), "frames": frames, "fps": info.fps, "size": [info.width, info.height]}
-        store = PipelineArtifactStore(cfg.cache_directory / document_digest(source)[:20], source=cfg.cache_source, overwrite=cfg.cache_overwrite)
-        common = {"source": source, "code_sha256": self.code_identity, "numpy": np.__version__, "torch": str(torch.__version__)}
-        statuses = {key: "pending" if enabled else "disabled" for key, enabled in cfg.enabled.items()}
-        timings: dict[str, float] = {}
-        self.last_receipt = {"schema": "tennis_scene_run_v2", "status": "running", "source": source, "stage_status": statuses, "stage_seconds": timings, "code_sha256": self.code_identity}
-        started = time.monotonic()
-        try:
-            tick = time.monotonic()
-            self.last_receipt["active_stage"] = "court_kp"
-            court_identity = {**common, "checkpoint": self._file_identity(cfg.court_kp.checkpoint), "settings": cfg.processing_settings["court_kp"]}
-            cached = store.load("court", court_identity)
-            if cached is None:
-                try:
-                    court = self.court.process(paths, max_frames=max_frames, annotation_frame_index=0)
-                finally:
-                    self.court.unload()
-                store.save("court", court_identity, {"keypoints": court.keypoints, "visibility": court.visibility, "frame_indices": court.frame_indices, "diagnostics": court.diagnostics})
-                statuses["court_kp"] = "executed"
-            else:
-                court = CourtKPResult.from_dict(cached)
-                statuses["court_kp"] = "loaded"
-            if court.keypoints.shape != (len(ids), frames, 14, 2) or not np.array_equal(court.frame_indices, np.arange(frames)):
-                raise ValueError("Court observations must preserve the complete source timeline")
-            calibration = calibrate_local_courts(court, ids, size=(info.width, info.height), config=cfg.camera_geometry)
-            timings["court_kp"] = time.monotonic() - tick
-
-            tick = time.monotonic()
-            self.last_receipt["active_stage"] = "person_observations"
-            people = self._empty_objects(ids, info, frames, 17)
-            if self.people is not None:
-                people_identity = {**common, "court": store.references["court"], "settings": cfg.processing_settings["person_observations"], "runtime": json_value(cfg.people.runtime),
-                    "detector": self._file_identity(cfg.people.dino_checkpoint), "pose": self._file_identity(cfg.people.vitpose_checkpoint)}
-                cached = store.load("people", people_identity)
-                if cached is None:
-                    polygons: list[tuple[tuple[float, float], ...] | None] = [None] * len(ids)
-                    for local in calibration.views:
-                        polygons[local.source_index] = local.footpoint_polygon(sideline_margin_m=cfg.person_roi_margins[0], baseline_margin_m=cfg.person_roi_margins[1])
-                    people = self.people.process(paths, infos, ids, num_frames=frames, polygons=polygons)
-                    store.save("people", people_identity, {"observations": people})
-                    statuses["person_observations"] = "executed"
-                else:
-                    row = cached["observations"]
-                    people = ObjectObservations(**{**row, "camera_ids": tuple(row["camera_ids"]), "size": tuple(row["size"])})
-                    statuses["person_observations"] = "loaded"
-            if people.camera_ids != ids or people.num_frames != frames or people.size != (info.width, info.height) or abs(people.fps - info.fps) > 1e-6 or people.uv_px.shape[-2] != 17:
-                raise ValueError("Person observations do not match the source camera/timeline contract")
-            timings["person_observations"] = time.monotonic() - tick
-
-            tick = time.monotonic()
-            self.last_receipt["active_stage"] = "ball_detection"
-            balls = self._empty_objects(ids, info, frames, 1)
-            if self.ball is not None:
-                ball_identity = {**common, "settings": cfg.processing_settings["ball_detection"], "checkpoint": self._file_identity(cfg.ball_detection.checkpoint)}
-                cached = store.load("ball", ball_identity)
-                if cached is None:
-                    try:
-                        detected = self.ball.process(paths, max_frames=max_frames, image_width=info.width, image_height=info.height)
-                    finally:
-                        self.ball.unload()
-                    store.save("ball", ball_identity, {"ball_uv": detected.ball_uv, "ball_uv_px": detected.ball_uv_px, "visibility": detected.visibility, "score": detected.score})
-                    statuses["ball_detection"] = "executed"
-                else:
-                    detected = BallDetectionResult.from_dict(cached)
-                    statuses["ball_detection"] = "loaded"
-                valid, errors = detected.validate()
-                if not valid or detected.ball_uv.shape != (len(ids), frames, 2):
-                    raise ValueError(f"Ball observations violate the source timeline: {errors}")
-                balls = ObjectObservations(ids, (info.width, info.height), info.fps, detected.ball_uv_px[:, :, None, None], detected.score[:, :, None, None].astype(np.float32), detected.visibility[:, :, None], np.zeros((len(ids), 1), np.int64))
-            timings["ball_detection"] = time.monotonic() - tick
-            has_people = self.plcs is not None and people.visibility(cfg.human_vis_threshold).any()
-            has_ball = self.ball is not None and balls.visibility(cfg.ball_detection.score_threshold).any()
-            if not has_people and not has_ball:
-                for stage in ("plcs_reid", "court_side", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr"):
-                    if cfg.enabled[stage]:
-                        statuses[stage] = "skipped_no_observations"
-                scene = assemble_automatic_scene(video_paths=paths, camera_ids=ids, info=info, court=court, active_indices=(), geometry=None, grouped_people=None, skeleton=None, players=None, ball=None,
-                    metadata={"status": "empty", "enabled_stages": [s.value for s in self.execution_order], "stage_status": statuses, "artifacts": store.references, "source_frame_indices": sample_frames.tolist(), "source_identity": source, "code_sha256": self.code_identity})
-            else:
-                reference = calibration.reference(cfg.camera_geometry)
-                active = tuple(local.source_index for local in calibration.views)
-                selected_people, selected_balls = people.select_views(active), balls.select_views(active)
-                evidence: list[SideEvidence] = []
-                scale = np.hypot(info.width, info.height) / np.hypot(1920, 1080)
-                tick = time.monotonic()
-                request = self._person_request(selected_people, court, active, sample_frames, reference)
-                p_result, p_group = self._reidentify(request, selected_people, store, common, statuses)
-                timings["plcs_reid"] = time.monotonic() - tick
-                tick = time.monotonic()
-                side_result = self._estimate_side(request, store, common, statuses)
-                timings["court_side"] = time.monotonic() - tick
-                if p_result is not None:
-                    torso = [5, 6, 11, 12]
-                    evidence.append(SideEvidence("plcs", p_group.uv_px[:, :, sample_frames][:, :, :, torso], (p_group.visibility & (p_group.confidence >= cfg.joint_confidence))[:, :, sample_frames][:, :, :, torso], cfg.player_reprojection_px * scale))
-                b_group = single_ball_observations(selected_balls, threshold=cfg.ball_detection.score_threshold)
-                if b_group.visibility.any():
-                    evidence.append(SideEvidence("ball", b_group.uv_px[:, :, sample_frames], b_group.visibility[:, :, sample_frames], cfg.ball_reprojection_px * scale))
-                tick = time.monotonic()
-                self.last_receipt["active_stage"] = "camera_geometry"
-                geometry = resolve_camera_geometry(calibration, reference, (side_result.view_half_turns.numpy(),), tuple(evidence), config=cfg.camera_geometry)
-                statuses["camera_geometry"] = "executed"
-                timings["camera_geometry"] = time.monotonic() - tick
-                reconstruction_identity = {**common, "ball_observations": store.references.get("ball"), "ball_contract": "single_detection_v1", "associations": {k: v for k, v in store.references.items() if k in {"plcs_reid", "court_side"}}, "geometry": geometry.document,
-                    "settings": {key: cfg.processing_settings[key] for key in ("player_reconstruction", "ball_reconstruction", "gvhmr")}}
-                tick = time.monotonic()
-                self.last_receipt["active_stage"] = "triangulation"
-                cached = store.load("triangulation", reconstruction_identity)
-                if cached is None:
-                    skeleton = triangulate_players(p_group, geometry.cameras, reprojection_px=cfg.player_reprojection_px * scale, joint_confidence=cfg.joint_confidence) if cfg.enabled["player_reconstruction"] else None
-                    ball = reconstruct_ball(b_group, geometry.cameras, fps=info.fps, reprojection_px=cfg.ball_reprojection_px * scale, min_frames=cfg.ball_min_frames) if cfg.enabled["ball_reconstruction"] else None
-                    store.save("triangulation", reconstruction_identity, {"skeleton": skeleton, "ball": ball})
-                else:
-                    skeleton = None if cached["skeleton"] is None else PlayerSkeleton(**cached["skeleton"])
-                    b = cached["ball"]
-                    ball = None if b is None else BallReconstructionResult(**{**b, "trajectory": TriangulatedPoints(**b["trajectory"])})
-                if cfg.enabled["player_reconstruction"]:
-                    statuses["player_reconstruction"] = "ok" if skeleton is not None and skeleton.valid.any() else "insufficient_support"
-                if cfg.enabled["ball_reconstruction"]:
-                    statuses["ball_reconstruction"] = "insufficient_support" if ball is None else ball.status
-                timings["triangulation"] = time.monotonic() - tick
-                tick = time.monotonic()
-                self.last_receipt["active_stage"] = "gvhmr"
-                players = None
-                if skeleton is not None:
-                    body_identity = {**reconstruction_identity, "triangulation": store.references["triangulation"], "models": {
-                        "hmr2": self._file_identity(cfg.people.hmr2_checkpoint), "gvhmr": self._file_identity(cfg.people.gvhmr_checkpoint),
-                        "root_regressor": self._file_identity(cfg.people.bundled_assets.smpl_neutral_joint_regressor),
-                        "smplx": self._file_identity(cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz"),
-                        "topology": self._file_identity(cfg.people.bundled_assets.smplx_to_smpl),
-                        "coco17": self._file_identity(cfg.people.bundled_assets.smpl_coco17_regressor)},
-                        "runtime": json_value(cfg.people.runtime)}
-                    cached = store.load("bodies", body_identity)
-                    if cached is None:
-                        placement_config = replace(cfg.player_placement,
-                            max_reprojection_rms_px=cfg.player_placement.max_reprojection_rms_px * scale,
-                            reprojection_weight_sigma_px=cfg.player_placement.reprojection_weight_sigma_px * scale)
-                        players = reconstruct_player_bodies(p_group, selected_people, skeleton, geometry.cameras, tuple(paths[i] for i in active), sample_frames,
-                            body=self.body, reprojection_px=cfg.player_reprojection_px * scale, placement_config=placement_config)
-                        store.save("bodies", body_identity, {"players": players})
-                    else:
-                        players = ReconstructedPlayers(**cached["players"])
-                    if cfg.enabled["gvhmr"]:
-                        statuses["gvhmr"] = "ok" if players.smpl_valid.any() else "insufficient_support"
-                timings["gvhmr"] = time.monotonic() - tick
-                has_3d = (skeleton is not None and skeleton.valid.any()) or (ball is not None and ball.trajectory.valid.any())
-                if not has_3d:
-                    raise ReconstructionUnavailable("no_valid_reconstruction", "Nonempty observations produced no supported 3D geometry")
-                required = [key for key in ("player_reconstruction", "ball_reconstruction", "gvhmr") if cfg.enabled[key]]
-                status = "ok" if all(statuses.get(key) == "ok" for key in required) else "partial"
-                scene = assemble_automatic_scene(video_paths=paths, camera_ids=ids, info=info, court=court, active_indices=active, geometry=geometry, grouped_people=p_group, skeleton=skeleton, players=players, ball=ball,
-                    metadata={"status": status, "enabled_stages": [s.value for s in self.execution_order], "stage_status": statuses, "artifacts": store.references,
-                        "source_frame_indices": sample_frames.tolist(), "source_identity": source, "code_sha256": self.code_identity,
-                        "side_logits": {"plcs_court_side": side_result.side_logits.tolist()}})
-            self.last_receipt["active_stage"] = None
-            self.last_receipt.update(status=scene.metadata["status"], artifacts=store.references, validity=scene.metadata["validity_statistics"])
-            timings["total"] = time.monotonic() - started
-            scene.metadata["stage_seconds"] = dict(timings)
-            write_json_atomic(store.root / "run.json", self.last_receipt)
+            runner.run()
+            scene: SceneResult = runner.output("scene_assembly")
+            self._export(scene, runner, store)
+            self.last_receipt.update(status=scene.metadata["status"], validity=scene.metadata["validity_statistics"])
             return scene
         except Exception as exc:
-            active_stage = self.last_receipt.get("active_stage")
-            if isinstance(active_stage, str):
-                statuses[active_stage] = "failed"
-            reason = exc.reason if isinstance(exc, ReconstructionUnavailable) else "contract_or_execution_error"
-            diagnostics = exc.diagnostics if isinstance(exc, ReconstructionUnavailable) else {}
-            self.last_receipt.update(status="failed", reason=reason, error=str(exc), diagnostics=diagnostics, artifacts=store.references)
-            timings["total"] = time.monotonic() - started
-            write_json_atomic(store.root / "run.json", self.last_receipt)
-            LOGGER.error("Automatic reconstruction failed (%s): %s", reason, exc)
+            self.last_receipt.update(status="failed", error=str(exc), error_type=type(exc).__name__)
             raise
+        finally:
+            self.last_receipt.update(active_stage=runner.active_node, stage_status=runner.statuses,
+                stage_seconds=runner.seconds, artifacts=json_value(runner.references))
+            write_json_atomic(store.root / "run.json", self.last_receipt)
+
+    @staticmethod
+    def _export(scene: SceneResult, runner: ComponentRunner, store: ClipStore) -> None:
+        reference = runner.references["scene_assembly"]
+        exports = store.root / "exports"
+        exports.mkdir(exist_ok=True)
+        destination = exports / reference.artifact_id
+        if not destination.exists():
+            temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=exports))
+            try:
+                save_scene_result(scene, temporary / "scene.npz")
+                os.replace(temporary, destination)
+            finally:
+                if temporary.exists():
+                    shutil.rmtree(temporary)
+        store.record_export("scene", {"scene": destination / "scene.npz", "metadata": destination / "scene.metadata.json"},
+            {"scene_assembly": reference})

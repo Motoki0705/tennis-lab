@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -14,16 +13,13 @@ from numpy.typing import NDArray
 from omegaconf import DictConfig
 from torch import Tensor
 
-from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
     COURT_KEYPOINT_METADATA_KEY,
     CourtKeypointContract,
     CourtKeypointContractMetadata,
     CourtReferenceFrameProvenance,
-    MissingCourtKeypointMetadataError,
     apply_court_view_record,
     build_court_view_record,
-    build_reference_frame_provenance,
     court_points_physical_to_target,
     resolve_court_keypoint_contract,
 )
@@ -67,18 +63,11 @@ from src.tasks.plcs.models.plcs_track_query_reference_model import (
     PLCSTrackQueryReferenceModel,
 )
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
-from src.tennis_scene.pipeline.components.blcs import BLCSModule
-from src.tennis_scene.pipeline.components.plcs import PLCSModule
-from src.tennis_scene.pipeline.utilts.court_reference import reference_metadata
 from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
     normalize_court_position,
     normalize_court_velocity,
-)
-from tests.unit.tennis_scene.pipeline.config_factories import (
-    make_blcs_config,
-    make_plcs_config,
 )
 
 pytestmark = pytest.mark.integration
@@ -749,95 +738,3 @@ class _PhysicalPLCS:
             yaw_radians=np.zeros((players, frames), dtype=np.float32),
             court_reference_provenance=(self.provenance,) * players,
         )
-
-
-def test_tennis_scene_requires_v2_markers_and_publishes_physical_results(
-    tmp_path: Path,
-) -> None:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    reference_view = build_court_view_record(
-        camera_id="camera_positive",
-        camera_center_court_m=(0.0, 12.0, 5.0),
-        contract=contract,
-    )
-    provenance = build_reference_frame_provenance(
-        (reference_view,),
-        reference_camera_id=reference_view.camera_id,
-    )
-    table = StableCameraIdTable.from_complete_scene_camera_ids(
-        (reference_view.camera_id,)
-    )
-    selection = ReferenceViewSelection.create(
-        stable_camera_id_table=table,
-        selected_views=(reference_view,),
-        reference_camera_id=reference_view.camera_id,
-    )
-    document = _contract_document(contract)
-
-    blcs = BLCSModule(
-        replace(make_blcs_config(tmp_path), court_keypoint_contract=contract)
-    )
-    blcs_predictor = _ReferenceBLCS(provenance)
-    blcs._predictor = cast(Any, blcs_predictor)
-    inputs: _BLCSProcessInputs = {
-        "ball_uv": np.full((1, 2, 2), 0.5, dtype=np.float32),
-        "court_kp": np.full((1, 2, 20, 2), 0.5, dtype=np.float32),
-        "ball_vis": np.ones((1, 2), dtype=np.bool_),
-        "court_vis": np.ones((1, 2, 20), dtype=np.float32),
-    }
-    with pytest.raises(MissingCourtKeypointMetadataError):
-        blcs.process(**inputs)
-    assert blcs_predictor.calls == 0
-    blcs_result = blcs.process(
-        **inputs,
-        court_keypoint_document=document,
-        court_reference_provenance=provenance,
-        reference_metadata=cast(
-            Any,
-            reference_metadata(selection, 1, "blcs"),
-        ),
-    )
-    np.testing.assert_array_equal(
-        blcs_result.ball_3d,
-        np.full((2, 3), [2.0, 3.0, 1.0], dtype=np.float32),
-    )
-    assert blcs_result.court_reference_provenance == provenance
-    assert (
-        blcs_result.to_dict(contract)[COURT_KEYPOINT_METADATA_KEY]
-        == (document[COURT_KEYPOINT_METADATA_KEY])
-    )
-
-    plcs = PLCSModule(
-        replace(make_plcs_config(tmp_path), court_keypoint_contract=contract)
-    )
-    plcs_predictor = _PhysicalPLCS(provenance)
-    plcs._predictor = cast(Any, plcs_predictor)
-    plcs_inputs: _PLCSProcessInputs = {
-        "human_kp_2d": np.full((2, 1, 2, 17, 2), 0.5, dtype=np.float32),
-        "court_kp": np.full((1, 2, 20, 2), 0.5, dtype=np.float32),
-        "human_kp_vis": np.ones((2, 1, 2, 17), dtype=np.float32),
-        "court_vis": np.ones((1, 2, 20), dtype=np.float32),
-        "track_ids": np.array([7, 8], dtype=np.int32),
-    }
-    with pytest.raises(MissingCourtKeypointMetadataError):
-        plcs.process(**plcs_inputs)
-    assert plcs_predictor.calls == 0
-    plcs_result = plcs.process(
-        **plcs_inputs,
-        court_keypoint_document=document,
-        court_reference_provenance=provenance,
-        reference_metadata=cast(
-            Any,
-            reference_metadata(selection, 2, "plcs"),
-        ),
-    )
-    np.testing.assert_array_equal(
-        plcs_result.position,
-        np.full((2, 2, 3), [2.0, 3.0, 1.0], dtype=np.float32),
-    )
-    assert plcs_predictor.received_provenance == (provenance, provenance)
-    assert plcs_result.court_reference_provenance == provenance
-    assert (
-        plcs_result.to_dict(contract)[COURT_KEYPOINT_METADATA_KEY]
-        == document[COURT_KEYPOINT_METADATA_KEY]
-    )

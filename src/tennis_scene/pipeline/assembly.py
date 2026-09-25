@@ -18,7 +18,7 @@ from src.tennis_scene.pipeline.components.player_reconstruction import (
     PlayerSkeleton,
     ReconstructedPlayers,
 )
-from src.tennis_scene.pipeline.model_io.observations import GroupedObservations
+from src.tennis_scene.pipeline.observation_types import GroupedObservations
 from src.tennis_scene.schema import (
     SceneResult,
     attach_scene_result_court_keypoint_provenance,

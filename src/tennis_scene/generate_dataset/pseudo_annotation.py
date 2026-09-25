@@ -18,7 +18,7 @@ from src.tennis_scene.generate_dataset.manifest import (
     load_dataset_manifest,
 )
 from src.tennis_scene.pipeline.artifacts import document_digest
-from src.tennis_scene.pipeline.dependency_graph import Stage
+from src.tennis_scene.pipeline.feature_flags import Stage
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
     SCENE_REASON_FIELDS,
@@ -176,6 +176,36 @@ def _resolve_clip_inputs(
     return clip_manifest_path, video_paths, camera_ids
 
 
+def _publish_component_annotation(
+    *, dataset_dir: Path, record: DatasetClipRecord, result: SceneResult,
+    clip_manifest_path: Path, pipeline_config_yaml: str,
+    publication_identity: Mapping[str, object] | None,
+) -> Path:
+    """Publish a marker pointing at immutable exports; never replace the component store."""
+    from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+    record_path: object = record.path
+    if type(record_path) is not str:
+        raise TypeError("Dataset clip path must be a string")
+    destination = dataset_dir / record_path / ANNOTATION_RELATIVE_DIR
+    scene_path = indexed_scene_path(destination / "scene.json")
+    config_path = scene_path.parent / "pipeline_config.yaml"
+    config_path.write_text(pipeline_config_yaml, encoding="utf-8")
+    _, media_paths, camera_ids = _resolve_clip_inputs(dataset_dir, record)
+    annotation = {
+        "version": ANNOTATION_SCHEMA_VERSION, "clip_id": record.clip_id, "generator": "src.tennis_scene",
+        "generated_at": utc_now_iso(), "scene_result": str(scene_path.relative_to(destination)),
+        "scene_index": "scene.json", "pipeline_config": str(config_path.relative_to(destination)),
+        "clip_manifest_sha256": _sha256_file(clip_manifest_path), "arrays": _shape_manifest(result),
+        "scene_schema_version": result.schema_version, "result_status": result.metadata["status"],
+        "validity_statistics": result.metadata["validity_statistics"],
+        "publication_identity_sha256": None if publication_identity is None else document_digest(publication_identity),
+        "media_sha256": {camera: _sha256_file(path) for camera, path in zip(camera_ids, media_paths, strict=True)},
+    }
+    marker = destination / "annotation.json"
+    save_json_atomic(annotation, marker)
+    return marker
+
+
 def _publish_annotation(
     *,
     dataset_dir: Path,
@@ -188,6 +218,10 @@ def _publish_annotation(
 ) -> Path:
     if result.schema_version == 2 and publication_identity is None:
         raise ValueError("v2 annotations require an explicit pipeline publication identity")
+    if result.metadata.get("pipeline_contract") == "declared_components_v1":
+        return _publish_component_annotation(dataset_dir=dataset_dir, record=record, result=result,
+            clip_manifest_path=clip_manifest_path, pipeline_config_yaml=pipeline_config_yaml,
+            publication_identity=publication_identity)
     record_path: object = record.path
     if type(record_path) is not str:
         raise TypeError(

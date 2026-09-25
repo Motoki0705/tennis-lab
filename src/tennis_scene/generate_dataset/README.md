@@ -15,20 +15,12 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
 checkpoint変更はpipeline_overridesで指定します。手動side・Court・人物対応artifactは
 不要です。元clip全体を保存するため、この入口でmax_framesによる切詰めはできません。
 
-```text
-<dataset>/videos/<video>/clips/<clip>/annotations/
-├── tennis_scene/
-│   ├── scene.npz
-│   ├── scene.metadata.json
-│   ├── annotation.json
-│   └── pipeline_config.yaml
-└── tennis_scene.failure.json       # 失敗時
-```
-
-annotation.jsonは最後に公開する完成markerです。scene schema、shape/dtype、処理status、
-有効frame数、clip.json・動画・設定/重みの識別情報を持ちます。
+成果物はclip内の`annotations/tennis_scene/`に保存します。
+component成果物と統合exportの配置は[pipeline仕様](../pipeline/README.md#成果物)を参照してください。
+`annotation.json`はdataset向けの完成markerで、`scene_result`に採用したimmutableなNPZ exportを記録します。
+scene schema、shape/dtype、status、有効frame数、clip.json・動画・設定/重みの識別情報を検証します。
 同一入力・同一設定の完成結果だけをskipし、変更時はoverwrite=trueが必要です。
-不完全なtransactionは完成済みとして扱いません。
+公開時にcomponent storeを削除・置換しません。
 
 partialやemptyもmaskとともに保存します。教師に使える範囲は下流が3D validityで判定します。
 失敗はfailure markerへ記録し、continue_on_errorに従って次へ進みます。失敗があればCLIは非0終了です。

@@ -33,7 +33,15 @@ if TYPE_CHECKING:
 
     from src.tasks.court_detection.inference.predictor import CourtPredictor
 
+from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
+
 LOGGER = logging.getLogger(__name__)
+
+
+
+@dataclass(frozen=True)
+class CourtDetectionInput:
+    video: SourceVideo
 
 NUM_COURT_KEYPOINTS = 14
 
@@ -350,7 +358,15 @@ class CourtKPModule(BasePipelineModule):
         self._manual_keypoints = keypoints.astype(np.float32)
         self._manual_needs_normalization = True
 
-    def process(
+    io = ComponentIO("court_detection", CourtDetectionInput, CourtKPResult, {}, "court_observations")
+
+    def process(self, inputs: CourtDetectionInput) -> CourtKPResult:
+        try:
+            return self._process_videos([inputs.video.path], max_frames=inputs.video.num_frames, annotation_frame_index=0)
+        finally:
+            self.unload()
+
+    def _process_videos(
         self,
         video_paths: Sequence[Path],
         max_frames: int | None = None,

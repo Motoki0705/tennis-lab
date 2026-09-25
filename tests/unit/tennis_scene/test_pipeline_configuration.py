@@ -104,7 +104,7 @@ def test_output_paths_cannot_escape_authority(fragment: str) -> None:
         ["video_paths=[a.mp4,b.mp4]", "camera_ids=[a,b]"],
         ["camera_ids=[a,a,c]"],
         ["person_observations.enabled=false"],
-        ["people_models.detector=yolo"],
+        ["people_models.detector=unknown"],
         ["people_models.runtime.static_cam=false"],
         ["cache.source=load", "cache.overwrite=true"],
     ],
@@ -114,3 +114,7 @@ def test_invalid_inputs_or_dependency_choices_fail_before_models(
 ) -> None:
     with pytest.raises(ValueError):
         _runtime(overrides)
+
+
+def test_detector_can_be_replaced_without_changing_the_runner() -> None:
+    assert _runtime(["people_models.detector=yolo"]).people.detector == "yolo"
