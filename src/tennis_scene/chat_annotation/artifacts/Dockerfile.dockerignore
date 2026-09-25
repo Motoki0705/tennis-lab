@@ -1,0 +1,7 @@
+**
+!pyproject.toml
+!src/
+!src/tennis_scene/
+!src/tennis_scene/chat_annotation/
+!src/tennis_scene/chat_annotation/**
+**/__pycache__

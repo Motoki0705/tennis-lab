@@ -262,4 +262,5 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
         str(failed),
         success=False,
     )
-    assert "ValidationError" in result.stdout and not failed.exists()
+    assert "unsupported annotation schema version" in result.stdout
+    assert not failed.exists()
