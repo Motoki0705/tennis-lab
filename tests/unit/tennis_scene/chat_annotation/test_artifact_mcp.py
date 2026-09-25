@@ -212,3 +212,24 @@ def test_download_url_diagnostics_exclude_secrets(
     )
     assert "secret" not in caplog.text + str(error.value)
     assert url not in caplog.text + str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("url", "reason"),
+    [
+        ("https://other.example/private?token=secret", "allowed_host"),
+        ("http://files.example.com/private?token=secret", "scheme"),
+        ("https://files.example.com:444/private?token=secret", "port"),
+        ("https://user:secret@files.example.com/private", "userinfo"),
+        ("https://files.example.com/private#secret", "fragment"),
+    ],
+)
+def test_download_error_identifies_only_safe_rejection_details(
+    url: str, reason: str
+) -> None:
+    with pytest.raises(ValueError) as result:
+        server.download_zip(url, frozenset({"files.example.com"}))
+    message = str(result.value)
+    assert f"rejected={reason};" in message
+    assert "scheme=" in message and "hostname=" in message and "port=" in message
+    assert "secret" not in message and "private" not in message
