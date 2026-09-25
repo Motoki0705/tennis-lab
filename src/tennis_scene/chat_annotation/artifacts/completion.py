@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import argparse
 import fcntl
-import json
 import os
-import time
 from pathlib import Path
 
 from ..layout import done_video_path, published_video_path, video_path
@@ -130,30 +127,3 @@ def sync_done(root: Path, *, dry_run: bool = False) -> dict[str, list[str]]:
             except (ValueError, OSError) as error:
                 report["errors"].append(f"{clip_id}: {error}")
     return report
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path("outputs/chat_annotation"))
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--watch-seconds",
-        type=float,
-        default=0,
-        help="0: one pass; positive: poll interval",
-    )
-    args = parser.parse_args()
-    if args.watch_seconds < 0 or (args.watch_seconds and args.dry_run):
-        parser.error(
-            "watch requires a positive interval and cannot be combined with dry-run"
-        )
-    while True:
-        report = sync_done(args.root, dry_run=args.dry_run)
-        print(json.dumps(report, ensure_ascii=False), flush=True)
-        if not args.watch_seconds:
-            raise SystemExit(1 if report["errors"] else 0)
-        time.sleep(args.watch_seconds)
-
-
-if __name__ == "__main__":
-    main()
