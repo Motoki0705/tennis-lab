@@ -87,15 +87,18 @@ executeは同一identityの完成artifactを再利用し、無ければ実行す
 観測、補間、遮蔽推定、未解決を`point_kind`で保存し、幾何の実観測には`observed`だけを用いる。
 confidenceは観測1/それ以外0の採用weightで、検出確率ではない。原注釈の`image_score`を確率へ転用しない。
 sideの明示importは確認根拠を記録し、モデルlogitsは生成しない。
+実clip検証では、学習済みRe-IDの推論artifactを先に保存した後、既存の人手人物対応を別の同schema artifactとして明示importできる。
+旧GVHMRのplayer軸と現track IDはbbox時系列で一意に照合する。import後もモデルのembedding・valid mask・cosine閾値はそのまま保持し、
+モデルが推論したIDと確認済みIDを両方記録する。確認済みIDをモデルの予測精度とは扱わない。
 
 datasetへの公開は、既存の`annotation.json`完成markerを維持しつつ、`scene_result`でimmutableなexportを指定する。
 component storeをdirectoryごと置換しない。SLCS・review・residual readerも対応する公開参照を読む。
 
 実clip qualificationの入口は`tests/benchmarks/component_pipeline.py`。GPU実行は共有training queueを使う。
-外部ballと確認済みsideをloadし、他の処理を動画から実行してscene exportとload-only再開を検証する。
+外部ball・確認済みside・確認済み人物対応をloadし、他の処理を動画から実行してscene exportとload-only再開を検証する。
 
 保存済みcomponent出力の目視確認は、repo rootから
 `.venv/bin/python -m scripts.visualize_component_store --clip <clip directory> --output <review directory>`
 で行う。出力先の`index.html`にcomponent別の画像・timeline・診断値が並び、`manifest.json`に使用artifact IDを記録する。
 `scene.json`に未生成のcomponentは未生成と表示する。新しいartifactが増えたら同じコマンドで再生成する。
-`--videos`を付けると、ball・人物検出・tracking・poseの全frame overlay動画も生成する。
+`--videos`を付けると、ball・人物検出・tracking・poseの全frame overlay動画もH.264で生成する（`ffmpeg`が必要）。

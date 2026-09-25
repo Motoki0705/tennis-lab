@@ -7,8 +7,11 @@ again after a pipeline run adds artifacts; inference is never invoked here.
 from __future__ import annotations
 
 import argparse
+import csv
 import html
 import json
+import os
+import subprocess
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
@@ -133,9 +136,12 @@ class Review:
         self.size = (int(self.source["videos"][0]["width"]), int(self.source["videos"][0]["height"]))
         self.store = ClipStore(self.index_path.parent, self.source, memory_entries=0)
         self.references = self.store.references()
+        self._active_by_artifact = {reference.artifact_id: node for node, reference in self.references.items()}
+        self._staleness: dict[str, tuple[str, ...]] = {}
         self._frames: dict[tuple[str, int], np.ndarray] = {}
         self.make_videos = videos
         self.movies: dict[str, str] = {}
+        self.raw_cosine_written = False
         self.output.mkdir(parents=True, exist_ok=True)
         (self.output / "images").mkdir(exist_ok=True)
         if videos:
@@ -156,16 +162,14 @@ class Review:
                 capture.release()
         return self._frames[key].copy()
 
-    def samples(self, *, tracking: bool = False) -> tuple[int, ...]:
+    def samples(self) -> tuple[int, ...]:
         standard = np.rint(np.linspace(0, self.frame_count - 1, 5)).astype(int).tolist()
-        if tracking:
-            standard += [round(.7 * self.frame_count), round(.77 * self.frame_count)]
         return tuple(sorted(set(min(self.frame_count - 1, index) for index in standard)))
 
-    def sheet(self, node: str, camera: str, draw: Callable[[np.ndarray, int], None], *, tracking: bool = False,
+    def sheet(self, node: str, camera: str, draw: Callable[[np.ndarray, int], None], *,
               frames: tuple[int, ...] | None = None) -> str:
         cells: list[np.ndarray] = []
-        for index in self.samples(tracking=tracking) if frames is None else frames:
+        for index in self.samples() if frames is None else frames:
             image = self.frame(camera, index)
             draw(image, index)
             cell = cv2.resize(image, (720, 405), interpolation=cv2.INTER_AREA)
@@ -185,21 +189,61 @@ class Review:
         source = next(video for video in self.source["videos"] if video["camera_id"] == camera)
         capture = cv2.VideoCapture(str(self.videos[camera]))
         filename = f"{node.replace('/', '_')}.mp4"
-        writer = cv2.VideoWriter(str(self.output / "videos" / filename), cv2.VideoWriter.fourcc(*"mp4v"),
-                                 float(source["fps"]), (1280, 720))
+        destination = self.output / "videos" / filename
+        partial = destination.with_name(f"{destination.stem}.partial.mp4")
+        command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo",
+                   "-pix_fmt", "bgr24", "-s", "1280x720", "-r", str(float(source["fps"])),
+                   "-i", "pipe:0", "-an", "-c:v", "libx264", "-preset", "veryfast",
+                   "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(partial)]
+        encoder = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
-            if not capture.isOpened() or not writer.isOpened():
+            if not capture.isOpened() or encoder.stdin is None or encoder.stderr is None:
                 raise OSError(f"Could not open review video stream for {node}")
             for index in range(self.frame_count):
                 okay, image = capture.read()
                 if not okay:
                     raise OSError(f"Review video ended before frame {index}: {camera}")
                 draw(image, index)
-                writer.write(cv2.resize(image, (1280, 720), interpolation=cv2.INTER_AREA))
+                encoder.stdin.write(cv2.resize(image, (1280, 720), interpolation=cv2.INTER_AREA).tobytes())
+            encoder.stdin.close()
+            errors = encoder.stderr.read().decode(errors="replace")
+            if encoder.wait() != 0:
+                raise RuntimeError(f"H.264 review encoding failed for {node}: {errors}")
+            os.replace(partial, destination)
+        except BaseException:
+            encoder.kill()
+            encoder.wait()
+            partial.unlink(missing_ok=True)
+            raise
         finally:
             capture.release()
-            writer.release()
         self.movies[node] = f"videos/{filename}"
+
+    def track_samples(self, boxes: np.ndarray, observed: np.ndarray,
+                      source_ids: list[list[int]], links: list[dict[str, Any]]) -> tuple[int, ...]:
+        """Include the largest gaps and duplicate-box handoffs in the contact sheet."""
+        chosen = set(self.samples())
+        linked_ids = {int(item["earlier_id"]) for item in links} | {int(item["later_id"]) for item in links}
+        for row, members in enumerate(source_ids):
+            if not linked_ids.intersection(members):
+                continue
+            present: np.ndarray = observed[row].astype(bool)
+            frames = np.flatnonzero(present)
+            if len(frames) < 2:
+                continue
+            gaps = sorted(((int(a), int(b)) for a, b in zip(frames[:-1], frames[1:], strict=False) if b - a > 1),
+                          key=lambda pair: pair[1] - pair[0], reverse=True)[:2]
+            for before, after in gaps:
+                chosen.update((before, (before + after) // 2, after))
+            if any(item.get("overlap_span_frames", 0) for item in links):
+                width = boxes[row, :, 2] - boxes[row, :, 0]
+                pair_valid = present[:-1] & present[1:] & (width[:-1] > 0) & (width[1:] > 0)
+                changes: np.ndarray = np.full(self.frame_count - 1, -1., np.float64)
+                changes[pair_valid] = np.abs(np.log(width[1:][pair_valid] / width[:-1][pair_valid]))
+                if pair_valid.any():
+                    boundary = int(np.argmax(changes))
+                    chosen.update((boundary - 3, boundary, boundary + 1, boundary + 3))
+        return tuple(sorted(index for index in chosen if 0 <= index < self.frame_count))
 
     def payload(self, node: str) -> tuple[dict[str, Any], dict[str, Any]]:
         reference = self.references[node]
@@ -214,6 +258,24 @@ class Review:
         if not isinstance(payload, dict):
             raise TypeError(f"{node} must have a structured component payload")
         return payload, descriptor
+
+    def stale_dependencies(self, node: str, ancestors: frozenset[str] = frozenset()) -> tuple[str, ...]:
+        """Do not show descendants of an artifact superseded in scene.json."""
+        if node in self._staleness:
+            return self._staleness[node]
+        if node in ancestors:
+            raise ValueError(f"Cyclic component artifact dependencies at {node}")
+        descriptor = self.store.descriptor(self.references[node])
+        reasons: list[str] = []
+        for port, dependency in descriptor["dependencies"].items():
+            producer = self._active_by_artifact.get(dependency["artifact_id"])
+            if producer is None:
+                reasons.append(f"{port}: upstream artifact {dependency['artifact_id'][:12]} was superseded")
+            elif self.stale_dependencies(producer, ancestors | {node}):
+                reasons.append(f"{port}: upstream component {producer} is stale")
+        result = tuple(reasons)
+        self._staleness[node] = result
+        return result
 
     def render(self, node: str) -> tuple[list[str], list[tuple[str, str]]]:
         payload, descriptor = self.payload(node)
@@ -315,7 +377,8 @@ class Review:
                     continue
                 cv2.rectangle(image, tuple(np.rint(box[:2]).astype(int)), tuple(np.rint(box[2:]).astype(int)), color, 4)
                 _text(image, f"ID {track_id}", tuple(np.rint(box[:2]).astype(int)), color)
-        image = self.sheet(node, camera, draw, tracking=True)
+        frames = self.track_samples(boxes, observed, value["source_track_ids"], value["tracklet_links"])
+        image = self.sheet(node, camera, draw, frames=frames)
         self.movie(node, camera, draw)
         def plot(ax: Any) -> None:
             for row in range(len(ids)):
@@ -367,6 +430,9 @@ class Review:
     def render_person_reid(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         result = value["result"]
         details: list[tuple[str, str]] = []
+        descriptor = self.store.descriptor(self.references[node])
+        if "model_raw_track_ids" in descriptor["provenance"]:
+            details.append(("model-inferred IDs before confirmation", str(descriptor["provenance"]["model_raw_track_ids"])))
         def plot(ax: Any) -> None:
             if result is None:
                 ax.text(.5, .5, "No valid person embeddings", ha="center", va="center", transform=ax.transAxes)
@@ -383,9 +449,23 @@ class Review:
             similarity = embeddings @ embeddings.T
             image = ax.imshow(similarity, vmin=-1, vmax=1, cmap="coolwarm")
             ax.figure.colorbar(image, ax=ax, label="cosine similarity")
+            for row in range(len(names)):
+                for column in range(len(names)):
+                    ax.text(column, row, f"{similarity[row, column]:.3f}", ha="center", va="center",
+                            fontsize=7, color="white" if similarity[row, column] > .65 or similarity[row, column] < -.65 else "black")
             ax.set(xticks=np.arange(len(names)), yticks=np.arange(len(names)),
-                   xticklabels=names, yticklabels=names, title="Person Re-ID track embeddings")
+                   xticklabels=names, yticklabels=names, title="Raw model cosine similarity (IDs shown are current assignments)")
             ax.tick_params(axis="x", labelrotation=70)
+            raw = {"embedding_artifact_id": descriptor["provenance"].get("model_artifact_id", self.references[node].artifact_id),
+                   "cosine_threshold": float(result["cosine_threshold"]), "labels": names,
+                   "similarity": similarity.tolist(),
+                   "assignment_source": descriptor["provenance"].get("origin", "component")}
+            (self.output / "reid_raw_cosine.json").write_text(json.dumps(raw, ensure_ascii=False, indent=2))
+            with (self.output / "reid_raw_cosine.csv").open("w", newline="") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["camera:local → current_global", *names])
+                writer.writerows([name, *[f"{number:.8f}" for number in row]] for name, row in zip(names, similarity, strict=True))
+            self.raw_cosine_written = True
         image = _save_plot(self.output / "images" / "person_reid_similarity.png", plot, figsize=(10, 8))
         if result is not None:
             local = _array(result["local_track_ids"])
@@ -394,7 +474,74 @@ class Review:
             details += [(str(value["camera_ids"][v]), ", ".join(f"local {int(local[v, p])} → global {int(global_ids[v, p])}" for p in np.flatnonzero(valid[v])))
                         for v in range(len(value["camera_ids"]))]
             details.append(("cosine threshold", str(result["cosine_threshold"])))
-        return [image], details
+        images = [image]
+        required = ["court_calibration", "court_side", *(f"person_tracking/{camera_id}" for camera_id in self.camera_ids)]
+        if all(parent in self.references and not self.stale_dependencies(parent) for parent in required):
+            ground_image, comparisons = self.ground_distance_matrix()
+            images.append(ground_image)
+            details.append(("ground-plane comparison", "bbox footpoints under ball-confirmed sides; diagnostic, not identity ground truth"))
+            details += [(f"{a} ↔ {b}", f"median {distance:.2f} m over {frames} shared observed frames")
+                        for a, b, distance, frames in comparisons if distance < 3.5]
+        else:
+            details.append(("ground-plane comparison", "unavailable: calibration, side, or tracking artifact is missing/stale"))
+        return images, details
+
+    def ground_distance_matrix(self) -> tuple[str, list[tuple[str, str, float, int]]]:
+        """Compare camera-local bbox footpoints on the ball-confirmed court plane."""
+        calibration, _ = self.payload("court_calibration")
+        side, _ = self.payload("court_side")
+        turns = dict(zip(side["camera_ids"], side["view_half_turns"], strict=True))
+        tracks: list[tuple[str, np.ndarray, np.ndarray]] = []
+        for view in calibration["calibration"]["views"]:
+            camera = view["camera"]
+            camera_id = camera["camera_id"]
+            rotation: np.ndarray = _array(camera["rotation"]).astype(np.float64)
+            if turns[camera_id]:
+                rotation = rotation @ np.diag([-1., -1., 1.])
+            translation: np.ndarray = _array(camera["translation"]).astype(np.float64)
+            center = -rotation.T @ translation
+            inverse_intrinsic = np.linalg.inv(_array(camera["intrinsic"]).astype(np.float64))
+            tracking, _ = self.payload(f"person_tracking/{camera_id}")
+            boxes, observed = _array(tracking["boxes_xyxy"]), _array(tracking["observed"])
+            for row, track_id in enumerate(_array(tracking["track_ids"])):
+                box = boxes[row]
+                uv1 = np.column_stack(((box[:, 0] + box[:, 2]) / 2, box[:, 3], np.ones(len(box))))
+                rays = (uv1 @ inverse_intrinsic.T) @ rotation
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    scale = -center[2] / rays[:, 2]
+                ground = center + scale[:, None] * rays
+                valid = observed[row] & np.isfinite(ground).all(-1)
+                tracks.append((f"{camera_id}:{int(track_id)}", ground[:, :2], valid))
+        count = len(tracks)
+        distances: np.ndarray = np.full((count, count), np.nan, np.float64)
+        comparisons: list[tuple[str, str, float, int]] = []
+        for a in range(count):
+            for b in range(a + 1, count):
+                if tracks[a][0].split(":")[0] == tracks[b][0].split(":")[0]:
+                    continue
+                shared = tracks[a][2] & tracks[b][2]
+                frames = int(shared.sum())
+                if frames < 30:
+                    continue
+                distance = float(np.median(np.linalg.norm(tracks[a][1][shared] - tracks[b][1][shared], axis=-1)))
+                distances[a, b] = distances[b, a] = distance
+                comparisons.append((tracks[a][0], tracks[b][0], distance, frames))
+        labels = [item[0] for item in tracks]
+        def plot(ax: Any) -> None:
+            palette = plt.get_cmap("viridis").copy()
+            palette.set_bad("#e7eaeb")
+            image = ax.imshow(np.ma.masked_invalid(distances), vmin=0, vmax=10, cmap=palette)
+            ax.figure.colorbar(image, ax=ax, label="median footpoint distance (m); color clipped at 10")
+            ax.set(xticks=np.arange(count), yticks=np.arange(count), xticklabels=labels,
+                   yticklabels=labels, title="Cross-camera court-plane footpoint distance")
+            ax.tick_params(axis="x", labelrotation=70)
+            for a in range(count):
+                for b in range(count):
+                    if np.isfinite(distances[a, b]):
+                        ax.text(b, a, f"{distances[a, b]:.1f}", ha="center", va="center",
+                                color="white" if distances[a, b] > 5 else "black", fontsize=8)
+        image = _save_plot(self.output / "images" / "person_reid_ground_distance.png", plot, figsize=(10, 8))
+        return image, comparisons
 
     def render_court_side(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         turns = value["view_half_turns"]
@@ -506,8 +653,25 @@ class Review:
                 ax.legend()
             ax.grid(alpha=.2)
         image = _save_plot(self.output / "images" / "gvhmr_segments.png", plot)
+        def pose_plot(ax: Any) -> None:
+            for row, body in enumerate(bodies):
+                for segment in body["segments"]:
+                    frames = _array(segment["source_frames"])
+                    parameters = segment["parameters"]
+                    pose = np.linalg.norm(_array(parameters["body_pose"]), axis=-1)
+                    orient = np.linalg.norm(_array(parameters["global_orient"]), axis=-1)
+                    color = COLORS_MPL[row % len(COLORS_MPL)]
+                    ax.plot(frames, pose, lw=1, color=color, label=f"player {body['person_id']} pose")
+                    ax.plot(frames, orient, lw=1, linestyle="--", color=color, label=f"player {body['person_id']} orient")
+            ax.set(xlabel="source frame", ylabel="rotation-vector norm (rad)", title="GVHMR body pose and global orientation")
+            if bodies:
+                handles, labels = ax.get_legend_handles_labels()
+                unique = dict(zip(labels, handles, strict=True))
+                ax.legend(unique.values(), unique.keys(), ncol=2)
+            ax.grid(alpha=.2)
+        pose_image = _save_plot(self.output / "images" / "gvhmr_pose_norms.png", pose_plot)
         details = [(f"player {body['person_id']}", f"{body['camera_id']}; {len(body['segments'])} recovered segments") for body in bodies]
-        return [image], details
+        return [image, pose_image], details
 
     def render_body_placement(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         players = value["players"]
@@ -529,10 +693,32 @@ class Review:
             if len(position):
                 ax.legend()
         image = _save_plot(self.output / "images" / "body_placement_topdown.png", plot, figsize=(7, 8))
+        images = [image]
+        if players["vertices_local"] is not None and smpl_valid.any():
+            vertices = _array(players["vertices_local"])
+            fig = plt.figure(figsize=(8, 7), constrained_layout=True)
+            axis = fig.add_subplot(111, projection="3d")
+            try:
+                for player in range(len(position)):
+                    valid_frames = np.flatnonzero(smpl_valid[player])
+                    if not len(valid_frames):
+                        continue
+                    frame = int(valid_frames[len(valid_frames) // 2])
+                    sample = vertices[player, frame, ::max(1, vertices.shape[2] // 350)]
+                    axis.scatter(sample[:, 0], sample[:, 1], sample[:, 2], s=2,
+                                 color=COLORS_MPL[player % len(COLORS_MPL)], label=f"player {player}, frame {frame}")
+                axis.set(xlabel="local x (m)", ylabel="local y (m)", zlabel="local z (m)",
+                         title="Body placement local SMPL vertex samples")
+                axis.legend()
+                destination = self.output / "images" / "body_placement_mesh_samples.png"
+                fig.savefig(destination, dpi=140)
+                images.append(destination.name)
+            finally:
+                plt.close(fig)
         details = [(f"player {player}", f"{_count(root_valid[player])} valid roots; {_count(smpl_valid[player])} valid SMPL frames")
                    for player in range(len(position))]
         details.append(("local mesh", "present" if players["vertices_local"] is not None else "absent"))
-        return [image], details
+        return images, details
 
     def render_scene_assembly(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         positions = _array(value["player_position"])
@@ -565,6 +751,13 @@ class Review:
                 cards.append(f'<section class="missing"><h2>{html.escape(node)}</h2><p>未生成（scene.json に成果物なし）</p></section>')
                 manifest["components"][node] = {"status": "missing"}
                 continue
+            stale = self.stale_dependencies(node)
+            if stale:
+                reasons = "; ".join(stale)
+                cards.append(f'<section class="missing"><h2>{html.escape(node)}</h2><p>旧入力に依存する成果物。現版の可視化から除外: {html.escape(reasons)}</p></section>')
+                manifest["components"][node] = {"status": "stale", "reasons": stale,
+                                                 "artifact_id": self.references[node].artifact_id}
+                continue
             images, details = self.render(node)
             if not images:
                 raise ValueError(f"No visualization generated for {node}")
@@ -572,7 +765,8 @@ class Review:
             figures = "".join(f'<a href="images/{html.escape(name)}"><img src="images/{html.escape(name)}" alt="{html.escape(node)} visualization"></a>' for name in images)
             movie = self.movies.get(node)
             playback = "" if movie is None else f'<video controls preload="metadata" src="{html.escape(movie)}"></video>'
-            cards.append(f'<section id="{html.escape(node.replace("/", "-"))}"><h2>{html.escape(node)}</h2><div class="figures">{figures}</div>{playback}<table>{rows}</table></section>')
+            downloads = '<p><a href="reid_raw_cosine.json">生のcosine値 JSON</a> · <a href="reid_raw_cosine.csv">CSV</a></p>' if node == "person_reid" and self.raw_cosine_written else ""
+            cards.append(f'<section id="{html.escape(node.replace("/", "-"))}"><h2>{html.escape(node)}</h2><div class="figures">{figures}</div>{playback}{downloads}<table>{rows}</table></section>')
             manifest["components"][node] = {"status": "rendered", "images": [f"images/{name}" for name in images],
                                              "video": movie, "details": dict(details), "artifact_id": self.references[node].artifact_id}
         (self.output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
