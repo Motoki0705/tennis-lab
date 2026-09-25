@@ -1,7 +1,7 @@
-<!-- knowledge-review: ba49c4c947315741ca81502c15a989b674d6834f80b2cec55d0520e843e96a87 on 2026-09-24 -->
+<!-- knowledge-review: 6211fd1ef210a00fadd832143dcbc33168ec85422eee9802aac3419e569683db on 2026-09-25 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-24（固定track Re-IDの学習・数値診断を追加）
+更新日: 2026-09-25（固定track Re-IDの補助head削除と再評価を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,7 +11,11 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
-## 2026-09-24の固定track Re-ID
+## 2026-09-25のRe-ID補助head削除
+
+入力された人物trackを対応付ける責務に確定し、Re-IDの補助人物判定head・補助損失・track棄却と学習時の偽track追加を削除した。[明示的なv2 checkpoint exportと100scene再評価](nodes/plcs/000123-run-plcs-headless-reid-export-eval-20260925.md)では、元のembeddingが全件bitwise一致し、現在の通常matchingでF1=0.9642・group完全一致77%となった。下記の診断値を新しい通常経路で再現した結果で、再学習や独立testの追加ではない。既存のembeddingは補助損失を含む旧学習に由来するため、pair lossのみで新規学習した精度は未確認である。次の検討は対応失敗の分析と独立sideの構造であり、side学習と実動画の採用判断は引き続き保留する。
+
+## 2026-09-24時点の固定track Re-ID
 
 PR #915はPLCS専用へ変更し、2D trackerが再登場も含め同一人物IDを維持する前提で、cameraごと累計4人・非再利用slotへ切り替えた。BLCS associationとtasks/base共通化を撤去し、PR #920の下流も単一2D球を直接三角測量する構成へ統合した。sideは独立境界に分離した暫定構成で、今回は学習しない。
 
