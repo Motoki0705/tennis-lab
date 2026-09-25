@@ -28,7 +28,7 @@ bbox_sourceはobserved / inferred / unresolved。遮蔽はoccluded、画面切�
 同じ対象のtrack_idを維持し、同一フレームの同種対象で重複させません。カット後に同一性が不明なら新しいIDを使います。
 不明点はそのフレームのnotes、全体の問題はissuesに記録します。問題がなければnotes=""、issues=[]です。
 全フレームを確認して未解決事項もない場合だけstatus=completed。それ以外はpartialとし、理由を残します。
-成果物は注釈JSON、overlay動画、ZIPの3点です。ZIPには注釈JSONとoverlay動画だけを格納し、部分完了でも同じ3点を返してください。入力不一致や実行不能は理由を説明し、存在しない成果物を提示しません。
+成果物の返却形式は「成果物」に従います。部分完了でも同じ返却形式を使います。入力不一致や実行不能は理由を説明し、存在しない成果物を提示しません。
 
 ## 注釈JSON例
 
@@ -88,7 +88,8 @@ Project Kitごとに異なるJSON Schemaを使います。ボール用は`tennis
 
 ## 成果物
 
-ZIP直下にはoverlay_{clip_id}.mp4とannotation_{clip_id}.jsonの2ファイルだけを入れます。ZIP名は添付MP4のファイル名から拡張子を除いた`{clip_id}.zip`とし、元動画名とクリップを識別できるようにします。
+動画が1本の場合は、注釈JSON、overlay動画、ZIPの3点を返します。ZIP直下にはoverlay_{clip_id}.mp4とannotation_{clip_id}.jsonの2ファイルだけを入れます。ZIP名は添付MP4のファイル名から拡張子を除いた`{clip_id}.zip`とし、元動画名とクリップを識別できるようにします。
+複数動画の場合のJSONのまとめ方とoverlay動画の返却は、対象別REQUESTの指示に従います（[ボール用](ball_detection/REQUEST.txt)／[プレーヤー用](player_detection/REQUEST.txt)）。
 overlayは全Nフレーム・元の画角・順序・表示時間を保持し、JSONのbbox・球中心・IDを対応するフレームへ描きます。
 観測と推定・補間を見分けられるようにし、フレーム番号、凡例、未確認・未解決状態を表示します。null座標は描画しません。
 返却前に全フレームの欠落・重複、座標、入力との対応、JSONとoverlayの一致を確認してください。

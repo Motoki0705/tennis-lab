@@ -81,10 +81,10 @@ def build_kit(root: Path, policies: Policies) -> tuple[dict[str, bytes], str]:
     for target, project_files in project_kits.items():
         directory = root / target
         directory.mkdir(parents=True, exist_ok=True)
-        for name, value in project_files.items():
-            path = directory / name
-            if not path.exists() or path.read_bytes() != value:
-                temporary = path.with_suffix(path.suffix + ".partial")
-                temporary.write_bytes(value)
-                temporary.replace(path)
+        path = directory / "PROJECT_INSTRUCTIONS.txt"
+        value = project_files[path.name]
+        if not path.exists() or path.read_bytes() != value:
+            temporary = path.with_suffix(path.suffix + ".partial")
+            temporary.write_bytes(value)
+            temporary.replace(path)
     return contents, kit_id
