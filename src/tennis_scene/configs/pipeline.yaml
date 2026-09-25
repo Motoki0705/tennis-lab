@@ -14,6 +14,22 @@ camera_ids:
 output_directory: ${tennis_output:tennis_scene,generate,pipeline,${tennis_run_id:}}
 output_name: tennis_clip
 device: cuda
+execution:
+  court_detection: execute
+  court_calibration: execute
+  person_detection: execute
+  person_tracking: execute
+  pose_estimation: execute
+  ball_detection: execute
+  person_reid: execute
+  court_side: execute
+  camera_alignment: execute
+  player_triangulation: execute
+  ball_triangulation: execute
+  body_view_selection: execute
+  gvhmr: execute
+  body_placement: execute
+  scene_assembly: execute
 court_kp:
   checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
   subpixel_refine: true

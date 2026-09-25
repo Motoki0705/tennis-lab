@@ -26,8 +26,16 @@ from src.submodules.models.hmr2.feature_extractor import (
     ImageFeatureRequest,
     ImageFeatureResult,
 )
-from src.submodules.models.tracker.common import TrackRequest, TrackResult
-from src.submodules.models.tracker.dino_tracker import DinoPersonTracker
+from src.submodules.models.tracker.common import (
+    TrackRequest,
+    TrackResult,
+    select_and_complete_tracks,
+)
+from src.submodules.models.tracker.dino_tracker import (
+    BotSortAssociator,
+    DinoPersonTracker,
+    filter_detections_by_footpoint,
+)
 from src.submodules.models.tracker.yolo_tracker import YoloPersonTracker
 from src.submodules.models.vitpose.pose2d import (
     Pose2DRequest,
@@ -37,6 +45,7 @@ from src.submodules.models.vitpose.pose2d import (
 
 __all__ = [
     "BaseInferenceModel",
+    "BotSortAssociator",
     "DinoPersonDetector",
     "DinoPersonTracker",
     "GvhmrMeshRecovery",
@@ -55,4 +64,6 @@ __all__ = [
     "TrackResult",
     "ViTPosePose2D",
     "YoloPersonTracker",
+    "filter_detections_by_footpoint",
+    "select_and_complete_tracks",
 ]

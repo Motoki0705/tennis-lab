@@ -26,7 +26,7 @@ from src.tennis_scene.pipeline.components.player_reconstruction import (
     PlayerSkeleton,
     placement_weights,
 )
-from src.tennis_scene.pipeline.model_io.observations import GroupedObservations
+from src.tennis_scene.pipeline.observation_types import GroupedObservations
 from src.utils.geometry.matrices import SMPL_Y_UP_TO_COURT_Z_UP
 from src.utils.geometry.triangulation import PinholeCamera
 

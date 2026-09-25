@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 from src.submodules.configuration import (
     BundledModelAssetPaths,
@@ -16,19 +15,11 @@ from src.submodules.configuration import (
 from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
-from src.tennis_scene.pipeline.components.blcs import BLCSConfig
 from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
-from src.tennis_scene.pipeline.components.gvhmr import (
-    CourtFootpointFilterConfig,
-    GVHMRConfig,
-)
-from src.tennis_scene.pipeline.components.player_association import (
-    PlayerAssociationConfig,
-)
-from src.tennis_scene.pipeline.components.plcs import PLCSConfig
+from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 
 
@@ -115,20 +106,6 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
     )
 
 
-def make_blcs_config(root: Path) -> BLCSConfig:
-    resolver = make_resolver(root)
-    return BLCSConfig(
-        checkpoint=resolver.resolve(PathRole.CHECKPOINT, "blcs.ckpt"),
-        source="execute",
-        device="cpu",
-        save_result=False,
-        output_path=resolver.resolve(PathRole.ARTIFACT, "blcs.json"),
-        load_path=None,
-        window_size=32,
-        window_overlap=8,
-        sample_stride=1,
-        resolver=resolver,
-    )
 
 
 def make_court_kp_config(root: Path) -> CourtKPConfig:
@@ -148,40 +125,16 @@ def make_court_kp_config(root: Path) -> CourtKPConfig:
     )
 
 
-def make_plcs_config(root: Path) -> PLCSConfig:
-    resolver = make_resolver(root)
-    return PLCSConfig(
-        checkpoint=resolver.resolve(PathRole.CHECKPOINT, "plcs.ckpt"),
-        source="execute",
-        device="cpu",
-        save_result=False,
-        output_path=resolver.resolve(PathRole.ARTIFACT, "plcs.json"),
-        load_path=None,
-        window_size=32,
-        window_overlap=8,
-        sample_stride=1,
-        human_vis_threshold=0.5,
-        resolver=resolver,
-    )
 
 
-def make_gvhmr_config(
-    root: Path,
-    *,
-    detector: str = "dino",
-    dino_confidence: float = 0.35,
-    track_selection: str = "auto",
-    num_tracks: int = 2,
-    save_result: bool = False,
-    source: Literal["execute", "load"] = "execute",
-    output_path: Path | None = None,
-    load_path: Path | None = None,
-) -> GVHMRConfig:
+
+
+
+
+def make_people_config(root: Path, *, detector: str = "dino", dino_confidence: float = .35) -> PeopleModelConfig:
     resolver = make_resolver(root)
-    return GVHMRConfig(
+    return PeopleModelConfig(detector=detector,
         gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "gvhmr.ckpt"),
-        source=source,
-        detector=detector,
         yolo_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "yolo.pt"),
         dino_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "dino.pth"),
         dino_repository=resolver.resolve(PathRole.EXTERNAL_ASSET, "DINO"),
@@ -193,40 +146,5 @@ def make_gvhmr_config(
             smplx_to_smpl=resolver.resolve(PathRole.PROJECT, "smplx_to_smpl.pkl"),
             smpl_coco17_regressor=resolver.resolve(PathRole.PROJECT, "smpl_coco17.npy"),
             smplx_verts437=resolver.resolve(PathRole.PROJECT, "smplx_verts437.npy"),
-            smpl_neutral_joint_regressor=resolver.resolve(
-                PathRole.PROJECT, "smplx_neutral_joints.npy"
-            ),
-        ),
-        runtime=make_submodule_runtime(dino_confidence=dino_confidence),
-        track_selection=track_selection,
-        num_tracks=num_tracks,
-        court_footpoint_filter=CourtFootpointFilterConfig(
-            enabled=False,
-            sideline_margin_m=1.0,
-            baseline_margin_m=5.0,
-        ),
-        save_result=save_result,
-        output_path=(
-            resolver.resolve(PathRole.ARTIFACT, "gvhmr.json")
-            if output_path is None
-            else output_path.resolve()
-        ),
-        load_path=None if load_path is None else load_path.resolve(),
-    )
-
-
-def make_player_association_config(
-    root: Path,
-    *,
-    reference_camera: str | int,
-) -> PlayerAssociationConfig:
-    resolver = make_resolver(root)
-    return PlayerAssociationConfig(
-        source="execute",
-        mode="manual_ui",
-        initial_frame_index=0,
-        reference_camera=reference_camera,
-        save_result=False,
-        output_path=resolver.resolve(PathRole.ARTIFACT, "association.json"),
-        load_path=None,
-    )
+            smpl_neutral_joint_regressor=resolver.resolve(PathRole.PROJECT, "smplx_neutral_joints.npy")),
+        runtime=make_submodule_runtime(dino_confidence=dino_confidence))

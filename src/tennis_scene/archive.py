@@ -109,6 +109,9 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
 def load_scene_result(path: str | Path) -> SceneResult:
     """Load a scene archive, rejecting archives without object metadata."""
     archive_path = Path(path)
+    if archive_path.is_dir() or archive_path.name == "scene.json":
+        from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+        archive_path = indexed_scene_path(archive_path / "scene.json" if archive_path.is_dir() else archive_path)
     sidecar_path = _metadata_sidecar_path(archive_path)
     if not sidecar_path.is_file():
         raise FileNotFoundError(f"Scene metadata sidecar not found: {sidecar_path}")

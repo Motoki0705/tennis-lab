@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tennis_scene.pipeline.model_io.observations import (
+from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
     ObjectObservations,
     group_observations,

@@ -38,28 +38,11 @@ Re-IDとsideは別checkpointです。新sideのアーキテクチャは暫定で
 stage cacheはARTIFACTのrootから解決します。[タスク出力パス](../tasks/OUTPUTS.md)を参照。
 dataset生成は実clipから入力を束縛し、設定中のサンプル動画名には依存しません。
 
-## モジュール
+## モジュールと成果物
 
-| 場所 | 責任 |
-|---|---|
-| pipeline/orchestrator.py | 構築・同期検証・reference・実行receipt |
-| pipeline/model_io/observations.py | pixel観測、confidence、実検出mask、raw検出対応 |
-| pipeline/model_io/people.py / body.py | 2D観測と身体復元のtyped adapter |
-| pipeline/components/person_observations.py | camera-local追跡ID・bbox・2D pose・実観測maskの収集 |
-| pipeline/components/ball_detection.py | 各camera/frameで高々1点の球UV・score・visibility |
-| pipeline/components/person_association.py | 独立したPLCS Re-ID/side predictorの遅延ロード・呼出し |
-| pipeline/components/camera_geometry.py | Courtから初期校正・ROIを作り、対応人物/球でsideを検証して共通K/R/tを確定 |
-| pipeline/components/player_reconstruction.py / ball_reconstruction.py | 人物ID別再構成、身体配置、単一球の三角測量 |
-| motion_alignment/ | COCO17への時系列配置とhip/SMPL root差を補正したrenderer変換 |
-| pipeline/assembly.py | maskを必須とするSceneResult v2構築 |
-| pipeline/artifacts.py | 入力・設定・重み・実装hashを検証するcache |
-| pipeline/utilts/ | Court reference・元frame対応などの補助 |
-
-汎用三角測量は[src/utils/geometry/triangulation.py](../utils/geometry/triangulation.py)、
-人物モデルの契約は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)が正本です。
-
-標準orchestratorの身体復元は`pipeline/model_io/body.py`のadapterを通ります。
-`components/plcs.py`・`blcs.py`・`gvhmr.py`・`player_association.py`は、上記標準経路からは呼びません。
+componentのIO宣言、入力組立、runner、clip store、保存形式とexecute/loadの正本は
+[pipeline/README.md](pipeline/README.md)です。人物検出・tracking・2D pose・視点選択・GVHMR・身体配置を
+別componentとして扱い、`scene.json`が各成果物と完成した`scene.npz`の版を管理します。
 
 ## 座標・対応
 
@@ -106,17 +89,9 @@ versionのない旧archiveはv1です。v2でmaskが欠けた場合は拒否し�
 
 ## 再開と検証
 
-cache.source=executeは同一identityの完了cacheを再利用します。
-cache.source=loadは必要なcacheがなければ失敗し、モデルを実行しません。
-内容・入力・設定・重みが違うcacheは拒否し、更新にはcache.overwrite=trueを指定します。
-cache.directoryの入力hash配下へstage artifactとrun.jsonを保存します。
-
-statusは要求branchに有効結果のあるok、一部だけのpartial、両task無観測のempty、
-校正・対応・3Dを成立させられないfailedです。okは全frameの有効性を保証しません。
-有効frame数を別記し、emptyではsideや3D provenanceを捏造しません。
-
-モデルと固定slotの検証は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)を参照してください。
-学習完了と実動画での校正・3D精度は別に評価します。sideの学習済み新checkpointは未作成です。
+実行・再開・外部成果物importは[pipeline仕様](pipeline/README.md#execute--load)を参照してください。
+人物Re-IDモデルの契約と学習結果は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)が正本です。
+sideの学習済み新checkpointは未作成です。検証用の確認済みsideをloadする場合は、その出自を成果物に記録します。
 
 ## 他の入口
 

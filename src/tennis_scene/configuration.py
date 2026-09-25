@@ -28,7 +28,8 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
-from src.tennis_scene.pipeline.model_io.people import PeopleModelConfig
+from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
+from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import (
     ConfigField,
     PathResolver,
@@ -259,7 +260,9 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
+_EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
+    "execution": ConfigField.mapping(_EXECUTION_SCHEMA),
     "paths": ConfigField.mapping(PATHS_SCHEMA), "video_paths": ConfigField.sequence(ConfigField.of(str)),
     "camera_ids": ConfigField.sequence(ConfigField.of(str)), "output_name": ConfigField.of(str),
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
@@ -302,6 +305,7 @@ class PipelineRuntimeConfig:
     cache_overwrite: bool
     enabled: Mapping[str, bool]
     processing_settings: Mapping[str, object]
+    component_sources: Mapping[str, str]
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -379,15 +383,16 @@ class PipelineRuntimeConfig:
         _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
         enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_reid", "court_side", "player_reconstruction", "ball_reconstruction", "gvhmr")}
         enabled.update(court_kp=True, camera_geometry=True)
-        from src.tennis_scene.pipeline.dependency_graph import (
-            build_default_dependency_graph,
-        )
-        build_default_dependency_graph(enabled).resolve_from_enabled(enabled)
+        from src.tennis_scene.pipeline.feature_flags import validate_requested_features
+        validate_requested_features(enabled)
+        component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
+        if any(mode not in {"execute", "load"} for mode in component_sources.values()):
+            raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])), resolver.resolve(PathRole.CHECKPOINT, cast(str, side["checkpoint"])),
             inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
-            cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings)
+            cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

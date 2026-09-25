@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
@@ -20,12 +19,12 @@ from src.tennis_scene.motion_alignment.temporal import (
     TemporalPlacementConfig,
     fit_supported_track,
 )
-from src.tennis_scene.pipeline.model_io.body import (
+from src.tennis_scene.pipeline.body_types import (
     BodyGeometry,
     BodyParameters,
-    BodyRecoveryRequest,
 )
-from src.tennis_scene.pipeline.model_io.observations import (
+from src.tennis_scene.pipeline.components.gvhmr import GVHMROutput
+from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
     ObjectObservations,
 )
@@ -38,10 +37,9 @@ from src.utils.geometry.triangulation import (
 )
 
 
-class BodyRecovery(Protocol):
+class BodyGeometryModel(Protocol):
     @property
     def root_regressor(self) -> NDArray[np.float64]: ...
-    def recover(self, request: BodyRecoveryRequest) -> BodyParameters: ...
     def reconstruct(self, parameters: BodyParameters) -> BodyGeometry: ...
     def unload(self) -> None: ...
 
@@ -110,41 +108,14 @@ def triangulate_players(
     )
 
 
-def _segments(
-    support: NDArray[np.bool_],
-    source_frames: NDArray[np.int64],
-    observed_any: NDArray[np.bool_],
-    fps: float,
-) -> list[NDArray[np.int64]]:
-    active = np.flatnonzero(support)
-    if not len(active):
-        return []
-    starts = [0]
-    for index in range(1, len(active)):
-        previous, current = int(active[index - 1]), int(active[index])
-        missing = np.arange(previous + 1, current)
-        # An unassigned actual detection may be another identity: do not bridge it.
-        ambiguous = bool(observed_any[source_frames[missing]].any())
-        gap = (source_frames[current] - source_frames[previous]) / fps
-        if missing.size and (ambiguous or gap > 0.1):
-            starts.append(index)
-    ends = [*starts[1:], len(active)]
-    return [
-        np.arange(active[start], active[end - 1] + 1, dtype=np.int64)
-        for start, end in zip(starts, ends, strict=True)
-        if end - start >= 2
-    ]
-
-
 def reconstruct_player_bodies(
     grouped: GroupedObservations,
     raw: ObjectObservations,
     skeleton: PlayerSkeleton,
     cameras: tuple[PinholeCamera, ...],
-    video_paths: tuple[Path, ...],
-    sample_frames: NDArray[np.int64],
+    recovered: GVHMROutput,
     *,
-    body: BodyRecovery | None,
+    body: BodyGeometryModel | None,
     reprojection_px: float,
     placement_config: TemporalPlacementConfig,
 ) -> ReconstructedPlayers:
@@ -174,77 +145,18 @@ def reconstruct_player_bodies(
             raise ValueError("Body recovery requires recorded detector boxes")
         try:
             for player, identity in enumerate(grouped.identities):
-                coverage = grouped.visibility[player].any(-1).sum(-1)
-                scores = grouped.confidence[player].mean(axis=(1, 2))
-                view = min(
-                    range(views),
-                    key=lambda v: (
-                        -int(coverage[v]),
-                        -float(scores[v]),
-                        cameras[v].camera_id,
-                    ),
-                )
-                diagnostics["source_cameras"][str(int(identity))] = cameras[
-                    view
-                ].camera_id
-                raw_rows = grouped.raw_indices[player, view, sample_frames]
-                support = raw_rows >= 0
-                ranges = _segments(
-                    support, sample_frames, raw.observed[view].any(-1), raw.fps
-                )
-                predicted: list[tuple[NDArray[np.int64], BodyParameters, int]] = []
-                for segment in ranges:
-                    source = sample_frames[segment]
-                    present = support[segment]
-                    original_rows = raw_rows[segment[present]]
-                    boxes: NDArray[np.float32] = np.empty((len(segment), 3), np.float32)
-                    keypoints: NDArray[np.float32] = np.zeros(
-                        (len(segment), 17, 3), np.float32
-                    )
-                    actual_boxes = raw.boxes_xys[view, source[present], original_rows]
-                    for coordinate in range(3):
-                        boxes[:, coordinate] = np.interp(
-                            source, source[present], actual_boxes[:, coordinate]
-                        )
-                    keypoints[present, :, :2] = raw.uv_px[
-                        view, source[present], original_rows
-                    ]
-                    keypoints[present, :, 2] = np.where(
-                        grouped.visibility[player, view, source[present]],
-                        raw.confidence[view, source[present], original_rows],
-                        0,
-                    )
-                    params = body.recover(
-                        BodyRecoveryRequest(
-                            video_paths[view],
-                            source,
-                            keypoints,
-                            boxes,
-                            raw.size,
-                            cameras[view].intrinsic,
-                        )
-                    )
-                    predicted.append((source, params, int(present.sum())))
-                    diagnostics["segments"].append(
-                        {
-                            "identity": int(identity),
-                            "camera_id": cameras[view].camera_id,
-                            "start_frame": int(source[0]),
-                            "end_frame": int(source[-1]) + 1,
-                            "observed_samples": int(present.sum()),
-                        }
-                    )
-                    diagnostics["raw_parameters"].append(
-                        {
-                            "identity": int(identity),
-                            "camera_id": cameras[view].camera_id,
-                            "source_frames": source,
-                            "body_pose": params.body_pose,
-                            "global_orient": params.global_orient,
-                            "betas": params.betas,
-                            "transl": params.transl,
-                        }
-                    )
+                matches = [item for item in recovered.bodies if item.person_id == int(identity)]
+                if not matches:
+                    continue
+                if len(matches) != 1:
+                    raise ValueError("Body artifacts contain duplicate person IDs")
+                recovered_person = matches[0]
+                view = tuple(c.camera_id for c in cameras).index(recovered_person.camera_id)
+                diagnostics["source_cameras"][str(int(identity))] = recovered_person.camera_id
+                predicted = [(segment.source_frames, segment.parameters, segment.observed_samples) for segment in recovered_person.segments]
+                diagnostics["segments"].extend({"identity": int(identity), "camera_id": recovered_person.camera_id,
+                    "start_frame": int(segment.source_frames[0]), "end_frame": int(segment.source_frames[-1]) + 1,
+                    "observed_samples": segment.observed_samples} for segment in recovered_person.segments)
                 if not predicted:
                     continue
                 betas[player] = np.average(
