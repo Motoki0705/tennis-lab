@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
@@ -101,7 +102,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"person_detection/{camera}", PersonDetectionModule(cfg.people, enabled=cfg.enabled["person_observations"]), PersonDetectionInputAssembler(),
             {"calibration": "court_calibration"}, {"detector": cfg.people.detector,
              "checkpoint": file_identity(cfg.people.dino_checkpoint if cfg.people.detector == "dino" else cfg.people.yolo_checkpoint),
-             "runtime": cfg.people.runtime.dino_detector, "roi": cfg.person_roi_margins, "enabled": cfg.enabled["person_observations"]}, camera=camera)
+             "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence, "roi": cfg.person_roi_margins, "enabled": cfg.enabled["person_observations"]}, camera=camera)
         add(f"person_tracking/{camera}", PersonTrackingModule(), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, {"algorithm": "botsort", "cumulative_capacity": 4}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people), PoseEstimationInputAssembler(),
@@ -137,7 +138,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         {"policy": "coverage_confidence_camera_id", **person_settings, "enabled": cfg.enabled["gvhmr"]})
     body_settings = {"hmr2": file_identity(cfg.people.hmr2_checkpoint), "gvhmr": file_identity(cfg.people.gvhmr_checkpoint),
-        "body_model": file_identity(cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz"), "runtime": cfg.people.runtime.hmr2,
+        "body_model": file_identity(cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz"),
+        "bundled_assets": {field.name: file_identity(getattr(cfg.people.bundled_assets, field.name)) for field in fields(cfg.people.bundled_assets)},
+        "runtime": cfg.people.runtime.hmr2,
         "enabled": cfg.enabled["gvhmr"]}
     add("gvhmr", GVHMRModule(cfg.people, enabled=cfg.enabled["gvhmr"]), GVHMRInputAssembler(), {"selection": "body_view_selection"}, body_settings)
     add("body_placement", BodyPlacementModule(ids, cfg.people, cfg.player_placement,

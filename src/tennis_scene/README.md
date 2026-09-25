@@ -6,7 +6,7 @@ view_half_turnsの手動入力を要求しません。根拠不足は欠測ま�
 
 ## 標準経路
 
-1. Court hybridでCourtKP14を取得し、camera-localの初期校正から人物検出ROIを作る。
+1. 各cameraの最初の1frameをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
 2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
 3. camera-local観測とreferenceから、PLCSの独立した人物Re-ID・court sideモデルを推論。ボールは各camera/frameの単一検出を使用。
 4. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。

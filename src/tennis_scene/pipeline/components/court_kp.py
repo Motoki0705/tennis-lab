@@ -358,11 +358,14 @@ class CourtKPModule(BasePipelineModule):
         self._manual_keypoints = keypoints.astype(np.float32)
         self._manual_needs_normalization = True
 
-    io = ComponentIO("court_detection", CourtDetectionInput, CourtKPResult, {}, "court_observations")
+    io = ComponentIO("court_detection", CourtDetectionInput, CourtKPResult, {}, "court_observations", 2)
 
     def process(self, inputs: CourtDetectionInput) -> CourtKPResult:
         try:
-            return self._process_videos([inputs.video.path], max_frames=inputs.video.num_frames, annotation_frame_index=0)
+            result = self._process_videos([inputs.video.path], max_frames=1, annotation_frame_index=0)
+            result.diagnostics = {**(result.diagnostics or {}), "temporal_policy": "static_first_frame",
+                "observed_frame_indices": [0], "source_frame_count": inputs.video.num_frames}
+            return result
         finally:
             self.unload()
 
