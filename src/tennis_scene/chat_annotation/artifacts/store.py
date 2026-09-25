@@ -21,10 +21,11 @@ MAX_MEMBERS = 256
 
 def simple_name(name: str, suffix: str) -> str:
     if not re.fullmatch(
-        r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,199}", name
+        r"[A-Za-z0-9_][A-Za-z0-9_.()-]{0,199}", name
     ) or not name.endswith(suffix):
         raise ValueError(
-            f"expected a plain {suffix} filename (at most 200 ASCII characters)"
+            f"expected a plain {suffix} filename (at most 200 ASCII letters, digits, "
+            "underscores, dots, hyphens or parentheses; start with a letter, digit or underscore)"
         )
     return name
 
@@ -40,7 +41,14 @@ def inspect_zip(data: bytes) -> list[str]:
             raise ValueError("expanded JSON exceeds 64 MiB")
         names: list[str] = []
         for member in members:
-            simple_name(member.filename, ".json")
+            try:
+                simple_name(member.filename, ".json")
+            except ValueError as error:
+                raise ValueError(
+                    f"invalid ZIP member {member.filename!r}: {error}; "
+                    "this check applies to entries inside the ZIP, not the submitted ZIP name. "
+                    "Put only JSON files directly at the archive root, without directories."
+                ) from None
             mode = member.external_attr >> 16
             if member.filename in names or member.flag_bits & 1 or stat.S_ISLNK(mode):
                 raise ValueError("duplicate, encrypted or symlink ZIP member")
@@ -73,8 +81,13 @@ class ArtifactStore:
 
     def save(self, filename: str, data: bytes) -> dict[str, Any]:
         simple_name(filename, ".zip")
-        members = inspect_zip(data)
         digest = hashlib.sha256(data).hexdigest()
+        try:
+            members = inspect_zip(data)
+        except (ValueError, zipfile.BadZipFile) as error:
+            raise ValueError(
+                f"ZIP validation failed (sha256={digest}, bytes={len(data)}): {error}"
+            ) from None
         artifact_id = f"{digest}.zip"
         path = self._path(artifact_id)
         descriptor, temporary_name = tempfile.mkstemp(prefix=".upload-", dir=self.root)
