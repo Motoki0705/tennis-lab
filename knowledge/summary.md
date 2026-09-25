@@ -1,7 +1,7 @@
-<!-- knowledge-review: 6211fd1ef210a00fadd832143dcbc33168ec85422eee9802aac3419e569683db on 2026-09-25 -->
+<!-- knowledge-review: 6b9c82d8e55eb8c91fa93ef8fbdd9d4f31ad2949e53b10459e9f1c6d79735dc9 on 2026-09-26 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-25（固定track Re-IDの補助head削除と再評価を反映）
+更新日: 2026-09-26（宣言型clip pipelineの実動画検証と2人軸の確認を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,12 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-26の宣言型clip pipeline検証
+
+PR #915の宣言型component pipelineは、clip単位のimmutable store、各componentの型付き入出力とload/execute、先頭frameのCourt共同推定、外部ballの明示importでMeiji `clip_000`を処理した。初回の[設定](nodes/tennis_scene/000014-run-scene-component-meiji-fullclip-20260925.md)・[既定Court](nodes/tennis_scene/000015-run-scene-component-meiji-fullclip-r2-20260925.md)・[処理方針変更](nodes/tennis_scene/000016-run-scene-component-meiji-fullclip-b863-20260925.md)・[tracking人数上限](nodes/tennis_scene/000017-run-scene-component-meiji-firstframe-20260925.md)による停止を記録し、camera内ID分裂の一意な結合を経て[全段の初回完走](nodes/tennis_scene/000018-run-scene-component-meiji-tracklets-20260925.md)に到達した。ただしその完走ではcam2の重複IDと3D人物有効率の偏りが残った。
+
+[重複ID修正後の実clip](nodes/tennis_scene/000019-run-scene-component-meiji-idstitch-20260925.md)では、学習済みRe-IDが異なる選手を結んでcamera alignmentに失敗した。生cosineとコート平面での足元距離は誤対応を支持し、合成100sceneのRe-ID評価を実動画精度へ外挿できない。ユーザー指定により、モデル予測・embeddingを別artifactで保持したまま、既存の人手人物対応を旧GVHMR bboxと現trackの一意照合後に明示loadした。[最初の確認済み対応run](nodes/tennis_scene/000020-run-scene-component-meiji-confirmed-reid-20260925.md)は下流を完走したが、対象外のraw人物trackを単独global IDとして3人目へ渡す誤りが残った。[最終2人軸run](nodes/tennis_scene/000021-run-scene-component-meiji-target2-20260925.md)では対象外trackを原検出・追跡に残して明示除外し、3camera×1010frame、対象2人の関節3D/SMPL配置、ball 3D、scene export、全段load-only再開を確認した。これは確認済み対応を使った処理・構造の検証であり、Re-IDモデルの実動画合格や独立3D精度保証ではない。次はモデル対応の実動画改善を独立に評価し、人手3D基準と可視化で配置・球軌道の品質を確認する。
 
 ## 2026-09-25のRe-ID補助head削除
 
