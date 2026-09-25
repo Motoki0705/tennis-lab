@@ -50,15 +50,23 @@ def download_zip(url: str, allowed_hosts: frozenset[str]) -> bytes:
     logger.info(
         "file download URL scheme=%r hostname=%r port=%r", scheme, hostname, port
     )
-    if (
-        parts.scheme != "https"
-        or parts.hostname not in allowed_hosts
-        or parts.port not in (None, 443)
-        or parts.username is not None
-        or parts.password is not None
-        or parts.fragment
-    ):
-        raise ValueError("file download requires HTTPS on an explicitly allowed host")
+    rejected = [
+        condition
+        for condition, failed in (
+            ("scheme", scheme != "https"),
+            ("allowed_host", hostname not in allowed_hosts),
+            ("port", port not in (None, 443)),
+            ("userinfo", parts.username is not None or parts.password is not None),
+            ("fragment", bool(parts.fragment)),
+        )
+        if failed
+    ]
+    if rejected:
+        raise ValueError(
+            "file download requires HTTPS on an explicitly allowed host; "
+            f"rejected={','.join(rejected)}; "
+            f"scheme={scheme!r} hostname={hostname!r} port={port!r}"
+        )
     addresses = socket.getaddrinfo(parts.hostname, 443, type=socket.SOCK_STREAM)
     if not addresses or any(
         not ipaddress.ip_address(item[4][0]).is_global for item in addresses

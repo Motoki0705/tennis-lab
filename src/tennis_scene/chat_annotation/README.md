@@ -229,7 +229,7 @@ export ARTIFACT_UID="$(id -u)"
 export ARTIFACT_GID="$(id -g)"
 # 実際に使用するChatGPTファイル配信ホストを確認し、完全一致のホスト名を設定する。
 # 以下は例。署名付きURL全体やワイルドカードは設定しない。
-export ARTIFACT_DOWNLOAD_HOSTS=files.oaiusercontent.com,oaisdmntprcentralus.blob.core.windows.net,oaisdmntprjapaneast.blob.core.windows.net
+export ARTIFACT_DOWNLOAD_HOSTS=files.oaiusercontent.com,oaisdmntprcentralus.blob.core.windows.net,oaisdmntprjapaneast.blob.core.windows.net,oaisdmntprwestus3.blob.core.windows.net,oaisdmntprkoreacentral.blob.core.windows.net
 docker compose -f src/tennis_scene/chat_annotation/artifacts/compose.yaml up -d --build
 ```
 
@@ -239,9 +239,12 @@ docker compose -f src/tennis_scene/chat_annotation/artifacts/compose.yaml up -d 
 許可ホスト以外・private IP・HTTP・redirectを拒否し、署名付きURLを保存しない。
 取得URLの診断はサーバーログの`file download URL`行で行う。記録するのは
 `scheme`・`hostname`・`port`だけで、URLのパス・署名クエリ・認証情報は含めない。
+URL条件による拒否時はMCPエラーにもこの3項目と拒否条件名を返す。
+`rejected=allowed_host`ならホスト未登録、`scheme`ならHTTPS以外、`port`なら非標準ポート、
+`userinfo`/`fragment`なら禁止された認証情報/フラグメントを含むURLを意味する。
 ホスト不一致の場合は実際の配信元を確認して許可リストと照合する。`sandbox`の場合は
 ChatGPTから実際のファイル参照が渡っていないため、許可ホストを追加しても解決しない。
-上記のAzure Blob 2ホストはChatGPTからの実提出で観測した配信先。環境・リージョンにより
+上記のAzure Blob 4ホストはChatGPTからの実提出で観測した配信先。環境・リージョンにより
 配信先が異なる場合も、確認できた完全一致ホストだけを追加し、`*.blob.core.windows.net`のような
 共有ドメインの一括許可は行わない。設定変更後は同じComposeコマンドでコンテナを再作成する。
 
