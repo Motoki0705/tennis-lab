@@ -24,7 +24,7 @@ class PoseEstimationInput:
 
 class PoseEstimationModule:
     io = ComponentIO("pose_estimation", PoseEstimationInput, ObjectObservations,
-        {"tracks": InputPort("person_tracks")}, "person_poses")
+        {"tracks": InputPort("person_tracks", version=2)}, "person_poses")
 
     def __init__(self, config: PeopleModelConfig) -> None:
         self.config = config

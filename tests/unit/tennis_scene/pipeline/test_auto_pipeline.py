@@ -170,7 +170,8 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
         fixed(f"person_detection/{camera}", PersonDetectionModule.io, PersonDetectionOutput(camera,
             np.arange(25, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(24 * count, np.float32)))
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
-            np.arange(count, dtype=np.int64), boxes, people.observed[v].T))
+            np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
+            tuple((i,) for i in range(count)), ()))
         poses = people.select_views((v,))
         pose_boxes = np.zeros((*poses.observed.shape, 3), np.float32)
         pose_boxes[..., 2] = 100

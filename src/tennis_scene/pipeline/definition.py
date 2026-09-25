@@ -26,6 +26,12 @@ from src.tennis_scene.pipeline.components.person_detection import PersonDetectio
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingModule
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 from src.tennis_scene.pipeline.components.scene_assembly import SceneAssemblyModule
+from src.tennis_scene.pipeline.components.tracking_identity import (
+    MAX_APPEARANCE_LAB_DISTANCE,
+    MAX_CENTER_DISTANCE_DIAGONALS,
+    MAX_GAP_FRAMES,
+    MAX_SIZE_RATIO,
+)
 from src.tennis_scene.pipeline.components.triangulation import (
     BallTriangulationModule,
     PlayerTriangulationModule,
@@ -104,7 +110,10 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
              "checkpoint": file_identity(cfg.people.dino_checkpoint if cfg.people.detector == "dino" else cfg.people.yolo_checkpoint),
              "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence, "roi": cfg.person_roi_margins, "enabled": cfg.enabled["person_observations"]}, camera=camera)
         add(f"person_tracking/{camera}", PersonTrackingModule(), PersonTrackingInputAssembler(),
-            {"detections": f"person_detection/{camera}"}, {"algorithm": "botsort", "cumulative_capacity": 4}, camera=camera)
+            {"detections": f"person_detection/{camera}"}, {"algorithm": "botsort_then_unique_tracklet_links",
+                "max_link_gap_frames": MAX_GAP_FRAMES, "max_center_distance_box_diagonals": MAX_CENTER_DISTANCE_DIAGONALS,
+                "max_size_ratio": MAX_SIZE_RATIO, "max_appearance_lab_distance": MAX_APPEARANCE_LAB_DISTANCE,
+                "cumulative_capacity": 4}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people), PoseEstimationInputAssembler(),
             {"tracks": f"person_tracking/{camera}"}, {"checkpoint": file_identity(cfg.people.vitpose_checkpoint),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
