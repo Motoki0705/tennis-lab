@@ -53,11 +53,11 @@ def main() -> None:
     report.mkdir(parents=True, exist_ok=True)
     source = structured_clip_source(clip)
     overrides = [f'paths.project_root={repo}', f'paths.data_root={repo / "data"}',
-        f'paths.checkpoint_root={repo}', f'paths.external_asset_root={repo / "third_party"}',
+        f'paths.checkpoint_root={repo / "ckpt"}', f'paths.external_asset_root={repo / "third_party"}',
         f'paths.artifact_root={repo / "outputs"}', f'paths.output_root={repo / "outputs"}',
-        f'device={args.device}', "court_kp.checkpoint='ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt'",
-        'court_kp.region_search.enabled=true', 'people_models.dino_checkpoint=ckpt/dino/checkpoint0029_4scale_swin.pth',
-        'plcs_reid.checkpoint=outputs/plcs/exports/player-reid-headless-v2-s42.ckpt',
+        f'device={args.device}', "court_kp.checkpoint='court_detection/hybrid/court-detection-epoch=17.ckpt'",
+        'court_kp.region_search.enabled=true', 'people_models.dino_checkpoint=dino/checkpoint0029_4scale_swin.pth',
+        'plcs_reid.checkpoint=plcs/player-reid-headless-v2-s42.ckpt',
         'execution.ball_detection=load', 'execution.court_side=load', 'camera_geometry.reference_camera=cam0',
         'person_observations.sideline_margin_m=1.0', 'person_observations.baseline_margin_m=10.0']
     with initialize_config_dir(version_base='1.3', config_dir=str(Path('src/tennis_scene/configs').resolve())):
