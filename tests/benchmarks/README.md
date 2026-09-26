@@ -22,7 +22,7 @@
   SLCS学習に使うDINO特徴は、その後`python -m src.tasks.slcs.scripts.precompute_dino_tokens data.dataset_root=<dataset>`で作る
   （`paths.output_root`の末尾を`slcs`などtask名にすると、task出力の先頭と衝突してpath contractが停止する）。
 - `court_side_clips.py`: 構造化datasetの全clipで、[court side](../../src/tasks/court_side/README.md)を検出器のballと外注注釈のball（`observed`点だけ、参照）の両方から決め、
-  判定・停止理由・全仮説のscore・一致を`--report`の`decisions.json`へ書く。`observe`（GPU、共有training queue経由）は
+  判定・停止理由・全仮説のscore・一致を`--report`の`<--name>.json`（既定`decisions.json`）へ書く。`observe`（GPU、共有training queue経由）は
   court検出・校正とball検出だけを`--report/stores/<clip>`へ実行し、人物・身体は無効にする。`decide`（CPU）は保存済みartifactを読むだけで、
   `--override court_side.<field>=<value>`で閾値を変えて再判定できる。
 

@@ -7,7 +7,8 @@ are not side evidence. ``decide`` (CPU) reads those artifacts and applies the
 ``court_side`` component twice per clip: to the detector ball (the production
 input) and to the reviewed ``outsource/<camera>_annotations.json`` ball
 (``observed`` points only), which serves as the reference. Every decision or
-explicit stop, with all hypothesis scores, goes to ``<report>/decisions.json``.
+explicit stop, with all hypothesis scores, goes to ``<report>/<name>.json``
+(``--name``, default ``decisions``) next to the composed ``<name>.pipeline_config.yaml``.
 ``decide`` can be repeated with ``--override court_side.<field>=<value>``; it
 does not re-run any model. Nothing is written outside ``--report``.
 """
@@ -51,7 +52,7 @@ CONFIG_DIR = Path(__file__).resolve().parents[2] / "src/tennis_scene/configs"
 CONFIRMED = {"video_000/clip_000": [False, False, True]}
 
 
-def compose_runtime(repo: Path, report: Path, device: str, overrides: list[str]) -> tuple[PipelineRuntimeConfig, list[str]]:
+def compose_runtime(repo: Path, report: Path, device: str, overrides: list[str], name: str) -> tuple[PipelineRuntimeConfig, list[str]]:
     applied = [f"paths.project_root={CONFIG_DIR.parents[2]}", f"paths.data_root={repo / 'data'}",
         f"paths.checkpoint_root={repo / 'ckpt'}", f"paths.external_asset_root={repo / 'third_party'}",
         f"paths.artifact_root={report}", f"paths.output_root={report}", f"paths.cache_root={report / 'cache'}",
@@ -59,7 +60,7 @@ def compose_runtime(repo: Path, report: Path, device: str, overrides: list[str])
         "player_reconstruction.enabled=false", "gvhmr.enabled=false", *overrides]
     with initialize_config_dir(version_base="1.3", config_dir=str(CONFIG_DIR)):
         config = compose(config_name="pipeline", overrides=applied)
-    (report / "pipeline_config.yaml").write_text(OmegaConf.to_yaml(config, resolve=True))
+    (report / f"{name}.pipeline_config.yaml").write_text(OmegaConf.to_yaml(config, resolve=True))
     return PipelineRuntimeConfig.from_config(config, bind_inputs=False), applied
 
 
@@ -146,10 +147,14 @@ def main() -> None:
     parser.add_argument("--clip", action="append", default=[], help="Restrict to clip IDs (repeatable)")
     parser.add_argument("--override", action="append", default=[], help="Extra pipeline.yaml override (decide thresholds)")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--name", default="decisions", help="Stem of the decide outputs, so reruns keep earlier tables")
     args = parser.parse_args()
     repo, dataset, report = args.repo.resolve(), args.dataset.resolve(), args.report.resolve()
     report.mkdir(parents=True, exist_ok=True)
-    runtime, overrides = compose_runtime(repo, report, args.device, args.override)
+    if Path(args.name).name != args.name or args.name == "observe":
+        parser.error("--name must be a plain file stem other than 'observe'")
+    config_name = "observe" if args.phase == "observe" else args.name
+    runtime, overrides = compose_runtime(repo, report, args.device, args.override, config_name)
     manifest = load_dataset_manifest(dataset)
     records = [manifest.clips[key] for key in sorted(manifest.clips) if not args.clip or key in args.clip]
     if args.clip and len(records) != len(args.clip):
@@ -177,7 +182,7 @@ def main() -> None:
         document = {"schema": "court_side_clip_decisions_v1", "config_overrides": overrides,
                     "court_side": json_value(runtime.court_side), "summary": summarize([d for d in decisions if "detector" in d]),
                     "observe_failed": [d["clip_id"] for d in decisions if "observe_failed" in d], "clips": decisions}
-        write_json_atomic(report / "decisions.json", document)
+        write_json_atomic(report / f"{args.name}.json", document)
         print(json.dumps(document["summary"], indent=1))
 
 
