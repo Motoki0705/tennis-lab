@@ -40,3 +40,29 @@ DLTは外れviewを除外しない。誤った姿勢のcameraを多数決で無�
 
 閾値の正本はpipelineの設定 `court_side:`（[pipeline.yaml](../../tennis_scene/configs/pipeline.yaml)）。
 pipeline component は[tennis_scene pipeline](../../tennis_scene/pipeline/README.md)を参照。
+
+## 合成ベンチマークと閾値の選定（`benchmark.py`）
+
+BLCSの合成rally（`blcs/single_object_camera_view_v2` のtest split、物理cameraが既知、30 fps）で、
+cameraとreferenceをランダムに選び、`camera_view_v2` のcamera-local校正（ネットの向こうのcameraはlocalにhalf-turn）を作る。
+校正の摂動（回転・焦点距離・位置のGauss雑音）と、観測の摂動を条件ごとに与え、閾値に依存しない証拠を保存する。
+
+| 条件 | 内容 |
+|---|---|
+| 欠落 | view・frameごとに独立に観測を落とす |
+| 誤検出 | 各cameraのwindowの一定割合を、静止した偽のballの区間で置き換える（画像内の固定点、またはコート外で人が持つballの投影） |
+| 共有された誤検出 | 全cameraが同じframeで同じ3D点（ボールボーイのball）を検出する |
+| 同期ずれ | reference以外の1台を数frame遅らせる |
+| その他 | pixel雑音、校正雑音の倍率、windowの長さ（frame数）、camera 4台 |
+
+名目の校正雑音は、Meiji clip_000の確認済みballで測った正解仮説のcost（0.10）に中央値が近くなるように決めた。
+閾値は、本番と同じ `judge_side_evidence` で格子上の全点を判定して選ぶ。自身と、各閾値を1段緩めた近傍のすべてが
+全条件で誤判定0の点（1段の余裕を持ち、格子の緩い端には乗らない）のうち、条件平均の停止率が最小の点を採る。
+
+```bash
+.venv/bin/python -m src.tasks.court_side.scripts.benchmark_synthetic \
+    --data-root /absolute/data --output-root /absolute/outputs --experiment synthetic_blcs_v2 --run-id <run-id>
+```
+
+出力は `court_side/evaluate/<experiment>/<run-id>/` の `conditions.json`、`evidence.jsonl`、`thresholds.json`、`report.json`。
+結果と採用した閾値の根拠は `knowledge/` のrun記録にある。
