@@ -53,6 +53,7 @@ def main(cfg: DictConfig) -> int:
         video_role=PathRole.DATA,
         max_frames=runtime.max_frames,
         camera_ids=runtime.camera_ids,
+        store_root=None,  # cache.directory/<source digest>
     )
 
     LOGGER.info("Saving results...")

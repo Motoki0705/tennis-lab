@@ -34,9 +34,14 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
             video_paths: Sequence[Path],
             video_role: PathRole,
             camera_ids: Sequence[str],
+            store_root: Path,
+            clip_id: str,
             max_frames: int | None,
         ) -> SceneResult:
             del camera_ids, max_frames
+            # Structured clips always own their store; it is passed explicitly.
+            assert store_root == video_paths[0].parents[1] / "annotations" / "tennis_scene"
+            assert clip_id
             for path in video_paths:
                 runtime.resolver.validate(video_role, path)
             calls.append(video_role)

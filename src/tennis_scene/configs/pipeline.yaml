@@ -160,7 +160,9 @@ ball_reconstruction:
 gvhmr:
   enabled: true
 cache:
-  directory: ${output_directory}/stages
+  # ARTIFACT-root store for unstructured runs, keyed by the source digest. It must not
+  # contain the run ID, otherwise cache.source=load could never find a previous run.
+  directory: tennis_scene/cache/pipeline
   source: execute
   overwrite: false
 max_frames: null

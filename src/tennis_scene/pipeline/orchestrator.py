@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import tempfile
@@ -60,19 +59,20 @@ class TennisSceneOrchestrator:
             "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()}}
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
-            max_frames: int | None = None, clip_id: str | None = None, store_root: Path | None = None) -> SceneResult:
+            store_root: Path | None, max_frames: int | None = None, clip_id: str | None = None) -> SceneResult:
+        """Run the standard recipe into an explicitly chosen component store.
+
+        ``store_root`` is the clip-owned store (structured datasets keep it at
+        ``<clip>/annotations/tennis_scene``); ``None`` selects
+        ``cache.directory/<source digest>``. The store is never inferred from
+        the shape of the video paths.
+        """
         paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
-        # Structured clips retain one store next to their source manifest.
-        clip_directory = paths[0].parent.parent if paths else None
-        if clip_directory is not None and (clip_directory / "clip.json").is_file():
-            manifest = json.loads((clip_directory / "clip.json").read_text())
-            clip_id = manifest["clip_id"] if clip_id is None else clip_id
-            store_root = clip_directory / "annotations/tennis_scene" if store_root is None else store_root
         source = build_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id)
         if self.config.camera_geometry.reference_camera is not None and self.config.camera_geometry.reference_camera not in source.camera_ids:
             raise ValueError("Reference camera is not a source camera")
         source_document = json_value(source)
-        root = store_root or self.config.cache_directory / document_digest(source_document)[:20]
+        root = self.config.cache_directory / document_digest(source_document)[:20] if store_root is None else store_root
         store = ClipStore(root, source_document)
         nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components)
         runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)

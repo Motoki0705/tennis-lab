@@ -91,7 +91,8 @@ def test_pipeline_outputs_and_stage_cache_use_their_declared_roots(
     )
     relative = Path("tennis_scene/generate/integration/s42")
     assert runtime.output_path == tmp_path / "runs" / relative / "clip.npz"
-    assert runtime.cache_directory == tmp_path / "stage-artifacts" / relative / "stages"
+    # The component cache is shared across runs, so resume can find earlier artifacts.
+    assert runtime.cache_directory == tmp_path / "stage-artifacts" / "tennis_scene/cache/pipeline"
 
 
 @pytest.mark.parametrize("fragment", ["../escape", "/tmp/escape", "outputs/repeated"])

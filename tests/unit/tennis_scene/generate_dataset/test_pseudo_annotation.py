@@ -18,7 +18,7 @@ def test_generate_publishes_complete_annotation_and_then_skips(
 ) -> None:
     calls = 0
 
-    def runner(video_paths: Sequence[Path], camera_ids: Sequence[str]) -> SceneResult:
+    def runner(video_paths: Sequence[Path], camera_ids: Sequence[str], _clip: Path) -> SceneResult:
         nonlocal calls
         calls += 1
         assert [path.name for path in video_paths] == ["cam0.mp4"]
@@ -57,7 +57,7 @@ def test_completed_annotation_cannot_hide_changed_weights(
     structured_dataset: Path, valid_scene_result: SceneResult,
 ) -> None:
     calls = []
-    def runner(_paths: Sequence[Path], _ids: Sequence[str]) -> SceneResult:
+    def runner(_paths: Sequence[Path], _ids: Sequence[str], _clip: Path) -> SceneResult:
         calls.append(1)
         return valid_scene_result
     first = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
@@ -75,7 +75,7 @@ def test_contract_mismatch_records_failure_without_completion_marker(
 ) -> None:
     valid_scene_result.num_frames = 2
 
-    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str]) -> SceneResult:
+    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str], _clip: Path) -> SceneResult:
         return valid_scene_result
 
     outcomes = generate_pseudo_annotations(
@@ -103,7 +103,7 @@ def test_missing_blcs_labels_is_explicit_failure(
 ) -> None:
     valid_scene_result.ball_3d = None
 
-    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str]) -> SceneResult:
+    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str], _clip: Path) -> SceneResult:
         return valid_scene_result
 
     outcomes = generate_pseudo_annotations(
@@ -123,7 +123,7 @@ def test_plcs_only_result_does_not_require_disabled_ball_stages(
     valid_scene_result.ball_3d = None
     valid_scene_result.metadata["enabled_stages"] = ["court_kp", "gvhmr", "plcs"]
 
-    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str]) -> SceneResult:
+    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str], _clip: Path) -> SceneResult:
         return valid_scene_result
 
     outcomes = generate_pseudo_annotations(
@@ -149,7 +149,7 @@ def test_integrity_failure_propagates_without_completion_marker(
 
     error = FileIntegrityError("providers disagree", details={"path": "checkpoint"})
 
-    def runner(_videos: Sequence[Path], _cameras: Sequence[str]) -> SceneResult:
+    def runner(_videos: Sequence[Path], _cameras: Sequence[str], _clip: Path) -> SceneResult:
         raise error
 
     with pytest.raises(FileIntegrityError) as caught:
@@ -184,7 +184,7 @@ def test_component_publication_preserves_store_and_slcs_follows_index(
     store.record_export("scene", {"scene": export, "metadata": export.with_suffix(".metadata.json")}, {"scene_assembly": ref})
     artifact_descriptor = store.root / ref.path
     before = artifact_descriptor.read_bytes()
-    outcomes = generate_pseudo_annotations(structured_dataset, lambda _paths, _ids: valid_scene_result,
+    outcomes = generate_pseudo_annotations(structured_dataset, lambda _paths, _ids, _clip: valid_scene_result,
         pipeline_config_yaml="device: cpu", publication_identity={"test": "publication"})
     assert outcomes[0].status == "generated"
     assert artifact_descriptor.read_bytes() == before

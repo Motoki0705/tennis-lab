@@ -31,7 +31,8 @@ from src.utils.io import save_json_atomic, utc_now_iso
 ANNOTATION_SCHEMA_VERSION = 1
 ANNOTATION_RELATIVE_DIR = Path("annotations") / "tennis_scene"
 
-SceneRunner = Callable[[Sequence[Path], Sequence[str]], SceneResult]
+# (video paths, camera IDs, clip directory) -> scene; the clip directory owns the component store.
+SceneRunner = Callable[[Sequence[Path], Sequence[str], Path], SceneResult]
 
 
 @dataclass(frozen=True)
@@ -337,7 +338,7 @@ def generate_pseudo_annotations(
                     raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
                 outcomes.append(AnnotationGenerationResult(clip_id, "skipped", destination))
                 continue
-            result = runner(video_paths, camera_ids)
+            result = runner(video_paths, camera_ids, clip_manifest_path.parent)
             if _sha256_file(clip_manifest_path) != manifest_before or any(_sha256_file(path) != media_before[camera] for camera, path in zip(camera_ids, video_paths, strict=True)):
                 raise ValueError("Clip inputs changed during reconstruction")
             _validate_result(result, record)
