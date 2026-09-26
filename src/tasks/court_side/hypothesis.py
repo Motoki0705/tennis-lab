@@ -132,27 +132,54 @@ def score_hypothesis(cameras: tuple[PinholeCamera, ...], view_half_turns: tuple[
     return HypothesisScore(tuple(view_half_turns), float(score.cost.mean()), float(score.support.mean()), int(chosen.sum()))
 
 
-def decide_court_side(cameras: tuple[PinholeCamera, ...], reference_camera: str, uv_px: NDArray[np.floating],
-                      visible: NDArray[np.bool_], config: CourtSideConfig) -> CourtSideDecision:
-    """Decide every camera's half-turn from one ball stream, or raise :class:`CourtSideUndecided`.
+@dataclass(frozen=True)
+class BallSideEvidence:
+    """Everything the judgement needs, independent of the decision thresholds.
 
-    ``cameras`` are camera-local calibrations; ``uv_px`` ``(V,T,2)`` and
-    ``visible`` ``(V,T)`` hold at most one ball per camera and frame.
+    ``pair_frames`` ``(V,V)`` counts frames both views observe; ``hypotheses``
+    are sorted best first and empty when no frame has two observing views.
+    """
+
+    camera_ids: tuple[str, ...]
+    reference_camera: str
+    frames: int
+    pair_frames: NDArray[np.int64]
+    hypotheses: tuple[HypothesisScore, ...]
+
+    def pair_record(self) -> dict[str, int]:
+        ids = self.camera_ids
+        return {f"{ids[a]}-{ids[b]}": int(self.pair_frames[a, b]) for a, b in combinations(range(len(ids)), 2)}
+
+
+def collect_side_evidence(cameras: tuple[PinholeCamera, ...], reference_camera: str, uv_px: NDArray[np.floating],
+                          visible: NDArray[np.bool_], config: CourtSideConfig) -> BallSideEvidence:
+    """Score every hypothesis on the ball stream (``(V,T,2)`` pixels, ``(V,T)`` visibility).
+
+    Only ``reprojection_px`` and the plausibility bounds of ``config`` are used.
     """
     ids = tuple(camera.camera_id for camera in cameras)
     if len(set(ids)) != len(ids) or reference_camera not in ids:
         raise ValueError("Court side needs unique camera IDs including the reference")
     if uv_px.ndim != 3 or uv_px.shape[0] != len(ids) or uv_px.shape[-1] != 2 or visible.shape != uv_px.shape[:-1] or visible.dtype != np.bool_:
         raise ValueError("Ball observations must be (V,T,2) pixels with (V,T) boolean visibility")
-    reference = ids.index(reference_camera)
     frames = int((visible.sum(0) >= 2).sum())
-    pairs = pair_frame_counts(visible)
-    pair_record = {f"{ids[a]}-{ids[b]}": int(pairs[a, b]) for a, b in combinations(range(len(ids)), 2)}
+    hypotheses: tuple[HypothesisScore, ...] = ()
+    if frames:
+        hypotheses = tuple(sorted((score_hypothesis(cameras, turns, uv_px, visible, config)
+                                   for turns in half_turn_hypotheses(len(ids), ids.index(reference_camera))),
+                                  key=lambda h: (h.cost, h.view_half_turns)))
+    return BallSideEvidence(ids, reference_camera, frames, pair_frame_counts(visible), hypotheses)
+
+
+def judge_side_evidence(evidence: BallSideEvidence, config: CourtSideConfig) -> CourtSideDecision:
+    """Apply the decision thresholds, or raise :class:`CourtSideUndecided`."""
+    ids, frames, hypotheses = evidence.camera_ids, evidence.frames, evidence.hypotheses
+    pairs = evidence.pair_record()
     if frames < config.min_frames:
         raise CourtSideUndecided(INSUFFICIENT_FRAMES, f"{frames} multi-view ball frames; {config.min_frames} required",
-                                 frames=frames, pair_frames=pair_record)
-    connected = {reference}
-    graph = pairs >= config.min_frames
+                                 hypotheses=hypotheses, frames=frames, pair_frames=pairs)
+    connected = {ids.index(evidence.reference_camera)}
+    graph = evidence.pair_frames >= config.min_frames
     while True:
         expanded = connected | {view for old in connected for view in np.flatnonzero(graph[old]).tolist()}
         if expanded == connected:
@@ -161,16 +188,23 @@ def decide_court_side(cameras: tuple[PinholeCamera, ...], reference_camera: str,
     if len(connected) != len(ids):
         missing = [ids[view] for view in range(len(ids)) if view not in connected]
         raise CourtSideUndecided(DISCONNECTED_VIEWS, f"Cameras {missing} share too few ball frames with the reference's component",
-                                 frames=frames, pair_frames=pair_record)
-    scored = sorted((score_hypothesis(cameras, turns, uv_px, visible, config) for turns in half_turn_hypotheses(len(ids), reference)),
-                    key=lambda h: (h.cost, h.view_half_turns))
-    best = scored[0]
-    margin = scored[1].cost - best.cost
-    hypotheses = tuple(scored)
+                                 hypotheses=hypotheses, frames=frames, pair_frames=pairs)
+    best = hypotheses[0]
+    margin = hypotheses[1].cost - best.cost
     if best.cost > config.max_cost or best.support < config.min_support:
         raise CourtSideUndecided(NO_CONSISTENT_HYPOTHESIS, "The best hypothesis lacks absolute geometric support",
-                                 hypotheses=hypotheses, frames=frames, pair_frames=pair_record)
+                                 hypotheses=hypotheses, frames=frames, pair_frames=pairs)
     if margin < config.min_margin:
         raise CourtSideUndecided(AMBIGUOUS_MARGIN, f"Runner-up is only {margin:.3f} worse than the best",
-                                 hypotheses=hypotheses, frames=frames, pair_frames=pair_record)
-    return CourtSideDecision(ids, reference_camera, best.view_half_turns, hypotheses, margin, frames)
+                                 hypotheses=hypotheses, frames=frames, pair_frames=pairs)
+    return CourtSideDecision(ids, evidence.reference_camera, best.view_half_turns, hypotheses, margin, frames)
+
+
+def decide_court_side(cameras: tuple[PinholeCamera, ...], reference_camera: str, uv_px: NDArray[np.floating],
+                      visible: NDArray[np.bool_], config: CourtSideConfig) -> CourtSideDecision:
+    """Decide every camera's half-turn from one ball stream, or raise :class:`CourtSideUndecided`.
+
+    ``cameras`` are camera-local calibrations; ``uv_px`` ``(V,T,2)`` and
+    ``visible`` ``(V,T)`` hold at most one ball per camera and frame.
+    """
+    return judge_side_evidence(collect_side_evidence(cameras, reference_camera, uv_px, visible, config), config)
