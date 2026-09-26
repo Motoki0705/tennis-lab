@@ -26,7 +26,6 @@ from src.tasks.player_detection.data.store import (
     PlayerFrameStore,
     Split,
 )
-from src.utils.seeding import make_sample_rng
 
 # Fine-tuned checkpoints reuse the COCO person logit for "tennis player" so the
 # exported weights are a drop-in replacement for DinoPersonDetector.
@@ -136,6 +135,18 @@ def jitter_color(
     return cast(NDArray[np.uint8], image.clip(0, 255).astype(np.uint8))
 
 
+def augmentation_rng() -> random.Random:
+    """A fresh augmentation RNG drawn from the process's torch generator.
+
+    The torch generator is seeded per DataLoader worker and keeps advancing
+    across epochs, also in persistent workers, so every draw of a frame gets
+    new augmentation while one seeded run stays reproducible. A sample-index
+    seed (``make_sample_rng``) would repeat the same flip/scale/jitter for a
+    frame in every epoch because persistent workers keep their base seed.
+    """
+    return random.Random(int(torch.randint(0, 2**62, (1,)).item()))
+
+
 class PlayerDetectionDataset(Dataset[DetectionSample]):
     """Selected store frames; ``augmentation=None`` is the deployed eval path."""
 
@@ -166,7 +177,7 @@ class PlayerDetectionDataset(Dataset[DetectionSample]):
         short_side = self.input_size.short_side
         augmentation = self.augmentation
         if augmentation is not None:
-            rng = make_sample_rng(index)
+            rng = augmentation_rng()
             if rng.random() < augmentation.hflip_prob:
                 bgr = np.ascontiguousarray(bgr[:, ::-1])
                 model_boxes[:, [0, 2]] = width - boxes[:, [2, 0]]
