@@ -11,5 +11,6 @@ echo "[repro] target commit: 53db1868054e8330126d34a458edb1424646d61e (branch co
 git checkout 53db1868054e8330126d34a458edb1424646d61e 2>/dev/null || echo "[repro] WARN: checkout 53db1868054e8330126d34a458edb1424646d61e failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original command ran /tmp/reid_numeric_probe.py; diagnostic.py in this bundle is its saved copy.
 # --- original training command ---
-CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 .venv/bin/python /tmp/reid_numeric_probe.py
+CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 .venv/bin/python "$SCRIPT_DIR/diagnostic.py"

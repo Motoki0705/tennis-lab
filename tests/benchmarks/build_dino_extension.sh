@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Build DINO's MultiScaleDeformableAttention extension into a run-owned directory.
 #
-# Usage: build_dino_extension.sh <asset_root> <output_dir>
+# Usage (from the root of the checkout to build): build_dino_extension.sh <asset_root> <output_dir>
 #   <asset_root>  root whose third_party/DINO submodule is initialized
 #   <output_dir>  receives lib/ (put it on PYTHONPATH), temp/ and cache/
 #
+# The code (setup.py and the ops build contract) is the git checkout of the
+# current directory, so knowledge run bundles can carry a copy of this script.
 # Nothing is written into the repository; the build records its inputs in
 # <output_dir>/build.json. CUDA_HOME and TORCH_CUDA_ARCH_LIST default to the
 # local RTX 5060 Ti toolchain and can be overridden.
@@ -13,7 +15,7 @@ if [[ $# -ne 2 ]]; then
     echo "usage: $0 <asset_root> <output_dir>" >&2
     exit 2
 fi
-code_root="$(cd "$(dirname "$0")/../.." && pwd)"
+code_root="$(git rev-parse --show-toplevel)"
 asset_root="$(cd "$1" && pwd)"
 mkdir -p "$2"
 output="$(cd "$2" && pwd)"

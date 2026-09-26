@@ -11,5 +11,6 @@ echo "[repro] target commit: 43291cdb40fbec423eb773984b907fc07d105467 (branch ex
 git checkout 43291cdb40fbec423eb773984b907fc07d105467 2>/dev/null || echo "[repro] WARN: checkout 43291cdb40fbec423eb773984b907fc07d105467 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original command read these files from outputs/; they are saved in this bundle.
 # --- original training command ---
-OMP_NUM_THREADS=4 PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/finalize.py --run-dir outputs/plcs/foot_residual/training --baseline-config /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_split/config.yaml --dataset data/plcs/single_object_camera_view_v2 --clip data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --output outputs/plcs/foot_residual/comparison
+OMP_NUM_THREADS=4 PYTHONPATH=. .venv/bin/python scripts/plcs_foot_residual/finalize.py --run-dir outputs/plcs/foot_residual/training --baseline-config "$SCRIPT_DIR/config.yaml" --dataset data/plcs/single_object_camera_view_v2 --clip data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --output outputs/plcs/foot_residual/comparison
