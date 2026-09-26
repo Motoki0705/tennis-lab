@@ -16,6 +16,7 @@ from src.tennis_scene.pipeline.definition import (
     file_identity,
     standard_definition,
 )
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
@@ -84,6 +85,8 @@ class TennisSceneOrchestrator:
             return scene
         except Exception as exc:
             self.last_receipt.update(status="failed", error=str(exc), error_type=type(exc).__name__)
+            if isinstance(exc, ReconstructionUnavailable):
+                self.last_receipt.update(error_reason=exc.reason, error_diagnostics=json_value(exc.diagnostics))
             raise
         finally:
             self.last_receipt.update(active_stage=runner.active_node, stage_status=runner.statuses,

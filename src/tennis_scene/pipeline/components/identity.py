@@ -1,10 +1,10 @@
-"""Cross-camera player identities and court sides: artifact contracts only.
+"""Cross-camera player identities: artifact contract only.
 
-Both nodes are defined by their output schema. No model or algorithm is
-registered for them yet (court side: #932, player association: #933), so the
-standard definition declares them load-only: their artifacts must be imported
-into the clip store before the pipeline runs, and a request to execute them
-fails when the definition is built, not after the upstream models have run.
+The node is defined by its output schema. No model or algorithm is registered
+for it yet (#933), so the standard definition declares it load-only: its
+artifact must be imported into the clip store before the pipeline runs, and a
+request to execute it fails when the definition is built, not after the
+upstream models have run.
 """
 
 from __future__ import annotations
@@ -23,10 +23,8 @@ from src.tennis_scene.pipeline.contracts import (
 )
 
 PLAYER_ASSOCIATION = "player_association"
-COURT_SIDE = "court_side"
-# Version 2: tennis_scene-owned contracts without PLCS Re-ID embeddings or side logits.
+# Version 2: tennis_scene-owned contract without PLCS Re-ID embeddings.
 IDENTITIES_PORT = InputPort("person_identities", 2)
-SIDE_PORT = InputPort("court_side", 2)
 
 
 @dataclass(frozen=True)
@@ -62,23 +60,6 @@ class PlayerIdentitiesOutput:
             assigned = row[row >= 0]
             if len(np.unique(assigned)) != len(assigned):
                 raise ValueError("One camera cannot observe the same player through two tracks")
-
-
-@dataclass(frozen=True)
-class CourtSideOutput:
-    """Per-camera half-turn of the camera-local court relative to the reference."""
-
-    camera_ids: tuple[str, ...]
-    reference_camera: str
-    view_half_turns: tuple[bool, ...]
-
-    def __post_init__(self) -> None:
-        if self.reference_camera not in self.camera_ids or len(set(self.camera_ids)) != len(self.camera_ids):
-            raise ValueError("Invalid side artifact camera/reference IDs")
-        if len(self.view_half_turns) != len(self.camera_ids) or any(type(v) is not bool for v in self.view_half_turns):
-            raise ValueError("Side artifact must declare one boolean per camera")
-        if self.view_half_turns[self.camera_ids.index(self.reference_camera)]:
-            raise ValueError("Reference camera cannot be half-turned")
 
 
 @dataclass(frozen=True)
@@ -118,10 +99,3 @@ def player_association_io(camera_ids: tuple[str, ...]) -> ComponentIO[DeclaredAr
         {"calibration": InputPort("local_court_calibration"), **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}},
         IDENTITIES_PORT.schema, IDENTITIES_PORT.version)
 
-
-def court_side_io(camera_ids: tuple[str, ...]) -> ComponentIO[DeclaredArtifacts, CourtSideOutput]:
-    return ComponentIO(COURT_SIDE, DeclaredArtifacts, CourtSideOutput,
-        {"calibration": InputPort("local_court_calibration"),
-         **{f"pose_{c}": InputPort("person_poses") for c in camera_ids},
-         **{f"ball_{c}": InputPort("ball_detections") for c in camera_ids}},
-        SIDE_PORT.schema, SIDE_PORT.version)

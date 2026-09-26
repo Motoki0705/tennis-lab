@@ -20,6 +20,7 @@ from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateCon
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
+from src.tasks.court_side.hypothesis import CourtSideConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -199,7 +200,11 @@ _FRAME_SAMPLING_SCHEMA = StrictConfigSchema(name="tennis_scene.frame_sampling", 
 _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={
     "reference_camera": ConfigField.of(str, type(None)), "calibration_error_ratio": ConfigField.of(float, int),
     "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
-    "side_min_support": ConfigField.of(float, int), "side_min_margin": ConfigField.of(float, int),
+    "side_min_support": ConfigField.of(float, int),
+})
+_COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
+    "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int), "max_cost": ConfigField.of(float, int),
+    "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
 })
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
     name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
@@ -222,7 +227,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
-    "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
+    "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
 })
 
@@ -243,6 +248,7 @@ class PipelineRuntimeConfig:
     ball_detection: BallDetectionConfig
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
+    court_side: CourtSideConfig
     human_vis_threshold: float
     person_roi_margins: tuple[float, float]
     player_reprojection_px: float
@@ -311,6 +317,10 @@ class PipelineRuntimeConfig:
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
             raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
+        side = _mapping(value["court_side"], name="court_side")
+        court_side = CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])), min_frames=cast(int, side["min_frames"]),
+            max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
+            min_margin=float(cast(float, side["min_margin"])))
         person = _mapping(value["person_observations"], name="person_observations")
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
@@ -335,7 +345,7 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            sampling_max_frames, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            sampling_max_frames, geometry, court_side, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources)
 
 

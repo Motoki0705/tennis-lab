@@ -2,10 +2,11 @@
 
 The default ``pipeline.yaml`` runs on one structured clip. The only overrides
 are root paths, the device, and ``execution.ball_detection=load`` for the ball
-import. Nodes without a merged model (``court_side``, ``player_association``)
-and the ball are filled by ``src/tennis_scene/pipeline/imports``; the receipt
-lists them under ``imported_nodes`` so that nothing imported is mistaken for
-model output. GPU execution goes through the shared training queue.
+import. The node without a merged model (``player_association``) and the ball
+are filled by ``src/tennis_scene/pipeline/imports``; the receipt lists them
+under ``imported_nodes`` so that nothing imported is mistaken for model output.
+``court_side`` is decided by its component from the imported ball. GPU
+execution goes through the shared training queue.
 
 With ``--dataset`` the clip belongs to a structured dataset: the store is the
 clip's ``annotations/tennis_scene`` and the production
@@ -42,7 +43,6 @@ from src.tennis_scene.generate_dataset.pseudo_annotation import (
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.tennis_scene.pipeline.definition import standard_definition
 from src.tennis_scene.pipeline.imports.ball_annotations import import_ball_annotations
-from src.tennis_scene.pipeline.imports.court_side import import_ball_confirmed_sides
 from src.tennis_scene.pipeline.imports.person_association import (
     import_confirmed_person_association,
 )
@@ -140,16 +140,12 @@ def main() -> None:
         upstream = ComponentRunner(nodes, store)
         upstream.run(targets=("court_calibration", *(f"pose_estimation/{c}" for c in camera_ids)))
         receipt["upstream"] = {"status": upstream.statuses, "seconds": upstream.seconds}
-        side, side_confirmation = import_ball_confirmed_sides(nodes, store, source,
-            ball_threshold=runtime.ball_detection.score_threshold, ball_reprojection_px=runtime.ball_reprojection_px,
-            max_frames=runtime.sampling_max_frames, config=runtime.camera_geometry)
         people, person_confirmation = import_confirmed_person_association(nodes, store, source,
             historical_association=clip / "annotations/player_association_result.json",
             legacy_gvhmr_directory=clip / "annotations")
         receipt["imported_nodes"] = {**{name: json_value(ref) for name, ref in balls.items()},
-            "court_side": json_value(side), "player_association": json_value(people)}
-        receipt["side_confirmation"], receipt["person_confirmation"] = side_confirmation, person_confirmation
-        write_json_atomic(report / "side_confirmation.json", side_confirmation)
+            "player_association": json_value(people)}
+        receipt["person_confirmation"] = person_confirmation
         write_json_atomic(report / "person_confirmation.json", person_confirmation)
 
         scene = application.run(videos, video_role=PathRole.DATA, camera_ids=camera_ids, store_root=store_root,
@@ -174,6 +170,9 @@ def main() -> None:
         resume = ComponentRunner([replace(node, source="load") for node in nodes], ClipStore(store_root, json_value(source), memory_entries=0))
         resume.run()
         np.testing.assert_array_equal(resume.output("scene_assembly").ball_3d, scene.ball_3d)
+        side = runner.output("court_side")
+        receipt["court_side"] = {"view_half_turns": list(side.view_half_turns), "margin": side.margin, "frames": side.frames,
+            "hypotheses": [json_value(h) for h in side.hypotheses]}
         receipt.update(status=scene.metadata["status"], run=application.last_receipt, load_only_resume=resume.statuses,
             validity=scene.metadata["validity_statistics"], player_ids=players,
             half_turns=scene.metadata["court_reference"]["view_half_turns"], frame_count=source.num_frames,
