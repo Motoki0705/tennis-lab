@@ -52,7 +52,9 @@ class PersonDetectionModule:
         self.config, self.enabled = config, enabled
 
     def process(self, inputs: PersonDetectionInput) -> PersonDetectionOutput:
-        if not self.enabled:
+        # A camera excluded from court calibration has no court ROI and never
+        # enters reconstruction, so it is not detected rather than detected unfiltered.
+        if not self.enabled or inputs.footpoint_polygon_px is None:
             return PersonDetectionOutput(inputs.video.camera_id, np.zeros(inputs.video.num_frames + 1, np.int64),
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32))
         config = self.config
@@ -76,8 +78,7 @@ class PersonDetectionModule:
                         device=config.runtime.device, verbose=False)[0]
                     detections = PersonDetectionResult(prediction.boxes.xyxy.detach().cpu().numpy().astype(np.float32),
                         prediction.boxes.conf.detach().cpu().numpy().astype(np.float32))
-                if inputs.footpoint_polygon_px is not None:
-                    detections = filter_detections_by_footpoint(detections, inputs.footpoint_polygon_px)
+                detections = filter_detections_by_footpoint(detections, inputs.footpoint_polygon_px)
                 boxes.append(detections.boxes_xyxy)
                 scores.append(detections.scores)
                 offsets.append(offsets[-1] + len(detections.scores))
