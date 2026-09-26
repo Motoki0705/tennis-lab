@@ -186,8 +186,13 @@ def smooth_ball_positions(
         else:
             result[start:end] = _ballistic_rts(segment, fps, config)
     result[events] = positions[events]
-    if not np.isfinite(result).all() or (result[valid, 2] < -0.2).any() or (result[valid, 2] > 20).any():
+    if (not np.isfinite(result).all() or (np.abs(result[valid, :2]) > 40).any()
+            or (result[valid, 2] < -0.2).any() or (result[valid, 2] > 20).any()):
         raise ValueError("Smoothed ball trajectory violates geometric bounds")
+    adjacent = valid[:-1] & valid[1:]
+    speed_mps = np.linalg.norm(np.diff(result, axis=0), axis=-1) * fps
+    if (speed_mps[adjacent] > 65).any():
+        raise ValueError("Smoothed ball trajectory violates the triangulation speed limit")
     result[~valid] = 0
     return result.astype(np.float32), events
 
