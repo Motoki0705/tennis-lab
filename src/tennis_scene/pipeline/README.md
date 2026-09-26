@@ -5,7 +5,7 @@
 
 | 場所 | 責務 |
 |---|---|
-| `components/` | 検出、追跡、pose、幾何、身体復元・配置。各IO契約の所有者。`identity.py`は人物対応・sideの成果物契約だけを持つ |
+| `components/` | 検出、追跡、pose、幾何、身体復元・配置。各IO契約の所有者。`identity.py`は人物対応の成果物契約だけを持つ |
 | `input_assembly/` | 宣言済み成果物のcamera/frame/track照合とInput構築。store全体へ自由に問い合わせない |
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
 | `runner.py` | 宣言の互換性・循環検査、依存順実行、execute/load、公開の共通手順 |
@@ -30,7 +30,7 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 動画＋ROI → person_detection → person_tracking → pose_estimation
 動画 → ball_detection
 pose＋court → player_association（load専用）
-pose＋ball＋court → court_side（load専用）
+ball＋court → court_side（ballだけのhalf-turn仮説検定）
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
 単一球観測＋camera → ball_triangulation
@@ -45,8 +45,14 @@ BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位
 1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。
 元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計4人超では明示的に停止する。
 
-`player_association`と`court_side`は出力schema（`components/identity.py`、version 2）だけを定義する。
-モデル実装が入るまで（#933 / #932）既定は`execution.<node>=load`で、`execute`を指定するとdefinition構築時に停止する。
+`player_association`は出力schema（`components/identity.py`、version 2）だけを定義する。
+モデル実装が入るまで（#933）既定は`execution.player_association=load`で、`execute`を指定するとdefinition構築時に停止する。
+
+`court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと単一ball観測の
+~30fps格子に適用する（schema version 3）。成果物は採用したhalf-turn、全仮説のcost/support/使用frame数、marginを持つ。
+決まらないclipは`ReconstructionUnavailable`（reason `court_side_<停止理由>`、仮説ごとの証跡）で停止する。
+ball検出を無効にした構成では実行できず、definition構築時に停止する（`load`は可）。
+`camera_alignment`は決まったsideを1仮説として、人物とballの観測で絶対的な整合性だけを再検証する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
 `gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。

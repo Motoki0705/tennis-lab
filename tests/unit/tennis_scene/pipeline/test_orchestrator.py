@@ -57,16 +57,21 @@ def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
     standard_definition(disabled, _source(tmp_path), code_identity="test")
 
 
-def test_executing_an_unimplemented_node_fails_when_the_definition_is_built(tmp_path: Path) -> None:
+def test_executing_an_unimplemented_or_unsupported_node_fails_when_the_definition_is_built(tmp_path: Path) -> None:
     from dataclasses import replace
 
     from src.tennis_scene.pipeline.definition import standard_definition
     source = _source(tmp_path)
     cfg = _runtime_with_assets(tmp_path)
-    for node in ("player_association", "court_side"):
-        executed = replace(cfg, component_sources={**cfg.component_sources, node: "execute"})
-        with pytest.raises(ValueError, match=f"{node} has no model implementation"):
-            standard_definition(executed, source, code_identity="test")
+    executed = replace(cfg, component_sources={**cfg.component_sources, "player_association": "execute"})
+    with pytest.raises(ValueError, match="player_association has no model implementation"):
+        standard_definition(executed, source, code_identity="test")
+    # The side is decided from the ball alone: without a ball detector it can only be loaded.
+    ballless = replace(cfg, enabled={**cfg.enabled, "ball_detection": False, "ball_reconstruction": False})
+    with pytest.raises(ValueError, match="court_side decides sides from the ball alone"):
+        standard_definition(ballless, source, code_identity="test")
+    loaded = replace(ballless, component_sources={**cfg.component_sources, "court_side": "load"})
+    assert any(node.name == "court_side" and node.source == "load" for node in standard_definition(loaded, source, code_identity="test"))
 
 
 def test_ball_only_features_and_strict_missing_dependencies() -> None:

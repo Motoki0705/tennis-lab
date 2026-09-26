@@ -17,11 +17,11 @@ from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationModule,
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
+from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
 from src.tennis_scene.pipeline.components.identity import (
     DeclaredArtifactsAssembler,
     ImportOnlyComponent,
-    court_side_io,
     player_association_io,
 )
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
@@ -53,6 +53,7 @@ from src.tennis_scene.pipeline.input_assembly.preprocessing import (
 from src.tennis_scene.pipeline.input_assembly.reconstruction import (
     BallTriangulationInputAssembler,
     CameraAlignmentInputAssembler,
+    CourtSideInputAssembler,
     PlayerTriangulationInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.scene import SceneAssemblyInputAssembler
@@ -137,15 +138,17 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_detection/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
-    # Load-only until #933 / #932 provide implementations; the imported artifact
+    # Load-only until #933 provides an implementation; the imported artifact
     # must match these bindings (the runner checks its recorded dependencies).
-    for name, io, replacement, bindings in (
-        ("player_association", player_association_io(ids), "#933", observations),
-        ("court_side", court_side_io(ids), "#932", {**observations, **balls}),
-    ):
-        if name not in overrides and cfg.cache_source != "load" and cfg.component_sources[name] != "load":
-            raise ValueError(f"{name} has no model implementation ({replacement}); set execution.{name}=load and import its artifact")
-        add(name, ImportOnlyComponent(io, replacement), DeclaredArtifactsAssembler(), bindings, lambda: {"implementation": "import_only"})
+    if "player_association" not in overrides and cfg.cache_source != "load" and cfg.component_sources["player_association"] != "load":
+        raise ValueError("player_association has no model implementation (#933); set execution.player_association=load and import its artifact")
+    add("player_association", ImportOnlyComponent(player_association_io(ids), "#933"), DeclaredArtifactsAssembler(), observations,
+        lambda: {"implementation": "import_only"})
+    if not cfg.enabled["ball_detection"] and "court_side" not in overrides and cfg.cache_source != "load" and cfg.component_sources["court_side"] != "load":
+        raise ValueError("court_side decides sides from the ball alone; it requires ball_detection.enabled or execution.court_side=load")
+    add("court_side", CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames), CourtSideInputAssembler(cfg.ball_detection.score_threshold),
+        {"calibration": "court_calibration", **balls}, lambda: {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames,
+        "ball_threshold": cfg.ball_detection.score_threshold})
     identified = {**observations, "identities": "player_association"}
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,
         ball_reprojection_px=cfg.ball_reprojection_px, joint_confidence=cfg.joint_confidence, max_frames=cfg.sampling_max_frames),

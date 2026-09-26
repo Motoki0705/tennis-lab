@@ -21,9 +21,9 @@ execution:
   person_tracking: execute
   pose_estimation: execute
   ball_detection: execute
-  # No model implementation yet (#933 / #932): import the artifacts, then load.
+  # No model implementation yet (#933): import the artifact, then load.
   player_association: load
-  court_side: load
+  court_side: execute
   camera_alignment: execute
   player_triangulation: execute
   ball_triangulation: execute
@@ -130,13 +130,20 @@ ball_detection:
 # ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
 frame_sampling:
   max_frames: 1024
+# camera_alignment's absolute check of the decided sides with player and ball evidence.
 camera_geometry:
   reference_camera: null
   calibration_error_ratio: 0.005
   side_min_frames: 8
   side_max_cost: 0.5
   side_min_support: 0.5
-  side_min_margin: 0.1
+# Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080.
+court_side:
+  reprojection_px: 20.0
+  min_frames: 8
+  max_cost: 0.5
+  min_support: 0.5
+  min_margin: 0.1
 player_reconstruction:
   enabled: true
   reprojection_px: 40.0

@@ -7,14 +7,14 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 
 1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
 2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
-3. camera間の人物対応（`player_association`）とcourt side（`court_side`）を読み込む。
-4. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
+3. camera間の人物対応（`player_association`）を読み込み、court side（`court_side`）をballだけの幾何的な仮説検定で決める。
+4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
 5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
-手順3の2ノードにはまだモデル実装がありません（court side: #932、人物対応: #933）。
-既定は`execution.<node>=load`で、同じschemaの確認済みartifactがclip storeに無ければ停止します（[import](pipeline/imports/README.md)）。
+手順3の人物対応にはまだモデル実装がありません（#933）。
+既定は`execution.player_association=load`で、同じschemaの確認済みartifactがclip storeに無ければ停止します（[import](pipeline/imports/README.md)）。
 他の手順はCourt・人物・球の手動入力を要求しません。
 
 対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計4人物、球は各camera/frame高々1検出です。
@@ -54,11 +54,10 @@ Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-無観測の人物にIDは割り当てません。人物・球の両方が0件ならsideを含む再構成を省略します。
-ボールにはID推論・side推論・候補選択モデルを置きません。
+無観測の人物にIDは割り当てません。ボールにはID推論・候補選択モデルを置きません。
 
-sideには、最低evidence、referenceとの接続性、絶対的な幾何品質を要求します。
-ボール観測も幾何検証に使います。校正はframe 0で採用されたHomographyの投影点に対する
+sideはball観測だけで決め、最低evidence、referenceとの接続性、絶対的な幾何品質、次点とのmarginを要求します。
+決まらないclipは理由付きで停止します。`camera_alignment`は人物観測も加えて絶対的な幾何品質を再検証します。校正はframe 0で採用されたHomographyの投影点に対する
 単一平面pinhole・無歪みの近似です。
 
 ## SceneResult v2
