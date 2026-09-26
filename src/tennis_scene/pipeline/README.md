@@ -29,7 +29,7 @@
 pose＋court → person_reid / court_side（独立モデル）
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
-単一球観測＋camera → ball_triangulation
+単一球観測＋camera → ball_triangulation → ball_smoothing
 人物対応＋2D観測＋camera → body_view_selection → gvhmr
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
@@ -40,6 +40,24 @@ BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位
 1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。
 元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計4人超では明示的に停止する。
 モデルの人物同一性の正しさは可視化でも検証する。
+
+## 球の時系列平滑化
+
+`ball_triangulation`は従来どおり各frameの2D観測から独立に3Dを計算し、`ball_smoothing`はその出力を別artifactとして受け取る。
+`configs/pipeline.yaml`の`ball_smoothing.method`は既定で`none`なので、従来の3D座標がそのままsceneへ進む。
+選択肢は`none`、`savgol`（11frameの局所2次多項式）、`robust_spline`（Huber重み付き加速度正則化）、
+`ballistic_rts`（重力を含む状態遷移の前向きKalman・後向きRTS平滑化）の3方式。
+
+3方式とも有効な連続区間だけを処理し、観測不足で無効になったframeは補間・外挿しない。
+支持された軌道のY方向反転と、低いZ極小を切れ目として検出し、その位置は三角測量値に固定する。
+これは打球／バウンドの候補であり、真のイベントラベルではない。`ball_smoothing`は元の三角測量で採用したcamera inlier maskを
+出自として保持し、変更後の3D位置の再投影誤差だけを再計算する。厳密な3D正解がないclipでは、平滑さと再投影の両方を確認する。
+
+保存済みclipで3方式を同じ原入力に適用する入口は`scripts/compare_ball_smoothing.py`。
+`--scene-index <clip>/annotations/tennis_scene/scene.json --output-dir <review>`で3つのscene archive、
+球軌道、比較図、`index.html`を生成する。各`scene.npz`は球3D座標のみ異なり、同じ人物SMPL mesh・
+コート・有効maskを保持する。各archiveを`src.tennis_scene.scripts.visualization`の
+`style.player_representation=smpl`で描画すると、比較可能なmeshフルシーン動画になる。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
 `gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
