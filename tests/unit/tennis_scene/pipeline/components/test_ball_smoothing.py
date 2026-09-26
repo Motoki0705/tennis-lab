@@ -72,3 +72,10 @@ def test_event_detector_does_not_bridge_missing_frames() -> None:
     events = ball_event_frames(observed, valid, BallSmoothingConfig())
     assert not np.isin([61, 62], events).any()
     assert np.all(valid[events])
+
+
+def test_smoothing_cannot_reintroduce_excessive_speed() -> None:
+    points = np.column_stack((np.arange(12) * 2., np.zeros(12), np.ones(12))).astype(np.float32)
+    valid: NDArray[np.bool_] = np.ones(12, bool)
+    with pytest.raises(ValueError, match="speed limit"):
+        smooth_ball_positions(points, valid, fps=60., config=BallSmoothingConfig(method="savgol"))
