@@ -1,0 +1,16 @@
+{
+  "run_id": "1790299213752921401_51561_plcs-headless-reid-export-eval-20260925",
+  "name": "plcs-headless-reid-export-eval-20260925",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=. .venv/bin/python tests/benchmarks/reid_checkpoint.py --checkpoint /home/kamimura/projects/tennis-lab/outputs/plcs/exports/player-reid-headless-v2-s42.ckpt --reference-predictions /home/kamimura/projects/tennis-lab/outputs/plcs/train/fixed_track_reid_eager_v1_s42/predictions/pred_test.npz --output /home/kamimura/projects/tennis-lab/outputs/plcs/evaluate/headless_reid_v2_20260925 --device cuda",
+  "provider": "codex",
+  "session": "01a0d0f9-6057-7961-ad6b-adc46744d619",
+  "issue": "915",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5d7beca7a404aaf2d3a596ab2e5f23dc88940c1e",
+  "branch": "codex/plcs-reid-headless",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-reid-headless",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-reid-headless",
+  "captured_at": "2026-09-25T10:20:14+09:00"
+}

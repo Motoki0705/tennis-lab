@@ -1,0 +1,66 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790219880496701332_779831_plcs-reid-safe-mask-gpu-smoke-20260924 (commit=be54b85471c7 provider=codex session=01a0d0f9-6057-7961-ad6b-adc46744d619)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+You are using a CUDA device ('NVIDIA GeForce RTX 5060 Ti') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+[torch.compile] enabled targets=[model] backend=inductor mode=default fullgraph=False dynamic=False
+┏━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name  ┃ Type            ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model │ PlayerReIDModel │  7.0 M │ train │     0 │
+└───┴───────┴─────────────────┴────────┴───────┴───────┘
+Trainable params: 7.0 M                                                         
+Non-trainable params: 0                                                         
+Total params: 7.0 M                                                             
+Total estimated model params size (MB): 27.905                                  
+Modules in train mode: 96                                                       
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/tests/benchmarks/person_association.py", line 77, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/tests/benchmarks/person_association.py", line 59, in main
+    trainer.fit(module, datamodule=data)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1121, in _run_stage
+    self._run_sanity_check()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1150, in _run_sanity_check
+    val_loop.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/utilities.py", line 179, in _decorator
+    return loop_run(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 146, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 441, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 329, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py", line 412, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/src/tasks/plcs/training/association_lightning_module.py", line 94, in validation_step
+    self._step(batch, "val")
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/src/tasks/plcs/training/association_lightning_module.py", line 76, in _step
+    raise FloatingPointError(f"{stage}: non-finite person loss; sample_indices={batch['sample_index'].tolist()}")
+FloatingPointError: val: non-finite person loss; sample_indices=[4, 5, 6, 7]
+exit_code=1

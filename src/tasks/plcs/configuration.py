@@ -1469,7 +1469,12 @@ class PLCSTrainingConfig:
 
 
 def _validate_training_boundary(config: DictConfig) -> None:
-    PLCSTrainingConfig.from_config(config)
+    if str(config.model.name) in {"plcs_player_reid", "plcs_court_side"}:
+        from src.tasks.plcs.association_configuration import validate_person_config
+
+        validate_person_config(config)
+    else:
+        PLCSTrainingConfig.from_config(config)
 
 
 def _validate_visualization_boundary(config: DictConfig) -> None:
@@ -2272,6 +2277,7 @@ __all__ = [
     "PLCSTrainingConfig",
     "validate_augmentation",
 ]
+
 
 
 ResidualT = TypeVar("ResidualT")

@@ -1,0 +1,20 @@
+backend: default
+scene_dir: plcs/tracked_person_reid_v1
+camera_mode: random
+camera_candidates: null
+num_views_range: [3, 5]
+seq_len_range: [512, 512]
+target_fps: 30.0
+batch_size: 4
+num_workers: 4
+pin_memory: true
+evaluation_reference_camera_id: camera_1
+validation_cache_size: 100
+persistent_workers: true
+prefetch_factor: 2
+augmentation:
+  pose_noise: 0.003
+  court_noise: 0.0001
+  joint_dropout: 0.08
+  court_dropout: 0.05
+  track_dropout: 0.3

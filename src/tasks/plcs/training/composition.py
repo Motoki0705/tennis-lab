@@ -12,6 +12,11 @@ from src.tasks.plcs.configuration import PLCSTrainingConfig, validate_residual_c
 
 def build_plcs_datamodule(config: Any) -> pl.LightningDataModule:
     """Select the validated data lifecycle outside the training runner."""
+    if str(config.model.name) in {"plcs_player_reid", "plcs_court_side"}:
+        from src.tasks.plcs.data.association_datamodule import PLCSAssociationDataModule
+
+        return PLCSAssociationDataModule(config)
+
     if config.model.name == "plcs_triangulation_residual":
         from src.tasks.plcs.data.residual_datamodule import ResidualDataModule
 
@@ -60,6 +65,13 @@ def build_plcs_lightning_module(
     config: Any, *, steps_per_epoch: int | None = None
 ) -> pl.LightningModule:
     """Select the validated Lightning lifecycle outside the training runner."""
+    if str(config.model.name) in {"plcs_player_reid", "plcs_court_side"}:
+        from src.tasks.plcs.training.association_lightning_module import (
+            PLCSAssociationLightningModule,
+        )
+
+        return PLCSAssociationLightningModule(config)
+
     if config.model.name == "plcs_triangulation_residual":
         from src.tasks.plcs.training.residual_lightning_module import (
             ResidualLightningModule,

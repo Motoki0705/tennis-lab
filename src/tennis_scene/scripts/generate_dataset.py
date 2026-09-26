@@ -57,7 +57,10 @@ def _compose_pipeline_config(
     if not isinstance(merged_pipeline_cfg, DictConfig):
         raise TypeError("pipeline config must compose to a mapping")
     pipeline_cfg = merged_pipeline_cfg
-    return pipeline_cfg, PipelineRuntimeConfig.from_config(pipeline_cfg)
+    pipeline_runtime = PipelineRuntimeConfig.from_config(pipeline_cfg, bind_inputs=False)
+    if pipeline_runtime.max_frames is not None:
+        raise ValueError("Dataset annotations require complete clips; max_frames must be null")
+    return pipeline_cfg, pipeline_runtime
 
 
 @hydra_main(
@@ -84,7 +87,6 @@ def main(cfg: DictConfig) -> int:
             video_role=PathRole.DATA,
             camera_ids=camera_ids,
             max_frames=pipeline_runtime.max_frames,
-            frame_index=pipeline_runtime.frame_index,
         )
         return result
 
@@ -95,6 +97,7 @@ def main(cfg: DictConfig) -> int:
         clip_ids=runtime.clip_ids,
         overwrite=runtime.overwrite,
         continue_on_error=runtime.continue_on_error,
+        publication_identity=orchestrator.publication_identity(),
     )
     for outcome in outcomes:
         if outcome.status == "failed":

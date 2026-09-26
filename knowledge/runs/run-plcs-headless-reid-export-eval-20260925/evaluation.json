@@ -1,0 +1,25 @@
+{
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/plcs/exports/player-reid-headless-v2-s42.ckpt",
+  "checkpoint_sha256": "0f3ea17a6c7c09bb898372cd76b518f9c092b175699e610585b3cfc054fa7451",
+  "source_checkpoint_sha256": "0434772423dead3072f7afebe22c126c99909a860e004c2f8affc2179f185207",
+  "device": "cuda",
+  "retrained": false,
+  "scene_count": 100,
+  "test": [
+    {
+      "test/loss": 0.05852130800485611,
+      "test/pair_precision": 0.9797570705413818,
+      "test/pair_recall": 0.9490196108818054,
+      "test/pair_f1": 0.9641434550285339,
+      "test/pair_balanced_accuracy": 0.9693498611450195,
+      "test/cosine_threshold": 0.7749999761581421,
+      "test/matching_precision": 0.9937565326690674,
+      "test/matching_recall": 0.936274528503418,
+      "test/matching_f1": 0.9641594886779785,
+      "test/group_accuracy": 0.7699999809265137
+    }
+  ],
+  "embeddings_bitwise_equal": true,
+  "max_embedding_difference": 0.0,
+  "minimum_embedding_cosine": 0.9999998269738616
+}

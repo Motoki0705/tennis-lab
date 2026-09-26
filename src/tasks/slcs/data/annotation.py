@@ -177,12 +177,17 @@ def load_slcs_annotation(
                 f"clip.json (marker digest {recorded!r} != current {actual!r})."
             )
 
-    scene_path = annotation_dir / SLCS_SCENE_ARCHIVE_FILENAME
+    from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+    scene_path = annotation_scene_path(annotation_dir, marker)
     if not scene_path.is_file():
         raise DatasetManifestError(
             f"{manifest.clip_id}: scene archive missing: {scene_path}"
         )
     scene = load_scene_result(scene_path)
+    if scene.schema_version == 2:
+        context = scene.metadata.get("court_reference")
+        if not isinstance(context, dict) or tuple(context.get("camera_ids", ())) != tuple(manifest.camera_ids):
+            raise DatasetManifestError(f"{manifest.clip_id}: v2 SLCS input requires calibration for every manifest camera")
     _validate_scene_against_manifest(scene, manifest)
     _validate_scene_arrays(scene, arrays_spec, clip_id=manifest.clip_id)
     return scene

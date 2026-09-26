@@ -1,0 +1,16 @@
+{
+  "run_id": "1790218808214964499_733501_plcs-track-reid-gpu-smoke-20260924",
+  "name": "plcs-track-reid-gpu-smoke-20260924",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python tests/benchmarks/person_association.py --device cuda --data-root /home/kamimura/projects/tennis-lab/data --scene-dir plcs/tracked_person_reid_v1 --output /home/kamimura/projects/tennis-lab/outputs/plcs/diagnostics/tracked_reid_smoke_20260924",
+  "provider": "codex",
+  "session": "01a0d0f9-6057-7961-ad6b-adc46744d619",
+  "issue": "915",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "53db1868054e8330126d34a458edb1424646d61e",
+  "branch": "codex/plcs-track-reid",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid",
+  "captured_at": "2026-09-24T12:00:08+09:00"
+}

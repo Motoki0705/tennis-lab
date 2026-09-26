@@ -19,6 +19,8 @@ _EXPECTED_FFN_TYPES = frozenset(
 _EXPECTED_DIRECT_CONSUMERS = frozenset(
     {
         "src/tasks/ball_detection/models/dinov3_rope.py",
+        "src/tasks/plcs/models/person_tokens.py",
+
         "src/tasks/plcs/models/triangulation_residual.py",
         "src/tasks/blcs/models/blcs_model.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",

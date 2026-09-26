@@ -1,0 +1,38 @@
+defaults:
+  - court_keypoints: camera_view_v2
+  - model: court_side
+  - data: _association
+  - training: default
+  - loss: court_side
+  - metrics: court_side
+  - run: train
+  - paths: default
+  - _self_
+
+training:
+  trainer:
+    max_epochs: 60
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 4
+    log_every_n_steps: 10
+  learning_rate: 0.0003
+  weight_decay: 0.1
+  warmup_steps: 100
+  checkpoint:
+    monitor: val/loss
+    save_top_k: 2
+  qualitative_logging:
+    enabled: false
+  # Repeated compiled masked attention is non-finite on the current CUDA stack.
+  # Eager is explicit; a failed compiled run never falls back automatically.
+  compile:
+    enabled: false
+run:
+  output_dir: ${tennis_output:plcs,train,${model.name},${tennis_run_id:}}
+  test_after_fit: true
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

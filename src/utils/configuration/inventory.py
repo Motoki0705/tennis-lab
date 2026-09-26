@@ -181,6 +181,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "plcs.generate_dataset_samples",
     "src.tasks.plcs.scripts.preview_augmentation": "plcs.preview_augmentation",
     "src.tasks.plcs.scripts.train": "plcs.train",
+
     "src.tasks.plcs.scripts.train_triangulation_residual": "plcs.triangulation_residual.train",
     "src.tasks.plcs.scripts.visualize": "plcs.visualize",
     "src.tasks.slcs.scripts.analyze_predictions": "slcs.analyze_predictions",
@@ -253,6 +254,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.plcs.scripts.generate_dataset_samples": "src.tasks.plcs.generate_dataset.samples.validate_dataset_samples_boundary",
     "src.tasks.plcs.scripts.preview_augmentation": "src.tasks.plcs.configuration._validate_preview_boundary",
     "src.tasks.plcs.scripts.train": "src.tasks.plcs.configuration._validate_training_boundary",
+
     "src.tasks.plcs.scripts.train_triangulation_residual": "src.tasks.plcs.configuration._validate_residual_boundary",
     "src.tasks.plcs.scripts.visualize": "src.tasks.plcs.configuration._validate_visualization_boundary",
     "src.tasks.slcs.scripts.analyze_predictions": "src.tasks.slcs.configuration.validate_analysis_boundary",
@@ -599,6 +601,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.generate_dataset_samples"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.preview_augmentation"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train"),
+
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.train_triangulation_residual"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.visualize"),
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.analyze_predictions"),
