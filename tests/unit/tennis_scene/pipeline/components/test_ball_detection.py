@@ -15,7 +15,7 @@ import src.tennis_scene.pipeline.components.ball_detection as ball_component
 from src.tasks.ball_detection.model_io import BallPrediction
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
-    BallDetectionResult,
+    BallDetectionOutput,
 )
 from src.utils.video import FramePacket
 from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
@@ -37,37 +37,15 @@ class _TypedBallPredictor:
 
 def test_trajectory_gate_zeroes_rejected_pipeline_frames(tmp_path) -> None:
     frame: NDArray[np.float32] = np.arange(12, dtype=np.float32)
-    ball_uv_px = np.stack(
-        [
-            50.0 + 20.0 * frame,
-            np.full(12, 120.0, dtype=np.float32),
-        ],
-        axis=1,
-    ).astype(np.float32)
-    ball_uv_px[6, 0] += 180.0
-    ball_uv = ball_uv_px.copy()
-    ball_uv[:, 0] /= 639.0
-    ball_uv[:, 1] /= 359.0
-    result = BallDetectionResult(
-        ball_uv=ball_uv[np.newaxis, ...],
-        ball_uv_px=ball_uv_px[np.newaxis, ...],
-        visibility=np.ones((1, 12), dtype=np.bool_),
-        score=np.full((1, 12), 0.9, dtype=np.float32),
-    )
+    uv_px = np.stack([50.0 + 20.0 * frame, np.full(12, 120.0, dtype=np.float32)], axis=1).astype(np.float32)
+    uv_px[6, 0] += 180.0
     module = BallDetectionModule(make_ball_config(tmp_path))
 
-    gated = module._apply_trajectory_gate(result)
+    gated_px, score, observed = module._accept_detections(uv_px, np.full(12, 0.9, dtype=np.float32))
 
-    assert not bool(gated.visibility[0, 6])
-    np.testing.assert_array_equal(gated.ball_uv[0, 6], np.zeros(2, dtype=np.float32))
-    np.testing.assert_array_equal(
-        gated.ball_uv_px[0, 6],
-        np.zeros(2, dtype=np.float32),
-    )
-    assert gated.score[0, 6] == 0.0
-    is_valid, errors = gated.validate()
-    assert is_valid
-    assert errors == []
+    assert not bool(observed[6]) and observed[[5, 7]].all()
+    np.testing.assert_array_equal(gated_px[6], np.zeros(2, dtype=np.float32))
+    assert score[6] == 0.0
 
 
 def test_predict_video_consumes_typed_task_prediction(
@@ -97,56 +75,34 @@ def test_predict_video_consumes_typed_task_prediction(
     np.testing.assert_allclose(confidence, [0.6, 0.8])
 
 
-def test_process_exposes_one_unidentified_observation_stream_per_camera(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    packets: list[FramePacket] = [
-        FramePacket(
-            index=index,
-            frame=np.zeros((4, 6, 3), dtype=np.uint8),
-            original_size=(6, 4),
-        )
-        for index in range(2)
-    ]
-    monkeypatch.setattr(
-        ball_component,
-        "OpenCVVideoFrameReader",
-        lambda _path, *, max_frames: packets[:max_frames],
-    )
-    monkeypatch.setattr(
-        ball_component,
-        "probe_video_info",
-        lambda _path: SimpleNamespace(width=6, height=4),
-    )
-    base_config = make_ball_config(tmp_path)
-    config = replace(
-        base_config,
-        image_size=(4, 6),
-        score_threshold=0.7,
-        trajectory_gate=replace(base_config.trajectory_gate, enabled=False),
-    )
-    module = BallDetectionModule(config)
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+def _process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, num_frames: int, tail_policy: str = "backfill") -> BallDetectionOutput:
+    from src.tennis_scene.pipeline.components.ball_detection import BallDetectionInput
+    from src.tennis_scene.pipeline.contracts import SourceVideo
 
-    result = module._process_videos(
-        [Path("camera-near.mp4"), Path("camera-far.mp4")],
-        max_frames=2,
-    )
+    packets = [FramePacket(index=i, frame=np.zeros((4, 6, 3), dtype=np.uint8), original_size=(6, 4)) for i in range(num_frames)]
+    monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda _path, *, max_frames: packets[:max_frames])
+    base = make_ball_config(tmp_path)
+    module = BallDetectionModule(replace(base, image_size=(4, 6), score_threshold=0.7, tail_policy=tail_policy,
+                                         trajectory_gate=replace(base.trajectory_gate, enabled=False)))
+    monkeypatch.setattr(module, "load", lambda: setattr(module, "_pipeline", _TypedBallPredictor()))
+    output = module.process(BallDetectionInput(SourceVideo("near", tmp_path / "near.mp4", "hash", num_frames, 30.0, 6, 4)))
+    assert not module.is_loaded
+    return output
 
-    assert result.ball_uv.shape == (2, 2, 2)
-    assert result.ball_uv_px.shape == (2, 2, 2)
-    assert result.visibility.shape == (2, 2)
-    assert result.score.shape == (2, 2)
-    np.testing.assert_array_equal(
-        result.visibility,
-        np.array([[False, True], [False, True]], dtype=np.bool_),
-    )
-    np.testing.assert_array_equal(result.ball_uv[:, 0], np.zeros((2, 2)))
-    np.testing.assert_allclose(result.ball_uv[:, 1], [[0.3, 0.4], [0.3, 0.4]])
-    np.testing.assert_allclose(result.ball_uv_px[:, 1], [[1.5, 1.2], [1.5, 1.2]])
-    assert set(vars(result)) == {"ball_uv", "ball_uv_px", "visibility", "score"}
-    assert result.validate() == (True, [])
+
+def test_process_exposes_one_unidentified_observation_stream(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = _process(tmp_path, monkeypatch, num_frames=2)
+    assert output.camera_id == "near" and output.frame_indices.tolist() == [0, 1]
+    np.testing.assert_array_equal(output.observed, [False, True])
+    np.testing.assert_array_equal(output.uv_px[0], [0, 0])
+    np.testing.assert_allclose(output.uv_px[1], [0.3 * 5, 0.4 * 3])  # (W-1, H-1) grid normalization
+    np.testing.assert_allclose(output.confidence, [0.0, 0.8])
+    assert output.point_kind.tolist() == [0, 1] and output.score_semantics == "model_score"
+
+
+def test_incomplete_timeline_stops_instead_of_padding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(ValueError, match="covered 2 of 3 frames"):
+        _process(tmp_path, monkeypatch, num_frames=3, tail_policy="drop")
 
 
 @pytest.mark.parametrize("expected_normalization", [False, True])

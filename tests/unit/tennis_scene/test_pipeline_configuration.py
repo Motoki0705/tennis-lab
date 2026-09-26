@@ -21,8 +21,6 @@ def _runtime(
 
 def test_defaults_load_imported_identities_and_sides() -> None:
     runtime = _runtime([])
-    assert runtime.court_kp.output_keypoint_contract == "camera_view_v2"
-    assert runtime.court_kp.mode == "model"
     assert runtime.camera_geometry.reference_camera is None
     # No model implements these nodes yet (#933 / #932): they are imported.
     assert runtime.component_sources["player_association"] == "load"

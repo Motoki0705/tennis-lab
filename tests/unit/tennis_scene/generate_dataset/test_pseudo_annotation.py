@@ -1,150 +1,106 @@
-"""Tests for incremental pseudo annotation publication."""
+"""Publication of completion markers over the clip store's immutable scene export."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
 
-from src.tennis_scene.archive import load_scene_result
+import pytest
+
 from src.tennis_scene.generate_dataset.pseudo_annotation import (
+    SceneRunner,
     generate_pseudo_annotations,
 )
 from src.tennis_scene.schema import SceneResult
 from src.utils.io import load_json
+from tests.support.tennis_scene.annotations import publish_scene_to_clip_store
+
+CLIP_ID = "video_000/clip_000"
+IDENTITY = {"checkpoint": "sha-one"}
 
 
-def test_generate_publishes_complete_annotation_and_then_skips(
+def _clip(dataset: Path) -> Path:
+    return dataset / "videos/video_000/clips/clip_000"
+
+
+def _publishing_runner(scene: SceneResult, calls: list[int] | None = None) -> SceneRunner:
+    """Stand in for the orchestrator: leave the export in the clip store, return the scene."""
+    def runner(video_paths: Sequence[Path], camera_ids: Sequence[str], clip_dir: Path) -> SceneResult:
+        assert [path.name for path in video_paths] == ["cam0.mp4"] and list(camera_ids) == ["cam0"]
+        if calls is not None:
+            calls.append(1)
+        publish_scene_to_clip_store(clip_dir, CLIP_ID, scene)
+        return scene
+    return runner
+
+
+def test_marker_points_at_the_export_and_is_reused_for_the_same_identity(
     structured_dataset: Path, valid_scene_result: SceneResult
 ) -> None:
-    calls = 0
+    calls: list[int] = []
+    runner = _publishing_runner(valid_scene_result, calls)
+    first = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="device: cpu\n", publication_identity=IDENTITY)
+    assert first[0].status == "generated" and first[0].annotation_path is not None
+    marker = load_json(first[0].annotation_path)
+    assert marker["clip_id"] == CLIP_ID and marker["scene_index"] == "scene.json"
+    assert marker["scene_result"].startswith("exports/") and marker["arrays"]["ball_3d"]["shape"] == [3, 3]
+    second = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="device: cpu\n", publication_identity=IDENTITY)
+    assert second[0].status == "skipped" and len(calls) == 1
 
-    def runner(video_paths: Sequence[Path], camera_ids: Sequence[str], _clip: Path) -> SceneResult:
-        nonlocal calls
-        calls += 1
-        assert [path.name for path in video_paths] == ["cam0.mp4"]
-        assert list(camera_ids) == ["cam0"]
-        return valid_scene_result
 
-    first = generate_pseudo_annotations(
-        structured_dataset,
-        runner,
-        pipeline_config_yaml="device: cpu\n",
-    )
-    assert first[0].status == "generated"
-    assert calls == 1
-    assert first[0].annotation_path is not None
-    annotation = load_json(first[0].annotation_path)
-    assert annotation["clip_id"] == "video_000/clip_000"
-    assert annotation["arrays"]["ball_3d"]["shape"] == [3, 3]
-    assert annotation["arrays"]["gvhmr_aligned_player_position"]["shape"] == [
-        2,
-        3,
-        3,
-    ]
-    loaded = load_scene_result(first[0].annotation_path.parent / "scene.npz")
-    assert loaded.metadata["dataset_clip_id"] == "video_000/clip_000"
-
-    second = generate_pseudo_annotations(
-        structured_dataset,
-        runner,
-        pipeline_config_yaml="device: cpu\n",
-    )
-    assert second[0].status == "skipped"
-    assert calls == 1
+def test_config_is_content_addressed_and_the_export_stays_immutable(
+    structured_dataset: Path, valid_scene_result: SceneResult
+) -> None:
+    outcome = generate_pseudo_annotations(structured_dataset, _publishing_runner(valid_scene_result),
+        pipeline_config_yaml="device: cpu\n", publication_identity=IDENTITY)[0]
+    assert outcome.annotation_path is not None
+    marker = load_json(outcome.annotation_path)
+    annotations = outcome.annotation_path.parent
+    export = (annotations / marker["scene_result"]).parent
+    assert sorted(path.name for path in export.iterdir()) == ["scene.metadata.json", "scene.npz"]
+    config = annotations / marker["pipeline_config"]
+    assert config.parent.name == "configs" and config.read_text() == "device: cpu\n"
 
 
 def test_completed_annotation_cannot_hide_changed_weights(
     structured_dataset: Path, valid_scene_result: SceneResult,
 ) -> None:
-    calls = []
-    def runner(_paths: Sequence[Path], _ids: Sequence[str], _clip: Path) -> SceneResult:
-        calls.append(1)
-        return valid_scene_result
-    first = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
-    assert first[0].status == "generated"
-    same = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
-    assert same[0].status == "skipped"
+    calls: list[int] = []
+    runner = _publishing_runner(valid_scene_result, calls)
+    assert generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity=IDENTITY)[0].status == "generated"
     changed = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-two"})
-    assert changed[0].status == "failed"
-    assert "Stale annotation" in str(changed[0].error)
+    assert changed[0].status == "failed" and "Stale annotation" in str(changed[0].error)
     assert len(calls) == 1
 
 
-def test_contract_mismatch_records_failure_without_completion_marker(
+def test_historical_marker_without_identity_is_never_silently_reused(
     structured_dataset: Path, valid_scene_result: SceneResult
 ) -> None:
-    valid_scene_result.num_frames = 2
-
-    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str], _clip: Path) -> SceneResult:
-        return valid_scene_result
-
-    outcomes = generate_pseudo_annotations(
-        structured_dataset,
-        runner,
-        pipeline_config_yaml="device: cpu\n",
-    )
-    assert outcomes[0].status == "failed"
-    assert "num_frames 2 != 3" in str(outcomes[0].error)
-    annotation_root = (
-        structured_dataset
-        / "videos"
-        / "video_000"
-        / "clips"
-        / "clip_000"
-        / "annotations"
-    )
-    assert not (annotation_root / "tennis_scene" / "annotation.json").exists()
-    failure = load_json(annotation_root / "tennis_scene.failure.json")
-    assert "num_frames 2 != 3" in failure["error"]
+    from src.utils.io import save_json_atomic
+    save_json_atomic({"version": 1, "scene_result": "scene.npz"}, _clip(structured_dataset) / "annotations/tennis_scene/annotation.json")
+    outcome = generate_pseudo_annotations(structured_dataset, _publishing_runner(valid_scene_result),
+        pipeline_config_yaml="x: 1", publication_identity=IDENTITY)[0]
+    assert outcome.status == "failed" and "use overwrite=true" in str(outcome.error)
 
 
-def test_missing_blcs_labels_is_explicit_failure(
-    structured_dataset: Path, valid_scene_result: SceneResult
+@pytest.mark.parametrize("change,message", [
+    (lambda s: setattr(s, "fps", 25.0), "fps 25.0 != 30.0"),
+    (lambda s: s.metadata.update(pipeline_contract="legacy_stages"), "declared_components_v1"),
+    (lambda s: setattr(s, "ball_3d", None), "Invalid v2 ball_3d"),
+])
+def test_contract_violation_records_failure_without_completion_marker(
+    structured_dataset: Path, valid_scene_result: SceneResult, change, message: str
 ) -> None:
-    valid_scene_result.ball_3d = None
-
-    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str], _clip: Path) -> SceneResult:
-        return valid_scene_result
-
-    outcomes = generate_pseudo_annotations(
-        structured_dataset,
-        runner,
-        pipeline_config_yaml="device: cpu\n",
-    )
-    assert outcomes[0].status == "failed"
-    assert "required pseudo-label array 'ball_3d' is missing" in str(outcomes[0].error)
+    change(valid_scene_result)
+    outcomes = generate_pseudo_annotations(structured_dataset, lambda *_: valid_scene_result,
+        pipeline_config_yaml="device: cpu\n", publication_identity=IDENTITY)
+    assert outcomes[0].status == "failed" and message in str(outcomes[0].error)
+    annotations = _clip(structured_dataset) / "annotations"
+    assert not (annotations / "tennis_scene/annotation.json").exists()
+    assert message in load_json(annotations / "tennis_scene.failure.json")["error"]
 
 
-def test_plcs_only_result_does_not_require_disabled_ball_stages(
-    structured_dataset: Path, valid_scene_result: SceneResult
-) -> None:
-    valid_scene_result.ball_uv = None
-    valid_scene_result.ball_vis = None
-    valid_scene_result.ball_3d = None
-    valid_scene_result.metadata["enabled_stages"] = ["court_kp", "gvhmr", "plcs"]
-
-    def runner(_video_paths: Sequence[Path], _camera_ids: Sequence[str], _clip: Path) -> SceneResult:
-        return valid_scene_result
-
-    outcomes = generate_pseudo_annotations(
-        structured_dataset,
-        runner,
-        pipeline_config_yaml="device: cpu\n",
-    )
-
-    assert outcomes[0].status == "generated"
-    assert outcomes[0].annotation_path is not None
-    annotation = load_json(outcomes[0].annotation_path)
-    assert "ball_uv" not in annotation["arrays"]
-    assert "ball_vis" not in annotation["arrays"]
-    assert "ball_3d" not in annotation["arrays"]
-
-
-def test_integrity_failure_propagates_without_completion_marker(
-    structured_dataset: Path,
-) -> None:
-    import pytest
-
+def test_integrity_failure_propagates_without_completion_marker(structured_dataset: Path) -> None:
     from src.utils.checksum import FileIntegrityError
 
     error = FileIntegrityError("providers disagree", details={"path": "checkpoint"})
@@ -153,43 +109,27 @@ def test_integrity_failure_propagates_without_completion_marker(
         raise error
 
     with pytest.raises(FileIntegrityError) as caught:
-        generate_pseudo_annotations(
-            structured_dataset,
-            runner,
-            pipeline_config_yaml="device: cpu\n",
-            continue_on_error=False,
-        )
+        generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="device: cpu\n",
+            publication_identity=IDENTITY, continue_on_error=False)
     assert caught.value is error
-    annotations = structured_dataset / "videos/video_000/clips/clip_000/annotations"
+    annotations = _clip(structured_dataset) / "annotations"
     assert not (annotations / "tennis_scene/annotation.json").exists()
-    failure = load_json(annotations / "tennis_scene.failure.json")
-    assert "FileIntegrityError" in failure["error"]
+    assert "FileIntegrityError" in load_json(annotations / "tennis_scene.failure.json")["error"]
 
 
-def test_component_publication_preserves_store_and_slcs_follows_index(
+def test_publication_preserves_the_store_and_slcs_follows_the_index(
     structured_dataset: Path, valid_scene_result: SceneResult,
 ) -> None:
     from src.tasks.slcs.data.annotation import load_slcs_annotation
-    from src.tennis_scene.archive import save_scene_result
     from src.tennis_scene.generate_dataset.manifest import ClipManifest
-    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
-    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
-    clip = structured_dataset / "videos/video_000/clips/clip_000"
-    store = ClipStore(clip / "annotations/tennis_scene", {"clip_id": "video_000/clip_000"})
-    valid_scene_result.metadata.update(pipeline_contract="declared_components_v1", status="ok", validity_statistics={}, dataset_clip_id="video_000/clip_000")
-    ref = store.publish("scene_assembly", valid_scene_result, ArtifactCodec(SceneResult), schema="scene_result", version=2,
-        identity={"test": "publication"}, dependencies={}, provenance={"origin": "component"})
-    export = store.root / "exports" / ref.artifact_id / "scene.npz"
-    save_scene_result(valid_scene_result, export)
-    store.record_export("scene", {"scene": export, "metadata": export.with_suffix(".metadata.json")}, {"scene_assembly": ref})
-    artifact_descriptor = store.root / ref.path
-    before = artifact_descriptor.read_bytes()
-    outcomes = generate_pseudo_annotations(structured_dataset, lambda _paths, _ids, _clip: valid_scene_result,
-        pipeline_config_yaml="device: cpu", publication_identity={"test": "publication"})
-    assert outcomes[0].status == "generated"
-    assert artifact_descriptor.read_bytes() == before
+    clip = _clip(structured_dataset)
+    export = publish_scene_to_clip_store(clip, CLIP_ID, valid_scene_result)
+    index_before = (clip / "annotations/tennis_scene/scene.json").read_bytes()
+    outcomes = generate_pseudo_annotations(structured_dataset, lambda *_: valid_scene_result,
+        pipeline_config_yaml="device: cpu", publication_identity=IDENTITY)
+    assert outcomes[0].status == "generated" and outcomes[0].annotation_path is not None
+    assert (clip / "annotations/tennis_scene/scene.json").read_bytes() == index_before
     marker = load_json(outcomes[0].annotation_path)
-    assert marker["scene_index"] == "scene.json"
-    assert marker["scene_result"] == str(export.relative_to(store.root))
+    assert marker["scene_result"] == str(export.relative_to(clip / "annotations/tennis_scene"))
     loaded = load_slcs_annotation(ClipManifest.load(clip))
     assert loaded.player_position.shape == valid_scene_result.player_position.shape

@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import os
-import shutil
-import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.pipeline.artifacts import (
     document_digest,
     json_value,
@@ -23,6 +19,7 @@ from src.tennis_scene.pipeline.definition import (
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
@@ -82,7 +79,7 @@ class TennisSceneOrchestrator:
         try:
             runner.run()
             scene: SceneResult = runner.output("scene_assembly")
-            self._export(scene, runner, store)
+            export_scene(store, scene, runner.references["scene_assembly"])
             self.last_receipt.update(status=scene.metadata["status"], validity=scene.metadata["validity_statistics"])
             return scene
         except Exception as exc:
@@ -92,20 +89,3 @@ class TennisSceneOrchestrator:
             self.last_receipt.update(active_stage=runner.active_node, stage_status=runner.statuses,
                 stage_seconds=runner.seconds, artifacts=json_value(runner.references))
             write_json_atomic(store.root / "run.json", self.last_receipt)
-
-    @staticmethod
-    def _export(scene: SceneResult, runner: ComponentRunner, store: ClipStore) -> None:
-        reference = runner.references["scene_assembly"]
-        exports = store.root / "exports"
-        exports.mkdir(exist_ok=True)
-        destination = exports / reference.artifact_id
-        if not destination.exists():
-            temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=exports))
-            try:
-                save_scene_result(scene, temporary / "scene.npz")
-                os.replace(temporary, destination)
-            finally:
-                if temporary.exists():
-                    shutil.rmtree(temporary)
-        store.record_export("scene", {"scene": destination / "scene.npz", "metadata": destination / "scene.metadata.json"},
-            {"scene_assembly": reference})

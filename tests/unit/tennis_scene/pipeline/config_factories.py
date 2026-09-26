@@ -14,6 +14,7 @@ from src.submodules.configuration import (
 )
 from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
+from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
@@ -78,7 +79,6 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
     resolver = make_resolver(root)
     return BallDetectionConfig(
         checkpoint=resolver.resolve(PathRole.CHECKPOINT, "ball.ckpt"),
-        source="execute",
         batch_size=2,
         device="cpu",
         image_size=(360, 640),
@@ -99,9 +99,6 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
             max_support_gap=4,
             max_passes=2,
         ),
-        save_result=False,
-        output_path=resolver.resolve(PathRole.ARTIFACT, "ball.json"),
-        load_path=None,
         resolver=resolver,
     )
 
@@ -112,15 +109,10 @@ def make_court_kp_config(root: Path) -> CourtKPConfig:
     resolver = make_resolver(root)
     return CourtKPConfig(
         checkpoint=resolver.resolve(PathRole.CHECKPOINT, "court.ckpt"),
-        source="execute",
-        mode="model",
         device="cpu",
         subpixel_refine=False,
-        num_keypoints=14,
-        save_result=False,
-        output_path=resolver.resolve(PathRole.ARTIFACT, "court.json"),
-        load_path=None,
         postprocess=CourtKPPostprocessConfig(),
+        region_search=CourtRegionSearchConfig(),
         resolver=resolver,
     )
 

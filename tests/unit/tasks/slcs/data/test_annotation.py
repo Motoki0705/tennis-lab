@@ -76,7 +76,7 @@ def test_annotation_roundtrip(synthetic_dataset: SLCSDataIndex) -> None:
     assert scene.court_kp.shape[0] == len(manifest.camera_ids)
 
 
-def test_fixture_composes_canonical_manifest_and_annotation_writers(
+def test_fixture_composes_canonical_manifest_and_historical_annotation(
     synthetic_dataset: SLCSDataIndex,
 ) -> None:
     clip_dir = synthetic_dataset.clip_dir(synthetic_dataset.clips[0])
@@ -86,8 +86,7 @@ def test_fixture_composes_canonical_manifest_and_annotation_writers(
 
     assert clip_payload["sync_source"] == "clip_studio"
     assert marker["generator"] == "src.tennis_scene"
-    assert marker["pipeline_config"] == "pipeline_config.yaml"
-    assert (marker_path.parent / "pipeline_config.yaml").is_file()
+    assert marker["scene_result"] == "scene.npz" and "scene_index" not in marker
     scene = load_slcs_annotation(ClipManifest.load(clip_dir))
     assert scene.ball_uv is not None
     assert marker["arrays"]["ball_uv"] == {
