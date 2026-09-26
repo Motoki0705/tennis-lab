@@ -390,6 +390,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "blcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.visualize_component_store": (
+        "tennis_scene.component_gallery",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -508,6 +512,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "src.tasks.blcs.scripts.inference_ui",
         "main",
         domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.visualize_component_store",
+        "main",
+        domain="tennis_scene",
         executable_module=True,
     ),
     _runtime_boundary(

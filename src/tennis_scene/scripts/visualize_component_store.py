@@ -29,6 +29,15 @@ import numpy as np
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
 from src.tennis_scene.pipeline.storage.codec import unpack_value
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 from src.utils.schema.player import COCO17_SKELETON
 
@@ -789,16 +798,29 @@ class Review:
         return destination
 
 
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.component_gallery",
+    fields=(
+        BoundaryPathField("store", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.DIRECTORY, must_exist=True, allow_role_root=True),
+        BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY, allow_role_root=True),
+    ),
+)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store", type=Path, required=True, help="Component store directory holding scene.json")
     parser.add_argument("--output", type=Path, required=True, help="Gallery directory outside the component store")
     parser.add_argument("--videos", action="store_true", help="Also render complete 2D component overlay videos")
     args = parser.parse_args()
-    index = args.store / "scene.json"
+    store, output = args.store.expanduser().resolve(), args.output.expanduser().resolve()
+    roots = RuntimePathRoots(project_root=store, data_root=store, checkpoint_root=store, artifact_root=store,
+                             output_root=output, cache_root=output, external_asset_root=store)
+    paths = PATH_BOUNDARY.validate({"store": store, "output": output}, resolver=PathResolver(roots))
+    index = paths.declared("store").path / "scene.json"
     if not index.is_file():
         raise FileNotFoundError(index)
-    print(Review(index, args.output, videos=args.videos).build())
+    print(Review(index, paths.declared("output").path, videos=args.videos).build())
 
 
 if __name__ == "__main__":
