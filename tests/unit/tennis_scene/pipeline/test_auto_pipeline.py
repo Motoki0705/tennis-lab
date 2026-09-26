@@ -53,6 +53,20 @@ def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False) -> Pipe
     return PipelineRuntimeConfig.from_config(cfg)
 
 
+def materialize_assets(paths: Any, tmp_path: Path) -> None:
+    """Create stand-ins for the test-owned model assets under ``tmp_path``.
+
+    Repository-bundled assets (``src/submodules/vendor``) resolve outside
+    ``tmp_path``; they are real files and must never be overwritten by a test.
+    """
+    for path in paths:
+        if path.is_relative_to(tmp_path):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"asset")
+        else:
+            assert path.is_file(), f"repository-bundled asset is missing: {path}"
+
+
 class FixedStage:
     io: ComponentIO[Any, Any]
     def __init__(self, result: Any) -> None:
@@ -285,9 +299,7 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     stages["gvhmr"] = KnownGVHMR()
     monkeypatch.setattr("src.tennis_scene.pipeline.components.body_placement.SmplGeometry", lambda config: body)
     config = replace(pipeline.config, enabled={**pipeline.config.enabled, "gvhmr": True}, processing_settings={**pipeline.config.processing_settings, "gvhmr": {"enabled": True}})
-    for asset in config.people.body_assets().values():  # identity inputs of the real body_placement
-        asset.parent.mkdir(parents=True, exist_ok=True)
-        asset.write_bytes(b"asset")
+    materialize_assets(config.people.body_assets().values(), tmp_path)  # identity inputs of the real body_placement
     pipeline = TennisSceneOrchestrator(config, components=stages)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     assert scene.player_valid.all() and scene.player_heading_valid.all() and scene.player_smpl_valid.all()
