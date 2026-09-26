@@ -210,3 +210,41 @@ def test_required_scene_array_is_enforced(tmp_path: Path) -> None:
     np.savez_compressed(scene_path, **data)
     with pytest.raises(DatasetManifestError, match="ball_uv"):
         load_slcs_annotation(ClipManifest.load(clip_dir), verify_manifest_digest=False)
+
+
+def _rewrite_as_v2(scene_path: Path, camera_ids: list[str]) -> None:
+    """Rewrite the fixture scene as a v2 scene whose reconstruction is all rejected."""
+    from src.tennis_scene.archive import load_scene_result, save_scene_result
+
+    scene = load_scene_result(scene_path)
+    players, frames = scene.player_position.shape[:2]
+    for name in ("player_position", "player_yaw", "ball_3d"):
+        getattr(scene, name)[...] = 0
+    for name in ("smpl_body_pose", "smpl_global_orient", "smpl_vertices_local", "player_canonical_pose",
+                 "gvhmr_aligned_player_position", "gvhmr_aligned_player_yaw",
+                 "gvhmr_aligned_smpl_global_orient", "gvhmr_aligned_smpl_vertices_local"):
+        setattr(scene, name, None)
+    scene.player_kp_3d = np.zeros((players, frames, 17, 3), np.float32)
+    for name, shape in (("player_observed", (players, frames)), ("player_valid", (players, frames)),
+                        ("player_heading_valid", (players, frames)), ("player_kp_3d_vis", (players, frames, 17)),
+                        ("player_smpl_valid", (players, frames)), ("ball_3d_valid", (frames,))):
+        setattr(scene, name, np.zeros(shape, bool))
+    scene.player_rejection_code = np.ones((players, frames), np.uint8)
+    scene.player_kp_3d_rejection_code = np.ones((players, frames, 17), np.uint8)
+    scene.ball_rejection_code = np.ones(frames, np.uint8)
+    scene.metadata = {**scene.metadata, "scene_schema_version": 2, "court_reference": {"camera_ids": camera_ids}}
+    save_scene_result(scene, scene_path)
+
+
+def test_v2_scene_requires_calibration_for_every_manifest_camera(tmp_path: Path) -> None:
+    index = build_slcs_dataset_fixture(
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
+    )
+    clip_dir = index.clip_dir(index.clips[0])
+    manifest = ClipManifest.load(clip_dir)
+    scene_path = slcs_annotation_dir(clip_dir) / SLCS_SCENE_ARCHIVE_FILENAME
+    _rewrite_as_v2(scene_path, list(manifest.camera_ids)[:-1])
+    with pytest.raises(DatasetManifestError, match="calibration for every manifest camera"):
+        load_slcs_annotation(manifest, verify_manifest_digest=False)
+    _rewrite_as_v2(scene_path, list(manifest.camera_ids))
+    assert load_slcs_annotation(manifest, verify_manifest_digest=False).schema_version == 2
