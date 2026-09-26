@@ -5,15 +5,17 @@
 
 | 場所 | 責務 |
 |---|---|
-| `components/` | 検出、追跡、pose、Re-ID、side、幾何、身体復元・配置。各IO契約の所有者 |
+| `components/` | 検出、追跡、pose、幾何、身体復元・配置。各IO契約の所有者。`identity.py`は人物対応・sideの成果物契約だけを持つ |
 | `input_assembly/` | 宣言済み成果物のcamera/frame/track照合とInput構築。store全体へ自由に問い合わせない |
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
 | `runner.py` | 宣言の互換性・循環検査、依存順実行、execute/load、公開の共通手順 |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
-| `orchestrator.py` | source動画とclipの束縛、標準recipeのcomposition、scene export、実行receipt |
-| `imports/` | 外部成果物の明示変換。モデルのfallbackではない |
-| `feature_flags.py` | 出力機能の有効/無効の整合性と旧archiveのstage名。実行DAGは保持しない |
+| `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
+| `orchestrator.py` | source動画の束縛、標準recipeのcomposition、scene export、実行receipt |
+| `feature_flags.py` | 無効化できる出力機能（`OPTIONAL_FEATURES`）とその依存関係 |
+
+component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.yaml`の`execution`はその全てを1回ずつ持つ。
 
 ## 処理単位
 
@@ -21,12 +23,14 @@
 `court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
 `court_calibration`はこの1frameから初期校正・ROIを作り、固定cameraのコート座標を全frameへ明示的にbroadcastする。
 `observed_frame_indices=[0]`と`temporal_policy`を保存し、他frameでモデルを実行したとは扱わない。
+校正できなかったcameraはROIを持たず、そのcameraの人物検出は実行しない（ROIなしの検出はしない）。
 
 ```text
 動画 → court_detection → court_calibration
 動画＋ROI → person_detection → person_tracking → pose_estimation
 動画 → ball_detection
-pose＋court → person_reid / court_side（独立モデル）
+pose＋court → player_association（load専用）
+pose＋ball＋court → court_side（load専用）
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
 単一球観測＋camera → ball_triangulation
@@ -36,19 +40,22 @@ GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 
 人物detectorはDINO/YOLOを選べる。trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
 ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは4以下、ID/slotの再利用や暗黙統合は行わない。
-BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する。
+BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する
+（閾値は`TrackletLinkPolicy`で、成果物identityに含む）。
 1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。
 元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計4人超では明示的に停止する。
-モデルの人物同一性の正しさは可視化でも検証する。
+
+`player_association`と`court_side`は出力schema（`components/identity.py`、version 2）だけを定義する。
+モデル実装が入るまで（#933 / #932）既定は`execution.<node>=load`で、`execute`を指定するとdefinition構築時に停止する。
 
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
 `gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
-旧一括GVHMR chainと旧3D PLCS/BLCS componentは撤去し、歴史的手動対応のdecoderだけ`artifact_schemas/`に残す。
 
 ## 成果物
 
-構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとする。
-単独動画の入口では明示的な`cache.directory/<source hash>`を使用する。
+構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。
+単独動画の入口（`store_root=None`）は`cache.directory/<source digest>`を使う。
+storeの場所を動画パスの形から推測しない。`cache.directory`はrun IDを含まないARTIFACT pathで、`cache.source=load`で再開できる。
 
 ```text
 annotations/tennis_scene/
@@ -62,6 +69,7 @@ annotations/tennis_scene/
 
 component JSONは出力schema/version、入力artifact参照、設定・資産・実装識別、source/時間軸、配列参照とchecksum、出自を記録する。
 camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む。
+資産identityは有効な機能が読むcheckpointのSHA-256で、ファイルが無ければdefinition構築時に停止する。
 大配列は`.npy`へ分離する。読み込みはmmapを使い、メモリにある同じartifactを再利用する。
 配列を含む保存・復元結果を下流へ渡すため、同じ実行内と再起動後で型や軸順が変わらない。
 
@@ -72,6 +80,7 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
+datasetの完成marker（`annotation.json`）は[generate_dataset](../generate_dataset/README.md)が所有する。
 
 モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
 コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。
@@ -79,29 +88,7 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 
 ## execute / load
 
-標準設定は各componentを`execution.<component>=execute`とする。
-executeは同一identityの完成artifactを再利用し、無ければ実行する。
-`execution.ball_detection=load`等は保存結果を必須とし、モデルを実行しない。
+`execution.<component>=execute`は同一identityの完成artifactを再利用し、無ければ実行する。
+`execution.<component>=load`は採用済みartifactを必須とし、モデルを実行しない。schema/version・node名・
+入力artifact参照が宣言と一致しなければ停止する。componentが生成したartifactは実行identityも一致を要求する。
 `cache.source=load`は全componentの再開検証用。入力や設定が違う通常artifactを暗黙採用しない。
-明示importされた外部成果物は出力schema・source・依存先の一致を要求し、モデル重みへの依存を作らない。
-
-外部`video_ball_annotation.v2`は元動画のSHA/FPS/サイズと0始まりの全frame対応を確認する。
-観測、補間、遮蔽推定、未解決を`point_kind`で保存し、幾何の実観測には`observed`だけを用いる。
-confidenceは観測1/それ以外0の採用weightで、検出確率ではない。原注釈の`image_score`を確率へ転用しない。
-sideの明示importは確認根拠を記録し、モデルlogitsは生成しない。
-実clip検証では、学習済みRe-IDの推論artifactを先に保存した後、既存の人手人物対応を別の同schema artifactとして明示importできる。
-旧GVHMRのplayer軸と現track IDはbbox時系列で一意に照合する。import後もモデルのembedding・valid mask・cosine閾値はそのまま保持し、
-モデルが推論したIDと確認済みIDを両方記録する。確認済みの対象2名以外は明示的に`-1`とし、元の検出・追跡成果物には残すが、
-三角測量・GVHMR・sceneのplayer軸には含めない。確認済みIDをモデルの予測精度とは扱わない。
-
-datasetへの公開は、既存の`annotation.json`完成markerを維持しつつ、`scene_result`でimmutableなexportを指定する。
-component storeをdirectoryごと置換しない。SLCS・review・residual readerも対応する公開参照を読む。
-
-実clip qualificationの入口は`tests/benchmarks/component_pipeline.py`。GPU実行は共有training queueを使う。
-外部ball・確認済みside・確認済み人物対応をloadし、他の処理を動画から実行してscene exportとload-only再開を検証する。
-
-保存済みcomponent出力の目視確認は、repo rootから
-`.venv/bin/python -m scripts.visualize_component_store --clip <clip directory> --output <review directory>`
-で行う。出力先の`index.html`にcomponent別の画像・timeline・診断値が並び、`manifest.json`に使用artifact IDを記録する。
-`scene.json`に未生成のcomponentは未生成と表示する。新しいartifactが増えたら同じコマンドで再生成する。
-`--videos`を付けると、ball・人物検出・tracking・poseの全frame overlay動画もH.264で生成する（`ffmpeg`が必要）。

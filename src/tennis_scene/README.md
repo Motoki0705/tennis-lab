@@ -1,65 +1,60 @@
 # tennis_scene
 
-同期済みの固定カメラ動画から、camera-local CourtV2観測、物体対応、三角測量、
-GVHMRの身体復元を組み合わせてSceneResultを作ります。標準経路はコート点、人物対応、
-view_half_turnsの手動入力を要求しません。根拠不足は欠測または理由付き失敗として保存します。
+同期済みの固定カメラ動画から、camera-local CourtV2観測、人物・球の2D観測、三角測量、
+GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不足は欠測または理由付き失敗として保存します。
 
 ## 標準経路
 
-1. 各cameraの最初の1frameをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
+1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
 2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
-3. camera-local観測とreferenceから、PLCSの独立した人物Re-ID・court sideモデルを推論。ボールは各camera/frameの単一検出を使用。
+3. camera間の人物対応（`player_association`）とcourt side（`court_side`）を読み込む。
 4. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
 5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
-7. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
+7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
+
+手順3の2ノードにはまだモデル実装がありません（court side: #932、人物対応: #933）。
+既定は`execution.<node>=load`で、同じschemaの確認済みartifactがclip storeに無ければ停止します。
+他の手順はCourt・人物・球の手動入力を要求しません。
 
 対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計4人物、球は各camera/frame高々1検出です。
-各モデルは約30fpsでclip全体を各1回処理します。短い入力は512へpadし、
-実入力の上限は1024です。時間圧縮や暗黙のwindow分割は行いません。
+camera alignmentと身体viewの選択は、clip全体を約30fpsの格子で1回処理し、格子が
+`frame_sampling.max_frames`を超えるclipは切り詰めずに拒否します。
 reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
 
-設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。
-Re-IDとsideは別checkpointです。新sideのアーキテクチャは暫定で、今回はRe-IDだけを学習します。既定の配布名は配置規約であり、
-重みを自動取得・自動選定する処理はありません。旧3Dモデルへのfallbackもありません。
-モデル規模とvalidationで選んだRe-ID閾値はcheckpointが所有します。
-2D trackerの設定はpipelineのpeople_modelsが所有します。
+設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。既定値は実clip（Meiji）で完走した構成です。
+既定の配布名は配置規約であり、重みを自動取得・自動選定する処理はありません。
+有効な機能が参照するcheckpointが欠けていれば、実行前のdefinition構築時に停止します。
 
 ```bash
 # GPU実行は、このコマンドを共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
-  'camera_ids=[cam0,cam1,cam2]' \
-  plcs_reid.checkpoint=plcs/player-reid-v2.ckpt \
-  court_side.checkpoint=plcs/court-side-v1.ckpt
+  'camera_ids=[cam0,cam1,cam2]'
 ```
 
 動画はDATA、checkpointはCHECKPOINT、外部モデルはEXTERNAL_ASSET、sceneはOUTPUT、
-stage cacheはARTIFACTのrootから解決します。[タスク出力パス](../tasks/OUTPUTS.md)を参照。
+component storeはARTIFACTのrootから解決します。[タスク出力パス](../tasks/OUTPUTS.md)を参照。
 dataset生成は実clipから入力を束縛し、設定中のサンプル動画名には依存しません。
 
 ## モジュールと成果物
 
 componentのIO宣言、入力組立、runner、clip store、保存形式とexecute/loadの正本は
-[pipeline/README.md](pipeline/README.md)です。人物検出・tracking・2D pose・視点選択・GVHMR・身体配置を
-別componentとして扱い、`scene.json`が各成果物と完成した`scene.npz`の版を管理します。
+[pipeline/README.md](pipeline/README.md)です。
 
 ## 座標・対応
 
-観測の正本はpixel座標、モデル入力とsceneの2D座標はpixel/(width,height)です。
-Court componentの既存W-1/H-1形式は境界で明示変換します。
+観測の正本はpixel座標、sceneの2D座標はpixel/(width,height)です。
+Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.keypoints`で境界変換します。
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-人物観測0件ではRe-IDを省略します。人物・球の両方が0件ならsideを含む再構成を省略します。
-Re-IDは有効な全人物trackをcosineでcamera間の人物groupへまとめ、元動画のID復元にはtracker IDを使います。
-人物らしさの補助headや確率閾値によるtrack除外はありません。
-補間やUV距離による別の人物trackingを挟みません。無観測の人物にIDは割り当てません。
+無観測の人物にIDは割り当てません。人物・球の両方が0件ならsideを含む再構成を省略します。
 ボールにはID推論・side推論・候補選択モデルを置きません。
 
-PLCSが推定したsideには、最低evidence、referenceとの接続性、絶対的な幾何品質を
-要求します。ボール観測も幾何検証に使いますがside/IDモデルは持ちません。Courtは成功したHのmedoidを選び、
-点ごとのmedianで形を作り直しません。校正は単一平面pinhole・無歪みの近似です。
+sideには、最低evidence、referenceとの接続性、絶対的な幾何品質を要求します。
+ボール観測も幾何検証に使います。校正はframe 0で採用されたHomographyの投影点に対する
+単一平面pinhole・無歪みの近似です。
 
 ## SceneResult v2
 
@@ -85,12 +80,6 @@ heading・meshは有効なrootを、3Dの人物は実2D観測を、球の3Dは2 
 rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌跡・速度・bounceは欠測を跨ぎません。
 SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid` を必ずANDし、
 2D可視性で無効な3Dのweightを復活させません。
-
-## 再開と検証
-
-実行・再開・外部成果物importは[pipeline仕様](pipeline/README.md#execute--load)を参照してください。
-人物Re-IDモデルの契約と学習結果は[PLCS仕様](../tasks/plcs/ASSOCIATION.md)が正本です。
-sideの学習済み新checkpointは未作成です。検証用の確認済みsideをloadする場合は、その出自を成果物に記録します。
 
 ## 他の入口
 
