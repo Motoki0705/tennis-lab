@@ -1,5 +1,5 @@
-# Automatic CourtV2 association + triangulation. Install validated association checkpoints
-# or explicitly override their paths; model construction never chooses an older 3D model.
+# Declared component pipeline (see src/tennis_scene/pipeline/README.md). Defaults are the
+# configuration that completed on the real Meiji clip (knowledge tennis_scene/000008, #931).
 defaults:
 - paths: default
 - _self_
@@ -32,11 +32,12 @@ execution:
   body_placement: execute
   scene_assembly: execute
 court_kp:
-  checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
+  checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
   subpixel_refine: true
-  # Explicit fixed-camera image-only region search; every frame is still inferred.
+  # Only frame 0 of each fixed camera is inferred. The region search picks the court
+  # crop on that frame from the image alone.
   region_search:
-    enabled: false
+    enabled: true
     min_inliers: 8
     inlier_distance_ratio: 0.005
     min_area_ratio: 0.01
@@ -102,7 +103,8 @@ person_observations:
   enabled: true
   visibility_threshold: 0.15
   sideline_margin_m: 1.0
-  baseline_margin_m: 5.0
+  # Far-baseline players stand well behind the court (5 m lost them on the Meiji clip).
+  baseline_margin_m: 10.0
 ball_detection:
   enabled: true
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt

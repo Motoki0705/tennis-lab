@@ -17,12 +17,16 @@ from src.submodules.models import (
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.components.tracking_identity import (
     TrackletLink,
+    TrackletLinkPolicy,
     link_tracklets,
     torso_appearance_lab,
 )
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.utils.video import OpenCVVideoFrameReader
+
+MAX_CUMULATIVE_TRACKS = 4
+"""Camera-local stable IDs per clip; IDs are never recycled or merged to fit."""
 
 
 @dataclass(frozen=True)
@@ -43,8 +47,9 @@ class PersonTrackingOutput:
     def __post_init__(self) -> None:
         if self.track_ids.ndim != 1 or self.track_ids.dtype != np.int64 or len(np.unique(self.track_ids)) != len(self.track_ids):
             raise ValueError("Track IDs must be unique int64 values")
-        if len(self.track_ids) > 4:
-            raise ReconstructionUnavailable("person_capacity_exceeded", "More than four cumulative camera-local tracks; IDs cannot be recycled or silently merged")
+        if len(self.track_ids) > MAX_CUMULATIVE_TRACKS:
+            raise ReconstructionUnavailable("person_capacity_exceeded",
+                f"More than {MAX_CUMULATIVE_TRACKS} cumulative camera-local tracks; IDs cannot be recycled or silently merged")
         if self.boxes_xyxy.ndim != 3 or self.boxes_xyxy.shape[0] != len(self.track_ids) or self.boxes_xyxy.shape[-1] != 4 or self.observed.shape != self.boxes_xyxy.shape[:2]:
             raise ValueError("Invalid track shapes")
         if self.observed.dtype != np.bool_ or self.boxes_xyxy.dtype != np.float32 or not np.isfinite(self.boxes_xyxy).all():
@@ -61,6 +66,9 @@ class PersonTrackingModule:
     io = ComponentIO("person_tracking", PersonTrackingInput, PersonTrackingOutput,
         {"detections": InputPort("person_detections")}, "person_tracks", version=3)
 
+    def __init__(self, policy: TrackletLinkPolicy) -> None:
+        self.policy = policy
+
     def process(self, inputs: PersonTrackingInput) -> PersonTrackingOutput:
         if inputs.detections.camera_id != inputs.video.camera_id or len(inputs.detections.frame_offsets) != inputs.video.num_frames + 1:
             raise ValueError("Tracking input camera/timeline mismatch")
@@ -76,7 +84,7 @@ class PersonTrackingModule:
             history.append([{**item, "appearance_lab": torso_appearance_lab(packet.frame, item["bbx_xyxy"])} for item in tracked])
         if len(history) != inputs.video.num_frames:
             raise ValueError("Tracking did not decode the complete source timeline")
-        linked = link_tracklets(history)
+        linked = link_tracklets(history, self.policy)
         result = select_and_complete_tracks(linked.history, TrackRequest(inputs.video.path, None, False, max_frames=inputs.video.num_frames), inputs.video.num_frames)
         ids = result.track_ids
         boxes = np.stack([result.tracks[i].numpy() for i in ids]) if ids else np.zeros((0, inputs.video.num_frames, 4), np.float32)

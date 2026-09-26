@@ -11,7 +11,8 @@ from src.utils.video import VideoInfo
 
 
 def flags() -> dict[str, bool]:
-    return {key: True for key in ("court_kp", "person_observations", "ball_detection", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr")}
+    from src.tennis_scene.pipeline.feature_flags import OPTIONAL_FEATURES
+    return dict.fromkeys(OPTIONAL_FEATURES, True)
 
 
 def _runtime_with_assets(tmp_path: Path) -> Any:
@@ -76,6 +77,17 @@ def test_ball_only_features_and_strict_missing_dependencies() -> None:
     enabled["ball_detection"] = False
     with pytest.raises(ValueError, match="missing dependency"):
         validate_requested_features(enabled)
+    with pytest.raises(ValueError, match="must be exactly"):
+        validate_requested_features({**flags(), "court_side": True})
+
+
+def test_every_standard_component_has_one_execution_mode_and_node(tmp_path: Path) -> None:
+    from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
+    from src.tennis_scene.pipeline.definition import standard_definition
+    cfg = _runtime_with_assets(tmp_path)
+    assert tuple(cfg.component_sources) == STANDARD_COMPONENTS
+    nodes = standard_definition(cfg, _source(tmp_path), code_identity="test")
+    assert {node.name.split("/")[0] for node in nodes} == set(STANDARD_COMPONENTS)
 
 
 @pytest.mark.parametrize("different", [VideoInfo(25., 1920, 1080, 20), VideoInfo(30., 1280, 720, 20), VideoInfo(30., 1920, 1080, 19)])

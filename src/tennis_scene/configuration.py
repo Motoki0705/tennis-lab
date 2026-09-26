@@ -28,6 +28,10 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPPostprocessConfig,
 )
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
+from src.tennis_scene.pipeline.feature_flags import (
+    OPTIONAL_FEATURES,
+    validate_requested_features,
+)
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import (
     ConfigField,
@@ -324,9 +328,7 @@ class PipelineRuntimeConfig:
         placement = TemporalPlacementConfig(**cast(dict[str, Any], dict(_mapping(player["placement"], name="player_reconstruction.placement"))))
         _unit_interval(joint_confidence, name="joint_confidence")
         _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
-        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "player_reconstruction", "ball_reconstruction", "gvhmr")}
-        enabled.update(court_kp=True, camera_geometry=True)
-        from src.tennis_scene.pipeline.feature_flags import validate_requested_features
+        enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in OPTIONAL_FEATURES}
         validate_requested_features(enabled)
         component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
