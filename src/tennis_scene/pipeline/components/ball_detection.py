@@ -16,6 +16,7 @@ from src.tasks.ball_detection.inference.trajectory_gate import (
     apply_trajectory_gate,
 )
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
 from src.utils.configuration import PathResolver
 from src.utils.io import load_json, save_json
 from src.utils.video import (
@@ -32,6 +33,37 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class BallDetectionInput:
+    video: SourceVideo
+
+
+@dataclass(frozen=True)
+class BallDetectionOutput:
+    camera_id: str
+    frame_indices: NDArray[np.int64]
+    uv_px: NDArray[np.float32]
+    confidence: NDArray[np.float32]
+    observed: NDArray[np.bool_]
+    point_kind: NDArray[np.uint8]  # 0 absent, 1 observed, 2 interpolated, 3 occlusion estimate
+    score_semantics: str
+
+    def __post_init__(self) -> None:
+        count = len(self.frame_indices)
+        if not self.camera_id or self.frame_indices.dtype != np.int64 or not np.array_equal(self.frame_indices, np.arange(count)):
+            raise ValueError("Ball artifact must preserve the complete source timeline")
+        if self.uv_px.shape != (count, 2) or any(x.shape != (count,) for x in (self.confidence, self.observed, self.point_kind)):
+            raise ValueError("Invalid ball artifact shapes")
+        if self.uv_px.dtype != np.float32 or self.confidence.dtype != np.float32 or self.observed.dtype != np.bool_ or self.point_kind.dtype != np.uint8:
+            raise TypeError("Invalid ball artifact dtypes")
+        if not np.isfinite(self.uv_px).all() or not np.isfinite(self.confidence).all() or (self.confidence < 0).any() or (self.confidence > 1).any():
+            raise ValueError("Invalid ball coordinates or acceptance weights")
+        if not np.array_equal(self.observed, self.point_kind == 1):
+            raise ValueError("Only directly observed ball points may be observations")
+        if (self.point_kind > 3).any():
+            raise ValueError("Unknown ball point provenance")
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,7 +232,9 @@ class BallDetectionModule(BasePipelineModule):
 
     """
 
-    def __init__(self, config: BallDetectionConfig) -> None:
+    io = ComponentIO("ball_detection", BallDetectionInput, BallDetectionOutput, {}, "ball_detections")
+
+    def __init__(self, config: BallDetectionConfig, *, enabled: bool = True) -> None:
         """Initialize the module.
 
         Args:
@@ -208,6 +242,7 @@ class BallDetectionModule(BasePipelineModule):
 
         """
         self.config = config
+        self.enabled = enabled
         self._pipeline: BallDetectionPredictor | None = None
 
     def load(self) -> None:
@@ -236,7 +271,26 @@ class BallDetectionModule(BasePipelineModule):
         """Check if the model is loaded."""
         return self._pipeline is not None
 
-    def process(
+    def unload(self) -> None:
+        from src.tennis_scene.pipeline.components.base import release_inference_memory
+        self._pipeline = None
+        release_inference_memory(self.config.device)
+
+    def process(self, inputs: BallDetectionInput) -> BallDetectionOutput:
+        video = inputs.video
+        if not self.enabled:
+            return BallDetectionOutput(video.camera_id, np.arange(video.num_frames, dtype=np.int64),
+                np.zeros((video.num_frames, 2), np.float32), np.zeros(video.num_frames, np.float32),
+                np.zeros(video.num_frames, bool), np.zeros(video.num_frames, np.uint8), "disabled")
+        try:
+            result = self._process_videos([video.path], max_frames=video.num_frames,
+                image_width=video.width, image_height=video.height)
+        finally:
+            self.unload()
+        return BallDetectionOutput(video.camera_id, np.arange(video.num_frames, dtype=np.int64),
+            result.ball_uv_px[0], result.score[0], result.visibility[0], result.visibility[0].astype(np.uint8), "model_score")
+
+    def _process_videos(
         self,
         video_paths: Sequence[Path],
         max_frames: int | None = None,

@@ -177,7 +177,8 @@ def load_slcs_annotation(
                 f"clip.json (marker digest {recorded!r} != current {actual!r})."
             )
 
-    scene_path = annotation_dir / SLCS_SCENE_ARCHIVE_FILENAME
+    from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+    scene_path = annotation_scene_path(annotation_dir, marker)
     if not scene_path.is_file():
         raise DatasetManifestError(
             f"{manifest.clip_id}: scene archive missing: {scene_path}"

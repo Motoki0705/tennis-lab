@@ -33,7 +33,15 @@ if TYPE_CHECKING:
 
     from src.tasks.court_detection.inference.predictor import CourtPredictor
 
+from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
+
 LOGGER = logging.getLogger(__name__)
+
+
+
+@dataclass(frozen=True)
+class CourtDetectionInput:
+    video: SourceVideo
 
 NUM_COURT_KEYPOINTS = 14
 
@@ -253,6 +261,11 @@ class CourtKPModule(BasePipelineModule):
                 f"camera_view_v2 requires a camera-view KP14 checkpoint schema, got {schema!r}"
             )
 
+    def unload(self) -> None:
+        from src.tennis_scene.pipeline.components.base import release_inference_memory
+        self._predictor = None
+        release_inference_memory(self.device)
+
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
@@ -345,7 +358,18 @@ class CourtKPModule(BasePipelineModule):
         self._manual_keypoints = keypoints.astype(np.float32)
         self._manual_needs_normalization = True
 
-    def process(
+    io = ComponentIO("court_detection", CourtDetectionInput, CourtKPResult, {}, "court_observations", 2)
+
+    def process(self, inputs: CourtDetectionInput) -> CourtKPResult:
+        try:
+            result = self._process_videos([inputs.video.path], max_frames=1, annotation_frame_index=0)
+            result.diagnostics = {**(result.diagnostics or {}), "temporal_policy": "static_first_frame",
+                "observed_frame_indices": [0], "source_frame_count": inputs.video.num_frames}
+            return result
+        finally:
+            self.unload()
+
+    def _process_videos(
         self,
         video_paths: Sequence[Path],
         max_frames: int | None = None,

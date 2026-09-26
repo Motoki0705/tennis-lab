@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -141,9 +142,9 @@ def test_explicit_saved_artifacts_bypass_model_but_validate_recorded_contract(
     assert module._predictor is None
     if saved_contract == "camera_view_v2":
         with pytest.raises(ValueError, match="contract does not match"):
-            module.process([tmp_path / "video.mp4"])
+            module._process_videos([tmp_path / "video.mp4"])
     else:
-        actual = module.process([tmp_path / "video.mp4"])
+        actual = module._process_videos([tmp_path / "video.mp4"])
         np.testing.assert_array_equal(actual.keypoints, saved.keypoints)
         np.testing.assert_array_equal(actual.visibility, saved.visibility)
 
@@ -224,13 +225,13 @@ def test_camera_view_saved_inputs_require_recorded_or_declared_contract(
     )
     module = CourtKPModule(config)
     if accepted:
-        result = module.process([tmp_path / "video.mp4"])
+        result = module._process_videos([tmp_path / "video.mp4"])
         np.testing.assert_array_equal(result.keypoints, saved.keypoints)
         assert result.diagnostics is not None
         assert result.diagnostics["output_keypoint_contract"] == "camera_view_v2"
     else:
         with pytest.raises(ValueError, match="contract"):
-            module.process([tmp_path / "video.mp4"])
+            module._process_videos([tmp_path / "video.mp4"])
     assert artifact.read_bytes() == original
 
 
@@ -276,3 +277,23 @@ def test_video_reuses_selected_region_but_reruns_model_for_every_frame(tmp_path,
     assert result.validate()[0]
     assert result.diagnostics is not None
     assert result.diagnostics["cameras"][0]["region_selection"]["frame_index"] == 1
+
+
+def test_declared_component_infers_only_frame_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.tennis_scene.pipeline.components.court_kp import CourtDetectionInput
+    from src.tennis_scene.pipeline.contracts import SourceVideo
+    module = CourtKPModule(make_court_kp_config(tmp_path))
+    video = SourceVideo("cam0", tmp_path / "cam0.mp4", "media_hash", 1010, 59.94, 1920, 1080)
+    calls = []
+    def infer(paths, *, max_frames, annotation_frame_index):
+        calls.append((paths, max_frames, annotation_frame_index))
+        return CourtKPResult(np.zeros((1, 1, 14, 2), np.float32), np.ones((1, 1, 14), np.float32),
+            np.array([0], np.int32), {"output_keypoint_contract": "camera_view_v2"})
+    monkeypatch.setattr(module, "_process_videos", infer)
+    result = module.process(CourtDetectionInput(video))
+    assert calls == [([video.path], 1, 0)]
+    assert result.keypoints.shape == (1, 1, 14, 2)
+    assert result.diagnostics is not None
+    assert result.diagnostics["observed_frame_indices"] == [0]
+    assert result.diagnostics["source_frame_count"] == 1010
+    assert result.diagnostics["temporal_policy"] == "static_first_frame"

@@ -53,6 +53,23 @@ def test_generate_publishes_complete_annotation_and_then_skips(
     assert calls == 1
 
 
+def test_completed_annotation_cannot_hide_changed_weights(
+    structured_dataset: Path, valid_scene_result: SceneResult,
+) -> None:
+    calls = []
+    def runner(_paths: Sequence[Path], _ids: Sequence[str]) -> SceneResult:
+        calls.append(1)
+        return valid_scene_result
+    first = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
+    assert first[0].status == "generated"
+    same = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-one"})
+    assert same[0].status == "skipped"
+    changed = generate_pseudo_annotations(structured_dataset, runner, pipeline_config_yaml="test: true", publication_identity={"checkpoint": "sha-two"})
+    assert changed[0].status == "failed"
+    assert "Stale annotation" in str(changed[0].error)
+    assert len(calls) == 1
+
+
 def test_contract_mismatch_records_failure_without_completion_marker(
     structured_dataset: Path, valid_scene_result: SceneResult
 ) -> None:
@@ -147,3 +164,32 @@ def test_integrity_failure_propagates_without_completion_marker(
     assert not (annotations / "tennis_scene/annotation.json").exists()
     failure = load_json(annotations / "tennis_scene.failure.json")
     assert "FileIntegrityError" in failure["error"]
+
+
+def test_component_publication_preserves_store_and_slcs_follows_index(
+    structured_dataset: Path, valid_scene_result: SceneResult,
+) -> None:
+    from src.tasks.slcs.data.annotation import load_slcs_annotation
+    from src.tennis_scene.archive import save_scene_result
+    from src.tennis_scene.generate_dataset.manifest import ClipManifest
+    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+    clip = structured_dataset / "videos/video_000/clips/clip_000"
+    store = ClipStore(clip / "annotations/tennis_scene", {"clip_id": "video_000/clip_000"})
+    valid_scene_result.metadata.update(pipeline_contract="declared_components_v1", status="ok", validity_statistics={}, dataset_clip_id="video_000/clip_000")
+    ref = store.publish("scene_assembly", valid_scene_result, ArtifactCodec(SceneResult), schema="scene_result", version=2,
+        identity={"test": "publication"}, dependencies={}, provenance={"origin": "component"})
+    export = store.root / "exports" / ref.artifact_id / "scene.npz"
+    save_scene_result(valid_scene_result, export)
+    store.record_export("scene", {"scene": export, "metadata": export.with_suffix(".metadata.json")}, {"scene_assembly": ref})
+    artifact_descriptor = store.root / ref.path
+    before = artifact_descriptor.read_bytes()
+    outcomes = generate_pseudo_annotations(structured_dataset, lambda _paths, _ids: valid_scene_result,
+        pipeline_config_yaml="device: cpu", publication_identity={"test": "publication"})
+    assert outcomes[0].status == "generated"
+    assert artifact_descriptor.read_bytes() == before
+    marker = load_json(outcomes[0].annotation_path)
+    assert marker["scene_index"] == "scene.json"
+    assert marker["scene_result"] == str(export.relative_to(store.root))
+    loaded = load_slcs_annotation(ClipManifest.load(clip))
+    assert loaded.player_position.shape == valid_scene_result.player_position.shape

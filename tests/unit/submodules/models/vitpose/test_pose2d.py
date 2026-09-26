@@ -124,5 +124,6 @@ def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
     torch.testing.assert_close(result.keypoints[:, 0, :2], completed_boxes[:, :2])
     torch.testing.assert_close(result.keypoints[..., 2], torch.full((3, 17), 0.75))
     assert [call[0].shape for call in decoder_calls] == [(2, 2), (1, 2)]
-    assert set(vars(request)) == {"video_path", "bbx_xys"}
+    assert set(vars(request)) == {"video_path", "bbx_xys", "frame_indices"}
+    assert request.frame_indices is None
     assert set(vars(result)) == {"keypoints"}
