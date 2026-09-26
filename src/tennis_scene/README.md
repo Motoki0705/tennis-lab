@@ -203,6 +203,29 @@ metadata sidecarの欠落はエラーです。ボールなど無効にしたstag
 `camera_view_v2` の保存済みsceneは [camera-local観測契約](../tasks/base/generate_dataset/README.md)
 も満たす必要があります。旧reference順sceneは再生成が必要です。
 
+### SceneResult v2
+
+`metadata.scene_schema_version=2` のsceneは、再構成の有効性を次のmaskで明示します。
+versionのない旧archiveはv1で、maskを持ちません（v1にmaskがあれば拒否します）。
+v2でmaskや理由コードが欠けた・矛盾したarchiveは保存・読込とも拒否します。
+
+| mask | shape | 意味 | 理由コード |
+|---|---|---|---|
+| player_observed | P,T | 確定IDの実2D観測 | — |
+| player_valid | P,T | SMPL joint0のcourt配置 | player_rejection_code |
+| player_heading_valid | P,T | yaw | — |
+| player_kp_3d_vis | P,T,17 | 三角測量したCOCO17 | player_kp_3d_rejection_code |
+| player_smpl_valid | P,T | 配置した身体mesh | — |
+| ball_3d_valid | T | 球の三角測量 | ball_rejection_code |
+
+無効な座標は0で保存し、座標値0から有効性を推定しません。理由コード0は有効を意味します。
+heading・meshは有効なrootを、3Dの人物は実2D観測を、球の3Dは2 view以上の観測を必要とします。
+有効な3Dを持つsceneは `metadata.court_reference` を必須とします。検証の正本は
+`schema.validate_scene_result_arrays` です。v2では `gvhmr_aligned_*` を使いません。
+rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌跡・速度・bounceは欠測を跨ぎません。
+SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid` を必ずANDし、
+2D可視性で無効な3Dのweightを復活させません。
+
 ViTPoseの生ヒートマップピークは確率ではなく1を超えることがあります。sceneと下流推論に渡す
 姿勢visibilityは有限性を検証して `[0,1]` へ飽和させ、元の範囲・飽和件数を
 `metadata.pose_visibility_conversion` に記録します。GVHMRのstage保存結果は生値を保持します。
