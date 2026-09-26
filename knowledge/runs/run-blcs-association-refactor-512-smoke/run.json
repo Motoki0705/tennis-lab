@@ -1,0 +1,16 @@
+{
+  "run_id": "1790074311418599580_3223446_blcs-association-refactor-512-smoke",
+  "name": "blcs-association-refactor-512-smoke",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 PYTHONPATH=. /home/kamimura/projects/tennis-lab/.venv/bin/python -u /tmp/association_gpu_smoke.py blcs",
+  "provider": "codex",
+  "session": "01a0c384-7833-7021-868a-22a9433bfc02",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "28885e46cb76341001c8d20aaaeb5dcfe987d7a4",
+  "branch": "codex/association-task-refactor",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/association-task-refactor",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/association-task-refactor",
+  "captured_at": "2026-09-22T19:51:51+09:00"
+}

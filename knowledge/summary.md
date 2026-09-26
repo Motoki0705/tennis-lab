@@ -1,7 +1,7 @@
-<!-- knowledge-review: 3f34926f7c7f1d59e8e35e1c39c309a82b30332053e4c785859bdd61af06bad7 on 2026-09-23 -->
+<!-- knowledge-review: 6b9c82d8e55eb8c91fa93ef8fbdd9d4f31ad2949e53b10459e9f1c6d79735dc9 on 2026-09-26 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-21（実RGB SLCSの全体版比較、コート推定・SfM診断、KP＋LINE下流移行を統合）
+更新日: 2026-09-26（宣言型clip pipelineの実動画検証と2人軸の確認を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,30 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-26の宣言型clip pipeline検証
+
+PR #915の宣言型component pipelineは、clip単位のimmutable store、各componentの型付き入出力とload/execute、先頭frameのCourt共同推定、外部ballの明示importでMeiji `clip_000`を処理した。初回の[設定](nodes/tennis_scene/000014-run-scene-component-meiji-fullclip-20260925.md)・[既定Court](nodes/tennis_scene/000015-run-scene-component-meiji-fullclip-r2-20260925.md)・[処理方針変更](nodes/tennis_scene/000016-run-scene-component-meiji-fullclip-b863-20260925.md)・[tracking人数上限](nodes/tennis_scene/000017-run-scene-component-meiji-firstframe-20260925.md)による停止を記録し、camera内ID分裂の一意な結合を経て[全段の初回完走](nodes/tennis_scene/000018-run-scene-component-meiji-tracklets-20260925.md)に到達した。ただしその完走ではcam2の重複IDと3D人物有効率の偏りが残った。
+
+[重複ID修正後の実clip](nodes/tennis_scene/000019-run-scene-component-meiji-idstitch-20260925.md)では、学習済みRe-IDが異なる選手を結んでcamera alignmentに失敗した。生cosineとコート平面での足元距離は誤対応を支持し、合成100sceneのRe-ID評価を実動画精度へ外挿できない。ユーザー指定により、モデル予測・embeddingを別artifactで保持したまま、既存の人手人物対応を旧GVHMR bboxと現trackの一意照合後に明示loadした。[最初の確認済み対応run](nodes/tennis_scene/000020-run-scene-component-meiji-confirmed-reid-20260925.md)は下流を完走したが、対象外のraw人物trackを単独global IDとして3人目へ渡す誤りが残った。[最終2人軸run](nodes/tennis_scene/000021-run-scene-component-meiji-target2-20260925.md)では対象外trackを原検出・追跡に残して明示除外し、3camera×1010frame、対象2人の関節3D/SMPL配置、ball 3D、scene export、全段load-only再開を確認した。これは確認済み対応を使った処理・構造の検証であり、Re-IDモデルの実動画合格や独立3D精度保証ではない。次はモデル対応の実動画改善を独立に評価し、人手3D基準と可視化で配置・球軌道の品質を確認する。
+
+## 2026-09-25のRe-ID補助head削除
+
+入力された人物trackを対応付ける責務に確定し、Re-IDの補助人物判定head・補助損失・track棄却と学習時の偽track追加を削除した。[明示的なv2 checkpoint exportと100scene再評価](nodes/plcs/000123-run-plcs-headless-reid-export-eval-20260925.md)では、元のembeddingが全件bitwise一致し、現在の通常matchingでF1=0.9642・group完全一致77%となった。下記の診断値を新しい通常経路で再現した結果で、再学習や独立testの追加ではない。既存のembeddingは補助損失を含む旧学習に由来するため、pair lossのみで新規学習した精度は未確認である。次の検討は対応失敗の分析と独立sideの構造であり、side学習と実動画の採用判断は引き続き保留する。
+
+## 2026-09-24時点の固定track Re-ID
+
+PR #915はPLCS専用へ変更し、2D trackerが再登場も含め同一人物IDを維持する前提で、cameraごと累計4人・非再利用slotへ切り替えた。BLCS associationとtasks/base共通化を撤去し、PR #920の下流も単一2D球を直接三角測量する構成へ統合した。sideは独立境界に分離した暫定構成で、今回は学習しない。
+
+[初回GPUスモーク](nodes/plcs/000114-run-plcs-track-reid-gpu-smoke-20260924.md)は完走したが、[compiled本学習](nodes/plcs/000115-run-plcs-fixed-track-reid-e60-s42-20260924.md)はvalidation NaNで停止した。[fresh推論](nodes/plcs/000116-run-plcs-reid-validation-numeric-probe-20260924.md)は有限で、[モード切替](nodes/plcs/000117-run-plcs-reid-mode-transition-probe-20260924.md)、[optimizer更新前](nodes/plcs/000118-run-plcs-reid-mode-cache-probe-20260924.md)、[反復評価とmask](nodes/plcs/000119-run-plcs-reid-sdpa-probe-20260924.md)を切り分けた。全無効行の自己参照化だけでは[実データGPU検証](nodes/plcs/000120-run-plcs-reid-safe-mask-gpu-smoke-20260924.md)の非有限値を解消できなかったため、compile=falseを明示し、自動fallbackは導入していない。[eagerの2epoch/全validation検証](nodes/plcs/000121-run-plcs-reid-eager-gpu-smoke-20260924.md)後に[新規60epoch学習](nodes/plcs/000122-run-plcs-fixed-track-reid-eager-e60-s42-20260924.md)を完了した。最低val/lossの42epoch目を固定した100scene testでは、cosineペアF1=0.9641、補助headを含む既定matchingはprecision=0.9974・recall=0.7471・F1=0.8543、group完全一致33%だった。同一embedding/閾値で補助headだけを使わない診断ではmatching F1=0.9642・group完全一致77%となり、真の人物trackの棄却が主な取りこぼし要因である。これは既定pipelineの成績ではなくpost-hoc診断で、testでcheckpointや閾値は選び直していない。FP追加と欠測augmentationの順序が補助headのshortcutになる可能性はあるが、直接検証は未実施。入力を対象人物trackだけとするか誤検出除外も担当するかを確定し、対応付けと選別を分けて扱うことを次の判断とする。生成は3〜4view・scene内1〜4人の固定scene splitで、未見motion・実動画・5view以上の精度や本番採用を主張しない。独立sideは未学習で、Re-ID評価を踏まえて構造を再検討する。
+
+## 2026-09-23の自動scene統合確認
+
+標準tennis_sceneを手動side・人物対応なしのassociation→三角測量→GVHMR経路へ接続した。実重みの[PLCS全clip CPU検証](nodes/tennis_scene/000012-run-tennis-scene-plcs-association-cpu-fullclip.md)と[BLCS全clip CPU検証](nodes/tennis_scene/000013-run-tennis-scene-blcs-association-cpu-fullclip.md)では、512前後/約1024 frame、3/5 viewが有限値で完走した。一方、side/ID品質は本番採用基準に未達であり、新association配布重みを承認した結果ではない。ID棄却を含む指標と従来の学習時指標を区別する。以下の3D baselineは履歴として維持し、現在の標準設定の変更を精度改善やdeploy認定と解釈しない。次は学習安定性の解決とvalidation評価、その後に実動画の校正・3D有効率まで含む受入を行う。
+
+## 2026-09-22の追加確認
+
+camera-local V2観測からsideとclip内IDを推論するモデルを既存task runnerへ接続し、Global MHA＋mHC、幅512・12 stage・8 headのGPUスモークを[PLCS](nodes/plcs/000113-run-plcs-association-refactor-512-smoke.md)・[BLCS](nodes/blcs/000042-run-blcs-association-refactor-512-smoke.md)で完了した。両方ともfit/validation/testとcheckpoint再読込が成功し、batch2の最大予約メモリは約5.45 GiBだった。4更新だけの診断ではside balanced accuracy=0.5であり、収束や既存deployへの優位性は確認していない。次は再生成済みV2の同じ800/100/100 split・seed42で両taskを新規60 epoch学習し、sideの両クラスrecallとID/FP指標、定常学習性能を確認する。以下の3D推定baseline・deploy判断は更新しない。
 
 ## 2026-09-23の統合パイプライン確認
 
@@ -59,7 +83,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 | `blcs` | [`run-deploy-multiview-blcs-v3-simfix-c3-6-v2`](nodes/blcs/000011-run-deploy-multiview-blcs-v3-simfix-c3-6-v2.md) | position `1.064595 m`、endpoint `2.024551 m` | 3–6 camera・court KP14の現行single-ball deploy |
 | `slcs` | [全体版のval5条件](nodes/slcs/000062-run-slcs-full-no-smooth-gap-rgb-val-v2.md) | 全61clipの固定split、60epoch、入力条件・train定数baseline比較 | ball低分散崩壊を脱しRGBの寄与を確認。欠損・裾・時間的スパイクは残り、頑健なdeployとは未認定 |
 
-[pipeline設定](../src/tennis_scene/configs/pipeline.yaml)が参照するcheckpoint（2026-09-21、下流移行後）は次です。
+2026-09-21時点の旧pipelineが参照したcheckpointは次です。現在の標準設定はassociation契約へ移行しており、この表は過去の配置記録です。
 
 | stage | checkpoint |
 |---|---|
@@ -72,7 +96,7 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 [run-court-hybrid-downstream-migration](nodes/court_detection/000031-run-court-hybrid-downstream-migration.md)では、ユーザー指定の残差head checkpointへ共通KP＋LINE推論を接続し、下流もcamera_view_v2へ移行した。8画像のH採用は3例であり、推定完了率の改善や実動画E2E精度は未確立。既定の変更は入力契約の統一であって、旧モデルへの精度優位の証明ではない。B00〜B03の保存alignmentと生成データは再publicationしていない。
 
-以下の既存baseline比較は元のas-of commitに基づく履歴として保持する。現在のpipeline checkpointは下表へ更新し、PLCS/BLCSはMeiji fine-tune版・window128・明示したreference-camera契約を使う。他会場の汎化、独立正解Hでの誤採用率、下流E2E評価を次の課題とする。
+以下の既存baseline比較は元のas-of commitに基づく履歴として保持する。当時のpipeline checkpointはMeiji fine-tune版・window128・明示したreference-camera契約を使用した。他会場の汎化、独立正解Hでの誤採用率、下流E2E評価を次の課題とする。
 
 ## タスク別の主要な知見と判断保留事項
 
