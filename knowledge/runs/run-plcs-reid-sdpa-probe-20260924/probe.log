@@ -1,0 +1,27 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790219597183632120_772991_plcs-reid-sdpa-probe-20260924 (commit=53db1868054e provider=codex session=01a0d0f9-6057-7961-ad6b-adc46744d619)
+batch {'human_kp': ['torch.float32', [4, 5, 512, 4, 17, 2], True], 'human_vis': ['torch.bool', [4, 5, 512, 4, 17], True], 'court_kp': ['torch.float32', [4, 5, 512, 14, 2], True], 'court_vis': ['torch.bool', [4, 5, 512, 14], True], 'padding_mask': ['torch.bool', [4, 5, 512], True], 'track_person_id': ['torch.int64', [4, 5, 4], True], 'reference_view_index': ['torch.int64', [4], True], 'side_target': ['torch.bool', [4, 5], True], 'sample_index': ['torch.int64', [4], True]}
+{"variant": "repeat_eval", "phase": "eval", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "repeat_eval", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "repeat_eval", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "repeat_eval", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "dropout_zero", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "dropout_zero", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "dropout_zero", "phase": "train", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "dropout_zero", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "dropout_zero", "phase": "train", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "dropout_zero", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/torch/_inductor/lowering.py:2633: UserWarning: Torchinductor does not support code generation for complex operators. Performance may be worse than eager.
+  warnings.warn(
+W0924 12:13:35.006000 773182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1953] [0/2] Not enough SMs to use max_autotune_gemm mode
+{"variant": "safe_mask", "phase": "eval", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "safe_mask", "phase": "eval", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "safe_mask", "phase": "train", "loss": 0.44738417863845825, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "safe_mask", "phase": "eval", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "safe_mask", "phase": "train", "loss": 0.4945562481880188, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "safe_mask", "phase": "eval", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "math_sdpa", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "math_sdpa", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "math_sdpa", "phase": "train", "loss": 0.4940091371536255, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"variant": "math_sdpa", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "math_sdpa", "phase": "train", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"variant": "math_sdpa", "phase": "eval", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}

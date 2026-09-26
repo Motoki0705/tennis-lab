@@ -1,0 +1,16 @@
+{
+  "run_id": "1790220288389042047_787832_plcs-fixed-track-reid-eager-e60-s42-20260924",
+  "name": "plcs-fixed-track-reid-eager-e60-s42-20260924",
+  "command": "CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_reid paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs data.scene_dir=plcs/tracked_person_reid_v1 run.output_dir=plcs/train/fixed_track_reid_eager_v1_s42 training.compile.enabled=false training.trainer.enable_progress_bar=false",
+  "provider": "codex",
+  "session": "01a0d0f9-6057-7961-ad6b-adc46744d619",
+  "issue": "915",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "3ca9b8a4d3792dc613d2f30443c8d9e03c12c83c",
+  "branch": "codex/plcs-track-reid",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid",
+  "captured_at": "2026-09-24T12:24:48+09:00"
+}
