@@ -9,12 +9,12 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-import src.tennis_scene.pipeline.court_reference as court_reference_module
+import src.tennis_scene.pipeline.utilts.court_reference as court_reference_module
 from src.tasks.base.generate_dataset import (
     build_court_view_record,
     resolve_court_keypoint_contract,
 )
-from src.tennis_scene.pipeline.court_reference import (
+from src.tennis_scene.pipeline.utilts.court_reference import (
     CourtReferenceRuntimeConfig,
     court_footpoint_polygon_px,
     prepare_court_reference,

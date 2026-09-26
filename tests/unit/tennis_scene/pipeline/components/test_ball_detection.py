@@ -129,7 +129,7 @@ def test_process_exposes_one_unidentified_observation_stream_per_camera(
     module = BallDetectionModule(config)
     module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
 
-    result = module.process(
+    result = module._process_videos(
         [Path("camera-near.mp4"), Path("camera-far.mp4")],
         max_frames=2,
     )

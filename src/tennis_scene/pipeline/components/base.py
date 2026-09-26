@@ -6,6 +6,16 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
+def release_inference_memory(device: str) -> None:
+    """Release cyclic model references and idle CUDA allocations between stages."""
+    import gc
+
+    import torch
+    gc.collect()
+    if torch.device(device).type == "cuda" and torch.cuda.is_initialized():
+        torch.cuda.empty_cache()
+
+
 class BasePipelineModule(ABC):
     """Abstract base class for pipeline modules.
 

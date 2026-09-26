@@ -1,120 +1,84 @@
-"""GVHMR pipeline stage backed by a pre-resolved typed model chain."""
+"""HMR image features and GVHMR only; detections and view choices are inputs."""
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Literal
 
-import src.tennis_scene.pipeline.model_io.gvhmr as gvhmr_io
-from src.submodules.configuration import BundledModelAssetPaths, SubmoduleRuntimeConfig
-from src.tennis_scene.pipeline.components.base import BasePipelineModule
+import numpy as np
+import torch
+from numpy.typing import NDArray
 
-LOGGER = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True, slots=True)
-class CourtFootpointFilterConfig:
-    """Optional target-court gate applied to DINO person detections."""
-
-    enabled: bool
-    sideline_margin_m: float
-    baseline_margin_m: float
-
-
-@dataclass(frozen=True, slots=True)
-class GVHMRConfig:
-    """Validated configuration for GVHMR composition and stage I/O."""
-
-    gvhmr_checkpoint: Path
-    source: Literal["execute", "load"]
-    detector: str
-    yolo_checkpoint: Path
-    dino_checkpoint: Path
-    dino_repository: Path
-    vitpose_checkpoint: Path
-    hmr2_checkpoint: Path
-    body_models_dir: Path
-    bundled_assets: BundledModelAssetPaths
-    runtime: SubmoduleRuntimeConfig
-    track_selection: str
-    num_tracks: int
-    court_footpoint_filter: CourtFootpointFilterConfig
-    save_result: bool
-    output_path: Path
-    load_path: Path | None
-
-    def __post_init__(self) -> None:
-        if (self.source == "load") != (self.load_path is not None):
-            raise ValueError(
-                "GVHMR source='load' requires load_path; execute forbids it"
-            )
-        if self.detector not in {"yolo", "dino"}:
-            raise ValueError(
-                f"detector must be 'yolo' or 'dino', got {self.detector!r}"
-            )
-        if self.track_selection not in {"interactive", "auto"}:
-            raise ValueError(
-                "track_selection must be 'interactive' or 'auto', got "
-                f"{self.track_selection!r}"
-            )
+from src.submodules.models import (
+    GvhmrMeshRecovery,
+    GvhmrRequest,
+    Hmr2FeatureExtractor,
+    ImageFeatureRequest,
+)
+from src.tennis_scene.pipeline.body_types import BodyParameters
+from src.tennis_scene.pipeline.components.base import release_inference_memory
+from src.tennis_scene.pipeline.components.body_view_selection import (
+    BodyViewSelectionOutput,
+)
+from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort
+from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 
 
-class GVHMRModule(BasePipelineModule):
-    """Load or execute GVHMR without selecting or decoding a model variant."""
+@dataclass(frozen=True)
+class RecoveredBodySegment:
+    source_frames: NDArray[np.int64]
+    parameters: BodyParameters
+    observed_samples: int
 
-    def __init__(
-        self,
-        config: GVHMRConfig,
-        chain: gvhmr_io.GVHMRChain | None,
-    ) -> None:
-        if config.source == "execute" and chain is None:
-            raise ValueError("GVHMR source='execute' requires a resolved chain.")
-        if config.source == "load" and chain is not None:
-            raise ValueError("GVHMR source='load' forbids an inference chain.")
-        self.config = config
-        self._chain = chain
 
-    def load(self) -> None:
-        if self._chain is not None:
-            self._chain.load()
+@dataclass(frozen=True)
+class RecoveredBody:
+    person_id: int
+    camera_id: str
+    segments: tuple[RecoveredBodySegment, ...]
 
-    @property
-    def is_loaded(self) -> bool:
-        return self._chain is None or self._chain.is_loaded
 
-    def process(
-        self,
-        video_path: Path,
-        max_frames: int | None = None,
-        *,
-        footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None,
-    ) -> gvhmr_io.GVHMRResult:
-        """Load an artifact or invoke the already composed typed chain."""
-        if self.config.source == "load":
-            load_path = self.config.load_path
-            if load_path is None:
-                raise RuntimeError("Validated load source is missing load_path")
-            if not load_path.is_file():
-                raise FileNotFoundError(f"GVHMR artifact not found: {load_path}")
-            LOGGER.info("Loading GVHMR result from %s", load_path)
-            return gvhmr_io.GVHMRResult.load(load_path)
+@dataclass(frozen=True)
+class GVHMROutput:
+    bodies: tuple[RecoveredBody, ...]
 
-        chain = self._chain
-        if chain is None:
-            raise RuntimeError("Validated execute source is missing its GVHMR chain")
-        result = chain.predict(
-            gvhmr_io.GVHMRChainRequest(
-                video_path=video_path,
-                max_frames=max_frames,
-                num_tracks=self.config.num_tracks,
-                interactive=self.config.track_selection == "interactive",
-                bbox_enlarge=self.config.runtime.tracking.bbox_enlarge,
-                static_cam=self.config.runtime.static_cam,
-                footpoint_polygon_px=footpoint_polygon_px,
-            )
-        )
-        if self.config.save_result:
-            result.save(self.config.output_path)
-        return result
+
+@dataclass(frozen=True)
+class GVHMRInput:
+    selection: BodyViewSelectionOutput
+
+
+class GVHMRModule:
+    io = ComponentIO("gvhmr", GVHMRInput, GVHMROutput,
+        {"selection": InputPort("body_view_selection")}, "body_parameters")
+
+    def __init__(self, config: PeopleModelConfig, *, enabled: bool = True) -> None:
+        self.config, self.enabled = config, enabled
+
+    def process(self, inputs: GVHMRInput) -> GVHMROutput:
+        if not self.enabled or not inputs.selection.selections:
+            return GVHMROutput(())
+        config = self.config
+        features = Hmr2FeatureExtractor(config.hmr2_checkpoint, device=config.runtime.device,
+            batch_size=config.runtime.hmr2.batch_size, mean_params_path=config.bundled_assets.hmr2_mean_params)
+        model = GvhmrMeshRecovery(config.gvhmr_checkpoint, config.body_models_dir,
+            device=config.runtime.device, bundled_assets=config.bundled_assets)
+        bodies: list[RecoveredBody] = []
+        try:
+            for selected in inputs.selection.selections:
+                segments: list[RecoveredBodySegment] = []
+                for request, observed_samples in zip(selected.requests, selected.observed_samples, strict=True):
+                    boxes = torch.from_numpy(np.array(request.boxes_xys, copy=True))
+                    image = features.predict(ImageFeatureRequest(request.video_path, boxes,
+                        frame_indices=torch.from_numpy(np.array(request.source_frames, copy=True))))
+                    result = model.predict(GvhmrRequest(kp2d=torch.from_numpy(np.array(request.keypoints, copy=True)),
+                        bbx_xys=boxes, f_imgseq=image.features, width=request.size[0], height=request.size[1],
+                        static_cam=True, K_fullimg=torch.from_numpy(request.intrinsic.astype(np.float32))))
+                    params = result.smpl_params_incam
+                    parameters = BodyParameters(**{name: params[name].detach().float().cpu().numpy() for name in ("body_pose", "global_orient", "betas", "transl")})
+                    segments.append(RecoveredBodySegment(request.source_frames, parameters, observed_samples))
+                bodies.append(RecoveredBody(selected.person_id, selected.camera_id, tuple(segments)))
+        finally:
+            features.unload()
+            model.unload()
+            release_inference_memory(config.runtime.device)
+        return GVHMROutput(tuple(bodies))

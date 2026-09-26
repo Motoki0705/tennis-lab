@@ -290,6 +290,11 @@ class SmplVertexReconstructor:
             )
         self._smplx2smpl = smplx2smpl.to(device=self._device, dtype=torch.float32)
 
+    def unload(self) -> None:
+        """Release the lazily loaded body model and topology conversion."""
+        self._smplx = None
+        self._smplx2smpl = None
+
     def reconstruct(self, smpl_params: dict[str, torch.Tensor]) -> torch.Tensor:
         """SMPL-X params (each ``(F, C)``) -> SMPL vertices ``(F, 6890, 3)``, CPU."""
         with torch.no_grad():

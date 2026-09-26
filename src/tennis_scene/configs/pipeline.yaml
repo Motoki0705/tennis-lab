@@ -1,31 +1,38 @@
+# Automatic CourtV2 association + triangulation. Install validated association checkpoints
+# or explicitly override their paths; model construction never chooses an older 3D model.
 defaults:
-  - paths: default
-  - _self_
-
-# Replace these synchronized example paths and declare each camera orientation below.
-# The default BLCS model requires 3 or 4 cameras.
-video_paths: [samples/cam0.mp4, samples/cam1.mp4, samples/cam2.mp4]
-camera_ids: [cam0, cam1, cam2]
+- paths: default
+- _self_
+video_paths:
+- samples/cam0.mp4
+- samples/cam1.mp4
+- samples/cam2.mp4
+camera_ids:
+- cam0
+- cam1
+- cam2
 output_directory: ${tennis_output:tennis_scene,generate,pipeline,${tennis_run_id:}}
 output_name: tennis_clip
 device: cuda
-
-court_keypoints:
-  selector: camera_view_v2
-
-court_reference:
-  reference_camera: cam0
-  # Required: one bool per camera_ids entry; reference_camera must be false.
-  # Set true for a view facing the opposite baseline from the reference camera.
-  view_half_turns: null
-
+execution:
+  court_detection: execute
+  court_calibration: execute
+  person_detection: execute
+  person_tracking: execute
+  pose_estimation: execute
+  ball_detection: execute
+  # No model implementation yet (#933 / #932): import the artifacts, then load.
+  player_association: load
+  court_side: load
+  camera_alignment: execute
+  player_triangulation: execute
+  ball_triangulation: execute
+  body_view_selection: execute
+  gvhmr: execute
+  body_placement: execute
+  scene_assembly: execute
 court_kp:
-  enabled: true
-  source: execute
   checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
-  frame_index: 0
-  mode: model
-  num_keypoints: 14
   subpixel_refine: true
   # Explicit fixed-camera image-only region search; every frame is still inferred.
   region_search:
@@ -48,22 +55,14 @@ court_kp:
     min_line_support: 0.55
     ambiguity_gap: 0.02
     ambiguity_displacement_ratio: 0.03
-  save_result: true
-  output_path: ${output_directory}/court_kp_result.json
-  load_path: null
-  # Only for legacy source=load artifacts without a recorded point-order contract.
-  load_keypoint_contract: null
-
-gvhmr:
-  enabled: true
-  source: execute
-  gvhmr_checkpoint: GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+people_models:
   detector: dino
-  yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
   dino_repository: DINO
+  yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
+  gvhmr_checkpoint: GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
   body_models_dir: GVHMR/inputs/checkpoints/body_models
   bundled_assets:
     hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
@@ -87,49 +86,25 @@ gvhmr:
         in_channels: 1280
         out_channels: 17
         num_deconv_layers: 2
-        num_deconv_filters: [256, 256]
-        num_deconv_kernels: [4, 4]
+        num_deconv_filters:
+        - 256
+        - 256
+        num_deconv_kernels:
+        - 4
+        - 4
         final_conv_kernel: 1
         num_conv_layers: 0
         num_conv_kernels: []
     hmr2:
       batch_size: 16
     static_cam: true
-  track_selection: auto
-  num_tracks: 2
-  court_footpoint_filter:
-    enabled: false
-    sideline_margin_m: 1.0
-    baseline_margin_m: 5.0
-  save_result: true
-  output_path: ${output_directory}/gvhmr_result.json
-  load_path: null
-
-player_association:
-  source: execute
-  mode: manual_ui
-  frame_index: 0
-  reference_camera: cam0
-  save_result: true
-  output_path: ${output_directory}/player_association_result.json
-  load_path: null
-
-player_motion:
-  scale_mode: fixed
-  alignment:
-    sigma_position_m: 0.5
-    sigma_heading_deg: 30.0
-    heading_weight: 1.0
-    scale_prior: 1.0
-    min_scale: 0.5
-    max_scale: 2.0
-    huber_delta: 1.0
-    heading_resultant_threshold: 0.5
-    max_nfev: 500
-
+person_observations:
+  enabled: true
+  visibility_threshold: 0.15
+  sideline_margin_m: 1.0
+  baseline_margin_m: 5.0
 ball_detection:
   enabled: true
-  source: execute
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   batch_size: 4
   image_size: [288, 512]
@@ -150,35 +125,45 @@ ball_detection:
     k_support: 2
     max_support_gap: 5
     max_passes: 2
-  save_result: true
-  output_path: ${output_directory}/ball_detection_result.json
-  load_path: null
-
-plcs:
+# ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
+frame_sampling:
+  max_frames: 1024
+camera_geometry:
+  reference_camera: null
+  calibration_samples: 9
+  consensus_ratio: 0.01
+  calibration_error_ratio: 0.005
+  side_min_frames: 8
+  side_max_cost: 0.5
+  side_min_support: 0.5
+  side_min_margin: 0.1
+player_reconstruction:
   enabled: true
-  source: execute
-  checkpoint: plcs/real-rgb-meiji-foot-e60-v1.ckpt
-  save_result: true
-  output_path: ${output_directory}/plcs_result.json
-  load_path: null
-  window_size: 128
-  window_overlap: 64
-  sample_stride: 1
-  human_vis_threshold: 0.15
-
-blcs:
+  reprojection_px: 40.0
+  joint_confidence: 0.3
+  placement:
+    data_sigma_m: 0.1
+    root_acceleration_sigma: 10.0
+    yaw_acceleration_sigma: 20.0
+    temporal_weight: 0.05
+    min_joints: 5
+    min_scale_pairs: 6
+    min_scale: 0.7
+    max_scale: 1.4
+    max_reprojection_rms_px: 10.0
+    reprojection_weight_sigma_px: 5.0
+    max_nfev: 200
+ball_reconstruction:
   enabled: true
+  reprojection_px: 20.0
+  min_frames: 5
+gvhmr:
+  enabled: true
+cache:
+  directory: ${output_directory}/stages
   source: execute
-  checkpoint: blcs/real-rgb-meiji-e60-v1.ckpt
-  save_result: true
-  output_path: ${output_directory}/blcs_result.json
-  load_path: null
-  window_size: 128
-  window_overlap: 64
-  sample_stride: 1
-
+  overwrite: false
 max_frames: null
-
 hydra:
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${output_directory},hydra}
