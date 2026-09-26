@@ -1,4 +1,9 @@
-"""Hash-verified stage caches and atomic receipts for unattended reconstruction."""
+"""Identity documents and atomic JSON receipts of the component pipeline.
+
+``json_value`` inlines every value (arrays as lists) for identities and
+receipts; component outputs are stored by ``storage.codec``, which moves
+arrays into checksummed ``.npy`` files instead.
+"""
 
 from __future__ import annotations
 
