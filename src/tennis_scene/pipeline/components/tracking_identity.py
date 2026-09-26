@@ -12,14 +12,22 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 
-MAX_GAP_FRAMES = 60
-MAX_OVERLAP_SPAN_FRAMES = 3
-MIN_DUPLICATE_CONTAINMENT = .95
-MAX_CENTER_DISTANCE_DIAGONALS = 1.0
-MAX_SIZE_RATIO = 2.0
-MAX_DUPLICATE_SIZE_RATIO = 2.5
-MAX_APPEARANCE_LAB_DISTANCE = 20.0
-ENDPOINT_OBSERVATIONS = 10
+
+@dataclass(frozen=True)
+class TrackletLinkPolicy:
+    """Thresholds that a BoT-SORT tracklet split must satisfy to be joined.
+
+    The values are part of the ``person_tracking`` artifact identity.
+    """
+
+    max_gap_frames: int = 60
+    max_overlap_span_frames: int = 3
+    min_duplicate_containment: float = .95
+    max_center_distance_diagonals: float = 1.0
+    max_size_ratio: float = 2.0
+    max_duplicate_size_ratio: float = 2.5
+    max_appearance_lab_distance: float = 20.0
+    endpoint_observations: int = 10
 
 
 @dataclass(frozen=True)
@@ -89,15 +97,15 @@ def _tracklets(history: list[list[dict[str, Any]]]) -> dict[int, _Tracklet]:
     }
 
 
-def _candidate(earlier: _Tracklet, later: _Tracklet) -> TrackletLink | None:
+def _candidate(earlier: _Tracklet, later: _Tracklet, policy: TrackletLinkPolicy) -> TrackletLink | None:
     gap = later.frames[0] - earlier.frames[-1] - 1
-    if gap > MAX_GAP_FRAMES:
+    if gap > policy.max_gap_frames:
         return None
     overlap_span = max(0, -gap)
     containment: float | None = None
     shared = set(earlier.frames) & set(later.frames)
     if overlap_span:
-        if overlap_span > MAX_OVERLAP_SPAN_FRAMES or later.frames[-1] <= earlier.frames[-1] or len(shared) != 1:
+        if overlap_span > policy.max_overlap_span_frames or later.frames[-1] <= earlier.frames[-1] or len(shared) != 1:
             return None
         frame = next(iter(shared))
         first = earlier.boxes[earlier.frames.index(frame)]
@@ -105,7 +113,7 @@ def _candidate(earlier: _Tracklet, later: _Tracklet) -> TrackletLink | None:
         shared_size = np.maximum(np.minimum(first[2:], second[2:]) - np.maximum(first[:2], second[:2]), 0)
         intersection = float(np.prod(shared_size))
         containment = intersection / min(float(np.prod(first[2:] - first[:2])), float(np.prod(second[2:] - second[:2])))
-        if containment < MIN_DUPLICATE_CONTAINMENT:
+        if containment < policy.min_duplicate_containment:
             return None
     before, after = earlier.boxes[-1], later.boxes[0]
     center_distance = float(np.linalg.norm((before[:2] + before[2:] - after[:2] - after[2:]) / 2))
@@ -113,18 +121,18 @@ def _candidate(earlier: _Tracklet, later: _Tracklet) -> TrackletLink | None:
     normalized_distance = center_distance / mean_diagonal
     size_ratio = float(np.max(np.maximum((before[2:] - before[:2]) / (after[2:] - after[:2]),
                                           (after[2:] - after[:2]) / (before[2:] - before[:2]))))
-    before_color = np.median(earlier.appearance_lab[-ENDPOINT_OBSERVATIONS:], axis=0)
-    after_color = np.median(later.appearance_lab[:ENDPOINT_OBSERVATIONS], axis=0)
+    before_color = np.median(earlier.appearance_lab[-policy.endpoint_observations:], axis=0)
+    after_color = np.median(later.appearance_lab[:policy.endpoint_observations], axis=0)
     appearance_distance = float(np.linalg.norm(before_color - after_color))
-    allowed_ratio = MAX_DUPLICATE_SIZE_RATIO if overlap_span else MAX_SIZE_RATIO
-    if (normalized_distance > MAX_CENTER_DISTANCE_DIAGONALS or size_ratio > allowed_ratio
-            or appearance_distance > MAX_APPEARANCE_LAB_DISTANCE):
+    allowed_ratio = policy.max_duplicate_size_ratio if overlap_span else policy.max_size_ratio
+    if (normalized_distance > policy.max_center_distance_diagonals or size_ratio > allowed_ratio
+            or appearance_distance > policy.max_appearance_lab_distance):
         return None
     return TrackletLink(earlier.track_id, later.track_id, max(0, gap), overlap_span, len(shared), containment,
                         normalized_distance, size_ratio, appearance_distance)
 
 
-def link_tracklets(history: list[list[dict[str, Any]]]) -> LinkedTracklets:
+def link_tracklets(history: list[list[dict[str, Any]]], policy: TrackletLinkPolicy) -> LinkedTracklets:
     """Join only unique, short-gap matches in time, position, size and clothing.
 
     A plausible competing link is an identity error, so processing stops for review.
@@ -134,7 +142,7 @@ def link_tracklets(history: list[list[dict[str, Any]]]) -> LinkedTracklets:
     ordered = sorted(tracklets.values(), key=lambda row: (row.frames[0], row.track_id))
     candidates = [link for earlier in ordered for later in ordered
                   if earlier.track_id != later.track_id
-                  if (link := _candidate(earlier, later)) is not None]
+                  if (link := _candidate(earlier, later, policy)) is not None]
     outgoing: dict[int, list[TrackletLink]] = defaultdict(list)
     incoming: dict[int, list[TrackletLink]] = defaultdict(list)
     for link in candidates:

@@ -33,7 +33,7 @@ class CourtCalibrationOutput:
 
 
 class CourtCalibrationModule:
-    def __init__(self, camera_ids: tuple[str, ...], config: CameraGeometryConfig, *, roi_margins: tuple[float, float] = (1., 5.)) -> None:
+    def __init__(self, camera_ids: tuple[str, ...], config: CameraGeometryConfig, *, roi_margins: tuple[float, float]) -> None:
         self.config, self.roi_margins = config, roi_margins
         self.io = ComponentIO("court_calibration", CourtCalibrationInput, CourtCalibrationOutput,
             {camera: InputPort("court_observations", 2) for camera in camera_ids}, "local_court_calibration")

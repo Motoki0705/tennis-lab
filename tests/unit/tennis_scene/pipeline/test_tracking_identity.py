@@ -9,6 +9,7 @@ import pytest
 
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.components.tracking_identity import (
+    TrackletLinkPolicy,
     link_tracklets,
     torso_appearance_lab,
 )
@@ -30,7 +31,7 @@ def test_links_unique_matching_tracklets_and_keeps_source_evidence() -> None:
     for frame in range(120, 150):
         history[frame] = [_observation(5, 105, (55, 125, 118))]
 
-    linked = link_tracklets(history)
+    linked = link_tracklets(history, TrackletLinkPolicy())
 
     assert linked.source_ids == {1: (1,), 2: (2, 3, 5)}
     assert [(item.earlier_id, item.later_id, item.missing_frames) for item in linked.links] == [(2, 3, 10), (3, 5, 25)]
@@ -42,14 +43,14 @@ def test_links_unique_matching_tracklets_and_keeps_source_evidence() -> None:
 def test_refuses_far_appearance_and_ambiguous_links() -> None:
     far = [[_observation(1, 10, (50, 125, 118))], [],
            [_observation(2, 200, (50, 125, 118))]]
-    assert link_tracklets(far).source_ids == {1: (1,), 2: (2,)}
+    assert link_tracklets(far, TrackletLinkPolicy()).source_ids == {1: (1,), 2: (2,)}
     changed_clothing = [[_observation(1, 10, (50, 125, 118))], [],
                         [_observation(2, 10, (150, 125, 118))]]
-    assert link_tracklets(changed_clothing).source_ids == {1: (1,), 2: (2,)}
+    assert link_tracklets(changed_clothing, TrackletLinkPolicy()).source_ids == {1: (1,), 2: (2,)}
     ambiguous = [[_observation(1, 10, (50, 125, 118)), _observation(2, 13, (52, 125, 118))],
                  [], [_observation(3, 11, (51, 125, 118))]]
     with pytest.raises(ReconstructionUnavailable, match="Multiple plausible"):
-        link_tracklets(ambiguous)
+        link_tracklets(ambiguous, TrackletLinkPolicy())
 
 
 def test_one_frame_nested_duplicate_can_continue_an_existing_identity(tmp_path: Path) -> None:
@@ -62,7 +63,7 @@ def test_one_frame_nested_duplicate_can_continue_an_existing_identity(tmp_path: 
     for frame in range(11, 16):
         history[frame].append(nested)
 
-    linked = link_tracklets(history)
+    linked = link_tracklets(history, TrackletLinkPolicy())
 
     assert linked.source_ids == {2: (2, 9)}
     assert len(linked.history[8]) == 1
@@ -82,7 +83,7 @@ def test_one_frame_nested_duplicate_can_continue_an_existing_identity(tmp_path: 
     distinct[8].append(_observation(9, 112, (112, 110, 120)))
     for _ in range(11, 16):
         distinct.append([_observation(9, 112, (112, 110, 120))])
-    assert link_tracklets(distinct).source_ids == {2: (2,), 9: (9,)}
+    assert link_tracklets(distinct, TrackletLinkPolicy()).source_ids == {2: (2,), 9: (9,)}
 
 
 def test_torso_appearance_samples_inside_bounding_box() -> None:

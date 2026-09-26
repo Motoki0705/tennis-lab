@@ -25,18 +25,13 @@ from src.tennis_scene.pipeline.components.identity import (
     player_association_io,
 )
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
-from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingModule
+from src.tennis_scene.pipeline.components.person_tracking import (
+    MAX_CUMULATIVE_TRACKS,
+    PersonTrackingModule,
+)
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 from src.tennis_scene.pipeline.components.scene_assembly import SceneAssemblyModule
-from src.tennis_scene.pipeline.components.tracking_identity import (
-    MAX_APPEARANCE_LAB_DISTANCE,
-    MAX_CENTER_DISTANCE_DIAGONALS,
-    MAX_DUPLICATE_SIZE_RATIO,
-    MAX_GAP_FRAMES,
-    MAX_OVERLAP_SPAN_FRAMES,
-    MAX_SIZE_RATIO,
-    MIN_DUPLICATE_CONTAINMENT,
-)
+from src.tennis_scene.pipeline.components.tracking_identity import TrackletLinkPolicy
 from src.tennis_scene.pipeline.components.triangulation import (
     BallTriangulationModule,
     PlayerTriangulationModule,
@@ -114,6 +109,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             AssemblyContext(source, camera), json_value(resolved), code_identity, mode))
 
     people_enabled = cfg.enabled["person_observations"]
+    tracklet_policy = TrackletLinkPolicy()
     body_enabled = cfg.enabled["gvhmr"]
 
     def body_assets() -> dict[str, Any]:
@@ -132,14 +128,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             {"calibration": "court_calibration"}, lambda: {"detector": cfg.people.detector,
              "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.detector_checkpoint}),
              "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence, "roi": cfg.person_roi_margins, "enabled": people_enabled}, camera=camera)
-        add(f"person_tracking/{camera}", PersonTrackingModule(), PersonTrackingInputAssembler(),
+        add(f"person_tracking/{camera}", PersonTrackingModule(tracklet_policy), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"algorithm": "botsort_then_unique_tracklet_links",
-                "max_link_gap_frames": MAX_GAP_FRAMES, "max_center_distance_box_diagonals": MAX_CENTER_DISTANCE_DIAGONALS,
-                "max_size_ratio": MAX_SIZE_RATIO, "max_appearance_lab_distance": MAX_APPEARANCE_LAB_DISTANCE,
-                "max_duplicate_overlap_span_frames": MAX_OVERLAP_SPAN_FRAMES,
-                "min_duplicate_containment": MIN_DUPLICATE_CONTAINMENT,
-                "max_duplicate_size_ratio": MAX_DUPLICATE_SIZE_RATIO,
-                "cumulative_capacity": 4}, camera=camera)
+                "links": tracklet_policy, "cumulative_capacity": MAX_CUMULATIVE_TRACKS}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people), PoseEstimationInputAssembler(),
             {"tracks": f"person_tracking/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
