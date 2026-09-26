@@ -81,11 +81,15 @@ def main(cfg: DictConfig) -> int:
     pipeline_yaml = OmegaConf.to_yaml(pipeline_cfg, resolve=True)
     orchestrator = TennisSceneOrchestrator.from_runtime_config(pipeline_runtime)
 
-    def run_clip(video_paths: Sequence[Path], camera_ids: Sequence[str]) -> SceneResult:
+    def run_clip(video_paths: Sequence[Path], camera_ids: Sequence[str], clip_directory: Path) -> SceneResult:
+        from src.tennis_scene.generate_dataset.manifest import ClipManifest
+
         result: SceneResult = orchestrator.run(
             video_paths=video_paths,
             video_role=PathRole.DATA,
             camera_ids=camera_ids,
+            store_root=clip_directory / "annotations" / "tennis_scene",
+            clip_id=ClipManifest.load(clip_directory).clip_id,
             max_frames=pipeline_runtime.max_frames,
         )
         return result

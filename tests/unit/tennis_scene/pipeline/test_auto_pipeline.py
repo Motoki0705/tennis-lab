@@ -177,7 +177,7 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
 
 def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     assert scene.schema_version == 2 and scene.num_frames == 24
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     assert scene.player_kp_3d_vis.all() and scene.ball_3d_valid.all()
@@ -186,7 +186,7 @@ def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch:
     assert pipeline.last_store.index_path.is_file()
     assert not scene.player_valid.any()
     pipeline.config = replace(pipeline.config, cache_source="load")
-    again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     np.testing.assert_array_equal(again.ball_3d, scene.ball_3d)
     assert all(stage.calls == 1 for stage in stages.values())
     assert pipeline.last_runner is not None
@@ -198,7 +198,7 @@ def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch:
 
 def test_empty_observations_preserve_masks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch, empty=True)
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     assert scene.metadata["status"] == "empty"
     assert scene.metadata["court_reference"] is None
     assert scene.player_position.shape == (0, 24, 3)
@@ -213,14 +213,14 @@ def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: p
         result.point_kind[7] = 0
         result.confidence[7] = 0
         result.uv_px[7] = 0
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     assert not scene.ball_3d_valid[7] and scene.ball_3d_valid.sum() == 23
     assert not scene.ball_3d[7].any()
 
 
 def test_v2_missing_mask_rejected_before_archive_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, _ = setup_pipeline(tmp_path, monkeypatch, empty=True)
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     scene.ball_3d_valid = None
     with pytest.raises(ValueError, match="ball_3d_valid"):
         save_scene_result(scene, tmp_path / "bad.npz")
@@ -289,7 +289,7 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
         asset.parent.mkdir(parents=True, exist_ok=True)
         asset.write_bytes(b"asset")
     pipeline = TennisSceneOrchestrator(config, components=stages)
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     assert scene.player_valid.all() and scene.player_heading_valid.all() and scene.player_smpl_valid.all()
     assert body.calls == 1 and body.unloaded
     expected = np.column_stack((np.full(24, np.linspace(-.2, .2, 17)[11:13].mean()), -4 + np.arange(24)*.01,
@@ -301,9 +301,9 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     if missing_hips:
         assert not scene.player_kp_3d_vis[..., 11:13].any()
     pipeline.config = replace(config, cache_source="load")
-    again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+    again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     np.testing.assert_array_equal(again.player_position, scene.player_position)
     assert body.calls == 1
     pipeline.config = replace(pipeline.config, player_placement=replace(config.player_placement, temporal_weight=.2))
     with pytest.raises(ValueError, match="identity"):
-        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
