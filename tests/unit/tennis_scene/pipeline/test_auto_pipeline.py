@@ -38,7 +38,7 @@ def _camera(name: str, center: list[float]) -> PinholeCamera:
     return PinholeCamera(name, np.array([[900., 0., 640.], [0., 900., 360.], [0., 0., 1.]]), r, -r @ c)
 
 
-def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False) -> PipelineRuntimeConfig:
+def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False, overrides: tuple[str, ...] = ()) -> PipelineRuntimeConfig:
     """``execute_identity_overrides`` executes test stand-ins for the import-only nodes."""
     config_dir = Path(__file__).parents[4] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
@@ -48,6 +48,7 @@ def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False) -> Pipe
             f"paths.checkpoint_root={tmp_path / 'ckpt'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
             "output_directory=run", "cache.directory=stages",
             *(["execution.player_association=execute", "execution.court_side=execute"] if execute_identity_overrides else []),
+            *overrides,
         ])
     return PipelineRuntimeConfig.from_config(cfg)
 
@@ -77,11 +78,10 @@ class FixedStage:
         pass
 
 
-def inputs(*, empty: bool = False) -> tuple[CourtKPResult, ObjectObservations, tuple[BallDetectionOutput, ...]]:
+def inputs(*, empty: bool = False, frames: int = 24) -> tuple[CourtKPResult, ObjectObservations, tuple[BallDetectionOutput, ...]]:
     cameras = (_camera("cam0", [-8., -16., 9.]), _camera("cam1", [8., -16., 9.]), _camera("cam2", [5., 16., 9.]))
     local = (cameras[0], cameras[1], cameras[2].half_turned(True))
     template = court_keypoints_3d(CourtConfig(.914, None)).numpy()[:14]
-    frames = 24
     court_px = np.stack([c.project(template)[0] for c in local])
     kp = np.repeat((court_px / [1279, 719])[:, None], frames, axis=1).astype(np.float32)
     vis = np.repeat(((court_px >= 0) & (court_px < [1280, 720])).all(-1)[:, None], frames, axis=1).astype(np.float32)
@@ -112,14 +112,8 @@ def inputs(*, empty: bool = False) -> tuple[CourtKPResult, ObjectObservations, t
     return court, people, balls
 
 
-def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
-    from src.tennis_scene.pipeline.components.identity import (
-        CourtSideOutput,
-        DeclaredArtifacts,
-        PlayerIdentitiesOutput,
-        court_side_io,
-        player_association_io,
-    )
+def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple[BallDetectionOutput, ...]) -> dict[str, FixedStage]:
+    """Fixed outputs of every camera-scoped node (court, ball, person detection/tracking/pose)."""
     from src.tennis_scene.pipeline.components.person_detection import (
         PersonDetectionModule,
         PersonDetectionOutput,
@@ -131,12 +125,10 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
     from src.tennis_scene.pipeline.components.pose_estimation import (
         PoseEstimationModule,
     )
-    from src.tennis_scene.pipeline.input_assembly.observations import gather_people
-    cfg = runtime(tmp_path, execute_identity_overrides=True)
-    court, people, balls = inputs(empty=empty)
     assert court.diagnostics is not None
-    stages: dict[str, Any] = {}
-    def fixed(name, io, result):
+    frames = people.num_frames
+    stages: dict[str, FixedStage] = {}
+    def fixed(name: str, io: ComponentIO[Any, Any], result: Any) -> None:
         stage = FixedStage(result)
         stage.io = io
         stages[name] = stage
@@ -147,10 +139,10 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
         fixed(f"court_detection/{camera}", CourtKPModule.io, local_court)
         fixed(f"ball_detection/{camera}", BallDetectionModule.io, balls[v])
         count = people.uv_px.shape[2]
-        boxes = np.zeros((count, 24, 4), np.float32)
+        boxes = np.zeros((count, frames, 4), np.float32)
         boxes[..., 2:] = 100
         fixed(f"person_detection/{camera}", PersonDetectionModule.io, PersonDetectionOutput(camera,
-            np.arange(25, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(24 * count, np.float32)))
+            np.arange(frames + 1, dtype=np.int64) * count, boxes.transpose(1, 0, 2).reshape(-1, 4), np.ones(frames * count, np.float32)))
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))
@@ -158,6 +150,30 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
         pose_boxes = np.zeros((*poses.observed.shape, 3), np.float32)
         pose_boxes[..., 2] = 100
         fixed(f"pose_estimation/{camera}", PoseEstimationModule.io, replace(poses, boxes_xys=pose_boxes))
+    return stages
+
+
+def patch_video_probe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, frames: int = 24) -> tuple[Path, ...]:
+    """Three fixture video files whose probe reports 1280x720 at 30 fps."""
+    paths = tuple(tmp_path / f"cam{i}.mp4" for i in range(3))
+    for path in paths:
+        path.write_bytes(b"video fixture")
+    monkeypatch.setattr("src.tennis_scene.pipeline.source.probe_video_info", lambda _: VideoInfo(30., 1280, 720, frames))
+    return paths
+
+
+def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
+    from src.tennis_scene.pipeline.components.identity import (
+        CourtSideOutput,
+        DeclaredArtifacts,
+        PlayerIdentitiesOutput,
+        court_side_io,
+        player_association_io,
+    )
+    from src.tennis_scene.pipeline.input_assembly.observations import gather_people
+    cfg = runtime(tmp_path, execute_identity_overrides=True)
+    court, people, balls = inputs(empty=empty)
+    stages: dict[str, Any] = dict(camera_stages(court, people, balls))
     class Identities:
         """Stands in for the imported association: equal tracker IDs are one player."""
         io = player_association_io(people.camera_ids)
@@ -177,10 +193,7 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
             return CourtSideOutput(calibration.calibration.camera_ids, calibration.reference_camera, (False, False, True))
     stages["player_association"], stages["court_side"] = Identities(), Side()
     pipeline = TennisSceneOrchestrator(cfg, components=stages)
-    paths = tuple(tmp_path / f"cam{i}.mp4" for i in range(3))
-    for path in paths:
-        path.write_bytes(b"video fixture")
-    monkeypatch.setattr("src.tennis_scene.pipeline.source.probe_video_info", lambda _: VideoInfo(30., 1280, 720, 24))
+    paths = patch_video_probe(tmp_path, monkeypatch)
     def forbidden(*args: Any, **kwargs: Any) -> None:
         raise AssertionError("Automatic pipeline attempted human interaction")
     monkeypatch.setattr("builtins.input", forbidden)
