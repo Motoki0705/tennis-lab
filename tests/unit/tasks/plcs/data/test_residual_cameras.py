@@ -13,7 +13,6 @@ from src.tasks.plcs.data.augmentation.residual import (
     fit_court_rig,
     fixed_six_camera_rig,
 )
-from src.tennis_scene.pipeline.utilts.court_reference import fit_camera
 from src.utils.geometry.planar_camera import (
     PlanarCameraFailure,
     PlanarCameraFit,
@@ -21,7 +20,6 @@ from src.utils.geometry.planar_camera import (
 )
 from src.utils.geometry.triangulation import project_multiview
 from src.utils.schema.court import (
-    CAMERA_VIEW_HALF_TURN_INDEX,
     FENCE_HEIGHT,
     STANDARD_COURT_CONFIG,
     X_MAX,
@@ -84,37 +82,6 @@ def test_visible_court_subset_calibrates_all_six_candidates() -> None:
     truth = fixed_six_camera_rig((1920, 1080))
     np.testing.assert_allclose(recovered.K, truth.K, atol=2e-3, rtol=0)
     np.testing.assert_allclose(recovered.centers, truth.centers, atol=3e-5, rtol=0)
-
-
-@pytest.mark.parametrize("noise_px", [0.0])
-@pytest.mark.parametrize("camera_index", [0, 2, 4, 5])
-def test_real_wrapper_matches_physical_fit_for_both_sides_and_noise(
-    camera_index: int, noise_px: float
-) -> None:
-    pixels, _ = _observations()
-    pixels += np.random.default_rng(123).normal(0, noise_px, pixels.shape)
-    report = fit_court_rig(pixels, np.ones((6, 14)), (1920, 1080))
-    half_turn = camera_index in (0, 4)
-    local = pixels[camera_index]
-    if half_turn:
-        local = local[list(CAMERA_VIEW_HALF_TURN_INDEX[:14])]
-    real_fit = fit_camera(local / [1920, 1080], (1920, 1080), half_turn)
-    physical_fit = report.fits[camera_index]
-
-    assert physical_fit is not None
-    np.testing.assert_allclose(real_fit["K"], physical_fit.K, atol=2e-3, rtol=0)
-    np.testing.assert_allclose(real_fit["R"], physical_fit.R, atol=2e-6, rtol=0)
-    np.testing.assert_allclose(real_fit["t"], physical_fit.t, atol=3e-5, rtol=0)
-    assert abs(real_fit["rmse_px"] - physical_fit.rmse_px) < 1e-4
-
-
-def test_real_wrapper_keeps_explicit_side_validation() -> None:
-    pixels, _ = _observations()
-    # Physical-order +Y observations are deliberately not relabelled to the
-    # wrapper's camera-view order. The generic core accepts either side, but
-    # the existing provenance wrapper must still reject this declaration.
-    with pytest.raises(ValueError, match="contradicts explicit court side"):
-        fit_camera(pixels[0] / [1920, 1080], (1920, 1080), False)
 
 
 def test_per_camera_failures_and_selected_order_are_explicit() -> None:

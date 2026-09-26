@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
-
 from src.tennis_scene.pipeline.components.ball_reconstruction import (
     BallReconstructionResult,
     reconstruct_ball,
@@ -48,7 +46,7 @@ class PlayerTriangulationModule:
         geometry = inputs.alignment.geometry
         if geometry is None or not self.enabled:
             return PlayerTriangulationOutput(None)
-        scale = float(np.hypot(*inputs.source.size) / np.hypot(1920, 1080))
+        scale = inputs.source.pixel_threshold_scale
         return PlayerTriangulationOutput(triangulate_players(inputs.observations, geometry.cameras,
             reprojection_px=self.reprojection_px * scale, joint_confidence=self.joint_confidence))
 
@@ -64,6 +62,6 @@ class BallTriangulationModule:
         geometry = inputs.alignment.geometry
         if geometry is None or not self.enabled:
             return BallTriangulationOutput(None)
-        scale = float(np.hypot(*inputs.source.size) / np.hypot(1920, 1080))
+        scale = inputs.source.pixel_threshold_scale
         return BallTriangulationOutput(reconstruct_ball(inputs.observations, geometry.cameras,
             fps=inputs.source.fps, reprojection_px=self.reprojection_px * scale, min_frames=self.min_frames))

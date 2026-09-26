@@ -193,8 +193,7 @@ _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observ
 })
 _FRAME_SAMPLING_SCHEMA = StrictConfigSchema(name="tennis_scene.frame_sampling", fields={"max_frames": ConfigField.of(int)})
 _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={
-    "reference_camera": ConfigField.of(str, type(None)), "calibration_samples": ConfigField.of(int),
-    "consensus_ratio": ConfigField.of(float, int), "calibration_error_ratio": ConfigField.of(float, int),
+    "reference_camera": ConfigField.of(str, type(None)), "calibration_error_ratio": ConfigField.of(float, int),
     "side_min_frames": ConfigField.of(int), "side_max_cost": ConfigField.of(float, int),
     "side_min_support": ConfigField.of(float, int), "side_min_margin": ConfigField.of(float, int),
 })

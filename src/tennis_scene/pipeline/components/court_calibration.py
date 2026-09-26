@@ -13,7 +13,8 @@ from src.tennis_scene.pipeline.components.camera_geometry import (
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtKPResult
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
-from src.tennis_scene.pipeline.utilts.court_reference import court_footpoint_polygon_px
+from src.utils.geometry.court_roi import court_footpoint_polygon_px
+from src.utils.geometry.keypoints import denormalize_grid_keypoints
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class CourtCalibrationOutput:
     calibration: CalibrationSet
     reference_camera: str
     footpoint_polygons: dict[str, tuple[tuple[float, float], ...] | None]
+    """Court ROI per source camera; ``None`` marks a camera excluded from calibration."""
 
 
 class CourtCalibrationModule:
@@ -53,9 +55,8 @@ class CourtCalibrationModule:
             {"output_keypoint_contract": "camera_view_v2", "cameras": diagnostics})
         calibration = calibrate_local_courts(result, inputs.source.camera_ids, size=inputs.source.size, config=self.config)
         by_camera = {view.camera.camera_id: view for view in calibration.views}
-        size = np.asarray(inputs.source.size, np.float32)
         polygons = {camera: court_footpoint_polygon_px(
-            result.keypoints[by_camera[camera].source_index, by_camera[camera].frame_index] * (np.maximum(size - 1, 1) / size),
+            denormalize_grid_keypoints(result.keypoints[by_camera[camera].source_index, by_camera[camera].frame_index], *inputs.source.size),
             size=inputs.source.size, sideline_margin_m=self.roi_margins[0], baseline_margin_m=self.roi_margins[1])
             if camera in by_camera else None for camera in inputs.source.camera_ids}
         # Fixed-camera court geometry is broadcast explicitly; these are derived

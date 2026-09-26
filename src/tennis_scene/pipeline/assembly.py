@@ -24,6 +24,7 @@ from src.tennis_scene.schema import (
     attach_scene_result_court_keypoint_provenance,
     validate_scene_result_arrays,
 )
+from src.utils.geometry.keypoints import denormalize_grid_keypoints, normalize_keypoints
 from src.utils.video import VideoInfo
 
 
@@ -53,7 +54,7 @@ def assemble_automatic_scene(
     human_vis = np.zeros(human.shape[:-1], np.float32)
     observed = np.zeros((count, frames), bool)
     if grouped_people is not None:
-        human[:, list(active_indices)] = grouped_people.uv_px / np.asarray((info.width, info.height), np.float32)
+        human[:, list(active_indices)] = normalize_keypoints(grouped_people.uv_px.astype(np.float32), info.width, info.height)
         human_vis[:, list(active_indices)] = grouped_people.confidence * grouped_people.visibility
         observed = grouped_people.visibility.any(axis=(1, 3))
     points = np.zeros((count, frames, 17, 3), np.float32) if skeleton is None else skeleton.positions
@@ -69,7 +70,7 @@ def assemble_automatic_scene(
     ball_valid = np.zeros(frames, bool)
     ball_reasons = np.ones(frames, np.uint8)
     if ball is not None:
-        ball_uv[list(active_indices)] = ball.uv_px / np.asarray((info.width, info.height), np.float32)
+        ball_uv[list(active_indices)] = normalize_keypoints(ball.uv_px.astype(np.float32), info.width, info.height)
         ball_vis[list(active_indices)] = ball.visibility
         ball_xyz, ball_valid, ball_reasons = ball.trajectory.positions, ball.trajectory.valid, ball.trajectory.reasons
     body_metadata = {} if players is None else {k: v for k, v in players.diagnostics.items() if k != "raw_parameters"}
@@ -93,7 +94,8 @@ def assemble_automatic_scene(
     }
     scene = SceneResult(
         num_frames=frames, fps=info.fps, width=info.width, height=info.height,
-        court_kp=(court.keypoints * (np.maximum(np.array([info.width, info.height], np.float32) - 1, 1) / np.array([info.width, info.height], np.float32))).astype(np.float32),
+        # SceneResult normalises by (W, H); the court component by (W-1, H-1).
+        court_kp=normalize_keypoints(denormalize_grid_keypoints(court.keypoints, info.width, info.height), info.width, info.height),
         court_vis=court.visibility.astype(np.float32), player_position=root, player_yaw=yaw,
         smpl_body_pose=None if players is None else players.body_pose,
         smpl_global_orient=None if players is None else players.global_orient,

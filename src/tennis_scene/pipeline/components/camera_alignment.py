@@ -61,7 +61,7 @@ class CameraAlignmentModule:
             raise ValueError("Camera alignment requires side results for the declared cameras/reference")
         source = inputs.source
         sample = sampled_frame_indices(source.num_frames, source.fps, max_frames=self.max_frames)
-        scale = float(np.hypot(*source.size) / np.hypot(1920, 1080))
+        scale = source.pixel_threshold_scale
         evidence: list[SideEvidence] = []
         if inputs.people.visibility.any():
             torso = [5, 6, 11, 12]

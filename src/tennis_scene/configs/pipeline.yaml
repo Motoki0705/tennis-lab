@@ -130,8 +130,6 @@ frame_sampling:
   max_frames: 1024
 camera_geometry:
   reference_camera: null
-  calibration_samples: 9
-  consensus_ratio: 0.01
   calibration_error_ratio: 0.005
   side_min_frames: 8
   side_max_cost: 0.5

@@ -19,21 +19,15 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.base.model_io import write_model_artifact_court_keypoint_contract
 from src.tennis_scene.pipeline.components.court_kp import CourtKPResult
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
-from src.tennis_scene.pipeline.utilts.court_reference import fit_camera
+from src.utils.geometry.keypoints import denormalize_grid_keypoints
+from src.utils.geometry.planar_camera import PlanarCameraFitError, fit_planar_camera
 from src.utils.geometry.triangulation import PinholeCamera, solve_homogeneous_dlt
-from src.utils.schema.court import (
-    HALF_DOUBLES_WIDTH,
-    HALF_LENGTH,
-    CourtConfig,
-    court_keypoints_3d,
-)
+from src.utils.schema.court import CourtConfig, court_keypoints_3d
 
 
 @dataclass(frozen=True)
 class CameraGeometryConfig:
     reference_camera: str | None = None
-    calibration_samples: int = 9
-    consensus_ratio: float = 0.01
     calibration_error_ratio: float = 0.005
     side_min_frames: int = 8
     side_max_cost: float = 0.5
@@ -43,9 +37,9 @@ class CameraGeometryConfig:
     def __post_init__(self) -> None:
         if self.reference_camera is not None and not self.reference_camera.strip():
             raise ValueError("Reference camera must be a nonempty ID")
-        if self.calibration_samples < 1 or self.side_min_frames < 1:
+        if self.side_min_frames < 1:
             raise ValueError("Camera geometry sample counts must be positive")
-        for value in (self.consensus_ratio, self.calibration_error_ratio, self.side_max_cost, self.side_min_support, self.side_min_margin):
+        for value in (self.calibration_error_ratio, self.side_max_cost, self.side_min_support, self.side_min_margin):
             if not math.isfinite(value) or not 0 < value <= 1:
                 raise ValueError("Camera geometry thresholds must be in (0,1]")
 
@@ -57,15 +51,6 @@ class LocalCourtCalibration:
     frame_index: int
     homography: NDArray[np.float64]
     rmse_px: float
-    support_frames: tuple[int, ...]
-
-    def footpoint_polygon(self, *, sideline_margin_m: float = 1., baseline_margin_m: float = 5.) -> tuple[tuple[float, float], ...]:
-        x, y = HALF_DOUBLES_WIDTH + sideline_margin_m, HALF_LENGTH + baseline_margin_m
-        rectangle = np.array([[-x, y], [x, y], [x, -y], [-x, -y]], np.float64)
-        pixels = cv2.perspectiveTransform(rectangle[None], self.homography)[0]
-        if not np.isfinite(pixels).all():
-            raise ValueError("Non-finite court ROI")
-        return tuple((float(p[0]), float(p[1])) for p in pixels)
 
 
 @dataclass(frozen=True)
@@ -117,61 +102,60 @@ def calibrate_local_courts(
     size: tuple[int, int],
     config: CameraGeometryConfig,
 ) -> CalibrationSet:
-    """Use accepted H provenance, never require all projected points in-image."""
-    if result.keypoints.shape[0] != len(camera_ids) or result.keypoints.shape[2:] != (14, 2):
-        raise ValueError("CourtKP14 observations must match camera IDs")
+    """Fit one pinhole camera per view from its single static court observation.
+
+    The KP14 points are the accepted homography's projections, so points
+    outside the image are exact extrapolations and are kept in the fit.
+    """
+    if result.keypoints.shape != (len(camera_ids), 1, 14, 2) or not np.array_equal(result.frame_indices, [0]):
+        raise ValueError("Static calibration requires one frame-0 CourtKP14 observation per camera")
     diagnostics = result.diagnostics
     if not isinstance(diagnostics, dict) or diagnostics.get("output_keypoint_contract") != "camera_view_v2":
         raise ValueError("Automatic calibration requires recorded camera_view_v2 hybrid observations")
     camera_diagnostics = diagnostics.get("cameras")
     if not isinstance(camera_diagnostics, list) or len(camera_diagnostics) != len(camera_ids):
         raise ValueError("Automatic calibration requires per-camera hybrid diagnostics")
-    frames = result.keypoints.shape[1]
-    candidates = np.unique(np.rint(np.linspace(0, frames - 1, min(config.calibration_samples, frames))).astype(int))
     diagonal = math.hypot(*size)
     court_xyz = court_keypoints_3d(CourtConfig(.914, None)).numpy()[:14].astype(np.float64)
     views: list[LocalCourtCalibration] = []
     excluded: dict[str, str] = {}
     for view, camera_id in enumerate(camera_ids):
         records = camera_diagnostics[view].get("frames", [])
-        by_frame = {int(r["frame_index"]): r for r in records}
-        eligible = [int(t) for t in candidates if int(t) in by_frame and by_frame[int(t)].get("status") == "ok" and by_frame[int(t)].get("homography_court_metres_to_image_pixels") is not None]
-        if not eligible:
+        if len(records) != 1 or int(records[0]["frame_index"]) != 0:
+            raise ValueError(f"Court diagnostics of {camera_id} must describe exactly frame 0")
+        record = records[0]
+        if record.get("status") != "ok" or record.get("homography_court_metres_to_image_pixels") is None:
             excluded[camera_id] = "no_accepted_homography"
             continue
-        # CourtKPModule's documented legacy normalization is by W-1,H-1.
-        pixel_points = result.keypoints[view, eligible].astype(np.float64) * np.maximum(np.asarray(size) - 1, 1)
+        pixel_points = denormalize_grid_keypoints(result.keypoints[view, 0], *size).astype(np.float64)
         if not np.isfinite(pixel_points).all():
             excluded[camera_id] = "nonfinite_homography_points"
             continue
-        distances = np.linalg.norm(pixel_points[:, None] - pixel_points[None], axis=-1).mean(-1)
-        representative = int(np.argmin(distances.sum(-1)))
-        supported = distances[representative] <= config.consensus_ratio * diagonal
-        if int(supported.sum()) < min(3, len(candidates)):
-            excluded[camera_id] = "homography_consensus_insufficient"
-            continue
-        frame = eligible[representative]
-        homography = np.asarray(by_frame[frame]["homography_court_metres_to_image_pixels"], np.float64)
+        homography = np.asarray(record["homography_court_metres_to_image_pixels"], np.float64)
         if homography.shape != (3, 3) or not np.isfinite(homography).all() or np.linalg.matrix_rank(homography) < 3:
             excluded[camera_id] = "invalid_homography"
             continue
         projected_template = cv2.perspectiveTransform(court_xyz[None, :, :2], homography)[0]
-        if not np.allclose(projected_template, pixel_points[representative], rtol=1e-6, atol=.01):
+        if not np.allclose(projected_template, pixel_points, rtol=1e-6, atol=.01):
             excluded[camera_id] = "homography_keypoint_contract_mismatch"
             continue
         try:
-            fit = fit_camera(pixel_points[representative] / np.asarray(size), size, False)
-            camera = PinholeCamera(camera_id, np.asarray(fit["K"], np.float64), np.asarray(fit["R"], np.float64), np.asarray(fit["t"], np.float64))
-        except (ValueError, cv2.error) as exc:
-            excluded[camera_id] = f"pinhole_fit_failed: {exc}"
+            fit = fit_planar_camera(court_xyz, pixel_points, np.ones(14), size, require_in_image=False)
+        except PlanarCameraFitError as exc:
+            excluded[camera_id] = f"pinhole_fit_failed: {exc.reason.value}"
             continue
-        if float(fit["rmse_px"]) > config.calibration_error_ratio * diagonal:
+        camera = PinholeCamera(camera_id, fit.K, fit.R, fit.t)
+        if camera.center[1] > 0:
+            # Camera-local KP14 places every camera on the -Y half of its local court.
+            excluded[camera_id] = "camera_side_contradicts_local_order"
+            continue
+        if fit.rmse_px > config.calibration_error_ratio * diagonal:
             excluded[camera_id] = "pinhole_reprojection"
             continue
         if not camera.project(court_xyz)[1].all():
             excluded[camera_id] = "court_behind_camera"
             continue
-        views.append(LocalCourtCalibration(camera, view, frame, homography, float(fit["rmse_px"]), tuple(np.asarray(eligible)[supported].tolist())))
+        views.append(LocalCourtCalibration(camera, view, 0, homography, fit.rmse_px))
     return CalibrationSet(tuple(views), excluded)
 
 
@@ -279,7 +263,7 @@ def resolve_camera_geometry(
         "view_half_turns": list(sides), "side_candidates": receipt,
         "court_keypoint_views": [r.to_dict() for r in records],
         "court_reference_provenance": selection.provenance.to_dict(),
-        "camera_fits": [{"K": c.intrinsic.tolist(), "R": c.rotation.tolist(), "t": c.translation.tolist(), "camera_center_court_m": c.center.tolist(), "rmse_px": local.rmse_px, "calibration_frame_index": local.frame_index, "support_frames": list(local.support_frames), "calibration": "approximate single-plane pinhole; no distortion correction"} for c, local in zip(cameras, calibration.views, strict=True)],
+        "camera_fits": [{"K": c.intrinsic.tolist(), "R": c.rotation.tolist(), "t": c.translation.tolist(), "camera_center_court_m": c.center.tolist(), "rmse_px": local.rmse_px, "calibration_frame_index": local.frame_index, "calibration": "approximate single-plane pinhole; no distortion correction"} for c, local in zip(cameras, calibration.views, strict=True)],
         "excluded_cameras": calibration.excluded,
     }
     write_model_artifact_court_keypoint_contract(document, contract)
