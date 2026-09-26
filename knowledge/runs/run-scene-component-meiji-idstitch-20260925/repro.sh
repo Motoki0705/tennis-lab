@@ -11,5 +11,9 @@ echo "[repro] target commit: 2b084442f29027f4d0402e18bd0193a12b2eddd2 (branch co
 git checkout 2b084442f29027f4d0402e18bd0193a12b2eddd2 2>/dev/null || echo "[repro] WARN: checkout 2b084442f29027f4d0402e18bd0193a12b2eddd2 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original PYTHONPATH used a DINO extension built outside the repository; it is rebuilt from
+# this checkout by the bundle's build_dino_extension.sh (copy of tests/benchmarks/build_dino_extension.sh).
+DINO_EXTENSION="$(mktemp -d)/dino_extension"
+bash "$SCRIPT_DIR/build_dino_extension.sh" "${TENNIS_ASSET_ROOT:-/home/kamimura/projects/tennis-lab}" "$DINO_EXTENSION" || { echo "[repro] DINO extension build failed" >&2; exit 1; }
 # --- original training command ---
-CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 PYTHONPATH=.:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib .venv/bin/python tests/benchmarks/component_pipeline.py --repo /home/kamimura/projects/tennis-lab --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/clip_components_meiji_idstitch_20260925 --device cuda
+CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 PYTHONPATH=.:$DINO_EXTENSION/lib .venv/bin/python tests/benchmarks/component_pipeline.py --repo /home/kamimura/projects/tennis-lab --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/clip_components_meiji_idstitch_20260925 --device cuda

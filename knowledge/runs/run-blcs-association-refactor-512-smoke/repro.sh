@@ -11,5 +11,6 @@ echo "[repro] target commit: 28885e46cb76341001c8d20aaaeb5dcfe987d7a4 (branch co
 git checkout 28885e46cb76341001c8d20aaaeb5dcfe987d7a4 2>/dev/null || echo "[repro] WARN: checkout 28885e46cb76341001c8d20aaaeb5dcfe987d7a4 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original command ran /tmp/association_gpu_smoke.py; diagnostic.py in this bundle is its saved copy.
 # --- original training command ---
-CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 PYTHONPATH=. /home/kamimura/projects/tennis-lab/.venv/bin/python -u /tmp/association_gpu_smoke.py blcs
+CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 PYTHONPATH=. /home/kamimura/projects/tennis-lab/.venv/bin/python -u "$SCRIPT_DIR/diagnostic.py" blcs

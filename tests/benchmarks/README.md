@@ -6,7 +6,7 @@
 - `component_pipeline.py`: 既定`pipeline.yaml`で構造化clipを1本処理する実clip qualification。変更する設定はroot path・device・`execution.ball_detection=load`だけ。
   ball・side・人物対応は[確認済みデータのimport](../../src/tennis_scene/pipeline/imports/README.md)で埋め、`evaluation.json`の`imported_nodes`に列挙する。
   storeは`--report`配下に作り、clipの`annotations/`へは書かない。import以外の全component実行、scene export、全段load-only再開を検査する。
-  DINO拡張は`build_dino_extension.sh`でrun directory内にbuildし、`PYTHONPATH`に加える。GPU実行は共有training queue経由:
+  DINO拡張はrepo rootから`build_dino_extension.sh`を実行してrun directory内にbuildし、`PYTHONPATH`に加える。GPU実行は共有training queue経由:
 
   ```bash
   R=/home/kamimura/projects/tennis-lab; OUT=$R/outputs/tennis_scene/evaluate/<run>

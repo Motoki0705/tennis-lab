@@ -114,6 +114,14 @@ runに `members` は指定しない。groupには1件以上のmemberが必要。
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
 ```
 
+run bundleの`repro.sh`は、checkoutするcommitで追跡されたファイル、bundleに保存したファイル（`$SCRIPT_DIR/...`）、
+保存した`uncommitted.patch`が追加するファイルだけをscriptとして参照する（`*.py`/`*.sh`/`*.yaml`、`-m` module、`PYTHONPATH`）。
+`/tmp`や`outputs/`のscript、repo外でbuildした拡張は、bundleへ保存するかrepro.sh内でbuildする。
+
+```bash
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
+```
+
 PRの番号衝突・既存identityの変更は、マージ先commitを比較元として追加検証する。既存IDのtask / sequence / recorded_at変更、counterの削除・縮小、新規IDによる予約済み番号の再利用をエラーにする。比較元が初回移行前のflat形式なら番号履歴の比較は適用しない。参照先はローカルにfetchしておく。
 
 ```bash
