@@ -11,5 +11,10 @@ echo "[repro] target commit: fa8798a4c19f7efc6b123f4819130d57fe14b565 (branch co
 git checkout fa8798a4c19f7efc6b123f4819130d57fe14b565 2>/dev/null || echo "[repro] WARN: checkout fa8798a4c19f7efc6b123f4819130d57fe14b565 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original command read these files from outputs/; they are saved in this bundle.
+# #931: the original PYTHONPATH used a DINO extension built outside the repository; it is rebuilt from
+# this checkout by the bundle's build_dino_extension.sh (copy of tests/benchmarks/build_dino_extension.sh).
+DINO_EXTENSION="$(mktemp -d)/dino_extension"
+bash "$SCRIPT_DIR/build_dino_extension.sh" "${TENNIS_ASSET_ROOT:-/home/kamimura/projects/tennis-lab}" "$DINO_EXTENSION" || { echo "[repro] DINO extension build failed" >&2; exit 1; }
 # --- original training command ---
-env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:/home/kamimura/projects/tennis-lab/build/lib.linux-x86_64-cpython-311 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T131222Z/checked_entrypoint.py /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T131222Z/pipeline.json
+env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:$DINO_EXTENSION/lib OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 MPLBACKEND=Agg /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup/.venv/bin/python "$SCRIPT_DIR/checked_entrypoint.py" /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T131222Z/pipeline.json
