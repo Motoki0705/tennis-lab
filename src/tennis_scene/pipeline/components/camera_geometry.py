@@ -20,8 +20,12 @@ from src.tasks.base.model_io import write_model_artifact_court_keypoint_contract
 from src.tennis_scene.pipeline.components.court_kp import CourtKPResult
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.utils.geometry.keypoints import denormalize_grid_keypoints
+from src.utils.geometry.multiview_consistency import (
+    ConsistencyBounds,
+    score_multiview_points,
+)
 from src.utils.geometry.planar_camera import PlanarCameraFitError, fit_planar_camera
-from src.utils.geometry.triangulation import PinholeCamera, solve_homogeneous_dlt
+from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.schema.court import CourtConfig, court_keypoints_3d
 
 
@@ -187,40 +191,20 @@ def _check_side_evidence(evidence: tuple[SideEvidence, ...], views: int, referen
 
 
 def _score_candidate(evidence: tuple[SideEvidence, ...], cameras: tuple[PinholeCamera, ...]) -> tuple[float, float]:
-    matrices = np.stack([c.matrix for c in cameras])
     costs: list[float] = []
     fractions: list[float] = []
     for e in evidence:
+        bounds = ConsistencyBounds((-0.5, 4.) if e.task == "plcs" else (-0.2, 20.))
         object_costs, object_support = [], []
         for obj in range(len(e.uv_px)):
             mask = e.visibility[obj].reshape(len(cameras), -1)
             chosen = np.flatnonzero(mask.sum(0) >= 2)
             if not len(chosen):
                 continue
-            mask = mask[:, chosen]
             uv = e.uv_px[obj].reshape(len(cameras), -1, 2)[:, chosen]
-            design = np.stack((uv[..., 0, None] * matrices[:, None, 2] - matrices[:, None, 0], uv[..., 1, None] * matrices[:, None, 2] - matrices[:, None, 1]), -2)
-            design *= mask[..., None, None]
-            xyz, valid = solve_homogeneous_dlt(design.transpose(1, 0, 2, 3).reshape(len(chosen), -1, 4))
-            error = np.zeros(mask.shape, np.float64)
-            for view, camera in enumerate(cameras):
-                projected, front = camera.project(xyz)
-                valid &= ~mask[view] | front
-                error[view] = np.linalg.norm(projected - uv[view], axis=-1)
-            rays = xyz[None] - np.stack([c.center for c in cameras])[:, None]
-            rays /= np.maximum(np.linalg.norm(rays, axis=-1, keepdims=True), 1e-12)
-            angular: NDArray[np.bool_] = np.zeros(len(chosen), bool)
-            for a, b in combinations(range(len(cameras)), 2):
-                angular |= mask[a] & mask[b] & (np.abs((rays[a] * rays[b]).sum(-1)) <= math.cos(math.radians(1)))
-            valid &= angular
-            valid &= (np.abs(xyz[:, :2]) <= 40).all(-1)
-            height = (-0.5, 4.) if e.task == "plcs" else (-0.2, 20.)
-            valid &= (xyz[:, 2] >= height[0]) & (xyz[:, 2] <= height[1])
-            normalized = (np.minimum((error / e.reprojection_threshold_px) ** 2, 1) * mask).sum(0) / mask.sum(0)
-            normalized[~valid] = 1.
-            support = valid & ((error <= e.reprojection_threshold_px) | ~mask).all(0)
-            object_costs.append(float(normalized.mean()))
-            object_support.append(float(support.mean()))
+            score = score_multiview_points(uv, mask[:, chosen], cameras, threshold_px=e.reprojection_threshold_px, bounds=bounds)
+            object_costs.append(float(score.cost.mean()))
+            object_support.append(float(score.support.mean()))
         if object_costs:
             costs.append(float(np.mean(object_costs)))
             fractions.append(float(np.mean(object_support)))
