@@ -1,0 +1,134 @@
+{
+  "source_clip": "video_000/clip_000",
+  "source_scene_index": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.json",
+  "raw_ball_artifact_id": "337c149a57a3e95374d15ebfb79633d6edecd3919d5773bdff3b4aa02ad1b537",
+  "camera_alignment_artifact_id": "1bcd864c645530a4610f26afbd60a2cb74ab1e4192d201789f62b8437ffc7636",
+  "fps": 59.94006,
+  "frames": 1010,
+  "player_mesh_valid_frames": [
+    1004,
+    995
+  ],
+  "event_indices": [
+    84,
+    167,
+    307,
+    384,
+    431,
+    501,
+    518,
+    597,
+    622,
+    853,
+    902,
+    986
+  ],
+  "raw_quality": {
+    "valid_frames": 987,
+    "event_frames": 12,
+    "flight_acceleration_p50_mps2": 76.57485961914062,
+    "flight_acceleration_p95_mps2": 1686.69482421875,
+    "displacement_p50_m": 0.0,
+    "displacement_p95_m": 0.0,
+    "displacement_max_m": 0.0,
+    "reprojection_p50_px": 2.809960126876831,
+    "reprojection_p95_px": 7.944809913635254,
+    "reprojection_over_20px": 0,
+    "reprojection_samples": 2718
+  },
+  "variants": {
+    "savgol": {
+      "config": {
+        "method": "savgol",
+        "window_frames": 11,
+        "position_sigma_m": 0.07,
+        "spline_acceleration_sigma_mps2": 25.0,
+        "rts_acceleration_sigma_mps2": 15.0,
+        "huber_delta_m": 0.12,
+        "event_y_prominence_m": 1.0,
+        "event_bounce_height_m": 0.45,
+        "event_z_prominence_m": 0.3,
+        "event_separation_frames": 8
+      },
+      "quality": {
+        "valid_frames": 987,
+        "event_frames": 12,
+        "flight_acceleration_p50_mps2": 20.36553955078125,
+        "flight_acceleration_p95_mps2": 207.4190216064453,
+        "displacement_p50_m": 0.01175522431731224,
+        "displacement_p95_m": 0.17327827215194702,
+        "displacement_max_m": 0.5267912745475769,
+        "reprojection_p50_px": 2.848874568939209,
+        "reprojection_p95_px": 8.27425479888916,
+        "reprojection_over_20px": 7,
+        "reprojection_samples": 2718
+      },
+      "scene": "savgol/scene.npz",
+      "trajectory": "savgol/trajectory.npz",
+      "mesh_video": "savgol/mesh_full.mp4",
+      "mesh_preview": "savgol/mesh_preview.png"
+    },
+    "robust_spline": {
+      "config": {
+        "method": "robust_spline",
+        "window_frames": 11,
+        "position_sigma_m": 0.07,
+        "spline_acceleration_sigma_mps2": 25.0,
+        "rts_acceleration_sigma_mps2": 15.0,
+        "huber_delta_m": 0.12,
+        "event_y_prominence_m": 1.0,
+        "event_bounce_height_m": 0.45,
+        "event_z_prominence_m": 0.3,
+        "event_separation_frames": 8
+      },
+      "quality": {
+        "valid_frames": 987,
+        "event_frames": 12,
+        "flight_acceleration_p50_mps2": 12.118318557739258,
+        "flight_acceleration_p95_mps2": 29.070484161376953,
+        "displacement_p50_m": 0.015766583383083344,
+        "displacement_p95_m": 0.22317364811897278,
+        "displacement_max_m": 0.6882776021957397,
+        "reprojection_p50_px": 2.9260947704315186,
+        "reprojection_p95_px": 8.458454132080078,
+        "reprojection_over_20px": 11,
+        "reprojection_samples": 2718
+      },
+      "scene": "robust_spline/scene.npz",
+      "trajectory": "robust_spline/trajectory.npz",
+      "mesh_video": "robust_spline/mesh_full.mp4",
+      "mesh_preview": "robust_spline/mesh_preview.png"
+    },
+    "ballistic_rts": {
+      "config": {
+        "method": "ballistic_rts",
+        "window_frames": 11,
+        "position_sigma_m": 0.07,
+        "spline_acceleration_sigma_mps2": 25.0,
+        "rts_acceleration_sigma_mps2": 15.0,
+        "huber_delta_m": 0.12,
+        "event_y_prominence_m": 1.0,
+        "event_bounce_height_m": 0.45,
+        "event_z_prominence_m": 0.3,
+        "event_separation_frames": 8
+      },
+      "quality": {
+        "valid_frames": 987,
+        "event_frames": 12,
+        "flight_acceleration_p50_mps2": 11.506391525268555,
+        "flight_acceleration_p95_mps2": 19.782207489013672,
+        "displacement_p50_m": 0.01698126457631588,
+        "displacement_p95_m": 0.23653317987918854,
+        "displacement_max_m": 0.6958948373794556,
+        "reprojection_p50_px": 2.917269706726074,
+        "reprojection_p95_px": 8.367559432983398,
+        "reprojection_over_20px": 6,
+        "reprojection_samples": 2718
+      },
+      "scene": "ballistic_rts/scene.npz",
+      "trajectory": "ballistic_rts/trajectory.npz",
+      "mesh_video": "ballistic_rts/mesh_full.mp4",
+      "mesh_preview": "ballistic_rts/mesh_preview.png"
+    }
+  }
+}

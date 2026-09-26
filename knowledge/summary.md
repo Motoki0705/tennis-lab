@@ -1,7 +1,7 @@
-<!-- knowledge-review: 6b9c82d8e55eb8c91fa93ef8fbdd9d4f31ad2949e53b10459e9f1c6d79735dc9 on 2026-09-26 -->
+<!-- knowledge-review: 54f538d4dd6f401bcf57151686885a2c83a41aab826f379d73bd82fb52582594 on 2026-09-26 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-26（宣言型clip pipelineの実動画検証と2人軸の確認を反映）
+更新日: 2026-09-26（宣言型clip pipelineの2人軸と球軌道平滑化比較を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -15,7 +15,9 @@
 
 PR #915の宣言型component pipelineは、clip単位のimmutable store、各componentの型付き入出力とload/execute、先頭frameのCourt共同推定、外部ballの明示importでMeiji `clip_000`を処理した。初回の[設定](nodes/tennis_scene/000014-run-scene-component-meiji-fullclip-20260925.md)・[既定Court](nodes/tennis_scene/000015-run-scene-component-meiji-fullclip-r2-20260925.md)・[処理方針変更](nodes/tennis_scene/000016-run-scene-component-meiji-fullclip-b863-20260925.md)・[tracking人数上限](nodes/tennis_scene/000017-run-scene-component-meiji-firstframe-20260925.md)による停止を記録し、camera内ID分裂の一意な結合を経て[全段の初回完走](nodes/tennis_scene/000018-run-scene-component-meiji-tracklets-20260925.md)に到達した。ただしその完走ではcam2の重複IDと3D人物有効率の偏りが残った。
 
-[重複ID修正後の実clip](nodes/tennis_scene/000019-run-scene-component-meiji-idstitch-20260925.md)では、学習済みRe-IDが異なる選手を結んでcamera alignmentに失敗した。生cosineとコート平面での足元距離は誤対応を支持し、合成100sceneのRe-ID評価を実動画精度へ外挿できない。ユーザー指定により、モデル予測・embeddingを別artifactで保持したまま、既存の人手人物対応を旧GVHMR bboxと現trackの一意照合後に明示loadした。[最初の確認済み対応run](nodes/tennis_scene/000020-run-scene-component-meiji-confirmed-reid-20260925.md)は下流を完走したが、対象外のraw人物trackを単独global IDとして3人目へ渡す誤りが残った。[最終2人軸run](nodes/tennis_scene/000021-run-scene-component-meiji-target2-20260925.md)では対象外trackを原検出・追跡に残して明示除外し、3camera×1010frame、対象2人の関節3D/SMPL配置、ball 3D、scene export、全段load-only再開を確認した。これは確認済み対応を使った処理・構造の検証であり、Re-IDモデルの実動画合格や独立3D精度保証ではない。次はモデル対応の実動画改善を独立に評価し、人手3D基準と可視化で配置・球軌道の品質を確認する。
+[重複ID修正後の実clip](nodes/tennis_scene/000019-run-scene-component-meiji-idstitch-20260925.md)では、学習済みRe-IDが異なる選手を結んでcamera alignmentに失敗した。生cosineとコート平面での足元距離は誤対応を支持し、合成100sceneのRe-ID評価を実動画精度へ外挿できない。ユーザー指定により、モデル予測・embeddingを別artifactで保持したまま、既存の人手人物対応を旧GVHMR bboxと現trackの一意照合後に明示loadした。[最初の確認済み対応run](nodes/tennis_scene/000020-run-scene-component-meiji-confirmed-reid-20260925.md)は下流を完走したが、対象外のraw人物trackを単独global IDとして3人目へ渡す誤りが残った。[最終2人軸run](nodes/tennis_scene/000021-run-scene-component-meiji-target2-20260925.md)では対象外trackを原検出・追跡に残して明示除外し、3camera×1010frame、対象2人の関節3D/SMPL配置、ball 3D、scene export、全段load-only再開を確認した。これは確認済み対応を使った処理・構造の検証であり、Re-IDモデルの実動画合格や独立3D精度保証ではない。
+
+[同じclipの球軌道3方式比較](nodes/tennis_scene/000022-run-scene-meiji-ball-temporal-smoothing-20260926.md)では、元の球三角測量の有効987frameと2名のmeshを固定して局所多項式・ロバスト加速度正則化・重力付きRTSを比較した。飛行中のがたつきは3方式とも下がり、強い正則化ほど滑らかだったが、採用2D観測への再投影誤差と20px超の外れは増えた。3本のmeshフルシーンと数値を保存した。人手3D正解・真の接触時刻がないため精度優位は決めず、既定の平滑化なしを維持する。次はRe-IDモデルの実動画対応を独立に改善し、球には別clipと確認済みバウンド／打球frame・3D基準を用意して平滑さと位置精度の両方を評価する。
 
 ## 2026-09-25のRe-ID補助head削除
 
