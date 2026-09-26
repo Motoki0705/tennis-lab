@@ -12,7 +12,6 @@ source:
 
 dataset:
   version: chat-player-v1
-  directory: ${tennis_dataset:player_detection,${dataset.version}}
   jpeg_quality: 95
 
 split:
@@ -24,11 +23,12 @@ split:
 workers: 6
 
 run:
-  output_dir: ${tennis_output:player_detection,generate,${dataset.version},${tennis_run_id:}}
+  # DATA-root-relative dataset version directory (generate_dataset convention).
+  output_dir: ${tennis_dataset:player_detection,${dataset.version}}
 
 hydra:
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:player_detection,generate,${dataset.version},${tennis_run_id:}},hydra}
   output_subdir: null
   job:
     chdir: false

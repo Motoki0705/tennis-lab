@@ -125,13 +125,9 @@ class GenerateDatasetConfig:
         )
         resolver = _resolver(config)
         source = _mapping(config, "source", "configuration", {"annotation_root", "allowed_statuses"})
-        dataset = _mapping(config, "dataset", "configuration", {"version", "directory", "jpeg_quality"})
+        dataset = _mapping(config, "dataset", "configuration", {"version", "jpeg_quality"})
         split = _mapping(config, "split", "configuration", {"val_ratio", "test_ratio", "seed"})
-        exact_config_mapping(
-            require_config_mapping(config, "run", path="configuration"),
-            path="run",
-            required_keys={"output_dir"},
-        )
+        run = _mapping(config, "run", "configuration", {"output_dir"})
         statuses = frozenset(_str_list(source, "allowed_statuses", "source"))
         if not statuses or not statuses <= ANNOTATION_STATUSES:
             raise SemanticConfigurationError(
@@ -144,7 +140,7 @@ class GenerateDatasetConfig:
         return cls(
             annotation_root=resolver.resolve(PathRole.OUTPUT, _text(source, "annotation_root", "source")),
             allowed_statuses=statuses,
-            dataset_dir=resolver.resolve(PathRole.DATA, _text(dataset, "directory", "dataset")),
+            dataset_dir=resolver.resolve(PathRole.DATA, _text(run, "output_dir", "run")),
             version=_text(dataset, "version", "dataset"),
             jpeg_quality=_int(dataset, "jpeg_quality", "dataset", minimum=50),
             val_ratio=val_ratio,
