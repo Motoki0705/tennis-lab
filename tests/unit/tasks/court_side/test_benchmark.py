@@ -19,7 +19,7 @@ from src.tasks.court_side.benchmark import (
 from src.tasks.court_side.hypothesis import CourtSideConfig
 from src.utils.geometry.triangulation import PinholeCamera
 
-CONFIG = CourtSideConfig(reprojection_px=20., min_frames=8, max_cost=.5, min_support=.5, min_margin=.1)
+CONFIG = CourtSideConfig(reprojection_px=20., min_motion_px=5., min_frames=8, max_cost=.5, min_support=.5, min_margin=.1)
 CLEAN = Perturbation("clean", missing_rate=0., pixel_sigma_px=0., calibration_scale=0.)
 
 

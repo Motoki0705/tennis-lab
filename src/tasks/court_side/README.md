@@ -16,7 +16,9 @@
 ## 判定（`hypothesis.py`）
 
 reference cameraを固定し、他のcameraごとに「そのまま／half-turn」の `2^(V-1)` 通りの仮説を列挙する。
-各仮説について、ballが2 view以上に写ったframeごとに全観測viewのDLTで三角測量し、
+まず、直前に残したframeと観測viewの組が同じで、どのviewも `min_motion_px` 未満しか動いていないframeを除く。
+静止した誤検出（ボールボーイが持つball、ballに似た模様）が何十frameも同じ証拠として数えられ、誤った仮説を支持するのを防ぐ（合成ベンチマークで観測した失敗）。
+残ったframeのうち、ballが2 view以上に写ったframeごとに全観測viewのDLTで三角測量し、
 `src/utils/geometry/multiview_consistency.py` で次を計算する。
 
 | 量 | 定義 |
@@ -33,7 +35,7 @@ DLTは外れviewを除外しない。誤った姿勢のcameraを多数決で無�
 
 | 理由 | 条件 |
 |---|---|
-| `insufficient_frames` | 2 view以上に写ったframeが `min_frames` 未満 |
+| `insufficient_frames` | 2 view以上に写った（重複を除いた）frameが `min_frames` 未満 |
 | `disconnected_views` | 共通frameが `min_frames` 以上のcamera対のグラフで、referenceにつながらないcameraがある |
 | `no_consistent_hypothesis` | 最良の仮説が `cost > max_cost` または `support < min_support` |
 | `ambiguous_margin` | `margin < min_margin` |
@@ -58,10 +60,13 @@ cameraとreferenceをランダムに選び、`camera_view_v2` のcamera-local校
 名目の校正雑音は、Meiji clip_000の確認済みballで測った正解仮説のcost（0.10）に中央値が近くなるように決めた。
 閾値は、本番と同じ `judge_side_evidence` で格子上の全点を判定して選ぶ。自身と、各閾値を1段緩めた近傍のすべてが
 全条件で誤判定0の点（1段の余裕を持ち、格子の緩い端には乗らない）のうち、条件平均の停止率が最小の点を採る。
+選定に使っていないsceneと乱数seedで、選んだ閾値を `--fixed-thresholds` で再評価して確認する。
+各runは同じ摂動の観測を、以前の方式（Meiji 1clipで決めた閾値、重複除去なし）でも判定して比較する。
 
 ```bash
 .venv/bin/python -m src.tasks.court_side.scripts.benchmark_synthetic \
-    --data-root /absolute/data --output-root /absolute/outputs --experiment synthetic_blcs_v2 --run-id <run-id>
+    --data-root /absolute/data --output-root /absolute/outputs --experiment synthetic_blcs_v2 --run-id <run-id> \
+    [--scenes 600 --scene-offset 0 --seed 0] [--fixed-thresholds <selection run>/report.json]
 ```
 
 出力は `court_side/evaluate/<experiment>/<run-id>/` の `conditions.json`、`evidence.jsonl`、`thresholds.json`、`report.json`。
