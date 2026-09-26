@@ -84,7 +84,7 @@ def test_too_few_or_disconnected_frames_stop_before_scoring() -> None:
     sparse[:, 7:] = False
     with pytest.raises(CourtSideUndecided) as stopped:
         decide_court_side(local, "a", uv, sparse, CONFIG)
-    assert stopped.value.reason == INSUFFICIENT_FRAMES and stopped.value.frames == 7 and not stopped.value.hypotheses
+    assert stopped.value.reason == INSUFFICIENT_FRAMES and stopped.value.frames == 7 and len(stopped.value.hypotheses) == 4
     split = visible.copy()
     split[:2, 30:] = False  # a and b share the first half; c alone sees the second half
     split[2, :30] = False
