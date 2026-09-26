@@ -7,8 +7,10 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/dataset-scene-review}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 782fc137d85c054d0f5ef775fe5edbf8cf52f00f (branch codex/dataset-scene-review)"
-git checkout 782fc137d85c054d0f5ef775fe5edbf8cf52f00f 2>/dev/null || echo "[repro] WARN: checkout 782fc137d85c054d0f5ef775fe5edbf8cf52f00f failed; using current HEAD"
+echo "[repro] target commit: 003334e04821fd6a04f8e96c6c5b2a6c1a0aeb3b (branch codex/dataset-scene-review)"
+# #931: the run used 782fc137 plus untracked source files (src/tasks/base/visualization/inference_queue.py and the review/inference UIs), which the bundle did not capture.
+# They were first committed in 003334e0; the repro checks out that commit (the patch may not apply).
+git checkout 003334e04821fd6a04f8e96c6c5b2a6c1a0aeb3b 2>/dev/null || echo "[repro] WARN: checkout 003334e04821fd6a04f8e96c6c5b2a6c1a0aeb3b failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

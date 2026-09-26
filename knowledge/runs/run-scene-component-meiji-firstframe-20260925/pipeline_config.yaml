@@ -1,0 +1,176 @@
+paths:
+  project_root: /home/kamimura/projects/tennis-lab
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: .cache
+  external_asset_root: /home/kamimura/projects/tennis-lab/third_party
+video_paths:
+- samples/cam0.mp4
+- samples/cam1.mp4
+- samples/cam2.mp4
+camera_ids:
+- cam0
+- cam1
+- cam2
+output_directory: tennis_scene/generate/pipeline/20260925T101103.659672Z-78546e37
+output_name: tennis_clip
+device: cuda
+execution:
+  court_detection: execute
+  court_calibration: execute
+  person_detection: execute
+  person_tracking: execute
+  pose_estimation: execute
+  ball_detection: load
+  person_reid: execute
+  court_side: load
+  camera_alignment: execute
+  player_triangulation: execute
+  ball_triangulation: execute
+  body_view_selection: execute
+  gvhmr: execute
+  body_placement: execute
+  scene_assembly: execute
+court_kp:
+  checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
+  subpixel_refine: true
+  region_search:
+    enabled: true
+    min_inliers: 8
+    inlier_distance_ratio: 0.005
+    min_area_ratio: 0.01
+  postprocess:
+    min_score: 0.05
+    threshold_diagonal_ratio: 0.005
+    line_probability_threshold: 0.5
+    max_kp: 8
+    max_candidates: 1001
+    refine_candidates: 6
+    samples_per_line: 40
+    max_line_observations: 768
+    max_selection_rounds: 4
+    max_nfev: 70
+    kp_weight: 0.25
+    min_line_support: 0.55
+    ambiguity_gap: 0.02
+    ambiguity_displacement_ratio: 0.03
+people_models:
+  detector: dino
+  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  dino_repository: DINO
+  yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
+  vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+  hmr2_checkpoint: GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
+  gvhmr_checkpoint: GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+  body_models_dir: GVHMR/inputs/checkpoints/body_models
+  bundled_assets:
+    hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
+    smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt
+    smpl_coco17_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt
+    smplx_verts437: src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt
+    smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
+  runtime:
+    device: cuda
+    tracking:
+      yolo_confidence: 0.5
+      bbox_enlarge: 1.2
+    dino_detector:
+      confidence: 0.3
+      short_side: 800
+      max_long_side: 1333
+    vitpose:
+      flip_test: true
+      batch_size: 16
+      head:
+        in_channels: 1280
+        out_channels: 17
+        num_deconv_layers: 2
+        num_deconv_filters:
+        - 256
+        - 256
+        num_deconv_kernels:
+        - 4
+        - 4
+        final_conv_kernel: 1
+        num_conv_layers: 0
+        num_conv_kernels: []
+    hmr2:
+      batch_size: 16
+    static_cam: true
+person_observations:
+  enabled: true
+  visibility_threshold: 0.15
+  sideline_margin_m: 1.0
+  baseline_margin_m: 10.0
+ball_detection:
+  enabled: true
+  checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+  batch_size: 4
+  image_size:
+  - 288
+  - 512
+  normalize_imagenet: true
+  score_threshold: 0.5
+  subpixel_refine: true
+  checkpoint_strict: true
+  checkpoint_weights_only: false
+  prefetch_batches: 2
+  window_stride: 4
+  tail_policy: backfill
+  overlap_aggregation: max_score
+  pin_memory: true
+  trajectory_gate:
+    enabled: true
+    max_residual_px: 60
+    k_support: 2
+    max_support_gap: 5
+    max_passes: 2
+plcs_reid:
+  enabled: true
+  checkpoint: plcs/player-reid-headless-v2-s42.ckpt
+court_side:
+  enabled: true
+  checkpoint: plcs/court-side-v1.ckpt
+association:
+  cosine_threshold: null
+  min_frames: 512
+  max_frames: 1024
+  padded_views: 5
+camera_geometry:
+  reference_camera: cam0
+  calibration_samples: 9
+  consensus_ratio: 0.01
+  calibration_error_ratio: 0.005
+  side_min_frames: 8
+  side_max_cost: 0.5
+  side_min_support: 0.5
+  side_min_margin: 0.1
+player_reconstruction:
+  enabled: true
+  reprojection_px: 40.0
+  joint_confidence: 0.3
+  placement:
+    data_sigma_m: 0.1
+    root_acceleration_sigma: 10.0
+    yaw_acceleration_sigma: 20.0
+    temporal_weight: 0.05
+    min_joints: 5
+    min_scale_pairs: 6
+    min_scale: 0.7
+    max_scale: 1.4
+    max_reprojection_rms_px: 10.0
+    reprojection_weight_sigma_px: 5.0
+    max_nfev: 200
+ball_reconstruction:
+  enabled: true
+  reprojection_px: 20.0
+  min_frames: 5
+gvhmr:
+  enabled: true
+cache:
+  directory: tennis_scene/generate/pipeline/20260925T101103.659672Z-78546e37/stages
+  source: execute
+  overwrite: false
+max_frames: null
