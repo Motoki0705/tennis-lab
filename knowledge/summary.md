@@ -1,7 +1,7 @@
-<!-- knowledge-review: 6b9c82d8e55eb8c91fa93ef8fbdd9d4f31ad2949e53b10459e9f1c6d79735dc9 on 2026-09-26 -->
+<!-- knowledge-review: 1bf7b94fbc4abd988b9df63aac1290f4d6612e5768b9b09af3f6e706c30c8d4e on 2026-09-27 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-26（宣言型clip pipelineの実動画検証と2人軸の確認を反映）
+更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationを反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,14 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-27の#915分割と既定設定での実clip確認
+
+#915は#931でPR #937〜#940に分割した。PLCSの固定track Re-IDとCourtSideModelはmainに入れない（下記2026-09-24・25の記録は実験履歴として残す）。
+`player_association`・`court_side`はtennis_scene所有のschemaだけを持つload専用nodeとなり、モデルが入るまで（#933・#932）は確認済みデータの`imports/`で埋める。
+分割後の既定`pipeline.yaml`（b863 Court＋region search、ROI 10m）で[Meiji clip_000を完走](nodes/tennis_scene/000022-run-i931-default-meiji-clip000-20260927.md)した。有効frame数とsideは#915の最終runと完全に一致した。
+このrunでball・side・人物対応はimportしたものであり、side・対応モデルの精度評価ではない。
+同時に、全repro.shのscript参照が再現可能であることを`kg_repro_paths.py`で検査するようにした。
 
 ## 2026-09-26の宣言型clip pipeline検証
 
