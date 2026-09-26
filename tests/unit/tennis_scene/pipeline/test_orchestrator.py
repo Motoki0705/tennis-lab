@@ -1,6 +1,7 @@
 """Dependency order and synchronization contracts, independent of model execution."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -13,14 +14,27 @@ def flags() -> dict[str, bool]:
     return {key: True for key in ("court_kp", "person_observations", "ball_detection", "camera_geometry", "player_reconstruction", "ball_reconstruction", "gvhmr")}
 
 
-def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -> None:
+def _runtime_with_assets(tmp_path: Path) -> Any:
+    from src.tennis_scene.pipeline.definition import enabled_model_assets
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import runtime
+    cfg = runtime(tmp_path)
+    for path in enabled_model_assets(cfg).values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"asset")
+    return cfg
+
+
+def _source(tmp_path: Path) -> Any:
     from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
+    return ClipSource("clip", tuple(SourceVideo(c, tmp_path / f"{c}.mp4", "hash", 24, 30., 1280, 720) for c in ("cam0", "cam1", "cam2")))
+
+
+def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -> None:
     from src.tennis_scene.pipeline.definition import standard_definition
     from src.tennis_scene.pipeline.runner import ComponentRunner
     from src.tennis_scene.pipeline.storage.clip_store import ClipStore
-    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import runtime
-    source = ClipSource("clip", tuple(SourceVideo(c, tmp_path / f"{c}.mp4", "hash", 24, 30., 1280, 720) for c in ("cam0", "cam1", "cam2")))
-    runner = ComponentRunner(standard_definition(runtime(tmp_path), source, code_identity="test"), ClipStore(tmp_path / "store", {"clip": "clip"}))
+    source = _source(tmp_path)
+    runner = ComponentRunner(standard_definition(_runtime_with_assets(tmp_path), source, code_identity="test"), ClipStore(tmp_path / "store", {"clip": "clip"}))
     order = runner.order
     assert order.index("court_calibration") < order.index("person_detection/cam0")
     assert order.index("player_association") < order.index("player_triangulation")
@@ -28,14 +42,25 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
 
 
+def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from src.tennis_scene.pipeline.definition import standard_definition
+    cfg = _runtime_with_assets(tmp_path)
+    cfg.people.vitpose_checkpoint.unlink()
+    with pytest.raises(FileNotFoundError, match="vitpose"):
+        standard_definition(cfg, _source(tmp_path), code_identity="test")
+    # A disabled feature neither needs nor records its assets.
+    disabled = replace(cfg, enabled={**cfg.enabled, "person_observations": False, "player_reconstruction": False, "gvhmr": False})
+    standard_definition(disabled, _source(tmp_path), code_identity="test")
+
+
 def test_executing_an_unimplemented_node_fails_when_the_definition_is_built(tmp_path: Path) -> None:
     from dataclasses import replace
 
-    from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
     from src.tennis_scene.pipeline.definition import standard_definition
-    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import runtime
-    source = ClipSource("clip", tuple(SourceVideo(c, tmp_path / f"{c}.mp4", "hash", 24, 30., 1280, 720) for c in ("cam0", "cam1", "cam2")))
-    cfg = runtime(tmp_path)
+    source = _source(tmp_path)
+    cfg = _runtime_with_assets(tmp_path)
     for node in ("player_association", "court_side"):
         executed = replace(cfg, component_sources={**cfg.component_sources, node: "execute"})
         with pytest.raises(ValueError, match=f"{node} has no model implementation"):

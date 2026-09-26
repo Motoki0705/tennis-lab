@@ -16,7 +16,11 @@ from src.tennis_scene.pipeline.artifacts import (
     json_value,
     write_json_atomic,
 )
-from src.tennis_scene.pipeline.definition import file_identity, standard_definition
+from src.tennis_scene.pipeline.definition import (
+    enabled_model_assets,
+    file_identity,
+    standard_definition,
+)
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
@@ -51,13 +55,9 @@ class TennisSceneOrchestrator:
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
-        checkpoints = {"court": cfg.court_kp.checkpoint, "detector": cfg.people.dino_checkpoint if cfg.people.detector == "dino" else cfg.people.yolo_checkpoint,
-            "vitpose": cfg.people.vitpose_checkpoint, "hmr2": cfg.people.hmr2_checkpoint, "gvhmr": cfg.people.gvhmr_checkpoint,
-            "ball": cfg.ball_detection.checkpoint,
-            "body_model": cfg.people.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz"}
         return {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": json_value(cfg.processing_settings), "execution": dict(cfg.component_sources),
-            "checkpoints": {key: file_identity(path) for key, path in checkpoints.items()}}
+            "checkpoints": {key: file_identity(path) for key, path in enabled_model_assets(cfg).items()}}
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
             max_frames: int | None = None, clip_id: str | None = None, store_root: Path | None = None) -> SceneResult:

@@ -1,6 +1,6 @@
 """Validated model assets; model execution belongs to individual components."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 from src.submodules.configuration import BundledModelAssetPaths, SubmoduleRuntimeConfig
@@ -25,3 +25,16 @@ class PeopleModelConfig:
         if not self.runtime.static_cam:
             raise ValueError("Automatic reconstruction currently requires static cameras")
 
+
+    @property
+    def detector_checkpoint(self) -> Path:
+        return self.dino_checkpoint if self.detector == "dino" else self.yolo_checkpoint
+
+    def body_assets(self) -> dict[str, Path]:
+        """Every file the GVHMR body recovery and SMPL placement read."""
+        return {
+            "hmr2": self.hmr2_checkpoint,
+            "gvhmr": self.gvhmr_checkpoint,
+            "body_model": self.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
+            **{f"bundled_{field.name}": getattr(self.bundled_assets, field.name) for field in fields(self.bundled_assets)},
+        }

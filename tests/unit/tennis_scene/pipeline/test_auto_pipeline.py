@@ -46,6 +46,7 @@ def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False) -> Pipe
         cfg = compose(config_name="pipeline", overrides=[
             "device=cpu", "gvhmr.enabled=false", f"paths.data_root={tmp_path}",
             f"paths.artifact_root={tmp_path}", f"paths.output_root={tmp_path}",
+            f"paths.checkpoint_root={tmp_path / 'ckpt'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
             "output_directory=run", "cache.directory=stages",
             *(["execution.player_association=execute", "execution.court_side=execute"] if execute_identity_overrides else []),
         ])
@@ -284,6 +285,9 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     stages["gvhmr"] = KnownGVHMR()
     monkeypatch.setattr("src.tennis_scene.pipeline.components.body_placement.SmplGeometry", lambda config: body)
     config = replace(pipeline.config, enabled={**pipeline.config.enabled, "gvhmr": True}, processing_settings={**pipeline.config.processing_settings, "gvhmr": {"enabled": True}})
+    for asset in config.people.body_assets().values():  # identity inputs of the real body_placement
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        asset.write_bytes(b"asset")
     pipeline = TennisSceneOrchestrator(config, components=stages)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"))
     assert scene.player_valid.all() and scene.player_heading_valid.all() and scene.player_smpl_valid.all()
