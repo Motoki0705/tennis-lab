@@ -40,6 +40,7 @@ SCHEMAS = {
     "camera_alignment": ("aligned_cameras", 1),
     "player_triangulation": ("player_skeletons", 1),
     "ball_triangulation": ("ball_trajectory", 1),
+    "ball_smoothing": ("smoothed_ball_trajectory", 1),
     "body_view_selection": ("body_view_selection", 1),
     "gvhmr": ("body_parameters", 1),
     "body_placement": ("placed_bodies", 1),
@@ -48,7 +49,7 @@ SCHEMAS = {
 CAMERA_COMPONENTS = ("court_detection", "ball_detection", "person_detection", "person_tracking", "pose_estimation")
 ORDER = ("court_detection", "court_calibration", "ball_detection", "person_detection",
          "person_tracking", "pose_estimation", "person_reid", "court_side", "camera_alignment",
-         "player_triangulation", "ball_triangulation", "body_view_selection", "gvhmr",
+         "player_triangulation", "ball_triangulation", "ball_smoothing", "body_view_selection", "gvhmr",
          "body_placement", "scene_assembly")
 COLORS_BGR = ((48, 180, 255), (52, 220, 75), (230, 100, 255), (255, 170, 48))
 COLORS_MPL = ("#ed8151", "#4bb985", "#9b70d7", "#4c92d5")
@@ -653,6 +654,44 @@ class Review:
                   _save_plot(self.output / "images" / "ball_triangulation_height.png", height)]
         return images, [("status", ball["status"]), ("valid frames", f"{_count(valid)}/{len(valid)}"),
                         ("inlier camera observations", str(_count(trajectory["inliers"])))]
+
+    def render_ball_smoothing(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
+        ball = value["ball"]
+        raw, _ = self.payload("ball_triangulation")
+        if ball is None or raw["ball"] is None:
+            raise ValueError("Ball smoothing review requires both raw and smoothed trajectories")
+        smoothed = ball["trajectory"]
+        baseline = raw["ball"]["trajectory"]
+        positions, valid = _array(smoothed["positions"]), _array(smoothed["valid"])
+        raw_positions, raw_valid = _array(baseline["positions"]), _array(baseline["valid"])
+        if not np.array_equal(valid, raw_valid):
+            raise ValueError("Ball smoothing changed the triangulation validity mask")
+        delta = np.linalg.norm(positions - raw_positions, axis=-1)
+        def topdown(ax: Any) -> None:
+            _court_axes(ax)
+            ax.scatter(raw_positions[valid, 0], raw_positions[valid, 1], s=6, alpha=.3, color="#8b9aa6", label="raw")
+            path = np.where(valid[:, None], positions, np.nan)
+            ax.plot(path[:, 0], path[:, 1], lw=.8, color=COLORS_MPL[0], label="smoothed")
+            ax.set_title("Ball 3D: raw vs smoothed")
+            ax.legend()
+        def timeline(ax: Any) -> None:
+            frames = np.arange(len(valid))
+            ax.plot(frames, np.where(valid, raw_positions[:, 2], np.nan), lw=.75, alpha=.5, color="#8b9aa6", label="raw height")
+            ax.plot(frames, np.where(valid, positions[:, 2], np.nan), lw=1, color=COLORS_MPL[0], label="smoothed height")
+            ax.set(xlabel="source frame", ylabel="height (m)", title="Ball height on supported frames")
+            ax.grid(alpha=.2)
+            ax.legend()
+        def displacement(ax: Any) -> None:
+            ax.plot(np.arange(len(valid)), np.where(valid, delta, np.nan), lw=.8, color=COLORS_MPL[0])
+            ax.set(xlabel="source frame", ylabel="change from raw (m)", title="Temporal smoothing displacement")
+            ax.grid(alpha=.2)
+        images = [_save_plot(self.output / "images" / "ball_smoothing_topdown.png", topdown, figsize=(7, 8)),
+                  _save_plot(self.output / "images" / "ball_smoothing_height.png", timeline),
+                  _save_plot(self.output / "images" / "ball_smoothing_displacement.png", displacement)]
+        descriptor = self.store.descriptor(self.references[node])
+        method = descriptor["identity"]["settings"]["config"]["method"]
+        return images, [("method", str(method)), ("valid frames", f"{_count(valid)}/{len(valid)}"),
+                        ("3D displacement p50 / p95 (m)", f"{np.median(delta[valid]):.3f} / {np.quantile(delta[valid], .95):.3f}" if valid.any() else "none")]
 
     def render_body_view_selection(self, node: str, camera: str, value: dict[str, Any]) -> tuple[list[str], list[tuple[str, str]]]:
         selections = value["selections"]

@@ -9,15 +9,21 @@ import cv2
 import numpy as np
 import pytest
 import torch
+from numpy.typing import NDArray
 
 from scripts.visualize_component_store import Review
 from src.tasks.plcs.model_io.person_association import PersonReIDResult
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
+from src.tennis_scene.pipeline.components.ball_reconstruction import (
+    BallReconstructionResult,
+)
 from src.tennis_scene.pipeline.components.person_association import PlayerReIDOutput
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
+from src.tennis_scene.pipeline.components.triangulation import BallTriangulationOutput
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.utils.geometry.triangulation import TriangulatedPoints
 
 
 def test_partial_component_store_produces_review_with_provenance(
@@ -54,6 +60,38 @@ def test_partial_component_store_produces_review_with_provenance(
     capture = cv2.VideoCapture(str(movie))
     assert capture.get(cv2.CAP_PROP_FRAME_COUNT) == 4
     capture.release()
+
+
+def test_review_shows_ball_smoothing_against_raw_component(tmp_path: Path) -> None:
+    source = {"clip_id": "ball-smoothing-review", "videos": [
+        {"camera_id": camera, "path": str(tmp_path / f"{camera}.mp4"),
+         "num_frames": 6, "fps": 30., "width": 64, "height": 48} for camera in ("cam0", "cam1", "cam2")
+    ]}
+    store = ClipStore(tmp_path / "store", source)
+    positions = np.array([[0., -2., 1.], [.1, -1.5, 1.3], [.15, -1., 1.4],
+                          [.3, -.5, 1.3], [.4, 0., 1.], [.5, .5, .7]], np.float32)
+    valid: NDArray[np.bool_] = np.ones(6, bool)
+    inliers: NDArray[np.bool_] = np.ones((3, 6), bool)
+    raw_points = TriangulatedPoints(positions, valid, np.zeros(6, np.uint8), inliers, np.zeros((3, 6), np.float32))
+    smoothed_positions = positions.copy()
+    smoothed_positions[2, 0] += .08
+    smooth_points = TriangulatedPoints(smoothed_positions, valid, raw_points.reasons, inliers, raw_points.reprojection_px)
+    uv: NDArray[np.float32] = np.zeros((3, 6, 2), np.float32)
+    observed: NDArray[np.bool_] = np.ones((3, 6), bool)
+    raw = BallTriangulationOutput(BallReconstructionResult(uv, observed, raw_points, "ok"))
+    smooth = BallTriangulationOutput(BallReconstructionResult(uv, observed, smooth_points, "ok"))
+    raw_ref = store.publish("ball_triangulation", raw, ArtifactCodec(BallTriangulationOutput),
+        schema="ball_trajectory", version=1, identity={"stage": "raw"}, dependencies={}, provenance={"origin": "test"})
+    store.publish("ball_smoothing", smooth, ArtifactCodec(BallTriangulationOutput),
+        schema="smoothed_ball_trajectory", version=1, identity={"settings": {"config": {"method": "savgol"}}},
+        dependencies={"triangulation": raw_ref}, provenance={"origin": "test"})
+
+    report = Review(store.index_path, tmp_path / "review").build()
+    entry = json.loads((report.parent / "manifest.json").read_text())["components"]["ball_smoothing"]
+    assert entry["status"] == "rendered"
+    assert entry["details"]["method"] == "savgol"
+    assert len(entry["images"]) == 3
+    assert all((report.parent / path).is_file() for path in entry["images"])
 
 
 def test_track_contact_sheet_samples_identity_handoffs() -> None:

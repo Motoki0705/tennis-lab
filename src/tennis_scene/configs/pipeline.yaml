@@ -26,6 +26,7 @@ execution:
   camera_alignment: execute
   player_triangulation: execute
   ball_triangulation: execute
+  ball_smoothing: execute
   body_view_selection: execute
   gvhmr: execute
   body_placement: execute
@@ -164,6 +165,17 @@ ball_reconstruction:
   enabled: true
   reprojection_px: 20.0
   min_frames: 5
+ball_smoothing:
+  method: none
+  window_frames: 11
+  position_sigma_m: 0.07
+  spline_acceleration_sigma_mps2: 25.0
+  rts_acceleration_sigma_mps2: 15.0
+  huber_delta_m: 0.12
+  event_y_prominence_m: 1.0
+  event_bounce_height_m: 0.45
+  event_z_prominence_m: 0.3
+  event_separation_frames: 8
 gvhmr:
   enabled: true
 cache:

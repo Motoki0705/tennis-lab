@@ -38,7 +38,7 @@ class SceneAssemblyModule:
         self.io = ComponentIO("scene_assembly", SceneAssemblyInput, SceneResult,
             {"calibration": InputPort("local_court_calibration"), "alignment": InputPort("aligned_cameras"),
              "identities": InputPort("person_identities"), "skeleton": InputPort("player_skeletons"),
-             "ball": InputPort("ball_trajectory"), "placement": InputPort("placed_bodies"),
+             "ball": InputPort("smoothed_ball_trajectory"), "placement": InputPort("placed_bodies"),
              **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "scene_result", 2)
 
     def process(self, inputs: SceneAssemblyInput) -> SceneResult:

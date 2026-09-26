@@ -23,6 +23,7 @@ from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tasks.plcs.model_io.person_association import PersonInferencePolicy
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
+from src.tennis_scene.pipeline.components.ball_smoothing import BallSmoothingConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
 from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
@@ -259,6 +260,10 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
 })
+_BALL_SMOOTHING_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_smoothing", fields={
+    name: ConfigField.of(str) if name == "method" else ConfigField.of(int) if name in {"window_frames", "event_separation_frames"} else ConfigField.of(float, int)
+    for name in BallSmoothingConfig.__dataclass_fields__
+})
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
@@ -271,6 +276,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "plcs_reid": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA), "court_side": ConfigField.mapping(_AUTO_ASSOCIATION_SCHEMA),
     "association": ConfigField.mapping(_INFERENCE_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
+    "ball_smoothing": ConfigField.mapping(_BALL_SMOOTHING_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
 })
 
@@ -300,6 +306,7 @@ class PipelineRuntimeConfig:
     player_placement: TemporalPlacementConfig
     ball_reprojection_px: float
     ball_min_frames: int
+    ball_smoothing: BallSmoothingConfig
     cache_directory: Path
     cache_source: str
     cache_overwrite: bool
@@ -381,6 +388,7 @@ class PipelineRuntimeConfig:
         placement = TemporalPlacementConfig(**cast(dict[str, Any], dict(_mapping(player["placement"], name="player_reconstruction.placement"))))
         _unit_interval(joint_confidence, name="joint_confidence")
         _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
+        ball_smoothing = BallSmoothingConfig(**cast(dict[str, Any], dict(_mapping(value["ball_smoothing"], name="ball_smoothing"))))
         enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in ("person_observations", "ball_detection", "plcs_reid", "court_side", "player_reconstruction", "ball_reconstruction", "gvhmr")}
         enabled.update(court_kp=True, camera_geometry=True)
         from src.tennis_scene.pipeline.feature_flags import validate_requested_features
@@ -391,7 +399,7 @@ class PipelineRuntimeConfig:
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             resolver.resolve(PathRole.CHECKPOINT, cast(str, plcs["checkpoint"])), resolver.resolve(PathRole.CHECKPOINT, cast(str, side["checkpoint"])),
-            inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            inference_policy, geometry, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]), ball_smoothing,
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources)
 
 

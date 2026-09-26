@@ -10,7 +10,7 @@ view_half_turnsの手動入力を要求しません。根拠不足は欠測ま�
 2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
 3. camera-local観測とreferenceから、PLCSの独立した人物Re-ID・court sideモデルを推論。ボールは各camera/frameの単一検出を使用。
 4. 共通sideを幾何検証し、近似カメラ校正をreference座標へ変換。
-5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
+5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。球には独立した任意の時系列平滑化componentを適用可能。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断、stage cacheを保存。
 

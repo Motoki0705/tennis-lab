@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
+from src.tennis_scene.pipeline.components.ball_smoothing import BallSmoothingModule
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionModule,
@@ -57,6 +58,7 @@ from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     PoseEstimationInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.reconstruction import (
+    BallSmoothingInputAssembler,
     BallTriangulationInputAssembler,
     CameraAlignmentInputAssembler,
     PlayerTriangulationInputAssembler,
@@ -149,6 +151,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
         BallTriangulationInputAssembler(cfg.ball_detection.score_threshold), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
         {"config": cfg.processing_settings["ball_reconstruction"], "threshold": cfg.ball_detection.score_threshold})
+    add("ball_smoothing", BallSmoothingModule(cfg.ball_smoothing), BallSmoothingInputAssembler(),
+        {"triangulation": "ball_triangulation", "alignment": "camera_alignment"}, {"config": cfg.ball_smoothing})
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.inference_policy.max_frames, enabled=cfg.enabled["gvhmr"]),
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         {"policy": "coverage_confidence_camera_id", **person_settings, "enabled": cfg.enabled["gvhmr"]})
@@ -164,5 +168,5 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         {"config": cfg.player_placement, "models": body_settings, "root": file_identity(cfg.people.bundled_assets.smpl_neutral_joint_regressor)})
     add("scene_assembly", SceneAssemblyModule(ids, require_people=cfg.enabled["player_reconstruction"],
         require_ball=cfg.enabled["ball_reconstruction"], require_body=cfg.enabled["gvhmr"]), SceneAssemblyInputAssembler(cfg.human_vis_threshold),
-        {**reconstructed, "skeleton": "player_triangulation", "ball": "ball_triangulation", "placement": "body_placement"}, {"enabled": cfg.enabled})
+        {**reconstructed, "skeleton": "player_triangulation", "ball": "ball_smoothing", "placement": "body_placement"}, {"enabled": cfg.enabled})
     return tuple(nodes)
