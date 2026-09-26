@@ -1,7 +1,7 @@
-<!-- knowledge-review: d8b421ee20e2d11d85b386dc915c125daa1bf58b1304b702c225b775fb9c7352 on 2026-09-27 -->
+<!-- knowledge-review: 6519c3827acbdad3167290807ac0cd1d8f262ebb828e85b304f413600f8403dc on 2026-09-27 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成を反映）
+更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマークを反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,14 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-27のballだけのside判定（#932）
+
+sideは`src/tasks/court_side`の幾何的な仮説検定でballだけから決め、`court_side`のimportは使わない（学習モデルなし）。
+[合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)で閾値を`min_frames=8, max_cost=0.8, min_support=0.2, min_margin=0.15`に決めた。
+選定に使わないscene・seedのheld-outでも28条件の誤判定は0で、誤判定を防いでいるのはmarginである（誤った仮説が最良になった試行のmarginは最大0.10）。
+静止した誤検出の反復が誤った仮説を支持する失敗を合成で観測し、同じ観測の繰り返しを証拠から除いた。
+実検出器のballでMeiji全clipが決まるかは未確認で、次に検証する。
 
 ## 2026-09-27の#915分割と既定設定での実clip確認
 
