@@ -127,7 +127,9 @@ def _distractor(rng: np.random.Generator) -> NDArray[np.float64]:
     return np.array([rng.choice([-1, 1]) * rng.uniform(5.5, 7.5), rng.uniform(-12, 12), rng.uniform(0, 1.2)])
 
 
-def make_trial(scene: SyntheticScene, p: Perturbation, config: CourtSideConfig, rng: np.random.Generator) -> Trial:
+def make_trials(scene: SyntheticScene, p: Perturbation, configs: Sequence[CourtSideConfig],
+                rng: np.random.Generator) -> tuple[Trial, ...]:
+    """One perturbed observation of ``scene``, scored under each scoring config."""
     views = len(scene.cameras)
     if p.cameras > views:
         raise ValueError(f"Scene {scene.scene_id} has {views} cameras; condition {p.name} needs {p.cameras}")
@@ -170,9 +172,16 @@ def make_trial(scene: SyntheticScene, p: Perturbation, config: CourtSideConfig, 
                 point = rng.uniform([0, 0], [width, height])  # a static ball-like pattern in the image
             uv[row, mask] = point + rng.normal(0, p.pixel_sigma_px * pixel_scale, (int(mask.sum()), 2))
             visible[row, mask] = True
-    scaled = replace(config, reprojection_px=config.reprojection_px * pixel_scale)
-    evidence = collect_side_evidence(local, local[reference].camera_id, uv.astype(np.float32), visible, scaled)
-    return Trial(scene.scene_id, p.name, expected, evidence)
+    trials = []
+    for config in configs:
+        scaled = replace(config, reprojection_px=config.reprojection_px * pixel_scale, min_motion_px=config.min_motion_px * pixel_scale)
+        evidence = collect_side_evidence(local, local[reference].camera_id, uv.astype(np.float32), visible, scaled)
+        trials.append(Trial(scene.scene_id, p.name, expected, evidence))
+    return tuple(trials)
+
+
+def make_trial(scene: SyntheticScene, p: Perturbation, config: CourtSideConfig, rng: np.random.Generator) -> Trial:
+    return make_trials(scene, p, (config,), rng)[0]
 
 
 def judge(trials: Iterable[Trial], config: CourtSideConfig) -> Outcome:

@@ -13,12 +13,14 @@ from src.tasks.court_side.hypothesis import (
     NO_CONSISTENT_HYPOTHESIS,
     CourtSideConfig,
     CourtSideUndecided,
+    collect_side_evidence,
     decide_court_side,
+    distinct_observation_frames,
     half_turn_hypotheses,
 )
 from src.utils.geometry.triangulation import PinholeCamera
 
-CONFIG = CourtSideConfig(reprojection_px=20., min_frames=8, max_cost=.5, min_support=.5, min_margin=.1)
+CONFIG = CourtSideConfig(reprojection_px=20., min_motion_px=5., min_frames=8, max_cost=.5, min_support=.5, min_margin=.1)
 
 
 def look_at(name: str, center: list[float]) -> PinholeCamera:
@@ -111,4 +113,27 @@ def test_invalid_inputs_are_contract_errors() -> None:
     with pytest.raises(ValueError, match="boolean"):
         decide_court_side(local, "a", uv, visible.astype(np.uint8), CONFIG)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match=r"\[0,1\]"):
-        CourtSideConfig(reprojection_px=20., min_frames=8, max_cost=1.5, min_support=.5, min_margin=.1)
+        CourtSideConfig(reprojection_px=20., min_motion_px=5., min_frames=8, max_cost=1.5, min_support=.5, min_margin=.1)
+
+
+def test_repeated_static_observations_count_once() -> None:
+    uv = np.zeros((2, 6, 2))
+    uv[:, 3:, 0] = [[0, 10, 11], [0, 12, 30]]  # both views move at frame 4; at frame 5 only view 1 moves enough
+    visible: NDArray[np.bool_] = np.ones((2, 6), bool)
+    visible[1, 2] = False  # a changed visibility pattern is new evidence
+    assert distinct_observation_frames(uv, visible, 5.).tolist() == [True, False, True, True, True, True]
+    keep = distinct_observation_frames(uv, np.ones((2, 6), bool), 5.)
+    assert keep.tolist() == [True, False, False, False, True, True]
+    assert distinct_observation_frames(uv, np.ones((2, 6), bool), 0.).all()
+
+
+def test_a_static_false_pair_cannot_outvote_the_moving_ball() -> None:
+    physical = PHYSICAL[:3]
+    local, _ = local_calibrations(physical)
+    uv, visible = observe(physical, rally(40))
+    held = np.array([6.5, -14., 1.])  # a ball held behind the baseline, seen by a and b for 200 frames
+    static = np.stack([c.project(held[None])[0][0] for c in physical[:2]])
+    uv = np.concatenate((uv, np.repeat(static[:, None], 200, 1).astype(np.float32)[[0, 1, 0]]), 1)
+    visible = np.concatenate((visible, np.repeat([[True], [True], [False]], 200, 1)), 1)
+    evidence = collect_side_evidence(local, "a", uv, visible, CONFIG)
+    assert evidence.frames == 41  # 40 ball frames and the static pair once

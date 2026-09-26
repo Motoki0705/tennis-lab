@@ -38,13 +38,15 @@ AMBIGUOUS_MARGIN = "ambiguous_margin"
 class CourtSideConfig:
     """Decision thresholds.
 
-    ``reprojection_px`` is in the pixels of the supplied observations (the
-    caller scales resolution-dependent thresholds). ``min_frames`` counts
-    frames with two or more observing views, overall and for the pair graph
-    that must connect every camera to the reference.
+    ``reprojection_px`` and ``min_motion_px`` are in the pixels of the supplied
+    observations (the caller scales resolution-dependent thresholds).
+    ``min_frames`` counts distinct frames with two or more observing views,
+    overall and for the pair graph that must connect every camera to the
+    reference.
     """
 
     reprojection_px: float
+    min_motion_px: float
     min_frames: int
     max_cost: float
     min_support: float
@@ -56,6 +58,8 @@ class CourtSideConfig:
     def __post_init__(self) -> None:
         if not math.isfinite(self.reprojection_px) or self.reprojection_px <= 0 or self.min_frames < 1:
             raise ValueError("Court side needs a positive reprojection threshold and frame count")
+        if not math.isfinite(self.min_motion_px) or self.min_motion_px < 0:
+            raise ValueError("Court side motion threshold must be finite and nonnegative")
         for value in (self.max_cost, self.min_support, self.min_margin):
             if not math.isfinite(value) or not 0 <= value <= 1:
                 raise ValueError("Court side cost/support/margin thresholds must be in [0,1]")
@@ -114,6 +118,27 @@ def half_turn_hypotheses(views: int, reference: int) -> tuple[tuple[bool, ...], 
     return tuple(tuple(turns) for turns in product(*choices))
 
 
+def distinct_observation_frames(uv_px: NDArray[np.floating], visible: NDArray[np.bool_], min_motion_px: float) -> NDArray[np.bool_]:
+    """Frames that add an observation: the first observed frame, then every frame whose
+    visible views differ from the last kept frame or in which some visible view moved
+    at least ``min_motion_px`` from it.
+
+    A static detection (a ball held by a ball boy, a ball-like pattern) repeated
+    over many frames would otherwise count as many independent pieces of
+    evidence; the moving ball in play is kept frame by frame.
+    """
+    keep = np.zeros(visible.shape[1], bool)
+    last: int | None = None
+    for frame in np.flatnonzero(visible.any(0)):
+        if last is not None and np.array_equal(visible[:, frame], visible[:, last]):
+            views = visible[:, frame]
+            if (np.linalg.norm(uv_px[views, frame] - uv_px[views, last], axis=-1) < min_motion_px).all():
+                continue
+        keep[frame] = True
+        last = int(frame)
+    return keep
+
+
 def pair_frame_counts(visible: NDArray[np.bool_]) -> NDArray[np.int64]:
     """``(V,V)`` number of frames both views observe."""
     counts = np.einsum("at,bt->ab", visible.astype(np.int64), visible.astype(np.int64))
@@ -155,13 +180,17 @@ def collect_side_evidence(cameras: tuple[PinholeCamera, ...], reference_camera: 
                           visible: NDArray[np.bool_], config: CourtSideConfig) -> BallSideEvidence:
     """Score every hypothesis on the ball stream (``(V,T,2)`` pixels, ``(V,T)`` visibility).
 
-    Only ``reprojection_px`` and the plausibility bounds of ``config`` are used.
+    Repeated static observations are counted once (:func:`distinct_observation_frames`).
+    Only ``reprojection_px``, ``min_motion_px`` and the plausibility bounds of
+    ``config`` are used.
     """
     ids = tuple(camera.camera_id for camera in cameras)
     if len(set(ids)) != len(ids) or reference_camera not in ids:
         raise ValueError("Court side needs unique camera IDs including the reference")
     if uv_px.ndim != 3 or uv_px.shape[0] != len(ids) or uv_px.shape[-1] != 2 or visible.shape != uv_px.shape[:-1] or visible.dtype != np.bool_:
         raise ValueError("Ball observations must be (V,T,2) pixels with (V,T) boolean visibility")
+    distinct = distinct_observation_frames(uv_px, visible, config.min_motion_px)
+    uv_px, visible = uv_px[:, distinct], visible[:, distinct]
     frames = int((visible.sum(0) >= 2).sum())
     hypotheses: tuple[HypothesisScore, ...] = ()
     if frames:
