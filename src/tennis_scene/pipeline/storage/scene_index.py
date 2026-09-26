@@ -3,10 +3,29 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from src.utils.checksum import dual_sha256
+
+
+def read_component_descriptor(root: Path, reference: Mapping[str, Any], *, node: str | None, source_sha256: str) -> dict[str, Any]:
+    """Read one component descriptor after checking its path, checksum and index entry.
+
+    ``node=None`` skips the node-name check (a store reads by reference only).
+    """
+    path = (root / reference["path"]).resolve()
+    if not path.is_relative_to(root) or not path.is_file() or dual_sha256(path) != reference["sha256"]:
+        raise ValueError(f"Component descriptor path/checksum mismatch: {node or reference['path']}")
+    descriptor = json.loads(path.read_text())
+    if not isinstance(descriptor, dict):
+        raise ValueError("Component descriptor must be an object")
+    expected = (reference["artifact_id"], reference["schema"], reference["version"], source_sha256)
+    actual = (descriptor.get("artifact_id"), descriptor.get("output_schema"), descriptor.get("output_version"), descriptor.get("source_sha256"))
+    if actual != expected or (node is not None and descriptor.get("node") != node):
+        raise ValueError(f"Component descriptor disagrees with the scene index: {node or reference['path']}")
+    return descriptor
 
 
 def assert_current_component_lineage(document: dict[str, Any], root: Path, inputs: dict[str, Any]) -> None:
@@ -26,12 +45,7 @@ def assert_current_component_lineage(document: dict[str, Any], root: Path, input
         reference = artifacts.get(node)
         if not isinstance(reference, dict):
             raise ValueError(f"Scene export missing active component: {node}")
-        descriptor_path = (root / reference["path"]).resolve()
-        if not descriptor_path.is_relative_to(root) or not descriptor_path.is_file() or dual_sha256(descriptor_path) != reference["sha256"]:
-            raise ValueError(f"Scene export component descriptor path/checksum mismatch: {node}")
-        descriptor = json.loads(descriptor_path.read_text())
-        if descriptor.get("node") != node or descriptor.get("artifact_id") != reference["artifact_id"] or descriptor.get("source_sha256") != document.get("source_sha256"):
-            raise ValueError(f"Scene export component descriptor disagrees with the index: {node}")
+        descriptor = read_component_descriptor(root, reference, node=node, source_sha256=str(document.get("source_sha256")))
         dependencies = descriptor.get("dependencies")
         if not isinstance(dependencies, dict):
             raise ValueError(f"Scene export component has invalid dependencies: {node}")

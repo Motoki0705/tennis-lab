@@ -22,6 +22,7 @@ from src.tennis_scene.pipeline.artifacts import (
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,
+    read_component_descriptor,
 )
 from src.utils.checksum import dual_sha256
 
@@ -101,13 +102,7 @@ class ClipStore:
         return result
 
     def descriptor(self, reference: ArtifactRef) -> dict[str, Any]:
-        path = self._path(reference.path)
-        if not path.is_file() or dual_sha256(path) != reference.sha256:
-            raise ValueError("Component descriptor checksum mismatch")
-        value = json.loads(path.read_text())
-        if (value.get("artifact_id"), value.get("output_schema"), value.get("output_version"), value.get("source_sha256")) != (reference.artifact_id, reference.schema, reference.version, self.source_key):
-            raise ValueError("Component descriptor disagrees with scene index")
-        return cast(dict[str, Any], value)
+        return read_component_descriptor(self.root, json_value(reference), node=None, source_sha256=self.source_key)
 
     def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT]) -> OutputT:
         descriptor = self.descriptor(reference)
