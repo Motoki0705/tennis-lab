@@ -156,9 +156,9 @@ def make_synthetic_root(tmp_path: Path) -> SyntheticRoot:
             "external_asset_root": str(tmp_path / "third_party"),
         },
         "source": {"annotation_root": "chat_annotation", "allowed_statuses": ["completed", "partial"]},
-        "dataset": {"version": "test-v1", "directory": "player_detection/test-v1", "jpeg_quality": 95},
+        "dataset": {"version": "test-v1", "jpeg_quality": 95},
         "split": {"val_ratio": 0.15, "test_ratio": 0.15, "seed": 0},
         "workers": 1,
-        "run": {"output_dir": "player_detection/generate/test-v1/run"},
+        "run": {"output_dir": "player_detection/test-v1"},
     }
     return SyntheticRoot(root, GenerateDatasetConfig.from_config(OmegaConf.create(raw)), manifest)
