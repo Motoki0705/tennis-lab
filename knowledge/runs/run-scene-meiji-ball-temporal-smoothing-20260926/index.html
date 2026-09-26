@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meiji球軌道平滑化：3方式mesh比較</title>
+<style>
+body{font:16px system-ui,sans-serif;background:#0e1722;color:#e9f1f7;max-width:1200px;margin:2rem auto;padding:0 1rem}
+a{color:#7dd3fc}section{background:#1a2b3a;padding:1.3rem;margin:1.5rem 0;border-radius:12px}
+video,img{display:block;width:min(100%,1000px);margin:.8rem auto;border-radius:8px}p{line-height:1.6}
+</style>
+<h1>Meiji球軌道平滑化：3方式mesh比較</h1>
+<p>同じ2名のSMPL meshとコートを使用し、球の3D軌道だけを切り替えた1010フレーム全編です。<a href="trajectory_comparison.png">軌道と速度の比較図</a>、<a href="report.json">数値・設定JSON</a>も参照できます。</p>
+<section><h2>局所2次多項式</h2><video controls preload="metadata" src="savgol_mesh_full.mp4"></video><a href="savgol_mesh_preview.png"><img src="savgol_mesh_preview.png" alt="局所2次多項式のSMPL meshシーン"></a></section>
+<section><h2>ロバスト加速度正則化</h2><video controls preload="metadata" src="robust_spline_mesh_full.mp4"></video><a href="robust_spline_mesh_preview.png"><img src="robust_spline_mesh_preview.png" alt="ロバスト加速度正則化のSMPL meshシーン"></a></section>
+<section><h2>重力付きRTS平滑化</h2><video controls preload="metadata" src="ballistic_rts_mesh_full.mp4"></video><a href="ballistic_rts_mesh_preview.png"><img src="ballistic_rts_mesh_preview.png" alt="重力付きRTS平滑化のSMPL meshシーン"></a></section>
+<p>人手3D正解は未提供です。軌道の滑らかさや見た目から位置精度の向上は断定できません。</p>
+</html>
