@@ -189,10 +189,9 @@ def build_slcs_dataset_fixture(
             scenes[manifest.clip_id] = make_fixture_scene(cfg, rng)
 
     def scene_runner(
-        video_paths: Sequence[Path], camera_ids: Sequence[str]
+        video_paths: Sequence[Path], camera_ids: Sequence[str], clip_dir: Path
     ) -> SceneResult:
-        del camera_ids
-        clip_dir = video_paths[0].parent.parent
+        del video_paths, camera_ids
         clip_id = f"{clip_dir.parent.parent.name}/{clip_dir.name}"
         return scenes[clip_id]
 

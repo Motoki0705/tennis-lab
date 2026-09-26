@@ -16,11 +16,12 @@ def flags() -> dict[str, bool]:
 
 def _runtime_with_assets(tmp_path: Path) -> Any:
     from src.tennis_scene.pipeline.definition import enabled_model_assets
-    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import runtime
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
+        materialize_assets,
+        runtime,
+    )
     cfg = runtime(tmp_path)
-    for path in enabled_model_assets(cfg).values():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(b"asset")
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
     return cfg
 
 
