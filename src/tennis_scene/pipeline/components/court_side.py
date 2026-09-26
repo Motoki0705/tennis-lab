@@ -61,7 +61,7 @@ class CourtSideInput:
 
 
 class CourtSideModule:
-    """``config.reprojection_px`` is configured at 1920x1080 and scaled to the source."""
+    """Pixel thresholds of ``config`` are configured at 1920x1080 and scaled to the source."""
 
     def __init__(self, camera_ids: tuple[str, ...], config: CourtSideConfig, *, max_frames: int) -> None:
         self.config, self.max_frames = config, max_frames
@@ -79,7 +79,8 @@ class CourtSideModule:
             uv, visible = inputs.balls.uv_px[0][:, sample, 0], inputs.balls.visibility[0][:, sample, 0]
         else:
             uv, visible = np.zeros((views, len(sample), 2), np.float32), np.zeros((views, len(sample)), bool)
-        config = replace(self.config, reprojection_px=self.config.reprojection_px * source.pixel_threshold_scale)
+        scale = source.pixel_threshold_scale
+        config = replace(self.config, reprojection_px=self.config.reprojection_px * scale, min_motion_px=self.config.min_motion_px * scale)
         try:
             decision = decide_court_side(tuple(v.camera for v in calibration.views), inputs.calibration.reference_camera,
                                          np.ascontiguousarray(uv), np.ascontiguousarray(visible), config)

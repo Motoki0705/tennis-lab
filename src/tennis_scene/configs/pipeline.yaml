@@ -137,13 +137,15 @@ camera_geometry:
   side_min_frames: 8
   side_max_cost: 0.5
   side_min_support: 0.5
-# Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080.
+# Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080. Thresholds
+# from the synthetic benchmark (knowledge court_side/000001, #932).
 court_side:
   reprojection_px: 20.0
+  min_motion_px: 5.0
   min_frames: 8
-  max_cost: 0.5
-  min_support: 0.5
-  min_margin: 0.1
+  max_cost: 0.8
+  min_support: 0.2
+  min_margin: 0.15
 player_reconstruction:
   enabled: true
   reprojection_px: 40.0
