@@ -1,0 +1,21 @@
+defaults:
+  - paths: default
+  - data: default
+  - model: dino_4scale_swin_l
+  - training: default
+  - run: train
+  - _self_
+
+# Operating point for precision/recall/F1 (besides threshold-free COCO AP).
+# score_threshold equals the pipeline's people_models.runtime.dino_detector.confidence.
+evaluation:
+  score_threshold: 0.3
+  iou_threshold: 0.5
+  max_detections: 100
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

@@ -1,0 +1,17 @@
+defaults:
+  - paths: default
+  - _self_
+
+preview:
+  dataset_dir: ${tennis_dataset:player_detection,chat-player-v1}
+  frames_per_split: 12
+
+run:
+  output_dir: ${tennis_output:player_detection,visualize,dataset_preview,${tennis_run_id:}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

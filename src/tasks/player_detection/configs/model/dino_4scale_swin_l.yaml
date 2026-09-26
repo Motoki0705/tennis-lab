@@ -1,0 +1,10 @@
+name: dino_4scale_swin_l
+repository: DINO
+# Official COCO checkpoint; the person logit (class 1) is fine-tuned into "player".
+init_checkpoint: dino/checkpoint0029_4scale_swin.pth
+# Swin activation checkpointing: memory only, identical outputs.
+use_checkpoint: true
+# Generic low-level Swin stages stay frozen (7.2 GiB peak at batch 2 vs 9.3 GiB,
+# 2x faster on RTX 5060 Ti 16 GB).
+backbone_freeze_keywords: [patch_embed, layers.0., layers.1.]
+backbone_lr_scale: 0.1
