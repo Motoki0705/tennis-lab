@@ -3,7 +3,7 @@
 モデル実装が無い、または実動画で未合格のcomponentの出力を、人手で確認したデータから同じ出力schemaで公開する。
 import方針の正本はこのREADMEで、利用者は[実clip qualification](../../../../tests/benchmarks/component_pipeline.py)だけ。
 置き換えるモデルが入った時点で、該当ファイル・本READMEの行・benchmarkの呼び出しを削除する。
-[可視化](../../../../scripts/visualize_component_store.py)はartifactの`provenance.origin`を表示するだけで、import経路を特別扱いしない。
+[可視化](../../scripts/visualize_component_store.py)はartifactの`provenance.origin`を表示するだけで、import経路を特別扱いしない。
 
 | ファイル | 公開先node | 入力 | 置き換える予定 |
 |---|---|---|---|
