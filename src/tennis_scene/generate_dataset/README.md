@@ -12,15 +12,19 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
   'clip_ids=[video_000/clip_000]'
 ```
 
-checkpoint変更はpipeline_overridesで指定します。手動side・Court・人物対応artifactは
-不要です。元clip全体を保存するため、この入口でmax_framesによる切詰めはできません。
+checkpoint変更はpipeline_overridesで指定します。Courtの手動入力は不要ですが、
+人物対応とsideはモデル実装が無いため（#933 / #932）、確認済みartifactがclip storeに必要です
+（[pipeline仕様](../pipeline/README.md#処理単位)）。元clip全体を保存するため、この入口でmax_framesによる切詰めはできません。
 
 成果物はclip内の`annotations/tennis_scene/`に保存します。
 component成果物と統合exportの配置は[pipeline仕様](../pipeline/README.md#成果物)を参照してください。
 `annotation.json`はdataset向けの完成markerで、`scene_result`に採用したimmutableなNPZ exportを記録します。
-scene schema、shape/dtype、status、有効frame数、clip.json・動画・設定/重みの識別情報を検証します。
-同一入力・同一設定の完成結果だけをskipし、変更時はoverwrite=trueが必要です。
-公開時にcomponent storeを削除・置換しません。
+公開するのはdeclared pipelineのscene v2だけです。scene schema、shape/dtype、status、有効frame数、
+clip.json・動画・設定/重みの識別情報（publication identity）を検証します。
+展開済みpipeline設定は`configs/<SHA-256>.yaml`に内容アドレスで保存し、exportには書き込みません。
+同一入力・同一設定の完成結果だけをskipし、変更時や識別情報の無い旧markerではoverwrite=trueが必要です。
+公開時にcomponent storeを削除・置換しません。旧layout（markerが`scene.npz`を直接指すv1）の既存データは
+reader側が引き続き読みます。
 
 partialやemptyもmaskとともに保存します。教師に使える範囲は下流が3D validityで判定します。
 失敗はfailure markerへ記録し、continue_on_errorに従って次へ進みます。失敗があればCLIは非0終了です。
