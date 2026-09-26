@@ -1,21 +1,6 @@
-"""Feature eligibility and historical scene labels; execution order is declared by component IO."""
+"""Feature eligibility; execution order is declared by component IO."""
 
 from collections.abc import Mapping
-from enum import StrEnum
-
-
-class Stage(StrEnum):
-    """Pipeline stages."""
-
-    COURT_KP = "court_kp"
-    GVHMR = "gvhmr"
-    BALL_DETECTION = "ball_detection"
-    PLCS = "plcs"
-    BLCS = "blcs"
-    PERSON_OBSERVATIONS = "person_observations"
-    CAMERA_GEOMETRY = "camera_geometry"
-    PLAYER_RECONSTRUCTION = "player_reconstruction"
-    BALL_RECONSTRUCTION = "ball_reconstruction"
 
 
 def validate_requested_features(enabled: Mapping[str, bool]) -> None:

@@ -73,6 +73,9 @@ def main(cfg: DictConfig) -> int:
     """Run pseudo annotation generation for selected or pending clips."""
     from src.tennis_scene.configuration import parse_generate_dataset_config
     from src.tennis_scene.generate_dataset import generate_pseudo_annotations
+    from src.tennis_scene.generate_dataset.pseudo_annotation import (
+        ANNOTATION_RELATIVE_DIR,
+    )
     from src.tennis_scene.pipeline import TennisSceneOrchestrator
     from src.tennis_scene.schema import SceneResult
 
@@ -88,7 +91,7 @@ def main(cfg: DictConfig) -> int:
             video_paths=video_paths,
             video_role=PathRole.DATA,
             camera_ids=camera_ids,
-            store_root=clip_directory / "annotations" / "tennis_scene",
+            store_root=clip_directory / ANNOTATION_RELATIVE_DIR,
             clip_id=ClipManifest.load(clip_directory).clip_id,
             max_frames=pipeline_runtime.max_frames,
         )

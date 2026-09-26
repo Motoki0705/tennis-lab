@@ -17,7 +17,6 @@ from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
     BallDetectionOutput,
-    BallDetectionResult,
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPResult
 from src.tennis_scene.pipeline.contracts import ComponentIO
@@ -78,7 +77,7 @@ class FixedStage:
         pass
 
 
-def inputs(*, empty: bool = False) -> tuple[CourtKPResult, ObjectObservations, BallDetectionResult]:
+def inputs(*, empty: bool = False) -> tuple[CourtKPResult, ObjectObservations, tuple[BallDetectionOutput, ...]]:
     cameras = (_camera("cam0", [-8., -16., 9.]), _camera("cam1", [8., -16., 9.]), _camera("cam2", [5., 16., 9.]))
     local = (cameras[0], cameras[1], cameras[2].half_turned(True))
     template = court_keypoints_3d(CourtConfig(.914, None)).numpy()[:14]
@@ -108,7 +107,8 @@ def inputs(*, empty: bool = False) -> tuple[CourtKPResult, ObjectObservations, B
         ball_visible[:] = False
         score[:] = 0
     people = ObjectObservations(tuple(c.camera_id for c in cameras), (1280, 720), 30., human, confidence, observed, np.zeros((3, human.shape[2]), np.int64))
-    balls = BallDetectionResult(ball_px / np.array([1280, 720], np.float32), ball_px, ball_visible, score)
+    balls = tuple(BallDetectionOutput(camera.camera_id, np.arange(frames, dtype=np.int64), ball_px[v], score[v], ball_visible[v],
+                                      ball_visible[v].astype(np.uint8), "model_score") for v, camera in enumerate(cameras))
     return court, people, balls
 
 
@@ -145,8 +145,7 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
             {"output_keypoint_contract": "camera_view_v2", "temporal_policy": "static_first_frame",
              "cameras": [{"frames": [court.diagnostics["cameras"][v]["frames"][0]]}]})
         fixed(f"court_detection/{camera}", CourtKPModule.io, local_court)
-        fixed(f"ball_detection/{camera}", BallDetectionModule.io, BallDetectionOutput(camera,
-            np.arange(24, dtype=np.int64), balls.ball_uv_px[v], balls.score[v], balls.visibility[v], balls.visibility[v].astype(np.uint8), "model_score"))
+        fixed(f"ball_detection/{camera}", BallDetectionModule.io, balls[v])
         count = people.uv_px.shape[2]
         boxes = np.zeros((count, 24, 4), np.float32)
         boxes[..., 2:] = 100

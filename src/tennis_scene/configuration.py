@@ -118,53 +118,10 @@ def _non_negative(value: float, *, name: str) -> None:
         raise SemanticConfigurationError(f"{name} must be non-negative, got {value}.")
 
 
-def _window_contract(size: int, overlap: int, *, name: str) -> None:
-    _positive(size, name=f"{name}.window_size")
-    if overlap < 0 or overlap >= size:
-        raise SemanticConfigurationError(
-            f"{name}.window_overlap must satisfy 0 <= overlap < window_size; "
-            f"got overlap={overlap}, window_size={size}."
-        )
-
-
 def _single_component(value: str, *, name: str) -> str:
     if not value or Path(value).name != value or value in {".", ".."}:
         raise SemanticConfigurationError(f"{name} must be one path component.")
     return value
-
-
-_STAGE_IO_FIELDS = {
-    "source": ConfigField.of(str),
-    "save_result": ConfigField.of(bool),
-    "output_path": ConfigField.of(str),
-    "load_path": ConfigField.of(str, type(None)),
-}
-
-
-def _stage_path(
-    stage: Mapping[str, object],
-    resolver: PathResolver,
-    *,
-    name: str,
-) -> tuple[Path | None, Path]:
-    source = cast(str, stage["source"])
-    if source not in {"execute", "load"}:
-        raise SemanticConfigurationError(
-            f"tennis_scene.{name}.source must be 'execute' or 'load'."
-        )
-    raw_load = stage["load_path"]
-    if (source == "load") != (raw_load is not None):
-        raise SemanticConfigurationError(
-            f"tennis_scene.{name}: source='load' requires load_path, while "
-            "source='execute' forbids it."
-        )
-    load_path = (
-        resolver.resolve(PathRole.ARTIFACT, cast(str, raw_load))
-        if raw_load is not None
-        else None
-    )
-    output_path = resolver.resolve(PathRole.ARTIFACT, cast(str, stage["output_path"]))
-    return load_path, output_path
 
 
 _POSTPROCESS_SCHEMA = StrictConfigSchema(
@@ -212,7 +169,6 @@ _TRAJECTORY_SCHEMA = StrictConfigSchema(
 _BALL_SCHEMA = StrictConfigSchema(
     name="tennis_scene.ball_detection",
     fields={
-        **_STAGE_IO_FIELDS,
         "enabled": ConfigField.of(bool),
         "checkpoint": ConfigField.of(str),
         "batch_size": ConfigField.of(int),
@@ -235,7 +191,6 @@ _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observ
     "enabled": ConfigField.of(bool), "visibility_threshold": ConfigField.of(float, int),
     "sideline_margin_m": ConfigField.of(float, int), "baseline_margin_m": ConfigField.of(float, int),
 })
-_AUTO_BALL_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_detection", fields={k: v for k, v in _BALL_SCHEMA.fields.items() if k not in _STAGE_IO_FIELDS})
 _FRAME_SAMPLING_SCHEMA = StrictConfigSchema(name="tennis_scene.frame_sampling", fields={"max_frames": ConfigField.of(int)})
 _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={
     "reference_camera": ConfigField.of(str, type(None)), "calibration_samples": ConfigField.of(int),
@@ -262,7 +217,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "camera_ids": ConfigField.sequence(ConfigField.of(str)), "output_name": ConfigField.of(str),
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
-    "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_AUTO_BALL_SCHEMA),
+    "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
@@ -326,12 +281,11 @@ class PipelineRuntimeConfig:
         cache_directory = resolver.resolve(PathRole.ARTIFACT, cast(str, cache["directory"]))
         court = _mapping(value["court_kp"], name="court_kp")
         court_config = CourtKPConfig(
-            checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, court["checkpoint"])), source="execute", mode="model", device=device,
-            subpixel_refine=cast(bool, court["subpixel_refine"]), num_keypoints=14, save_result=False,
-            output_path=cache_directory / "court.component.json", load_path=None,
+            checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, court["checkpoint"])), device=device,
+            subpixel_refine=cast(bool, court["subpixel_refine"]),
             postprocess=CourtKPPostprocessConfig(**dict(_mapping(court["postprocess"], name="court.postprocess"))),
-            output_keypoint_contract="camera_view_v2", load_keypoint_contract=None, resolver=resolver,
             region_search=CourtRegionSearchConfig(**dict(_mapping(court["region_search"], name="court.region_search"))),
+            resolver=resolver,
         )
         models = _mapping(value["people_models"], name="people_models")
         runtime = SubmoduleRuntimeConfig.from_mapping(_mapping(models["runtime"], name="people_models.runtime"))
@@ -348,8 +302,7 @@ class PipelineRuntimeConfig:
             body_models_dir=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["body_models_dir"])),
             bundled_assets=BundledModelAssetPaths.from_mapping(_mapping(models["bundled_assets"], name="bundled_assets"), resolver=resolver), runtime=runtime,
         )
-        ball_settings = dict(_mapping(value["ball_detection"], name="ball_detection"))
-        ball_config = build_ball_detection_config({**ball_settings, "source": "execute", "save_result": False, "load_path": None, "output_path": str(cache["directory"]) + "/ball.component.json"}, resolver, device=device)
+        ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
@@ -913,7 +866,6 @@ def build_ball_detection_config(
     """Compose the shared, strictly validated scene ball detector contract."""
     ball = _BALL_SCHEMA.validate(settings)
     gate = _mapping(ball["trajectory_gate"], name="ball_detection.trajectory_gate")
-    ball_load, ball_output = _stage_path(ball, resolver, name="ball_detection")
     image_size = parse_hw(ball["image_size"], name="ball_detection.image_size")
     batch_size = cast(int, ball["batch_size"])
     _positive(batch_size, name="ball_detection.batch_size")
@@ -953,7 +905,6 @@ def build_ball_detection_config(
         checkpoint=resolver.resolve(
             PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
         ),
-        source=cast(Literal["execute", "load"], ball["source"]),
         batch_size=batch_size,
         device=device,
         image_size=image_size,
@@ -974,9 +925,6 @@ def build_ball_detection_config(
             max_support_gap=gate_gap,
             max_passes=gate_passes,
         ),
-        save_result=cast(bool, ball["save_result"]),
-        output_path=ball_output,
-        load_path=ball_load,
         resolver=resolver,
     )
 

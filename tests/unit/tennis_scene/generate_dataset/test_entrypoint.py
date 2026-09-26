@@ -19,6 +19,7 @@ from src.tennis_scene.schema import SceneResult
 from src.tennis_scene.scripts.generate_dataset import main
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
+from tests.support.tennis_scene.annotations import publish_scene_to_clip_store
 
 
 def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
@@ -45,6 +46,7 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
             for path in video_paths:
                 runtime.resolver.validate(video_role, path)
             calls.append(video_role)
+            publish_scene_to_clip_store(store_root.parents[1], clip_id, valid_scene_result)
             return valid_scene_result
 
         return SimpleNamespace(run=run, publication_identity=lambda: {"test": "fixed"}, last_receipt={})
