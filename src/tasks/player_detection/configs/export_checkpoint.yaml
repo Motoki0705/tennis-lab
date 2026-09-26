@@ -1,0 +1,17 @@
+defaults:
+  - paths: default
+  - _self_
+
+export:
+  # Output-root-relative Lightning checkpoint (required on the CLI).
+  lightning_checkpoint: ???
+  # Checkpoint-root-relative destination .pth (required on the CLI).
+  destination: ???
+  repository: DINO
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:player_detection,generate,export_checkpoint,${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false

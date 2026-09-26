@@ -7,11 +7,10 @@ import os
 from pathlib import Path
 
 from ..layout import done_video_path, published_video_path, video_path
+from ..manifests import load_prepared_manifests, require_regular_path
 from ..runtime.contracts import (
     BallAnnotation,
-    ClipManifest,
     PlayerAnnotation,
-    annotation_clip_id,
     parse_annotation,
     read_json,
     sha256_file,
@@ -19,18 +18,10 @@ from ..runtime.contracts import (
 from ..runtime.validation import validate_annotation
 
 
-def _regular_path(path: Path, root: Path) -> None:
-    if not path.is_relative_to(root):
-        raise ValueError("path outside output root")
-    if any(
-        part.is_symlink() for part in (path, *path.parents) if part.is_relative_to(root)
-    ):
-        raise ValueError(f"symlink is forbidden: {path}")
-
-
 def sync_done(root: Path, *, dry_run: bool = False) -> dict[str, list[str]]:
     root = root.resolve()
     if not (root / "_preparation").is_dir():
+        # Checked before the lock file is created inside an invalid root.
         raise ValueError("output root must contain _preparation manifests")
     report: dict[str, list[str]] = {
         "moved": [],
@@ -40,29 +31,10 @@ def sync_done(root: Path, *, dry_run: bool = False) -> dict[str, list[str]]:
         "errors": [],
     }
     lock = root / ".completion.lock"
-    _regular_path(lock, root)
+    require_regular_path(lock, root)
     with lock.open("a") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
-        manifests: dict[str, ClipManifest] = {}
-        for path in sorted(
-            (root / "_preparation").glob("*/*/clips/*/clip_manifest.json")
-        ):
-            if path.parent.name.startswith(".building-"):
-                continue
-            _regular_path(path, root)
-            manifest = ClipManifest.model_validate(read_json(path))
-            ready_path = path.parents[2] / "ready" / f"{path.parent.name}.json"
-            _regular_path(ready_path, root)
-            ready = read_json(ready_path)
-            if ready["files"] != {
-                "clip_manifest.json": sha256_file(path),
-                manifest.filename: manifest.sha256,
-            }:
-                raise ValueError(f"preparation receipt mismatch: {path}")
-            clip_id = annotation_clip_id(manifest)
-            if clip_id in manifests:
-                raise ValueError(f"duplicate clip identity: {clip_id}")
-            manifests[clip_id] = manifest
+        manifests = load_prepared_manifests(root)
         processed = root / "annotated" / "processed"
         candidates = {
             path.stem
@@ -80,7 +52,7 @@ def sync_done(root: Path, *, dry_run: bool = False) -> dict[str, list[str]]:
                     ("player", PlayerAnnotation),
                 ):
                     path = processed / target / f"{clip_id}.json"
-                    _regular_path(path, root)
+                    require_regular_path(path, root)
                     if not path.exists():
                         complete = False
                         continue
@@ -99,8 +71,8 @@ def sync_done(root: Path, *, dry_run: bool = False) -> dict[str, list[str]]:
                     continue
                 source = video_path(root, manifest)
                 destination = done_video_path(root, manifest)
-                _regular_path(source, root)
-                _regular_path(destination, root)
+                require_regular_path(source, root)
+                require_regular_path(destination, root)
                 # Recover interruption between link and unlink; a different copy is a conflict.
                 linked = (
                     source.exists()
