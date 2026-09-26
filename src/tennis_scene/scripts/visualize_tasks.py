@@ -623,7 +623,6 @@ def _render_blcs(
 
 
 _VIDEO_TASKS = {"ball_detection", "court_kp", "gvhmr", "person_observations"}
-_PLOT_TASKS = {"plcs", "blcs", "gvhmr_alignment", "player_reconstruction", "ball_reconstruction"}
 
 
 @hydra_main(

@@ -82,7 +82,7 @@ class BodyPlacementModule:
         geometry, skeleton = inputs.alignment.geometry, inputs.skeleton.skeleton
         if geometry is None or skeleton is None:
             return BodyPlacementOutput(None)
-        scale = float(np.hypot(*inputs.source.size) / np.hypot(1920, 1080))
+        scale = inputs.source.pixel_threshold_scale
         config = replace(self.config, max_reprojection_rms_px=self.config.max_reprojection_rms_px * scale,
             reprojection_weight_sigma_px=self.config.reprojection_weight_sigma_px * scale)
         body = SmplGeometry(self.models) if self.enabled and inputs.recovered.bodies else None

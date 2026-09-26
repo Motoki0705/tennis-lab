@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,6 +66,11 @@ class ClipSource:
     @property
     def fps(self) -> float:
         return self.videos[0].fps
+
+    @property
+    def pixel_threshold_scale(self) -> float:
+        """Scale for pixel thresholds, which are configured at 1920x1080 (by image diagonal)."""
+        return math.hypot(*self.size) / math.hypot(1920, 1080)
 
     def video(self, camera_id: str) -> SourceVideo:
         return self.videos[self.camera_ids.index(camera_id)]
