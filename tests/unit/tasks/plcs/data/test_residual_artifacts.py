@@ -105,6 +105,8 @@ def _clip(root: Path) -> Path:
     annotation = root / "annotations"
     archive_dir = annotation / "tennis_scene"
     archive_dir.mkdir(parents=True)
+    # The published scene is resolved only through the annotation marker.
+    _write_json(archive_dir / "annotation.json", {"scene_result": "scene.npz"})
     frames, width, height = 3, 640, 480
     camera_ids = ["cam2", "cam0", "cam1"]
     association = {
@@ -594,3 +596,10 @@ def test_real_clip_rejects_invalid_observation_arrays(
     _replace_archive(clip / "annotations/tennis_scene/scene.npz", key, value)
     with pytest.raises(ValueError, match=match):
         load_real_clip(clip)
+
+
+def test_calibration_requires_the_published_scene_marker(tmp_path: Path) -> None:
+    clip = _clip(tmp_path)
+    (clip / "annotations/tennis_scene/annotation.json").unlink()
+    with pytest.raises(FileNotFoundError):
+        load_clip_calibration(clip)

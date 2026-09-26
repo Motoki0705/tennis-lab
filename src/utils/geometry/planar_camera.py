@@ -78,6 +78,7 @@ def fit_planar_camera(
     *,
     min_score: float = 0.3,
     min_points: int = 6,
+    require_in_image: bool = True,
 ) -> PlanarCameraFit:
     """Fit a camera using only labelled plane points and pixel observations.
 
@@ -86,6 +87,11 @@ def fit_planar_camera(
     pixels may be NaN only when their score is zero. At least six points with
     two-dimensional world and image coverage are required. Camera-side or
     keypoint-order conventions belong to callers, not this geometric core.
+
+    ``require_in_image=False`` keeps finite positive-confidence points outside
+    the image. Use it only when those points are exact extrapolations (e.g.
+    court keypoints projected by an accepted homography), never for raw
+    detections.
 
     The model matches real court calibration: fx=fy, image-centred principal
     point, zero skew/distortion, bounded scalar focal minimization with
@@ -130,13 +136,9 @@ def fit_planar_camera(
             PlanarCameraFailure.INVALID_INPUT,
             "Positive-confidence camera calibration observations must be finite",
         )
-    used = (
-        finite
-        & (confidence > 0)
-        & (confidence >= min_score)
-        & (observed >= 0).all(axis=1)
-        & (observed <= size).all(axis=1)
-    )
+    used = finite & (confidence > 0) & (confidence >= min_score)
+    if require_in_image:
+        used &= (observed >= 0).all(axis=1) & (observed <= size).all(axis=1)
     used_count = int(used.sum())
     if used_count < min_points:
         raise PlanarCameraFitError(

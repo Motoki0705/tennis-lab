@@ -6,7 +6,9 @@ import numpy as np
 
 from src.utils.geometry.keypoints import (
     clamp_pixel_coordinate,
+    denormalize_grid_keypoints,
     denormalize_keypoints,
+    normalize_grid_keypoints,
     normalize_keypoints,
 )
 
@@ -64,3 +66,24 @@ class TestDenormalizeKeypoints:
         original = kp.copy()
         denormalize_keypoints(kp, 200, 100)
         np.testing.assert_array_equal(kp, original)
+
+
+class TestGridKeypoints:
+    def test_last_pixel_centre_maps_to_one(self) -> None:
+        points = np.array([[0.0, 0.0], [1919.0, 1079.0]], np.float32)
+        np.testing.assert_allclose(normalize_grid_keypoints(points, 1920, 1080), [[0, 0], [1, 1]])
+
+    def test_round_trip_and_float32(self) -> None:
+        points = np.array([[[12.5, 700.25]]], np.float64)
+        normalized = normalize_grid_keypoints(points, 1280, 720)
+        assert normalized.dtype == np.float32
+        np.testing.assert_allclose(denormalize_grid_keypoints(normalized, 1280, 720), points, rtol=1e-6)
+
+    def test_differs_from_size_normalization(self) -> None:
+        points = np.array([[639.0, 359.0]], np.float32)
+        assert not np.allclose(normalize_grid_keypoints(points, 640, 360), normalize_keypoints(points, 640, 360))
+
+    def test_rejects_empty_image(self) -> None:
+        import pytest
+        with pytest.raises(ValueError, match="positive"):
+            normalize_grid_keypoints(np.zeros((1, 2), np.float32), 0, 10)

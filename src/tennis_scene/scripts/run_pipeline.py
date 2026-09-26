@@ -44,7 +44,6 @@ def main(cfg: DictConfig) -> int:
     ):
         LOGGER.info(f"    {camera_label}: {video_path}")
     LOGGER.info(f"  Max frames: {runtime.max_frames}")
-    LOGGER.info(f"  Court KP frame index: {runtime.frame_index}")
 
     orchestrator = TennisSceneOrchestrator.from_runtime_config(runtime)
 
@@ -53,8 +52,8 @@ def main(cfg: DictConfig) -> int:
         video_paths=runtime.video_paths,
         video_role=PathRole.DATA,
         max_frames=runtime.max_frames,
-        frame_index=runtime.frame_index,
         camera_ids=runtime.camera_ids,
+        store_root=None,  # cache.directory/<source digest>
     )
 
     LOGGER.info("Saving results...")
@@ -78,4 +77,4 @@ def main(cfg: DictConfig) -> int:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -1,276 +1,100 @@
-"""Tests for tennis_scene pipeline orchestration."""
-
-from __future__ import annotations
+"""Dependency order and synchronization contracts, independent of model execution."""
 
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 
-import numpy as np
 import pytest
-from numpy.typing import NDArray
 
-import src.tennis_scene.pipeline.orchestrator as orchestrator_module
-from src.tennis_scene.pipeline.components.motion_alignment import (
-    PlayerMotionApplied,
-)
-from src.tennis_scene.pipeline.components.player_association import (
-    PlayerAssociationApplied,
-    PlayerAssociationResult,
-    PlayerAssociationSegment,
-)
-from src.tennis_scene.pipeline.components.plcs import PLCSResult
-from src.tennis_scene.pipeline.court_reference import CourtReferenceRuntimeConfig
-from src.tennis_scene.pipeline.dependency_graph import ResolutionResult, Stage
-from src.tennis_scene.pipeline.model_io.gvhmr import GVHMRResult
-from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
-from src.utils.configuration import PathRole
+from src.tennis_scene.pipeline.feature_flags import validate_requested_features
+from src.tennis_scene.pipeline.source import build_clip_source
 from src.utils.video import VideoInfo
-from tests.unit.tennis_scene.pipeline.config_factories import (
-    make_gvhmr_config,
-    make_resolver,
-)
 
 
-def _make_orchestrator(tmp_path: Path) -> TennisSceneOrchestrator:
-    resolution = ResolutionResult(
-        enabled_order=(Stage.COURT_KP, Stage.GVHMR, Stage.PLCS),
-        enabled_set=frozenset({Stage.COURT_KP, Stage.GVHMR, Stage.PLCS}),
-        requested_set=frozenset({Stage.COURT_KP, Stage.GVHMR, Stage.PLCS}),
-        disabled_reasons={},
+def flags() -> dict[str, bool]:
+    from src.tennis_scene.pipeline.feature_flags import OPTIONAL_FEATURES
+    return dict.fromkeys(OPTIONAL_FEATURES, True)
+
+
+def _runtime_with_assets(tmp_path: Path) -> Any:
+    from src.tennis_scene.pipeline.definition import enabled_model_assets
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
+        materialize_assets,
+        runtime,
     )
-    return TennisSceneOrchestrator(
-        court_kp_module=cast(Any, object()),
-        gvhmr_config=make_gvhmr_config(
-            tmp_path,
-            source="load",
-            save_result=True,
-            output_path=tmp_path / "gvhmr_result.json",
-            load_path=tmp_path / "gvhmr_result.json",
-        ),
-        gvhmr_chain=None,
-        player_association_module=cast(Any, object()),
-        motion_alignment_module=cast(Any, object()),
-        ball_detection_module=None,
-        plcs_module=cast(Any, object()),
-        blcs_module=None,
-        resolution=resolution,
-        device="cpu",
-        resolver=make_resolver(tmp_path),
-        court_reference_config=CourtReferenceRuntimeConfig(
-            reference_camera=None,
-            view_half_turns=None,
-        ),
-    )
+    cfg = runtime(tmp_path)
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
+    return cfg
 
 
-def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[
-        tuple[Any, Path, int | None, tuple[tuple[float, float], ...] | None]
-    ] = []
-    expected = GVHMRResult(
-        smpl_body_pose=np.zeros((1, 2, 63), dtype=np.float32),
-        smpl_global_orient=np.zeros((1, 2, 3), dtype=np.float32),
-        smpl_betas=np.zeros((1, 10), dtype=np.float32),
-        smpl_vertices_local=None,
-        human_kp_2d=np.zeros((1, 2, 17, 2), dtype=np.float32),
-        human_kp_vis=np.ones((1, 2, 17), dtype=np.float32),
-        bbx_xys=np.zeros((1, 2, 3), dtype=np.float32),
-        track_ids=np.array([3], dtype=np.int32),
-    )
-
-    class FakeGVHMRModule:
-        def __init__(self, config: Any, chain: Any) -> None:
-            self.config = config
-            assert chain is None
-
-        def process(
-            self,
-            video_path: str | Path,
-            max_frames: int | None = None,
-            *,
-            footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None,
-        ) -> Any:
-            calls.append(
-                (self.config, Path(video_path), max_frames, footpoint_polygon_px)
-            )
-            return expected
-
-    monkeypatch.setattr(orchestrator_module, "GVHMRModule", FakeGVHMRModule)
-
-    orchestrator = _make_orchestrator(tmp_path)
-    result = orchestrator._run_gvhmr(
-        Path("cam1.mp4"),
-        camera_index=1,
-        num_cameras=2,
-        max_frames=2,
-        footpoint_polygon_px=((1.0, 2.0), (3.0, 4.0), (5.0, 6.0)),
-    )
-
-    assert result is expected
-    assert len(calls) == 1
-    config, video_path, max_frames, polygon = calls[0]
-    assert video_path == Path("cam1.mp4")
-    assert max_frames == 2
-    assert polygon == ((1.0, 2.0), (3.0, 4.0), (5.0, 6.0))
-    assert config.gvhmr_checkpoint == (tmp_path / "ckpt/gvhmr.ckpt").resolve()
-    assert config.detector == "dino"
-    assert config.dino_checkpoint == (tmp_path / "ckpt/dino.pth").resolve()
-    assert config.runtime.dino_detector.confidence == 0.35
-    assert config.track_selection == "auto"
-    assert config.save_result is True
-    assert config.load_path == tmp_path / "gvhmr_result_cam1.json"
-    assert config.output_path == tmp_path / "gvhmr_result_cam1.json"
+def _source(tmp_path: Path) -> Any:
+    from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
+    return ClipSource("clip", tuple(SourceVideo(c, tmp_path / f"{c}.mp4", "hash", 24, 30., 1280, 720) for c in ("cam0", "cam1", "cam2")))
 
 
-class _FakeCourtKPModule:
-    def __init__(self, result: Any) -> None:
-        self.result = result
-
-    def process(self, *args: Any, **kwargs: Any) -> Any:
-        return self.result
-
-
-class _FakePLCSModule:
-    def __init__(self, result: PLCSResult) -> None:
-        self.result = result
-
-    def process(self, *args: Any, **kwargs: Any) -> PLCSResult:
-        visibility = kwargs["human_kp_vis"]
-        assert isinstance(visibility, np.ndarray)
-        assert np.all((visibility >= 0) & (visibility <= 1))
-        return self.result
+def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -> None:
+    from src.tennis_scene.pipeline.definition import standard_definition
+    from src.tennis_scene.pipeline.runner import ComponentRunner
+    from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+    source = _source(tmp_path)
+    runner = ComponentRunner(standard_definition(_runtime_with_assets(tmp_path), source, code_identity="test"), ClipStore(tmp_path / "store", {"clip": "clip"}))
+    order = runner.order
+    assert order.index("court_calibration") < order.index("person_detection/cam0")
+    assert order.index("player_association") < order.index("player_triangulation")
+    assert order.index("court_side") < order.index("camera_alignment")
+    assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
 
 
-def test_run_preserves_plcs_and_stores_alignment_separately(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The pipeline must retain both representations without overwriting either."""
-    num_frames = 3
-    resolution = ResolutionResult(
-        enabled_order=(Stage.COURT_KP, Stage.GVHMR, Stage.PLCS),
-        enabled_set=frozenset({Stage.COURT_KP, Stage.GVHMR, Stage.PLCS}),
-        requested_set=frozenset({Stage.COURT_KP, Stage.GVHMR, Stage.PLCS}),
-        disabled_reasons={},
-    )
-    monkeypatch.setattr(
-        orchestrator_module,
-        "probe_video_info",
-        lambda _: VideoInfo(fps=30.0, width=640, height=360, frame_count=num_frames),
-    )
-    court_result = SimpleNamespace(
-        diagnostics=None,
-        keypoints=np.zeros((1, num_frames, 20, 2), dtype=np.float32),
-        visibility=np.ones((1, num_frames, 20), dtype=np.float32),
-        frame_indices=np.array([0], dtype=np.int64),
-    )
-    position: np.ndarray = np.arange(num_frames * 3, dtype=np.float32).reshape(
-        1, num_frames, 3
-    )
-    yaw = np.linspace(0.0, 0.5, num_frames, dtype=np.float32).reshape(1, num_frames)
-    plcs_result = PLCSResult(
-        position=position,
-        yaw=yaw,
-        track_ids=np.array([5], dtype=np.int32),
-    )
-    aligned = PlayerAssociationApplied(
-        human_kp_2d=np.zeros((1, 1, num_frames, 17, 2), dtype=np.float32),
-        human_kp_vis=np.ones((1, 1, num_frames, 17), dtype=np.float32),
-        smpl_body_pose=np.full((1, num_frames, 63), 0.5, dtype=np.float32),
-        smpl_global_orient=np.full((1, num_frames, 3), 0.25, dtype=np.float32),
-        smpl_betas=np.full((1, 10), 0.125, dtype=np.float32),
-        smpl_vertices_local=np.full((1, num_frames, 4, 3), 0.75, dtype=np.float32),
-        track_ids=np.array([5], dtype=np.int32),
-        track_ids_by_camera=[np.array([5], dtype=np.int32)],
-    )
-    aligned.human_kp_vis[0, 0, 0, 0] = 1.02
-    association = PlayerAssociationResult(
-        camera_ids=["cam0"],
-        canonical_player_ids=np.array([5], dtype=np.int32),
-        segments=[
-            PlayerAssociationSegment(
-                start_frame=0,
-                end_frame=num_frames,
-                assignments=np.zeros((1, 1), dtype=np.int32),
-            )
-        ],
-        reference_camera="cam0",
-    )
-    alignment_position = position + 10.0
-    alignment_yaw = yaw + 0.25
-    alignment_orient: NDArray[np.float32] = np.full(
-        (1, num_frames, 3), 1.25, dtype=np.float32
-    )
-    alignment_vertices: NDArray[np.float32] = np.full(
-        (1, num_frames, 4, 3), 1.75, dtype=np.float32
-    )
-    alignment = PlayerMotionApplied(
-        player_position=alignment_position,
-        player_yaw=alignment_yaw,
-        smpl_global_orient=alignment_orient,
-        smpl_vertices_local=alignment_vertices,
-        metadata={"gvhmr_alignment": {"scale_mode": "fixed", "players": []}},
-    )
-    motion_alignment_module = SimpleNamespace(process=lambda **_: alignment)
-    orchestrator = TennisSceneOrchestrator(
-        court_kp_module=cast(Any, _FakeCourtKPModule(court_result)),
-        gvhmr_config=make_gvhmr_config(
-            tmp_path,
-            source="load",
-            save_result=False,
-            load_path=tmp_path / "gvhmr_result.json",
-        ),
-        gvhmr_chain=None,
-        player_association_module=cast(Any, object()),
-        motion_alignment_module=cast(Any, motion_alignment_module),
-        ball_detection_module=None,
-        plcs_module=cast(Any, _FakePLCSModule(plcs_result)),
-        blcs_module=None,
-        resolution=resolution,
-        device="cpu",
-        resolver=make_resolver(tmp_path),
-        court_reference_config=CourtReferenceRuntimeConfig(
-            reference_camera=None,
-            view_half_turns=None,
-        ),
-    )
-    monkeypatch.setattr(
-        orchestrator,
-        "_run_gvhmr_multicamera",
-        lambda **_: (association, aligned),
-    )
-    video_path = tmp_path / "data/cam0.mp4"
-    video_path.parent.mkdir(parents=True, exist_ok=True)
-    video_path.touch()
+def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
+    from dataclasses import replace
 
-    result = orchestrator.run(
-        [video_path],
-        video_role=PathRole.DATA,
-        max_frames=None,
-        frame_index=0,
-        camera_ids=["cam0"],
-    )
+    from src.tennis_scene.pipeline.definition import standard_definition
+    cfg = _runtime_with_assets(tmp_path)
+    cfg.people.vitpose_checkpoint.unlink()
+    with pytest.raises(FileNotFoundError, match="vitpose"):
+        standard_definition(cfg, _source(tmp_path), code_identity="test")
+    # A disabled feature neither needs nor records its assets.
+    disabled = replace(cfg, enabled={**cfg.enabled, "person_observations": False, "player_reconstruction": False, "gvhmr": False})
+    standard_definition(disabled, _source(tmp_path), code_identity="test")
 
-    assert result.player_position is position
-    assert result.player_yaw is yaw
-    assert result.smpl_body_pose is aligned.smpl_body_pose
-    assert result.smpl_global_orient is aligned.smpl_global_orient
-    assert result.smpl_vertices_local is aligned.smpl_vertices_local
-    assert result.gvhmr_aligned_player_position is alignment_position
-    assert result.gvhmr_aligned_player_yaw is alignment_yaw
-    assert result.gvhmr_aligned_smpl_global_orient is alignment_orient
-    assert result.gvhmr_aligned_smpl_vertices_local is alignment_vertices
-    assert result.metadata["gvhmr_alignment"] == {
-        "scale_mode": "fixed",
-        "players": [],
-    }
-    assert "player_motion" not in result.metadata
-    assert result.metadata["track_ids"] == [5]
-    assert result.human_kp_vis is not None
-    assert result.human_kp_vis.max() == 1
-    assert aligned.human_kp_vis.max() == pytest.approx(1.02)
-    assert result.metadata["pose_visibility_conversion"]["saturated_above_one_count"] == 1
+
+def test_executing_an_unimplemented_node_fails_when_the_definition_is_built(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from src.tennis_scene.pipeline.definition import standard_definition
+    source = _source(tmp_path)
+    cfg = _runtime_with_assets(tmp_path)
+    for node in ("player_association", "court_side"):
+        executed = replace(cfg, component_sources={**cfg.component_sources, node: "execute"})
+        with pytest.raises(ValueError, match=f"{node} has no model implementation"):
+            standard_definition(executed, source, code_identity="test")
+
+
+def test_ball_only_features_and_strict_missing_dependencies() -> None:
+    enabled = flags()
+    for key in ("player_reconstruction", "gvhmr"):
+        enabled[key] = False
+    validate_requested_features(enabled)
+    enabled["ball_detection"] = False
+    with pytest.raises(ValueError, match="missing dependency"):
+        validate_requested_features(enabled)
+    with pytest.raises(ValueError, match="must be exactly"):
+        validate_requested_features({**flags(), "court_side": True})
+
+
+def test_every_standard_component_has_one_execution_mode_and_node(tmp_path: Path) -> None:
+    from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
+    from src.tennis_scene.pipeline.definition import standard_definition
+    cfg = _runtime_with_assets(tmp_path)
+    assert tuple(cfg.component_sources) == STANDARD_COMPONENTS
+    nodes = standard_definition(cfg, _source(tmp_path), code_identity="test")
+    assert {node.name.split("/")[0] for node in nodes} == set(STANDARD_COMPONENTS)
+
+
+@pytest.mark.parametrize("different", [VideoInfo(25., 1920, 1080, 20), VideoInfo(30., 1280, 720, 20), VideoInfo(30., 1920, 1080, 19)])
+def test_unsynchronized_sources_fail_before_inference(monkeypatch: pytest.MonkeyPatch, different: VideoInfo) -> None:
+    def probe(path: Path) -> VideoInfo:
+        return VideoInfo(30., 1920, 1080, 20) if path.name == "a.mp4" else different
+    monkeypatch.setattr("src.tennis_scene.pipeline.source.probe_video_info", probe)
+    monkeypatch.setattr("src.tennis_scene.pipeline.source.dual_sha256", lambda _: "source_hash")
+    with pytest.raises(ValueError, match="FPS|frame count"):
+        build_clip_source([Path("a.mp4"), Path("b.mp4"), Path("c.mp4")], ["a", "b", "c"])

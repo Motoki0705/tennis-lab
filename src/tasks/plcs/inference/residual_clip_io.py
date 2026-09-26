@@ -16,10 +16,10 @@ from src.tasks.base.generate_dataset import (
     extract_court_view_records,
     validate_reference_frame_provenance,
 )
-from src.tasks.plcs.data.residual_types import CameraRig, RealResidualScene
-from src.tennis_scene.pipeline.components.player_association import (
+from src.tasks.plcs.data.manual_association import (
     PlayerAssociationResult,
 )
+from src.tasks.plcs.data.residual_types import CameraRig, RealResidualScene
 
 
 def _read_object(path: Path) -> dict[str, Any]:
@@ -137,6 +137,14 @@ def _validate_reference_metadata(
     return reference, contract, provenance, views
 
 
+def _published_scene_path(annotation_dir: Path) -> Path:
+    """The scene the clip's ``annotation.json`` publishes; never a guessed file."""
+    from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+
+    path: Path = annotation_scene_path(annotation_dir, _read_object(annotation_dir / "annotation.json"))
+    return path
+
+
 def load_clip_calibration(
     clip_dir: Path,
 ) -> tuple[CameraRig, np.ndarray, np.ndarray, float, dict[str, Any]]:
@@ -147,7 +155,8 @@ def load_clip_calibration(
     """
     manifest = _read_object(clip_dir / "clip.json")
     archive_dir = clip_dir / "annotations/tennis_scene"
-    metadata = _read_object(archive_dir / "scene.metadata.json")
+    scene_path = _published_scene_path(archive_dir)
+    metadata = _read_object(scene_path.with_suffix(".metadata.json"))
     ids = manifest.get("camera_ids")
     if (
         not isinstance(ids, list)
@@ -172,7 +181,7 @@ def load_clip_calibration(
         or any(not isinstance(fit, dict) for fit in fits)
     ):
         raise ValueError("Missing camera fit")
-    with np.load(archive_dir / "scene.npz", allow_pickle=False) as archive:
+    with np.load(scene_path, allow_pickle=False) as archive:
         for name, expected in (
             ("width", width),
             ("height", height),
@@ -234,7 +243,7 @@ def load_clip_calibration(
         "num_frames": frames,
         "width": width,
         "height": height,
-        "calibration_source": str(archive_dir / "scene.metadata.json"),
+        "calibration_source": str(scene_path.with_suffix(".metadata.json")),
         "calibration_frame_index": reference["calibration_frame_index"],
         "court_coordinate_frame": "physical_court",
         "court_keypoints": contract.to_dict(),
@@ -318,13 +327,14 @@ def load_real_clip(clip_dir: Path) -> list[RealResidualScene]:
     if type(frames) is not int or frames <= 0 or not np.isfinite(fps) or fps <= 0:
         raise ValueError("Real clip requires positive num_frames/fps")
     archive_dir = clip_dir / "annotations" / "tennis_scene"
-    metadata = _read_object(archive_dir / "scene.metadata.json")
+    scene_path = _published_scene_path(archive_dir)
+    metadata = _read_object(scene_path.with_suffix(".metadata.json"))
     association_path = clip_dir / "annotations" / "player_association_result.json"
     association = _read_object(association_path)
     player_ids = _validate_association(
         association, metadata, camera_ids=info["camera_ids"], frames=frames
     )
-    archive_path = archive_dir / "scene.npz"
+    archive_path = scene_path
     with np.load(archive_path, allow_pickle=False) as archive:
         uv = archive["human_kp_2d"]
         scores = archive["human_kp_vis"]

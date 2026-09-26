@@ -1,9 +1,8 @@
-"""Deterministic SLCS dataset fixtures composed from canonical production writers."""
+"""Deterministic SLCS dataset fixtures: canonical clip export plus the historical v1 annotation layout."""
 
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,11 +21,9 @@ from src.tennis_scene.clip_studio.export import (
     export_clip,
 )
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
-from src.tennis_scene.generate_dataset.pseudo_annotation import (
-    generate_pseudo_annotations,
-)
 from src.tennis_scene.schema import SceneResult
 from src.utils.video import probe_video_info, save_video_rgb
+from tests.support.tennis_scene.annotations import write_historical_v1_annotation
 
 FIXTURE_DINO_CHECKPOINT_BYTES = b"SLCS fake encoder checkpoint for CPU fixtures\n"
 FIXTURE_DINO_CHECKPOINT_SHA256 = hashlib.sha256(FIXTURE_DINO_CHECKPOINT_BYTES).hexdigest()
@@ -188,24 +185,8 @@ def build_slcs_dataset_fixture(
             manifests.append(manifest)
             scenes[manifest.clip_id] = make_fixture_scene(cfg, rng)
 
-    def scene_runner(
-        video_paths: Sequence[Path], camera_ids: Sequence[str]
-    ) -> SceneResult:
-        del camera_ids
-        clip_dir = video_paths[0].parent.parent
-        clip_id = f"{clip_dir.parent.parent.name}/{clip_dir.name}"
-        return scenes[clip_id]
-
-    outcomes = generate_pseudo_annotations(
-        root,
-        scene_runner,
-        pipeline_config_yaml="# deterministic SLCS test fixture\n",
-        clip_ids=[manifest.clip_id for manifest in manifests],
-        continue_on_error=False,
-    )
-    failed = [outcome for outcome in outcomes if outcome.status != "generated"]
-    if failed:
-        raise RuntimeError(f"Canonical pseudo-annotation writer did not run: {failed}")
+    for manifest in manifests:
+        write_historical_v1_annotation(manifest.clip_dir, manifest.clip_id, scenes[manifest.clip_id])
 
     for manifest in manifests:
         frame_idx = sample_frame_indices(cfg.num_frames, cfg.dino_spec.frame_stride)
