@@ -98,7 +98,8 @@ def inputs(*, empty: bool = False, frames: int = 24) -> tuple[CourtKPResult, Obj
     human = np.stack([c.project(people_xyz)[0] for c in cameras]).astype(np.float32)[:, :, None]
     confidence = np.full(human.shape[:-1], .9, np.float32)
     observed = np.ones(human.shape[:3], bool)
-    ball_xyz = np.c_[np.zeros(frames), -3 + np.arange(frames) * .01, np.ones(frames) * 1.4]
+    # A ball in play moves ~0.3 m per frame at 30 fps; a static one would be counted once by court_side.
+    ball_xyz = np.c_[1 + np.arange(frames) * .05, -8 + np.arange(frames) * .3, np.ones(frames) * 1.4]
     ball_px = np.stack([c.project(ball_xyz)[0] for c in cameras]).astype(np.float32)
     ball_visible: NDArray[np.bool_] = np.ones((3, frames), bool)
     score: NDArray[np.float32] = np.full((3, frames), .9, np.float32)

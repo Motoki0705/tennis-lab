@@ -203,7 +203,8 @@ _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", field
     "side_min_support": ConfigField.of(float, int),
 })
 _COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
-    "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int), "max_cost": ConfigField.of(float, int),
+    "reprojection_px": ConfigField.of(float, int), "min_motion_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
+    "max_cost": ConfigField.of(float, int),
     "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
 })
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
@@ -318,7 +319,8 @@ class PipelineRuntimeConfig:
         if bind_inputs and geometry.reference_camera is not None and geometry.reference_camera not in camera_ids:
             raise SemanticConfigurationError("Reference camera must be in the source camera IDs")
         side = _mapping(value["court_side"], name="court_side")
-        court_side = CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])), min_frames=cast(int, side["min_frames"]),
+        court_side = CourtSideConfig(reprojection_px=float(cast(float, side["reprojection_px"])),
+            min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
             max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
             min_margin=float(cast(float, side["min_margin"])))
         person = _mapping(value["person_observations"], name="person_observations")
