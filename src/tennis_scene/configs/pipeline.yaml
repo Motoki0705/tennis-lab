@@ -107,8 +107,9 @@ person_observations:
   baseline_margin_m: 10.0
   # Cumulative camera-local track IDs per clip; more stops tracking (IDs are never recycled or
   # merged to fit). Non-player tracks (ball persons, the neighbouring court) are excluded later by
-  # player_association, so the cap must leave room for them (#933).
-  max_tracks_per_camera: 8
+  # player_association, so the cap must leave room for them: 12 Meiji clips reached up to 11
+  # tracks in one camera (#933, i933-observe-v1).
+  max_tracks_per_camera: 16
 ball_detection:
   enabled: true
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt

@@ -22,7 +22,7 @@ camera-local の person track を camera 間で同一人物どうし対応付け
 ### 作成手順
 
 1. `tests/benchmarks/player_association_clips.py` の `observe`（GPU、training queue 経由）で、clip ごとに人物検出・tracking を実行する。
-   ラベル用の観測では `person_observations.max_tracks_per_camera=16` とし、対象外の人物も track として残す。
+   対象外の人物も track として残す（v1 の観測は `person_observations.max_tracks_per_camera=16`）。
 2. `--phase sheets` の track 一覧（等間隔 crop）と、tracklet の連結点・切り替わりが疑われる区間の密な crop、全体画像を目視し、
    track（必要なら frame 区間）ごとに人物を決めて review YAML に書く。
 3. `--phase labels --review <yaml> --labels-dir <dir>` で box ラベルに変換する。review されていない track、存在しない track、
