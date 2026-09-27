@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -32,7 +33,14 @@ def _composed(config_name: str, overrides: list[str]) -> Iterator[DictConfig]:
 
 
 def _pipeline_config(root: Path, *overrides: str) -> DictConfig:
-    """Compose the shipped pipeline config with a temporary project root."""
+    """Compose the shipped pipeline config with a temporary project root.
+
+    The association config is project-owned and read while the runtime config
+    is built, so the temporary root receives the shipped copy.
+    """
+    association = "src/tasks/player_association/configs/association.yaml"
+    (root / association).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(PROJECT_ROOT / association, root / association)
     with _composed(
         "pipeline",
         [

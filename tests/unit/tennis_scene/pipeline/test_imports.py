@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pytest
@@ -13,9 +12,6 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
-from src.tennis_scene.pipeline.components.court_calibration import (
-    CourtCalibrationOutput,
-)
 from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
 from src.tennis_scene.pipeline.definition import standard_definition
 from src.tennis_scene.pipeline.imports.ball_annotations import (
@@ -23,22 +19,13 @@ from src.tennis_scene.pipeline.imports.ball_annotations import (
     convert_ball_annotation,
     import_ball_annotations,
 )
-from src.tennis_scene.pipeline.imports.manual_association import (
-    PlayerAssociationResult,
-    PlayerAssociationSegment,
-)
-from src.tennis_scene.pipeline.imports.person_association import (
-    confirmed_identities,
-    import_confirmed_person_association,
-    match_legacy_axes,
-)
 from src.tennis_scene.pipeline.imports.publish import bind_import
-from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
+    TrackIdentities,
     camera_stages,
     inputs,
     materialize_assets,
@@ -63,17 +50,13 @@ def write_ball_annotation(path: Path, video: SourceVideo, uv: NDArray[np.float32
         "target": {"track_id": 1}, "review": {"status": "approved"}, "frames": rows}))
 
 
-def write_legacy_gvhmr(path: Path, track_ids: list[int], boxes: NDArray[np.float64]) -> None:
-    # Field order and surrounding payload mimic the large legacy files the reader scans.
-    path.write_text(json.dumps({"smpl_params": {"body_pose": [[0.0] * 6]}, "track_ids": track_ids, "bbx_xys": boxes.tolist()}))
-
-
-def build(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 40, ball_load: bool = True
+def build(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 40, ball_load: bool = True, overrides: tuple[str, ...] = ()
           ) -> tuple[Any, ClipSource, ClipStore, tuple[ComponentNode, ...], tuple[BallDetectionOutput, ...]]:
-    cfg = runtime(tmp_path, overrides=("execution.ball_detection=load",) if ball_load else ())
+    cfg = runtime(tmp_path, overrides=(*(("execution.ball_detection=load",) if ball_load else ()), *overrides))
     materialize_assets([cfg.ball_detection.checkpoint], tmp_path)
     court, people, balls = inputs(frames=frames)
-    stages = {name: stage for name, stage in camera_stages(court, people, balls).items() if not name.startswith("ball_detection/")}
+    stages: dict[str, Any] = {name: stage for name, stage in camera_stages(court, people, balls).items() if not name.startswith("ball_detection/")}
+    stages["player_association"] = TrackIdentities(CAMERAS)
     source = build_clip_source(patch_video_probe(tmp_path, monkeypatch, frames), CAMERAS)
     store = ClipStore(tmp_path / "store", json_value(source))
     return cfg, source, store, standard_definition(cfg, source, code_identity="test", overrides=stages), balls
@@ -93,33 +76,21 @@ def test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs(tmp_
     assert ball.confidence.tolist() == ball.observed.astype(np.float32).tolist()
     np.testing.assert_allclose(ball.uv_px[3], balls[0].uv_px[3])
 
-    upstream = ("court_calibration", *(f"pose_estimation/{c}" for c in CAMERAS))
-    ComponentRunner(nodes, store).run(targets=upstream)
-
-    legacy = tmp_path / "legacy"
-    legacy.mkdir()
-    for camera in CAMERAS:
-        write_legacy_gvhmr(legacy / f"gvhmr_result_{camera}.json", [11], np.tile([0., 0., 100.], (1, source.num_frames, 1)))
-    history = tmp_path / "player_association_result.json"
-    PlayerAssociationResult(list(CAMERAS), np.array([5], np.int32),
-        [PlayerAssociationSegment(0, source.num_frames, np.zeros((1, 3), np.int32))], "cam0").save(history)
-    person, document = import_confirmed_person_association(nodes, store, source,
-        historical_association=history, legacy_gvhmr_directory=legacy)
-    assert document["player_id_matrix"] == [[5], [5], [5]]
-    for reference in (imported["ball_detection/cam0"], person):
-        provenance = store.descriptor(reference)["provenance"]
-        assert provenance["origin"] == "import" and provenance.get("model_inference", False) is False
+    provenance = store.descriptor(imported["ball_detection/cam0"])["provenance"]
+    assert provenance["origin"] == "import" and provenance.get("model_inference", False) is False
 
     runner = ComponentRunner(nodes, store)
     runner.run()
-    assert {runner.statuses[n] for n in (*imported, "player_association")} == {"loaded"}
+    assert {runner.statuses[n] for n in imported} == {"loaded"}
+    # The association runs as a component, after the side it depends on.
+    assert runner.statuses["player_association"] == "executed"
     # The side is decided by the component from the imported ball, not imported.
     assert runner.statuses["court_side"] == "executed"
     side = runner.output("court_side")
     # The fixture's cam2 court is half-turned; all four hypotheses were scored.
     assert side.view_half_turns == (False, False, True) and len(side.hypotheses) == 4
     scene = runner.output("scene_assembly")
-    assert scene.player_track_ids.tolist() == [5] and scene.player_kp_3d_vis.any()
+    assert scene.player_track_ids.tolist() == [0] and scene.player_kp_3d_vis.any()
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
 
     # Replacing an imported ball re-decides the side from the new artifact.
@@ -136,9 +107,13 @@ def test_imports_require_a_load_only_node_and_adopted_inputs(tmp_path: Path, mon
     _, source, store, nodes, _ = build(tmp_path, monkeypatch, ball_load=False)
     with pytest.raises(ValueError, match="load-only"):
         bind_import(nodes, "ball_detection/cam0", store)
-    with pytest.raises(FileNotFoundError, match="court_calibration"):
+    with pytest.raises(ValueError, match="load-only"):
         bind_import(nodes, "player_association", store)
     with pytest.raises(ValueError, match="load-only"):
+        bind_import(nodes, "court_side", store)
+    (tmp_path / "loaded").mkdir()
+    _, _, store, nodes, _ = build(tmp_path / "loaded", monkeypatch, ball_load=False, overrides=("execution.court_side=load",))
+    with pytest.raises(FileNotFoundError, match="court_calibration"):
         bind_import(nodes, "court_side", store)
     with pytest.raises(ValueError, match="Unknown import target"):
         bind_import(nodes, "person_reid", store)
@@ -175,62 +150,3 @@ def test_ball_annotation_accepts_pixels_rounded_after_normalization(tmp_path: Pa
     path.write_text(json.dumps(document))
     ball, _ = convert_ball_annotation(path, video)
     np.testing.assert_allclose(ball.uv_px, 354.315, rtol=0, atol=1e-4)
-
-
-def _poses(camera: str, centres: list[list[float]], observed: list[int], track_ids: list[int], frames: int = 40) -> ObjectObservations:
-    carriers = len(track_ids)
-    boxes: NDArray[np.float32] = np.zeros((1, frames, carriers, 3), np.float32)
-    boxes[0, :, :, :2] = np.asarray(centres, np.float32)[None]
-    boxes[..., 2] = 100
-    mask: NDArray[np.bool_] = np.zeros((1, frames, carriers), bool)
-    for carrier, count in enumerate(observed):
-        mask[0, :count, carrier] = True
-    uv: NDArray[np.float32] = np.zeros((1, frames, carriers, 17, 2), np.float32)
-    return ObjectObservations((camera,), (1280, 720), 30., uv, np.ones(uv.shape[:-1], np.float32), mask,
-                              np.asarray([track_ids], np.int64), boxes)
-
-
-def _legacy(centres: list[list[float]], frames: int = 40) -> NDArray[np.float64]:
-    boxes = np.zeros((len(centres), frames, 3))
-    boxes[:, :, :2] = np.asarray(centres)[:, None]
-    boxes[..., 2] = 100
-    return boxes
-
-
-def test_identities_follow_legacy_axes_and_record_every_exclusion() -> None:
-    source = ClipSource("clip", tuple(SourceVideo(c, Path(f"{c}.mp4"), c * 20, 40, 30., 1280, 720) for c in CAMERAS))
-    # cam1 is uncalibrated: it is left out of the identity rows.
-    calibration = cast(CourtCalibrationOutput, SimpleNamespace(calibration=SimpleNamespace(views=(
-        SimpleNamespace(source_index=0), SimpleNamespace(source_index=2)))))
-    poses = {
-        # Carriers: player 0, player 1, a short fragment near player 0, an unobserved track,
-        # a legacy-tracked person the record leaves unassigned, and an unrelated person.
-        "pose_cam0": _poses("cam0", [[100, 100], [900, 500], [110, 100], [0, 0], [600, 600], [1200, 50]],
-                            [40, 40, 10, 0, 40, 40], [1, 2, 3, 4, 5, 6]),
-        "pose_cam1": _poses("cam1", [[100, 100]], [40], [7]),
-        # Carrier order differs from the legacy axis order in cam2.
-        "pose_cam2": _poses("cam2", [[600, 300], [100, 100]], [40, 40], [4, 9]),
-    }
-    legacy = {"cam0": _legacy([[100, 100], [900, 500], [600, 600]]), "cam1": _legacy([[100, 100], [300, 300]]),
-              "cam2": _legacy([[100, 100], [600, 300]])}
-    association = PlayerAssociationResult(list(CAMERAS), np.array([0, 1], np.int32),
-        [PlayerAssociationSegment(0, 40, np.array([[0, 0, 0], [1, 1, 1]], np.int32))], "cam0")
-    identities, document = confirmed_identities(source, calibration, poses, association, legacy)
-    assert identities.camera_ids == ("cam0", "cam2")
-    assert identities.local_track_ids.tolist() == [[1, 2, 3, 4, 5, 6], [4, 9, -1, -1, -1, -1]]
-    assert identities.player_ids.tolist() == [[0, 1, -1, -1, -1, -1], [1, 0, -1, -1, -1, -1]]
-    assert document["excluded_cameras"] == ["cam1"]
-    assert [x["disposition"] for x in document["unassigned_tracks"]["cam0"]] == [
-        "excluded_insufficient_observations", "excluded_unobserved", "excluded_unassigned_legacy_axis", "excluded_non_target"]
-
-
-def test_identity_matching_stops_on_missing_or_ambiguous_tracks() -> None:
-    legacy = _legacy([[100, 100]])
-    with pytest.raises(ValueError, match="no close current track"):
-        match_legacy_axes(legacy, _poses("cam0", [[400, 400]], [40], [1]))
-    with pytest.raises(ValueError, match="no close current track"):  # too few observations to match
-        match_legacy_axes(legacy, _poses("cam0", [[100, 100]], [29], [1]))
-    with pytest.raises(ValueError, match="multiple current tracks"):
-        match_legacy_axes(legacy, _poses("cam0", [[100, 100], [130, 100]], [40, 40], [1, 2]))
-    with pytest.raises(ValueError, match="same current track"):
-        match_legacy_axes(_legacy([[100, 100], [110, 100]]), _poses("cam0", [[100, 100]], [40], [1]))

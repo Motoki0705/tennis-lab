@@ -39,7 +39,8 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     runner = ComponentRunner(standard_definition(_runtime_with_assets(tmp_path), source, code_identity="test"), ClipStore(tmp_path / "store", {"clip": "clip"}))
     order = runner.order
     assert order.index("court_calibration") < order.index("person_detection/cam0")
-    assert order.index("player_association") < order.index("player_triangulation")
+    assert order.index("court_side") < order.index("player_association") < order.index("player_triangulation")
+    assert order.index("person_tracking/cam2") < order.index("player_association")
     assert order.index("court_side") < order.index("camera_alignment")
     assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
 
@@ -57,15 +58,33 @@ def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
     standard_definition(disabled, _source(tmp_path), code_identity="test")
 
 
-def test_executing_an_unimplemented_or_unsupported_node_fails_when_the_definition_is_built(tmp_path: Path) -> None:
+def test_the_association_records_its_encoder_weights_and_needs_them_only_with_people(tmp_path: Path) -> None:
     from dataclasses import replace
 
     from src.tennis_scene.pipeline.definition import standard_definition
     source = _source(tmp_path)
     cfg = _runtime_with_assets(tmp_path)
-    executed = replace(cfg, component_sources={**cfg.component_sources, "player_association": "execute"})
-    with pytest.raises(ValueError, match="player_association has no model implementation"):
-        standard_definition(executed, source, code_identity="test")
+    assert cfg.association_encoder_weights is not None and cfg.association_encoder_weights.is_relative_to(tmp_path)
+    node = next(node for node in standard_definition(cfg, source, code_identity="test") if node.name == "player_association")
+    assert node.source == "execute" and node.settings["assets"]["encoder"]["path"] == str(cfg.association_encoder_weights)
+    assert node.settings["config"]["players_per_side"] == 1
+    cfg.association_encoder_weights.unlink()
+    with pytest.raises(FileNotFoundError, match="person_vit_clip_reid"):
+        standard_definition(cfg, source, code_identity="test")
+    # Geometry-only association and disabled person observations read no Re-ID weights.
+    geometry_only = replace(cfg, player_association=replace(cfg.player_association, appearance=None), association_encoder_weights=None)
+    standard_definition(geometry_only, source, code_identity="test")
+    no_people = replace(cfg, enabled={**cfg.enabled, "person_observations": False, "player_reconstruction": False, "gvhmr": False})
+    node = next(node for node in standard_definition(no_people, source, code_identity="test") if node.name == "player_association")
+    assert node.settings["assets"] == {"enabled": False}
+
+
+def test_a_side_without_ball_detection_fails_when_the_definition_is_built(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from src.tennis_scene.pipeline.definition import standard_definition
+    source = _source(tmp_path)
+    cfg = _runtime_with_assets(tmp_path)
     # The side is decided from the ball alone: without a ball detector it can only be loaded.
     ballless = replace(cfg, enabled={**cfg.enabled, "ball_detection": False, "ball_reconstruction": False})
     with pytest.raises(ValueError, match="court_side decides sides from the ball alone"):

@@ -14,6 +14,7 @@ from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
 from src.tennis_scene.pipeline.components.court_side import CourtSideInput
+from src.tennis_scene.pipeline.components.identity import PlayerAssociationInput
 from src.tennis_scene.pipeline.components.triangulation import TriangulationInput
 from src.tennis_scene.pipeline.contracts import AssemblyContext
 from src.tennis_scene.pipeline.input_assembly.observations import (
@@ -33,6 +34,15 @@ class CourtSideInputAssembler:
         active = tuple(v.source_index for v in calibration.calibration.views)
         ball = single_ball_observations(gather_balls(context.source, artifacts).select_views(active), threshold=self.ball_threshold)
         return CourtSideInput(context.source, calibration, ball)
+
+
+@dataclass(frozen=True)
+class PlayerAssociationInputAssembler:
+    version: int = 1
+
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerAssociationInput:
+        tracks = tuple(artifacts[f"tracks_{camera}"] for camera in context.source.camera_ids)
+        return PlayerAssociationInput(context.source, artifacts["calibration"], artifacts["side"], tracks)
 
 
 @dataclass(frozen=True)

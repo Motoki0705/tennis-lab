@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from functools import lru_cache
+from functools import lru_cache, partial
 from typing import TYPE_CHECKING, Any
 
+from src.tasks.player_association.appearance.encoders import build_encoder
+from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
@@ -19,11 +21,7 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
 from src.tennis_scene.pipeline.components.court_side import CourtSideModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
-from src.tennis_scene.pipeline.components.identity import (
-    DeclaredArtifactsAssembler,
-    ImportOnlyComponent,
-    player_association_io,
-)
+from src.tennis_scene.pipeline.components.identity import PlayerAssociationModule
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_tracking import (
     PersonTrackingModule,
@@ -53,6 +51,7 @@ from src.tennis_scene.pipeline.input_assembly.reconstruction import (
     BallTriangulationInputAssembler,
     CameraAlignmentInputAssembler,
     CourtSideInputAssembler,
+    PlayerAssociationInputAssembler,
     PlayerTriangulationInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.scene import SceneAssemblyInputAssembler
@@ -137,17 +136,21 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
     balls = {f"ball_{c}": f"ball_detection/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
-    # Load-only until #933 provides an implementation; the imported artifact
-    # must match these bindings (the runner checks its recorded dependencies).
-    if "player_association" not in overrides and cfg.cache_source != "load" and cfg.component_sources["player_association"] != "load":
-        raise ValueError("player_association has no model implementation (#933); set execution.player_association=load and import its artifact")
-    add("player_association", ImportOnlyComponent(player_association_io(ids), "#933"), DeclaredArtifactsAssembler(), observations,
-        lambda: {"implementation": "import_only"})
     if not cfg.enabled["ball_detection"] and "court_side" not in overrides and cfg.cache_source != "load" and cfg.component_sources["court_side"] != "load":
         raise ValueError("court_side decides sides from the ball alone; it requires ball_detection.enabled or execution.court_side=load")
     add("court_side", CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames), CourtSideInputAssembler(cfg.ball_detection.score_threshold),
         {"calibration": "court_calibration", **balls}, lambda: {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames,
         "ball_threshold": cfg.ball_detection.score_threshold})
+    association = cfg.player_association
+    weights = cfg.association_encoder_weights
+    encoder_name = None if association.appearance is None else association.appearance.encoder
+    sampling = CropSamplingConfig()
+    add("player_association", PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people_enabled,
+        encoder=None if encoder_name is None else partial(build_encoder, encoder_name, checkpoint_root=cfg.roots.checkpoint_root,
+                                                          external_root=cfg.roots.external_asset_root, device=cfg.device)),
+        PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"person_tracking/{c}" for c in ids}},
+        lambda: {"config": association, "sampling": sampling, "enabled": people_enabled,
+                 "assets": asset_identities(people_enabled and weights is not None, {} if weights is None else {"encoder": weights})})
     identified = {**observations, "identities": "player_association"}
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,
         ball_reprojection_px=cfg.ball_reprojection_px, joint_confidence=cfg.joint_confidence, max_frames=cfg.sampling_max_frames),
@@ -184,5 +187,6 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
         "court": cfg.court_kp.checkpoint,
         **({"ball": cfg.ball_detection.checkpoint} if cfg.enabled["ball_detection"] else {}),
         **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
+        **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **(cfg.people.body_assets() if body else {}),
     }

@@ -8,8 +8,6 @@ import方針の正本はこのREADMEで、利用者は[実clip qualification](..
 | ファイル | 公開先node | 入力 | 置き換える予定 |
 |---|---|---|---|
 | `ball_annotations.py` | `ball_detection/<camera>` | 外注の`video_ball_annotation.v2`（`<clip>/outsource/<camera>_annotations.json`） | ball検出・2D refiner（#934/#935） |
-| `person_association.py` | `player_association` | 旧手動対応（`annotations/player_association_result.json`）と旧GVHMRのbbox軌跡（`annotations/gvhmr_result_<camera>.json`） | 人物対応（#933） |
-| `manual_association.py` | — | `person_association.py`が読む旧手動対応の形式（decoderのみ） | 人物対応（#933） |
 
 ## 規則
 
@@ -17,7 +15,3 @@ import方針の正本はこのREADMEで、利用者は[実clip qualification](..
   依存はnodeのbindingsから、storeの採用版を解決して記録する。上流が差し替わるとrunnerがloadを停止する。
 - 公開artifactの`provenance.origin`は`import`、`model_inference`は`false`。identityには入力ファイルのSHA-256と判定閾値を含める。
 - ballは`observed`点だけを観測にする。補間・遮蔽推定の座標は`point_kind`付きで保持し、confidenceは受理の0/1で確率ではない。
-- 人物対応は、旧GVHMRのplayer軸ごとに、観測30frame以上の現pose carrierのうちbbox中心距離（旧box sizeで正規化）の
-  中央値が0.25以下、かつ次点と0.5以上離れた1本を照合する。候補が無い・一意でない場合は停止する。
-  手動対応が選手に割り当てた軸のcarrierだけがplayer IDを持ち、他は`-1`として除外理由（未割当の旧軸、対象外、観測不足、未観測）を記録する。
-  carrier順は`gather_people(...).select_views(校正済みcamera)`。

@@ -19,12 +19,17 @@ def _runtime(
     return PipelineRuntimeConfig.from_config(cfg, bind_inputs=bind_inputs)
 
 
-def test_defaults_load_imported_identities_and_decide_sides() -> None:
+def test_defaults_associate_players_and_decide_sides() -> None:
     runtime = _runtime([])
     assert runtime.camera_geometry.reference_camera is None
-    # No model implements the association yet (#933): it is imported.
-    assert runtime.component_sources["player_association"] == "load"
+    assert runtime.component_sources["player_association"] == "execute"
     assert runtime.component_sources["court_side"] == "execute"
+    # The method's file supplies the parameters, the pipeline the game format and the weight location.
+    association = runtime.player_association
+    assert association.players_per_side == 1 and association.appearance is not None
+    assert runtime.association_encoder_weights == runtime.roots.checkpoint_root / "player_association/person_vit_clip_reid.pth"
+    doubles = _runtime(["player_association.players_per_side=2"]).player_association
+    assert doubles.players_per_side == 2 and doubles.geometry == association.geometry
     assert runtime.court_side.reprojection_px > 0 and runtime.court_side.min_margin > 0
     assert runtime.sampling_max_frames == 1024
     assert "blcs_association" not in runtime.enabled

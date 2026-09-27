@@ -5,7 +5,7 @@
 
 | 場所 | 責務 |
 |---|---|
-| `components/` | 検出、追跡、pose、幾何、身体復元・配置。各IO契約の所有者。`identity.py`は人物対応の成果物契約だけを持つ |
+| `components/` | 検出、追跡、pose、人物対応、幾何、身体復元・配置。各IO契約の所有者 |
 | `input_assembly/` | 宣言済み成果物のcamera/frame/track照合とInput構築。store全体へ自由に問い合わせない |
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
 | `runner.py` | 宣言の互換性・循環検査、依存順実行、execute/load、公開の共通手順 |
@@ -29,8 +29,8 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 動画 → court_detection → court_calibration
 動画＋ROI → person_detection → person_tracking → pose_estimation
 動画 → ball_detection
-pose＋court → player_association（load専用）
 ball＋court → court_side（ballだけのhalf-turn仮説検定）
+track＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
 単一球観測＋camera → ball_triangulation
@@ -43,10 +43,14 @@ ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計ID�
 BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する
 （閾値は`TrackletLinkPolicy`で、成果物identityに含む）。
 1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。
-元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計4人超では明示的に停止する。
+元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計track数の上限超では明示的に停止する。
 
-`player_association`は出力schema（`components/identity.py`、version 2）だけを定義する。
-モデル実装が入るまで（#933）既定は`execution.player_association=load`で、`execute`を指定するとdefinition構築時に停止する。
+`player_association`（`components/identity.py`、`person_identities` schema version 3）は
+[src/tasks/player_association](../../tasks/player_association/README.md)の対応付けを、校正済みcameraのtrackのboxと
+`court_side`が決めたsideに適用する。方式のパラメータは`player_association.config`（task側のYAML）、
+シングルス/ダブルスは`player_association.players_per_side`で明示する。外観を使う設定ではRe-IDの重みを資産identityに含める。
+player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
+決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。
 
 `court_side`は[src/tasks/court_side](../../tasks/court_side/README.md)の仮説検定を、校正済みcameraと単一ball観測の
 ~30fps格子に適用する（schema version 3）。成果物は採用したhalf-turn、全仮説のcost/support/使用frame数、marginを持つ。

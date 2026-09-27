@@ -12,8 +12,7 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
   'clip_ids=[video_000/clip_000]'
 ```
 
-checkpoint変更はpipeline_overridesで指定します。Courtの手動入力は不要ですが、
-人物対応とsideはモデル実装が無いため（#933 / #932）、確認済みartifactがclip storeに必要です
+checkpoint変更はpipeline_overridesで指定します。Court・人物対応・sideの手動入力は不要です
 （[pipeline仕様](../pipeline/README.md#処理単位)）。元clip全体を保存するため、この入口でmax_framesによる切詰めはできません。
 
 成果物はclip内の`annotations/tennis_scene/`に保存します。
