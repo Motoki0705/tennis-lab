@@ -108,11 +108,11 @@ def decide(runtime: PipelineRuntimeConfig, clip: Path, store_root: Path) -> dict
         detector[camera] = store.load(ball, ArtifactCodec(BallDetectionOutput))
     annotated = {video.camera_id: convert_ball_annotation(clip / "outsource" / f"{video.camera_id}_annotations.json", video)[0]
                  for video in source.videos}
-    record = {"clip_id": manifest.clip_id, "frames": source.num_frames, "camera_ids": list(calibration.calibration.camera_ids),
-              "reference_camera": calibration.reference_camera, "excluded_cameras": calibration.calibration.excluded,
-              "detector": side_record(module, assembler, source, calibration, detector),
-              "annotation": side_record(module, assembler, source, calibration, annotated)}
-    detected, annotation = record["detector"], record["annotation"]
+    detected = side_record(module, assembler, source, calibration, detector)
+    annotation = side_record(module, assembler, source, calibration, annotated)
+    record: dict[str, Any] = {"clip_id": manifest.clip_id, "frames": source.num_frames,
+              "camera_ids": list(calibration.calibration.camera_ids), "reference_camera": calibration.reference_camera,
+              "excluded_cameras": calibration.calibration.excluded, "detector": detected, "annotation": annotation}
     record["agreement"] = (detected["view_half_turns"] == annotation["view_half_turns"]
                            if detected["decided"] and annotation["decided"] else None)
     if manifest.clip_id in CONFIRMED:
