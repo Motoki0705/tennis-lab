@@ -23,7 +23,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     BallInstance,
     ClipLabels,
     ClipSpec,
-    FrameLabel,
+    SourceFrame,
     VideoFrames,
 )
 from src.tennis_scene.chat_annotation.runtime.contracts import sha256_file
@@ -46,7 +46,7 @@ class MeijiSourceConfig:
     root: Path
 
 
-def _frame_label(row: dict[str, Any], index: int, width: int, height: int, track: int, path: Path) -> FrameLabel:
+def _frame_label(row: dict[str, Any], index: int, width: int, height: int, track: int, path: Path) -> SourceFrame:
     kind = row["status"]
     if row["frame_index"] != index or kind not in EXPECTED_VISIBILITY:
         raise ValueError(f"{path}: frame {index} has index {row['frame_index']} / status {kind!r}")
@@ -68,7 +68,7 @@ def _frame_label(row: dict[str, Any], index: int, width: int, height: int, track
         if max(abs(a - b) for a, b in zip(xy, denormalized, strict=True)) > COORDINATE_AGREEMENT_PX:
             raise ValueError(f"{path}: frame {index} pixel and normalized centres disagree")
     ball = BallInstance(str(track), kind, xy, kind == "occlusion_estimated")
-    return FrameLabel(int(row["pts"]), True, True, bool(row["break_before"]), "unlabeled", (ball,))
+    return SourceFrame(int(row["pts"]), True, True, bool(row["break_before"]), "unlabeled", (ball,))
 
 
 def read_camera(annotation_path: Path, video_path: Path, *, video_id: str, clip_name: str, camera_id: str) -> ClipSpec:

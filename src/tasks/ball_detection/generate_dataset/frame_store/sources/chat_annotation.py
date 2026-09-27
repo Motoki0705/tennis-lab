@@ -21,7 +21,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     BallInstance,
     ClipLabels,
     ClipSpec,
-    FrameLabel,
+    SourceFrame,
     VideoFrames,
 )
 from src.tennis_scene.chat_annotation.layout import published_video_path
@@ -61,7 +61,7 @@ def to_clip_spec(
     annotation: BallAnnotation, manifest: ClipManifest, annotation_path: Path, video: Path
 ) -> ClipSpec:
     labels = [
-        FrameLabel(
+        SourceFrame(
             pts=manifest.frames[frame.frame_index].clip_pts,
             annotated=frame.reviewed,
             is_target=manifest.frames[frame.frame_index].is_target,
