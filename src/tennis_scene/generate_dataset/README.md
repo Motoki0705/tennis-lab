@@ -23,8 +23,9 @@ component成果物と統合exportの配置は[pipeline仕様](../pipeline/README
 clip.json・動画・設定/重みの識別情報（publication identity）を検証します。
 展開済みpipeline設定は`configs/<SHA-256>.yaml`に内容アドレスで保存し、exportには書き込みません。
 同一入力・同一設定の完成結果だけをskipし、変更時や識別情報の無い旧markerではoverwrite=trueが必要です。
-公開時にcomponent storeを削除・置換しません。旧layout（markerが`scene.npz`を直接指すv1）の既存データは
-reader側が引き続き読みます。
+公開時にcomponent storeを削除・置換しません。
+datasetのreader（SLCS・SLCS review・PLCS residual）は`scene_index`を持つこのlayoutのscene v2だけを読みます。
+markerが`scene.npz`を直接指す旧layout（v1）は読めないため、この入口で新しい出力先へ再生成してください。
 
 partialやemptyもmaskとともに保存します。教師に使える範囲は下流が3D validityで判定します。
 失敗はfailure markerへ記録し、continue_on_errorに従って次へ進みます。失敗があればCLIは非0終了です。

@@ -1,4 +1,4 @@
-"""Deterministic SLCS dataset fixtures: canonical clip export plus the historical v1 annotation layout."""
+"""Deterministic SLCS dataset fixtures: canonical clip export plus a published SceneResult v2."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.tasks.slcs.data.annotation import SLCSDataIndex
 from src.tasks.slcs.data.dino_tokens import (
@@ -23,7 +24,7 @@ from src.tennis_scene.clip_studio.export import (
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.schema import SceneResult
 from src.utils.video import probe_video_info, save_video_rgb
-from tests.support.tennis_scene.annotations import write_historical_v1_annotation
+from tests.support.tennis_scene.annotations import publish_dataset_annotations
 
 FIXTURE_DINO_CHECKPOINT_BYTES = b"SLCS fake encoder checkpoint for CPU fixtures\n"
 FIXTURE_DINO_CHECKPOINT_SHA256 = hashlib.sha256(FIXTURE_DINO_CHECKPOINT_BYTES).hexdigest()
@@ -47,7 +48,8 @@ class SLCSFixtureDatasetConfig:
     clips_per_video: int = 1
     num_frames: int = 37
     num_players: int = 2
-    num_cameras: int = 1
+    # Two views so that the v2 ball teacher (triangulated, >=2 views) exists.
+    num_cameras: int = 2
     num_court_kp: int = 14
     width: int = 64
     height: int = 48
@@ -60,8 +62,14 @@ class SLCSFixtureDatasetConfig:
 def make_fixture_scene(
     config: SLCSFixtureDatasetConfig,
     rng: np.random.Generator,
+    camera_ids: tuple[str, ...],
 ) -> SceneResult:
-    """Create one deterministic random scene obeying the SLCS data contract."""
+    """Create one deterministic random SceneResult v2 obeying the SLCS data contract.
+
+    Every player root/heading is valid; ball 3D is valid exactly where at
+    least two views see the ball, as the v2 contract requires. Joints and SMPL
+    are not reconstructed (zero with invalid masks).
+    """
     num_frames = config.num_frames
     num_players = config.num_players
     num_cameras = config.num_cameras
@@ -74,6 +82,11 @@ def make_fixture_scene(
     position[..., 2] = 0.0
     ball = rng.uniform(-1.0, 1.0, size=(num_frames, 3)).astype(np.float32)
     ball[:, 2] = np.abs(ball[:, 2]) + 0.2
+    ball_vis = rng.random((num_cameras, num_frames)) < config.ball_visibility
+    ball_valid = ball_vis.sum(axis=0) >= 2
+    ball[~ball_valid] = 0.0
+    players_valid: NDArray[np.bool_] = np.ones((num_players, num_frames), dtype=bool)
+    no_joints: NDArray[np.bool_] = np.zeros((num_players, num_frames, 17), dtype=bool)
     return SceneResult(
         num_frames=num_frames,
         fps=config.fps,
@@ -91,7 +104,7 @@ def make_fixture_scene(
         smpl_global_orient=np.zeros((num_players, num_frames, 3), dtype=np.float32),
         smpl_betas=np.zeros((num_players, 10), dtype=np.float32),
         ball_uv=rng.uniform(0, 1, size=(num_cameras, num_frames, 2)).astype(np.float32),
-        ball_vis=rng.random((num_cameras, num_frames)) < config.ball_visibility,
+        ball_vis=ball_vis,
         ball_3d=ball,
         human_kp_2d=rng.uniform(
             0, 1, size=(num_players, num_cameras, num_frames, 17, 2)
@@ -99,6 +112,24 @@ def make_fixture_scene(
         human_kp_vis=rng.uniform(
             0.4, 1.0, size=(num_players, num_cameras, num_frames, 17)
         ).astype(np.float32),
+        player_track_ids=np.arange(num_players, dtype=np.int32),
+        player_kp_3d=np.zeros((num_players, num_frames, 17, 3), dtype=np.float32),
+        player_observed=players_valid.copy(),
+        player_valid=players_valid.copy(),
+        player_heading_valid=players_valid.copy(),
+        player_kp_3d_vis=no_joints,
+        player_smpl_valid=np.zeros((num_players, num_frames), dtype=bool),
+        ball_3d_valid=ball_valid,
+        player_rejection_code=np.zeros((num_players, num_frames), dtype=np.uint8),
+        player_kp_3d_rejection_code=np.ones((num_players, num_frames, 17), dtype=np.uint8),
+        ball_rejection_code=(~ball_valid).astype(np.uint8),
+        metadata={
+            "scene_schema_version": 2,
+            "pipeline_contract": "declared_components_v1",
+            "status": "ok",
+            "validity_statistics": {"fixture": True},
+            "court_reference": {"camera_ids": list(camera_ids)},
+        },
     )
 
 
@@ -183,10 +214,9 @@ def build_slcs_dataset_fixture(
                 rng=rng,
             )
             manifests.append(manifest)
-            scenes[manifest.clip_id] = make_fixture_scene(cfg, rng)
+            scenes[manifest.clip_id] = make_fixture_scene(cfg, rng, manifest.camera_ids)
 
-    for manifest in manifests:
-        write_historical_v1_annotation(manifest.clip_dir, manifest.clip_id, scenes[manifest.clip_id])
+    publish_dataset_annotations(root, scenes)
 
     for manifest in manifests:
         frame_idx = sample_frame_indices(cfg.num_frames, cfg.dino_spec.frame_stride)

@@ -38,7 +38,9 @@ class LabelInputs(TypedDict):
     player_position: np.ndarray
     player_yaw: np.ndarray
     ball_3d: np.ndarray
-    scene_schema_version: int
+    player_reconstruction_valid: np.ndarray
+    player_heading_valid: np.ndarray
+    ball_reconstruction_valid: np.ndarray
 
 
 def _inputs(
@@ -50,7 +52,9 @@ def _inputs(
         "player_position": np.zeros((num_players, num_frames, 3), np.float32),
         "player_yaw": np.zeros((num_players, num_frames), np.float32),
         "ball_3d": np.zeros((num_frames, 3), np.float32),
-        "scene_schema_version": 1,
+        "player_reconstruction_valid": np.ones((num_players, num_frames), bool),
+        "player_heading_valid": np.ones((num_players, num_frames), bool),
+        "ball_reconstruction_valid": np.ones(num_frames, bool),
     }
 
 
@@ -146,31 +150,29 @@ def test_teacher_evidence_masks_unsupported_predictions_and_scales_weights() -> 
         build_label_masks(config=_quality(), teacher_quality=evidence, **_inputs())
 
 
-def test_v2_geometry_and_heading_are_hard_teacher_gates() -> None:
-    """Visible 2D observations must never resurrect a rejected v2 3D teacher."""
+def test_geometry_and_heading_are_hard_teacher_gates() -> None:
+    """Visible 2D observations must never resurrect a rejected 3D teacher."""
     inputs = _inputs(num_frames=4)
-    inputs["scene_schema_version"] = 2
-    with pytest.raises(ValueError, match="v2 requires"):
-        build_label_masks(config=_quality(), **inputs)
-    player = np.array([[True, False, True, False]] * 2)
-    heading = np.array([[True, True, False, True]] * 2)
-    masks = build_label_masks(
-        config=_quality(),
-        player_reconstruction_valid=player,
-        player_heading_valid=heading,
-        ball_reconstruction_valid=np.zeros(4, bool),
-        **inputs,
-    )
+    inputs["player_reconstruction_valid"] = np.array([[True, False, True, False]] * 2)
+    inputs["player_heading_valid"] = np.array([[True, True, False, True]] * 2)
+    inputs["ball_reconstruction_valid"] = np.zeros(4, bool)
+    masks = build_label_masks(config=_quality(), **inputs)
     assert masks["player_label_valid"].tolist() == [[True, False, False, False]] * 2
     assert masks["player_label_weight"].tolist() == [[1.0, 0.0, 0.0, 0.0]] * 2
     assert not masks["ball_label_valid"].any()
     assert not masks["ball_label_weight"].any()
 
 
-def test_v1_rejects_reconstruction_masks() -> None:
-    with pytest.raises(ValueError, match="v1 scenes have no reconstruction validity"):
-        build_label_masks(
-            config=_quality(),
-            ball_reconstruction_valid=np.ones(6, bool),
-            **_inputs(),
-        )
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("player_reconstruction_valid", np.ones((2, 4), np.float32)),
+        ("player_heading_valid", np.ones((2, 3), bool)),
+        ("ball_reconstruction_valid", np.ones(5, bool)),
+    ],
+)
+def test_reconstruction_masks_must_be_boolean_with_the_label_shape(name: str, value: np.ndarray) -> None:
+    inputs = _inputs(num_frames=4)
+    inputs[name] = value  # type: ignore[literal-required]
+    with pytest.raises(ValueError, match="Teacher masks require boolean"):
+        build_label_masks(config=_quality(), **inputs)

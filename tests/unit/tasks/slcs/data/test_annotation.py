@@ -13,7 +13,6 @@ import pytest
 
 from src.tasks.slcs.data.annotation import (
     SLCS_ANNOTATION_FILENAME,
-    SLCS_SCENE_ARCHIVE_FILENAME,
     IncompleteAnnotationError,
     SLCSDataIndex,
     has_slcs_annotation,
@@ -28,9 +27,15 @@ from src.tennis_scene.generate_dataset.manifest import (
     split_clip_id,
     validate_id_component,
 )
+from src.tennis_scene.schema import SceneResult
 from tests.support.tasks.slcs.dataset import (
     SLCSFixtureDatasetConfig,
     build_slcs_dataset_fixture,
+    make_fixture_scene,
+)
+from tests.support.tennis_scene.annotations import (
+    publish_dataset_annotations,
+    publish_scene_to_clip_store,
 )
 
 
@@ -61,7 +66,7 @@ def test_index_and_manifest_roundtrip(synthetic_dataset: SLCSDataIndex) -> None:
     ]
     assert index.video_ids() == ("video_000", "video_001", "video_002")
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
-    assert manifest.camera_ids == ("cam0",)
+    assert manifest.camera_ids == ("cam0", "cam1")
     assert manifest.media_path("cam0").is_file()
     with pytest.raises(DatasetManifestError):
         manifest.media_path("cam9")
@@ -76,7 +81,7 @@ def test_annotation_roundtrip(synthetic_dataset: SLCSDataIndex) -> None:
     assert scene.court_kp.shape[0] == len(manifest.camera_ids)
 
 
-def test_fixture_composes_canonical_manifest_and_historical_annotation(
+def test_fixture_publishes_through_the_component_store(
     synthetic_dataset: SLCSDataIndex,
 ) -> None:
     clip_dir = synthetic_dataset.clip_dir(synthetic_dataset.clips[0])
@@ -86,13 +91,27 @@ def test_fixture_composes_canonical_manifest_and_historical_annotation(
 
     assert clip_payload["sync_source"] == "clip_studio"
     assert marker["generator"] == "src.tennis_scene"
-    assert marker["scene_result"] == "scene.npz" and "scene_index" not in marker
+    assert marker["scene_index"] == "scene.json" and marker["scene_result"].startswith("exports/")
     scene = load_slcs_annotation(ClipManifest.load(clip_dir))
-    assert scene.ball_uv is not None
+    assert scene.schema_version == 2 and scene.ball_uv is not None
     assert marker["arrays"]["ball_uv"] == {
         "shape": list(scene.ball_uv.shape),
         "dtype": str(scene.ball_uv.dtype),
     }
+
+
+def test_v1_layout_marker_is_rejected(tmp_path: Path) -> None:
+    """A marker naming scene.npz directly (the retired v1 layout) is never read."""
+    index = build_slcs_dataset_fixture(
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
+    )
+    clip_dir = index.clip_dir(index.clips[0])
+    marker_path = slcs_annotation_dir(clip_dir) / SLCS_ANNOTATION_FILENAME
+    marker = json.loads(marker_path.read_text())
+    del marker["scene_index"]
+    marker_path.write_text(json.dumps(marker))
+    with pytest.raises(ValueError, match="v1 layout is not readable"):
+        load_slcs_annotation(ClipManifest.load(clip_dir))
 
 
 def test_duplicate_registration_is_idempotent(
@@ -198,52 +217,45 @@ def test_clip_manifest_or_scene_mismatch_is_rejected(
         load_slcs_annotation(manifest, verify_manifest_digest=False)
 
 
-def test_required_scene_array_is_enforced(tmp_path: Path) -> None:
+def test_marker_must_record_every_required_array(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
         tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
     )
     clip_dir = index.clip_dir(index.clips[0])
-    scene_path = slcs_annotation_dir(clip_dir) / SLCS_SCENE_ARCHIVE_FILENAME
-    data = dict(np.load(scene_path, allow_pickle=False))
-    del data["ball_uv"]
-    np.savez_compressed(scene_path, **data)
-    with pytest.raises(DatasetManifestError, match="ball_uv"):
+    marker_path = slcs_annotation_dir(clip_dir) / SLCS_ANNOTATION_FILENAME
+    marker = json.loads(marker_path.read_text())
+    del marker["arrays"]["ball_uv"]
+    marker_path.write_text(json.dumps(marker))
+    with pytest.raises(DatasetManifestError, match="does not record array 'ball_uv'"):
         load_slcs_annotation(ClipManifest.load(clip_dir), verify_manifest_digest=False)
 
 
-def _rewrite_as_v2(scene_path: Path, camera_ids: list[str]) -> None:
-    """Rewrite the fixture scene as a v2 scene whose reconstruction is all rejected."""
-    from src.tennis_scene.archive import load_scene_result, save_scene_result
-
-    scene = load_scene_result(scene_path)
-    players, frames = scene.player_position.shape[:2]
-    for name in ("player_position", "player_yaw", "ball_3d"):
-        getattr(scene, name)[...] = 0
-    for name in ("smpl_body_pose", "smpl_global_orient", "smpl_vertices_local", "player_canonical_pose",
-                 "gvhmr_aligned_player_position", "gvhmr_aligned_player_yaw",
-                 "gvhmr_aligned_smpl_global_orient", "gvhmr_aligned_smpl_vertices_local"):
-        setattr(scene, name, None)
-    scene.player_kp_3d = np.zeros((players, frames, 17, 3), np.float32)
-    for name, shape in (("player_observed", (players, frames)), ("player_valid", (players, frames)),
-                        ("player_heading_valid", (players, frames)), ("player_kp_3d_vis", (players, frames, 17)),
-                        ("player_smpl_valid", (players, frames)), ("ball_3d_valid", (frames,))):
-        setattr(scene, name, np.zeros(shape, bool))
-    scene.player_rejection_code = np.ones((players, frames), np.uint8)
-    scene.player_kp_3d_rejection_code = np.ones((players, frames, 17), np.uint8)
-    scene.ball_rejection_code = np.ones(frames, np.uint8)
-    scene.metadata = {**scene.metadata, "scene_schema_version": 2, "court_reference": {"camera_ids": camera_ids}}
-    save_scene_result(scene, scene_path)
-
-
-def test_v2_scene_requires_calibration_for_every_manifest_camera(tmp_path: Path) -> None:
-    index = build_slcs_dataset_fixture(
-        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",))
-    )
-    clip_dir = index.clip_dir(index.clips[0])
-    manifest = ClipManifest.load(clip_dir)
-    scene_path = slcs_annotation_dir(clip_dir) / SLCS_SCENE_ARCHIVE_FILENAME
-    _rewrite_as_v2(scene_path, list(manifest.camera_ids)[:-1])
+def test_scene_requires_calibration_for_every_manifest_camera(tmp_path: Path) -> None:
+    config = SLCSFixtureDatasetConfig(videos=("video_000",))
+    index = build_slcs_dataset_fixture(tmp_path / "dataset", config)
+    manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
+    partial = make_fixture_scene(config, np.random.default_rng(0), manifest.camera_ids[:-1])
+    publish_dataset_annotations(index.root, {manifest.clip_id: partial}, overwrite=True)
     with pytest.raises(DatasetManifestError, match="calibration for every manifest camera"):
-        load_slcs_annotation(manifest, verify_manifest_digest=False)
-    _rewrite_as_v2(scene_path, list(manifest.camera_ids))
-    assert load_slcs_annotation(manifest, verify_manifest_digest=False).schema_version == 2
+        load_slcs_annotation(manifest)
+
+
+def test_v1_scene_is_rejected_even_in_the_component_store(tmp_path: Path) -> None:
+    config = SLCSFixtureDatasetConfig(videos=("video_000",))
+    index = build_slcs_dataset_fixture(tmp_path / "dataset", config)
+    manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
+    v2 = make_fixture_scene(config, np.random.default_rng(0), manifest.camera_ids)
+    fields = {name: getattr(v2, name) for name in SceneResult.__dataclass_fields__}
+    for name in ("player_observed", "player_valid", "player_heading_valid", "player_kp_3d_vis",
+                 "player_smpl_valid", "ball_3d_valid", "player_rejection_code",
+                 "player_kp_3d_rejection_code", "ball_rejection_code"):
+        fields[name] = None
+    fields["metadata"] = {"court_reference": {"camera_ids": list(manifest.camera_ids)}}
+    export = publish_scene_to_clip_store(manifest.clip_dir, manifest.clip_id, SceneResult(**fields))
+    annotation = slcs_annotation_dir(manifest.clip_dir)
+    marker_path = annotation / SLCS_ANNOTATION_FILENAME
+    marker = json.loads(marker_path.read_text())
+    marker["scene_result"] = str(export.relative_to(annotation))
+    marker_path.write_text(json.dumps(marker))
+    with pytest.raises(DatasetManifestError, match="only SceneResult v2"):
+        load_slcs_annotation(manifest)
