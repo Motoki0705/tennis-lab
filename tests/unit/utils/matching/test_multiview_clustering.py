@@ -7,7 +7,7 @@ from itertools import combinations
 import numpy as np
 import pytest
 
-from src.utils.matching import cluster_multiview, decision_margins
+from src.utils.matching import SolverTimeLimit, cluster_multiview, decision_margins
 from src.utils.matching.multiview_clustering import MAX_ITEMS
 
 
@@ -199,3 +199,10 @@ def test_margins_of_a_foreign_clustering_are_refused():
     base = cluster_multiview(np.array([[0., 1.], [1., 0.]]), views)
     with pytest.raises(ValueError, match="does not belong"):
         decision_margins(base, np.array([[0., -1.], [-1., 0.]]), views)
+
+
+def test_a_solver_time_limit_is_its_own_error_and_returns_nothing():
+    rng = np.random.default_rng(7)
+    scores, views, _ = _random_problem(rng, 20, 20)
+    with pytest.raises(SolverTimeLimit, match="time limit"):
+        cluster_multiview(scores, views, time_limit_s=1e-9)
