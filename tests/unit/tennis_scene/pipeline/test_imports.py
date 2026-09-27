@@ -11,10 +11,6 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from src.tasks.plcs.data.manual_association import (
-    PlayerAssociationResult,
-    PlayerAssociationSegment,
-)
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
 from src.tennis_scene.pipeline.components.court_calibration import (
@@ -28,6 +24,10 @@ from src.tennis_scene.pipeline.imports.ball_annotations import (
     import_ball_annotations,
 )
 from src.tennis_scene.pipeline.imports.court_side import import_ball_confirmed_sides
+from src.tennis_scene.pipeline.imports.manual_association import (
+    PlayerAssociationResult,
+    PlayerAssociationSegment,
+)
 from src.tennis_scene.pipeline.imports.person_association import (
     confirmed_identities,
     import_confirmed_person_association,
