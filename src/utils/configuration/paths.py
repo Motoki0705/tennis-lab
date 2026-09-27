@@ -88,7 +88,7 @@ def _validated_child_part(
     role: PathRole,
     value: str | Path,
     *,
-    forbidden_prefixes: frozenset[str],
+    forbidden_prefixes: Mapping[str, str],
 ) -> Path:
     rendered = str(value)
     if not rendered.strip() or rendered != rendered.strip():
@@ -110,7 +110,8 @@ def _validated_child_part(
     if first_part in forbidden_prefixes:
         raise PathContractError(
             f"Derived {role.value} path uses a root-prefixed or legacy fragment "
-            f"{value!r}; pass a role-relative child without {path.parts[0]!r}."
+            f"{value!r}; pass a role-relative child without {path.parts[0]!r} "
+            f"(reserved as {forbidden_prefixes[first_part]})."
         )
     return path
 
@@ -187,27 +188,31 @@ class RuntimePathRoots:
             raise AssertionError(f"Runtime path root {role.value!r} is not a Path.")
         return value
 
-    def forbidden_child_prefixes(self) -> frozenset[str]:
-        """Return every prefix reserved for a root rather than a child path.
+    def forbidden_child_prefixes(self) -> Mapping[str, str]:
+        """Return every prefix reserved for a root, mapped to why it is reserved.
 
         A child fragment may not repeat a static legacy directory, a role/root
         key, or the basename of any configured root.  Computing the set from
         all seven roots keeps custom layouts subject to the same policy as the
         repository defaults and prevents role selection through path spelling.
+        The reason names the colliding root, because a root named like a task
+        (for example ``output_root=.../slcs``) rejects that task's own
+        ``slcs/...`` outputs and the bare prefix alone does not show why.
         """
-        configured_basenames = {
-            root.name.casefold() for role in PathRole if (root := self.root(role)).name
+        reasons: dict[str, str] = {
+            alias.casefold(): "a legacy root directory name"
+            for alias in _LEGACY_ROOT_ALIASES
         }
-        role_names = {
-            name.casefold()
-            for role in PathRole
-            for name in (role.value, f"{role.value}_root")
-        }
-        return (
-            frozenset(alias.casefold() for alias in _LEGACY_ROOT_ALIASES)
-            | configured_basenames
-            | role_names
-        )
+        for role in PathRole:
+            for name in (role.value, f"{role.value}_root"):
+                reasons[name.casefold()] = f"the name of the {role.value} path role"
+        for role in PathRole:
+            root = self.root(role)
+            if root.name:
+                reasons[root.name.casefold()] = (
+                    f"the basename of the configured {role.value}_root {str(root)!r}"
+                )
+        return reasons
 
     def as_mapping(self) -> Mapping[str, str]:
         """Serialize the complete absolute root contract for a subprocess."""
