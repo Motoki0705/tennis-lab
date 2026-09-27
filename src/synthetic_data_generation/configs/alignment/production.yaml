@@ -7,7 +7,8 @@ evidence:
   camera_prefix_count: 48
 
   line_model:
-    checkpoint_path: court_detection/hybrid/court-detection-epoch=17.ckpt
+    # Raw LINE probability over the whole rendered frame; no court region search.
+    checkpoint_path: court_detection/multiscale_depth3/b863df1f01f0.ckpt
     device: cuda:0
     probability_threshold: 0.5
     maximum_selected_pixels_per_camera: 50000

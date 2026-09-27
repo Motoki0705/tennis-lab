@@ -265,8 +265,8 @@ publishされます。後続jobへ渡すときはartifactをdownload・展開し
 
 PLCS dataset generatorの現行configは `run.device=cpu` なのでCPU jobです。全GPU jobは
 実行前にNVIDIA GPUとPyTorch CUDAの両方を観測し、どちらかが利用不可なら処理を開始
-しません。`tennis_scene` 系は対話的player-association UIを起動せず、Driveから固定の
-`data/tennis_scene/player_association_result.json` を読みます。
+しません。`tennis_scene` 系の人物対応とsideは既定で`load`専用のため、実行前にclip storeへ
+確認済みartifactが必要です（[pipeline仕様](../../src/tennis_scene/pipeline/README.md#処理単位)）。
 
 各TOMLの `inputs.source` がDrive上の正本です。特にDINOv3 weightは
 `data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth`、PLCS generator用SMPL-Hは
@@ -275,7 +275,7 @@ PLCS dataset generatorの現行configは `run.device=cpu` なのでCPU jobです
 `ckpt/`、motion dataは `data/ACCAD/`、scene pipeline用SMPL-Hは `data/smplh/` です。
 `synthetic_data_generation` はこれらに加え
 `data/synthetic_data_generation/raw/B00.mp4` と
-`ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` を必要とします。dataset系は
+`ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt` を必要とします。dataset系は
 job名に対応する `data/{blcs,plcs}/...` または `data/tennis_scene_dataset/` をstage
 します。正確な最小単位はcatalog TOMLを正本とし、READMEに別のinput schemaを複製
 しません。
