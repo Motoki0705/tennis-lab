@@ -35,6 +35,7 @@
   court検出・校正と、人物検出・tracking・poseをcameraごとに`--report/stores/<clip>`へ実行する（ball・身体・再構成は無効）。
   trackingが停止したcameraは停止理由と証跡を、完走したcameraは全trackの観測frame数を`observe.json`に残す。
   ラベルに使う観測では`--override person_observations.max_tracks_per_camera=16`で上限を広げ、対象外の人物も含めて残す。
+  `--phase sheets`（CPU）は保存済みtrackから、camera別に全trackの等間隔crop（frame番号付き）を`--report/sheets/<clip>/<camera>.jpg`へ描く（ラベル作成の確認用）。
 
   ```bash
   R=/home/kamimura/projects/tennis-lab; OUT=$R/outputs/player_association/evaluate/meiji_clips/<run-id>

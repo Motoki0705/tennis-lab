@@ -8,7 +8,10 @@ the association is evaluated. Each camera runs on its own so that one camera
 whose tracking stops (for example ``person_capacity_exceeded``) is reported
 with its evidence while the other cameras still produce tracks.
 ``observe.json`` lists, per clip and camera, the status and every track with
-its observed frame count. Nothing is written outside ``--report``.
+its observed frame count. ``sheets`` (CPU) renders, per clip and camera, a
+contact sheet of every observed track (evenly spaced crops with their frame
+index) from the stored tracks; it is the reviewing aid for the evaluation
+labels. Nothing is written outside ``--report``.
 """
 
 from __future__ import annotations
@@ -18,6 +21,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import cv2
+import numpy as np
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
@@ -36,6 +41,7 @@ from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.utils.video import OpenCVVideoFrameReader
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "src/tennis_scene/configs"
 
@@ -85,23 +91,88 @@ def observe(runtime: PipelineRuntimeConfig, code_identity: str, clip: Path, stor
     return {"frames": source.num_frames, "cameras": cameras}
 
 
+def track_sheet(video: Path, tracks: PersonTrackingOutput, *, samples: int, crop_height: int) -> np.ndarray | None:
+    """One row per track: ``samples`` evenly spaced observed crops labelled ``t<id> f<frame>``."""
+    wanted: dict[int, list[tuple[int, int]]] = {}
+    for row in range(len(tracks.track_ids)):
+        frames = np.flatnonzero(tracks.observed[row])
+        if not len(frames):
+            continue
+        for column, frame in enumerate(frames[np.linspace(0, len(frames) - 1, min(samples, len(frames))).round().astype(int)]):
+            wanted.setdefault(int(frame), []).append((row, column))
+    if not wanted:
+        return None
+    width = crop_height // 2
+    label = 120
+    rows = sorted({row for cells in wanted.values() for row, _ in cells})
+    canvas: np.ndarray = np.full((len(rows) * (crop_height + 18), label + samples * (width + 4), 3), 32, np.uint8)
+    for index, row in enumerate(rows):
+        y = index * (crop_height + 18)
+        text = f"t{int(tracks.track_ids[row])} n={int(tracks.observed[row].sum())}"
+        cv2.putText(canvas, text, (4, y + crop_height // 2), cv2.FONT_HERSHEY_SIMPLEX, .45, (255, 255, 255), 1)
+    last = max(wanted)
+    for packet in OpenCVVideoFrameReader(video, max_frames=last + 1):
+        for row, column in wanted.get(packet.index, ()):
+            x1, y1, x2, y2 = tracks.boxes_xyxy[row, packet.index]
+            pad_x, pad_y = .1 * (x2 - x1), .05 * (y2 - y1)
+            height, image_width = packet.frame.shape[:2]
+            left, right = int(max(0, x1 - pad_x)), int(min(image_width, x2 + pad_x))
+            top, bottom = int(max(0, y1 - pad_y)), int(min(height, y2 + pad_y))
+            if right <= left or bottom <= top:
+                continue
+            crop = packet.frame[top:bottom, left:right]
+            scale = min(crop_height / crop.shape[0], width / crop.shape[1])
+            crop = cv2.resize(crop, (max(1, int(crop.shape[1] * scale)), max(1, int(crop.shape[0] * scale))))
+            y = rows.index(row) * (crop_height + 18)
+            x = label + column * (width + 4)
+            canvas[y:y + crop.shape[0], x:x + crop.shape[1]] = crop
+            cv2.putText(canvas, f"f{packet.index}", (x, y + crop_height + 13), cv2.FONT_HERSHEY_SIMPLEX, .4, (200, 200, 0), 1)
+    return canvas
+
+
+def sheets(clip: Path, store_root: Path, output: Path, *, samples: int, crop_height: int) -> dict[str, str]:
+    manifest, source = clip_source(clip)
+    store = ClipStore(store_root, json_value(source))
+    written: dict[str, str] = {}
+    for video in source.videos:
+        reference = store.active(f"person_tracking/{video.camera_id}")
+        if reference is None:
+            continue
+        sheet = track_sheet(video.path, store.load(reference, ArtifactCodec(PersonTrackingOutput)), samples=samples, crop_height=crop_height)
+        if sheet is None:
+            continue
+        path = output / f"{video.camera_id}.jpg"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(path), sheet, [cv2.IMWRITE_JPEG_QUALITY, 88])
+        written[video.camera_id] = str(path)
+    return written
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True, help="Root holding data/, ckpt/ and third_party/")
     parser.add_argument("--dataset", type=Path, required=True, help="Structured dataset directory (dataset.json)")
     parser.add_argument("--report", type=Path, required=True, help="Run-owned directory: player_association/evaluate/<experiment>/<run-id>")
-    parser.add_argument("--phase", choices=("observe",), default="observe")
+    parser.add_argument("--phase", choices=("observe", "sheets"), default="observe")
+    parser.add_argument("--samples", type=int, default=12, help="sheets: crops per track")
+    parser.add_argument("--crop-height", type=int, default=160, help="sheets: crop height in pixels")
     parser.add_argument("--clip", action="append", default=[], help="Restrict to clip IDs (repeatable)")
     parser.add_argument("--override", action="append", default=[], help="Extra pipeline.yaml override")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
     repo, dataset, report = args.repo.resolve(), args.dataset.resolve(), args.report.resolve()
     report.mkdir(parents=True, exist_ok=True)
-    runtime, overrides = compose_runtime(repo, report, args.device, args.override, "observe")
     manifest = load_dataset_manifest(dataset)
     records = [manifest.clips[key] for key in sorted(manifest.clips) if not args.clip or key in args.clip]
     if args.clip and len(records) != len(args.clip):
         raise ValueError(f"Unknown clip IDs: {sorted(set(args.clip) - {r.clip_id for r in records})}")
+    if args.phase == "sheets":
+        for record in records:
+            written = sheets(dataset / record.path, report / "stores" / record.clip_id, report / "sheets" / record.clip_id,
+                             samples=args.samples, crop_height=args.crop_height)
+            print(json.dumps({"clip": record.clip_id, "sheets": written}), flush=True)
+        return
+    runtime, overrides = compose_runtime(repo, report, args.device, args.override, "observe")
     code_identity = TennisSceneOrchestrator(runtime).code_identity
     observed: dict[str, Any] = {"schema": "player_association_observe_v1", "config_overrides": overrides,
                                 "code_sha256": code_identity, "clips": {}}
