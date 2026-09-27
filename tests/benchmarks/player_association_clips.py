@@ -11,7 +11,10 @@ with its evidence while the other cameras still produce tracks.
 its observed frame count. ``sheets`` (CPU) renders, per clip and camera, a
 contact sheet of every observed track (evenly spaced crops with their frame
 index) from the stored tracks; it is the reviewing aid for the evaluation
-labels. Nothing is written outside ``--report``.
+labels. ``labels`` (CPU) turns a reviewed track assignment (``--review``, see
+``tests/benchmarks/labels/player_association``) into tracker-independent box
+labels, one JSON per clip under ``--labels-dir``. Nothing else is written
+outside ``--report``.
 """
 
 from __future__ import annotations
@@ -23,9 +26,15 @@ from typing import Any
 
 import cv2
 import numpy as np
+import yaml
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from src.tasks.player_association.evaluation.labels import (
+    ReviewedTrack,
+    materialize,
+    review_sha256,
+)
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
@@ -148,12 +157,46 @@ def sheets(clip: Path, store_root: Path, output: Path, *, samples: int, crop_hei
     return written
 
 
+def labels(dataset: Path, report: Path, review_path: Path, output: Path) -> list[str]:
+    """Materialize the reviewed clips of ``review_path`` from the observation stores under ``report``."""
+    review = yaml.safe_load(review_path.read_text())
+    observed = json.loads((report / "observe.json").read_text())
+    written = []
+    for clip_id, clip_review in review["clips"].items():
+        if observed["clips"].get(clip_id, {}).get("status") != "ok":
+            raise ValueError(f"{clip_id} has no completed observation in {report}")
+        video_id, clip_name = clip_id.split("/")
+        _, source = clip_source(dataset / "videos" / video_id / "clips" / clip_name)
+        store = ClipStore(report / "stores" / clip_id, json_value(source))
+        tracks: dict[str, list[ReviewedTrack]] = {}
+        for camera, record in observed["clips"][clip_id]["cameras"].items():
+            if record["status"] != "ok":
+                raise ValueError(f"{clip_id} {camera} tracking stopped ({record['reason']}); it cannot be labelled")
+            reference = store.active(f"person_tracking/{camera}")
+            if reference is None:
+                raise RuntimeError(f"{clip_id} person_tracking/{camera} has no adopted artifact")
+            output_tracks = store.load(reference, ArtifactCodec(PersonTrackingOutput))
+            tracks[camera] = [ReviewedTrack(int(track), output_tracks.boxes_xyxy[row], output_tracks.observed[row])
+                              for row, track in enumerate(output_tracks.track_ids)]
+        provenance = {"review": {"path": str(review_path.name), "sha256": review_sha256(review_path),
+                                 "selection": clip_review["selection"]},
+                      "observation": {"run": review["observe_run"], "code_sha256": observed["code_sha256"],
+                                      "config_overrides": observed["config_overrides"]}}
+        clip_labels = materialize(clip_id, source.num_frames, clip_review, tracks, provenance)
+        path = output / f"{clip_id}.json"
+        clip_labels.save(path)
+        written.append(str(path))
+    return written
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True, help="Root holding data/, ckpt/ and third_party/")
     parser.add_argument("--dataset", type=Path, required=True, help="Structured dataset directory (dataset.json)")
     parser.add_argument("--report", type=Path, required=True, help="Run-owned directory: player_association/evaluate/<experiment>/<run-id>")
-    parser.add_argument("--phase", choices=("observe", "sheets"), default="observe")
+    parser.add_argument("--phase", choices=("observe", "sheets", "labels"), default="observe")
+    parser.add_argument("--review", type=Path, help="labels: reviewed track assignment (YAML)")
+    parser.add_argument("--labels-dir", type=Path, help="labels: output directory (<video>/<clip>.json)")
     parser.add_argument("--samples", type=int, default=12, help="sheets: crops per track")
     parser.add_argument("--crop-height", type=int, default=160, help="sheets: crop height in pixels")
     parser.add_argument("--clip", action="append", default=[], help="Restrict to clip IDs (repeatable)")
@@ -162,6 +205,11 @@ def main() -> None:
     args = parser.parse_args()
     repo, dataset, report = args.repo.resolve(), args.dataset.resolve(), args.report.resolve()
     report.mkdir(parents=True, exist_ok=True)
+    if args.phase == "labels":
+        if args.review is None or args.labels_dir is None:
+            parser.error("--phase labels requires --review and --labels-dir")
+        print(json.dumps({"labels": labels(dataset, report, args.review.resolve(), args.labels_dir.resolve())}), flush=True)
+        return
     manifest = load_dataset_manifest(dataset)
     records = [manifest.clips[key] for key in sorted(manifest.clips) if not args.clip or key in args.clip]
     if args.clip and len(records) != len(args.clip):

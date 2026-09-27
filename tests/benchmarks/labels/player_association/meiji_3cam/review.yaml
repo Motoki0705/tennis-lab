@@ -1,0 +1,61 @@
+# Cross-camera person identity review of Meiji 3cam clips (issue #933).
+# Reviewer: Claude (campaign #930, #933 run 2, 2026-09-27), by eye from per-track crop strips,
+# dense crops around every tracklet link and suspected switch, and full-frame overviews.
+# Format, roles and the labelling procedure: src/tasks/player_association/README.md#評価ラベル
+observe_run: outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927
+clips:
+  video_000/clip_000:
+    selection: The clip with the historical manual association (acceptance reference); an adjacent-court person.
+    people:
+      A: {role: player, description: teal shirt, dark shorts; near side for cam0/cam1}
+      B: {role: player, description: grey-blue shirt, dark shorts; near side for cam2}
+      X1: {role: non_player, description: girl in teal shirt and white skirt on the adjacent court (cam0 left)}
+    tracks:
+      cam0: {1: A, 2: B, 4: X1}
+      cam1: {1: A, 2: B}
+      cam2: {1: B, 2: A, 5: A}   # t5: one-frame duplicate box of A (f139)
+  video_000/clip_007:
+    selection: A non-player wearing the same teal shirt as a player walks behind the cam0/cam1 baseline; fragmented far-player tracks; non-person detections.
+    people:
+      A: {role: player, description: blond hair, white/light-grey shirt (looks darker grey in shade); near side for cam0/cam1}
+      B: {role: player, description: teal shirt, dark shorts; near side for cam2}
+      X1: {role: non_player, description: long-haired girl in teal shirt and white skirt walking behind the cam0/cam1 baseline}
+      X2: {role: non_player, description: not a person; bright blob on the far fence in cam2}
+    tracks:
+      cam0: {1: A, 2: B, 3: X1, 5: B, 7: X1}
+      cam1: {1: A, 2: B, 7: B, 12: X1}   # t2 and t7 both cover B at f470-475 (t2 drifts onto the bench)
+      cam2: {1: B, 2: A, 4: X2, 5: A, 8: B, 12: A, 14: X2, 16: X1}   # t5/t12 duplicate A; t8 is B's foot at the right edge
+  video_001/clip_001:
+    selection: One real ID switch (cam0 t7 moves from a spectator to the far player); spectators behind the far fence; adjacent-court player; truncated player boxes at the image edge.
+    people:
+      A: {role: player, description: curly light-brown hair, grey shirt, black shorts; near side for cam0/cam1}
+      B: {role: player, description: teal shirt, dark shorts; near side for cam2}
+      X1: {role: non_player, description: person in dark/maroon clothes standing behind the far (cam0/cam1) baseline fence}
+      X2: {role: non_player, description: woman in white shirt, cap and black leggings on the adjacent court (cam0)}
+      X3: {role: non_player, description: not a person; bright blob on the far fence in cam2}
+      X4: {role: non_player, description: blurred light figure behind the far fence in cam2}
+    tracks:
+      cam0:
+        1: A
+        2: B
+        3: X1
+        4: X2
+        5: X1
+        7: [[0, 758, X1], [758, 763, null], [763, 1300, B]]   # ID switch: B passes in front of X1 and the track follows B
+        11: X1
+        13: A   # two-frame duplicate of A (f1228-1229)
+      cam1:
+        1: A
+        2: B
+        3: [[0, 1029, X1], [1029, 1096, null], [1096, 1300, X1]]   # B runs in front of X1 at f1029-1095
+      cam2: {1: B, 2: A, 3: X3, 11: X4, 13: B, 14: X4, 15: B, 18: B, 22: B, 24: A}   # t13/t18/t22: truncated B (arm, edge)
+  video_002/clip_013:
+    selection: Third video; exposure changes make the far player look like a different shirt colour over time; duplicate and drifting boxes.
+    people:
+      A: {role: player, description: blond curly hair, white/light-grey shirt (greyer in shade); near side for cam0/cam1}
+      B: {role: player, description: teal shirt, dark shorts; near side for cam2}
+      X1: {role: non_player, description: not a person; bright blob on the far fence in cam2}
+    tracks:
+      cam0: {1: A, 2: B}
+      cam1: {1: A, 2: B, 3: null, 5: B, 9: B}   # t3 box is mostly the bench with B at its edge
+      cam2: {1: B, 2: A, 8: X1, 9: A, 13: X1}
