@@ -31,3 +31,14 @@
   PYTHONPATH=. .venv/bin/python tests/benchmarks/court_side_clips.py --repo $R \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT
   ```
+- `player_association_clips.py`: camera間の人物対応を、ラベル付きclipで評価するための観測。`observe`（GPU、共有training queue経由）は
+  court検出・校正と、人物検出・tracking・poseをcameraごとに`--report/stores/<clip>`へ実行する（ball・身体・再構成は無効）。
+  trackingが停止したcameraは停止理由と証跡を、完走したcameraは全trackの観測frame数を`observe.json`に残す。
+  ラベルに使う観測では`--override person_observations.max_tracks_per_camera=16`で上限を広げ、対象外の人物も含めて残す。
+
+  ```bash
+  R=/home/kamimura/projects/tennis-lab; OUT=$R/outputs/player_association/evaluate/meiji_clips/<run-id>
+  bash tests/benchmarks/build_dino_extension.sh $R $OUT/dino_extension && \
+  PYTHONPATH=.:$OUT/dino_extension/lib .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R \
+      --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT --clip video_000/clip_000
+  ```

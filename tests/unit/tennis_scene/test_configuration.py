@@ -163,7 +163,8 @@ def test_automatic_pipeline_rejects_removed_manual_and_3d_settings(tmp_path: Pat
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
 
 
-@pytest.mark.parametrize("override", ["frame_sampling.max_frames=0", "camera_geometry.side_max_cost=-1", "person_observations.sideline_margin_m=-1"])
+@pytest.mark.parametrize("override", ["frame_sampling.max_frames=0", "camera_geometry.side_max_cost=-1", "person_observations.sideline_margin_m=-1",
+                                      "person_observations.max_tracks_per_camera=0"])
 def test_automatic_pipeline_rejects_invalid_operating_thresholds(tmp_path: Path, override: str) -> None:
     with pytest.raises(ValueError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
