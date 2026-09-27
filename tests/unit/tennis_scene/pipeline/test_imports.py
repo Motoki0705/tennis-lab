@@ -148,6 +148,7 @@ def test_imports_require_a_load_only_node_and_adopted_inputs(tmp_path: Path, mon
     (lambda d: d["source"].update(sha256="0" * 64), "does not identify"),
     (lambda d: d["frames"][2].update(visibility="occluded"), "disagrees"),
     (lambda d: d["frames"][2]["center_normalized"].update(x=.9), "disagree"),
+    (lambda d: d["frames"][2]["center_px"].update(x=100.01), "disagree"),
     (lambda d: d["frames"].pop(), "every frame once"),
     (lambda d: d["frames"][1].update(center_px={"x": 5000., "y": 1.}), "outside"),
 ])
@@ -160,6 +161,20 @@ def test_ball_annotation_contract_violations_stop(tmp_path: Path, mutation: Any,
     path.write_text(json.dumps(document))
     with pytest.raises(ValueError, match=message):
         convert_ball_annotation(path, video)
+
+
+def test_ball_annotation_accepts_pixels_rounded_after_normalization(tmp_path: Path) -> None:
+    # Meiji video_001/clip_000 rounds center_px to 3 decimals after computing center_normalized.
+    video = SourceVideo("cam0", tmp_path / "cam0.mp4", "a" * 64, 6, 30., 1920, 1080)
+    path = tmp_path / "cam0_annotations.json"
+    write_ball_annotation(path, video, np.full((6, 2), 354.3155, np.float32), ["observed"] * 6)
+    document = json.loads(path.read_text())
+    for row in document["frames"]:
+        row["center_normalized"] = {"x": round(354.3155 / 1920, 9), "y": round(354.3155 / 1080, 9)}
+        row["center_px"] = {"x": 354.315, "y": 354.315}
+    path.write_text(json.dumps(document))
+    ball, _ = convert_ball_annotation(path, video)
+    np.testing.assert_allclose(ball.uv_px, 354.315, rtol=0, atol=1e-4)
 
 
 def _poses(camera: str, centres: list[list[float]], observed: list[int], track_ids: list[int], frames: int = 40) -> ObjectObservations:
