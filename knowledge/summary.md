@@ -1,7 +1,7 @@
-<!-- knowledge-review: b4461818c6c6c9de1b710a9cdeda412ec9995e929f899162c2095658cae93535 on 2026-09-27 -->
+<!-- knowledge-review: 161ba3bdabc8cf991a36b512244da488d8f7d31e4cefd6aebd4d6a8609843d6a on 2026-09-27 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualificationを反映）
+更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualification、#933 外観backbone比較を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,14 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-27のcamera間人物対応の外観backbone比較（#933）
+
+PLCSのpose-only Re-IDを置き換えるため、公開重みの外観特徴5候補を[比較](nodes/player_association/000001-run-i933-appearance-backbones.md)した。
+Meiji 4 clipの人手ラベル（camera間のtrack対応）ではCLIP-ReID（ViT-B/16、Market-1501）がAUC 0.926・top-1 0.930で最良、OSNet-AINが0.870・0.814で次点、DINOv3のCLSは偶然以下（0.41）だった。
+chat-player-v1（単視点の放送映像）は全候補で飽和し（test AUC 0.997〜1.000）、候補の差を測れない。単視点で当てはめた類似度の閾値はcamera間に移らない。
+足元の幾何は、足首ではなくbox下端をコート面へ投影する（低いcam2では足首の高さ約0.1 mが数mの奥行き誤差になる）。box下端では同じ選手のcamera間距離の中央値が0.2〜2.8 mだった。
+外観と幾何を統合した対応付けの評価は未実施で、backboneの選定（CLIP-ReID）はその結果で確定する。
 
 ## 2026-09-27のballだけのside判定（#932）
 
