@@ -1,4 +1,4 @@
-<!-- knowledge-review: da5b3f21b4620fcd851b0b89123a2d80e85a6d7fe679769c1d7f3d0992cfcf47 on 2026-09-27 -->
+<!-- knowledge-review: 7b530c70ad5a221510ac8e80fbf56931c54b32f6d276b856f601ed06daf5023a on 2026-09-27 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualification、#933 外観backbone比較と幾何＋外観の人物対応の評価を反映）
@@ -20,6 +20,7 @@
 この4 clipでは幾何だけでも同じ対応になり、外観は決定のマージンを上げる（停止の判定に効く）。データから決める値（`sigma_m`、外観の尺度）はラベルの無い7 clipの擬似ラベルで当てはめたが、
 方式の設計中に同じ4 clipの失敗を見ているため完全な未見testではない。ダブルスは合成unit testだけで、実データは未検証。
 本番でこの対応付けまで進めるかは、sideが決まるか（検出器ballでは多くのclipが停止、#934）に依存する。
+この対応付けを`player_association` component（既定execute、`person_identities` v3はframeごとのID）にして人物対応のimportを削除し、[Meiji clip_000をimportなしで再実行](nodes/tennis_scene/000025-run-i933-association-meiji-clip000-20260927.md)すると、評価ラベルとの照合は全指標1.0（最小マージン8.0）で、scene.npzの全配列が人物対応importの000024とbit単位で一致した（残るimportは注釈ballだけ）。
 
 PLCSのpose-only Re-IDを置き換えるため、公開重みの外観特徴5候補を[比較](nodes/player_association/000001-run-i933-appearance-backbones.md)した。
 Meiji 4 clipの人手ラベル（camera間のtrack対応）ではCLIP-ReID（ViT-B/16、Market-1501）がAUC 0.926・top-1 0.930で最良、OSNet-AINが0.870・0.814で次点、DINOv3のCLSは偶然以下（0.41）だった。
@@ -41,7 +42,7 @@ sideは`src/tasks/court_side`の幾何的な仮説検定でballだけから決�
 ## 2026-09-27の#915分割と既定設定での実clip確認
 
 #915は#931でPR #937〜#940に分割した。PLCSの固定track Re-IDとCourtSideModelはmainに入れない（下記2026-09-24・25の記録は実験履歴として残す）。
-`player_association`・`court_side`はtennis_scene所有のschemaだけを持つload専用nodeとなり、モデルが入るまで（#933・#932）は確認済みデータの`imports/`で埋める（`court_side`は#932でballから決めるcomponentになった。上の節）。
+`player_association`・`court_side`はtennis_scene所有のschemaだけを持つload専用nodeとなり、モデルが入るまで（#933・#932）は確認済みデータの`imports/`で埋める（`court_side`は#932でballから、`player_association`は#933で幾何＋外観から決めるcomponentになり、どちらのimportも削除した。上の節）。
 分割後の既定`pipeline.yaml`（b863 Court＋region search、ROI 10m）で[Meiji clip_000を完走](nodes/tennis_scene/000022-run-i931-default-meiji-clip000-20260927.md)した。有効frame数とsideは#915の最終runと完全に一致した。
 このrunでball・side・人物対応はimportしたものであり、side・対応モデルの精度評価ではない。
 同時に、全repro.shのscript参照が再現可能であることを`kg_repro_paths.py`で検査するようにした。
