@@ -34,6 +34,10 @@ MAX_ITEMS = 40
 """The transitivity constraints grow as ``N^3``; beyond this the problem is not a view-association problem."""
 
 
+class SolverTimeLimit(RuntimeError):
+    """The MILP did not prove optimality within its time limit; no clustering is returned."""
+
+
 @dataclass(frozen=True)
 class MultiviewClustering:
     """An optimal partition and, optionally, the margin of every pair decision.
@@ -135,6 +139,8 @@ def _solve(scores: NDArray[np.float64], permitted: NDArray[np.bool_], forced: tu
         lower[edge] = upper[edge] = float(forced[2])
     solution = milp(-weights, integrality=np.ones(len(pairs)), bounds=Bounds(lower, upper),
                     constraints=() if constraints is None else constraints, options={"time_limit": time_limit_s})
+    if solution.status == 1:
+        raise SolverTimeLimit(f"Multi-view clustering MILP hit its {time_limit_s} s time limit before proving optimality")
     if solution.status != 0 or solution.x is None:
         raise RuntimeError(f"Multi-view clustering MILP did not reach a proven optimum: {solution.message}")
     chosen = solution.x > .5
@@ -159,7 +165,7 @@ def cluster_multiview(scores: NDArray[np.float64], views: NDArray[np.int64], *, 
     ``scores`` is a symmetric (N, N) matrix (the diagonal is ignored), ``views``
     the view index of every item and ``allowed`` an optional symmetric mask of
     pairs that may be linked. Same-view pairs are never linked. Raises
-    ``RuntimeError`` when the MILP does not prove optimality within
+    :class:`SolverTimeLimit` when the MILP does not prove optimality within
     ``time_limit_s``; no suboptimal clustering is returned.
     """
     scores, views, permitted = _validate(scores, views, allowed)
