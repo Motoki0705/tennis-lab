@@ -159,6 +159,12 @@ def _check_visible_uv(
         )
 
 
+def _required_mask(mask: NDArray[np.bool_] | None, name: str, clip_id: str) -> NDArray[np.bool_]:
+    if mask is None:
+        raise DatasetManifestError(f"{clip_id}: SceneResult v2 is missing {name}.")
+    return mask
+
+
 def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipArrays:
     """Load and validate one clip's scene arrays in canonical player order.
 
@@ -217,10 +223,10 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
         ball_3d=ball_3d,
         config=cfg.quality,
         teacher_quality=scene.metadata.get("label_quality"),
-        scene_schema_version=scene.schema_version,
-        player_reconstruction_valid=scene.player_valid,
-        player_heading_valid=scene.player_heading_valid,
-        ball_reconstruction_valid=scene.ball_3d_valid,
+        # load_slcs_annotation admits only SceneResult v2, which always carries these masks.
+        player_reconstruction_valid=_required_mask(scene.player_valid, "player_valid", clip_id),
+        player_heading_valid=_required_mask(scene.player_heading_valid, "player_heading_valid", clip_id),
+        ball_reconstruction_valid=_required_mask(scene.ball_3d_valid, "ball_3d_valid", clip_id),
     )
     order = _canonical_player_order(
         player_position, masks["player_label_valid"], clip_id=clip_id
