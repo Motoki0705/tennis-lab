@@ -24,6 +24,7 @@
 
 ### data/
 - **`__init__.py`**: `build_ball_detection_datamodule(config)`。`data.source` からDataModuleを選択。
+- **`store.py`**: `BallFrameStore`。TrackNet・Meiji・chat_annotation を統一した frame store(`data/ball_detection/<version>`、`ball_detection_frames.v1`)の読み出しと検証。clip の全frameを JPEG shard + 列指向 `index.npz` で保存し、`point_kind`・`segment_break`・`event` などのラベル意味論の正本。
 - **`types.py`**: `FrameLabel`/`ClipWindow`/`BallDetectionSample`/`BallDetectionBatch` のデータ契約。
 - **`dataset.py`**: `BallDetectionDataset`。`ClipWindow` をモデル入力サンプル(画像・heatmap・座標)へ変換する共通実装。
 - **`tracknet_datamodule.py`**: `TrackNetDataModule`。TrackNet形式(`Label.csv`+連番jpg)を読む。
@@ -72,10 +73,12 @@
 - **`inference/service.py`**: `DetectionService`。catalog/scenes/preview/image/validate/inferを提供する共有Webバックエンド。
 
 ### generate_dataset/
+- **`frame_store/`**: 統一 frame store の生成。`sources/{tracknet,meiji,chat_annotation}.py` が各注釈形式を検証して `ClipSpec`(`clip.py`)へ写し、`builder.py` が split 割当・JPEG shard 化・アトミック publish を行う。設定は `configs/generate_dataset.yaml`(`config.py` で厳密検証)、入口は `scripts/generate_dataset.py`。
 - **`candidate_workflow.py`**: 候補区間の手動選択(`run_candidate_selection`)と疑似ラベル推論(`predict_candidates`)。
 - **`annotation_session.py`**: 疑似ラベルレビューOpenCV UIと確定処理(`finalize_candidate`)。
 
 ### scripts/
+- **`generate_dataset.py`**: 統一 frame store の生成エントリポイント。
 - **`train.py` / `train_staged.py`**: 通常 / staged 学習エントリポイント。
 - **`eval.py`**: 単一checkpointの詳細診断評価。
 - **`evaluate_manifest.py`**: manifestベースの複数checkpoint比較評価。
