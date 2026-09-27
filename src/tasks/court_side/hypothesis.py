@@ -141,7 +141,7 @@ def distinct_observation_frames(uv_px: NDArray[np.floating], visible: NDArray[np
 
 def pair_frame_counts(visible: NDArray[np.bool_]) -> NDArray[np.int64]:
     """``(V,V)`` number of frames both views observe."""
-    counts = np.einsum("at,bt->ab", visible.astype(np.int64), visible.astype(np.int64))
+    counts: NDArray[np.int64] = np.einsum("at,bt->ab", visible.astype(np.int64), visible.astype(np.int64))
     np.fill_diagonal(counts, 0)
     return counts
 
