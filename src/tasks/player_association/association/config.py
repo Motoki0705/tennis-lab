@@ -19,8 +19,9 @@ from src.tasks.player_association.geometry.affinity import GeometryAffinityConfi
 from src.tasks.player_association.geometry.footpoints import FootpointConfig
 from src.tasks.player_association.geometry.region import PlayRegionConfig
 from src.tasks.player_association.geometry.switches import SwitchConfig
+from src.utils.paths import PROJECT_ROOT
 
-DEFAULT_CONFIG = Path(__file__).resolve().parents[1] / "configs" / "association.yaml"
+DEFAULT_CONFIG = PROJECT_ROOT / "src/tasks/player_association/configs/association.yaml"
 
 
 def _build(kind: type, values: Any, where: str) -> Any:
@@ -49,7 +50,9 @@ def load_association_config(path: Path = DEFAULT_CONFIG, *, overrides: Mapping[s
     values = yaml.safe_load(path.read_text())
     if not isinstance(values, dict):
         raise ValueError(f"{path} does not hold a mapping")
-    unknown = set(overrides or {}) - set(values)
-    if unknown:
-        raise ValueError(f"Overrides name unknown fields {sorted(unknown)}")
-    return association_config({**values, **(overrides or {})})
+    if overrides is not None:
+        unknown = set(overrides) - set(values)
+        if unknown:
+            raise ValueError(f"Overrides name unknown fields {sorted(unknown)}")
+        values = {**values, **overrides}
+    return association_config(values)
