@@ -2,11 +2,13 @@
 
 The default ``pipeline.yaml`` runs on one structured clip. The only overrides
 are root paths, the device, and ``execution.ball_detection=load`` for the ball
-import. The node without a merged model (``player_association``) and the ball
-are filled by ``src/tennis_scene/pipeline/imports``; the receipt lists them
-under ``imported_nodes`` so that nothing imported is mistaken for model output.
-``court_side`` is decided by its component from the imported ball. GPU
-execution goes through the shared training queue.
+import. The ball is filled by ``src/tennis_scene/pipeline/imports``; the
+receipt lists it under ``imported_nodes`` so that nothing imported is mistaken
+for model output. ``court_side`` is decided by its component from the imported
+ball and ``player_association`` by its component from the tracks. With
+``--association-labels`` (a box label file of
+``tests/benchmarks/labels/player_association``) the association is scored
+against the labels. GPU execution goes through the shared training queue.
 
 With ``--dataset`` the clip belongs to a structured dataset: the store is the
 clip's ``annotations/tennis_scene`` and the production
@@ -30,6 +32,11 @@ import numpy as np
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from src.tasks.player_association.evaluation import (
+    CameraPrediction,
+    ClipLabels,
+    evaluate,
+)
 from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.generate_dataset.manifest import (
@@ -41,11 +48,9 @@ from src.tennis_scene.generate_dataset.pseudo_annotation import (
     generate_pseudo_annotations,
 )
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
+from src.tennis_scene.pipeline.components.identity import PlayerIdentitiesOutput
 from src.tennis_scene.pipeline.definition import standard_definition
 from src.tennis_scene.pipeline.imports.ball_annotations import import_ball_annotations
-from src.tennis_scene.pipeline.imports.person_association import (
-    import_confirmed_person_association,
-)
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
@@ -79,10 +84,25 @@ def seed_clip(source: Path, dataset: Path) -> Path:
         media = manifest.media_path(camera)
         os.link(media, destination / media.relative_to(source))
         shutil.copy2(source / "outsource" / f"{camera}_annotations.json", destination / "outsource")
-        shutil.copy2(source / "annotations" / f"gvhmr_result_{camera}.json", destination / "annotations")
-    shutil.copy2(source / "annotations/player_association_result.json", destination / "annotations")
     register_exported_clip(dataset, destination / "clip.json")
     return destination
+
+
+def score_association(runner: ComponentRunner, labels: ClipLabels, camera_ids: tuple[str, ...]) -> dict[str, Any]:
+    """Metrics of the executed association against tracker-independent box labels."""
+    identities: PlayerIdentitiesOutput = runner.output("player_association")
+    predictions = {}
+    for view, camera in enumerate(identities.camera_ids):
+        tracks = runner.output(f"person_tracking/{camera}")
+        count = len(tracks.track_ids)
+        if not np.array_equal(identities.local_track_ids[view, :count], tracks.track_ids):
+            raise AssertionError(f"{camera}: identities were built on other tracks")
+        predictions[camera] = CameraPrediction(tracks.track_ids, tracks.boxes_xyxy.astype(np.float64), tracks.observed,
+                                               identities.player_ids[view, :count])
+    if set(labels.cameras) - set(predictions):
+        raise AssertionError(f"Labelled cameras {sorted(set(labels.cameras) - set(predictions))} were not associated (source {camera_ids})")
+    metrics: dict[str, Any] = evaluate(labels, predictions)
+    return metrics
 
 
 def verify_dataset_readers(clip: Path) -> dict[str, Any]:
@@ -104,6 +124,7 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True, help="Run-owned directory for the store and receipts")
     parser.add_argument("--dataset", type=Path, default=None, help="Publish into this structured dataset (the clip must belong to it)")
     parser.add_argument("--seed-from", type=Path, default=None, help="With --dataset: create --clip from this source clip first")
+    parser.add_argument("--association-labels", type=Path, default=None, help="Box labels of this clip to score player_association against")
     parser.add_argument("--device", default="cuda")
     args = parser.parse_args()
     repo, clip, report = args.repo.resolve(), args.clip.resolve(), args.report.resolve()
@@ -113,6 +134,7 @@ def main() -> None:
     if dataset is not None and not clip.is_relative_to(dataset):
         raise ValueError(f"--clip {clip} is not inside --dataset {dataset}")
     report.mkdir(parents=True, exist_ok=True)
+    labels = None if args.association_labels is None else ClipLabels.load(args.association_labels.resolve())
     if args.seed_from is not None:
         assert dataset is not None
         if seed_clip(args.seed_from.resolve(), dataset) != clip:
@@ -140,13 +162,7 @@ def main() -> None:
         upstream = ComponentRunner(nodes, store)
         upstream.run(targets=("court_calibration", *(f"pose_estimation/{c}" for c in camera_ids)))
         receipt["upstream"] = {"status": upstream.statuses, "seconds": upstream.seconds}
-        people, person_confirmation = import_confirmed_person_association(nodes, store, source,
-            historical_association=clip / "annotations/player_association_result.json",
-            legacy_gvhmr_directory=clip / "annotations")
-        receipt["imported_nodes"] = {**{name: json_value(ref) for name, ref in balls.items()},
-            "player_association": json_value(people)}
-        receipt["person_confirmation"] = person_confirmation
-        write_json_atomic(report / "person_confirmation.json", person_confirmation)
+        receipt["imported_nodes"] = {name: json_value(ref) for name, ref in balls.items()}
 
         scene = application.run(videos, video_role=PathRole.DATA, camera_ids=camera_ids, store_root=store_root,
                                 clip_id=source.clip_id)
@@ -155,14 +171,21 @@ def main() -> None:
         imported = [name for name in receipt["imported_nodes"] if runner.statuses[name] != "loaded"]
         if imported:
             raise AssertionError(f"Imported nodes must be loaded, not recomputed: {imported}")
-        expected = sorted(set(person_confirmation["player_ids"]))
+        identities = runner.output("player_association")
+        expected = sorted({int(p) for p in np.unique(identities.player_ids) if p >= 0})
         players = [] if scene.player_track_ids is None else scene.player_track_ids.tolist()
         if players != expected:
-            raise AssertionError(f"Scene players {players} differ from the confirmed {expected}")
+            raise AssertionError(f"Scene players {players} differ from the associated {expected}")
         for node, field in (("body_view_selection", "selections"), ("gvhmr", "bodies")):
             ids = sorted(item.person_id for item in getattr(runner.output(node), field))
             if ids != expected:
-                raise AssertionError(f"{node} must contain exactly the confirmed players, not {ids}")
+                raise AssertionError(f"{node} must contain exactly the associated players, not {ids}")
+        association = identities.diagnostics["association"]
+        receipt["player_association"] = {"players": association["players"], "min_player_margin": association["min_player_margin"],
+            "undecided_candidates": association["undecided_candidates"], "handoff_frames": association["handoff_frames"],
+            "segments": len(association["segments"]), "candidates": len(association["candidates"]),
+            "metrics": None if labels is None else score_association(runner, labels, camera_ids)}
+        write_json_atomic(report / "player_association.json", json_value(identities.diagnostics))
         restored = load_scene_result(store.index_path)
         np.testing.assert_array_equal(scene.ball_3d, restored.ball_3d)
         np.testing.assert_array_equal(scene.player_valid, restored.player_valid)

@@ -88,6 +88,12 @@ def _save_image(path: Path, image: np.ndarray) -> str:
     return str(path.name)
 
 
+def _player_summary(frames: np.ndarray) -> str:
+    """``player 0 (812 frames), none`` style summary of one track's per-frame player IDs."""
+    ids, counts = np.unique(frames[frames >= 0], return_counts=True)
+    return ", ".join(f"player {int(i)} ({int(c)} frames)" for i, c in zip(ids, counts, strict=True)) or "none"
+
+
 def _save_plot(path: Path, draw: Callable[[Any], None], *, figsize: tuple[float, float] = (10, 5)) -> str:
     fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
     try:
@@ -301,8 +307,8 @@ class Review:
         details.insert(2, ("schema", f"{self.references[node]['schema']} v{self.references[node]['version']}"))
         return images, details
 
-    def player_labels(self, camera: str, local_ids: np.ndarray) -> dict[int, int] | None:
-        """Player ID of each track from the adopted ``player_association`` artifact, if current."""
+    def player_labels(self, camera: str, local_ids: np.ndarray) -> dict[int, np.ndarray] | None:
+        """Per-frame player ID (``-1`` = none) of each track from the adopted ``player_association`` artifact, if current."""
         if "player_association" not in self.references or self.stale_dependencies("player_association"):
             return None
         value, _ = self.payload("player_association")
@@ -310,10 +316,11 @@ class Review:
             return None
         row = value["camera_ids"].index(camera)
         tracks, players = _array(value["local_track_ids"])[row], _array(value["player_ids"])[row]
-        labels = {int(track): int(player) for track, player in zip(tracks, players, strict=True) if track >= 0}
+        labels = {int(track): np.asarray(player) for track, player in zip(tracks, players, strict=True) if track >= 0}
         if set(labels) != {int(track) for track in local_ids}:
             raise ValueError(f"Player association does not cover the {camera} tracks")
         return labels
+
 
     @renders("court_detection", "court_observations", 2)
     def render_court_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
@@ -403,7 +410,7 @@ class Review:
         def draw(image: np.ndarray, frame: int) -> None:
             for row, track_id in enumerate(ids):
                 box = boxes[row, frame]
-                global_id = None if confirmed is None else confirmed[int(track_id)]
+                global_id = None if confirmed is None else int(confirmed[int(track_id)][frame])
                 color = (150, 150, 150) if global_id == -1 else COLORS_BGR[row % len(COLORS_BGR)]
                 label = f"track {track_id}" if global_id is None else (f"excluded track {track_id}" if global_id < 0 else f"player {global_id} / track {track_id}")
                 if not observed[row, frame]:
@@ -426,7 +433,8 @@ class Review:
         timeline = _save_plot(self.output / "images" / f"{camera}_tracks_timeline.png", plot)
         details = [(f"ID {track_id}", f"{_count(observed[row])} observed frames; source tracklets {value['source_track_ids'][row]}") for row, track_id in enumerate(ids)]
         if confirmed is not None:
-            details += [(f"track {track_id} player", "none (excluded from triangulation/GVHMR/scene)" if confirmed[int(track_id)] < 0 else f"player {confirmed[int(track_id)]}") for track_id in ids]
+            details += [(f"track {track_id} player", _player_summary(np.where(observed[row], confirmed[int(track_id)], -1)))
+                        for row, track_id in enumerate(ids)]
         for item in value["tracklet_links"]:
             overlap = (f"overlap span {item['overlap_span_frames']} frames, {item['shared_observation_frames']} shared observations, "
                        f"containment {item['duplicate_containment']:.2f}; ") if item.get("overlap_span_frames") else ""
@@ -446,7 +454,7 @@ class Review:
             for row, track_id in enumerate(ids):
                 if not observed[frame, row]:
                     continue
-                global_id = None if confirmed is None else confirmed[int(track_id)]
+                global_id = None if confirmed is None else int(confirmed[int(track_id)][frame])
                 color = (150, 150, 150) if global_id == -1 else COLORS_BGR[row % len(COLORS_BGR)]
                 valid = confidence[frame, row] >= .15
                 for a, b in BODY_SKELETON:
@@ -470,27 +478,31 @@ class Review:
         timeline = _save_plot(self.output / "images" / f"{camera}_pose_timeline.png", plot)
         return [image, timeline], [(f"ID {track_id}", f"{_count(observed[:, row])} observed pose frames") for row, track_id in enumerate(ids)]
 
-    @renders("player_association", "person_identities", 2)
+    @renders("player_association", "person_identities", 3)
     def render_player_association(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         tracks, players = _array(value["local_track_ids"]), _array(value["player_ids"])
-        details = [(str(camera_id), ", ".join(
-            f"track {int(track)} → player {int(player)}" if player >= 0 else f"track {int(track)} → none"
-            for track, player in zip(tracks[row], players[row], strict=True) if track >= 0))
-            for row, camera_id in enumerate(value["camera_ids"])]
+        details = [(str(camera_id), "; ".join(f"track {int(track)} → {_player_summary(players[row, column])}"
+                                              for column, track in enumerate(tracks[row]) if track >= 0))
+                   for row, camera_id in enumerate(value["camera_ids"])]
+        association = value["diagnostics"].get("association")
+        if association is not None:
+            details.append(("decision", f"minimum player margin {association['min_player_margin']}; "
+                                        f"{len(association['undecided_candidates'])} short undecided segments excluded; "
+                                        f"{len(association['handoff_frames'])} handoffs"))
         def plot(ax: Any) -> None:
-            ids = sorted({int(p) for p in players.ravel() if p >= 0})
-            table = np.full((len(value["camera_ids"]), len(ids)), np.nan)
-            for row in range(len(value["camera_ids"])):
-                for track, player in zip(tracks[row], players[row], strict=True):
-                    if player >= 0:
-                        table[row, ids.index(int(player))] = track
-            ax.imshow(np.isfinite(table), cmap="Greens", vmin=0, vmax=1.5)
-            for row in range(table.shape[0]):
-                for column in range(table.shape[1]):
-                    ax.text(column, row, "—" if np.isnan(table[row, column]) else f"track {int(table[row, column])}", ha="center", va="center")
-            ax.set(xticks=np.arange(len(ids)), xticklabels=[f"player {i}" for i in ids],
-                   yticks=np.arange(len(value["camera_ids"])), yticklabels=value["camera_ids"], title="Camera-local track of each player")
-        images = [_save_plot(self.output / "images" / "player_association_table.png", plot, figsize=(8, 4))]
+            # One row per camera-local track, colored by the player it carries at each frame (grey = none).
+            labels, rows = [], []
+            for row, camera_id in enumerate(value["camera_ids"]):
+                for column, track in enumerate(tracks[row]):
+                    if track >= 0:
+                        labels.append(f"{camera_id}:{int(track)}")
+                        rows.append(players[row, column])
+            table = np.asarray(rows, np.float64).reshape(len(rows), players.shape[-1])
+            palette = plt.get_cmap("tab10").copy()
+            palette.set_bad("#e7eaeb")
+            ax.imshow(np.ma.masked_less(table, 0), aspect="auto", interpolation="nearest", cmap=palette, vmin=0, vmax=9)
+            ax.set(yticks=np.arange(len(labels)), yticklabels=labels, xlabel="source frame", title="Player carried by each camera-local track")
+        images = [_save_plot(self.output / "images" / "player_association_table.png", plot, figsize=(10, 6))]
         required = ["court_calibration", "court_side", *(f"person_tracking/{camera_id}" for camera_id in self.camera_ids)]
         if all(parent in self.references and not self.stale_dependencies(parent) for parent in required):
             ground_image, comparisons = self.ground_distance_matrix()

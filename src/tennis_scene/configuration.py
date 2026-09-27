@@ -21,6 +21,9 @@ from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tasks.court_side.hypothesis import CourtSideConfig
+from src.tasks.player_association.appearance.encoders import encoder_weights
+from src.tasks.player_association.association.associate import AssociationConfig
+from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -208,6 +211,9 @@ _COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
     "max_cost": ConfigField.of(float, int),
     "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
 })
+_PLAYER_ASSOCIATION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_association", fields={
+    "config": ConfigField.of(str), "players_per_side": ConfigField.of(int),
+})
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
     name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
     for name in TemporalPlacementConfig.__dataclass_fields__
@@ -229,7 +235,8 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
-    "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
+    "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_association": ConfigField.mapping(_PLAYER_ASSOCIATION_SCHEMA),
+    "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
 })
 
@@ -251,6 +258,8 @@ class PipelineRuntimeConfig:
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
     court_side: CourtSideConfig
+    player_association: AssociationConfig
+    association_encoder_weights: Path | None  # None: the association config scores no appearance
     human_vis_threshold: float
     person_roi_margins: tuple[float, float]
     max_tracks_per_camera: int
@@ -325,6 +334,11 @@ class PipelineRuntimeConfig:
             min_motion_px=float(cast(float, side["min_motion_px"])), min_frames=cast(int, side["min_frames"]),
             max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
             min_margin=float(cast(float, side["min_margin"])))
+        association_section = _mapping(value["player_association"], name="player_association")
+        association = load_association_config(resolver.resolve(PathRole.PROJECT, cast(str, association_section["config"])),
+                                              players_per_side=cast(int, association_section["players_per_side"]))
+        association_weights = None if association.appearance is None else encoder_weights(
+            association.appearance.encoder, checkpoint_root=roots.checkpoint_root, external_root=roots.external_asset_root)
         person = _mapping(value["person_observations"], name="person_observations")
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
@@ -351,7 +365,7 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            sampling_max_frames, geometry, court_side, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources)
 
 

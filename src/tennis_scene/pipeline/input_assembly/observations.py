@@ -50,11 +50,13 @@ def gather_balls(source: ClipSource, artifacts: Mapping[str, Any]) -> ObjectObse
 
 
 def identified_people(raw: ObjectObservations, identities: PlayerIdentitiesOutput, threshold: float) -> GroupedObservations:
-    """Group pose carriers by clip-global player ID; unseen frames carry no ID."""
+    """Group pose carriers by their per-frame clip-global player ID; unseen frames carry no ID."""
     if raw.camera_ids != identities.camera_ids:
         raise ValueError("Player identity cameras differ from the calibrated pose observations")
     if not np.array_equal(identities.local_track_ids, raw.local_track_ids):
         raise ValueError("Player identities were built on a different pose track order")
-    ids = np.broadcast_to(identities.player_ids[:, None], raw.observed.shape).copy()
+    ids = identities.player_ids.transpose(0, 2, 1).copy()  # (V, D, T) -> (V, T, D)
+    if ids.shape != raw.observed.shape:
+        raise ValueError("Player identities were built on a different timeline")
     ids[~raw.visibility(threshold).any(-1)] = -1
     return group_observations(raw, ids, threshold=threshold)

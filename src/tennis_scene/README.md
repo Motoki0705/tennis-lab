@@ -7,17 +7,16 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 
 1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
 2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
-3. camera間の人物対応（`player_association`）を読み込み、court side（`court_side`）をballだけの幾何的な仮説検定で決める。
+3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
 5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
-手順3の人物対応にはまだモデル実装がありません（#933）。
-既定は`execution.player_association=load`で、同じschemaの確認済みartifactがclip storeに無ければ停止します（[import](pipeline/imports/README.md)）。
-他の手順はCourt・人物・球の手動入力を要求しません。
+Court・人物・球の手動入力は要求しません。
 
-対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計4人物、球は各camera/frame高々1検出です。
+対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計`person_observations.max_tracks_per_camera` track、
+シングルスまたはダブルス（`player_association.players_per_side`）、球は各camera/frame高々1検出です。
 camera alignmentと身体viewの選択は、clip全体を約30fpsの格子で1回処理し、格子が
 `frame_sampling.max_frames`を超えるclipは切り詰めずに拒否します。
 reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
