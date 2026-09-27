@@ -1,7 +1,7 @@
-<!-- knowledge-review: 1bf7b94fbc4abd988b9df63aac1290f4d6612e5768b9b09af3f6e706c30c8d4e on 2026-09-27 -->
+<!-- knowledge-review: d8b421ee20e2d11d85b386dc915c125daa1bf58b1304b702c225b775fb9c7352 on 2026-09-27 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationを反映）
+更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -18,6 +18,7 @@
 分割後の既定`pipeline.yaml`（b863 Court＋region search、ROI 10m）で[Meiji clip_000を完走](nodes/tennis_scene/000022-run-i931-default-meiji-clip000-20260927.md)した。有効frame数とsideは#915の最終runと完全に一致した。
 このrunでball・side・人物対応はimportしたものであり、side・対応モデルの精度評価ではない。
 同時に、全repro.shのscript参照が再現可能であることを`kg_repro_paths.py`で検査するようにした。
+v1 annotation layoutの廃止（readerはv2のみ）に伴い、v1の[Meiji 1clip datasetを新しい出力先へv2で再生成](nodes/tennis_scene/000023-run-i931-v2-dataset-meiji-one-clip-20260927.md)し、[DINO token](nodes/slcs/000139-run-i931-v2-dataset-meiji-dino-precompute-20260927.md)まで作った。validityは000022と一致し、SLCS window（DINO必須）として読める。残りのv1 dataset（Meijiの他clip、broadcast単眼）はv2で読めず、Meijiは#932・#933の後に再生成する。既存のv1 SLCS実験結果は履歴として有効だが、同じdatasetでの再学習はできない。
 
 ## 2026-09-26の宣言型clip pipeline検証
 
