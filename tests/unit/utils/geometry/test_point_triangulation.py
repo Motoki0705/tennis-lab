@@ -99,3 +99,20 @@ def test_rejects_invalid_confidence() -> None:
     uv = project(cameras, np.array([[1.0, -3.0, 1.2]]))
     with pytest.raises(ValueError, match="confidence"):
         triangulate_points(uv, np.ones((3, 1), bool), cameras, config=_CONFIG, confidence=np.full((3, 1), 1.5))
+
+
+def test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera() -> None:
+    view = camera("a", [-8, -16, 9])
+    ground = np.array([[0.0, 0.0, 0.0], [3.0, -5.0, 0.0], [-4.0, 10.0, 0.0]])
+    uv, front = view.project(ground)
+    assert front.all()
+    points, valid = view.backproject_to_plane(uv)
+    assert valid.all()
+    np.testing.assert_allclose(points, ground, atol=1e-6)
+    raised, valid_raised = view.backproject_to_plane(view.project(ground + [0, 0, 1.2])[0], height=1.2)
+    assert valid_raised.all()
+    np.testing.assert_allclose(raised[:, :2], ground[:, :2], atol=1e-6)
+    # A pixel above the horizon meets the ground plane behind the camera.
+    sky = view.project(np.array([[40.0, 80.0, 30.0]]))[0]
+    points, valid = view.backproject_to_plane(np.concatenate((sky, [[np.nan, 1.0]])))
+    assert not valid.any() and (points == 0).all()
