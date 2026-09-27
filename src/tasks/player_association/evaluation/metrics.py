@@ -37,6 +37,7 @@ from numpy.typing import NDArray
 from scipy.optimize import linear_sum_assignment
 
 from src.tasks.player_association.evaluation.labels import AMBIGUOUS, ClipLabels
+from src.utils.geometry.bbox import pairwise_iou
 
 
 @dataclass(frozen=True)
@@ -52,17 +53,6 @@ class CameraPrediction:
             raise ValueError("Prediction arrays must be (D,), (D, T, 4), (D, T), (D, T)")
         if (self.player_ids < -1).any():
             raise ValueError("Player IDs must be -1 or nonnegative")
-
-
-def box_iou(first: NDArray[np.float64], second: NDArray[np.float64]) -> NDArray[np.float64]:
-    """Pairwise IoU of ``(N, 4)`` and ``(M, 4)`` xyxy boxes."""
-    top_left = np.maximum(first[:, None, :2], second[None, :, :2])
-    bottom_right = np.minimum(first[:, None, 2:], second[None, :, 2:])
-    intersection = np.clip(bottom_right - top_left, 0, None).prod(-1)
-    area_first = (first[:, 2:] - first[:, :2]).prod(-1)
-    area_second = (second[:, 2:] - second[:, :2]).prod(-1)
-    union = area_first[:, None] + area_second[None, :] - intersection
-    return np.divide(intersection, union, out=np.zeros_like(intersection), where=union > 0)
 
 
 def match_to_labels(labels: ClipLabels, predictions: dict[str, CameraPrediction], min_iou: float) -> dict[str, NDArray[np.int64]]:
@@ -83,7 +73,7 @@ def match_to_labels(labels: ClipLabels, predictions: dict[str, CameraPrediction]
             if rows.start == rows.stop:
                 continue
             tracks = np.flatnonzero(prediction.observed[:, frame])
-            iou = box_iou(prediction.boxes_xyxy[tracks, frame], camera_labels.boxes_xyxy[rows])
+            iou = pairwise_iou(prediction.boxes_xyxy[tracks, frame], camera_labels.boxes_xyxy[rows])
             for track, label in zip(*linear_sum_assignment(-iou), strict=True):
                 if iou[track, label] >= min_iou:
                     result[tracks[track], frame] = camera_labels.person_index[rows][label]
