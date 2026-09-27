@@ -4,16 +4,17 @@ camera-local の person track を camera 間で同一人物どうし対応付け
 外観 Re-ID と足元のコート座標による幾何を統合し、[`cluster_multiview`](../../utils/README.md#matching)（camera 排他・推移律の MILP）で解く。
 入力は camera ごとの track（box と観測 mask）と、side を解決済みの camera（`court_side` の出力、#932）。
 手順・停止条件・出力の定義は各モジュールの docstring を正とする。
+pipeline では `player_association` node がこれを実行する（[pipeline README](../../tennis_scene/pipeline/README.md)）。
 
 | モジュール | 役割 |
 |---|---|
 | `association/associate.py` | `associate()`: track を ID switch 候補で区間に切り、区間の組の score から identity を MILP で解き、コートの各 side で在場の長い identity を選手に選ぶ。曖昧なら `AssociationUndecided`（理由と全 score を持つ）で停止する |
-| `association/config.py` | `configs/association.yaml` の読み込み（全項目必須、未知の項目は停止） |
+| `association/config.py` | `configs/association.yaml` の読み込み（全項目必須、未知の項目は停止）。`players_per_side`（シングルス/ダブルス）は clip の性質なので呼び出し側が渡す |
 | `geometry/footpoints.py` | 足元点 = box 下端の中点を z=0 へ逆投影（足首は使わない。理由は docstring） |
 | `geometry/affinity.py` | 足元距離の中央値の対数尤度比（同一人物 = Rayleigh、別人 = 領域内一様） |
 | `geometry/switches.py` | track 内の足元の跳びから ID switch の候補 frame を出す |
 | `geometry/region.py` | プレー領域（ダブルスコート＋余白） |
-| `appearance/encoders.py`・`sampling.py` | Re-ID encoder（既定 CLIP-ReID）と crop の選び方 |
+| `appearance/encoders.py`・`sampling.py` | Re-ID encoder（既定 CLIP-ReID）と重みの場所、crop の選び方と track ごとの embedding（`embed_tracks`） |
 | `appearance/affinity.py` | 区間の平均 embedding の cosine の対数尤度比（camera 間の組だけ） |
 | `evaluation/` | 評価ラベルと指標（下記） |
 

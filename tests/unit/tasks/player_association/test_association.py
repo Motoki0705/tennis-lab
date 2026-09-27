@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 from src.tasks.player_association.appearance.affinity import AppearanceAffinityConfig
+from src.tasks.player_association.appearance.sampling import TrackAppearance
 from src.tasks.player_association.association.associate import (
     AMBIGUOUS_ASSOCIATION,
     AMBIGUOUS_PLAYERS,
@@ -17,7 +18,6 @@ from src.tasks.player_association.association.associate import (
     AssociationConfig,
     AssociationUndecided,
     CameraTracks,
-    TrackAppearance,
     associate,
 )
 from src.tasks.player_association.association.config import (
@@ -228,13 +228,18 @@ def test_two_equally_present_people_on_one_singles_side_stop() -> None:
 
 
 def test_the_default_config_loads_and_rejects_unknown_or_missing_fields(tmp_path: Path) -> None:
-    config = load_association_config()
-    assert config.appearance is not None and config.players_per_side == 1
-    assert load_association_config(overrides={"appearance": None}).appearance is None
+    config = load_association_config(players_per_side=2)
+    assert config.appearance is not None and config.players_per_side == 2
+    assert load_association_config(players_per_side=1, overrides={"appearance": None}).appearance is None
     values = yaml.safe_load(DEFAULT_CONFIG.read_text())
     with pytest.raises(ValueError, match="missing"):
-        association_config({key: value for key, value in values.items() if key != "min_margin"})
+        association_config({key: value for key, value in values.items() if key != "min_margin"}, players_per_side=1)
     with pytest.raises(ValueError, match="unknown"):
-        association_config({**values, "geometry": {**values["geometry"], "sigma": 1.}})
+        association_config({**values, "geometry": {**values["geometry"], "sigma": 1.}}, players_per_side=1)
     with pytest.raises(ValueError, match="unknown fields"):
-        load_association_config(overrides={"sigma_m": 1.})
+        load_association_config(players_per_side=1, overrides={"sigma_m": 1.})
+    # The game format belongs to the clip, never to the method's file.
+    with pytest.raises(ValueError, match="unknown"):
+        association_config({**values, "players_per_side": 1}, players_per_side=1)
+    with pytest.raises(ValueError, match="singles"):
+        load_association_config(players_per_side=3)
