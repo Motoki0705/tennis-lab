@@ -60,6 +60,7 @@ annotations/
 *.json
 *.xml
 !.devcontainer/devcontainer.json
+!tests/benchmarks/labels/**/*.json
 
 # Model files and checkpoints
 checkpoints/*
