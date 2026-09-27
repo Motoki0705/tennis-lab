@@ -1,7 +1,7 @@
 {
   "schema": "court_paper_build_v1",
   "source_sha256": {
-    "report.tex": "be81acd5d6734eb3778c0ca82410954ebbf1bcb3856f7fa274f3b3c8dfa8958a",
+    "report.tex": "792efc84a0c08ff16deb3119a47644aff5be4d95028b3701772946635cd83e2d",
     "figures/B00_000423_alignment.png": "c5bda24fbbe0148f4fb1de510ddb90864bcc7ee31e73e60c2414d2ba2cd434e0",
     "figures/B00_000720_alignment.png": "58896c57a96f73144926c5dcc992875a2691ade637d1b1039f5e5c94013b4117",
     "figures/B00_001493_alignment.png": "93ae4c9441567b1cd5c8d2c9f24e4a258f0d2df71fdacc20d8dceb08a9fb6c8a",
@@ -60,7 +60,7 @@
     "tables/homography.tex": "ff6bfd429dfc6ed9913bd61f1dacfb3ca1ce5b098014438e3dcacd28b7ed7ef0",
     "tables/sfm_drift.tex": "8b0e74df57ed00bc81ae267cd6d07b28b75465009a5049cf9c3b4d8415a325ca"
   },
-  "pdf_sha256": "5c5fa2ef24ceef1283b8a5045338ee8b9cb3535f66936e061db8171217566884",
+  "pdf_sha256": "bcf2d3b28a3d6d73c1ed70d0eda4aeef8b07b6ff3aec9348b4e0dcdf279126ee",
   "pages": 8,
   "latex_runs": 2,
   "layout_glyph_reference_checks": "passed",

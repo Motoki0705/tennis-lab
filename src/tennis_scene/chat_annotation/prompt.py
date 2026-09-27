@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .layout import video_path
+from .layout import published_video_path
 from .runtime.contracts import ClipManifest, read_json, sha256_file
 
 
@@ -32,7 +32,7 @@ def write_request(
             raise ValueError(f"prepared video metadata is incomplete: {path}")
         ready = read_json(ready_path)
         manifest = ClipManifest.model_validate(read_json(path))
-        video = video_path(root, manifest)
+        video = published_video_path(root, manifest)
         if manifest.kit_id != current_id:
             raise ValueError(
                 "existing videos use a different request version; use a new output directory"
@@ -50,7 +50,12 @@ def write_request(
             raise ValueError("published video metadata changed")
         names.add(manifest.filename)
         expected_paths.add(video)
-    folders = list((root / "videos").iterdir()) if (root / "videos").exists() else []
+    folders = [
+        folder
+        for name in ("videos", "done")
+        if (root / name).exists()
+        for folder in (root / name).iterdir()
+    ]
     if any(not folder.is_dir() or folder.is_symlink() for folder in folders):
         raise ValueError("videos must contain source video directories only")
     videos = [path for folder in folders for path in folder.iterdir()]

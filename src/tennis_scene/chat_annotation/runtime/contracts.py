@@ -22,7 +22,7 @@ class _AfterModelValidator(Protocol):
 
 _after_model_validator = cast(_AfterModelValidator, model_validator(mode="after"))
 
-KIT_VERSION = "4.2.0"
+KIT_VERSION = "5.0.0"
 SCHEMA_VERSION: Literal["tennis_chat_annotation.v2"] = "tennis_chat_annotation.v2"
 BALL_SCHEMA_VERSION: Literal["tennis_chat_ball_annotation.v1"] = (
     "tennis_chat_ball_annotation.v1"
@@ -313,12 +313,16 @@ def _invalid_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON number: {value}")
 
 
-def read_json(path: Path) -> Any:
+def loads_json(value: str | bytes) -> Any:
     return json.loads(
-        path.read_text(encoding="utf-8"),
+        value,
         object_pairs_hook=_unique_object,
         parse_constant=_invalid_constant,
     )
+
+
+def read_json(path: Path) -> Any:
+    return loads_json(path.read_text(encoding="utf-8"))
 
 
 def write_json(path: Path, value: Any) -> None:
