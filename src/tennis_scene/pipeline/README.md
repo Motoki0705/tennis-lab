@@ -39,7 +39,7 @@ GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
 人物detectorはDINO/YOLOを選べる。trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
-ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは4以下、ID/slotの再利用や暗黙統合は行わない。
+ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは`person_observations.max_tracks_per_camera`以下で、超えたclipは停止する。ID/slotの再利用や暗黙統合は行わない。
 BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する
 （閾値は`TrackletLinkPolicy`で、成果物identityに含む）。
 1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。

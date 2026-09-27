@@ -195,6 +195,7 @@ _FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": 
 _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observations", fields={
     "enabled": ConfigField.of(bool), "visibility_threshold": ConfigField.of(float, int),
     "sideline_margin_m": ConfigField.of(float, int), "baseline_margin_m": ConfigField.of(float, int),
+    "max_tracks_per_camera": ConfigField.of(int),
 })
 _FRAME_SAMPLING_SCHEMA = StrictConfigSchema(name="tennis_scene.frame_sampling", fields={"max_frames": ConfigField.of(int)})
 _GEOMETRY_SCHEMA = StrictConfigSchema(name="tennis_scene.camera_geometry", fields={
@@ -252,6 +253,7 @@ class PipelineRuntimeConfig:
     court_side: CourtSideConfig
     human_vis_threshold: float
     person_roi_margins: tuple[float, float]
+    max_tracks_per_camera: int
     player_reprojection_px: float
     joint_confidence: float
     player_placement: TemporalPlacementConfig
@@ -332,6 +334,8 @@ class PipelineRuntimeConfig:
         for margin in margins:
             if not math.isfinite(margin) or margin < 0:
                 raise SemanticConfigurationError("Court ROI margins must be finite and nonnegative")
+        max_tracks = cast(int, person["max_tracks_per_camera"])
+        _positive(max_tracks, name="person_observations.max_tracks_per_camera")
         player_error, ball_error = float(cast(float, player["reprojection_px"])), float(cast(float, ball["reprojection_px"]))
         for error in (player_error, ball_error):
             if not math.isfinite(error) or error <= 0:
@@ -347,7 +351,7 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            sampling_max_frames, geometry, court_side, visibility, margins, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            sampling_max_frames, geometry, court_side, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources)
 
 

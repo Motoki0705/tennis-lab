@@ -26,7 +26,6 @@ from src.tennis_scene.pipeline.components.identity import (
 )
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_tracking import (
-    MAX_CUMULATIVE_TRACKS,
     PersonTrackingModule,
 )
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
@@ -129,9 +128,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             {"calibration": "court_calibration"}, lambda: {"detector": cfg.people.detector,
              "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.detector_checkpoint}),
              "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence, "roi": cfg.person_roi_margins, "enabled": people_enabled}, camera=camera)
-        add(f"person_tracking/{camera}", PersonTrackingModule(tracklet_policy), PersonTrackingInputAssembler(),
+        add(f"person_tracking/{camera}", PersonTrackingModule(tracklet_policy, max_tracks=cfg.max_tracks_per_camera), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"algorithm": "botsort_then_unique_tracklet_links",
-                "links": tracklet_policy, "cumulative_capacity": MAX_CUMULATIVE_TRACKS}, camera=camera)
+                "links": tracklet_policy, "cumulative_capacity": cfg.max_tracks_per_camera}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people), PoseEstimationInputAssembler(),
             {"tracks": f"person_tracking/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
