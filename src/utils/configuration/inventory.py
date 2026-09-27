@@ -147,6 +147,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.convert_web_dataset": "ball.web_tool",
     "src.tasks.ball_detection.scripts.eval": "ball.eval",
     "src.tasks.ball_detection.scripts.evaluate_manifest": "ball.evaluate_manifest",
+    "src.tasks.ball_detection.scripts.generate_dataset": "ball_detection.generate_dataset",
     "src.tasks.ball_detection.scripts.preview_augmentation": "ball.preview",
     "src.tasks.ball_detection.scripts.preview_heatmaps": "ball.preview",
     "src.tasks.ball_detection.scripts.train": "ball.train",
@@ -224,6 +225,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.convert_web_dataset": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.eval": "src.tasks.ball_detection.configuration.validate_eval",
     "src.tasks.ball_detection.scripts.evaluate_manifest": "src.tasks.ball_detection.configuration.validate_manifest_boundary",
+    "src.tasks.ball_detection.scripts.generate_dataset": "src.tasks.ball_detection.generate_dataset.frame_store.config.validate_generate_boundary",
     "src.tasks.ball_detection.scripts.preview_augmentation": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.preview_heatmaps": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.train": "src.tasks.ball_detection.configuration.validate_training",
@@ -553,6 +555,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "ball_detection", "src.tasks.ball_detection.scripts.convert_web_dataset"
     ),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.eval"),
+    _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.generate_dataset"),
     _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.evaluate_manifest"
     ),
