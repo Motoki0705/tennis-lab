@@ -58,7 +58,7 @@ class BallInstance:
 
 
 @dataclass(frozen=True, slots=True)
-class FrameLabel:
+class SourceFrame:
     """Labels of one frame as a source states them."""
 
     pts: int
@@ -86,7 +86,7 @@ class ClipLabels:
     xy: NDArray[np.float64]
 
     @classmethod
-    def from_frames(cls, labels: list[FrameLabel], *, width: int, height: int) -> ClipLabels:
+    def from_frames(cls, labels: list[SourceFrame], *, width: int, height: int) -> ClipLabels:
         """Validate and pack per-frame labels; located balls must lie in the image."""
         if not labels:
             raise ValueError("A clip needs at least one frame")

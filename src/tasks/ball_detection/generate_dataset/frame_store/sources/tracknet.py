@@ -33,8 +33,8 @@ from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     BallInstance,
     ClipLabels,
     ClipSpec,
-    FrameLabel,
     JpegSequence,
+    SourceFrame,
 )
 from src.tennis_scene.chat_annotation.runtime.contracts import sha256_file
 
@@ -50,20 +50,20 @@ class TrackNetSourceConfig:
     fps: Fraction
 
 
-def _parse_row(row: dict[str, str], path: Path) -> tuple[str, FrameLabel]:
+def _parse_row(row: dict[str, str], path: Path) -> tuple[str, SourceFrame]:
     name = row["file name"]
     visibility = row["visibility"]
     status = row["status"]
     if visibility == "0":
         if status not in ("", "0"):
             raise ValueError(f"{path}: invisible frame {name} has event status {status!r}")
-        return name, FrameLabel(0, True, True, False, "unlabeled" if status == "" else "none", ())
+        return name, SourceFrame(0, True, True, False, "unlabeled" if status == "" else "none", ())
     if visibility not in ("1", "2", "3") or status not in _EVENTS:
         raise ValueError(f"{path}: frame {name} has visibility {visibility!r} / status {status!r}")
     xy = (float(row["x-coordinate"]), float(row["y-coordinate"]))
     occluded = visibility == "3"
     ball = BallInstance(TRACK_ID, "occlusion_estimated" if occluded else "observed", xy, occluded)
-    return name, FrameLabel(0, True, True, False, _EVENTS[status], (ball,))
+    return name, SourceFrame(0, True, True, False, _EVENTS[status], (ball,))
 
 
 def read_clip(clip_dir: Path, game: str, fps: Fraction) -> ClipSpec:
@@ -83,7 +83,7 @@ def read_clip(clip_dir: Path, game: str, fps: Fraction) -> ClipSpec:
     if first is None:
         raise ValueError(f"{clip_dir / names[0]}: unreadable JPEG")
     height, width = first.shape[:2]
-    labels: list[FrameLabel] = []
+    labels: list[SourceFrame] = []
     clamped: list[dict[str, object]] = []
     for index, (name, label) in enumerate(rows):
         balls = []
@@ -95,7 +95,7 @@ def read_clip(clip_dir: Path, game: str, fps: Fraction) -> ClipSpec:
                 clamped.append({"frame": name, "from": [x, y]})
                 ball = BallInstance(ball.track_id, ball.point_kind, (min(x, width - 1), min(y, height - 1)), ball.occluded)
             balls.append(ball)
-        labels.append(FrameLabel(index, label.annotated, label.is_target, label.segment_break, label.event, tuple(balls)))
+        labels.append(SourceFrame(index, label.annotated, label.is_target, label.segment_break, label.event, tuple(balls)))
     paths = tuple(clip_dir / name for name in names)
     digest = hashlib.sha256()
     for path in paths:
