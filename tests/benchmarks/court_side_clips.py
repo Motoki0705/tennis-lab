@@ -7,7 +7,8 @@ are not side evidence. ``decide`` (CPU) reads those artifacts and applies the
 ``court_side`` component twice per clip: to the detector ball (the production
 input) and to the reviewed ``outsource/<camera>_annotations.json`` ball
 (``observed`` points only), which serves as the reference. Every decision or
-explicit stop, with all hypothesis scores, goes to ``<report>/<name>.json``
+explicit stop, with all hypothesis scores and the per-camera agreement of the
+detector ball with the reviewed ball, goes to ``<report>/<name>.json``
 (``--name``, default ``decisions``) next to the composed ``<name>.pipeline_config.yaml``.
 ``decide`` can be repeated with ``--override court_side.<field>=<value>``; it
 does not re-run any model. Nothing is written outside ``--report``.
@@ -20,6 +21,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
@@ -91,6 +93,22 @@ def side_record(module: CourtSideModule, assembler: CourtSideInputAssembler, sou
             "hypotheses": [json_value(h) for h in side.hypotheses], "observed_frames": visible}
 
 
+def ball_agreement(detector: BallDetectionOutput, annotation: BallDetectionOutput, radius_px: float) -> dict[str, Any]:
+    """Detector ball against the reviewed ball of one camera.
+
+    ``matched`` counts frames where both observe the ball within ``radius_px`` (the
+    court_side reprojection radius at the source resolution); the rest of the
+    detector's frames are evidence the side test can only reject.
+    """
+    both = detector.observed & annotation.observed
+    error = np.linalg.norm(detector.uv_px[both] - annotation.uv_px[both], axis=1)
+    matched = int((error <= radius_px).sum())
+    return {"detector_frames": int(detector.observed.sum()), "annotation_frames": int(annotation.observed.sum()),
+            "both_frames": int(both.sum()), "matched_frames": matched, "far_frames": int(both.sum()) - matched,
+            "detector_where_annotation_absent": int((detector.observed & (annotation.point_kind == 0)).sum()),
+            "median_error_px": float(np.median(error)) if len(error) else None}
+
+
 def decide(runtime: PipelineRuntimeConfig, clip: Path, store_root: Path) -> dict[str, Any]:
     manifest, source = clip_source(clip)
     store = ClipStore(store_root, json_value(source))
@@ -112,7 +130,10 @@ def decide(runtime: PipelineRuntimeConfig, clip: Path, store_root: Path) -> dict
     annotation = side_record(module, assembler, source, calibration, annotated)
     record: dict[str, Any] = {"clip_id": manifest.clip_id, "frames": source.num_frames,
               "camera_ids": list(calibration.calibration.camera_ids), "reference_camera": calibration.reference_camera,
-              "excluded_cameras": calibration.calibration.excluded, "detector": detected, "annotation": annotation}
+              "excluded_cameras": calibration.calibration.excluded, "detector": detected, "annotation": annotation,
+              "ball_agreement": {camera: ball_agreement(detector[camera], annotated[camera],
+                                                        runtime.court_side.reprojection_px * source.pixel_threshold_scale)
+                                 for camera in source.camera_ids}}
     record["agreement"] = (detected["view_half_turns"] == annotation["view_half_turns"]
                            if detected["decided"] and annotation["decided"] else None)
     if manifest.clip_id in CONFIRMED:
@@ -133,6 +154,16 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     summary["both_decided"] = len(compared)
     summary["agreements"] = sum(bool(r["agreement"]) for r in compared)
     summary["disagreeing_clips"] = [r["clip_id"] for r in compared if not r["agreement"]]
+    agreement: dict[str, dict[str, int]] = {}
+    for record in records:
+        for camera, row in record["ball_agreement"].items():
+            totals = agreement.setdefault(camera, {})
+            for key, value in row.items():
+                if key != "median_error_px":
+                    totals[key] = totals.get(key, 0) + value
+    summary["ball_agreement"] = {camera: {**totals, "recall": totals["matched_frames"] / max(totals["annotation_frames"], 1),
+                                          "precision": totals["matched_frames"] / max(totals["detector_frames"], 1)}
+                                 for camera, totals in agreement.items()}
     summary["confirmed"] = {r["clip_id"]: {name: r[name].get("view_half_turns") == r["confirmed_half_turns"] for name in ("detector", "annotation")}
                             for r in records if "confirmed_half_turns" in r}
     return summary
