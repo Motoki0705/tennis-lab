@@ -44,3 +44,18 @@
   PYTHONPATH=.:$OUT/dino_extension/lib .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT --clip video_000/clip_000
   ```
+
+  `--phase calibrate`（CPU）は、ラベルの無い観測済みclipの擬似ラベル（camera間のtrackの組を足元距離で分ける）から、
+  幾何の`sigma_m`と外観の`slope`・`center`を当てはめて`calibration.json`へ書く（ラベル付きclipを指定すると停止する）。
+  `--phase evaluate`（CPU）は、ラベル付きclipを`--config`（既定`src/tasks/player_association/configs/association.yaml`、
+  `--geometry-only`で外観なし）で対応付けて採点し、`evaluate.json`とclipごとのコート平面の図（`figures/<clip>.png`）を書く。
+  どちらもsideを`court_side_clips.py`の注釈ballによる判定（`--sides`）から読み、trackの外観を`--report/appearance`にcacheする。
+
+  ```bash
+  R=/home/kamimura/projects/tennis-lab; OBS=$R/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927
+  SIDES=$R/outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json
+  PYTHONPATH=. .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R --phase evaluate \
+      --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --observe $OBS --sides $SIDES \
+      --labels-dir tests/benchmarks/labels/player_association/meiji_3cam --device cpu \
+      --report $R/outputs/player_association/evaluate/meiji_association/<run-id>
+  ```
