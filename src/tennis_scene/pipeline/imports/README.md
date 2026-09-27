@@ -10,6 +10,7 @@ import方針の正本はこのREADMEで、利用者は[実clip qualification](..
 | `ball_annotations.py` | `ball_detection/<camera>` | 外注の`video_ball_annotation.v2`（`<clip>/outsource/<camera>_annotations.json`） | ball検出・2D refiner（#934/#935） |
 | `court_side.py` | `court_side` | 同nodeへbindされた校正とball artifact | side推定（#932） |
 | `person_association.py` | `player_association` | 旧手動対応（`annotations/player_association_result.json`）と旧GVHMRのbbox軌跡（`annotations/gvhmr_result_<camera>.json`） | 人物対応（#933） |
+| `manual_association.py` | — | `person_association.py`が読む旧手動対応の形式（decoderのみ） | 人物対応（#933） |
 
 ## 規則
 

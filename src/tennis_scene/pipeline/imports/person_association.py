@@ -19,7 +19,6 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.plcs.data.manual_association import PlayerAssociationResult
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
@@ -28,6 +27,7 @@ from src.tennis_scene.pipeline.components.identity import (
     PlayerIdentitiesOutput,
 )
 from src.tennis_scene.pipeline.contracts import ClipSource
+from src.tennis_scene.pipeline.imports.manual_association import PlayerAssociationResult
 from src.tennis_scene.pipeline.imports.publish import bind_import, publish_import
 from src.tennis_scene.pipeline.input_assembly.observations import gather_people
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
