@@ -40,6 +40,7 @@ model family packageは内部実装であり、同じsymbolを再exportしませ
 - `TrackRequest.num_tracks=None, interactive=False`は全trackを返し、検出0件も空結果にする。`observed_mask`はbbox補間と実検出を区別する。
 - 分離したscene pipelineは`BotSortAssociator`、`filter_detections_by_footpoint`、`select_and_complete_tracks`をroot APIから使い、保存済み人物検出を再推論せず追跡へ渡す。
 - `Pose2DRequest` / `ImageFeatureRequest`の`frame_indices`を指定すると、明示したsource frameを逐次decodeし、全動画をRAMへ展開せずcrop batchを作る。
+- `Pose2DFrameSequenceRequest`は明示したBGR画像列とframe ID・boxを受け、動画と同じcrop/正規化/復号でViTPoseを実行する。JPEG storeやRGB増強を動画へ再圧縮せず接続できる。同一frameの複数人物を受理し、要求frameの欠落・順序不整合・画像サイズ変更は停止する。最後の要求frameまでだけを読み、全clipの入力hash/PTS検証は呼び出し側が担当する。
 
 ```python
 from src.submodules.models import DinoPersonTracker, TrackRequest
