@@ -63,7 +63,7 @@
 ### visualization/
 - **`orchestrator.py`**: checkpointからのスライディングウィンドウ推論→GIF保存を統括。
 - **`adapters/predict_inputs.py`**: スライディングウィンドウ開始位置とバッチ構築。
-- **`adapters/render_inputs.py`**: MDDフレーム/学習バッチの描画用変換。
+- **`adapters/render_inputs.py`**: 学習バッチの正規化契約を受け、RGB表示は逆正規化し、MDD表示は学習と同じ正規化済み画像から生成する。
 - **`api/predict.py`**: `predict_clip()`。重複ウィンドウ推論の集約と `PredictionSequence` 構築。
 - **`io/clip.py`**: storeのclipから推論/描画用テンソルを構築（`visualization.store_dir` と `clip_id` を指定）。
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
