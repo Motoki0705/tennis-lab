@@ -282,6 +282,8 @@ poseの画像外座標を保持し、raw peakの1超は上記と同じ明示的�
 checkpoint/external_asset等のrootは実環境の絶対pathへoverrideしておく。
 生成はcourt/peopleだけを実行し、sceneの動画入力・三角測量・GVHMRは実行しない。
 `--dry-run`はCPUで設定・資産hash・選択clipを検査し、モデルを構築せず結果を標準出力へ出す。
+生成開始時と完了時も含め、DINO拡張は[submodulesのCPU事前検査](../../submodules/README.md#上流コードの扱い)を必須とし、
+実際にimportしたバイナリのpath/hashを保存する。GPU実行の成否はこの事前検査だけでは確定しない。
 
 ```bash
 # CUDAは共有queue経由。--clip-idを繰り返すと明示的なpilot subset、

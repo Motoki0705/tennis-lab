@@ -1,0 +1,10 @@
+{
+  "torch": "2.13.0+cu130",
+  "extension": "/home/kamimura/projects/tennis-lab/build/lib.linux-x86_64-cpython-311/MultiScaleDeformableAttention.so",
+  "sha256": "0a2b810024a28e06eba31e63a98dae3e8d732bdd3414f08dd209c183058ac20e",
+  "cpu_dispatch": {
+    "forward": "Unrecognized tensor type ID: PythonTLSSnapshot",
+    "backward": "Unrecognized tensor type ID: PythonTLSSnapshot"
+  },
+  "cuda_initialized": false
+}
