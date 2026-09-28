@@ -117,8 +117,6 @@ class PilotConfig:
         store = resolver.resolve(PathRole.DATA, data["store"])
         evidence = resolver.resolve(PathRole.CACHE, data["evidence"])
         output = resolver.resolve(PathRole.OUTPUT, run["output_dir"])
-        if not store.is_dir() or not evidence.is_dir():
-            raise FileNotFoundError("Store and evidence cache directories must exist")
         if any(output == path or output.is_relative_to(path) or path.is_relative_to(output) for path in (store, evidence)):
             raise ValueError("Pilot output must be separate from input store/cache")
         return cls(model, train, compilation, store, evidence, output, sources, length, stride,
