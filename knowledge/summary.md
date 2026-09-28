@@ -1,4 +1,4 @@
-<!-- knowledge-review: b01bb888a8397c30b4b728b83e4fb7e3e43465eb5a9baf72c8aee8915f43763d on 2026-10-01 -->
+<!-- knowledge-review: 9c5f549aa03cc3ac75286e86786ecdd0d75c4b652a707de2766bc093509de3f5 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -275,7 +275,11 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 [文脈なし時間MDN pilot](nodes/ball_refiner/000003-run-i935-detector-only-ft-e13-s42-r4-20260928.md)は12 epoch・3,000更新を完走した。
 同じ選択用validationの観測frameでは、detector argmaxより平均・p95誤差が減る一方、中央値・20px recallが悪化した。
 学習接続の成立と精度改善を区別し、detector deploy継続の判断は変えない。
-次は保存GMMのHDR coverage・面積・clip群bootstrapと、未使用の較正用validationを評価する。
+[未較正分布の診断](nodes/ball_refiner/000004-run-i935-calibration-hdr-ft-e13-r5-20260928.md)では、
+較正側の6時刻clip群でも平均誤差の改善と中央値/20px recallの退行が同時に見られた。
+人工証拠欠損で領域は広がるが、90/95% HDRのcoverageは約81/86%に留まり、分布の裾の過信が残る。
+この6群のbootstrapは探索的で、実RGB遮蔽や独立testへの一般化の証拠ではない。
+次は補正を別run・較正側のみでfitし、同一母数の文脈生成・ablationと点精度の退行も検証する。
 最終test・RGB遮蔽対照・full文脈/ablation・pipeline接続は未検証。存在較正はMeijiの正例だけから結論しない。
 
 ### Court Detection
