@@ -21,10 +21,11 @@ metrics:
   meiji_camera_clips: 171
   meiji_complete_context_clips: 35
   saturated_pose_slots: 323
+  total_pose_slots: 655468
 repro:
-  commit: 1e33276596f018dcba5215451ebc9519e339febd
+  commit: d53db5e995b10ba12d3870ca295f59663c207b8d
   branch: campaign930/i935-2-data-training
-  command: .venv/bin/python -m src.tasks.ball_refiner.scripts.audit_data --store /home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1 --meiji-context-root /home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-2-data-training/outputs/ball_refiner/analyze/data_audit/i935-run2-v1
+  command: .venv/bin/python -m src.tasks.ball_refiner.scripts.audit_data --store /home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1 --meiji-context-root /home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-2-data-training/outputs/ball_refiner/analyze/data_audit/i935-run2-v2
 artifacts:
   run_dir: knowledge/runs/run-i935-data-audit-r2
 parents: [run-i934-meiji-holdout-e0-r7]
