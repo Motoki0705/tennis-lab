@@ -84,6 +84,7 @@
 ### どこに何があるか（タスク）
 
 - Ball Detection: 画像上の2Dボール位置（`src/tasks/ball_detection`）
+- Ball Refiner: 単眼のボール位置分布と存在確率（[学習設計・モデル契約](src/tasks/ball_refiner/README.md)）
 - Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
