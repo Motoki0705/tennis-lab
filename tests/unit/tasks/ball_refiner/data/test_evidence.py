@@ -72,6 +72,9 @@ def test_no_score_selection_and_every_field_comes_from_same_window(tmp_path):
     np.testing.assert_allclose(evidence.argmax_uv, np.tile([5 / 8 * 126 / 127, 4 / 6 * 94 / 95], (11, 1)))
     np.testing.assert_allclose(evidence.timestamps_seconds, np.arange(11) * 2 / 30)
     assert evidence.pts[0] == 1000
+    assert evidence.rgb_support(3, 6) == (2, 8)  # support includes the detector's own temporal context
+    with pytest.raises(ValueError, match="outside"):
+        evidence.rgb_support(0, 12)
     assert evidence.candidates.valid[0, :, :2].all()
     assert not evidence.candidates.valid[0, :, 2].any()
     assert (evidence.candidates.scores[0, :, 1] == 1e-7).all()
