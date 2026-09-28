@@ -284,6 +284,10 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 270 frameの全GMM保存と別プロセスのload-onlyが成立し、同じ検出証拠からのCPU再計算も小さな数値差で一致した。
 専用recipeの接続証拠であり、未較正pilotのdeploy採用や、JPEG学習cacheとの精度同等性を示さない。
 最終test・RGB遮蔽対照・full文脈/ablation・標準sceneの3D入力切替は未検証。存在較正はMeijiの正例だけから結論しない。
+[3sourceの文脈pilot](nodes/ball_refiner/000006-run-i935-context-fullframe-pilot-r9-20260928.md)は、
+import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0だった。
+run専用再ビルドはCPU dispatchを通過したが、CUDA動作・文脈品質は未確認。
+次は同じ3clipで生成と別プロセス読込を再検証し、品質監査後に全母数生成へ進む。文脈の採否判断は変えない。
 
 ### Court Detection
 
