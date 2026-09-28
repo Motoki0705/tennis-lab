@@ -1,0 +1,78 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790595233258585469_522451_i935-detector-only-ft-e13-s42-r4-20260928 (commit=afc2c0fd76d3 provider=codex session=01a0e7b2-7de1-75c2-a2fe-c844567c4de0)
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+W0928 20:34:09.224000 522645 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1953] [0/0] Not enough SMs to use max_autotune_gemm mode
+{"epoch": 0, "step": 50, "batch_nll": -1.3439428806304932}
+{"epoch": 0, "step": 100, "batch_nll": -0.970709502696991}
+{"epoch": 0, "step": 150, "batch_nll": -1.5044145584106445}
+{"epoch": 0, "step": 200, "batch_nll": -0.9093862771987915}
+{"epoch": 0, "step": 250, "batch_nll": -1.756698489189148}
+{"epoch": 0, "step": 250, "selection_nll_uv": -1.991266379991763, "best_epoch": 0}
+{"epoch": 1, "step": 300, "batch_nll": -2.1862292289733887}
+{"epoch": 1, "step": 350, "batch_nll": -2.6889946460723877}
+{"epoch": 1, "step": 400, "batch_nll": -3.3227155208587646}
+{"epoch": 1, "step": 450, "batch_nll": -2.7613110542297363}
+{"epoch": 1, "step": 500, "batch_nll": -2.8306784629821777}
+{"epoch": 1, "step": 500, "selection_nll_uv": -2.8241006136512232, "best_epoch": 1}
+{"epoch": 2, "step": 550, "batch_nll": -3.1434340476989746}
+{"epoch": 2, "step": 600, "batch_nll": -2.9659082889556885}
+{"epoch": 2, "step": 650, "batch_nll": -3.3378727436065674}
+{"epoch": 2, "step": 700, "batch_nll": -3.367546796798706}
+{"epoch": 2, "step": 750, "batch_nll": -2.7546398639678955}
+{"epoch": 2, "step": 750, "selection_nll_uv": -2.9753817100390663, "best_epoch": 2}
+{"epoch": 3, "step": 800, "batch_nll": -3.8344740867614746}
+{"epoch": 3, "step": 850, "batch_nll": -3.617565631866455}
+{"epoch": 3, "step": 900, "batch_nll": -3.788213014602661}
+{"epoch": 3, "step": 950, "batch_nll": -4.081921577453613}
+{"epoch": 3, "step": 1000, "batch_nll": -2.829242467880249}
+{"epoch": 3, "step": 1000, "selection_nll_uv": -2.455967007734563, "best_epoch": 2}
+{"epoch": 4, "step": 1050, "batch_nll": -3.3306045532226562}
+{"epoch": 4, "step": 1100, "batch_nll": -4.707640647888184}
+{"epoch": 4, "step": 1150, "batch_nll": -4.190685749053955}
+{"epoch": 4, "step": 1200, "batch_nll": -3.5459957122802734}
+{"epoch": 4, "step": 1250, "batch_nll": -4.308348655700684}
+{"epoch": 4, "step": 1250, "selection_nll_uv": -3.4333859588845725, "best_epoch": 4}
+{"epoch": 5, "step": 1300, "batch_nll": -4.235605716705322}
+{"epoch": 5, "step": 1350, "batch_nll": -3.9766879081726074}
+{"epoch": 5, "step": 1400, "batch_nll": -4.611032962799072}
+{"epoch": 5, "step": 1450, "batch_nll": -3.9462625980377197}
+{"epoch": 5, "step": 1500, "batch_nll": -3.714629650115967}
+{"epoch": 5, "step": 1500, "selection_nll_uv": -3.007567055091905, "best_epoch": 4}
+{"epoch": 6, "step": 1550, "batch_nll": -4.137432098388672}
+{"epoch": 6, "step": 1600, "batch_nll": -4.342036247253418}
+{"epoch": 6, "step": 1650, "batch_nll": -3.7741146087646484}
+{"epoch": 6, "step": 1700, "batch_nll": -4.480207443237305}
+{"epoch": 6, "step": 1750, "batch_nll": -3.765540361404419}
+{"epoch": 6, "step": 1750, "selection_nll_uv": -3.6056905943053925, "best_epoch": 6}
+{"epoch": 7, "step": 1800, "batch_nll": -4.974748611450195}
+{"epoch": 7, "step": 1850, "batch_nll": -2.291713237762451}
+{"epoch": 7, "step": 1900, "batch_nll": -3.7918994426727295}
+{"epoch": 7, "step": 1950, "batch_nll": -2.161376476287842}
+{"epoch": 7, "step": 2000, "batch_nll": -4.449873924255371}
+{"epoch": 7, "step": 2000, "selection_nll_uv": -3.4748162160291294, "best_epoch": 6}
+{"epoch": 8, "step": 2050, "batch_nll": -2.2113542556762695}
+{"epoch": 8, "step": 2100, "batch_nll": -4.218161582946777}
+{"epoch": 8, "step": 2150, "batch_nll": -5.130029201507568}
+{"epoch": 8, "step": 2200, "batch_nll": -4.782068252563477}
+{"epoch": 8, "step": 2250, "batch_nll": -2.3940227031707764}
+{"epoch": 8, "step": 2250, "selection_nll_uv": -3.337488994305427, "best_epoch": 6}
+{"epoch": 9, "step": 2300, "batch_nll": -4.682933330535889}
+{"epoch": 9, "step": 2350, "batch_nll": -4.5092902183532715}
+{"epoch": 9, "step": 2400, "batch_nll": -2.8005011081695557}
+{"epoch": 9, "step": 2450, "batch_nll": -4.587952613830566}
+{"epoch": 9, "step": 2500, "batch_nll": -4.2634758949279785}
+{"epoch": 9, "step": 2500, "selection_nll_uv": -3.6916335440147936, "best_epoch": 9}
+{"epoch": 10, "step": 2550, "batch_nll": -4.933582305908203}
+{"epoch": 10, "step": 2600, "batch_nll": -4.836422443389893}
+{"epoch": 10, "step": 2650, "batch_nll": -4.50677490234375}
+{"epoch": 10, "step": 2700, "batch_nll": -5.431241035461426}
+{"epoch": 10, "step": 2750, "batch_nll": -4.536498546600342}
+{"epoch": 10, "step": 2750, "selection_nll_uv": -3.4454077605514484, "best_epoch": 9}
+{"epoch": 11, "step": 2800, "batch_nll": -4.876988887786865}
+{"epoch": 11, "step": 2850, "batch_nll": -3.7897918224334717}
+{"epoch": 11, "step": 2900, "batch_nll": -3.4392826557159424}
+{"epoch": 11, "step": 2950, "batch_nll": -4.444280624389648}
+{"epoch": 11, "step": 3000, "batch_nll": -4.11903190612793}
+{"epoch": 11, "step": 3000, "selection_nll_uv": -3.0537195696304114, "best_epoch": 9}
+Published pilot /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928
