@@ -37,6 +37,23 @@ def test_audit_cli_covers_unknowns_and_refuses_overwriting_report(tmp_path):
     assert (output / "audit.json").read_bytes() == previous
 
 
+@pytest.mark.parametrize("argument,value", [
+    ("--store", "relative/store"), ("--output", "relative/output"), ("--pose-threshold", "nan"),
+])
+def test_audit_cli_rejects_invalid_arguments_before_creating_output(tmp_path, argument, value):
+    output = tmp_path / "audit"
+    arguments = {"--store": str(tmp_path / "missing"), "--meiji-context-root": str(tmp_path),
+                 "--output": str(output), "--pose-threshold": "0.5"}
+    arguments[argument] = value
+    result = subprocess.run(
+        [sys.executable, "-m", "src.tasks.ball_refiner.scripts.audit_data",
+         *(item for pair in arguments.items() for item in pair)],
+        text=True, capture_output=True, check=False,
+    )
+    assert result.returncode != 0
+    assert not output.exists()
+
+
 def test_group_crossing_splits_fails_before_training(tmp_path):
     directory = tmp_path / "ball"
     write_store_clip(directory, "tracknet/game1/clip1", [frame(0, ball())], split="train")
