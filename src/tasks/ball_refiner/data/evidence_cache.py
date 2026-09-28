@@ -13,15 +13,17 @@ import torch
 from omegaconf import OmegaConf
 
 from src.tasks.ball_detection.data.store import (
-    SOURCES,
-    SPLIT_CODES,
     BallFrameStore,
-    ClipRecord,
     shard_name,
 )
 from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
 from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
+from src.tasks.ball_refiner.data.cache_identity import (
+    clip_record,
+    select_clips,
+    store_hashes,
+)
 from src.tasks.ball_refiner.data.evidence import ClipEvidence
 from src.tasks.ball_refiner.data.evidence_inference import (
     WINDOW_SELECTION,
@@ -31,33 +33,6 @@ from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.utils.checksum import dual_sha256
 
 SCHEMA = "ball_refiner_detector_evidence.v1"
-
-
-def _clip_record(clip: ClipRecord) -> dict[str, Any]:
-    return {**asdict(clip), "track_ids": list(clip.track_ids)}
-
-
-def _store_hashes(directory: Path) -> dict[str, str]:
-    return {name: dual_sha256(directory / name) for name in ("metadata.json", "index.npz")}
-
-
-def select_clips(
-    store: BallFrameStore, *, splits: tuple[str, ...], sources: tuple[str, ...],
-) -> tuple[ClipRecord, ...]:
-    """Select only explicit source/split pairs; never select by label quality."""
-    for name, requested, allowed in (("splits", splits, SPLIT_CODES), ("sources", sources, SOURCES)):
-        if not requested or len(set(requested)) != len(requested) or not set(requested) <= set(allowed):
-            raise ValueError(f"Invalid or repeated {name}: {requested}")
-    groups: dict[tuple[str, str], str] = {}
-    for clip in store.clips:
-        group = (clip.source, clip.group_id)
-        if group in groups and groups[group] != clip.split:
-            raise ValueError(f"Source group crosses splits: {group}")
-        groups[group] = clip.split
-    clips = tuple(clip for clip in store.clips if clip.split in splits and clip.source in sources)
-    if {(clip.source, clip.split) for clip in clips} != {(source, split) for source in sources for split in splits}:
-        raise ValueError("Every requested source/split pair must contain at least one clip")
-    return clips
 
 
 def generate_evidence_cache(
@@ -76,7 +51,7 @@ def generate_evidence_cache(
         raise ValueError("Cache input and output paths must be absolute")
     if output.exists():
         raise FileExistsError(f"Evidence cache output already exists: {output}")
-    hashes = _store_hashes(store_directory)
+    hashes = store_hashes(store_directory)
     store = BallFrameStore(store_directory)
     clips = select_clips(store, splits=splits, sources=sources)
     checkpoint_hash = dual_sha256(checkpoint)
@@ -99,7 +74,7 @@ def generate_evidence_cache(
         "schema": SCHEMA, "status": "building",
         "generator_sha256": {
             name: dual_sha256(Path(__file__).with_name(name))
-            for name in ("evidence.py", "evidence_inference.py", "evidence_cache.py")
+            for name in ("evidence.py", "evidence_inference.py", "evidence_cache.py", "cache_identity.py")
         },
         "store": {"directory": str(store_directory.resolve()), "sha256": hashes},
         "detector": {
@@ -133,13 +108,13 @@ def generate_evidence_cache(
         with (output / relative).open("xb") as stream:
             np.savez_compressed(stream, **evidence.arrays())
         manifest["clips"].append({
-            "clip": _clip_record(clip), "file": relative, "sha256": dual_sha256(output / relative),
+            "clip": clip_record(clip), "file": relative, "sha256": dual_sha256(output / relative),
             "jpeg_shard_sha256": shard_hash, "heatmap_size_hw": list(evidence.heatmap_size_hw),
         })
         write_json_atomic(output / "manifest.json", manifest)
         print(json.dumps({"completed_clips": len(manifest["clips"]), "total_clips": len(clips),
                           "clip_id": clip.clip_id, "frames": clip.frame_count}), flush=True)
-    if _store_hashes(store_directory) != hashes or dual_sha256(checkpoint) != checkpoint_hash:
+    if store_hashes(store_directory) != hashes or dual_sha256(checkpoint) != checkpoint_hash:
         raise ValueError("Store or checkpoint changed during cache generation")
     manifest["status"] = "complete"
     write_json_atomic(output / "manifest.json", manifest)
@@ -156,7 +131,7 @@ class EvidenceCache:
         manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
         if manifest["schema"] != SCHEMA or manifest["status"] != "complete":
             raise ValueError("Evidence cache is incomplete or has an unsupported schema")
-        if manifest["store"]["sha256"] != _store_hashes(store.directory):
+        if manifest["store"]["sha256"] != store_hashes(store.directory):
             raise ValueError("Evidence cache belongs to different store metadata/labels")
         if manifest["coordinate_system"] != "source_xy_div_size_minus_one":
             raise ValueError("Evidence cache coordinates must use source endpoint normalization")
@@ -174,7 +149,7 @@ class EvidenceCache:
         if selection["clip_ids"] != list(self.clip_ids) or [r["clip"]["clip_id"] for r in records] != list(self.clip_ids):
             raise ValueError("Evidence cache does not cover every declared clip exactly once")
         for clip, record in zip(clips, records, strict=True):
-            if record["clip"] != _clip_record(clip) or record["file"] != f"clips/clip-{clip.index:05d}.npz":
+            if record["clip"] != clip_record(clip) or record["file"] != f"clips/clip-{clip.index:05d}.npz":
                 raise ValueError(f"Cache clip metadata/path disagrees with store: {clip.clip_id}")
         self.manifest: dict[str, Any] = manifest
         self._records = {record["clip"]["clip_id"]: record for record in records}
