@@ -46,7 +46,7 @@ dependencies = [
     "fastapi>=0.135.3",
     "requests>=2.34.2",
     "lap>=0.5.12",
-    "mcp==1.26.0",
+    "mcp==2.2.0",
 ]
 
 [tool.uv]
