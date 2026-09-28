@@ -14,6 +14,7 @@ from src.submodules.configuration import (
 )
 from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
+from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -100,6 +101,7 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
             max_passes=2,
         ),
         resolver=resolver,
+        candidates=BallCandidateConfig(),
     )
 
 

@@ -61,6 +61,27 @@ ball検出を無効にした構成では実行できず、definition構築時に
 `body_view_selection`は人物ごとに観測frame数、平均信頼度、camera ID順で1viewを選び、実行区間を成果物化する。
 `gvhmr`はHMR画像特徴とGVHMRだけを実行する。SMPLのmesh/COCO17変換と位置・yaw・scaleの配置は`body_placement`が担当する。
 
+## ball検出証拠
+
+`ball_detection` は `ball_detections` schema v2を保存する。
+`BallDetectionOutput.uv_px/confidence/observed` は従来どおり閾値・trajectory gate後の単一観測。
+`evidence: BallHeatmapEvidence` はgate前の
+[taskのheatmap・候補・局所patch](../../tasks/ball_detection/README.md#検出証拠の出力契約)を
+全source frameに対して持つ。`candidate_uv_px` はsource動画の画素座標
+（taskのgrid正規化座標にsourceのW−1/H−1を掛ける）。
+native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `source_size_wh` が正本。
+
+重複窓は `overlap_aggregation` で単一点と**全証拠を同じ窓から**採用し、
+`selected_window_start/selected_time_index` に出自を保存する。
+最大scoreが同点なら後の窓を採用する。短いclipで入力末尾を反復した場合も、
+出力は元frameを1度だけ持つ。strideが窓より長い、またはdropした末尾などで全frameを
+覆えない設定は停止し、未処理のframeを負例や空heatmapとして埋めない。
+
+モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
+`score_semantics` で区別する。refinerは証拠なしを実検出とみなしてはならない。
+下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refinerへの切替は#935）。
+v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
+
 ## 成果物
 
 構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。

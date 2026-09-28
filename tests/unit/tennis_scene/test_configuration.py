@@ -157,6 +157,16 @@ def test_clip_studio_rejects_invalid_port(tmp_path: Path, port: int) -> None:
         parse_clip_studio_config(OmegaConf.create(config))
 
 
+@pytest.mark.parametrize("override", [
+    "ball_detection.candidates.max_candidates=0",
+    "ball_detection.candidates.nms_kernel=4",
+    "ball_detection.candidates.patch_size=-1",
+])
+def test_invalid_ball_candidate_config_fails_before_inference(tmp_path: Path, override: str) -> None:
+    with pytest.raises(ValueError):
+        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
+
+
 def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path))
     assert runtime.sampling_max_frames == 1024

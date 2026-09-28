@@ -178,6 +178,9 @@ def test_prediction_decodes_stable_cpu_fields() -> None:
     assert prediction.confidence.shape == (1, 2)
     assert prediction.heatmaps.shape == (1, 2, 4, 5)
     assert prediction.heatmaps.device.type == "cpu"
+    assert prediction.candidates.coords.shape == (1, 2, 8, 2)
+    assert prediction.candidates.patches.device.type == "cpu"
+    assert not prediction.candidates.valid.any()  # flat heatmaps have no local contrast
 
 
 def test_mdd_adapter_constructs_two_channel_temporal_input() -> None:
