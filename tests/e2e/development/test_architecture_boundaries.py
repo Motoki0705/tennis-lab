@@ -92,6 +92,12 @@ PROHIBITED_SYMBOLS = frozenset(
         "_sort_tracks",
     }
 )
+# Issue #934 retires legacy temporal readers; no import shim may restore them.
+BALL_STORE_REMOVED_MODULES = (
+    "src.tasks.ball_detection.data.tracknet_datamodule",
+    "src.tasks.ball_detection.data.youtube_datamodule",
+    "src.tasks.ball_detection.data.mixed_tracknet_datamodule",
+)
 COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.mask_predictor",
     "src.tasks.court_detection.inference.semantic_lines",
@@ -1415,6 +1421,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     assert original <= deleted
     removed = (
         *REMOVED_MODULES,
+        *BALL_STORE_REMOVED_MODULES,
         *COURT_INFERENCE_REMOVED_MODULES,
         *TENNIS_SCENE_REMOVED_MODULES,
     )
