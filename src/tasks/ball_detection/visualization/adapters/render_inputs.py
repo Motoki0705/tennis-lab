@@ -19,6 +19,7 @@ from src.tasks.ball_detection.data.components.augmentation import (
     denormalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
+from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
 from src.utils.data.augmentation import tensor_images_to_uint8_rgb
 from src.utils.data.heatmaps import heatmaps_to_argmax
 
@@ -26,6 +27,8 @@ from src.utils.data.heatmaps import heatmaps_to_argmax
 def build_mdd_frames_from_images(
     images_btchw: Tensor,
     model_io: BallModelIOAdapter,
+    *,
+    image_normalization: BallImageNormalization,
 ) -> list[np.ndarray]:
     """Compute per-frame MDD RGB visualisation from a ``(B, T, C, H, W)`` tensor.
 
@@ -33,10 +36,10 @@ def build_mdd_frames_from_images(
     inference.
 
     Args:
-        images_btchw: ``(B, T, C, H, W)`` float tensor in ImageNet-normalised space
-            *before* any mode conversion.  The function uses only ``B=sample_idx``
-            slice via the caller (see :func:`build_render_animation_inputs`).
+        images_btchw: ``(B, T, C, H, W)`` dataset-preprocessed float RGB tensor
+            *before* mode conversion. Only the first batch sample is rendered.
         model_io: The selected canonical ball model-I/O adapter.
+        image_normalization: The transform already applied by the dataset.
 
     Returns:
         List of T ``(H, W, 3)`` uint8 RGB arrays.
@@ -45,7 +48,9 @@ def build_mdd_frames_from_images(
     w = images_btchw.shape[4]
 
     with torch.no_grad():
-        features = model_io.mdd_features(images_btchw)
+        features = model_io.mdd_features(
+            images_btchw, image_normalization=image_normalization, preprocessed=True,
+        )
 
     # Use the first sample in the batch.
     brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()  # (T, H, W)
@@ -65,24 +70,23 @@ def build_render_animation_inputs(
     images_btchw: Tensor,
     pred_heatmaps_bthw: Tensor,
     peak_threshold: float,
-    normalize_cfg: dict[str, Any] | None = None,
+    image_normalization: BallImageNormalization,
     model_io: BallModelIOAdapter,
     sample_idx: int = 0,
     clip_label: str = "train",
 ) -> dict[str, Any]:
     """Build the keyword arguments expected by ``render_animation_frames``.
 
-    Converts batched training tensors (ImageNet-normalised images, predicted
+    Converts batched training tensors (dataset-preprocessed images, predicted
     heatmaps in [0, 1]) into the frame lists / coordinate sequences that the
     renderer needs.
 
     Args:
-        images_btchw: ``(B, T, C, H, W)`` float tensor (ImageNet-normalised).
+        images_btchw: ``(B, T, C, H, W)`` dataset-preprocessed float RGB tensor.
         pred_heatmaps_bthw: ``(B, T, Hh, Ww)`` float tensor in [0, 1].
         peak_threshold: Confidence threshold above which a detection is drawn.
-        normalize_cfg: Dict with ``enabled``, ``mean``, ``std`` keys (from
-            ``data.augmentation.normalize_imagenet`` config section).  Used to
-            undo ImageNet normalisation before converting to uint8.
+        image_normalization: The dataset transform, used to undo normalization
+            for the RGB panel and validate preprocessed input for the MDD panel.
         model_io: Bound adapter used for canonical MDD construction.
         sample_idx: Which element of the batch to visualise (default 0).
         clip_label: Human-readable label placed in the rendered header.
@@ -91,18 +95,15 @@ def build_render_animation_inputs(
         Dict with all keyword arguments for ``render_animation_frames``.
         The caller can pass it directly as ``render_animation_frames(**inputs)``.
     """
-    if normalize_cfg is None:
-        raise ValueError("normalize_cfg is required for render input adaptation.")
-    cfg = normalize_cfg
     _, t, _, h, w = images_btchw.shape
 
     # ------------------------------------------------------------------ images
     frames_tensor = images_btchw[sample_idx].detach().cpu()  # (T, C, H, W)
-    if bool(cfg["enabled"]):
+    if image_normalization.enabled:
         frames_tensor = denormalize_tensor_images_imagenet(
             frames_tensor,
-            mean=cfg["mean"],
-            std=cfg["std"],
+            mean=image_normalization.mean,
+            std=image_normalization.std,
         )
     frames_rgb: list[np.ndarray] = list(tensor_images_to_uint8_rgb(frames_tensor))
 
@@ -136,6 +137,7 @@ def build_render_animation_inputs(
     mdd_frames_rgb = build_mdd_frames_from_images(
         images_btchw[sample_idx : sample_idx + 1],  # keep batch dim → (1, T, C, H, W)
         model_io=model_io,
+        image_normalization=image_normalization,
     )
 
     # --------------------------------------------------------------- frame names

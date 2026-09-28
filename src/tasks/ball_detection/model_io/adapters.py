@@ -490,9 +490,12 @@ class BallModelIOAdapter:
     def mdd_features(
         self, images: Tensor, *,
         image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
+        preprocessed: bool = False,
     ) -> Tensor:
-        """Build canonical ``(B,2,T,H,W)`` MDD features for visualization."""
-        call = self.prepare_images(images, image_normalization=image_normalization)
+        """Build MDD from raw RGB or explicitly declared dataset-preprocessed RGB."""
+        call = self.prepare_images(
+            images, image_normalization=image_normalization, preprocessed=preprocessed,
+        )
         return self._rgb_frames_to_mdd(call.images)
 
     def _to_model_input(self, images: Tensor) -> Tensor:
