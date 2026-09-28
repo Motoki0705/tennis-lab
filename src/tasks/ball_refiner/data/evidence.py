@@ -97,6 +97,13 @@ class ClipEvidence:
         if not torch.equal(c.patch_valid, expected):
             raise ValueError("Patch boundary mask disagrees with native lattice")
 
+    def rgb_support(self, start: int, stop: int) -> tuple[int, int]:
+        """Half-open RGB frame range contributing to a later refiner window."""
+        if not 0 <= start < stop <= len(self.frame_index):
+            raise ValueError("Refiner window is outside the source timeline")
+        starts = self.window_start[start:stop]
+        return int(starts.min()), int(starts.max()) + self.window_length
+
     def arrays(self) -> dict[str, NDArray[np.generic]]:
         """No object arrays or labels; safe to load with allow_pickle=False."""
         return {
