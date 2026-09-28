@@ -137,6 +137,7 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+    "src.tasks.ball_refiner.scripts.train": "ball_refiner.train",
     "src.tennis_scene.chat_annotation.scripts.prepare": "tennis_scene.chat_annotation.prepare",
     "src.tasks.blcs.scripts.evaluate_real": "blcs.evaluate_real",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
@@ -205,6 +206,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+    "src.tasks.ball_refiner.scripts.train": "src.tasks.ball_refiner.training.configuration.validate_training_boundary",
     "src.tennis_scene.chat_annotation.scripts.prepare": "src.tennis_scene.chat_annotation.configuration.validate_prepare_config",
     "src.tasks.blcs.scripts.evaluate_real": "src.tasks.blcs.evaluation.configuration.validate_real_evaluation",
     "src.synthetic_data_generation.scripts.run_appearance_variant": (
@@ -440,6 +442,7 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_evidence", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.audit_data", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.serve_artifacts", "main", domain="tennis_scene", executable_module=True),

@@ -10,7 +10,8 @@
 - データ生成・評価はこのtask直下へ置き、#936と共有する。モデル入力には他camera、
   camera ID、正解座標、三角測量を渡さない。検出器の時間的な参照範囲は
   [証拠cache](#検出器の局所証拠)へ記録し、refinerのattention窓長と区別する。
-- pipeline component・学習runner・実データ評価は後続PRで実装する。
+- 文脈なしの基準学習は[学習pilot](#文脈なし学習pilot)から実行する。
+  pipeline component・文脈あり学習・最終holdout評価は後続PRで実装する。
   既存pipelineの三角測量はまだ切り替わっていない。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
 
@@ -144,9 +145,9 @@ NLLはlogsumexpで混合し、存在はBCEWithLogitsで学習する。
 
 ### 実験の順序と予算
 
-初期pilotはseed 42、実時刻付き33frame窓、実3 sourceを等比率、AdamW lr 3e-4、
-batch 32、12 epochかつ最大3,000更新（先に達した方）を上限とする。
-実行前に後続PRのHydra configへ移して、この節にはconfigのリンクだけを残す。
+初期pilotのseed・実窓長・source・AdamW・batch・epoch/更新数の上限は
+[Hydra設定](configs/train.yaml)を正本とする。epochは指定数のsource等比率再標本化を意味し、
+全窓を一度通過する単位ではない。epoch上限と最大更新数の先に達した方で停止する。
 checkpointはMeiji validationの観測/人工遮蔽を等重みとした位置NLLで選び、
 存在BCEと両層のp95/coverageも確認する。較正用val clipは選択用とclip単位で分け、
 testでcheckpoint・温度・分散scaleを選び直さない。
@@ -226,7 +227,7 @@ CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cam
 ```
 
 実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
-学習DataLoader・runnerは後続PRで接続する。
+文脈なしDataLoaderは下記のpilotへ接続する。文脈あり入力の未生成は補完しない。
 
 ## 検出器の局所証拠
 
@@ -263,7 +264,7 @@ pose/courtは`not_generated`と記録する。このcacheだけで文脈あり�
 文脈なし基準では`use_pose=false, use_court=false`を明示する。
 
 以下をworktreeから共有training queueへ投入する（パスは実環境の絶対pathを指定）。
-結果を使う学習runnerは後続PRで実装する。
+結果を使う学習入口は次節を参照。
 
 ```bash
 .venv/bin/python -m src.tasks.ball_refiner.scripts.generate_evidence \
@@ -274,3 +275,51 @@ pose/courtは`not_generated`と記録する。このcacheだけで文脈あり�
   --device cuda --stride 4 --batch-size 4 \
   --max-candidates 8 --nms-kernel 5 --patch-size 5 --subpixel-refine
 ```
+
+## 文脈なし学習pilot
+
+`scripts/train.py`はHydraの[train.yaml](configs/train.yaml)を厳密に検証する。
+`use_detector=true, use_pose=false, use_court=false`だけを受け付け、未生成の文脈を
+fullモデルの欠損観測に読み替えない。設定の省略・未知key・不正値は停止する。
+role rootは絶対pathで指定し、`data.store`/`data.evidence`/`run.output_dir`は各root内の相対pathにする。
+
+| ファイル | 責務 |
+|---|---|
+| `data/windows.py` | 実窓、中心距離によるframe採用、人物軸だけのcollate、source等比率sampling |
+| `data/gaps.py` | 教師に依存しない証拠欠損とMeiji validationのcamera一括分割 |
+| `training/configuration.py` | 型・意味・pathの検証と完全な実行設定 |
+| `training/evaluation.py` | source frameごとのGMM復元、NLL/位置/存在/全混合分散の集計 |
+| `training/runner.py` | cache/教師接続、学習、固定validation選択、epoch成果物保存 |
+
+短clipは時間paddingせず除外し、全教師なしのtrain窓も除外して理由・母数を
+`data_manifest.json`へ保存する。観測がないframeは窓内の入力として残る。
+sourceごとの抽出数はepoch内で差1以内、各sourceでは教師のある窓を等確率で再標本化する。
+train時は指定確率で実窓内の連続した候補・score・cell・patch・maskをまとめて消す。
+教師とcache原本は変更しない。この増強はRGB遮蔽を再現せず、別frameのdetector証拠には
+元RGBの球情報が残りうる。正式なRGB遮蔽比較は別生成・別実験で行う。
+
+Meiji valは`meiji/video/clip`をseed付きhashで並べ、交互に選択用と較正用へ分割する。
+同時刻の全cameraを同じ側へ固定し、入力順やラベルには依存しない。
+選択用clipの全frameを中心距離規則で一度だけ採点し、GMM成分を窓間で平均しない。
+人工gapは元clipの時間軸に固定して全重複窓へ共通に適用し、intervalもmanifestへ保存する。
+選択指標は全observedとgap内observedの位置NLLを等重みにする。
+NLL/存在値の集計はframeの和・分母を使い、batch平均の平均にしない。
+較正用・他sourceのval・testはこのpilotの選択には使わない。
+
+`epoch-NNN.pt`はmodel設定・厳密なstate dict・optimizer・epoch/step・data manifest hashを保持する。
+更新したbest epochのvalidation分布をNPZへ残し、`best.json`にcheckpoint hashと参照先を記録する。
+`learning_curve.jsonl`はepochごとの結果、`run_state.json`は完了/途中状態を示す。
+既存runへの上書き・自動resumeは行わない。各epochの成果物は不変であり、中断時にも残す。
+標準のcompile契約を使い、失敗時のeager切替は行わない。
+
+```bash
+.venv/bin/python -m src.tasks.ball_refiner.scripts.train \
+  paths.data_root=<絶対repo-root>/data paths.cache_root=<絶対repo-root>/data \
+  paths.output_root=<絶対repo-root>/outputs \
+  run.output_dir=ball_refiner/train/detector_only/<run-id>
+```
+
+GPU実行は共有queueへ投入する。`run.dry_run=true`はCPUでcache/教師/分割/除外母数を検査し、
+モデル・optimizerは作らない。新規の出力先を使う。
+このpilotは学習接続の確認であり、HDR coverage・bootstrap・実遮蔽GT・RGB対照・文脈ablation・
+最終holdoutの採否を完了したとは扱わない。Meijiの確定負例不足も残る。
