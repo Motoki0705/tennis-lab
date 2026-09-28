@@ -1,0 +1,24 @@
+{
+  "config": {
+    "compressed_time_local_bindings": "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+    "compressed_time_local_kernels": "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+    "destination": "dino_ops_sources",
+    "destination_role": "cache",
+    "paths": {
+      "artifact_root": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension",
+      "cache_root": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension/cache",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt",
+      "data_root": "/home/kamimura/projects/tennis-lab/data",
+      "external_asset_root": "/home/kamimura/projects/tennis-lab/third_party",
+      "output_root": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension",
+      "project_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache"
+    },
+    "source": "DINO/models/dino/ops/src",
+    "source_role": "external_asset"
+  },
+  "environment": {
+    "CUDA_HOME": "/usr/local/cuda",
+    "MAX_JOBS": "2",
+    "TORCH_CUDA_ARCH_LIST": "12.0"
+  }
+}
