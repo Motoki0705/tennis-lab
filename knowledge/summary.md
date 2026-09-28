@@ -1,4 +1,4 @@
-<!-- knowledge-review: 49d51bad1403b98f357f850834f76a7e5c6585567f28fc8940d57b305de0b772 on 2026-10-01 -->
+<!-- knowledge-review: 4b75dafe97c9bd83d10abcafbd655d2c56934ec20a3a62e4cd7e5fb47a4d468a on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -288,7 +288,9 @@ import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0�
 3source・561frameのCUDA生成と別プロセス読込が成功した。
 画像監査で観客・隣接court人物の混入とchatの視点変化・累計60trackを確認し、chatのcourtは実行済み欠損だった。
 有効poseの存在をプレー中の人物のrecallや文脈の有効性と同一視しない。
-次は同一identity・全被覆を要求する分割生成と、累計track数を切り捨てない入力設計を整える。
+[最長3sourceの分割probe](nodes/ball_refiner/000011-group-i935-context-shards-r12-probe.md)も全frameの生成・読込が成功し、18分以内で完走した。
+Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあり、chatのcourt欠損も続く。保存成功を文脈品質の保証としない。
+次は同一identityを凍結して残り326clipを生成し、全被覆だけを統合する。timeout/品質の悪いclipも黙って除外しない。
 文脈の採否は同一母数のfull/ablationで判断し、現時点のdeploy判断は変えない。
 
 ### Court Detection
