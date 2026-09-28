@@ -14,6 +14,12 @@ from src.tasks.ball_detection.inference.trajectory_gate import (
     TrajectoryGateConfig,
     apply_trajectory_gate,
 )
+from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
+from src.tennis_scene.pipeline.components.ball_evidence import (
+    BallHeatmapEvidence,
+    SelectedBallFrame,
+    assemble_ball_evidence,
+)
 from src.tennis_scene.pipeline.components.base import (
     BasePipelineModule,
     release_inference_memory,
@@ -50,6 +56,7 @@ class BallDetectionOutput:
     observed: NDArray[np.bool_]
     point_kind: NDArray[np.uint8]  # 0 absent, 1 observed, 2 interpolated, 3 occlusion estimate
     score_semantics: str
+    evidence: BallHeatmapEvidence | None
 
     def __post_init__(self) -> None:
         count = len(self.frame_indices)
@@ -65,6 +72,12 @@ class BallDetectionOutput:
             raise ValueError("Only directly observed ball points may be observations")
         if (self.point_kind > 3).any():
             raise ValueError("Unknown ball point provenance")
+        if self.score_semantics not in {"model_score", "annotation_acceptance_not_probability", "disabled"}:
+            raise ValueError("Unknown ball score semantics")
+        if (self.evidence is not None) != (self.score_semantics == "model_score"):
+            raise ValueError("Only model ball detections must carry heatmap evidence")
+        if self.evidence is not None and len(self.evidence.heatmaps) != count:
+            raise ValueError("Ball evidence must cover the complete source timeline")
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,13 +117,14 @@ class BallDetectionConfig:
     overlap_aggregation: str
     pin_memory: bool
     trajectory_gate: TrajectoryGateConfig
+    candidates: BallCandidateConfig
     resolver: PathResolver
 
 
 class BallDetectionModule(BasePipelineModule):
     """Detect one unidentified ball observation stream for one camera video."""
 
-    io = ComponentIO("ball_detection", BallDetectionInput, BallDetectionOutput, {}, "ball_detections")
+    io = ComponentIO("ball_detection", BallDetectionInput, BallDetectionOutput, {}, "ball_detections", version=2)
 
     def __init__(self, config: BallDetectionConfig, *, enabled: bool = True) -> None:
         self.config = config
@@ -152,17 +166,14 @@ class BallDetectionModule(BasePipelineModule):
         frames: NDArray[np.int64] = np.arange(video.num_frames, dtype=np.int64)
         if not self.enabled:
             return BallDetectionOutput(video.camera_id, frames, np.zeros((video.num_frames, 2), np.float32),
-                np.zeros(video.num_frames, np.float32), np.zeros(video.num_frames, bool), np.zeros(video.num_frames, np.uint8), "disabled")
+                np.zeros(video.num_frames, np.float32), np.zeros(video.num_frames, bool), np.zeros(video.num_frames, np.uint8), "disabled", None)
         try:
             self.load()
-            ball_uv, score = self._predict_video(video.path, max_frames=video.num_frames)
+            ball_uv, score, evidence = self._predict_video(video)
         finally:
             self.unload()
-        if len(ball_uv) != video.num_frames:
-            raise ValueError(f"Ball detector covered {len(ball_uv)} of {video.num_frames} frames of {video.camera_id}; "
-                             f"tail_policy={self.config.tail_policy!r} cannot produce the complete source timeline")
         uv_px, score, observed = self._accept_detections(denormalize_grid_keypoints(ball_uv, video.width, video.height), score)
-        return BallDetectionOutput(video.camera_id, frames, uv_px, score, observed, observed.astype(np.uint8), "model_score")
+        return BallDetectionOutput(video.camera_id, frames, uv_px, score, observed, observed.astype(np.uint8), "model_score", evidence)
 
     def _accept_detections(
         self, uv_px: NDArray[np.float32], score: NDArray[np.float32]
@@ -188,10 +199,8 @@ class BallDetectionModule(BasePipelineModule):
 
     def _predict_video(
         self,
-        video_path: Path,
-        *,
-        max_frames: int | None,
-    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+        video: SourceVideo,
+    ) -> tuple[NDArray[np.float32], NDArray[np.float32], BallHeatmapEvidence]:
         """Stream video windows through the predictor."""
         if self._pipeline is None:
             raise RuntimeError("Ball detection predictor is not loaded.")
@@ -202,8 +211,10 @@ class BallDetectionModule(BasePipelineModule):
             if self.config.window_stride is None
             else int(self.config.window_stride)
         )
-        if stride <= 0:
-            raise ValueError(f"window_stride must be positive, got {stride}")
+        if not 1 <= stride <= sequence_length:
+            raise ValueError(f"window_stride must be in [1, {sequence_length}] to cover every frame, got {stride}")
+        if self.config.overlap_aggregation not in {"last_window_wins", "max_score"}:
+            raise ValueError("overlap_aggregation must be 'last_window_wins' or 'max_score'")
 
         transform = BgrToTensorTransform(
             image_size=self.config.image_size,
@@ -215,7 +226,7 @@ class BallDetectionModule(BasePipelineModule):
                 frame=transform(packet.frame),
                 original_size=packet.original_size,
             )
-            for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames)
+            for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames)
         )
         windows = iter_temporal_windows(
             frame_stream,
@@ -233,61 +244,22 @@ class BallDetectionModule(BasePipelineModule):
             max_prefetch=int(self.config.prefetch_batches),
         )
 
-        coords_by_frame: dict[int, np.ndarray] = {}
-        score_by_frame: dict[int, float] = {}
-        max_frame_index = -1
+        selected: dict[int, SelectedBallFrame] = {}
 
         for batch in prefetched_batches:
-            prediction = self._pipeline.predict(batch.tensor)
-            coords = prediction.coords.numpy().astype(np.float32)
-            scores = prediction.confidence.numpy().astype(np.float32)
+            prediction = self._pipeline.predict(batch.tensor, candidate_config=self.config.candidates)
             for window_index, window in enumerate(batch.windows):
                 for time_index, frame_index in enumerate(window.frame_indices):
-                    max_frame_index = max(max_frame_index, int(frame_index))
-                    self._accumulate_frame_prediction(
-                        coords_by_frame=coords_by_frame,
-                        score_by_frame=score_by_frame,
-                        frame_index=int(frame_index),
-                        coord=coords[window_index, time_index],
-                        score=float(scores[window_index, time_index]),
-                    )
+                    new = SelectedBallFrame(prediction, window_index, time_index, window.start_index)
+                    old = selected.get(frame_index)
+                    if self.config.overlap_aggregation == "last_window_wins" or old is None or new.score >= old.score:
+                        selected[frame_index] = new
 
-        if max_frame_index < 0:
-            raise RuntimeError(f"No frames were read from video: {video_path}")
-
-        total_frames = max_frame_index + 1
-        ball_uv: NDArray[np.float32] = np.zeros((total_frames, 2), dtype=np.float32)
-        score: NDArray[np.float32] = np.zeros((total_frames,), dtype=np.float32)
-        for frame_index in range(total_frames):
-            if frame_index in coords_by_frame:
-                ball_uv[frame_index] = coords_by_frame[frame_index]
-                score[frame_index] = score_by_frame[frame_index]
-
-        ball_uv = np.clip(ball_uv, 0.0, 1.0).astype(np.float32)
-        score = np.clip(score, 0.0, 1.0).astype(np.float32)
-        return ball_uv, score
-
-    def _accumulate_frame_prediction(
-        self,
-        *,
-        coords_by_frame: dict[int, np.ndarray],
-        score_by_frame: dict[int, float],
-        frame_index: int,
-        coord: NDArray[np.float32],
-        score: float,
-    ) -> None:
-        """Resolve duplicate frame predictions from overlapping tail windows."""
-        if self.config.overlap_aggregation == "last_window_wins":
-            coords_by_frame[frame_index] = coord
-            score_by_frame[frame_index] = score
-            return
-        if self.config.overlap_aggregation == "max_score":
-            old_score = score_by_frame.get(frame_index)
-            if old_score is None or score >= old_score:
-                coords_by_frame[frame_index] = coord
-                score_by_frame[frame_index] = score
-            return
-        raise ValueError(
-            "overlap_aggregation must be one of ['last_window_wins', 'max_score'], "
-            f"got '{self.config.overlap_aggregation}'."
-        )
+        if set(selected) != set(range(video.num_frames)):
+            raise ValueError(f"Ball detector covered {len(selected)} of {video.num_frames} frames of {video.camera_id}; "
+                             f"tail_policy={self.config.tail_policy!r} cannot produce the complete source timeline")
+        ordered = [selected[index] for index in range(video.num_frames)]
+        ball_uv = np.stack([f.prediction.coords[f.batch_index, f.time_index].numpy() for f in ordered])
+        score = np.asarray([f.score for f in ordered], dtype=np.float32)
+        evidence = assemble_ball_evidence(ordered, source_size_wh=(video.width, video.height))
+        return ball_uv, score, evidence

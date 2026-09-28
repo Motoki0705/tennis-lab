@@ -13,10 +13,14 @@ from numpy.typing import NDArray
 
 import src.tennis_scene.pipeline.components.ball_detection as ball_component
 from src.tasks.ball_detection.model_io import BallPrediction
+from src.tasks.ball_detection.model_io.candidates import decode_candidates
+from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
     BallDetectionOutput,
 )
+from src.tennis_scene.pipeline.contracts import SourceVideo
+from src.utils.data.heatmaps import heatmaps_to_argmax
 from src.utils.video import FramePacket
 from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
 
@@ -24,15 +28,20 @@ from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
 class _TypedBallPredictor:
     configured_frames = 2
 
-    def predict(self, images: torch.Tensor) -> BallPrediction:
+    def predict(self, images: torch.Tensor, *, candidate_config: BallCandidateConfig) -> BallPrediction:
         batch_size = images.shape[0]
-        coords = torch.tensor([[[0.1, 0.2], [0.3, 0.4]]], dtype=torch.float32)
-        confidence = torch.tensor([[0.6, 0.8]], dtype=torch.float32)
-        return BallPrediction(
-            coords=coords.repeat(batch_size, 1, 1),
-            confidence=confidence.repeat(batch_size, 1),
-            heatmaps=torch.zeros((batch_size, 2, 2, 3)),
-        )
+        heatmaps = torch.full((batch_size, 2, 6, 11), .01)
+        heatmaps[:, 0, 1, 1], heatmaps[:, 1, 2, 3] = .6, .8
+        heatmaps[:, :, 5, 10] = .04
+        return _prediction(heatmaps, candidate_config)
+
+
+def _prediction(heatmaps: torch.Tensor, config: BallCandidateConfig) -> BallPrediction:
+    coords, confidence = heatmaps_to_argmax(heatmaps)
+    return BallPrediction(
+        coords=coords, confidence=confidence, heatmaps=heatmaps,
+        candidates=decode_candidates(heatmaps, config=config, subpixel_refine=False),
+    )
 
 
 def test_trajectory_gate_zeroes_rejected_pipeline_frames(tmp_path) -> None:
@@ -69,10 +78,11 @@ def test_predict_video_consumes_typed_task_prediction(
     module = BallDetectionModule(config)
     module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
 
-    coords, confidence = module._predict_video(Path("unused.mp4"), max_frames=2)
+    coords, confidence, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4))
 
     np.testing.assert_allclose(coords, [[0.1, 0.2], [0.3, 0.4]])
     np.testing.assert_allclose(confidence, [0.6, 0.8])
+    np.testing.assert_allclose(evidence.candidate_scores[:, :2], [[.6, .04], [.8, .04]])
 
 
 def _process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, num_frames: int, tail_policy: str = "backfill") -> BallDetectionOutput:
@@ -98,6 +108,11 @@ def test_process_exposes_one_unidentified_observation_stream(tmp_path: Path, mon
     np.testing.assert_allclose(output.uv_px[1], [0.3 * 5, 0.4 * 3])  # (W-1, H-1) grid normalization
     np.testing.assert_allclose(output.confidence, [0.0, 0.8])
     assert output.point_kind.tolist() == [0, 1] and output.score_semantics == "model_score"
+    assert output.evidence is not None
+    np.testing.assert_allclose(output.evidence.candidate_scores[:, 0], [.6, .8])
+    np.testing.assert_allclose(output.evidence.candidate_uv_px[0, 0], [.1 * 5, .2 * 3])
+    assert output.evidence.candidate_valid[0, 0]  # survives observation threshold
+    assert output.evidence.heatmaps[0].max() == np.float32(.6)
 
 
 def test_incomplete_timeline_stops_instead_of_padding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,15 +129,50 @@ def test_video_to_predictor_is_always_raw_rgb(
     monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
 
     class CapturingPredictor(_TypedBallPredictor):
-        def predict(self, images: torch.Tensor) -> BallPrediction:
+        def predict(self, images: torch.Tensor, *, candidate_config: BallCandidateConfig) -> BallPrediction:
             expected = torch.tensor([255, 128, 64], dtype=torch.float32) / 255
             torch.testing.assert_close(images[0, 0, :, 0, 0], expected)
-            return super().predict(images)
+            return super().predict(images, candidate_config=candidate_config)
 
     module = BallDetectionModule(replace(make_ball_config(tmp_path), image_size=(4, 6),
                                          normalize_imagenet=expected_normalization))
     module._pipeline = CapturingPredictor()  # type: ignore[assignment]
-    module._predict_video(Path("unused.mp4"), max_frames=2)
+    module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4))
+
+
+@pytest.mark.parametrize("policy,expected", [("max_score", .9), ("last_window_wins", .4)])
+def test_overlapping_windows_select_all_evidence_atomically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, policy: str, expected: float,
+) -> None:
+    packets = [FramePacket(index=i, frame=np.zeros((4, 6, 3), np.uint8), original_size=(6, 4)) for i in range(3)]
+    monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
+
+    class OverlappingPredictor(_TypedBallPredictor):
+        def predict(self, images: torch.Tensor, *, candidate_config: BallCandidateConfig) -> BallPrediction:
+            # Regular window [0,1], backfilled window [1,2].
+            maps = torch.full((2, 2, 7, 7), .01)
+            maps[0, :, 2, 2] = .9
+            maps[1, :, 4, 4] = .4
+            return _prediction(maps, candidate_config)
+
+    config = replace(make_ball_config(tmp_path), image_size=(4, 6), overlap_aggregation=policy)
+    module = BallDetectionModule(config)
+    module._pipeline = OverlappingPredictor()  # type: ignore[assignment]
+    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 3, 30., 6, 4))
+    assert scores[1] == pytest.approx(expected)
+    assert evidence.candidate_scores[1, 0] == pytest.approx(expected)
+    assert evidence.heatmaps[1].max() == pytest.approx(expected)
+    assert evidence.patches[1, 0, 2, 2] == pytest.approx(expected)
+    np.testing.assert_allclose(evidence.candidate_uv_px[1, 0], coords[1] * [5, 3])
+    assert evidence.selected_window_start[1] == (0 if policy == "max_score" else 1)
+    assert evidence.selected_time_index[1] == (1 if policy == "max_score" else 0)
+
+
+def test_stride_cannot_leave_silent_holes(tmp_path: Path) -> None:
+    module = BallDetectionModule(replace(make_ball_config(tmp_path), window_stride=3))
+    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    with pytest.raises(ValueError, match="cover every frame"):
+        module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 5, 30., 6, 4))
 
 
 def test_checkpoint_normalization_mismatch_is_rejected_before_inference(

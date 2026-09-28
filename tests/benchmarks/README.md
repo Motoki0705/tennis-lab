@@ -2,6 +2,17 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+- `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
+  実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
+  `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、
+  `qualification.json` に各cameraのartifact参照・shape・候補数・gateで非観測になったframeの
+  生候補数を記録する。精度比較ではない。GPU実行は共有training queue経由:
+
+  ```bash
+  PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_evidence.py \
+      --repo <元repo> --clip <構造化clip> --report <検証出力先>
+  ```
+
 - `coco17_placement.py`: 身体配置の数値診断。入力と使い方は[motion_alignment](../../src/tennis_scene/motion_alignment/README.md#保存済みデータでの確認)を参照。
 - `component_pipeline.py`: 既定`pipeline.yaml`で構造化clipを1本処理する実clip qualification。変更する設定はroot path・device・`execution.ball_detection=load`だけ。
   ball・人物対応は[確認済みデータのimport](../../src/tennis_scene/pipeline/imports/README.md)で埋め、`evaluation.json`の`imported_nodes`に列挙する。
