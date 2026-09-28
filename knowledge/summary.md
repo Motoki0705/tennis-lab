@@ -1,4 +1,4 @@
-<!-- knowledge-review: dd18a4506bf8fb5995962974e99648d12090c443ba7845a6ee9a2430363fca6b on 2026-10-01 -->
+<!-- knowledge-review: c8f26dca3fb5c72353635ebd232d18de25b55f80d5cb9f43ad1bdb918cdd4b69 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -271,6 +271,8 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 空frameと推定・unknownはamodal負例にしない。確定負例はchatに偏り、Meijiだけでは存在較正を判断できない。
 既存Meiji pose/courtは一部しか揃っていないため、文脈なしpilotを先に準備し、full比較前に生成を完了させる。
 未生成をmask欠損へ置き換えず、camera-local KP14と明示的なViTPose score変換を使う。
+[凍結ft-e13証拠cache](nodes/ball_refiner/000002-run-i935-evidence-ft-e13-trainval-r3-20260928.md)はtrain/val全frameの生成・checksum/PTS/局所patch読込まで成功した。
+次は33frame窓の文脈なし時間MDNを、選択用と較正用に分けたvalidationで検証する。
 モデルの実学習・精度/coverage・ablationは未検証で、detector deploy継続の判断は変えない。
 
 ### Court Detection
