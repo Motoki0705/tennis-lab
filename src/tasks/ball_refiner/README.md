@@ -193,3 +193,36 @@ fullが文脈なしより遮蔽NLL/coverageを改善し、observed p95のpaired�
 存在が崩壊しない場合に次段への候補とする。満たさなければ負の結果とともに基準を維持し、
 testへ適応した再選択はしない。較正によるcoverage改善と位置精度改善は別々に報告する。
 実験結果はknowledge-controlで`ball_refiner`へ登録し、ここに指標表を重複保存しない。
+
+## 教師と既存文脈の準備
+
+`data/targets.py`はball frame storeの全frameを単一球の教師へ写す。
+observedだけが位置教師、明示的out_of_frameだけが存在の負例で、理由コード別の件数を返す。
+推定座標は参考評価用に保持するが位置maskを立てず、複数instanceのframeでは球を選ばない。
+storeの縮小率を戻してsourceの`(W-1,H-1)`で正規化し、範囲外の教師を丸めない。
+元のframe index・PTS・event・segment_breakも保持し、モデルの時刻は整数PTS差から作る。
+
+`data/context.py`は明示されたpipelineの`scene.json`から、採用中のpose/courtだけを読む。
+media hash・元解像度・全frame数・FPS・成果物checksum・現在の依存関係を照合する。
+poseは同一mediaのdense frame indexによってstoreのPTSに束縛し、時刻の近傍照合はしない。
+未生成の成果物は`None`と状態を返す。文脈必須の利用者は`require_complete()`で未生成を拒否する。
+実行済みだが検出なしのmaskとは別である。入力不整合・破損はエラーになる。
+
+poseにはCOCO17の肘・手首を使い、補間boxを観測としない。
+ViTPoseのscoreは非負のheatmap peakで1を超えうるため、refinerの有界特徴へ
+`min(score,1)`で写す。変換名・上限に達したslot数・元の最大値をprovenanceに記録する。
+これは確率較正ではない。有限な画像外の関節位置は保持する。
+courtは`camera_view_v2`のKP14、frame 0のみを受け付ける。
+
+CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cameraの文脈coverageを確認する。
+出力先は新規ディレクトリを要求する。元動画/JPEGの再decode・再hashや推論は実施しない。
+
+```bash
+.venv/bin/python -m src.tasks.ball_refiner.scripts.audit_data \
+  --store <絶対data-root>/ball_detection/ball-mix-v1 \
+  --meiji-context-root <絶対artifact-root>/<生成run>/stores \
+  --output <絶対output-root>/ball_refiner/analyze/data_audit/<run-id>
+```
+
+実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
+この読込層だけではdetector証拠cache・学習DataLoader・runnerはまだ生成されない。
