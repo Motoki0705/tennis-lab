@@ -1,0 +1,53 @@
+[
+  {
+    "clip_id": "tracknet/game5/Clip14",
+    "decoded_frames": 35,
+    "jpeg_shard_sha256": "30f4de9b9491e82ef99ef9695452c646c3da9c117a26a8090a3efa2d5da5ff2a",
+    "camera_id": null,
+    "stored_wh": [
+      1280,
+      720
+    ],
+    "source_wh": [
+      1280,
+      720
+    ],
+    "time_base": "1/30",
+    "first_pts": 0,
+    "last_pts": 34
+  },
+  {
+    "clip_id": "meiji/video_002/clip_011/cam0",
+    "decoded_frames": 151,
+    "jpeg_shard_sha256": "fdef468f1e6df38f07b24823fe008d5cb8b331a4cd50ffbe6f43b18c62f1e708",
+    "camera_id": "cam0",
+    "stored_wh": [
+      1280,
+      720
+    ],
+    "source_wh": [
+      1920,
+      1080
+    ],
+    "time_base": "1/2997003",
+    "first_pts": 0,
+    "last_pts": 7500000
+  },
+  {
+    "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+    "decoded_frames": 375,
+    "jpeg_shard_sha256": "c744eb6155f17977f7805525d66810f91d89a49351a4f925410d0b6fadfb73d7",
+    "camera_id": null,
+    "stored_wh": [
+      1280,
+      720
+    ],
+    "source_wh": [
+      1920,
+      1080
+    ],
+    "time_base": "1/12800",
+    "first_pts": 0,
+    "last_pts": 191488
+  }
+]

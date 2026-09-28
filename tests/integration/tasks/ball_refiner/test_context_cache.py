@@ -1,6 +1,7 @@
 """JPEG provenance, execution receipts and strict context-cache round trips."""
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import replace
@@ -29,6 +30,7 @@ from src.tasks.ball_refiner.refiner_2d import (
     refiner_2d_nll,
 )
 from src.utils.checksum import dual_sha256
+from tests.benchmarks.ball_refiner_context import verify_context
 from tests.integration.tasks.ball_refiner.test_evidence_cache import (
     cache_inputs as cache_inputs,
 )
@@ -200,3 +202,39 @@ def test_cli_rejects_relative_inputs_before_model_loading(tmp_path):
     ], capture_output=True, text=True, check=False)
     assert result.returncode != 0 and "All paths must be absolute" in result.stderr
     assert not (tmp_path / "out").exists()
+
+
+def test_context_verifier_loads_in_a_separate_process(evidence, tmp_path):
+    directory = generate_context_cache(evidence, output=tmp_path / "context", producer=FakeProducer(), clip_ids=None)
+    report = tmp_path / "verification.json"
+    root = Path(__file__).resolve().parents[4]
+    environment = dict(os.environ, PYTHONPATH=str(root))
+    command = [
+        sys.executable, str(root / "tests/benchmarks/ball_refiner_context.py"),
+        "--store", str(evidence.store.directory), "--evidence", str(evidence.directory),
+        "--context", str(directory), "--report", str(report), "--pose-threshold", ".15",
+    ]
+    for clip_id in evidence.clip_ids:
+        command.extend(["--clip-id", clip_id])
+    completed = subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(report.read_text())
+    assert result["status"] == "verified_context_load"
+    assert result["context_manifest_sha256"] == dual_sha256(directory / "manifest.json")
+    assert len(result["clips"]) == len(evidence.clip_ids)
+    assert all(row["tracks"] == 2 and row["court_valid_points"] == 14 for row in result["clips"])
+    assert all(row["model_context_provenance"]["pose_confidence_saturated_slots"] > 0 for row in result["clips"])
+    repeated = subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
+    assert repeated.returncode != 0 and "FileExistsError" in repeated.stderr
+
+
+def test_context_verifier_rejects_selection_and_changed_jpeg(evidence, tmp_path):
+    directory = generate_context_cache(evidence, output=tmp_path / "context", producer=FakeProducer(), clip_ids=None)
+    cache = ContextCache(directory, evidence)
+    for selected in ((), (*cache.clip_ids, "other"), (*cache.clip_ids, cache.clip_ids[0])):
+        with pytest.raises(ValueError, match="exactly the unique requested clips"):
+            verify_context(cache, selected, pose_threshold=.15)
+    with (evidence.store.directory / "shards/clip-00000.bin").open("ab") as stream:
+        stream.write(b"changed after generation")
+    with pytest.raises(ValueError, match="JPEG shard changed"):
+        verify_context(cache, cache.clip_ids, pose_threshold=.15)
