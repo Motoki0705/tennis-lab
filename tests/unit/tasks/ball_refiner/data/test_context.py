@@ -93,6 +93,7 @@ def test_raw_heatmap_peaks_have_an_explicit_recorded_bounded_transform(clip, tmp
     result = load_pipeline_context(clip, publish(tmp_path, clip, confidence=1.2), pose_threshold=0.5)
     assert result.pose is not None
     assert result.pose.confidence.max() == 1
+    assert result.provenance["pose_confidence_total_slots"] == 12
     assert result.provenance["pose_confidence_saturated_slots"] == 11
     assert result.provenance["pose_confidence_raw_max"] == pytest.approx(1.2)
 

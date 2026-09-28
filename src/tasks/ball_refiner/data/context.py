@@ -136,6 +136,7 @@ def load_pipeline_context(
         # The refiner's bounded feature contract uses an explicit saturation.
         confidence = np.minimum(raw_confidence, np.float32(1))
         provenance.update(pose_confidence_transform="nonnegative_heatmap_peak_saturate_at_one.v1",
+                          pose_confidence_total_slots=int(raw_confidence.size),
                           pose_confidence_saturated_slots=int((raw_confidence > 1).sum()),
                           pose_confidence_raw_max=float(raw_confidence.max(initial=0)))
         # Keep finite outside-image context, unlike downstream visibility gates.
