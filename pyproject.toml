@@ -93,6 +93,7 @@ namespaces = false
 
 [tool.setuptools.package-data]
 "src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
+"src.tennis_scene.chat_annotation.web" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tennis_scene.chat_annotation.artifacts" = ["Dockerfile", "Dockerfile.dockerignore", "compose.yaml"]
 "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
@@ -290,6 +291,7 @@ module = [
     "src.tasks.plcs.visualization.review.dataset_web",
     "src.tasks.plcs.visualization.inference.web",
     "src.tasks.plcs.visualization.review.web",
+    "src.tennis_scene.chat_annotation.web.app",
 ]
 disallow_untyped_decorators = false
 
