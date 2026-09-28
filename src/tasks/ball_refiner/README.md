@@ -13,6 +13,52 @@
   既存pipelineの三角測量はまだ切り替わっていない。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
 
+## 2DモデルのAPI
+
+| ファイル | 責務 |
+|---|---|
+| `refiner_2d/config.py` | モデル・分散範囲・dropout・ablation設定の正本 |
+| `refiner_2d/contracts.py` | 入力と教師のtyped契約 |
+| `refiner_2d/model_io.py` | float32入力の検証、mask処理、MDNの復号、model/adapterの構築 |
+| `refiner_2d/model.py` | 計算だけのforward。候補集合→時間→文脈→時間→MDN |
+| `refiner_2d/distribution.py` | GMM検証、条件付き密度、source画素への平均/共分散変換 |
+| `refiner_2d/loss.py` | 既知frameの重み付きjoint NLLとepoch集計用の和・分母 |
+
+`build_ball_refiner_2d(Refiner2DConfig(...))`は共通の`BoundModelIO`を返す。
+`pair.run(Refiner2DInput(...))`で検証→forward→復号し、
+`refiner_2d_nll(prediction, Refiner2DTarget(...)).loss.backward()`で学習できる。
+GPUへ移す場合はmodelと全入力tensorを同じdeviceへ明示的に配置する。
+入力は全て実frameで、時間paddingは受け付けない（教師maskで時間attentionのpaddingは代用できない）。
+候補は`BallCandidates`、poseのjoint軸はCOCO17の`[7,8,9,10]`、
+courtはframe 0の`(B,C,2)`、時刻はclip内の実秒`(B,T)`。
+pose/courtの画像外座標は有限値なら保持する。無効なcontext座標はmaskで除外する。
+検出器証拠が未生成な場合と、生成済みだが候補0件（全valid=false）は呼び出し側で区別する。
+
+`BallGMM2D`のconsumer向け契約は以下。Bの各行は独立した1camera-window、
+Tは元frame、Kは同じ球の代替位置仮説である。
+
+| property | shape | 意味 |
+|---|---|---|
+| `means` | B,T,K,2 | x/(W−1), y/(H−1)、[0,1] |
+| `covariance` | B,T,K,2,2 | 正規化uv²の対称正定値行列（相関あり） |
+| `weights` | B,T,K | 非負、成分軸の和が1、存在を条件とする重み |
+| `presence_probability` | B,T | [0,1]、画面内amodal存在 |
+
+学習用に同じobjectが`scale_tril`・`mixture_logits`・`presence_logits`を保持し、
+確率に丸めてからlogを取らない。`log_prob(uv)`は存在項を含まない条件付き密度。
+`pixel_moments(source_size_wh)`はcameraごとの`(B,2)`サイズを受け、
+平均をD倍、共分散をDΣDᵀへ変換する（D=diag(W−1,H−1)）。
+pixel log densityはuv log densityからlog((W−1)(H−1))を引く。
+モデル出力はAMP中もfloat32へ復号する。GMMのGaussian tailは画面外にも残る。
+極端なlogitから確率0/1が得られても学習ではlogitを維持する。
+
+教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
+存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
+`position_nll_sum / position_weight`を使い、位置教師0件ならN/Aとする。
+位置なしのframeに仮のuvで密度を評価せず、全教師なしbatchはエラーにする。
+検証例は[unit](../../../tests/unit/tasks/ball_refiner/refiner_2d)と
+[integration](../../../tests/integration/tasks/ball_refiner/test_refiner_2d.py)を参照。
+
 ## 学習戦略（#935、暫定設計）
 
 無人campaignの指示に従った暫定案であり、ユーザーの合意済みとは扱わない。
