@@ -11,7 +11,8 @@
   camera ID、正解座標、三角測量を渡さない。検出器の時間的な参照範囲は
   [証拠cache](#検出器の局所証拠)へ記録し、refinerのattention窓長と区別する。
 - 文脈なしの基準学習は[学習pilot](#文脈なし学習pilot)から実行する。
-  pipeline component・文脈あり学習・最終holdout評価は後続PRで実装する。
+  [専用pipeline recipe](../../tennis_scene/pipeline/README.md#2d-ball-refinerの専用recipe)は
+  未較正の文脈なしpilotを明示的に実行・保存する。文脈あり学習・最終holdout評価は後続PRで実装する。
   既存pipelineの三角測量はまだ切り替わっていない。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
 
@@ -68,7 +69,7 @@ modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送�
 重複窓は中心に最も近いもの、同点なら早い開始位置から全成分と存在logitをまとめて採用する。
 結果の`SequencePrediction.distribution`はCPUの`BallGMM2D`、`window_start/time_index/window_length`は
 各frameの採用窓を示す。混合成分を平均せず、推論前のmodelのtrain/eval状態を終了・例外時に復元する。
-学習時のvalidationもこの共通経路を使う。pipeline componentへの登録・永続保存はまだ後続である。
+学習時のvalidationもこの共通経路を使う。pipeline登録・永続保存は上記の専用recipeを参照。
 
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
@@ -381,3 +382,28 @@ checksumとMonte Carlo seedをmanifestへ残す。clip完了ごとに進捗を�
   evaluate.partition=calibration \
   run.output_dir=ball_refiner/evaluate/detector_only/<evaluation-run-id>
 ```
+
+## 推論bundleの書き出し
+
+`deployment.py`の`export_pilot_bundle`は、完了したpilotのbest checkpointとconfig・data manifest・
+選択結果のhashを照合して、`manifest.json`と`weights.pt`のimmutableなdirectoryを作る。
+推論に必要なmodel設定、検出器checkpointのhash・画像サイズ・正規化・候補設定・窓規則、
+refinerの窓長・strideを束ねる。既存directoryへの上書きと未完了runのexportは拒否する。
+学習data/cache/注釈は書き出しにもruntimeにも不要で、由来のpath/hashは記録だけに使う。
+
+`load_inference_bundle`はchecksumと全設定fieldを検証し、モデル構築は`load_model()`まで行わない。
+weightは`weights_only=True`で読み、有限値とstrictなstate dict復元を要求する。
+現在のbundle schemaは`use_detector=true, use_pose=false, use_court=false`の未較正pilot専用であり、
+文脈ありcheckpointを空pose/courtで実行しない。存在確率・共分散に補正を加えない。
+
+学習のJPEG storeとruntimeの元動画直接decodeは画素値が一致するとは限らない。
+bundleに両方のRGB経路を記録する。窓・座標・モデル設定の整合は保証するが、この媒体差の
+精度影響とdeploy採否は別評価で扱う。
+
+```bash
+.venv/bin/python -m src.tasks.ball_refiner.scripts.export_pilot \
+  --training-run <絶対output-root>/ball_refiner/train/detector_only/<training-run-id> \
+  --output <絶対checkpoint-root>/ball_refiner/<bundle-id>
+```
+
+pipelineの実行方法・保存schema・load-onlyは上記の専用recipeの文書が正本。
