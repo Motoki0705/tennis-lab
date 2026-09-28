@@ -1,20 +1,41 @@
+# Unified ball frame store (src/tasks/ball_detection/data/store.py), read by
+# BallStoreDataModule (data/store_datamodule.py). Remove a source with e.g.
+# `data.sources=[tracknet] data.train_sampling.source_weights='{tracknet: 1.0}'`.
 defaults:
   - augmentation: default
   - _self_
 
-source: tracknet
-data_dir: tennis/tracknet
+source: store
+# DATA-root-relative store version.
+data_dir: ${tennis_dataset:ball_detection,ball-mix-v1}
+# Store sources used for train, val and test.
+sources: [tracknet, meiji, chat_annotation]
 
-split:
-  root_role: project
-  train_file: src/tasks/ball_detection/configs/data/splits/train.txt
-  val_file: src/tasks/ball_detection/configs/data/splits/val.txt
-  test_file: src/tasks/ball_detection/configs/data/splits/test.txt
+# One epoch = windows_per_epoch train windows drawn with these exact source
+# proportions (null: every train window once, shuffled, natural proportions).
+train_sampling:
+  windows_per_epoch: 8000
+  seed: 1234
+  source_weights:
+    tracknet: 1.0
+    meiji: 1.0
+    chat_annotation: 1.0
+
+# Window starts every N frames (windows are model.num_frames long).
+train_stride: 1
+# Non-overlapping evaluation windows at the configured model length.
+eval_stride: null
+
+# Every point_kind gets exactly one role (data/supervision.py). A frame with an
+# `ignore` ball, or not reviewed, is excluded from the loss and the metrics.
+supervision:
+  positive: [observed]
+  absent: [out_of_frame]
+  ignore: [interpolated, occlusion_estimated, unresolved]
 
 batch_size: 4
 num_workers: 4
 pin_memory: true
-sample_stride: 4
 
 image_size: [288, 512]
 heatmap_size: [288, 512]

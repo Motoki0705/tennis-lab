@@ -111,6 +111,7 @@ def test_gt_trajectory_marks_frames_without_a_visible_ball_as_padding() -> None:
         target_heatmaps=torch.zeros(1, 3, 2, 2),
         coords=coords,
         visibility=visibility,
+        supervised=torch.ones(1, 3, dtype=torch.bool),
         original_size=torch.tensor([[11.0, 21.0]]),
     )
 
@@ -126,6 +127,8 @@ def test_test_prediction_payload_persists_tracknet_predictions_and_targets() -> 
     pred_heatmaps = torch.rand(2, 3, 4, 5)
     batch = {
         "coords": torch.rand(2, 3, 4, 2),
+        "supervised": torch.ones(2, 3, dtype=torch.bool),
+        "source": ["tracknet", "meiji"],
         "visibility": torch.ones(2, 3, 4),
         "original_size": torch.tensor([[1280.0, 720.0], [1280.0, 720.0]]),
         "heatmap_size": torch.tensor([[5.0, 4.0], [5.0, 4.0]]),
@@ -143,3 +146,21 @@ def test_test_prediction_payload_persists_tracknet_predictions_and_targets() -> 
     assert payload["target_visibility"] is batch["visibility"]
     assert payload["original_size"] is batch["original_size"]
     assert payload["heatmap_size"] is batch["heatmap_size"]
+
+
+def test_masked_focal_loss_ignores_unknown_frames_and_handles_empty_prefix() -> None:
+    from src.tasks.ball_detection.training.lightning_module import supervised_frame_mean
+    from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
+
+    focal = FocalBCEWithLogitsLoss(gamma=2.0)
+    logits = torch.randn(1, 3, 4, 5, requires_grad=True)
+    targets = torch.rand_like(logits)
+    mask = torch.tensor([[True, False, True]])
+    loss = supervised_frame_mean(focal.elementwise(logits, targets), mask)
+    torch.testing.assert_close(loss, focal(logits[:, [0, 2]], targets[:, [0, 2]]))
+    grad = torch.autograd.grad(loss, logits)[0]
+    assert grad[:, 1].count_nonzero() == 0
+    assert grad[:, [0, 2]].count_nonzero() > 0
+    empty = supervised_frame_mean(focal.elementwise(logits, targets), torch.zeros_like(mask))
+    assert empty.item() == 0.0 and torch.isfinite(empty)
+    assert torch.autograd.grad(empty, logits)[0].count_nonzero() == 0

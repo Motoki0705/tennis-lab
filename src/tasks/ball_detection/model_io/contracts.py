@@ -53,6 +53,7 @@ class BallTrainingCall:
     target_heatmaps: Tensor
     coords: Tensor
     visibility: Tensor
+    supervised: Tensor
     original_size: Tensor
 
 

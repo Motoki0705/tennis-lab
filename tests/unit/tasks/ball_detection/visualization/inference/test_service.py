@@ -34,7 +34,7 @@ def build_service(
     num_frames: int = 2,
 ) -> DetectionService:
     data_root = tmp_path / "data"
-    make_clip_dataset(data_root / "tennis" / "tracknet", clips=clips, frames=frames)
+    make_clip_dataset(data_root / "ball_detection" / "test-v1" / "tracknet", clips=clips, frames=frames)
     if make_web_store is not None:
         make_web_store(data_root)
     make_tiny_checkpoint(
@@ -62,9 +62,9 @@ def test_catalog_reports_sources_and_compatibility(
     assert catalog["task"] == "ball_detection"
     assert catalog["title"] == "Ball Detection"
     datasets = {entry["id"]: entry for entry in catalog["datasets"]}
-    assert datasets["tracknet"]["available"] is True
-    assert datasets["tracknet"]["count"] == 2
-    assert datasets["tracknet"]["mode"] == "temporal"
+    assert datasets["store/test-v1"]["available"] is True
+    assert datasets["store/test-v1"]["count"] == 2
+    assert datasets["store/test-v1"]["mode"] == "temporal"
     assert datasets["web_static"]["available"] is False
     assert "reason" in datasets["web_static"]
     assert any("web_static" in warning for warning in catalog["warnings"])
@@ -74,7 +74,7 @@ def test_catalog_reports_sources_and_compatibility(
     assert checkpoint["model"] == "conv_next_unet"
     assert checkpoint["settings"] == {"count": 2, "threshold": 0.5}
     assert checkpoint["window"] == {"min": 2, "max": 2}
-    assert checkpoint["compatible_datasets"] == ["tracknet"]
+    assert checkpoint["compatible_datasets"] == ["store/test-v1"]
 
 
 def test_catalog_reports_unusable_checkpoint(
@@ -82,7 +82,7 @@ def test_catalog_reports_unusable_checkpoint(
     make_clip_dataset: Callable[..., Path],
 ) -> None:
     data_root = tmp_path / "data"
-    make_clip_dataset(data_root / "tennis" / "tracknet")
+    make_clip_dataset(data_root / "ball_detection" / "test-v1" / "tracknet")
     broken = tmp_path / "outputs" / "ball_detection" / "broken.ckpt"
     broken.parent.mkdir(parents=True)
     broken.write_text("not a checkpoint", encoding="utf-8")
@@ -99,7 +99,7 @@ def test_catalog_reports_unusable_checkpoint(
     assert "error" in entry
     assert any("broken.ckpt" in warning for warning in catalog["warnings"])
     with pytest.raises(DetectionRequestError, match="unusable"):
-        service.validate("broken.ckpt", "tracknet::game1/Clip1", device="cpu")
+        service.validate("broken.ckpt", "store/test-v1::tracknet/game1/Clip1", device="cpu")
 
 
 def test_scenes_paging_search_and_checkpoint_filter(
@@ -112,23 +112,23 @@ def test_scenes_paging_search_and_checkpoint_filter(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    page = service.scenes("tracknet", limit=1)
+    page = service.scenes("store/test-v1", limit=1)
     assert page["total"] == 2
-    assert [item["id"] for item in page["items"]] == ["tracknet::game1/Clip1"]
-    second = service.scenes("tracknet", offset=1, limit=1)
-    assert [item["id"] for item in second["items"]] == ["tracknet::game1/Clip2"]
-    assert service.scenes("tracknet", search="clip2")["total"] == 1
-    assert service.scenes("tracknet", search="nope")["total"] == 0
-    assert service.scenes("tracknet", checkpoint="run-local.ckpt")["total"] == 2
+    assert [item["id"] for item in page["items"]] == ["store/test-v1::tracknet/game1/Clip1"]
+    second = service.scenes("store/test-v1", offset=1, limit=1)
+    assert [item["id"] for item in second["items"]] == ["store/test-v1::tracknet/game1/Clip2"]
+    assert service.scenes("store/test-v1", search="clip2")["total"] == 1
+    assert service.scenes("store/test-v1", search="nope")["total"] == 0
+    assert service.scenes("store/test-v1", checkpoint="run-local.ckpt")["total"] == 2
 
     with pytest.raises(DetectionRequestError, match="Unknown dataset"):
         service.scenes("missing")
     with pytest.raises(DetectionRequestError, match="cannot run on dataset"):
         service.scenes("web_static", checkpoint="run-local.ckpt")
     with pytest.raises(DetectionRequestError, match="offset"):
-        service.scenes("tracknet", offset=-1)
+        service.scenes("store/test-v1", offset=-1)
     with pytest.raises(DetectionRequestError, match="limit"):
-        service.scenes("tracknet", limit=0)
+        service.scenes("store/test-v1", limit=0)
 
 
 def test_preview_returns_original_pixel_labels_without_rasters(
@@ -141,13 +141,13 @@ def test_preview_returns_original_pixel_labels_without_rasters(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    preview = service.preview("tracknet::game1/Clip1", start=1, count=2)
-    assert preview["scene"] == "tracknet::game1/Clip1"
-    assert preview["label"] == "game1/Clip1"
+    preview = service.preview("store/test-v1::tracknet/game1/Clip1", start=1, count=2)
+    assert preview["scene"] == "store/test-v1::tracknet/game1/Clip1"
+    assert preview["label"] == "tracknet/game1/Clip1 [train]"
     assert preview["frames"] == 6
     assert (preview["width"], preview["height"]) == (64, 48)
     assert [item["index"] for item in preview["items"]] == [1, 2]
-    assert [item["name"] for item in preview["items"]] == ["0001.jpg", "0002.jpg"]
+    assert [item["name"] for item in preview["items"]] == ["tracknet/game1/Clip1:1", "tracknet/game1/Clip1:2"]
     point = preview["items"][0]["gt"]["points"][0]
     assert (point["x"], point["y"]) == (11.0, 21.0)
     assert point["label"] == "b001"
@@ -166,7 +166,7 @@ def test_preview_rejects_bad_ranges_and_unknown_scene(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    scene = "tracknet::game1/Clip1"
+    scene = "store/test-v1::tracknet/game1/Clip1"
     with pytest.raises(DetectionRequestError, match="exceeds"):
         service.preview(scene, start=5, count=2)
     with pytest.raises(DetectionRequestError, match="count must be within"):
@@ -176,7 +176,7 @@ def test_preview_rejects_bad_ranges_and_unknown_scene(
     with pytest.raises(DetectionRequestError, match="non-negative"):
         service.preview(scene, start=-1, count=1)
     with pytest.raises(DetectionRequestError, match="Unknown scene"):
-        service.preview("tracknet::game1/Clip999", start=0, count=1)
+        service.preview("store/test-v1::tracknet/game1/Clip999", start=0, count=1)
     with pytest.raises(DetectionRequestError, match="must look like"):
         service.preview("no-separator", start=0, count=1)
 
@@ -191,7 +191,7 @@ def test_jpeg_image_is_served_in_original_resolution(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    payload = service.image("tracknet::game1/Clip1", 2)
+    payload = service.image("store/test-v1::tracknet/game1/Clip1", 2)
     assert payload[:2] == b"\xff\xd8"
     decoded = np.frombuffer(payload, dtype=np.uint8)
     import cv2
@@ -200,7 +200,7 @@ def test_jpeg_image_is_served_in_original_resolution(
     assert frame is not None
     assert frame.shape[:2] == (48, 64)
     with pytest.raises(DetectionRequestError, match="out of range"):
-        service.image("tracknet::game1/Clip1", 6)
+        service.image("store/test-v1::tracknet/game1/Clip1", 6)
 
 
 def test_validate_enforces_window_contract(
@@ -213,7 +213,7 @@ def test_validate_enforces_window_contract(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    scene = "tracknet::game1/Clip1"
+    scene = "store/test-v1::tracknet/game1/Clip1"
     service.validate("run-local.ckpt", scene, start=4, count=2, device="cpu")
     with pytest.raises(DetectionRequestError, match="Unknown checkpoint"):
         service.validate("missing.ckpt", scene, device="cpu")
@@ -249,7 +249,7 @@ def test_cuda_request_without_cuda_is_rejected(
     )
     with pytest.raises(DetectionRequestError, match="CUDA is unavailable"):
         service.validate(
-            "run-local.ckpt", "tracknet::game1/Clip1", count=2, device="cuda"
+            "run-local.ckpt", "store/test-v1::tracknet/game1/Clip1", count=2, device="cuda"
         )
 
 
@@ -263,8 +263,8 @@ def test_infer_runs_real_tiny_model_and_returns_scaled_points(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    result = service.infer("run-local.ckpt", "tracknet::game1/Clip1", start=1, count=2, device="cpu")
-    assert result["scene"] == "tracknet::game1/Clip1"
+    result = service.infer("run-local.ckpt", "store/test-v1::tracknet/game1/Clip1", start=1, count=2, device="cpu")
+    assert result["scene"] == "store/test-v1::tracknet/game1/Clip1"
     assert result["start"] == 1
     assert [item["index"] for item in result["items"]] == [1, 2]
     for item in result["items"]:
@@ -304,7 +304,7 @@ def test_infer_static_scene_repeats_frame_and_labels_it(
         make_web_store=make_web_store,
     )
     assert service.catalog()["checkpoints"][0]["compatible_datasets"] == [
-        "tracknet",
+        "store/test-v1",
         "web_static",
         "web_temporal",
     ]
@@ -353,7 +353,7 @@ def test_infer_uses_checkpoint_image_size_and_accepts_tiny_windows(
         "src.tasks.ball_detection.visualization.inference.service.load_ball_model",
         spy,
     )
-    result = service.infer("run-local.ckpt", "tracknet::game1/Clip1", start=0, count=2, device="cpu")
+    result = service.infer("run-local.ckpt", "store/test-v1::tracknet/game1/Clip1", start=0, count=2, device="cpu")
     assert seen["size"] == (64, 128)
     assert len(result["items"]) == 2
 
@@ -368,7 +368,7 @@ def test_infer_reports_missing_ground_truth_without_inventing_points(
         make_clip_dataset=make_clip_dataset,
         make_tiny_checkpoint=make_tiny_checkpoint,
     )
-    result = service.infer("run-local.ckpt", "tracknet::game1/Clip1", start=0, count=2, device="cpu")
+    result = service.infer("run-local.ckpt", "store/test-v1::tracknet/game1/Clip1", start=0, count=2, device="cpu")
     # GT lives in the preview payload only; inference items carry predictions.
     assert set(result["items"][0]) == {"index", "pred"}
     assert set(result["items"][0]["pred"]) == {"points", "rasters"}
@@ -402,7 +402,7 @@ def test_shared_app_serves_catalog_preview_image_and_cpu_inference(
     assert catalog["task"] == "ball_detection"
     assert catalog["mode"] == "inference"
 
-    scenes = client.get("/api/scenes", params={"dataset": "tracknet"}).json()
+    scenes = client.get("/api/scenes", params={"dataset": "store/test-v1"}).json()
     assert scenes["total"] == 2
     scene = scenes["items"][0]["id"]
     preview = client.get("/api/preview", params={"scene": scene, "count": 2}).json()
@@ -444,7 +444,7 @@ def test_shared_app_rejects_invalid_request_before_inference(
         "/api/infer",
         json={
             "checkpoint": "run-local.ckpt",
-            "scene": "tracknet::game1/Clip1",
+            "scene": "store/test-v1::tracknet/game1/Clip1",
             "start": 0,
             "count": 3,
             "device": "cpu",
@@ -457,7 +457,7 @@ def test_shared_app_rejects_invalid_request_before_inference(
     assert (
         review_client.post(
             "/api/infer",
-            json={"checkpoint": "run-local.ckpt", "scene": "tracknet::game1/Clip1"},
+            json={"checkpoint": "run-local.ckpt", "scene": "store/test-v1::tracknet/game1/Clip1"},
         ).status_code
         == 403
     )
@@ -474,7 +474,7 @@ def test_scenes_filter_clips_shorter_than_the_checkpoint_window(
     from tests.unit.tasks.ball_detection.visualization.conftest import write_clip
 
     data_root = tmp_path / "data"
-    game = data_root / "tennis" / "tracknet" / "game1"
+    game = data_root / "ball_detection" / "test-v1" / "tracknet" / "game1"
     # Clip1 holds a single frame, Clip2 holds three; the checkpoint needs two.
     for name, frames in (("Clip1", 1), ("Clip2", 3)):
         write_clip(
@@ -501,21 +501,21 @@ def test_scenes_filter_clips_shorter_than_the_checkpoint_window(
         checkpoints_root=tmp_path / "ckpt" / "ball_detection",
     )
 
-    unfiltered = service.scenes("tracknet", limit=10)
+    unfiltered = service.scenes("store/test-v1", limit=10)
     assert unfiltered["total"] == 2
     assert sorted(item["frames"] for item in unfiltered["items"]) == [1, 3]
 
-    filtered = service.scenes("tracknet", limit=10, checkpoint="run-local.ckpt")
+    filtered = service.scenes("store/test-v1", limit=10, checkpoint="run-local.ckpt")
     assert filtered["total"] == 1
     assert filtered["items"][0]["frames"] == 3
-    assert filtered["items"][0]["id"] == "tracknet::game1/Clip2"
+    assert filtered["items"][0]["id"] == "store/test-v1::tracknet/game1/Clip2"
 
     # The dataset stays compatible overall, and the search interacts with the
     # filter instead of bypassing it.
     catalog = service.catalog()
-    assert catalog["checkpoints"][0]["compatible_datasets"] == ["tracknet"]
+    assert catalog["checkpoints"][0]["compatible_datasets"] == ["store/test-v1"]
     assert (
-        service.scenes("tracknet", search="Clip1", checkpoint="run-local.ckpt")["total"]
+        service.scenes("store/test-v1", search="Clip1", checkpoint="run-local.ckpt")["total"]
         == 0
     )
 
@@ -537,7 +537,7 @@ def _write_partially_labelled_clip(tmp_path: Path, *, frames: int = 5) -> None:
         for index in (0, 1, 2)
     ]
     write_clip(
-        tmp_path / "data" / "tennis" / "tracknet" / "game1" / "Clip1",
+        tmp_path / "data" / "ball_detection" / "test-v1" / "tracknet" / "game1" / "Clip1",
         frames=frames,
         rows=rows,
     )
@@ -562,7 +562,7 @@ def test_missing_annotation_rows_are_warned_and_not_treated_as_negatives(
     tmp_path: Path, make_tiny_checkpoint: Callable[..., Path]
 ) -> None:
     service = _partial_service(tmp_path, make_tiny_checkpoint)
-    scene = "tracknet::game1/Clip1"
+    scene = "store/test-v1::tracknet/game1/Clip1"
     preview = service.preview(scene, start=0, count=5)
     assert [item["annotated"] for item in preview["items"]] == [
         True,
@@ -600,39 +600,19 @@ def test_missing_annotation_rows_are_warned_and_not_treated_as_negatives(
     assert all("no annotation row" in text for text in unlabelled["warnings"])
 
 
-def test_non_finite_label_is_rejected_instead_of_emitting_nan(
-    tmp_path: Path,
-) -> None:
-    from tests.unit.tasks.ball_detection.visualization.conftest import write_clip
-
-    write_clip(
-        tmp_path / "data" / "tennis" / "tracknet" / "game1" / "Clip1",
-        frames=2,
-        rows=[
-            {
-                "file name": "0000.jpg",
-                "instance id": "b001",
-                "visibility": 1,
-                "x-coordinate": float("nan"),
-                "y-coordinate": 20.0,
-            },
-            {
-                "file name": "0001.jpg",
-                "instance id": "b001",
-                "visibility": 1,
-                "x-coordinate": 11.0,
-                "y-coordinate": float("inf"),
-            },
-        ],
-    )
-    service = DetectionService(
-        tmp_path,
-        data_root=tmp_path / "data",
-        outputs_root=tmp_path / "outputs" / "ball_detection",
-        checkpoints_root=tmp_path / "ckpt" / "ball_detection",
-    )
-    with pytest.raises(DetectionRequestError, match="non-finite"):
-        service.preview("tracknet::game1/Clip1", start=0, count=2)
+def test_non_finite_label_is_rejected_instead_of_emitting_nan(tmp_path: Path) -> None:
+    from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+    root = write_store_clip(tmp_path / "data/ball_detection/test-v1", "tracknet/game1/Clip1", [frame(0, ball())])
+    with np.load(root / "index.npz") as archive:
+        columns = {name: archive[name] for name in archive.files}
+    columns["xy"][0, 0] = np.nan
+    np.savez(root / "index.npz", **columns)
+    service = DetectionService(tmp_path, data_root=tmp_path / "data")
+    entries = {entry["id"]: entry for entry in service.catalog()["datasets"]}
+    assert not entries["store/test-v1"]["available"]
+    assert "NaN positions" in entries["store/test-v1"]["reason"]
+    with pytest.raises(DetectionRequestError, match="Unknown scene"):
+        service.preview("store/test-v1::tracknet/game1/Clip1", start=0, count=1)
 
 
 # ------------------------------------------------------ 6) static aggregation
@@ -703,3 +683,27 @@ def test_static_repeat_aggregates_to_one_unique_frame(
         assert actual["x"] == pytest.approx(wanted["x"], abs=1e-4)
         assert actual["y"] == pytest.approx(wanted["y"], abs=1e-4)
         assert actual["score"] == pytest.approx(wanted["score"], abs=1e-6)
+
+
+def test_reviewed_unresolved_and_estimated_labels_are_displayed_but_not_scored(
+    tmp_path: Path, make_tiny_checkpoint: Callable[..., Path],
+) -> None:
+    from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+
+    write_store_clip(tmp_path / 'data/ball_detection/test-v1', 'meiji/clip/cam0', [
+        frame(0, ball()), frame(1, ball('unresolved', None)),
+        frame(2, ball('interpolated')), frame(3, ball('out_of_frame', None)),
+    ], source='meiji')
+    make_tiny_checkpoint(tmp_path / 'ckpt/ball_detection/tiny.ckpt', num_frames=4)
+    service = DetectionService(tmp_path, data_root=tmp_path / 'data')
+    scene = 'store/test-v1::meiji/clip/cam0'
+    preview = service.preview(scene, count=4)
+    assert [item['annotated'] for item in preview['items']] == [True] * 4
+    assert [item['supervised'] for item in preview['items']] == [True, False, False, True]
+    points = [item['gt']['points'][0] for item in preview['items']]
+    assert [point['state'] for point in points] == ['observed', 'unresolved', 'interpolated', 'out_of_frame']
+    assert not points[1]['visible'] and points[2]['visible']
+    result = service.infer('ckpt/ball_detection/tiny.ckpt', scene, count=4, device='cpu')
+    assert result['metrics']['scored_frames'] == [0, 3]
+    assert result['metrics']['excluded_frames'] == [1, 2]
+    assert all('reviewed labels' in warning for warning in result['warnings'])

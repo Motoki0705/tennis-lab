@@ -123,7 +123,7 @@ compile:
 - **`dataset_samples.py`**: PLCS/BLCS共通の3×3層化選択、時間間引き、GIF検証、`samples/manifest.json`契約。
 
 ### visualization/
-- **`preview.py`**: dataset previewスクリプト共通helper(`resolve_split_file`/`resolve_sample_indices`等)のcanonical owner。
+- **`preview.py`**: dataset previewスクリプト共通helper(`resolve_sample_indices`等)のcanonical owner。
 - **`frames.py`**: 画像ソース読込(`load_rgb_frames`等)。
 - **`gif.py`**: `save_gif()`。共通GIF writer。
 - **`io.py`**: `BaseSceneBundle`/`resolve_cameras()`。カメラ選択解決の共通ロジック。

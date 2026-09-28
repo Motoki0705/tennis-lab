@@ -7,7 +7,7 @@ defaults:
 data:
   t_max: 1
   sources:
-    tracknet:
+    store:
       enabled: true
     web:
       enabled: true

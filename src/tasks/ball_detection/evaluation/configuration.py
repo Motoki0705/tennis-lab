@@ -9,6 +9,7 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_detection.evaluation.contracts import DatasetSpec, MetricsSpec
+from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
 from src.utils.configuration import PathResolver, PathRole
 
 _CONFIG_ROOT = Path("src/tasks/ball_detection/configs")
@@ -89,11 +90,22 @@ def build_evaluation_config(
         overrides=dataset_spec.overrides,
         resolver=resolver,
     )
+    # The manifest owns runtime paths; checkpoints only own model/preprocessing.
+    # In particular ft-e13 predates the paths and training configuration schema.
+    normalization = BallImageNormalization.from_config(checkpoint_config)
+    data_config.augmentation.normalize_imagenet = {
+        "enabled": normalization.enabled,
+        "mean": list(normalization.mean),
+        "std": list(normalization.std),
+    }
     evaluation_config = _require_dict_config(
-        OmegaConf.create(OmegaConf.to_container(checkpoint_config, resolve=True)),
+        OmegaConf.create({
+            "paths": dict(resolver.roots.as_mapping()),
+            "model": OmegaConf.to_container(checkpoint_config.model, resolve=False),
+            "data": data_config,
+        }),
         context="Checkpoint evaluation config",
     )
-    evaluation_config.data = data_config
     evaluation_config.metrics = OmegaConf.create(
         {
             "peak_threshold": metrics_spec.peak_threshold,

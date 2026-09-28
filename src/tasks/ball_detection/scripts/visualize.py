@@ -2,7 +2,7 @@
 
 Usage:
     python -m src.tasks.ball_detection.scripts.visualize
-    python -m src.tasks.ball_detection.scripts.visualize visualization.clip_dir=data/tennis/tracknet/game1/Clip1
+    python -m src.tasks.ball_detection.scripts.visualize visualization.clip_id=tracknet/game1/Clip1
     python -m src.tasks.ball_detection.scripts.visualize visualization.save=assets/ball_detection/custom_clip.gif
 
 Notes:

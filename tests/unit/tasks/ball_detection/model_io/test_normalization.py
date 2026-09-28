@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Literal
 
 import pytest
 import torch
@@ -15,7 +16,7 @@ from tests.unit.tasks.ball_detection.model_io.test_adapters import _rgb_adapter
 @pytest.mark.parametrize("mode", ["rgb", "mdd"])
 @pytest.mark.parametrize("layout", ["btchw", "bcthw"])
 def test_raw_inference_and_dataset_preprocessed_training_have_same_model_input(
-    mode: str, layout: str,
+    mode: Literal["rgb", "mdd"], layout: Literal["btchw", "bcthw"],
 ) -> None:
     adapter = _rgb_adapter()
     adapter.spec = replace(adapter.spec, input_mode=mode, input_layout=layout,
@@ -39,6 +40,7 @@ def test_raw_inference_and_dataset_preprocessed_training_have_same_model_input(
         expected = expected.permute(0, 2, 1, 3, 4)
     inference = adapter.prepare_images(raw, image_normalization=normalization)
     training = adapter.prepare_training_batch({
+        "supervised": torch.ones(1, 3, dtype=torch.bool),
         "images": prepared, "heatmaps": torch.zeros(1, 3, 2, 2),
         "coords": torch.zeros(1, 3, 1, 2), "visibility": torch.ones(1, 3, 1, dtype=torch.bool),
         "original_size": torch.tensor([[2, 2]]),
