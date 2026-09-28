@@ -133,3 +133,15 @@ def test_producer_requires_explicit_dino_and_matching_devices(setup):
         module.StoredJPEGContextProducer(people=replace(producer.people, detector="yolo"), court=producer.court, max_tracks=4)
     with pytest.raises(ValueError, match="common model device"):
         module.StoredJPEGContextProducer(people=producer.people, court=replace(producer.court, device="cuda"), max_tracks=4)
+
+
+def test_context_identity_requires_extension_preflight_before_model_load(setup, monkeypatch):
+    _, producer, state = setup
+
+    def incompatible():
+        raise RuntimeError("stale DINO extension")
+
+    monkeypatch.setattr(module, "validate_dino_extension", incompatible)
+    with pytest.raises(RuntimeError, match="stale DINO extension"):
+        producer.identity()
+    assert state["detections"] == state["pose"] == state["court"] == 0
