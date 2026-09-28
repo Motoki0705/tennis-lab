@@ -1,0 +1,16 @@
+{
+  "run_id": "1790591062317536872_220077_i935-evidence-ft-e13-trainval-r3-20260928",
+  "name": "i935-evidence-ft-e13-trainval-r3-20260928",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.generate_evidence --store /home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1 --checkpoint /home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt --output /home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928 --sources tracknet meiji chat_annotation --splits train val --device cuda --stride 4 --batch-size 4 --max-candidates 8 --nms-kernel 5 --patch-size 5 --subpixel-refine",
+  "provider": "codex",
+  "session": "01a0e774-c56b-7721-b7a3-bd247184720b",
+  "issue": "935",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "c873f0b8e2b8e2c683d3a19ae83bfc74272431a9",
+  "branch": "campaign930/i935-3-cache-training",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training",
+  "captured_at": "2026-09-28T19:24:28+09:00"
+}
