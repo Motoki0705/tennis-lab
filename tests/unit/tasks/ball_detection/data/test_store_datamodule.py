@@ -90,9 +90,10 @@ def test_mixed_loader_split_isolation_and_masked_targets(tmp_path: Path) -> None
             dataset.store.clips[window.clip].split for window in dataset.windows
         } == {split}
     batches = list(module.train_dataloader())
+    assert len(batches[-1]["source"]) == 1  # Keep the epoch quota in the partial batch.
     assert Counter(source for batch in batches for source in batch["source"]) == {
         "tracknet": 4,
-        "meiji": 4,
+        "meiji": 5,
     }
     assert module.val_dataset is not None
     sample = module.val_dataset[0]
