@@ -1,0 +1,37 @@
+[
+  {
+    "source": "/home/kamimura/projects/tennis-lab/.training_queue/done/1790607540611769143_752035_i935-context-shard-00201-chat-r12-20260928.job",
+    "file": "queue.job",
+    "sha256": "4b4d9589806b643f9731f825c007814a37a7d95511ccce5a67e198d562a8b9f6"
+  },
+  {
+    "source": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1790607540611769143_752035_i935-context-shard-00201-chat-r12-20260928.log",
+    "file": "queue.log",
+    "sha256": "6bb82aeebbc0474ce8dae82bbab3e33740666752e763fe70e604df00270fdd6d"
+  },
+  {
+    "source": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/shard-00201-a1/context-verification.json",
+    "file": "context-verification.json",
+    "sha256": "b3dee10b59f6ecc3019c2c2e1eeaf3076c3978345e2fc27298f8a46e09fb7976"
+  },
+  {
+    "source": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/shard-00201-a1/manifest.json",
+    "file": "context-manifest.json",
+    "sha256": "4aab9d7ebaff7c6979a6c2595a6cba7cc4f34068e45315e8dc92e67c7e6a62a6"
+  },
+  {
+    "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards/outputs/campaign_930/i935/run13/audit-00201/audit.json",
+    "file": "audit.json",
+    "sha256": "6f7fcb2e99e9cf73da638f0f23db568ea28dac86d11055461684963b5a427b89"
+  },
+  {
+    "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards/outputs/campaign_930/i935/run13/audit-00201/clip-00281-context.jpg",
+    "file": "clip-00281-context.jpg",
+    "sha256": "d640563406843aa8b966d2fad506fa106206d1b7065b0297bf22f0b8a0e0252b"
+  },
+  {
+    "source": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/shard-00201-a1/clips/clip-00281.npz",
+    "file": "clips/clip-00281.npz",
+    "sha256": "212979b4b2557aebb71099350fd44fd3e2d28a5419addb9548b199ee69731c5c"
+  }
+]
