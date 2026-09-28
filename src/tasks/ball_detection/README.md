@@ -42,7 +42,7 @@
 ### training/
 - **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
 - **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
-- **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築の薄いアダプタ。
+- **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築と、2D detectorのweights-only初期化。3D court metadataを要求せず、module全体の重みをstrictに復元する（GAN有効時のdiscriminatorも含む）。不完全な重み転送は拒否する。
 - **`staged_calibration.py`**: `probe_batch_size_by_t()`。`T` ごとのOOM較正でバッチサイズを決定。
 - **`staged_lightning_module.py`**: `StagedBallDetectionLightningModule`。手動最適化による可変T勾配蓄積学習。
 - **`staged_runner.py`**: `StagedBallDetectionTrainingRunner`。フェーズ間のOOM較正とweightのみ引き継ぎを制御。
@@ -211,3 +211,24 @@ YouTube手動注釈ツールは `clip.json` を保存するが、旧学習用CSV
 YouTubeの既存データとWebのstore変換はこの移行の対象外。
 旧checkpointの推論は保存済みmodel/正規化契約のまま利用できる。学習再開には新しい
 store設定を使い、旧data設定への自動フォールバックは行わない。
+
+### Meiji混合FT
+
+`configs/train_meiji_mixed.yaml` はft-e13からのweights-only FTを定義する。
+モデル・入力前処理は既存設定を引き継ぎ、storeの3 sourceを等比率で混ぜる。
+epoch budget・seed・学習率・checkpoint選択条件は同configを正本とする。
+Meijiのsplitはstoreのmetadataに従い、教師方針は `data.supervision` に従う。
+
+元repoのdata/checkpoint/output rootを明示し、共有training queueから実行する:
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.train --config-name train_meiji_mixed \
+    paths.project_root=<worktree> paths.data_root=<元repo>/data \
+    paths.checkpoint_root=<元repo>/ckpt paths.output_root=<元repo>/outputs \
+    paths.artifact_root=<元repo>/outputs paths.cache_root=<元repo>/.cache \
+    paths.external_asset_root=<元repo>/third_party
+```
+
+validationの窓はcheckpoint選択用であり、全frameのholdout評価とは区別する。
+`test_after_fit=false` により最終epochの自動testを止め、選択済みcheckpointとft-e13を
+同じ全frame・同じ復号条件で別途比較する。比較完了まではdeployを更新しない。

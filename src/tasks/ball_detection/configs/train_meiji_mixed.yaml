@@ -1,0 +1,49 @@
+# #934: weights-only adaptation of deployed ft-e13 on the three-source store.
+# Meiji split and annotation provenance are owned by the store metadata.
+defaults:
+  - train
+  - override model: conv_next_unet
+  - _self_
+
+paths:
+  checkpoint_root: ckpt
+
+data:
+  batch_size: 4
+  num_workers: 4
+  heatmap_size: [72, 128]
+  train_sampling:
+    windows_per_epoch: 7680
+    seed: ${run.seed}
+    source_weights:
+      tracknet: 1.0
+      meiji: 1.0
+      chat_annotation: 1.0
+
+# Preserve ft-e13's native-grid decode during checkpoint selection.
+# These are stored-image pixels; full holdout reporting uses source pixels.
+metrics:
+  nms_kernel: 3
+
+training:
+  learning_rate: 2.0e-5
+  trainer:
+    max_epochs: 12
+    enable_progress_bar: false
+  # Keep the first mixed-source run independent of compilation/cache state.
+  compile:
+    enabled: false
+  checkpoint:
+    monitor: val/f1
+    mode: max
+    save_top_k: 1
+  qualitative_logging:
+    every_n_epochs: 4
+
+run:
+  seed: 42
+  init_weights: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+  output_dir: ${tennis_output:ball_detection,train,i934_mixed_ft,${tennis_run_id:}}
+  # Evaluate the validation-selected checkpoint separately, with full-frame
+  # coverage and camera/visibility/wrist-distance strata. Do not score last.
+  test_after_fit: false
