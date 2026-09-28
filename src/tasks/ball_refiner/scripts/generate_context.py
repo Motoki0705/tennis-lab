@@ -7,13 +7,10 @@ import json
 import os
 from pathlib import Path
 
-from omegaconf import DictConfig, OmegaConf
-
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_refiner.data.context_cache import generate_context_cache
-from src.tasks.ball_refiner.data.context_inference import StoredJPEGContextProducer
+from src.tasks.ball_refiner.data.context_inference import load_context_producer
 from src.tasks.ball_refiner.data.evidence_cache import EvidenceCache
-from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.utils.configuration import (
     BoundaryPathField,
@@ -55,13 +52,7 @@ def main() -> None:
         external_asset_root=PROJECT_ROOT / "third_party",
     )
     paths = PATH_BOUNDARY.validate({name: getattr(args, name) for name in names}, resolver=PathResolver(roots))
-    config = OmegaConf.load(paths.declared("scene_config").path)
-    if not isinstance(config, DictConfig):
-        raise TypeError("scene_config must contain the complete composed scene configuration")
-    # Use the scene's strict adapters and canonical model defaults. Only
-    # court/people are executed; source cameras and scene reconstruction are not.
-    scene = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
-    producer = StoredJPEGContextProducer(people=scene.people, court=scene.court_kp, max_tracks=args.max_tracks)
+    producer = load_context_producer(paths.declared("scene_config").path, max_tracks=args.max_tracks)
     evidence = EvidenceCache(paths.declared("evidence").path, BallFrameStore(paths.declared("store").path))
     selected = evidence.clip_ids if args.clip_id is None else tuple(args.clip_id)
     if not selected or len(set(selected)) != len(selected) or not set(selected) <= set(evidence.clip_ids):
