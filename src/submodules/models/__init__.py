@@ -38,6 +38,7 @@ from src.submodules.models.tracker.dino_tracker import (
 )
 from src.submodules.models.tracker.yolo_tracker import YoloPersonTracker
 from src.submodules.models.vitpose.pose2d import (
+    Pose2DFrameSequenceRequest,
     Pose2DRequest,
     Pose2DResult,
     ViTPosePose2D,
@@ -56,6 +57,7 @@ __all__ = [
     "ImageFeatureResult",
     "PersonDetectionRequest",
     "PersonDetectionResult",
+    "Pose2DFrameSequenceRequest",
     "Pose2DRequest",
     "Pose2DResult",
     "SmplCoco17Reconstructor",
