@@ -21,13 +21,13 @@ from src.utils.data.augmentation import normalize_frames_imagenet
 REPO_ROOT = Path("/home/kamimura/projects/tennis-lab")
 DATA_ROOT = REPO_ROOT / "data"
 CURATED_CHECKPOINT = REPO_ROOT / "ckpt" / "ball_detection"
-TRACKNET_CLIP = DATA_ROOT / "tennis" / "tracknet" / "game1" / "Clip1"
+BALL_STORE = DATA_ROOT / "ball_detection" / "ball-mix-v1"
 
 pytestmark = [
     pytest.mark.local_data,
     pytest.mark.skipif(
-        not TRACKNET_CLIP.is_dir(),
-        reason="TrackNet dataset is unavailable",
+        not BALL_STORE.is_dir(),
+        reason="Unified ball store is unavailable",
     ),
 ]
 
@@ -60,7 +60,7 @@ def test_cpu_window_matches_dataset_preprocessing_and_original_pixels() -> None:
     service = DetectionService(REPO_ROOT)
     info = curated_checkpoint(service)
     checkpoint = info.id
-    scenes = service.scenes("tracknet", limit=1)
+    scenes = service.scenes("store/ball-mix-v1", search="tracknet/game1/Clip1", limit=1)
     if not scenes["items"]:
         pytest.skip("No TrackNet scene is available")
     scene = scenes["items"][0]["id"]

@@ -1,122 +1,97 @@
-"""Deterministic exact-ratio batch sampling for two supervised sources."""
+"""Deterministic per-epoch source mixing for the training loader."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 
-import torch
+import numpy as np
 from torch.utils.data import Sampler
 
 
-class ExactSourceMixBatchSampler(Sampler[list[int]]):
-    """Draw fixed-size batches with a deterministic synthetic schedule.
+def allocate_counts(total: int, weights: Mapping[str, float]) -> dict[str, int]:
+    """Split ``total`` draws over sources proportionally (largest remainder)."""
+    if total <= 0:
+        raise ValueError("total must be positive")
+    if not weights or any(
+        not np.isfinite(weight) or weight <= 0 for weight in weights.values()
+    ):
+        raise ValueError("Every source weight must be positive")
+    weight_sum = float(sum(weights.values()))
+    if not np.isfinite(weight_sum):
+        raise ValueError("Sum of source weights must be finite")
+    exact = {name: total * weight / weight_sum for name, weight in weights.items()}
+    counts = {name: int(np.floor(value)) for name, value in exact.items()}
+    remainder = total - sum(counts.values())
+    by_fraction = sorted(exact, key=lambda name: (counts[name] - exact[name], name))
+    for name in by_fraction[:remainder]:
+        counts[name] += 1
+    return counts
 
-    Real samples occupy ``[0, real_size)`` in the concatenated dataset and
-    synthetic samples occupy the following range. Each epoch uses deterministic
-    shuffled cycles, so sources are covered before an index is repeated.
-    ``synthetic_batch_period=1`` preserves an exact synthetic count in every
-    batch. Larger periods place that count in one of every N batches and rotate
-    the scheduled phase across epochs.
+
+class SourceMixSampler(Sampler[int]):
+    """Draw ``samples_per_epoch`` dataset indices with fixed source proportions.
+
+    ``source_indices`` maps a source name to its dataset indices. Each epoch
+    draws exactly ``allocate_counts(samples_per_epoch, weights)`` indices per
+    source, walking shuffled full passes of that source so every index is used
+    before any is repeated, then shuffles the union. Epoch ``e`` is a pure
+    function of ``seed + e``.
     """
 
     def __init__(
         self,
         *,
-        real_size: int,
-        synthetic_size: int,
-        batch_size: int,
-        synthetic_per_batch: int,
-        synthetic_batch_period: int = 1,
-        steps_per_epoch: int,
+        source_indices: Mapping[str, Sequence[int]],
+        weights: Mapping[str, float],
+        samples_per_epoch: int,
         seed: int,
     ) -> None:
-        if real_size <= 0:
-            raise ValueError("real_size must be positive.")
-        if synthetic_size < 0:
-            raise ValueError("synthetic_size must be non-negative.")
-        if batch_size <= 0:
-            raise ValueError("batch_size must be positive.")
-        if not 0 <= synthetic_per_batch < batch_size:
-            raise ValueError("synthetic_per_batch must be in [0, batch_size).")
-        if synthetic_per_batch > 0 and synthetic_size == 0:
+        if set(source_indices) != set(weights):
             raise ValueError(
-                "synthetic_size must be positive when synthetic samples are enabled."
+                f"Source weights {sorted(weights)} must name exactly the sources "
+                f"with samples {sorted(source_indices)}"
             )
-        if synthetic_batch_period <= 0:
-            raise ValueError("synthetic_batch_period must be positive.")
-        if steps_per_epoch <= 0:
-            raise ValueError("steps_per_epoch must be positive.")
-
-        self.real_size = real_size
-        self.synthetic_size = synthetic_size
-        self.batch_size = batch_size
-        self.synthetic_per_batch = synthetic_per_batch
-        self.synthetic_batch_period = synthetic_batch_period
-        self.steps_per_epoch = steps_per_epoch
-        self.seed = seed
+        empty = sorted(
+            name for name, indices in source_indices.items() if len(indices) == 0
+        )
+        if empty:
+            raise ValueError(f"Weighted source(s) without samples: {empty}")
+        self.names = tuple(sorted(source_indices))
+        self.source_indices = {
+            name: np.asarray(source_indices[name], dtype=np.int64)
+            for name in self.names
+        }
+        self.counts = allocate_counts(
+            samples_per_epoch, {name: float(weights[name]) for name in self.names}
+        )
+        self.samples_per_epoch = int(samples_per_epoch)
+        self.seed = int(seed)
         self._epoch = 0
 
-    @staticmethod
-    def _shuffled_cycles(
-        *,
-        size: int,
-        count: int,
-        generator: torch.Generator,
-        offset: int = 0,
-    ) -> list[int]:
-        indices: list[int] = []
-        while len(indices) < count:
-            indices.extend(
-                (torch.randperm(size, generator=generator) + offset).tolist()
-            )
-        return indices[:count]
+    def set_epoch(self, epoch: int) -> None:
+        self._epoch = int(epoch)
 
-    def __iter__(self) -> Iterator[list[int]]:
+    def epoch_indices(self, epoch: int) -> list[int]:
+        rng = np.random.default_rng(self.seed + epoch)
+        drawn: list[np.ndarray] = []
+        for name in self.names:
+            indices = self.source_indices[name]
+            count = self.counts[name]
+            if count == 0:
+                continue
+            passes = -(-count // indices.size)
+            order = np.concatenate([rng.permutation(indices) for _ in range(passes)])
+            drawn.append(order[:count])
+        merged = np.concatenate(drawn)
+        return [int(value) for value in rng.permutation(merged)]
+
+    def __iter__(self) -> Iterator[int]:
         epoch = self._epoch
-        generator = torch.Generator()
-        generator.manual_seed(self.seed + epoch)
         self._epoch += 1
-
-        synthetic_counts = [
-            (
-                self.synthetic_per_batch
-                if (step + epoch) % self.synthetic_batch_period == 0
-                else 0
-            )
-            for step in range(self.steps_per_epoch)
-        ]
-        real_counts = [
-            self.batch_size - synthetic_count for synthetic_count in synthetic_counts
-        ]
-        real_indices = self._shuffled_cycles(
-            size=self.real_size,
-            count=sum(real_counts),
-            generator=generator,
-        )
-        synthetic_indices = self._shuffled_cycles(
-            size=max(self.synthetic_size, 1),
-            count=sum(synthetic_counts),
-            generator=generator,
-            offset=self.real_size,
-        )
-
-        real_start = 0
-        synthetic_start = 0
-        for real_count, synthetic_count in zip(
-            real_counts, synthetic_counts, strict=True
-        ):
-            batch = real_indices[real_start : real_start + real_count]
-            batch.extend(
-                synthetic_indices[synthetic_start : synthetic_start + synthetic_count]
-            )
-            real_start += real_count
-            synthetic_start += synthetic_count
-            order = torch.randperm(self.batch_size, generator=generator).tolist()
-            yield [batch[index] for index in order]
+        yield from self.epoch_indices(epoch)
 
     def __len__(self) -> int:
-        """Return the fixed optimizer-step count."""
-        return self.steps_per_epoch
+        return self.samples_per_epoch
 
 
-__all__ = ["ExactSourceMixBatchSampler"]
+__all__ = ["SourceMixSampler", "allocate_counts"]

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -427,7 +426,6 @@ def finalize_candidate(
     target_dir = config.root / "frames" / config.video_id / candidate_dir.name
     if target_dir.exists() and not config.finalize.overwrite:
         raise FileExistsError(f"final clip exists: {target_dir}")
-    _write_label_csv(candidate_dir / "Label.csv", document["frames"])
     clip_document = {
         "schema_name": "ball_youtube_clip_v2",
         "clip_id": document["clip_id"],
@@ -598,7 +596,6 @@ def _register_final_clip(root: Path, clip: JSONDict, target_dir: Path) -> None:
         "clip_path": str(target_dir.relative_to(root)),
         "dataset_entry": str(target_dir.relative_to(root)),
         "annotation_path": str((target_dir / "clip.json").relative_to(root)),
-        "label_csv": str((target_dir / "Label.csv").relative_to(root)),
         "video_id": clip["video_id"],
         "frame_count": clip["frame_count"],
         "start_frame_index": clip["start_frame_index"],
@@ -621,58 +618,6 @@ def _register_final_clip(root: Path, clip: JSONDict, target_dir: Path) -> None:
         root / "annotations" / f"{split}.txt",
         "".join(f"{entry}\n" for entry in entries),
     )
-
-
-def _write_label_csv(path: Path, frames: list[JSONDict]) -> None:
-    fields = [
-        "file name",
-        "instance id",
-        "prediction id",
-        "visibility",
-        "x-coordinate",
-        "y-coordinate",
-        "ball state",
-        "role",
-        "label source",
-        "source frame index",
-    ]
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
-        writer.writeheader()
-        for frame in frames:
-            balls = frame.get("balls", [])
-            if not balls:
-                writer.writerow(
-                    {
-                        "file name": frame["file_name"],
-                        "instance id": "",
-                        "prediction id": "",
-                        "visibility": 0,
-                        "x-coordinate": 0.0,
-                        "y-coordinate": 0.0,
-                        "ball state": "absent",
-                        "role": "",
-                        "label source": "manual",
-                        "source frame index": frame["source_frame_index"],
-                    }
-                )
-                continue
-            for ball in balls:
-                visible = str(ball["state"]) in VISIBLE_STATES
-                writer.writerow(
-                    {
-                        "file name": frame["file_name"],
-                        "instance id": ball["ball_id"],
-                        "prediction id": ball.get("prediction_id") or "",
-                        "visibility": 1 if visible else 0,
-                        "x-coordinate": float(ball["x"]) if visible else 0.0,
-                        "y-coordinate": float(ball["y"]) if visible else 0.0,
-                        "ball state": ball["state"],
-                        "role": ball.get("role", "target"),
-                        "label source": ball.get("label_source", "manual"),
-                        "source frame index": frame["source_frame_index"],
-                    }
-                )
 
 
 def _next_candidate_path(

@@ -25,6 +25,8 @@ datasets:
     config: rgb_sequence
     splits: [val, test]
     overrides:
+      sources: [tracknet]
+      train_sampling: null
       batch_size: 4
       num_workers: 4
       heatmap_size: [72, 128]

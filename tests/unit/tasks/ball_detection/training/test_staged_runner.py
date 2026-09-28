@@ -39,8 +39,8 @@ def test_fixed_t_calibration_keeps_effective_batch_size(
         7: 2,
         8: 2,
     }
-    config.data.sources.tracknet.enabled = True
-    config.data.sources.tracknet.splits = ["train", "val", "test"]
+    config.data.sources.store.enabled = True
+    config.data.sources.store.splits = ["train", "val", "test"]
     config.data.sources.web.enabled = False
     config.data.sources.web.splits = ["train", "val", "test"]
     config.training.staged.calibration_token_budget = 24

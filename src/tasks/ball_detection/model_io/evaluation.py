@@ -3,29 +3,32 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
-from src.tasks.ball_detection.training.lightning_module import (
-    BallDetectionLightningModule,
+from src.tasks.ball_detection.inference.checkpoint import (
+    LoadedBallCheckpoint,
+    load_ball_checkpoint,
 )
+from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
 
 
-class LightningBallHeatmapPredictor:
-    """Expose a loaded, verified Lightning pair to the evaluation loop."""
+class CheckpointBallHeatmapPredictor:
+    """Expose the strict inference checkpoint pair to the evaluation loop."""
 
     def __init__(
         self,
-        module: BallDetectionLightningModule,
+        loaded: LoadedBallCheckpoint,
         *,
         device: torch.device,
     ) -> None:
-        self.module = module.to(device).eval()
+        self.model = loaded.model_io.model.to(device).eval()
         self.device = device
-        self.adapter: BallModelIOAdapter = module.model_io
-        self.adapter.validate_model_pair(module.model)
+        self.adapter = cast(BallModelIOAdapter, loaded.model_io.adapter)
+        self.image_normalization = loaded.image_normalization
+        self.adapter.validate_model_pair(self.model)
 
     @classmethod
     def load(
@@ -35,15 +38,14 @@ class LightningBallHeatmapPredictor:
         device: torch.device,
         strict: bool,
         weights_only: bool,
-    ) -> LightningBallHeatmapPredictor:
+    ) -> CheckpointBallHeatmapPredictor:
         """Load one checkpoint and verify its model-I/O pair."""
-        module = BallDetectionLightningModule.load_from_checkpoint(
-            str(checkpoint_path),
-            map_location=device,
+        loaded = load_ball_checkpoint(
+            checkpoint_path,
             strict=strict,
             weights_only=weights_only,
         )
-        return cls(module, device=device)
+        return cls(loaded, device=device)
 
     def predict_heatmaps(
         self,
@@ -54,10 +56,10 @@ class LightningBallHeatmapPredictor:
         """Predict probability heatmaps through the resolved adapter."""
         call = self.adapter.prepare_model_call(
             images.to(self.device, non_blocking=True),
-            image_normalization=self.module.image_normalization,
+            image_normalization=self.image_normalization,
             preprocessed=True,
         )
-        logits = self.module.model(*call.model_args)
+        logits = self.model(*call.model_args)
         return self.adapter.probability_heatmaps(
             logits,
             call,
@@ -76,4 +78,4 @@ def resolve_evaluation_device(device: str) -> torch.device:
     return resolved
 
 
-__all__ = ["LightningBallHeatmapPredictor", "resolve_evaluation_device"]
+__all__ = ["CheckpointBallHeatmapPredictor", "resolve_evaluation_device"]

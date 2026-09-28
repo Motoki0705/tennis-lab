@@ -1,7 +1,7 @@
 schema_version = 1
 output_storage = "drive"
 name = "ball_detection"
-description = "Train the standard TrackNet ball detector."
+description = "Train the mixed-source ball detector from the unified frame store."
 accelerator = "gpu"
 timeout_seconds = 86400
 setup = ["base"]
@@ -24,6 +24,6 @@ args = [
 ]
 
 [[inputs]]
-source = "data/tennis/tracknet"
-destination = "data/tennis/tracknet"
+source = "data/ball_detection/ball-mix-v1"
+destination = "data/ball_detection/ball-mix-v1"
 writable = false

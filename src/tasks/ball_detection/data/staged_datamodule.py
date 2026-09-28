@@ -1,7 +1,10 @@
 """Staged multi-frame DataModule for the #579 training schedule.
 
-Combines TrackNet and (optionally) the unified Web store into one training
-stream. Windows are built at ``data.t_max`` frames; the train loader draws a clip
+Combines the ball frame store (``sources.store``, see
+:class:`BallStoreDataModule`) and (optionally) the unified Web store into one
+training stream. Every train window of every enabled source is drawn once per
+epoch, so the sources mix in their natural proportions; the store sub-source
+therefore requires ``train_sampling: null``. Windows are built at ``data.t_max`` frames; the train loader draws a clip
 length ``T <= t_max`` per optimizer-step group via
 :class:`VariableTBatchSampler`, while val/test run at a fixed ``data.val_num_frames``
 (default 1) for a stable, comparable monitor. Phases 1/2 set ``t_max=1`` so the
@@ -25,7 +28,7 @@ from src.tasks.ball_detection.data.components.staged_sampler import (
     VariableTBatchSampler,
     linear_decreasing_t_probs,
 )
-from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
 from src.tasks.ball_detection.data.types import BallDetectionSample
 from src.tasks.ball_detection.data.web_datamodule import WebBallDataModule
 
@@ -47,7 +50,7 @@ _SHARED_DATA_KEYS = (
 
 
 class StagedBallDataModule(pl.LightningDataModule):
-    """Mixed TrackNet+Web datamodule with a variable-T training schedule."""
+    """Mixed ball-store + Web datamodule with a variable-T training schedule."""
 
     def __init__(self, config: DictConfig) -> None:
         super().__init__()
@@ -88,12 +91,12 @@ class StagedBallDataModule(pl.LightningDataModule):
         self.source_splits = self._parse_source_splits(sources_cfg)
         self.enabled_sources = [
             name
-            for name in ("tracknet", "web")
+            for name in ("store", "web")
             if bool(cast(Mapping[str, object], sources_cfg[name])["enabled"])
         ]
         if not self.enabled_sources:
             raise ValueError(
-                "At least one of data.sources.{tracknet,web} must be enabled."
+                "At least one of data.sources.{store,web} must be enabled."
             )
 
         # B(T) physical batch table + effective batch size. Defaults here are a
@@ -104,7 +107,7 @@ class StagedBallDataModule(pl.LightningDataModule):
         }
         self.effective_batch_size = int(cast(Any, data_cfg["effective_batch_size"]))
 
-        self._submodules: dict[str, TrackNetDataModule | WebBallDataModule] = {}
+        self._submodules: dict[str, BallStoreDataModule | WebBallDataModule] = {}
         self.train_dataset: Dataset[BallDetectionSample] | None = None
         self.val_dataset: Dataset[BallDetectionSample] | None = None
         self.test_dataset: Dataset[BallDetectionSample] | None = None
@@ -115,7 +118,7 @@ class StagedBallDataModule(pl.LightningDataModule):
         parsed: dict[str, frozenset[str]] = {}
         for source_name, source_cfg in sources_cfg.items():
             source = str(source_name)
-            if source not in {"tracknet", "web"}:
+            if source not in {"store", "web"}:
                 raise ValueError(f"Unknown staged source: {source!r}.")
             if not isinstance(source_cfg, Mapping):
                 raise TypeError(f"data.sources.{source} must be a mapping.")
@@ -170,8 +173,8 @@ class StagedBallDataModule(pl.LightningDataModule):
     def _build_submodules(self) -> None:
         if self._submodules:
             return
-        builders: dict[str, type[TrackNetDataModule] | type[WebBallDataModule]] = {
-            "tracknet": TrackNetDataModule,
+        builders: dict[str, type[BallStoreDataModule] | type[WebBallDataModule]] = {
+            "store": BallStoreDataModule,
             "web": WebBallDataModule,
         }
         for name in self.enabled_sources:

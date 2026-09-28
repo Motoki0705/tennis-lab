@@ -43,6 +43,22 @@ def _build_metrics(metrics_cfg: Mapping[str, Any]) -> BallDetectionMetrics:
     )
 
 
+def supervised_frame_mean(elementwise: Tensor, supervised: Tensor) -> Tensor:
+    """Mean of a ``(B, T, H, W)`` loss over the supervised frames only.
+
+    A batch without any supervised frame returns a zero that keeps the graph
+    (no gradient, no NaN): its windows carry no trusted target.
+    """
+    if supervised.dtype != torch.bool or elementwise.ndim != 4 or supervised.shape != elementwise.shape[:2]:
+        raise ValueError(
+            f"Expected a (B, T, H, W) loss and a (B, T) mask, got "
+            f"{tuple(elementwise.shape)} and {tuple(supervised.shape)}."
+        )
+    weights = supervised.to(elementwise.dtype)
+    per_frame = elementwise.mean(dim=(-2, -1))
+    return (per_frame * weights).sum() / weights.sum().clamp(min=1.0)
+
+
 def _rgb_triplet(values: Any, *, name: str) -> tuple[int, int, int]:
     if len(values) != 3:
         raise ValueError(f"{name} must contain exactly three values.")
@@ -128,7 +144,8 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             Tuple of:
                 - ball_xy: Normalized ``(B, T, 2)`` coordinates in ``(x, y)``.
                 - padding_mask: Boolean ``(B, T)`` mask where ``True`` marks a
-                  frame without a visible ball.
+                  frame without a visible ball (unsupervised frames never
+                  carry one).
         """
         coords = call.coords
         visibility = call.visibility
@@ -159,7 +176,9 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         target_heatmaps = call.target_heatmaps
 
         validate_focal_bce_inputs(logits, target_heatmaps)
-        loss = self.loss_fn(logits, target_heatmaps)
+        loss = supervised_frame_mean(
+            self.loss_fn.elementwise(logits, target_heatmaps), call.supervised
+        )
         pred_heatmaps = torch.sigmoid(logits)
 
         self._metric_tracker_for_stage(stage).update(
@@ -167,6 +186,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             call.coords,
             call.visibility,
             call.original_size,
+            call.supervised,
         )
 
         gan_real, gan_padding_mask = self._extract_gt_trajectory(call)
@@ -212,9 +232,11 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def test_prediction_payload(
         self, batch: dict[str, Any], result: dict[str, Any]
     ) -> dict[str, Any]:
-        """Persist TrackNet test-split heatmap predictions and targets."""
+        """Persist test-split heatmap predictions and targets."""
         return {
             "window_id": batch["window_id"],
+            "source": batch["source"],
+            "supervised": batch["supervised"],
             "pred_heatmaps": result["pred_heatmaps"],
             "target_coords": batch["coords"],
             "target_visibility": batch["visibility"],
