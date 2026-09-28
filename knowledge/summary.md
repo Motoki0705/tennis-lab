@@ -1,4 +1,4 @@
-<!-- knowledge-review: a703470bc866656dc30dad72af4f256c406416986bfe426c083338b4e3a5e7fd on 2026-09-28 -->
+<!-- knowledge-review: b4d8c630098ff23595d03fc43e778320ba3ab01a0e0c3038ad758ab367807d87 on 2026-09-28 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -172,8 +172,11 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 既存Meiji pose/courtは一部しか揃っていないため、文脈なしpilotを先に準備し、full比較前に生成を完了させる。
 未生成をmask欠損へ置き換えず、camera-local KP14と明示的なViTPose score変換を使う。
 [凍結ft-e13証拠cache](nodes/ball_refiner/000002-run-i935-evidence-ft-e13-trainval-r3-20260928.md)はtrain/val全frameの生成・checksum/PTS/局所patch読込まで成功した。
-次は33frame窓の文脈なし時間MDNを、選択用と較正用に分けたvalidationで検証する。
-モデルの実学習・精度/coverage・ablationは未検証で、detector deploy継続の判断は変えない。
+[文脈なし時間MDN pilot](nodes/ball_refiner/000003-run-i935-detector-only-ft-e13-s42-r4-20260928.md)は12 epoch・3,000更新を完走した。
+同じ選択用validationの観測frameでは、detector argmaxより平均・p95誤差が減る一方、中央値・20px recallが悪化した。
+学習接続の成立と精度改善を区別し、detector deploy継続の判断は変えない。
+次は保存GMMのHDR coverage・面積・clip群bootstrapと、未使用の較正用validationを評価する。
+最終test・RGB遮蔽対照・full文脈/ablation・pipeline接続は未検証。存在較正はMeijiの正例だけから結論しない。
 
 ### Court Detection
 

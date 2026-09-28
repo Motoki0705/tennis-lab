@@ -1,0 +1,1 @@
+{"checkpoint": "epoch-009.pt", "checkpoint_sha256": "ed659e142dd228949ec772bcfdf9db0f4c682081778853c15088f7202a848c76", "epoch": 9, "predictions": "validation-epoch-009", "selection_nll_uv": -3.6916335440147936}
