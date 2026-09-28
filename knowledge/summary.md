@@ -1,4 +1,4 @@
-<!-- knowledge-review: aee382b09dcacacd32ac72c5878077f69f1341c73ac05a98304173eb24384d1e on 2026-09-28 -->
+<!-- knowledge-review: 8038d2f6f8df86b49c42f8109e5a16b09dcfcb8f78b16bfc231705935a1bb4c4 on 2026-09-28 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualification、#933 外観backbone比較と幾何＋外観の人物対応の評価を反映）
@@ -143,6 +143,11 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
 単一点が非観測でも検出証拠を保持できる。これは精度比較ではなく、deploy選択は変更しない。
 次は3 source混合FTとvideo単位holdoutの層別評価で、前処理・保存契約と検出精度を分けて検証する。
+
+[混合FTの初回](nodes/ball_detection/000020-run-i934-mixed-ft-s42-r5.md)は最初のvalidation後、
+MDD描画へ正規化済み入力の宣言を渡していなかったため停止した。checkpointとvalidation指標は未保存で、
+FTの有効性は未評価。描画経路の修正はCPUのepoch終端と実3 sourceで検証し、同条件で再実行する。
+現行baselineとdeployの判断を変更する精度比較の証拠は得られていない。
 
 現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
 

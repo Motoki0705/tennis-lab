@@ -1,0 +1,16 @@
+{
+  "run_id": "1790558974032900448_1609437_i934-mixed-ft-s42-r5-20260928",
+  "name": "i934-mixed-ft-s42-r5-20260928",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/bin/python -m src.tasks.ball_detection.scripts.train --config-name train_meiji_mixed paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft paths.data_root=/home/kamimura/projects/tennis-lab/data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs paths.cache_root=/home/kamimura/projects/tennis-lab/.cache paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party run.output_dir=ball_detection/train/i934_mixed_ft/s42-r5-20260928",
+  "provider": "codex",
+  "session": "01a0e592-3e39-74f1-816b-fffe8fead5fc",
+  "issue": "934",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ae5f5baaa359ad608b973d0d9b09e8cfaae3a17f",
+  "branch": "campaign930/i934-4-mixed-ft",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft",
+  "captured_at": "2026-09-28T10:29:34+09:00"
+}
