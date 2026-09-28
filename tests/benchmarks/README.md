@@ -43,6 +43,14 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
 ## Pipeline診断
 
+- `ball_refiner_context_pilot.sh`: #935の固定3source文脈生成pilot。引数は絶対pathの
+  `<asset_root> <detector_cache> <new_context_cache> <new_report>`。trainのTrackNet 35・Meiji 151・chat 375frameを
+  全frame処理する。run専用DINO拡張を再ビルドし、scene設定のcompose、CPU事前検査、生成、別プロセス読込検証を行う。
+  必ず共有training queueへ投入する。新しいcache/reportを要求し、失敗した出力を上書きしない。
+  `ball_refiner_context.py`は保存後のNPZ/frame/PTS・JPEG hash・元解像度への座標変換をCPUで検査し、
+  指定clipの完全一致、pose/courtの有効数・score変換・実行記録を`context-verification.json`へ保存する。
+  この検査は人物選別・pose/courtの精度・ablationの改善を証明しない。
+
 - `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
   実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
   `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、

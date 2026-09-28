@@ -90,6 +90,12 @@ DINOは上流ソースを変更せず `third_party/DINO/` のgit submoduleから
 DINO利用時はsubmoduleを初期化し、custom CUDA opをルート `setup.py` からビルドします。
 PyTorch互換修正は `build/` 内の生成ソースだけに適用し、submodule自体は変更しません。
 
+`validate_dino_extension()`は明示したimport pathの拡張にCPUテンソルを渡し、
+forward/backwardが上流のCPU非対応エラーへ到達することを確認します。import可能でも
+古いPyTorch APIで停止するバイナリは拒否します。CUDA kernelの動作・精度は別途queueで検証します。
+run専用のビルドには[build_dino_extension.sh](../../tests/benchmarks/build_dino_extension.sh)を使い、
+出力の`lib/`を`PYTHONPATH`へ明示してください。共有の古いビルドへの自動切替はしません。
+
 ```bash
 git submodule update --init third_party/DINO
 TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace
