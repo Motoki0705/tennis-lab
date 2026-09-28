@@ -1,4 +1,4 @@
-<!-- knowledge-review: 063154c370392771283eabdcc259054452aa188d3efe1cc735a4ca6c093f1bd4 on 2026-10-01 -->
+<!-- knowledge-review: daa2183355705db02b5ccb843b4e83e59bd80c219947ddaf3a81a1c45706b22d on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -278,7 +278,10 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 人工証拠欠損で領域は広がるが、90/95% HDRのcoverageは約81/86%に留まり、分布の裾の過信が残る。
 この6群のbootstrapは探索的で、実RGB遮蔽や独立testへの一般化の証拠ではない。
 次は補正を別run・較正側のみでfitし、同一母数の文脈生成・ablationと点精度の退行も検証する。
-最終test・RGB遮蔽対照・full文脈/ablation・pipeline接続は未検証。存在較正はMeijiの正例だけから結論しない。
+[元動画pipelineの接続監査](nodes/ball_refiner/000005-run-i935-pipeline-ft-e13-r7-20260928.md)では、
+270 frameの全GMM保存と別プロセスのload-onlyが成立し、同じ検出証拠からのCPU再計算も小さな数値差で一致した。
+専用recipeの接続証拠であり、未較正pilotのdeploy採用や、JPEG学習cacheとの精度同等性を示さない。
+最終test・RGB遮蔽対照・full文脈/ablation・標準sceneの3D入力切替は未検証。存在較正はMeijiの正例だけから結論しない。
 
 ### Court Detection
 
