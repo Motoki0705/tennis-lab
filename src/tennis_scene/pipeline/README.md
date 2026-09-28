@@ -77,6 +77,10 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 出力は元frameを1度だけ持つ。strideが窓より長い、またはdropした末尾などで全frameを
 覆えない設定は停止し、未処理のframeを負例や空heatmapとして埋めない。
 
+`nearest_window_centre_then_earlier_start`はrefiner学習cacheと同じ、中心距離が最小の窓、
+同点なら早い開始位置を採用する明示的なpolicy。このpolicyは`tail_policy=backfill`を要求し、
+短clipのRGB反復を拒否する。既定の`max_score`は変更しない。
+
 モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
 `score_semantics` で区別する。refinerは証拠なしを実検出とみなしてはならない。
 下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refinerへの切替は#935）。

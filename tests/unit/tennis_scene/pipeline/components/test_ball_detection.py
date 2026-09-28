@@ -186,3 +186,51 @@ def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
     with pytest.raises(ValueError, match="does not match the saved checkpoint"):
         module.load()
     assert not module.is_loaded
+
+
+@pytest.mark.parametrize("batch_size", [1, 3])
+def test_centre_policy_matches_training_owners_without_score_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, batch_size: int,
+) -> None:
+    from src.tasks.ball_refiner.data.temporal import window_owners, window_starts
+
+    packets = [FramePacket(index=i, frame=np.full((4, 6, 3), i, np.uint8), original_size=(6, 4)) for i in range(11)]
+    monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
+
+    class Predictor:
+        configured_frames = 4
+
+        def predict(self, images: torch.Tensor, *, candidate_config: BallCandidateConfig) -> BallPrediction:
+            maps = torch.zeros(len(images), 4, 7, 7)
+            for b in range(len(images)):
+                start = round(float(images[b, 0, 0, 0, 0]) * 255)
+                # Later windows have larger scores, but centre selection ignores scores.
+                maps[b, :, 2, 2] = (start + 1) / 10
+            return _prediction(maps, candidate_config)
+
+    config = replace(make_ball_config(tmp_path), image_size=(4, 6), window_stride=3, batch_size=batch_size,
+                     overlap_aggregation="nearest_window_centre_then_earlier_start")
+    module = BallDetectionModule(config)
+    module._pipeline = Predictor()  # type: ignore[assignment]
+    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 11, 30., 6, 4))
+    starts = window_starts(11, 4, 3)
+    assert starts == (0, 3, 6, 7)  # irregular final backfill
+    expected = np.asarray(starts)[window_owners(11, starts, 4)]
+    np.testing.assert_array_equal(evidence.selected_window_start, expected)
+    np.testing.assert_array_equal(evidence.selected_time_index, np.arange(11) - expected)
+    np.testing.assert_allclose(scores, (expected + 1) / 10)
+    np.testing.assert_array_equal(evidence.candidate_scores[:, 0], scores)
+    np.testing.assert_array_equal(evidence.heatmaps.max(axis=(1, 2)), scores)
+    np.testing.assert_array_equal(evidence.patches[:, 0, 2, 2], scores)
+    np.testing.assert_allclose(evidence.candidate_uv_px[:, 0], coords * [5, 3])
+    assert expected[8] == 6  # equal centre distance retains earlier window
+
+
+@pytest.mark.parametrize("frames,tail", [(1, "backfill"), (4, "drop")])
+def test_centre_policy_rejects_padding_and_drop(tmp_path: Path, frames: int, tail: str) -> None:
+    config = replace(make_ball_config(tmp_path), tail_policy=tail,
+                     overlap_aggregation="nearest_window_centre_then_earlier_start")
+    module = BallDetectionModule(config)
+    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    with pytest.raises(ValueError, match="short-clip padding is forbidden"):
+        module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", frames, 30., 6, 4))
