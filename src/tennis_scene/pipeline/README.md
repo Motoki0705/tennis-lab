@@ -113,7 +113,7 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 
 モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
 `score_semantics` で区別する。refinerは証拠なしを実検出とみなしてはならない。
-下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refinerへの切替は#935）。
+下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refiner分布から確率的三角測量への接続は#936）。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
 
 ## 2D ball refinerの専用recipe
