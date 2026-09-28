@@ -1,0 +1,147 @@
+{
+  "status": "cpu_audit_complete",
+  "context_manifest_sha256": "4aab9d7ebaff7c6979a6c2595a6cba7cc4f34068e45315e8dc92e67c7e6a62a6",
+  "pose_threshold": 0.15,
+  "clips": [
+    {
+      "clip_id": "chat_annotation/1DbPtcuuS-Q__c2ae9c7445eac57a__f000000773-000001553",
+      "source": "chat_annotation",
+      "frames": 900,
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "cumulative_tracks": 43,
+      "detections_per_frame": {
+        "count": 900,
+        "min": 7.0,
+        "median": 9.0,
+        "p95": 10.0,
+        "max": 12.0,
+        "mean": 8.987777777777778
+      },
+      "observed_tracks_per_frame": {
+        "count": 900,
+        "min": 7.0,
+        "median": 9.0,
+        "p95": 10.0,
+        "max": 12.0,
+        "mean": 8.903333333333334
+      },
+      "track_observed_frame_counts": {
+        "count": 43,
+        "min": 1.0,
+        "median": 23.0,
+        "p95": 898.0,
+        "max": 900.0,
+        "mean": 186.34883720930233
+      },
+      "one_frame_tracks": 3,
+      "frames_without_valid_arms": 0,
+      "valid_arm_slots": 31809,
+      "outside_image_valid_arm_slots": 0,
+      "court_valid_points": 0,
+      "court_points_stored_px": [],
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 900,
+        "court_keypoints": 0,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 154800,
+        "pose_confidence_saturated_slots": 1,
+        "pose_confidence_raw_max": 1.0046416521072388
+      },
+      "seconds": {
+        "court": 29.18667601502966,
+        "detection_tracking": 277.4206805609865,
+        "pose": 438.47174779401394
+      },
+      "sample_selection": "five uniformly spaced source frame indices; no label access",
+      "sample_frames": [
+        {
+          "frame_index": 0,
+          "pts": 0,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "frame_index": 224,
+          "pts": 336000,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "frame_index": 449,
+          "pts": 673500,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            9,
+            40
+          ]
+        },
+        {
+          "frame_index": 674,
+          "pts": 1011000,
+          "observed_track_ids": [
+            1,
+            3,
+            4,
+            6,
+            7,
+            9,
+            40
+          ]
+        },
+        {
+          "frame_index": 899,
+          "pts": 1348500,
+          "observed_track_ids": [
+            1,
+            3,
+            4,
+            6,
+            7,
+            9,
+            40,
+            67,
+            77
+          ]
+        }
+      ],
+      "sheet": "clip-00281-context.jpg",
+      "sheet_sha256": "d640563406843aa8b966d2fad506fa106206d1b7065b0297bf22f0b8a0e0252b",
+      "context_npz_sha256": "212979b4b2557aebb71099350fd44fd3e2d28a5419addb9548b199ee69731c5c",
+      "jpeg_shard_sha256": "4ad48c493d396da46fec3d2dd81dae59c134d1dabf774f2113ab9594ef4a00a2"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i935-context-shard-00059-tracknet-r12-20260928
+# added: 2026-09-28T23:59:00+09:00
+# provider: codex
+# session: 01a0e875-821a-7933-ab59-3a7e497a165c
+# issue: 935
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards
+export TENNIS_RUN_ID=1790607540292509890_751990_i935-context-shard-00059-tracknet-r12-20260928
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790607540292509890_751990_i935-context-shard-00059-tracknet-r12-20260928
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790607540292509890_751990_i935-context-shard-00059-tracknet-r12-20260928 --name i935-context-shard-00059-tracknet-r12-20260928 --provider codex --session 01a0e875-821a-7933-ab59-3a7e497a165c --issue 935 --cmd \'timeout\'\ \'--signal=TERM\'\ \'--kill-after=15s\'\ \'18m\'\ \'bash\'\ \'/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards/tests/benchmarks/ball_refiner_context_shard.sh\'\ \'/home/kamimura/projects/tennis-lab\'\ \'/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928\'\ \'/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/plan/plan.json\'\ \'/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/scene-context.yaml\'\ \'/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/dino_extension\'\ \'59\'\ \'/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/shard-00059-a1\'\ \'/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/shard-00059-a1\'
+'timeout' '--signal=TERM' '--kill-after=15s' '18m' 'bash' '/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards/tests/benchmarks/ball_refiner_context_shard.sh' '/home/kamimura/projects/tennis-lab' '/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928' '/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/plan/plan.json' '/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/scene-context.yaml' '/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/dino_extension' '59' '/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/shard-00059-a1' '/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/shard-00059-a1'
