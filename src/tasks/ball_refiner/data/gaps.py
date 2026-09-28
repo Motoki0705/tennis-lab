@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 
 from src.tasks.ball_detection.data.store import ClipRecord
 from src.tasks.ball_detection.model_io.contracts import BallCandidates
-from src.tasks.ball_refiner.data.windows import CANDIDATE_FIELDS
+from src.tasks.ball_refiner.data.inputs import CANDIDATE_FIELDS
 from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
 
 

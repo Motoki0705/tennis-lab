@@ -26,6 +26,9 @@
 | `refiner_2d/model.py` | 計算だけのforward。候補集合→時間→文脈→時間→MDN |
 | `refiner_2d/distribution.py` | GMM検証、条件付き密度、source画素への平均/共分散変換 |
 | `refiner_2d/loss.py` | 既知frameの重み付きjoint NLLとepoch集計用の和・分母 |
+| `data/inputs.py` | 教師なし入力の切出し、人物軸だけのcollate、device転送 |
+| `data/temporal.py` | 実frameだけの窓と中心距離による採用規則 |
+| `inference.py` | camera全frameのGMM推論と、各frameを採用した窓の出自 |
 
 `configs/model/refiner_2d.yaml`を合成して全fieldを`Refiner2DConfig(**values)`へ渡す。
 省略値をPython側で補完しない。既定のcourt軸はpipelineのcamera-local KP14に合わせる。
@@ -56,6 +59,16 @@ Tは元frame、Kは同じ球の代替位置仮説である。
 pixel log densityはuv log densityからlog((W−1)(H−1))を引く。
 モデル出力はAMP中もfloat32へ復号する。GMMのGaussian tailは画面外にも残る。
 極端なlogitから確率0/1が得られても学習ではlogitを維持する。
+
+`predict_sequence(pair, inputs, window_length=..., stride=..., batch_size=..., device=...)`は
+1cameraの全CPU入力を受け取り、教師・store・学習runを参照せず推論する。
+modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送する。pose/courtを使う場合は
+生成済みの入力を明示的に渡す。`detector_only_input`は文脈無効の設定だけを受け付ける。
+短いclipの時間paddingや検出有無によるframe選別はせず、欠損frameにも全GMMを返す。
+重複窓は中心に最も近いもの、同点なら早い開始位置から全成分と存在logitをまとめて採用する。
+結果の`SequencePrediction.distribution`はCPUの`BallGMM2D`、`window_start/time_index/window_length`は
+各frameの採用窓を示す。混合成分を平均せず、推論前のmodelのtrain/eval状態を終了・例外時に復元する。
+学習時のvalidationもこの共通経路を使う。pipeline componentへの登録・永続保存はまだ後続である。
 
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
@@ -285,7 +298,7 @@ role rootは絶対pathで指定し、`data.store`/`data.evidence`/`run.output_di
 
 | ファイル | 責務 |
 |---|---|
-| `data/windows.py` | 実窓、中心距離によるframe採用、人物軸だけのcollate、source等比率sampling |
+| `data/windows.py` | 教師の付与、学習窓の除外監査、source等比率sampling |
 | `data/gaps.py` | 教師に依存しない証拠欠損とMeiji validationのcamera一括分割 |
 | `training/configuration.py` | 型・意味・pathの検証と完全な実行設定 |
 | `training/evaluation.py` | source frameごとのGMM復元、NLL/位置/存在/全混合分散の集計 |
