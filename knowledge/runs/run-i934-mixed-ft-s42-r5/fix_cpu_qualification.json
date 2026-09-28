@@ -1,0 +1,37 @@
+{
+  "device": "cpu",
+  "samples": [
+    {
+      "source": "tracknet",
+      "window_id": "tracknet/game9/Clip1:0",
+      "input_min": -2.1179039478302,
+      "input_max": 2.640000104904175,
+      "gif_frames": 8,
+      "mdd_matches_model_input": true,
+      "artifact": "tracknet/ball_batch00.gif"
+    },
+    {
+      "source": "meiji",
+      "window_id": "meiji/video_000/clip_000/cam0:0",
+      "input_min": -2.1179039478302,
+      "input_max": 2.640000104904175,
+      "gif_frames": 8,
+      "mdd_matches_model_input": true,
+      "artifact": "meiji/ball_batch00.gif"
+    },
+    {
+      "source": "chat_annotation",
+      "window_id": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621:0",
+      "input_min": -2.1179039478302,
+      "input_max": 2.640000104904175,
+      "gif_frames": 8,
+      "mdd_matches_model_input": true,
+      "artifact": "chat_annotation/ball_batch00.gif"
+    }
+  ],
+  "checkpoint_sha256": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+  "store_sha256": {
+    "metadata.json": "b7796c1d9a99c2b44496264f54102729bea1ff26dd2550ef2b470780a93ef4c0",
+    "index.npz": "a078912bc31c207b5be807b453bfba203da30b2ec2815993eebe98f896cb7523"
+  }
+}
