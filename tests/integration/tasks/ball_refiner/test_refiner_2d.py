@@ -1,9 +1,11 @@
 """CPU model/adapter/loss integration, including gradient and leakage checks."""
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 import torch
+from omegaconf import OmegaConf
 
 from src.tasks.ball_detection.model_io.candidates import decode_candidates
 from src.tasks.ball_detection.model_io.contracts import (
@@ -22,17 +24,26 @@ from src.tasks.ball_refiner.refiner_2d.model_io import Refiner2DAdapter
 
 
 def config(**changes) -> Refiner2DConfig:
+    path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"
+    values = dict(OmegaConf.load(path))
+    values.update(hidden_dim=16, attention_heads=2, court_keypoints=5, patch_size=3, dropout=0.0, pose_dropout=0.0)
     return replace(
-        Refiner2DConfig(
-            hidden_dim=16,
-            attention_heads=2,
-            court_keypoints=5,
-            patch_size=3,
-            dropout=0.0,
-            pose_dropout=0.0,
-        ),
+        Refiner2DConfig(**values),
         **changes,
     )
+
+
+def test_yaml_is_the_complete_config_authority() -> None:
+    from src.utils.configuration.contracts import inspect_typed_adapter
+
+    path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"
+    values = dict(OmegaConf.load(path))
+    cfg = Refiner2DConfig(**values)
+    inspect_typed_adapter(Refiner2DConfig)  # rejects Python defaults
+    assert cfg.court_keypoints == 14  # pipeline camera_view_v2
+    del values["use_court"]
+    with pytest.raises(TypeError, match="use_court"):
+        Refiner2DConfig(**values)
 
 
 def inputs(*, people: int = 2) -> Refiner2DInput:

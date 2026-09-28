@@ -1,4 +1,4 @@
-"""Construction-time configuration; no inference-time architecture selection."""
+"""Explicit construction config; defaults live in configs/model/refiner_2d.yaml."""
 
 from __future__ import annotations
 
@@ -8,21 +8,21 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Refiner2DConfig:
-    components: int = 4
-    hidden_dim: int = 128
-    attention_heads: int = 4
-    temporal_layers: int = 1  # Per stage, before and after context fusion.
-    patch_size: int = 5
-    court_keypoints: int = 20
-    dropout: float = 0.1
-    pose_dropout: float = 0.25
-    min_std: float = 0.001
-    max_std: float = 0.5
-    initial_std: float = 0.05
-    max_correlation: float = 0.95
-    use_detector: bool = True
-    use_pose: bool = True
-    use_court: bool = True
+    components: int
+    hidden_dim: int
+    attention_heads: int
+    temporal_layers: int# Per stage, before and after context fusion.
+    patch_size: int
+    court_keypoints: int
+    dropout: float
+    pose_dropout: float
+    min_std: float
+    max_std: float
+    initial_std: float
+    max_correlation: float
+    use_detector: bool
+    use_pose: bool
+    use_court: bool
 
     def __post_init__(self) -> None:
         for name in (
