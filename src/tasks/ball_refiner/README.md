@@ -226,3 +226,11 @@ CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cam
 
 実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
 この読込層だけではdetector証拠cache・学習DataLoader・runnerはまだ生成されない。
+
+## 検出器の局所証拠
+
+`data/evidence_inference.py`はJPEGを逐次decodeし、各実frameのtop-Kとnative patchを返す。
+重複窓は中心への距離が最小のもの、同点なら早い開始位置を採用し、
+argmax・候補・patch・境界maskを同じ窓からまとめて保持する。
+`data/evidence.py`はsource正規化uv、元frame/PTS、採用窓、native格子の整合を検証する。
+短いclipをRGB反復で延長せず、明示的にエラーにする。
