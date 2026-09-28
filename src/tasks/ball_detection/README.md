@@ -59,6 +59,7 @@
 - **`evaluator.py`**: 1 job(checkpoint×dataset×split) を評価する `DefaultJobEvaluator`。
 - **`reporting.py`**: `summary.json`/`comparison.csv`/`comparison.md` を生成。
 - **`runner.py`**: `EvaluationPipeline`。fingerprintベースの再利用付き複数job評価。
+- **`holdout_inference.py` / `holdout_metrics.py`**: storeの全frameを一度ずつ数える推論と、元動画画素での欠損・誤差・camera/注釈/手首距離別集計。[Meiji比較benchmark](../../../tests/benchmarks/README.md#meiji-ball-holdout)から使う。
 
 ### visualization/
 - **`orchestrator.py`**: checkpointからのスライディングウィンドウ推論→GIF保存を統括。
