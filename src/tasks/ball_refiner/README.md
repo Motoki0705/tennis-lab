@@ -261,6 +261,9 @@ TrackNet・Meiji・chat_annotationの各clipを独立に処理する。camera_id
 標準sceneのROI方針は変更しない。観客・他court人物も含みうるため、pilotで人数と品質を監査する。
 BoT-SORTのraw IDを保持し、scene用のtracklet結合・player選別は適用しない。既存のbox補間・平滑化を
 cropに使うが、ViTPoseは実観測frameだけで実行する。累計track上限超は停止し、切捨て・ID再利用をしない。
+`--max-tracks`は生成時のCPU配列の容量制限で、モデルの同時人数制限ではない。
+`data/inputs.py`の窓切出しは、その窓で肘/手首がすべて無効な人物列だけを省く。
+有効な関節が一つでもある人物は全て保持し、人数で順位付け・切捨てしない。
 ViTPoseへのJPEG列入力は[submodulesのフレーム列API](../../submodules/README.md)を使う。
 モデル入力はIDを含まない人物集合。生COCO17全17点を保存し、読込後に肘/手首4点を選ぶ。
 
@@ -297,6 +300,41 @@ checkpoint/external_asset等のrootは実環境の絶対pathへoverrideしてお
 ```
 
 文脈あり学習runner・bundle接続、全sourceの生成完了・精度/ablationは別途検証する。
+
+#### clip単位の分割生成と統合
+
+`data/context_shards.py`と`scripts/context_shards.py`で、同じ生成契約をclipごとのjobへ分割する。
+`plan`はdetector cacheの**全clip**を元の順序で列挙し、store・detector manifest・JPEG identityと
+モデル設定/重み/DINO拡張/生成codeのhashを`plan.json`へ固定する。実JPEGの再hashは各clip生成時と
+全体統合時に行う。trackingはclipをまたがず、clip途中の分割・再開はしない。
+planはモデルを構築しないCPU処理だが、実際のDINO拡張のCPU事前検査は実行する。
+
+```bash
+# 各modeとも--store/--evidence/--outputは必須で、全pathは絶対path。
+# scene_configとDINO拡張は全job共通。生成中はcheckoutと資産を変更しない。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.context_shards plan \
+  --store <store> --evidence <detector-cache> --output <new-plan-directory> \
+  --scene-config <scene-context.yaml> --max-tracks <explicit-generation-cap>
+
+# このmodeは共有queueで実行。indexはplanの0始まりの番号。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.context_shards generate \
+  --store <store> --evidence <detector-cache> --output <new-shard-directory> \
+  --plan <plan-directory>/plan.json --shard-index <index> \
+  --scene-config <scene-context.yaml> --max-tracks <same-generation-cap>
+
+# 全clipのjob成功後にCPUで実行。--shardを全clip分明示し、入力順は任意。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.context_shards merge \
+  --store <store> --evidence <detector-cache> --output <new-complete-cache> \
+  --plan <plan-directory>/plan.json --shard <shard-0> --shard <shard-1>
+```
+
+失敗した出力を保持し、新しい出力先へそのclipだけ再投入できる。統合には採用する成功pathを
+明示し、最新runの自動選択や失敗clipの除外は行わない。旧pilotや別code/設定の混在、重複、
+欠落、途中cache、checksum/frame/PTS/実行記録の不一致は停止する。
+全NPZを再圧縮せず新規directoryへコピーし、入力cacheとinodeを共有しない。
+終了時にJPEG・出力NPZ・入力manifest・計画・storeを再検査してから`complete`を公開する。
+生成条件、計画hash、各成功shardのmanifest hashを保持した通常の`ContextCache`となり、
+学習側のreaderを追加しない。母数は固定したdetector cacheで決まり、train/valの計画にtestは追加しない。
 
 ## 検出器の局所証拠
 
