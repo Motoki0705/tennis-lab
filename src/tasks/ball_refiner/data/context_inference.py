@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import importlib.metadata
-import importlib.util
 import time
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any
 
 import cv2
@@ -21,6 +19,7 @@ from src.submodules.models import (
     TrackRequest,
     ViTPosePose2D,
     select_and_complete_tracks,
+    validate_dino_extension,
 )
 from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
 from src.tasks.ball_refiner.data.context_arrays import ContextArrays, GeneratedContext
@@ -50,10 +49,7 @@ class StoredJPEGContextProducer:
         self.people, self.court, self.max_tracks = people, court, max_tracks
 
     def identity(self) -> dict[str, Any]:
-        extension = importlib.util.find_spec("MultiScaleDeformableAttention")
-        if extension is None or extension.origin is None:
-            raise FileNotFoundError("DINO CUDA extension is missing from the explicit Python import path")
-        extension_path = Path(extension.origin)
+        extension_path = validate_dino_extension()
         assets = {"dino": self.people.dino_checkpoint, "vitpose": self.people.vitpose_checkpoint,
                   "court": self.court.checkpoint, "dino_extension": extension_path}
         source_root = PROJECT_ROOT / "src"
@@ -70,6 +66,7 @@ class StoredJPEGContextProducer:
             "tracking": "botsort_raw_ids; complete_and_smooth_boxes; observed_crops_only",
             "people_runtime": json_value(asdict(self.people.runtime)),
             "pose_precision": "float32",
+            "dino_extension_preflight": "cpu_dispatch_forward_backward_v1",
             "court": {"subpixel_refine": self.court.subpixel_refine,
                       "postprocess": asdict(self.court.postprocess), "region_search": asdict(self.court.region_search)},
             "versions": {name: importlib.metadata.version(name) for name in ("torch", "numpy", "ultralytics")},
