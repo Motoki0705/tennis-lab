@@ -44,7 +44,7 @@ compile:
   dynamic: false
 
 run:
-  output_dir: ???
+  output_dir: ${tennis_output:ball_refiner,train,detector_only,${tennis_run_id:}}
   device: cuda
   seed: 42
   dry_run: false
