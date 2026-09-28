@@ -1,4 +1,4 @@
-<!-- knowledge-review: 7b530c70ad5a221510ac8e80fbf56931c54b32f6d276b856f601ed06daf5023a on 2026-09-27 -->
+<!-- knowledge-review: aee382b09dcacacd32ac72c5878077f69f1341c73ac05a98304173eb24384d1e on 2026-09-28 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualification、#933 外観backbone比較と幾何＋外観の人物対応の評価を反映）
@@ -138,6 +138,11 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 ## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
+
+[#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
+Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
+単一点が非観測でも検出証拠を保持できる。これは精度比較ではなく、deploy選択は変更しない。
+次は3 source混合FTとvideo単位holdoutの層別評価で、前処理・保存契約と検出精度を分けて検証する。
 
 現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
 
