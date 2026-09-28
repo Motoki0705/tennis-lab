@@ -87,8 +87,10 @@ def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) ->
     monkeypatch.setattr(module, "region_proposals", lambda _: ((0, 0, 100, 100),))
     monkeypatch.setattr(module, "predict_court_region", lambda *_: CourtRegionPrediction(cropped, (0, 0, 100, 100), (100, 100)))
     if failure is not None:
-        with pytest.raises(ValueError, match="No Court region meets"):
+        with pytest.raises(module.CourtRegionUnavailable, match="No Court region meets") as error:
             select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
+        assert len(error.value.candidates) == 1
+        assert error.value.candidates[0]["accepted"] is False
     else:
         selected = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
         assert selected.region == (0, 0, 100, 100)
