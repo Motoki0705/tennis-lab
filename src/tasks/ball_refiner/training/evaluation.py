@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import fields
-from typing import Any, TypeAlias
+from typing import Any
 
 import numpy as np
 import torch
@@ -11,53 +11,30 @@ from numpy.typing import NDArray
 from torch.nn import functional as F
 
 from src.tasks.ball_refiner.data.gaps import fixed_gap_mask, mask_detector_evidence
-from src.tasks.ball_refiner.data.windows import (
-    LoadedClip,
-    collate_windows,
-    detector_only_window,
-    window_owners,
-    window_starts,
-)
-from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
+from src.tasks.ball_refiner.data.inputs import detector_only_input
+from src.tasks.ball_refiner.data.windows import LoadedClip
+from src.tasks.ball_refiner.inference import RefinerPair, predict_sequence
 from src.tasks.ball_refiner.refiner_2d.distribution import (
     BallGMM2D,
     conditional_log_density,
 )
 from src.tasks.ball_refiner.training.configuration import PilotConfig
-from src.tasks.base.model_io import BoundModelIO
-
-RefinerPair: TypeAlias = BoundModelIO[Refiner2DInput, torch.Tensor, BallGMM2D]
 
 
 def predict_clip(
     pair: RefinerPair, clip: LoadedClip, config: PilotConfig, *, device: torch.device,
     gap: NDArray[np.bool_],
 ) -> BallGMM2D:
-    """Copy the complete GMM from one selected window; never average components."""
+    """Training wrapper; the shared inference core never receives annotations."""
     frames = clip.record.frame_count
     if gap.dtype != np.bool_ or gap.shape != (frames,):
         raise ValueError("Global gap mask must address every source frame")
-    length = config.window_length
-    starts = window_starts(frames, length, config.stride)
-    owners = window_owners(frames, starts, length)
-    collected: dict[str, torch.Tensor] = {}
-    pair.model.eval()
-    for offset in range(0, len(starts), config.training.batch_size):
-        selected = starts[offset:offset + config.training.batch_size]
-        batch = collate_windows([detector_only_window(clip, start, length, config.model) for start in selected])
-        gap_batch = torch.from_numpy(np.stack([gap[start:start + length] for start in selected]))
-        inputs = mask_detector_evidence(batch.inputs, gap_batch)
-        batch = type(batch)(inputs, batch.target).to(device)
-        with torch.no_grad():
-            prediction = pair.run(batch.inputs)
-        for field in fields(prediction):
-            values = getattr(prediction, field.name).cpu()
-            if field.name not in collected:
-                collected[field.name] = torch.empty((1, frames, *values.shape[2:]), dtype=values.dtype)
-            for row, start in enumerate(selected):
-                indices = np.flatnonzero(owners[start:start + length] == offset + row)
-                collected[field.name][0, start + indices] = values[row, indices]
-    return BallGMM2D(**collected)
+    inputs = detector_only_input(clip.evidence, 0, frames, config.model)
+    inputs = mask_detector_evidence(inputs, torch.from_numpy(gap)[None])
+    return predict_sequence(
+        pair, inputs, window_length=config.window_length, stride=config.stride,
+        batch_size=config.training.batch_size, device=device,
+    ).distribution
 
 
 def metric_rows(
