@@ -100,6 +100,8 @@ def _save_checkpoint(path: Path, payload: dict[str, Any]) -> None:
 
 def run_training(config_value: DictConfig) -> Path:
     config = PilotConfig.from_config(config_value)
+    if not config.store.is_dir() or not config.evidence.is_dir():
+        raise FileNotFoundError("Store and evidence cache directories must exist")
     # Hydra may already have made its metadata subdirectory, but a prior run is never reused.
     config.output.mkdir(parents=True, exist_ok=True)
     if any(path.name != "hydra" for path in config.output.iterdir()):

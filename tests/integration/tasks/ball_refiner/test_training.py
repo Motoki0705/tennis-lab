@@ -10,6 +10,7 @@ import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+import src.utils.hydra  # noqa: F401 -- public output/run-id resolvers
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
 from src.tasks.ball_refiner.data.evidence_cache import generate_evidence_cache
@@ -168,3 +169,19 @@ def test_unknown_or_missing_training_key_is_rejected(pilot_inputs, tmp_path):
     cfg.training.typo = 2
     with pytest.raises(ValueError):
         PilotConfig.from_config(cfg)
+
+
+def test_default_output_identity_composes_without_inputs_and_runtime_rejects_missing_inputs(tmp_path):
+    with initialize_config_dir(config_dir=str(CONFIG), version_base=None):
+        cfg = compose(config_name="train", overrides=[
+            f"paths.data_root={tmp_path / 'missing-data'}",
+            f"paths.cache_root={tmp_path / 'missing-cache'}",
+            f"paths.output_root={tmp_path / 'runs'}",
+        ])
+    runtime = PilotConfig.from_config(cfg)
+    assert runtime.output.relative_to(tmp_path / "runs").parts[:3] == ("ball_refiner", "train", "detector_only")
+    assert len(runtime.output.relative_to(tmp_path / "runs").parts) == 4
+    assert PilotConfig.from_config(cfg).output == runtime.output
+    with pytest.raises(FileNotFoundError, match="Store and evidence"):
+        run_training(cfg)
+    assert not runtime.output.exists()
