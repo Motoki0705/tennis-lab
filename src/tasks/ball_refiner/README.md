@@ -17,14 +17,17 @@
 
 | ファイル | 責務 |
 |---|---|
-| `refiner_2d/config.py` | モデル・分散範囲・dropout・ablation設定の正本 |
+| `configs/model/refiner_2d.yaml` | モデル・分散範囲・dropout・ablation設定の既定値の正本 |
+| `refiner_2d/config.py` | 完全な設定を要求するtyped契約と意味検証 |
 | `refiner_2d/contracts.py` | 入力と教師のtyped契約 |
 | `refiner_2d/model_io.py` | float32入力の検証、mask処理、MDNの復号、model/adapterの構築 |
 | `refiner_2d/model.py` | 計算だけのforward。候補集合→時間→文脈→時間→MDN |
 | `refiner_2d/distribution.py` | GMM検証、条件付き密度、source画素への平均/共分散変換 |
 | `refiner_2d/loss.py` | 既知frameの重み付きjoint NLLとepoch集計用の和・分母 |
 
-`build_ball_refiner_2d(Refiner2DConfig(...))`は共通の`BoundModelIO`を返す。
+`configs/model/refiner_2d.yaml`を合成して全fieldを`Refiner2DConfig(**values)`へ渡す。
+省略値をPython側で補完しない。既定のcourt軸はpipelineのcamera-local KP14に合わせる。
+`build_ball_refiner_2d(config)`は共通の`BoundModelIO`を返す。
 `pair.run(Refiner2DInput(...))`で検証→forward→復号し、
 `refiner_2d_nll(prediction, Refiner2DTarget(...)).loss.backward()`で学習できる。
 GPUへ移す場合はmodelと全入力tensorを同じdeviceへ明示的に配置する。
