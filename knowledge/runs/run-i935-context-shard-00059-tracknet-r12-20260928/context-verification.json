@@ -1,0 +1,415 @@
+{
+  "status": "verified_context_load",
+  "context_manifest_sha256": "74a84b793fcf313f4dd3663fb1e41c0f3ee9990bdb9551089067ebcbb5b09729",
+  "pose_threshold": 0.15,
+  "clips": [
+    {
+      "clip_id": "tracknet/game7/Clip4",
+      "frames": 901,
+      "tracks": 31,
+      "pose_valid_frames": 901,
+      "pose_valid_slots": 43964,
+      "court_valid_points": 14,
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 901,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 111724,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9983413219451904
+      },
+      "execution": {
+        "court_diagnostics": {
+          "geometry": {
+            "candidate_count": 767,
+            "homography_court_metres_to_image_pixels": [
+              [
+                68.48985685835449,
+                14.392227642130392,
+                641.371753400478
+              ],
+              [
+                0.16525997952054466,
+                -10.589060262866475,
+                292.7007280492998
+              ],
+              [
+                0.00021266889468603677,
+                0.022246537238477956,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 1.181619991979746,
+              "forward_support": 0.9972222222222222,
+              "reverse_rms_px": 0.7242759121780807,
+              "reverse_support": 1.0,
+              "segment_support": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                0.975,
+                1.0,
+                1.0
+              ],
+              "supported_segments": 9.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              288,
+              512
+            ],
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              720,
+              1280
+            ],
+            "raw_keypoints_px": [
+              [
+                344.88970947265625,
+                131.60911560058594
+              ],
+              [
+                935.58447265625,
+                132.05966186523438
+              ],
+              [
+                124.23538970947266,
+                571.2657470703125
+              ],
+              [
+                1151.8934326171875,
+                572.0667724609375
+              ],
+              [
+                421.975830078125,
+                131.47015380859375
+              ],
+              [
+                254.2242431640625,
+                571.305908203125
+              ],
+              [
+                864.3621826171875,
+                132.66880798339844
+              ],
+              [
+                1023.0468139648438,
+                571.7998046875
+              ],
+              [
+                394.23248291015625,
+                194.79530334472656
+              ],
+              [
+                886.0620727539062,
+                196.05545043945312
+              ],
+              [
+                312.68109130859375,
+                421.396240234375
+              ],
+              [
+                965.2880859375,
+                422.0001525878906
+              ],
+              [
+                642.809326171875,
+                194.43275451660156
+              ],
+              [
+                641.4959106445312,
+                421.83538818359375
+              ]
+            ],
+            "raw_scores": [
+              0.9742695689201355,
+              0.9659808874130249,
+              0.9837284684181213,
+              0.9876636862754822,
+              0.9677585959434509,
+              0.9845647811889648,
+              0.9721775650978088,
+              0.9887108206748962,
+              0.9795897603034973,
+              0.9603925347328186,
+              0.9866134524345398,
+              0.9868260025978088,
+              0.9772147536277771,
+              0.9782659411430359
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              0,
+              0,
+              1280,
+              720
+            ],
+            "residuals_px": [
+              0.8895989979353117,
+              3.234862954627431,
+              5.3234326822883835,
+              4.566357905619303,
+              2.0497581646534773,
+              3.450296570440731,
+              0.5443744636846979,
+              3.1028927570972367,
+              2.1866207909873587,
+              2.4057151459109964,
+              1.544114578089056,
+              3.092585897536482,
+              2.573881106372525,
+              1.8478467626549353
+            ],
+            "selected_keypoints": [
+              0,
+              4,
+              6,
+              8,
+              9,
+              10,
+              12,
+              13
+            ],
+            "status": "ok"
+          },
+          "region_selection": {
+            "candidates": [
+              {
+                "accepted": true,
+                "area_ratio": 0.38231381588935986,
+                "convex": true,
+                "inlier_score": 13.693757057189941,
+                "inliers": 14,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  0,
+                  1280,
+                  720
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.38412116523799045,
+                "convex": true,
+                "inlier_score": 9.729799270629883,
+                "inliers": 10,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  0,
+                  1280,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.3798607206546764,
+                "convex": true,
+                "inlier_score": 6.897007465362549,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  180,
+                  1280,
+                  720
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.39909885002204243,
+                "convex": true,
+                "inlier_score": 6.76730489730835,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  0,
+                  960,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.39173107689642206,
+                "convex": true,
+                "inlier_score": 3.3099756240844727,
+                "inliers": 4,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  180,
+                  960,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  360,
+                  960,
+                  720
+                ],
+                "status": "insufficient_line_support"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.3928161621130596,
+                "convex": true,
+                "inlier_score": 6.772967338562012,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  160,
+                  0,
+                  1120,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.2955517405276598,
+                "convex": true,
+                "inlier_score": 4.261996746063232,
+                "inliers": 5,
+                "inside_content": true,
+                "region_xyxy": [
+                  160,
+                  180,
+                  1120,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.37909487894586064,
+                "convex": true,
+                "inlier_score": 4.575724124908447,
+                "inliers": 5,
+                "inside_content": true,
+                "region_xyxy": [
+                  160,
+                  360,
+                  1120,
+                  720
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.39679211403328396,
+                "convex": true,
+                "inlier_score": 6.735313415527344,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  320,
+                  0,
+                  1280,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.3947517487028376,
+                "convex": true,
+                "inlier_score": 3.0210022926330566,
+                "inliers": 4,
+                "inside_content": true,
+                "region_xyxy": [
+                  320,
+                  180,
+                  1280,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": true,
+                "region_xyxy": [
+                  320,
+                  360,
+                  1280,
+                  720
+                ],
+                "status": "insufficient_line_support"
+              }
+            ],
+            "frame_index": 0,
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "region_xyxy": [
+              0,
+              0,
+              1280,
+              720
+            ]
+          }
+        },
+        "court_frame_indices": [
+          0
+        ],
+        "person_detection_frames": 901,
+        "person_region_policy": "full_frame",
+        "pose_crops": 11137,
+        "seconds": {
+          "court": 38.264789174019825,
+          "detection_tracking": 280.1124004299636,
+          "pose": 608.869925371022
+        },
+        "status": "complete",
+        "tracking_frames": 901
+      }
+    }
+  ]
+}
