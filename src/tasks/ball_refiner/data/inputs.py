@@ -55,9 +55,24 @@ def detector_only_input(
         name: getattr(evidence.candidates, name)[:, start:start + length].clone()
         for name in CANDIDATE_FIELDS
     }, config=evidence.candidates.config)
+    return detector_only_sequence_input(
+        candidates, torch.from_numpy(evidence.timestamps_seconds[start:start + length].copy())[None], config,
+    )
+
+
+def detector_only_sequence_input(
+    candidates: BallCandidates, timestamps_seconds: torch.Tensor, config: Refiner2DConfig,
+) -> Refiner2DInput:
+    """Construct the label-free ablation from full-camera evidence."""
+    if config.use_pose or config.use_court or not config.use_detector:
+        raise ValueError("Detector-only input requires use_detector=true, use_pose/use_court=false")
+    if (timestamps_seconds.ndim != 2 or timestamps_seconds.shape[0] != 1
+            or config.patch_size != candidates.config.patch_size):
+        raise ValueError("Require one camera timeline and matching candidate patch size")
+    length = timestamps_seconds.shape[1]
     return Refiner2DInput(
         candidates=candidates,
-        timestamps_seconds=torch.from_numpy(evidence.timestamps_seconds[start:start + length].copy())[None],
+        timestamps_seconds=timestamps_seconds,
         pose_uv=torch.zeros(1, length, 0, 4, 2), pose_confidence=torch.zeros(1, length, 0, 4),
         pose_valid=torch.zeros(1, length, 0, 4, dtype=torch.bool),
         court_uv=torch.zeros(1, config.court_keypoints, 2), court_confidence=torch.zeros(1, config.court_keypoints),
