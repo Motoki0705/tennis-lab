@@ -1,0 +1,12 @@
+{
+  "status": "pinned_identity_and_remaining_paths_verified",
+  "plan_sha256": "1730b845df7348a9f800575d8fbf0442b04324fcfa27d10ee87e005081af3486",
+  "remaining_clips": 326,
+  "remaining_frames": 142611,
+  "max_tracks": 1024,
+  "extension": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-shards-r12-20260928/dino_extension/lib/MultiScaleDeformableAttention.so",
+    "sha256": "cfc02bb4e4741d3c63db56e7bc249363e7866f3c5a8ebb0a591e415cb5dbdbd4"
+  },
+  "limitations": "CPU identity check; remaining JPEG bytes will be hashed by each generation job and full merge"
+}
