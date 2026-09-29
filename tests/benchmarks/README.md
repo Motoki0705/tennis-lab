@@ -150,6 +150,13 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   torch allocatorは6 GiBに制限。camera単位のarchive/hash・進捗・peak allocated/reservedを残し、途中runを上書きしない。
   ROI後の旧storeと区別し、最終のソース比較とCPU閾値sweepは別runで行う。
 
+- `person_selection_refinement.py --previous <run4-report> --report <新規出力先>` はCPUのみで
+  FT 0.01 / 保存済みunion / 旧経路のtrackとCLIPを再利用する。`court_linking.py`の領域と断片連結を適用し、
+  旧基準・領域だけ・領域＋連結の3段の人物unit/identity、camera×近遠、clip別表を保存する。
+  `diagnosis.json`は旧選別で残った隣コートunitのtrack構成・座標・旧/新領域内外を記録する。
+  COCO/unionのROI保存差はまだ残るので、全画面COCO完了後の公平な最終比較には代えない。
+  camera間対応は再実行せず、person_identities v3の安全策とCLIP既定は変更しない。
+
 - `person_selection_cpu.py --repo <元repo> --report <新規出力先> --phase sources --progress <run3/progress.json>`
   は中止済みrun 3のft_base 12件・ft_1080 11件をhash検証し、保存済みCOCOと比較する。閾値
   0.01/0.02/0.05/0.1/0.3のcamera×近遠表、共通11件の表、ROI内外人数を`sources.{json,csv}`へ書く。
