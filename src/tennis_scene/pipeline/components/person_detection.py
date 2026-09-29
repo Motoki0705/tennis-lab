@@ -12,10 +12,9 @@ from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
     PersonDetectionResult,
-    filter_detections_by_footpoint,
 )
 from src.tennis_scene.pipeline.components.base import release_inference_memory
-from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
+from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.video import OpenCVVideoFrameReader
 
@@ -23,7 +22,6 @@ from src.utils.video import OpenCVVideoFrameReader
 @dataclass(frozen=True)
 class PersonDetectionInput:
     video: SourceVideo
-    footpoint_polygon_px: tuple[tuple[float, float], ...] | None
 
 
 @dataclass(frozen=True)
@@ -46,15 +44,13 @@ class PersonDetectionOutput:
 
 class PersonDetectionModule:
     io = ComponentIO("person_detection", PersonDetectionInput, PersonDetectionOutput,
-        {"calibration": InputPort("local_court_calibration")}, "person_detections")
+        {}, "person_detections")
 
     def __init__(self, config: PeopleModelConfig, *, enabled: bool = True) -> None:
         self.config, self.enabled = config, enabled
 
     def process(self, inputs: PersonDetectionInput) -> PersonDetectionOutput:
-        # A camera excluded from court calibration has no court ROI and never
-        # enters reconstruction, so it is not detected rather than detected unfiltered.
-        if not self.enabled or inputs.footpoint_polygon_px is None:
+        if not self.enabled:
             return PersonDetectionOutput(inputs.video.camera_id, np.zeros(inputs.video.num_frames + 1, np.int64),
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32))
         config = self.config
@@ -78,7 +74,6 @@ class PersonDetectionModule:
                         device=config.runtime.device, verbose=False)[0]
                     detections = PersonDetectionResult(prediction.boxes.xyxy.detach().cpu().numpy().astype(np.float32),
                         prediction.boxes.conf.detach().cpu().numpy().astype(np.float32))
-                detections = filter_detections_by_footpoint(detections, inputs.footpoint_polygon_px)
                 boxes.append(detections.boxes_xyxy)
                 scores.append(detections.scores)
                 offsets.append(offsets[-1] + len(detections.scores))

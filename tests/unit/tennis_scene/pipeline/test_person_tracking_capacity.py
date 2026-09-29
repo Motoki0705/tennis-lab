@@ -1,7 +1,4 @@
-"""The per-camera cumulative track cap of person_tracking is configurable and stops explicitly."""
-
-from __future__ import annotations
-
+"""Raw person tracking has no player cap and preserves source boxes."""
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -9,51 +6,21 @@ from typing import Any
 import numpy as np
 import pytest
 
-from src.tennis_scene.pipeline.components import person_tracking
+from src.tennis_scene.pipeline.components import person_tracking as module
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
-from src.tennis_scene.pipeline.components.person_tracking import (
-    PersonTrackingInput,
-    PersonTrackingModule,
-)
-from src.tennis_scene.pipeline.components.tracking_identity import TrackletLinkPolicy
 from src.tennis_scene.pipeline.contracts import SourceVideo
-from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
-
-FRAMES = 6
-PEOPLE = 3
 
 
-class _Tracker:
-    """Reports ``PEOPLE`` well separated, never-moving people with fixed IDs."""
-
-    def update(self, detection: Any, frame: Any) -> list[dict[str, Any]]:
-        return [{"id": i + 1, "bbx_xyxy": np.array([100. + 300 * i, 100., 200. + 300 * i, 400.], np.float32)} for i in range(PEOPLE)]
-
-
-def _inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PersonTrackingInput:
-    frame: np.ndarray = np.full((720, 1280, 3), 128, np.uint8)
-    monkeypatch.setattr(person_tracking, "BotSortAssociator", _Tracker)
-    monkeypatch.setattr(person_tracking, "OpenCVVideoFrameReader",
-                        lambda path, max_frames: [SimpleNamespace(index=i, frame=frame) for i in range(FRAMES)])
-    boxes = np.tile(np.array([[100., 100., 200., 400.]], np.float32), (FRAMES * PEOPLE, 1))
-    detections = PersonDetectionOutput("cam0", np.arange(FRAMES + 1, dtype=np.int64) * PEOPLE, boxes, np.ones(FRAMES * PEOPLE, np.float32))
-    video = SourceVideo("cam0", tmp_path / "cam0.mp4", "0" * 64, FRAMES, 30., 1280, 720)
-    return PersonTrackingInput(video, detections)
-
-
-def test_tracks_within_the_cap_are_returned(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    output = PersonTrackingModule(TrackletLinkPolicy(), max_tracks=PEOPLE).process(_inputs(tmp_path, monkeypatch))
-    assert output.track_ids.tolist() == [1, 2, 3]
-    assert output.observed.all()
-
-
-def test_tracks_over_the_cap_stop_with_their_evidence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    with pytest.raises(ReconstructionUnavailable) as stopped:
-        PersonTrackingModule(TrackletLinkPolicy(), max_tracks=PEOPLE - 1).process(_inputs(tmp_path, monkeypatch))
-    assert stopped.value.reason == "person_capacity_exceeded"
-    assert stopped.value.diagnostics == {"track_ids": [1, 2, 3], "observed_frames": [FRAMES] * PEOPLE}
-
-
-def test_cap_must_be_positive() -> None:
-    with pytest.raises(ValueError, match="positive"):
-        PersonTrackingModule(TrackletLinkPolicy(), max_tracks=0)
+def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class Tracker:
+        def update(self, detections: Any, frame: Any) -> tuple[np.ndarray, np.ndarray]:
+            return np.arange(10, 18, dtype=np.int64), np.arange(7, -1, -1, dtype=np.int64)
+    monkeypatch.setattr(module, 'AllPersonAssociator', Tracker)
+    monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k: [SimpleNamespace(index=0, frame=np.zeros((10, 10, 3), np.uint8))])
+    boxes: np.ndarray = np.arange(32, dtype=np.float32).reshape(8, 4)
+    detection = PersonDetectionOutput('cam0', np.array([0, 8], np.int64), boxes, np.full(8, .3, np.float32))
+    video = SourceVideo('cam0', tmp_path / 'x.mp4', 'hash', 1, 30., 100, 100)
+    result = module.PersonTrackingModule().process(module.PersonTrackingInput(video, detection))
+    assert result.track_ids.tolist() == list(range(10, 18))
+    assert result.observed.all() and not result.tracklet_links
+    np.testing.assert_array_equal(result.boxes_xyxy[:, 0], boxes[::-1])

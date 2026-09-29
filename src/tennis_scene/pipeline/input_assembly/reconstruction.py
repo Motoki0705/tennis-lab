@@ -38,10 +38,10 @@ class CourtSideInputAssembler:
 
 @dataclass(frozen=True)
 class PlayerAssociationInputAssembler:
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerAssociationInput:
-        tracks = tuple(artifacts[f"tracks_{camera}"] for camera in context.source.camera_ids)
+        tracks = tuple(artifacts[f"tracks_{camera}"].tracks for camera in context.source.camera_ids)
         return PlayerAssociationInput(context.source, artifacts["calibration"], artifacts["side"], tracks)
 
 

@@ -22,6 +22,7 @@ import torch
 import ultralytics
 from numpy.typing import NDArray
 
+from src.tasks.person_tracking.all_person import ALL_PERSON_BOTSORT_SETTINGS
 from src.tasks.person_tracking.court_candidates import DwellConfig, select_candidates
 from src.tasks.person_tracking.court_consistency import court_consistency
 from src.tasks.person_tracking.selection_metrics import aggregate_units, selection_units
@@ -58,9 +59,7 @@ from src.utils.checksum import dual_sha256
 from src.utils.video import OpenCVVideoFrameReader
 
 SOURCES = ('ft_base_0.01', 'coco_0.30', 'union_0.30')
-TRACKER_CONFIG = dict(track_high_thresh=0., track_low_thresh=0., new_track_thresh=0., track_buffer=30,
-    match_thresh=.8, fuse_score=False, gmc_method='sparseOptFlow', proximity_thresh=.5, appearance_thresh=.8,
-    with_reid=False, model='auto')
+TRACKER_CONFIG = ALL_PERSON_BOTSORT_SETTINGS
 CODE_ROOT = Path(__file__).resolve().parents[2]
 
 
