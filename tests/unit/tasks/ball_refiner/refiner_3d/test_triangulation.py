@@ -28,3 +28,15 @@ def test_consumes_all_components_and_source_pixel_correlations():
         frame_observations(
             distribution, torch.tensor([[1920.0, 1080.0], [640.0, 480.0]]), frame=3
         )
+
+
+def test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling():
+    chol = torch.tensor([[0.013017, 0.0], [0.01703, 0.0730103]]).expand(3, 1, 3, 2, 2).clone()
+    dist = BallGMM2D(torch.full((3, 1, 3, 2), 0.5), chol, torch.zeros(3, 1, 3), torch.full((3, 1), 4.))
+    sizes = torch.tensor([[1920., 1080.]]).expand(3, 2)
+    observed = frame_observations(dist, sizes, frame=0)
+    pixel_chol = chol[:, 0].double() * (sizes.double() - 1)[:, None, :, None]
+    expected = pixel_chol @ pixel_chol.transpose(-1, -2)
+    np.testing.assert_allclose(observed.covariance_px2, expected.numpy(), rtol=1e-14)
+    np.testing.assert_allclose(observed.covariance_px2, observed.covariance_px2.swapaxes(-1, -2), rtol=1e-14)
+    np.linalg.cholesky(observed.covariance_px2)

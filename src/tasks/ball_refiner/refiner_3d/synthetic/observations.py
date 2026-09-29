@@ -65,6 +65,7 @@ def make_distribution(
     out_of_frame = (~front[:, :, 0]) | (means_px[:, :, 0] < 0).any(-1) | (means_px[:, :, 0] > scale[:, None]).any(-1)
     sigma = rng.uniform(settings["source_pixel_sigma_range"][0], settings["source_pixel_sigma_range"][1], size=(v, 1, 3, 2))
     sigma = np.broadcast_to(sigma, (v, t, 3, 2)).copy()
+    mean_sigma = sigma.copy() * settings["mean_error_sigma_multiplier"]
     sigma[:, :, 2] *= settings["distractor_sigma_multiplier"]
     sigma *= np.where(occlusion, settings["gap_sigma_multiplier"], 1)[:, :, None, None]
     rho = rng.uniform(settings["correlation_range"][0], settings["correlation_range"][1], size=(v, 1, 3))
@@ -78,7 +79,8 @@ def make_distribution(
     ar = settings["error_ar1"]
     for frame in range(1, t):
         errors[:, frame] = ar * errors[:, frame - 1] + np.sqrt(1 - ar ** 2) * innovations[:, frame]
-    means_px += np.einsum("vtkij,vtkj->vtki", chol, errors)
+    mean_chol = chol * (mean_sigma / sigma)[..., :, None]
+    means_px += np.einsum("vtkij,vtkj->vtki", mean_chol, errors)
     # This explicit synthetic policy mimics the bounded #935 head, and is counted.
     means_uv = means_px / scale[:, None, None]
     clipped = ((means_uv < 0) | (means_uv > 1)).any(-1)
