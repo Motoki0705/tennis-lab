@@ -1,0 +1,30 @@
+[
+  {
+    "clip": "video_000/clip_000",
+    "old_sha256": "5b6c59580c2f6d7455420a180966e3e31e6d7e315c17625506399560d2ca44b5",
+    "new_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+    "destination": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/labels.json",
+    "boxes_unchanged": true
+  },
+  {
+    "clip": "video_000/clip_007",
+    "old_sha256": "d12b049ce913a825205047aee2616f4dac01897c6b1fb484ffd772dcb33ce79c",
+    "new_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+    "destination": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/annotations/player_association/labels.json",
+    "boxes_unchanged": true
+  },
+  {
+    "clip": "video_001/clip_001",
+    "old_sha256": "c11aefa98995772ab3d7b7c5c8780e6049a56ad47a0df2bbc33cdf81e89a3cf2",
+    "new_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+    "destination": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/annotations/player_association/labels.json",
+    "boxes_unchanged": true
+  },
+  {
+    "clip": "video_002/clip_013",
+    "old_sha256": "ee0ac7bb49813bc14df4ed25d2c05045b839abb9439ffc509070ad8915a8cf5d",
+    "new_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+    "destination": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/annotations/player_association/labels.json",
+    "boxes_unchanged": true
+  }
+]

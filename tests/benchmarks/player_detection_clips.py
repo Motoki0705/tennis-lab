@@ -18,6 +18,7 @@ from typing import Any
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from src.tasks.player_association.evaluation.dataset_labels import discover_labels
 from src.tasks.player_association.evaluation.labels import ClipLabels
 from src.tasks.player_detection.evaluation.partial_labels import PartialDetectionMetrics
 from src.tennis_scene.configuration import PipelineRuntimeConfig
@@ -93,7 +94,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True, help="Asset root holding data/, ckpt/, third_party/")
     parser.add_argument("--dataset", type=Path, required=True, help="Meiji structured dataset")
-    parser.add_argument("--labels-dir", type=Path, required=True, help="#944 labels (<video>/<clip>.json)")
     parser.add_argument("--report", type=Path, required=True, help="New run-owned output directory")
     parser.add_argument("--clip", action="append", default=[], help="Subset of labelled clip IDs (repeatable)")
     parser.add_argument("--legacy-checkpoint", default="dino/checkpoint0029_4scale_swin.pth")
@@ -105,7 +105,7 @@ def main() -> None:
     report.mkdir(parents=True, exist_ok=True)
     if (report / "comparison.json").exists():
         raise FileExistsError(f"Completed comparison already exists: {report}")
-    paths = sorted(args.labels_dir.resolve().glob("*/*.json"))
+    paths = discover_labels(dataset)
     labelled = {path: ClipLabels.load(path) for path in paths}
     if args.clip:
         unknown = set(args.clip) - {labels.clip_id for labels in labelled.values()}
@@ -115,7 +115,7 @@ def main() -> None:
     if not labelled or len({labels.clip_id for labels in labelled.values()}) != len(labelled):
         raise ValueError("Expected nonempty, unique labelled clips")
     summary: dict[str, Any] = {
-        "schema": "player_detection_partial_comparison_v1", "status": "running",
+        "schema": "player_detection_old_box_agreement_v2", "status": "running",
         "min_iou": args.min_iou, "scope": "pipeline_court_roi",
         "labels": {labels.clip_id: {"path": str(path), "sha256": dual_sha256(path)}
                    for path, labels in labelled.items()}, "variants": {},
