@@ -1,4 +1,4 @@
-"""Camera-only Meiji geometry and hypothesized #935-compatible degradation."""
+"""Camera-only Meiji geometry and provisional saved-pilot degradation."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from scipy.spatial.transform import Rotation
 
 from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.utils.geometry.triangulation import PinholeCamera
+
+from .calibration import CalibrationBank
 
 
 def load_cameras(path: Path, keys: list[str]) -> tuple[tuple[PinholeCamera, ...], NDArray[np.float64]]:
@@ -40,7 +42,7 @@ def perturb_cameras(
 def make_distribution(
     positions: NDArray[np.floating], cameras: tuple[PinholeCamera, ...],
     sizes: NDArray[np.float64], settings: dict[str, Any], rng: np.random.Generator,
-    *, rally_index: int,
+    *, rally_index: int, calibration: CalibrationBank,
 ) -> tuple[BallGMM2D, dict[str, NDArray[Any]], dict[str, Any]]:
     v, t = len(cameras), len(positions)
     gap_lengths = settings["gap_lengths_frames"]
@@ -56,44 +58,25 @@ def make_distribution(
         begin = int(rng.integers(0, t - length + 1))
         occlusion[camera, begin:begin + length] = True
         intervals.append({"cameras": [camera], "start": begin, "stop": begin + length})
-    shift = np.asarray(settings["alternative_shift_m"])
-    alternatives = np.stack([positions, positions + shift, positions - shift], axis=1)
-    projected = [camera.project(alternatives) for camera in cameras]
-    means_px = np.stack([item[0] for item in projected])
+    projected = [camera.project(positions) for camera in cameras]
+    truth_px = np.stack([item[0] for item in projected])
     front = np.stack([item[1] for item in projected])
     scale = sizes - 1
-    out_of_frame = (~front[:, :, 0]) | (means_px[:, :, 0] < 0).any(-1) | (means_px[:, :, 0] > scale[:, None]).any(-1)
-    sigma = rng.uniform(settings["source_pixel_sigma_range"][0], settings["source_pixel_sigma_range"][1], size=(v, 1, 3, 2))
-    sigma = np.broadcast_to(sigma, (v, t, 3, 2)).copy()
-    mean_sigma = sigma.copy() * settings["mean_error_sigma_multiplier"]
-    sigma[:, :, 2] *= settings["distractor_sigma_multiplier"]
-    sigma *= np.where(occlusion, settings["gap_sigma_multiplier"], 1)[:, :, None, None]
-    rho = rng.uniform(settings["correlation_range"][0], settings["correlation_range"][1], size=(v, 1, 3))
-    chol = np.zeros((v, t, 3, 2, 2))
-    chol[..., 0, 0] = sigma[..., 0]
-    chol[..., 1, 0] = rho * sigma[..., 1]
-    chol[..., 1, 1] = np.sqrt(1 - rho ** 2) * sigma[..., 1]
-    innovations = rng.standard_normal((v, t, 3, 2))
-    errors = np.empty_like(innovations)
-    errors[:, 0] = innovations[:, 0]
-    ar = settings["error_ar1"]
-    for frame in range(1, t):
-        errors[:, frame] = ar * errors[:, frame - 1] + np.sqrt(1 - ar ** 2) * innovations[:, frame]
-    mean_chol = chol * (mean_sigma / sigma)[..., :, None]
-    means_px += np.einsum("vtkij,vtkj->vtki", mean_chol, errors)
-    # This explicit synthetic policy mimics the bounded #935 head, and is counted.
-    means_uv = means_px / scale[:, None, None]
+    out_of_frame = (~front) | (truth_px < 0).any(-1) | (truth_px > scale[:, None]).any(-1)
+    rows = np.stack([calibration.draw_rows(camera, occlusion[camera], rng, block_frames=settings["calibration"]["block_frames"]) for camera in range(v)])
+    bank = calibration.arrays
+    means_uv = truth_px[:, :, None] / scale[:, None, None] + bank["error_uv"][rows]
     clipped = ((means_uv < 0) | (means_uv > 1)).any(-1)
     means_uv = np.clip(means_uv, 0, 1)
-    weights = np.broadcast_to(settings["observed_weights"], (v, t, 3)).copy()
-    weights[occlusion] = settings["gap_weights"]
-    presence_logits = np.where(out_of_frame, -settings["presence_logit_magnitude"], settings["presence_logit_magnitude"])
+    presence_logits = np.where(out_of_frame, settings["calibration"]["out_of_frame_presence_logit"], bank["presence_logits"][rows])
     distribution = BallGMM2D(
         torch.from_numpy(means_uv.astype(np.float32)),
-        torch.from_numpy((chol / scale[:, None, None, :, None]).astype(np.float32)),
-        torch.from_numpy(np.log(weights).astype(np.float32)),
+        torch.from_numpy(bank["scale_tril_uv"][rows].copy()),
+        torch.from_numpy(bank["mixture_logits"][rows].copy()),
         torch.from_numpy(presence_logits.astype(np.float32)),
     )
-    masks = {"occlusion_mask": occlusion, "out_of_frame_mask": out_of_frame}
-    metadata = {"gap_intervals": intervals, "shared_gap_length": shared_length, "clipped_component_means": int(clipped.sum())}
+    if not bool(((distribution.presence_probability > 0) & (distribution.presence_probability < 1)).all()) or not bool((distribution.weights > 0).all()):
+        raise ValueError("Full enumeration requires interior pilot presence and positive component weights")
+    masks = {"occlusion_mask": occlusion, "out_of_frame_mask": out_of_frame, "calibration_rows": rows}
+    metadata = {"gap_intervals": intervals, "shared_gap_length": shared_length, "clipped_component_means": int(clipped.sum()), "calibration_status": settings["status"], "calibration_bank_sha256": settings["calibration"]["bank_sha256"]}
     return distribution, masks, metadata
