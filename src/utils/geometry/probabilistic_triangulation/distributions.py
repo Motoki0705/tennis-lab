@@ -60,6 +60,11 @@ class CameraGMM:
             raise ValueError("Invalid presence shape or nonfinite values")
         if ((self.presence < 0) | (self.presence > 1)).any():
             raise ValueError("Presence must be in [0,1]")
+        # Exported float32 softmax rows may miss one by roundoff. Normalize only
+        # after the contract check; do not threshold or prune any component.
+        object.__setattr__(
+            self, "weights", self.weights / self.weights.sum(-1, keepdims=True)
+        )
 
 
 @dataclass(frozen=True)
@@ -79,6 +84,7 @@ class GaussianMixture3D:
             raise ValueError("Invalid 3D weights")
         if (self.weights < 0).any() or not np.isclose(self.weights.sum(), 1, atol=1e-6):
             raise ValueError("3D weights must be nonnegative and sum to one")
+        object.__setattr__(self, "weights", self.weights / self.weights.sum())
 
     def log_prob(self, points: FloatArray) -> FloatArray:
         if points.shape[-1:] != (3,) or not np.isfinite(points).all():
