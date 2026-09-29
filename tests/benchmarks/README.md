@@ -155,4 +155,5 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   既定CLIP-ReIDもCPUで実行し、#933の区間分割・短い曖昧区間除外・handoffを含むcamera間対応を第2確認に使う。
   未決定は理由を残し、成功結果へ戻さない。旧検出＋旧追跡の保存済み出力もbaselineとして同じ選別に通す。
   `--phase video`はunionのdev clip_000から、全人物を灰色、選手を予測identity色で示す12秒3camera動画を作る。
+  `--phase report`はidentity/camera別の表と日本語`report.md`を作り、対応後の足元のcamera間距離（z=0）を第2確認として記録する。
   pipeline既定やencoder比較は変更しない。全人物のpose/外観が未保存のBoT-SORT-style derivativeはこの診断では未評価。
