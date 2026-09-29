@@ -6,6 +6,7 @@ simulation:
   class: src.tasks.blcs.generate_dataset.simulation.rally_simulator.RallySimulator
   device: cpu
   workers: 4
+  maximum_physics_attempts_per_rally: 32
   physics_base: src/tasks/blcs/configs/physics/default.yaml
   rally_base: src/tasks/blcs/configs/rally/default.yaml
   targeted_velocity_base: src/tasks/blcs/configs/targeted_velocity/default.yaml
@@ -63,6 +64,7 @@ degradation:
   - -0.7
   - 0.7
   error_ar1: 0.9
+  mean_error_sigma_multiplier: 0.25
   gap_lengths_frames:
   - 1
   - 4
