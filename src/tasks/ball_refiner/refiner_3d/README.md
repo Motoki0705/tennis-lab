@@ -11,12 +11,17 @@ C（2D分布の標本化＋三角測量）を同じ合成入力で比較する�
 3D密度の単位は m⁻³、NLLは自然対数、coverageは混合全体のHDRで測る。
 点推定の平均誤差だけで方式を選ばない。raw detectorは入力にしない。
 
-存在確率はamodalな画面内存在であり、検出器scoreではない。
-暫定的にcamera集合Sを独立Bernoulliで周辺化し、各S内で
-正規化した `p0(x) × ∏ G_i(project_i(x))` を混合する。
-不在cameraの画面外制約は利用しない。この近似とcamera間の存在相関は
-実refinerの較正後に再検証する。全camera不在の項は明示した空間prior p0。
-これは3Dの球の不存在確率ではなく、位置の情報がない項である。
+位置prior・presence周辺化・Laplace evidenceの定義と限界は
+[共有geometry API](../../../utils/geometry/probabilistic_triangulation/README.md)を正本とする。
+`triangulation.frame_observations()` は既存の `pixel_moments()` を使って、
+B軸を呼び出し側が同期させたcamera順のV軸へ写す。成分は平均しない。
+
+比較用cameraは
+[`fixtures/meiji_video_002_clip_010.json`](fixtures/meiji_video_002_clip_010.json) の
+video_002/clip_010、cam0/1/2（1920×1080）。
+既存court校正artifactのパスとSHA256を含み、実ボールの観測・評価には使っていない。
+比較のCLIは `python -m src.tasks.ball_refiner.scripts.compare_triangulation`。
+`--fixture` と未使用の `--output` を明示し、CPU/native threadを1に制限する。
 
 ## 59.94fpsデータ生成計画
 
