@@ -40,3 +40,5 @@ def test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling():
     np.testing.assert_allclose(observed.covariance_px2, expected.numpy(), rtol=1e-14)
     np.testing.assert_allclose(observed.covariance_px2, observed.covariance_px2.swapaxes(-1, -2), rtol=1e-14)
     np.linalg.cholesky(observed.covariance_px2)
+    with pytest.raises((ValueError, TypeError)):
+        frame_observations(dist, sizes.to(torch.int64), frame=0)
