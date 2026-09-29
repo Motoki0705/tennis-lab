@@ -1,0 +1,9 @@
+{
+  "frames": 216,
+  "nll_probe_only_nonconverged_frames": 28,
+  "nonconverged_component_probability_mass": {
+    "mean": 0.009379109438753032,
+    "p50": 0.0005529263871721923,
+    "p95": 0.034775364212691784
+  }
+}

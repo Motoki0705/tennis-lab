@@ -17,8 +17,14 @@ metrics:
   observed_frames: 12068
   evidence_gap_frames: 2584
   confirmed_negative_frames: 0
+  preflight_rallies: 3
+  preflight_frames: 216
+  preflight_nonconverged_frames: 216
+  preflight_wall_seconds: 406.5298549809959
+  dev_ideal_projected_hours: 12.792829547796964
 artifacts:
   run_dir: knowledge/runs/run-i936-provisional-degradation-r5-s936
+  preflight_output_dir: /home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-preflight-r5
 parents:
 - run-i935-calibration-hdr-ft-e13-r5-20260928
 - run-i936-synthetic-smoke-r3-s936
@@ -31,6 +37,7 @@ repro:
   command: PYTHONPATH=. .venv/bin/python knowledge/runs/run-i936-provisional-degradation-r5-s936/reproduce.py
     --source "$PWD/knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928" --output
     /absolute/new/calibration
+  commit: ab4f76b59d01a8d9af44fdcda28500316bfed35b
 ---
 
 #935の保存済み文脈なしpilotを、96ラリー開発用の**暫定劣化**へ接続した。
@@ -83,3 +90,34 @@ camera間は独立に抽出するので同時誤検出の相関は未較正。�
 次は収束判定つきの96ラリーを生成し、metadataを読んでdiffusion開発を進める。
 full生成前に新detector/person contextの保存出力でbankを作り直し、負例と長いgap・相関を再検討する。
 [採用した暫定判断](https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5898321426)。
+
+## 接続検証と生成費用
+
+各splitのindex3を固定し、native simulationを実行後、72frame prefix（共有gap64frame）を
+各1件保存・再読込した。全3ラリー・216frame・全125成分で、失敗0、flag付き未収束216frame。
+全GMM、presence周辺化、正depth平均、SPD、native時刻/イベントmask、bank row出典、
+収束差分/flag/capをreaderで検証した。[入力hashと全履歴](../../runs/run-i936-provisional-degradation-r5-s936/preflight-manifest.json)、
+[再読込結果](../../runs/run-i936-provisional-degradation-r5-s936/preflight-verification.json)を保存した。
+CPU3 process/native thread1、wall406.530秒、累積worker990.750秒、NPZ1,459,800 bytes。
+検証用prefixであり、96ラリーの完了・分布の収束・品質改善を意味しない。
+[内訳](../../runs/run-i936-provisional-degradation-r5-s936/preflight-convergence-detail.json)では、
+NLL probeだけの未達は28/216、未収束成分の確率質量は中央値0.000553・平均0.00938。
+微小質量の成分もstrict判定に含むため、全frame未収束と大部分のNLL probe安定は両立する。
+この集計による成分の削除・閾値除外は行っていない。
+
+[費用外挿](../../runs/run-i936-provisional-degradation-r5-s936/dev-cost-projection.json)は、
+split別prefix秒/frameに旧smokeの平均frame/rallyと64/16/16件を掛ける。
+理想4 processで46,054.19秒=12.793時間、NPZ約275MBとなり、旧K=3/固定予算の1.7時間は
+新K=4/3段階積分には使えない。起動見込みは20%程度の余裕を足した15.5時間とする。
+各split1seed・64/72gapの短いprefixを3 processで測った外挿で、実測完了時刻や上限保証ではない。
+ラリー数/最大512frame/全125成分は減らさない。640ラリーは開始しない。
+
+最初のpreflightは較正の相対pathをstrict境界へ直接渡して停止した
+（[保存ログ](../../runs/run-i936-provisional-degradation-r5-s936/preflight-path-failure.log)）。
+project rootで明示解決する修正ab4f76b5と回帰テストを追加し、その後の上記3件が成功した。
+設定監査99境界、関連194 tests、保存境界を含む15 tests、path修正後8 tests、ruff/mypyが成功。
+
+[再抽出検査](../../runs/run-i936-provisional-degradation-r5-s936/reproduction_check.json)では全配列の
+shape/dtype/bytesと全統計・出典が一致した。NPZ memberの順序はPython set順に依存するため、
+再抽出ファイル全体のhashは異なる。生成は**元bankの既知hashだけ**を受け付け、同じ配列だからと
+別ファイルを黙って採用しない。元のbundleを書き換えて再現したことにはしていない。
