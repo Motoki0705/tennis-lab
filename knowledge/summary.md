@@ -1,4 +1,4 @@
-<!-- knowledge-review: d335caad184506480d0bd87c9093b5bdf076b75a5e1ce2d792f7658898e64229 on 2026-09-30 -->
+<!-- knowledge-review: 64e238a80dc10c9731a2c58ca57c4a815d71d22d5c7b864a74c46da78f44c209 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -311,6 +311,9 @@ float32画素変換の共分散丸めを修正しても、広いprior/K=3のcame
 正depthを保つAと非正則成分の体積積分を明示的に併用するHは108予定frame+10失敗frameを全て処理した。
 全64成分を保つsmoke用にHへ変更する。ただし境界近くの1frameはvoxel予算でNLLが約1 nat動き、
 光線座標の積分試行も不安定で却下した。Hの全件成功を積分精度の収束や本学習の承認と読み替えない。
+[固定12ラリーsmoke](nodes/ball_refiner_3d/000007-run-i936-synthetic-smoke-r3-s936.md)は全件成功し、
+4,809frame・全64成分・各splitの64frame共有gapを保存/再読込した。比較118frameとの入力一致も確認済み。
+640ラリーは4 workerで約11.03時間/NPZ0.743GBの外挿で、全量は未実行。劣化較正と積分精度の判断を先行する。
 [絶対x0 flow matchingのCPU 100-update診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)
 は解析的fixtureで計算graphを確認した段階。12-rallyの成功・学習精度・GPU性能の証拠ではなく、
 本学習/実LOCO/pipelineの前には生成器の修正と#935からの劣化較正が必要。

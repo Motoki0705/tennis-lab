@@ -46,7 +46,7 @@ issue: 936
 date: '2026-09-30'
 repro:
   commit: d0dacaf5
-  command: bash knowledge/runs/run-i936-triangulation-wide-s936/repro.sh
+  command: bash knowledge/runs/run-i936-triangulation-wide-s936/repro.sh /absolute/new/output
 ---
 
 広いpriorでは旧Aをそのまま使えない。正depthを保つAと、非正則成分を明示的に
