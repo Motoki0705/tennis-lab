@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from numpy.typing import NDArray
 from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import sha256
 from src.tasks.ball_refiner.refiner_3d.synthetic.timebase import resample
+from src.utils.geometry.probabilistic_triangulation.solver import COMPONENT_METHODS
 
 
 class SyntheticDataset:
@@ -70,6 +72,17 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
     subsets = arrays["gmm3d_camera_subsets"]
     if subsets.shape != (t, 64, 3) or subsets.dtype != np.bool_ or not np.array_equal(subsets, np.broadcast_to(subsets[0], subsets.shape)):
         raise ValueError("Camera subset topology changed within a rally")
+    codes = arrays["gmm3d_method_codes"]
+    if codes.shape != (t, 64) or codes.dtype != np.uint8 or (codes >= len(COMPONENT_METHODS)).any() or tuple(record["component_method_labels"]) != COMPONENT_METHODS:
+        raise ValueError("Invalid component integration diagnostics")
+    counts = dict(Counter(COMPONENT_METHODS[int(code)] for code in codes.ravel()))
+    if counts != record["component_method_counts"]:
+        raise ValueError("Component integration counts mismatch")
+    points = arrays["gmm3d_means_m"].astype(np.float64)
+    for camera in range(3):
+        depths = points @ arrays["camera_estimated_R"][camera, 2] + arrays["camera_estimated_t"][camera, 2]
+        if (depths[subsets[:, :, camera]] <= 0).any():
+            raise ValueError("Posterior component mean behind an active camera")
     presence = distribution.presence_probability.numpy().T.astype(np.float64)
     for mask in np.unique(subsets[0], axis=0):
         selected = (subsets[0] == mask).all(-1)

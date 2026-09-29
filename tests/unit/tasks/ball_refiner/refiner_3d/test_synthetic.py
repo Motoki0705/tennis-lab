@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -25,8 +25,12 @@ from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyResu
 from src.utils.geometry.probabilistic_triangulation import (
     GaussianPrior3D,
     LaplaceConfig,
-    triangulate_gmm,
 )
+from src.utils.geometry.probabilistic_triangulation.solver import (
+    HybridConfig,
+    triangulate_hybrid,
+)
+from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
 from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.paths import PROJECT_ROOT
 
@@ -94,10 +98,12 @@ def test_long_occlusion_retains_presence_full_covariance_and_all_64_modes():
     torch.testing.assert_close(distribution.scale_tril[:, 40], distribution.scale_tril[:, 0] * settings["gap_sigma_multiplier"])
     assert bool((distribution.covariance[..., 0, 1] != 0).all())
     observations = frame_observations(distribution, torch.from_numpy(sizes), frame=40)
-    result = triangulate_gmm(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), config=LaplaceConfig(64, 100))
+    result = triangulate_hybrid(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), config=HybridConfig(LaplaceConfig(64, 100), VoxelConfig(**settings["boundary_volume"])))
     assert result.distribution.means.shape == (64, 3)
     assert len(np.unique(result.camera_subsets, axis=0)) == 8
     assert result.prior_only_probability > 0
+    assert len(result.component_methods) == 64
+    assert any(method.startswith("volume:") for method in result.component_methods)
     np.linalg.cholesky(result.distribution.covariance.astype(np.float32))
     np.testing.assert_allclose(result.distribution.weights.sum(), 1)
 
@@ -132,3 +138,43 @@ def test_reader_rejects_partial_dataset_and_corrupt_rally(tmp_path):
     dataset = SyntheticDataset(tmp_path)
     with pytest.raises(ValueError, match="Corrupt"):
         dataset.load(dataset.records[0])
+
+
+def test_generation_records_late_results_after_a_rally_failure(tmp_path, monkeypatch):
+    from concurrent.futures import Future
+
+    from src.tasks.ball_refiner.refiner_3d.synthetic import generator
+    from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import GenerationPlan
+
+    class Pool:
+        def __init__(self, **kwargs):
+            self.submitted = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def submit(self, function, job):
+            future: Future[dict[str, Any]] = Future()
+            _, split, index, _ = job
+            if split == 1:
+                future.set_exception(RuntimeError("numerical failure"))
+            else:
+                future.set_result({"rally_id": f"{('train', 'val', 'test')[split]}-{index:05d}", "frames": 512, "elapsed_seconds": 1.})
+            self.submitted += 1
+            return future
+
+    monkeypatch.setattr(generator, "ProcessPoolExecutor", Pool)
+    plan = GenerationPlan(
+        physics={}, rally={}, targeted={}, input_hashes={}, camera_paths=(), input_paths=(),
+        values={"counts": {"smoke_rallies_per_split": 1}, "simulation": {"workers": 1}},
+    )
+    output = tmp_path / "dataset"
+    with pytest.raises(RuntimeError, match="1 of 3 rallies failed"):
+        generator.generate_dataset(plan, output, mode="smoke")
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["status"] == "failed"
+    assert {r["rally_id"] for r in manifest["rallies"]} == {"train-00000", "test-00000"}
+    assert manifest["failures"] == [{"split_index": 1, "rally_index": 0, "error": "numerical failure"}]

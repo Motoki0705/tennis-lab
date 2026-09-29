@@ -83,7 +83,12 @@ degradation:
   distractor_sigma_multiplier: 3.0
   presence_logit_magnitude: 4.0
   mean_bounds_policy: clip_to_source_grid
-  triangulation: src.utils.geometry.probabilistic_triangulation.triangulate_gmm
+  triangulation: src.utils.geometry.probabilistic_triangulation.solver.triangulate_hybrid
+  boundary_volume:
+    initial_cells: 16
+    levels: 7
+    refine_cells: 512
+    prior_sigmas: 4.0
   prior_mean_m:
   - 0.0
   - 0.0
