@@ -1,4 +1,4 @@
-<!-- knowledge-review: 64e238a80dc10c9731a2c58ca57c4a815d71d22d5c7b864a74c46da78f44c209 on 2026-09-30 -->
+<!-- knowledge-review: 640afce3d205fa50ee3d97e8aa2c32bdfee5e61d58c945317fd220ff44193d23 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -196,6 +196,10 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 文脈の採否は同一母数のfull/ablationで判断し、現時点のdeploy判断は変えない。
 
 ### 3D Ball Refiner
+
+[保存済みpilotからの暫定劣化](nodes/ball_refiner_3d/000008-run-i936-provisional-degradation-r5-s936.md)を96ラリー開発用に導入した。
+全K=4の誤差・共分散・重み・存在をcamera/条件別に保持し、3Dは全125成分とする。
+負例、長いgap、camera間相関、新detector/person contextは未較正で、full生成の承認とは区別する。
 
 [確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
 Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを

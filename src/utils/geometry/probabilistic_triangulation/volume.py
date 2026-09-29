@@ -125,14 +125,13 @@ def _voxel_subset(
     active: list[int],
     prior: GaussianPrior3D,
     config: VoxelConfig,
+    *, build_leaves: bool = True,
 ) -> VoxelDensity:
     # Axis-aligned finite box, no mode seeds/GT from method A. Unrefined cells
     # retain mass; refinement never silently discards the tails or other modes.
     extent = 2 * config.prior_sigmas * np.sqrt(prior.covariance.diagonal())
     lower = prior.mean - extent / 2
-    indices = np.asarray(
-        list(product(range(config.initial_cells), repeat=3)), dtype=np.int64
-    )
+    indices = np.indices((config.initial_cells,) * 3, dtype=np.int64).reshape(3, -1).T
     offsets = np.asarray(list(product(range(2), repeat=3)), dtype=np.int64)
     saved_indices, saved_levels, saved_log_mass = [], [], []
     for level in range(config.levels):
@@ -162,7 +161,7 @@ def _voxel_subset(
     leaves = {
         (int(level), int(ix[0]), int(ix[1]), int(ix[2])): float(log_p)
         for level, ix, log_p in zip(levels, all_indices, log_density, strict=True)
-    }
+    } if build_leaves else {}
     return VoxelDensity(
         lower,
         extent,
@@ -201,7 +200,7 @@ def integrate_component(
     """One product's evidence and cell-mixture moments, never merge products."""
     views = len(cameras)
     observation = CameraGMM(means[:, None], covariance[:, None], np.ones((views, 1)), np.ones(views))
-    density = _voxel_subset(observation, cameras, list(range(views)), prior, config)
+    density = _voxel_subset(observation, cameras, list(range(views)), prior, config, build_leaves=False)
     mean = density.weights @ density.centers
     delta = density.centers - mean
     covariance3d = np.einsum("n,ni,nj->ij", density.weights, delta, delta)

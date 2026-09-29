@@ -9,6 +9,10 @@ import pytest
 import torch
 import yaml
 
+from src.tasks.ball_refiner.refiner_3d.synthetic.calibration import (
+    CalibrationBank,
+    load_calibration,
+)
 from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import SyntheticDataset
 from src.tasks.ball_refiner.refiner_3d.synthetic.observations import (
     make_distribution,
@@ -26,11 +30,10 @@ from src.utils.geometry.probabilistic_triangulation import (
     GaussianPrior3D,
     LaplaceConfig,
 )
-from src.utils.geometry.probabilistic_triangulation.solver import (
-    HybridConfig,
-    triangulate_hybrid,
+from src.utils.geometry.probabilistic_triangulation.convergence import (
+    ConvergenceConfig,
+    triangulate_converged,
 )
-from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
 from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.paths import PROJECT_ROOT
 
@@ -86,23 +89,28 @@ def _fixture():
     return cameras, sizes, plan
 
 
-def test_long_occlusion_retains_presence_full_covariance_and_all_64_modes():
+def test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes():
     cameras, sizes, plan = _fixture()
     settings = plan["degradation"]
+    calibration = load_calibration(PROJECT_ROOT / settings["calibration"]["bank"], settings["calibration"]["bank_sha256"])
     positions = np.tile([0., 0., 2.], (96, 1))
-    distribution, masks, metadata = make_distribution(positions, cameras, sizes, settings, np.random.default_rng(936), rally_index=3)
+    distribution, masks, metadata = make_distribution(positions, cameras, sizes, settings, np.random.default_rng(936), rally_index=3, calibration=calibration)
     assert metadata["shared_gap_length"] == 64
     assert masks["occlusion_mask"].all(0).sum() >= 64
     assert not masks["out_of_frame_mask"].any()
-    torch.testing.assert_close(distribution.presence_probability, distribution.presence_probability[:, :1].expand(3, 96))
-    torch.testing.assert_close(distribution.scale_tril[:, 40], distribution.scale_tril[:, 0] * settings["gap_sigma_multiplier"])
+    rows = masks["calibration_rows"]
+    np.testing.assert_array_equal(distribution.presence_logits.numpy(), calibration.arrays["presence_logits"][rows])
+    np.testing.assert_array_equal(distribution.scale_tril.numpy(), calibration.arrays["scale_tril_uv"][rows])
+    np.testing.assert_array_equal(distribution.mixture_logits.numpy(), calibration.arrays["mixture_logits"][rows])
     assert bool((distribution.covariance[..., 0, 1] != 0).all())
     observations = frame_observations(distribution, torch.from_numpy(sizes), frame=40)
-    result = triangulate_hybrid(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), config=HybridConfig(LaplaceConfig(64, 100), VoxelConfig(**settings["boundary_volume"])))
-    assert result.distribution.means.shape == (64, 3)
+    checked = triangulate_converged(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), laplace=LaplaceConfig(125, 100), config=ConvergenceConfig(**settings["boundary_convergence"]))
+    result = checked.posterior
+    assert checked.rounds >= 2
+    assert result.distribution.means.shape == (125, 3)
     assert len(np.unique(result.camera_subsets, axis=0)) == 8
     assert result.prior_only_probability > 0
-    assert len(result.component_methods) == 64
+    assert len(result.component_methods) == 125
     assert any(method.startswith("volume:") for method in result.component_methods)
     np.linalg.cholesky(result.distribution.covariance.astype(np.float32))
     np.testing.assert_allclose(result.distribution.weights.sum(), 1)
@@ -121,8 +129,10 @@ def test_camera_perturbation_changes_geometry_without_breaking_rotation():
 
 def test_short_rally_gap_fails_instead_of_shortening_requested_gap():
     cameras, sizes, plan = _fixture()
+    settings = plan["degradation"]["calibration"]
+    calibration = load_calibration(PROJECT_ROOT / settings["bank"], settings["bank_sha256"])
     with pytest.raises(ValueError, match="too short"):
-        make_distribution(np.tile([0., 0., 2.], (50, 1)), cameras, sizes, plan["degradation"], np.random.default_rng(0), rally_index=3)
+        make_distribution(np.tile([0., 0., 2.], (50, 1)), cameras, sizes, plan["degradation"], np.random.default_rng(0), rally_index=3, calibration=calibration)
 
 
 def test_reader_rejects_partial_dataset_and_corrupt_rally(tmp_path):
@@ -168,7 +178,7 @@ def test_generation_records_late_results_after_a_rally_failure(tmp_path, monkeyp
 
     monkeypatch.setattr(generator, "ProcessPoolExecutor", Pool)
     plan = GenerationPlan(
-        physics={}, rally={}, targeted={}, input_hashes={}, camera_paths=(), input_paths=(),
+        physics={}, rally={}, targeted={}, input_hashes={}, camera_paths=(), input_paths=(), calibration=cast(CalibrationBank, None),
         values={"counts": {"smoke_rallies_per_split": 1}, "simulation": {"workers": 1}},
     )
     output = tmp_path / "dataset"

@@ -1,0 +1,905 @@
+{
+  "schema": "ball_refiner_3d.degradation_calibration.v1",
+  "status": "provisional_context_free_ft_e13",
+  "source_directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928",
+  "source_manifest_sha256": "254dbd4d36025b2bc136b8869d6cf612d81be998cd5500259218840a0fc6b27a",
+  "source_checkpoint": {
+    "checkpoint": "epoch-009.pt",
+    "checkpoint_sha256": "ed659e142dd228949ec772bcfdf9db0f4c682081778853c15088f7202a848c76",
+    "epoch": 9,
+    "predictions": "validation-epoch-009",
+    "selection_nll_uv": -3.6916335440147936
+  },
+  "source_inputs": {
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928/manifest.json": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/best.json": "c666ee0addf5a6e7d9c6b5e463df5008632699ad52fab2f76ec80cd040e6843c",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/config.yaml": "2f0bb497987b5c1585013bda653ce3586a4107ad20b2569ab8b3efef3ed66a41",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/data_manifest.json": "ee87787b89d1a13d20e4b8772fcb702204c5973badb2620267a0d81143c91ac3",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/epoch-009.pt": "ed659e142dd228949ec772bcfdf9db0f4c682081778853c15088f7202a848c76",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/run_state.json": "7f893c666db09b07e3944f646dc39cd032b09c1b0aa1e0e3f197bf4636ca116e"
+  },
+  "source_predictions": [
+    {
+      "clip_id": "meiji/video_000/clip_001/cam0",
+      "condition": "observed",
+      "frames": 1017,
+      "mc_seed": 5146587869471295816,
+      "path": "predictions/clip-00098-observed.npz",
+      "scored_frames": 976,
+      "sha256": "e00db53ea4309c53a52fcb0df4a5572c7d55865553a4b574fa327938de0c9026",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_001/cam0",
+      "condition": "evidence_gap",
+      "frames": 1017,
+      "mc_seed": 6798969643216079935,
+      "path": "predictions/clip-00098-evidence_gap.npz",
+      "scored_frames": 204,
+      "sha256": "03b716f69d5f384d01f967b50da3c5dfb7ec1a5733101e6e9011576b1fe3c617",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "condition": "observed",
+      "frames": 1017,
+      "mc_seed": 9133959928553260117,
+      "path": "predictions/clip-00099-observed.npz",
+      "scored_frames": 976,
+      "sha256": "4687a2507898fc00985feda91a7199c5482a8c33214ba6945ef222873da48483",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "condition": "evidence_gap",
+      "frames": 1017,
+      "mc_seed": 3648364908196777939,
+      "path": "predictions/clip-00099-evidence_gap.npz",
+      "scored_frames": 199,
+      "sha256": "59eeb682ad82a5f677dcad5cb0af6d395f5ef67f965586f64810a8e4723dff33",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_001/cam2",
+      "condition": "observed",
+      "frames": 1017,
+      "mc_seed": 7287303792241580929,
+      "path": "predictions/clip-00100-observed.npz",
+      "scored_frames": 857,
+      "sha256": "19851e1b5891710842034ab1207745f00e669ea50187cc00e323f7cd54832443",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_001/cam2",
+      "condition": "evidence_gap",
+      "frames": 1017,
+      "mc_seed": 803437175907462327,
+      "path": "predictions/clip-00100-evidence_gap.npz",
+      "scored_frames": 181,
+      "sha256": "44f0087cc8a3810bae36a7184bf7e5d253b883ba7d4a5fca778c7908751aaef5",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_002/cam0",
+      "condition": "observed",
+      "frames": 1355,
+      "mc_seed": 2684847374863030874,
+      "path": "predictions/clip-00101-observed.npz",
+      "scored_frames": 872,
+      "sha256": "a28743c9f33f69742c2000398ada78b2ae9ec9c3e12a49a31a81b58e5da3231a",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_002/cam0",
+      "condition": "evidence_gap",
+      "frames": 1355,
+      "mc_seed": 2534867863887211526,
+      "path": "predictions/clip-00101-evidence_gap.npz",
+      "scored_frames": 202,
+      "sha256": "a64491b73cdbacbdadb29aa7299c5461ce94a802480d3b5b5f5abb129cf38ad5",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_002/cam1",
+      "condition": "observed",
+      "frames": 1355,
+      "mc_seed": 679887750261717658,
+      "path": "predictions/clip-00102-observed.npz",
+      "scored_frames": 974,
+      "sha256": "334d4d207c2377e5ff560653fae970397cd373373e57e7036af70a9888cb2f74",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_002/cam1",
+      "condition": "evidence_gap",
+      "frames": 1355,
+      "mc_seed": 5548792872085966390,
+      "path": "predictions/clip-00102-evidence_gap.npz",
+      "scored_frames": 203,
+      "sha256": "b8eecaa19f123bf9f1d5967938c3b973bc612d29e88193749dd0a2b5b3e3a124",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_002/cam2",
+      "condition": "observed",
+      "frames": 1355,
+      "mc_seed": 8300500601293576077,
+      "path": "predictions/clip-00103-observed.npz",
+      "scored_frames": 1064,
+      "sha256": "e1f82937a810bdf2d7e9cdea5a15f267160f7bfbdc3664e3fa045453dab41eb9",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_002/cam2",
+      "condition": "evidence_gap",
+      "frames": 1355,
+      "mc_seed": 7523615146731541946,
+      "path": "predictions/clip-00103-evidence_gap.npz",
+      "scored_frames": 225,
+      "sha256": "71fa8e5d4c1592d6a6a42c53f64901a2c9322b97a3a5f5698321f989b3ff05e8",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_003/cam0",
+      "condition": "observed",
+      "frames": 1052,
+      "mc_seed": 6756658412034761988,
+      "path": "predictions/clip-00104-observed.npz",
+      "scored_frames": 915,
+      "sha256": "048589c6bb8118e067be9212be04b49151f3a040c14e3f30ef552a435837eeee",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_003/cam0",
+      "condition": "evidence_gap",
+      "frames": 1052,
+      "mc_seed": 8865515518577837764,
+      "path": "predictions/clip-00104-evidence_gap.npz",
+      "scored_frames": 191,
+      "sha256": "e6015310c8bf369831eda7cf83cd25982546b9bdec84640f8e995ee116a1a85b",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_003/cam1",
+      "condition": "observed",
+      "frames": 1052,
+      "mc_seed": 4069384678844329559,
+      "path": "predictions/clip-00105-observed.npz",
+      "scored_frames": 921,
+      "sha256": "d86a5c74ec08d75fa04ed39f60db122aa7a05492ec3a58c1a9c9f77a24fd5c20",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_003/cam1",
+      "condition": "evidence_gap",
+      "frames": 1052,
+      "mc_seed": 2254048995417967241,
+      "path": "predictions/clip-00105-evidence_gap.npz",
+      "scored_frames": 205,
+      "sha256": "1a3e9f15be8a02907889c5acdd3d1f0404c1151188857d23f2d7e6aa4be5c2a6",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_003/cam2",
+      "condition": "observed",
+      "frames": 1052,
+      "mc_seed": 45610971966059087,
+      "path": "predictions/clip-00106-observed.npz",
+      "scored_frames": 883,
+      "sha256": "5617ef543cc84a6dfc6622a65e244e053f51d9281eae09dbc61142f42270130c",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_003/cam2",
+      "condition": "evidence_gap",
+      "frames": 1052,
+      "mc_seed": 1662321894072986149,
+      "path": "predictions/clip-00106-evidence_gap.npz",
+      "scored_frames": 200,
+      "sha256": "28943ba98bacc170e6a257810e2a99a81f15334b0bbb11720c8977b0eae9e217",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_006/cam0",
+      "condition": "observed",
+      "frames": 454,
+      "mc_seed": 2101076771116524127,
+      "path": "predictions/clip-00113-observed.npz",
+      "scored_frames": 405,
+      "sha256": "ed3228e24d35d2abc424e7464b635dc90f8769e45c3a1d55a42e94165d5213da",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_006/cam0",
+      "condition": "evidence_gap",
+      "frames": 454,
+      "mc_seed": 1185724112786100153,
+      "path": "predictions/clip-00113-evidence_gap.npz",
+      "scored_frames": 108,
+      "sha256": "2d822b58f302285378f4daf66c36e336dbb4f405bb365872c2d053216467c149",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_006/cam1",
+      "condition": "observed",
+      "frames": 454,
+      "mc_seed": 5981501709336031637,
+      "path": "predictions/clip-00114-observed.npz",
+      "scored_frames": 452,
+      "sha256": "0c4d5c8c754cc9ffd200be10c182314e344d5bbc6e4cc697c10397af755645f9",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_006/cam1",
+      "condition": "evidence_gap",
+      "frames": 454,
+      "mc_seed": 6162303675470702782,
+      "path": "predictions/clip-00114-evidence_gap.npz",
+      "scored_frames": 92,
+      "sha256": "7c4b121e4b652cb0d494f7ab09afc871308d2c73d38767d6bb8b0934c7dba8d5",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_006/cam2",
+      "condition": "observed",
+      "frames": 454,
+      "mc_seed": 6165817233592641948,
+      "path": "predictions/clip-00115-observed.npz",
+      "scored_frames": 439,
+      "sha256": "cfc6aab17adc1fb30b31b66196372444c88128daf3391836a18df80b0cfc97ef",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_006/cam2",
+      "condition": "evidence_gap",
+      "frames": 454,
+      "mc_seed": 6101174959362098816,
+      "path": "predictions/clip-00115-evidence_gap.npz",
+      "scored_frames": 86,
+      "sha256": "91b54924c2161b79e75f48b14e03e0e6c433396132a0d2d51df956f46c502204",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_007/cam0",
+      "condition": "observed",
+      "frames": 652,
+      "mc_seed": 338081350544981987,
+      "path": "predictions/clip-00116-observed.npz",
+      "scored_frames": 584,
+      "sha256": "55d0798cda3071e4d61c1ede9d04bc1660f7b1e4b92b80463ba7ea1660409846",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_007/cam0",
+      "condition": "evidence_gap",
+      "frames": 652,
+      "mc_seed": 1972280526092204257,
+      "path": "predictions/clip-00116-evidence_gap.npz",
+      "scored_frames": 140,
+      "sha256": "d91840b4f1391b9061dc0bc3d036b25257fd7e2e1a68ee3b1e0d4b7e1d83a19f",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_007/cam1",
+      "condition": "observed",
+      "frames": 652,
+      "mc_seed": 730979379111207803,
+      "path": "predictions/clip-00117-observed.npz",
+      "scored_frames": 611,
+      "sha256": "897775c00ccbc54eaa6a91b568c2a1042058de05f572e7171b2418465095869a",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_007/cam1",
+      "condition": "evidence_gap",
+      "frames": 652,
+      "mc_seed": 5398691949702561344,
+      "path": "predictions/clip-00117-evidence_gap.npz",
+      "scored_frames": 125,
+      "sha256": "68da7259109d8f0d6f5132698af304a7042007559e3da0d16f8d706582204579",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_007/cam2",
+      "condition": "observed",
+      "frames": 652,
+      "mc_seed": 4718489333786816326,
+      "path": "predictions/clip-00118-observed.npz",
+      "scored_frames": 485,
+      "sha256": "9b47b19b86efb503f43e9ec971c9970b40f755319cbc1c19aac72d36ee206a9e",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_007/cam2",
+      "condition": "evidence_gap",
+      "frames": 652,
+      "mc_seed": 3828338779668807383,
+      "path": "predictions/clip-00118-evidence_gap.npz",
+      "scored_frames": 104,
+      "sha256": "6eeba3f845e50452c822222fc9b6875396a52702315b8391f394cb5d39e8b7c6",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_010/cam0",
+      "condition": "observed",
+      "frames": 270,
+      "mc_seed": 7915014495854666684,
+      "path": "predictions/clip-00125-observed.npz",
+      "scored_frames": 200,
+      "sha256": "0f7aafff698b02d5799544a75de9d175d086148975e763bf6c191e8c056ceeb2",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_010/cam0",
+      "condition": "evidence_gap",
+      "frames": 270,
+      "mc_seed": 7910835295454257486,
+      "path": "predictions/clip-00125-evidence_gap.npz",
+      "scored_frames": 31,
+      "sha256": "65ba61342637ba2a23fcdd27cfcfde3cadee6fd091b4a371cf7824bd74bf4925",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_010/cam1",
+      "condition": "observed",
+      "frames": 270,
+      "mc_seed": 5878790845049206037,
+      "path": "predictions/clip-00126-observed.npz",
+      "scored_frames": 237,
+      "sha256": "dbd9bb47d29c68f7c4eebf793c988e8d08c32aa6ac470c3799cbf2d5726be1e5",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_010/cam1",
+      "condition": "evidence_gap",
+      "frames": 270,
+      "mc_seed": 3361957147526535391,
+      "path": "predictions/clip-00126-evidence_gap.npz",
+      "scored_frames": 49,
+      "sha256": "12725e8e92259461a79535a9c6b3e45ec67a931769f513ba5c8efe78785442f4",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_010/cam2",
+      "condition": "observed",
+      "frames": 270,
+      "mc_seed": 4655294762258774570,
+      "path": "predictions/clip-00127-observed.npz",
+      "scored_frames": 217,
+      "sha256": "eef5ec621b2d87b918429270988e7c55c2657a1e82294b9bb5b2f64db8351036",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "clip_id": "meiji/video_000/clip_010/cam2",
+      "condition": "evidence_gap",
+      "frames": 270,
+      "mc_seed": 3542724888577078442,
+      "path": "predictions/clip-00127-evidence_gap.npz",
+      "scored_frames": 39,
+      "sha256": "85144b0e0578ad2297d0e5f193935912304abcd84bd8addec0e6ac7b2fd51b13",
+      "source_size_wh": [
+        1920,
+        1080
+      ]
+    }
+  ],
+  "components": 4,
+  "rows": 14652,
+  "bank_sha256": "aea209600cfe218e239612cfaa828706b7ffabedebc9291ea0634acce31c482c",
+  "statistics": {
+    "cam0/observed": {
+      "frames": 3952,
+      "error_to_mixture_covariance_ratio": {
+        "definition": "(mixture_mean-target)^T mixture_covariance^-1 (mixture_mean-target) / 2",
+        "mean": 2.095928875037444,
+        "p50": 0.4041399585254223,
+        "p95": 9.509560527534969
+      },
+      "mixture_rms_sigma_px_p50": 90.53140110777707,
+      "component_weights_mean_original_order": [
+        0.49930643891255067,
+        0.2993509554970229,
+        0.05412020064106978,
+        0.14722240494935698
+      ],
+      "component_weights_mean_descending": [
+        0.5992694959562554,
+        0.2225492323868216,
+        0.12533654813665115,
+        0.052844723520270274
+      ],
+      "presence": {
+        "positives": 3952,
+        "negatives": 0,
+        "mean": 0.9908891715182523,
+        "bce_positive": 0.009169940050245323,
+        "brier_positive": 0.00011692732322562946,
+        "bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.95,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.95,
+            "upper": 0.99,
+            "count": 1619,
+            "predicted_mean": 0.9853248483059988,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.99,
+            "upper": 1.0,
+            "count": 2333,
+            "predicted_mean": 0.994750568552388,
+            "positive_frequency": 1.0
+          }
+        ],
+        "negative_calibration": "unavailable"
+      }
+    },
+    "cam0/evidence_gap": {
+      "frames": 876,
+      "error_to_mixture_covariance_ratio": {
+        "definition": "(mixture_mean-target)^T mixture_covariance^-1 (mixture_mean-target) / 2",
+        "mean": 1.6635012398216427,
+        "p50": 0.6163157490170419,
+        "p95": 7.811164313361715
+      },
+      "mixture_rms_sigma_px_p50": 98.73562889996506,
+      "component_weights_mean_original_order": [
+        0.13174907158034088,
+        0.5737443125422252,
+        0.13773996961872353,
+        0.15676664625871065
+      ],
+      "component_weights_mean_descending": [
+        0.5743902757280266,
+        0.1930104714707372,
+        0.13582630595202946,
+        0.09677294684920687
+      ],
+      "presence": {
+        "positives": 876,
+        "negatives": 0,
+        "mean": 0.9891109713890455,
+        "bce_positive": 0.01095566781438076,
+        "brier_positive": 0.00013207631757419466,
+        "bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.95,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.95,
+            "upper": 0.99,
+            "count": 471,
+            "predicted_mean": 0.9865974646240738,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.99,
+            "upper": 1.0,
+            "count": 405,
+            "predicted_mean": 0.9920340866638644,
+            "positive_frequency": 1.0
+          }
+        ],
+        "negative_calibration": "unavailable"
+      }
+    },
+    "cam1/observed": {
+      "frames": 4171,
+      "error_to_mixture_covariance_ratio": {
+        "definition": "(mixture_mean-target)^T mixture_covariance^-1 (mixture_mean-target) / 2",
+        "mean": 2.8167872585018836,
+        "p50": 0.3652904746310098,
+        "p95": 13.824810441596618
+      },
+      "mixture_rms_sigma_px_p50": 75.1422912033395,
+      "component_weights_mean_original_order": [
+        0.6037748820627746,
+        0.15294795168296485,
+        0.03940959131001059,
+        0.20386757494424904
+      ],
+      "component_weights_mean_descending": [
+        0.7290071508182164,
+        0.1497494502480217,
+        0.08516592486454122,
+        0.03607747406922053
+      ],
+      "presence": {
+        "positives": 4171,
+        "negatives": 0,
+        "mean": 0.9917383757736954,
+        "bce_positive": 0.008347432027228012,
+        "brier_positive": 0.00016575821134288287,
+        "bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 8,
+            "predicted_mean": 0.8703019802892946,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.95,
+            "count": 24,
+            "predicted_mean": 0.9406584271263814,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.95,
+            "upper": 0.99,
+            "count": 1117,
+            "predicted_mean": 0.9823002846829826,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.99,
+            "upper": 1.0,
+            "count": 3022,
+            "predicted_mean": 0.9959540467464737,
+            "positive_frequency": 1.0
+          }
+        ],
+        "negative_calibration": "unavailable"
+      }
+    },
+    "cam1/evidence_gap": {
+      "frames": 873,
+      "error_to_mixture_covariance_ratio": {
+        "definition": "(mixture_mean-target)^T mixture_covariance^-1 (mixture_mean-target) / 2",
+        "mean": 1.9378902928570851,
+        "p50": 0.619072418433462,
+        "p95": 8.34494151399941
+      },
+      "mixture_rms_sigma_px_p50": 98.97711337372144,
+      "component_weights_mean_original_order": [
+        0.11923044774769646,
+        0.4782816273045786,
+        0.17232061892863348,
+        0.23016730601909172
+      ],
+      "component_weights_mean_descending": [
+        0.522445369371093,
+        0.21997113705518503,
+        0.16496486814165243,
+        0.09261862543207003
+      ],
+      "presence": {
+        "positives": 873,
+        "negatives": 0,
+        "mean": 0.989418862799387,
+        "bce_positive": 0.010647451201869251,
+        "brier_positive": 0.00013127775324221644,
+        "bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.95,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.95,
+            "upper": 0.99,
+            "count": 394,
+            "predicted_mean": 0.9860950412745034,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.99,
+            "upper": 1.0,
+            "count": 479,
+            "predicted_mean": 0.992152862133007,
+            "positive_frequency": 1.0
+          }
+        ],
+        "negative_calibration": "unavailable"
+      }
+    },
+    "cam2/observed": {
+      "frames": 3945,
+      "error_to_mixture_covariance_ratio": {
+        "definition": "(mixture_mean-target)^T mixture_covariance^-1 (mixture_mean-target) / 2",
+        "mean": 1.7184477404024463,
+        "p50": 0.32206062729626983,
+        "p95": 7.094514631608847
+      },
+      "mixture_rms_sigma_px_p50": 84.18159119295925,
+      "component_weights_mean_original_order": [
+        0.5909334685559791,
+        0.2047494916976569,
+        0.0384958461177873,
+        0.16582119362857667
+      ],
+      "component_weights_mean_descending": [
+        0.687256220256638,
+        0.17287779160375383,
+        0.1017078447119939,
+        0.03815814342761406
+      ],
+      "presence": {
+        "positives": 3945,
+        "negatives": 0,
+        "mean": 0.9904958205608323,
+        "bce_positive": 0.009606174693912044,
+        "brier_positive": 0.0001985265351996418,
+        "bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 3,
+            "predicted_mean": 0.8914581775854379,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.95,
+            "count": 48,
+            "predicted_mean": 0.9350636172878581,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.95,
+            "upper": 0.99,
+            "count": 1243,
+            "predicted_mean": 0.9820366398551614,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.99,
+            "upper": 1.0,
+            "count": 2651,
+            "predicted_mean": 0.9955779104526384,
+            "positive_frequency": 1.0
+          }
+        ],
+        "negative_calibration": "unavailable"
+      }
+    },
+    "cam2/evidence_gap": {
+      "frames": 835,
+      "error_to_mixture_covariance_ratio": {
+        "definition": "(mixture_mean-target)^T mixture_covariance^-1 (mixture_mean-target) / 2",
+        "mean": 1.0721630061041176,
+        "p50": 0.5088135690619523,
+        "p95": 4.403874304922771
+      },
+      "mixture_rms_sigma_px_p50": 90.40616404416602,
+      "component_weights_mean_original_order": [
+        0.13653645035360057,
+        0.5537435930235962,
+        0.14630372540500114,
+        0.16341623121780208
+      ],
+      "component_weights_mean_descending": [
+        0.5661862749228178,
+        0.19683795456389477,
+        0.14222668402886873,
+        0.09474908648441849
+      ],
+      "presence": {
+        "positives": 835,
+        "negatives": 0,
+        "mean": 0.9896153216504612,
+        "bce_positive": 0.010446217701951574,
+        "brier_positive": 0.00012197389738024278,
+        "bins": [
+          {
+            "lower": 0.0,
+            "upper": 0.5,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.5,
+            "upper": 0.9,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.9,
+            "upper": 0.95,
+            "count": 0,
+            "predicted_mean": null,
+            "positive_frequency": null
+          },
+          {
+            "lower": 0.95,
+            "upper": 0.99,
+            "count": 358,
+            "predicted_mean": 0.9863350634694077,
+            "positive_frequency": 1.0
+          },
+          {
+            "lower": 0.99,
+            "upper": 1.0,
+            "count": 477,
+            "predicted_mean": 0.9920772344991344,
+            "positive_frequency": 1.0
+          }
+        ],
+        "negative_calibration": "unavailable"
+      }
+    }
+  },
+  "limits": [
+    "positive-only presence; out-of-frame logit is an explicit hypothesis",
+    "new detector and person context are not calibrated",
+    "camera errors are bootstrapped independently",
+    "up to 16-frame contiguous blocks; 32/64-frame gaps extrapolate the 1/4/8/16 evidence-gap bank",
+    "translation to synthetic UV and explicit head clipping can change residual statistics; no real trajectory evaluation"
+  ]
+}
