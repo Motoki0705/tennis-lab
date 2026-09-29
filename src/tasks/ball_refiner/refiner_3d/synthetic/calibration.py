@@ -122,6 +122,9 @@ def build_calibration(source: Path, output: Path) -> dict[str, Any]:
     manifest = json.loads(manifest_path.read_text())
     if manifest["schema"] != "ball_refiner_validation_diagnostics.v1" or manifest["partition"] != "calibration":
         raise ValueError("Require #935 saved calibration-partition diagnostics")
+    identities = [(a["clip_id"], a["condition"]) for a in manifest["artifacts"]]
+    if len(set(identities)) != len(identities) or set(manifest["clip_ids"]) != {key[0] for key in identities} or any((clip, condition) not in identities for clip in manifest["clip_ids"] for condition in CONDITIONS):
+        raise ValueError("Duplicate or incomplete calibration predictions")
     if output.exists():
         raise FileExistsError(output)
     rows: dict[str, list[Array]] = {key: [] for key in BANK_FIELDS}

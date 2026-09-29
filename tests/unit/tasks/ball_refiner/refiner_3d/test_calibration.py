@@ -5,6 +5,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 import yaml
+from numpy.typing import NDArray
 
 from src.tasks.ball_refiner.refiner_3d.synthetic.calibration import load_calibration
 from src.utils.paths import PROJECT_ROOT
@@ -44,3 +45,39 @@ def test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation():
     arrays["continues"][boundary] = True
     with pytest.raises(ValueError, match="source boundary"):
         replace(source, arrays=arrays)
+
+
+@pytest.mark.parametrize('mutation', ['flag', 'cap', 'weights', 'camera', 'presence'])
+def test_reader_rejects_false_convergence_and_modified_calibration(mutation):
+    from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import _validate_v2
+    source = bank()
+    plan = yaml.safe_load((PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml').read_text())
+    rows = np.array([[np.flatnonzero((source.arrays['camera_index'] == camera) & (source.arrays['condition_index'] == condition))[0] for condition in range(2)] for camera in range(3)])
+    components = 125
+    changes = np.zeros((2, components, 3))
+    changes[1, -1, 0] = .06
+    flags: NDArray[np.bool_] = np.ones((2, components), dtype=bool)
+    flags[1, -1] = False
+    arrays = {
+        'integration_component_changes': changes, 'integration_component_converged': flags,
+        'integration_converged': np.array([True, False]), 'integration_rounds': np.array([2, 3]),
+        'integration_nll_delta_nat': np.array([.01, .06]), 'calibration_rows': rows,
+        'occlusion_mask': np.tile([False, True], (3, 1)), 'out_of_frame_mask': np.zeros((3, 2), dtype=bool),
+        'gmm2d_scale_tril_uv': source.arrays['scale_tril_uv'][rows].copy(),
+        'gmm2d_mixture_logits': source.arrays['mixture_logits'][rows].copy(),
+        'gmm2d_presence_logits': source.arrays['presence_logits'][rows].copy(),
+    }
+    record = {'frames': 2, 'integration': {'rule': plan['degradation']['boundary_convergence'], 'converged_frames': 1, 'nonconverged_frames': 1}}
+    _validate_v2(arrays, record, plan, components)  # capped frame remains readable
+    if mutation == 'flag':
+        arrays['integration_converged'][1] = True
+    elif mutation == 'cap':
+        arrays['integration_rounds'][1] = 2
+    elif mutation == 'weights':
+        arrays['gmm2d_mixture_logits'][0, 0, -1] += 1
+    elif mutation == 'camera':
+        arrays['calibration_rows'][0, 0] = rows[1, 0]
+    else:
+        arrays['gmm2d_presence_logits'][0, 1] = -4
+    with pytest.raises(ValueError):
+        _validate_v2(arrays, record, plan, components)
