@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from hydra import compose, initialize_config_dir
 
 from src.submodules.models import ViTPosePose2D
 from src.tasks.person_tracking.archive import load_features, save_features
@@ -26,13 +27,13 @@ from src.tasks.player_association.appearance.encoders import (
     build_encoder,
     encoder_weights,
 )
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.utils.checksum import dual_sha256
 from src.utils.video import OpenCVVideoFrameReader
-from tests.benchmarks.player_detection_clips import compose_detector_runtime
 
 
 def extract(args: argparse.Namespace) -> None:
@@ -42,7 +43,15 @@ def extract(args: argparse.Namespace) -> None:
     report.mkdir(parents=True, exist_ok=True)
     source = json.loads((args.store / 'scene.json').read_text())['source']
     store = ClipStore(args.store, source)
-    runtime, _ = compose_detector_runtime(args.repo.resolve(), report, args.device, [], 'features')
+    code_root = Path(__file__).resolve().parents[2]
+    repo = args.repo.resolve()
+    with initialize_config_dir(version_base="1.3", config_dir=str(code_root / "src/tennis_scene/configs")):
+        config = compose(config_name="pipeline", overrides=[
+            f"paths.project_root={code_root}", f"paths.data_root={repo / 'data'}",
+            f"paths.checkpoint_root={repo / 'ckpt'}", f"paths.external_asset_root={repo / 'third_party'}",
+            f"paths.output_root={report}", f"paths.artifact_root={report}",
+            f"paths.cache_root={report / 'cache'}", f"device={args.device}"])
+    runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
     people = runtime.people
     # Fixed for this first adapter. Other encoders must declare their own dimensions/prompts.
     name = 'clipreid_vitb16_market1501'
