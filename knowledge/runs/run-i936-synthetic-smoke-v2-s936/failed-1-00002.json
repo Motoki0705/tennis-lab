@@ -1,0 +1,6 @@
+{
+  "error": "val-00002 frame=0 seed=1338722038: Triangulation optimization failed: The maximum number of function evaluations is exceeded.",
+  "type": "RuntimeError",
+  "split_index": 1,
+  "rally_index": 2
+}

@@ -55,8 +55,8 @@ def run_memory_smoke(config_path: Path, fixture: Path, output: Path, *, device: 
         torch.cuda.reset_peak_memory_stats()
         free, capacity = torch.cuda.mem_get_info()
         device_memory_peak = capacity - free
-        if device_memory_peak > 6 * 1024 ** 3:
-            raise RuntimeError("Device memory already exceeds the 6 GiB smoke budget")
+        if device_memory_peak > 6_000_000_000:
+            raise RuntimeError("Device memory already exceeds the 6 GB smoke budget")
     batch = analytic_memory_batch(fixture, batch_size=raw["batch_size"], frames=raw["frames"], seed=raw["seed"]).to(device)
     model = TrajectoryDenoiser(model_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=raw["learning_rate"])
@@ -89,8 +89,8 @@ def run_memory_smoke(config_path: Path, fixture: Path, output: Path, *, device: 
                     free, capacity = torch.cuda.mem_get_info()
                     assert device_memory_peak is not None
                     device_memory_peak = max(device_memory_peak, capacity - free)
-                    if device_memory_peak > 6 * 1024 ** 3:
-                        raise RuntimeError("Device memory exceeded the 6 GiB smoke budget")
+                    if device_memory_peak > 6_000_000_000:
+                        raise RuntimeError("Device memory exceeded the 6 GB smoke budget")
                 row = {"update": update, "loss": loss.item(), "gradient_norm": norm.item(), **{key: value.item() for key, value in terms.items()}}
                 log.write(json.dumps(row, allow_nan=False) + "\n")
                 log.flush()

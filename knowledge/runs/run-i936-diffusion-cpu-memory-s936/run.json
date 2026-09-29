@@ -1,0 +1,10 @@
+{
+  "commit": "08bfc644d8bb96ad44b278394cdd3b676a456d35",
+  "branch": "campaign930/i936-2-synthetic-diffusion",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "source_directory": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/i936-memory-smoke/cpu-r2-20260929",
+  "date": "2026-09-29",
+  "provider": "codex",
+  "session": "01a0ed26-b4eb-7c30-baea-c8a3cb41cf9e",
+  "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.memory_smoke_3d --config \"$task_repo_root/src/tasks/ball_refiner/refiner_3d/memory_smoke.yaml\" --fixture \"$task_repo_root/src/tasks/ball_refiner/refiner_3d/fixtures/meiji_video_002_clip_010.json\" --output \"$1\" --device cpu"
+}
