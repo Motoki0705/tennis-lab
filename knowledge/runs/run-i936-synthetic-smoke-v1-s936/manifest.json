@@ -1,0 +1,328 @@
+{
+  "schema": "ball_refiner_3d.synthetic.v1",
+  "status": "failed",
+  "mode": "smoke",
+  "plan": {
+    "schema_version": 1,
+    "status": "cpu_generator_v1",
+    "purpose": "#936 CPU synthetic dataset; no real ball annotations are read",
+    "seed": 936,
+    "simulation": {
+      "class": "src.tasks.blcs.generate_dataset.simulation.rally_simulator.RallySimulator",
+      "device": "cpu",
+      "workers": 4,
+      "physics_base": "src/tasks/blcs/configs/physics/default.yaml",
+      "rally_base": "src/tasks/blcs/configs/rally/default.yaml",
+      "targeted_velocity_base": "src/tasks/blcs/configs/targeted_velocity/default.yaml",
+      "sim_fps": 240,
+      "native_output_fps": 240,
+      "physics_dt_seconds": "1/240"
+    },
+    "sampling": {
+      "fps_numerator": 60000,
+      "fps_denominator": 1001,
+      "interpolation": "linear at exact output timestamps",
+      "event_index": "nearest output timestamp; also preserve native time in seconds",
+      "max_frames_per_rally": 512,
+      "physics_event_mask_radius_frames": 5
+    },
+    "geometry": {
+      "sources": [
+        {
+          "split": "train",
+          "clip_id": "video_002/clip_010",
+          "path": "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_002_clip_010_002/scalars.json",
+          "sha256": "9d2488976a168697807e457819ea8801e6dfe1e0035717c023ba740859d51619",
+          "camera_keys": [
+            "cam_0_params",
+            "cam_1_params",
+            "cam_2_params"
+          ]
+        },
+        {
+          "split": "val",
+          "clip_id": "video_000/clip_003",
+          "path": "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_000_clip_003_000/scalars.json",
+          "sha256": "3ec27b1ef446fd48620cbd6dcab7e87f43082deca24d473525fcc3292dfc1d1c",
+          "camera_keys": [
+            "cam_0_params",
+            "cam_1_params",
+            "cam_2_params"
+          ]
+        },
+        {
+          "split": "test",
+          "clip_id": "video_001/clip_018",
+          "path": "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_001_clip_018_000/scalars.json",
+          "sha256": "4ca0bc2747ea4dbacbea3b1751d93e2b81051bc7233d52f385578c85d57e0b02",
+          "camera_keys": [
+            "cam_0_params",
+            "cam_1_params",
+            "cam_2_params"
+          ]
+        }
+      ],
+      "benchmark_used_only": "video_002/clip_010",
+      "perturbation_per_scene": {
+        "center_sigma_m": 0.15,
+        "axis_angle_sigma_deg": 0.5,
+        "focal_relative_sigma": 0.01,
+        "principal_point_sigma_px": 2.0
+      },
+      "calibration_error_condition": "clean_shared_perturbed_camera"
+    },
+    "degradation": {
+      "status": "hypothesized parameters; recalibrate against #935 train/val before production",
+      "distribution_class": "src.tasks.ball_refiner.refiner_2d.distribution.BallGMM2D",
+      "components_per_camera": 3,
+      "source_pixel_sigma_range": [
+        3,
+        24
+      ],
+      "correlation_range": [
+        -0.7,
+        0.7
+      ],
+      "error_ar1": 0.9,
+      "gap_lengths_frames": [
+        1,
+        4,
+        8,
+        16,
+        32,
+        64
+      ],
+      "occlusion_changes_presence": false,
+      "out_of_frame_changes_presence": true,
+      "alternatives": "persistent shifted trajectory plus broad distractor; no raw detector points",
+      "alternative_shift_m": [
+        1.2,
+        2.4,
+        0.4
+      ],
+      "observed_weights": [
+        0.7,
+        0.2,
+        0.1
+      ],
+      "gap_weights": [
+        0.4,
+        0.4,
+        0.2
+      ],
+      "gap_sigma_multiplier": 4.0,
+      "distractor_sigma_multiplier": 3.0,
+      "presence_logit_magnitude": 4.0,
+      "mean_bounds_policy": "clip_to_source_grid",
+      "triangulation": "src.utils.geometry.probabilistic_triangulation.triangulate_gmm",
+      "prior_mean_m": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "prior_covariance_diagonal_m2": [
+        36.0,
+        144.0,
+        9.0
+      ],
+      "max_components": 64,
+      "max_nfev": 100
+    },
+    "counts": {
+      "smoke_rallies_per_split": 4,
+      "pilot_rallies": {
+        "train": 512,
+        "val": 64,
+        "test": 64
+      }
+    },
+    "storage": {
+      "format": "float32 NPZ per rally plus JSON manifest; all mixture components preserved",
+      "estimated_pilot_limit_bytes": 1500000000,
+      "fields": [
+        "timestamps_seconds",
+        "positions_3d_m",
+        "events_seconds_and_frame",
+        "occlusion_mask",
+        "out_of_frame_mask",
+        "camera_K_R_t",
+        "source_size_wh",
+        "2d_means_covariance_weights_presence",
+        "3d_means_covariance_weights_camera_subsets",
+        "prior_only_probability",
+        "seed_config_and_source_hashes"
+      ]
+    },
+    "acceptance_checks": [
+      "exact 60000/1001Hz timestamps without integer-stride drift",
+      "event seconds retained and masks cover interpolation boundaries",
+      "no recording/window crosses splits",
+      "load BallGMM2D then pixel_moments and triangulate; raw observations are not an alternate path",
+      "all finite SPD distributions including long gaps",
+      "persist full covariance and between-mode uncertainty",
+      "report frame counts and bytes per split; generation failures are errors"
+    ]
+  },
+  "resolved_simulator": {
+    "physics": {
+      "gravity": 9.81,
+      "k_drag": 0.01,
+      "k_magnus": 0.001,
+      "e_z": 0.75,
+      "mu": 0.1,
+      "alpha_net": 0.3,
+      "alpha_net_cord": 0.05,
+      "alpha_fence": 0.3,
+      "net_half_thickness": 0.03,
+      "net_cord_radius": 0.03,
+      "dt": 0.004166666666666667,
+      "use_drag": true,
+      "use_magnus": true,
+      "wind": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gravity_range": [
+        9.7,
+        9.9
+      ],
+      "k_drag_range": [
+        0.005,
+        0.02
+      ],
+      "k_magnus_range": [
+        0.0005,
+        0.002
+      ],
+      "e_z_range": [
+        0.65,
+        0.85
+      ],
+      "mu_range": [
+        0.05,
+        0.2
+      ],
+      "wind_speed_range": [
+        0.0,
+        3.0
+      ],
+      "wind_direction_range_deg": [
+        0.0,
+        360.0
+      ]
+    },
+    "rally": {
+      "z_range": [
+        0.8,
+        1.4
+      ],
+      "spin_x_range": [
+        -200.0,
+        200.0
+      ],
+      "spin_y_range": [
+        -80.0,
+        -40.0
+      ],
+      "spin_z_range": [
+        -200.0,
+        200.0
+      ],
+      "max_sim_frames": 2000,
+      "output_fps": 240,
+      "sim_fps": 240,
+      "max_rallies": 10,
+      "max_total_frames": 2053,
+      "hit_timing_range": [
+        0.2,
+        0.8
+      ],
+      "return_z_range": [
+        0.8,
+        1.4
+      ],
+      "serve_probability": 0.3,
+      "serve_z_range": [
+        2.0,
+        2.8
+      ],
+      "toss_vz_range": [
+        4.5,
+        7.0
+      ],
+      "toss_xy_noise_range": [
+        -0.35,
+        0.35
+      ],
+      "toss_max_frames": 240,
+      "toss_z0_tolerance": 0.03,
+      "volley_probability": 0.05,
+      "normal_return_probability": 0.85,
+      "late_return_probability": 0.1,
+      "out_court_target_probability": 0.1
+    },
+    "targeted": {
+      "drive_elevation_range_deg": [
+        5.0,
+        25.0
+      ],
+      "lob_elevation_range_deg": [
+        35.0,
+        70.0
+      ],
+      "lob_probability": 0.25,
+      "max_ballistic_apex_height_m": 8.0,
+      "gravity": 9.81,
+      "net_elevation_step_deg": 2.0,
+      "landing_refine_enabled": true,
+      "landing_refine_max_iters": 14,
+      "landing_refine_tolerance_m": 0.25,
+      "landing_sim_max_frames": 1200,
+      "target_margin_m": 0.35
+    }
+  },
+  "input_hashes": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml": "a6463efa93452b2a1db3dcb4939c3fb40a6a6a2e28a2f45fa75552612c812732",
+    "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_002_clip_010_002/scalars.json": "9d2488976a168697807e457819ea8801e6dfe1e0035717c023ba740859d51619",
+    "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_000_clip_003_000/scalars.json": "3ec27b1ef446fd48620cbd6dcab7e87f43082deca24d473525fcc3292dfc1d1c",
+    "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_001_clip_018_000/scalars.json": "4ca0bc2747ea4dbacbea3b1751d93e2b81051bc7233d52f385578c85d57e0b02",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/configs/physics/default.yaml": "717e55a9adb6fe95c71b36e651640da5f8bbaf0934d9ab8b5a5540e5aebbe5e6",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/configs/rally/default.yaml": "b83d4d6356eaa532819d4eb1f62397c7289cc8f0541c134fbd71a521273c14d8",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/configs/targeted_velocity/default.yaml": "7c59ceeae750493c8b8232d34c646e4e6f25c972d965292bcfb1b4594f6004f3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/__init__.py": "1a175ee3c51c51c6938424a1b09a64ab1be97155d1281373599dff77c94bfa50",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/configuration.py": "478244a69483b6f0a79f4d05729b17a9b771ce2bd9b38a1c67840b03276dc774",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/dataset.py": "73b8a5c2ab10f75ad1316d1ccd8ec96d17ec2758893cffeaf31b6647a4100a4e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/generator.py": "a6b7d9b1ef4335e9df913dba516cb950ddf6e7c7e8e66951793a4c10b3b32636",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/observations.py": "b1a9593f7a482179fa202a1d97e6dad19a35d7f3d431b24eb16c3721ae1dcb86",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/timebase.py": "0944d53f19e241384eec5d75d18d265553a2138f59d6c2ff34b2e4611793c8ef",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/generate_dataset/simulation/__init__.py": "4e7902a8b2aa510f235d843726d54d879ff37236e3796792fc2f12bf6d77bf40",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/generate_dataset/simulation/ball_physics.py": "598c3f43e5309582f38d847f6b510f9cd8d6148f685204b8d9eefc2858b28bcf",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/generate_dataset/simulation/cell_manager.py": "c52d2c26ce7a118823b15eef674c23c6b8ac06d8a68118ec1876e924021cd295",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/generate_dataset/simulation/rally_simulator.py": "6f041e96cde4f157aa2a7c2a3c6abfbcedcbd9b5e1b1d4b26f6f57d960cb6a03",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py": "fac37ceae344549d4877ddce3f1af85834d89ec3038d9eb3d3ec0cfcb18ede50",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/__init__.py": "55fdc0c59f62b18e5131d4cdb58289ad2b77d395339b727dbc9817fd9218eb27",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/distributions.py": "39c85c5a0b656700467239ab2e725eb286304eef59ee9f9fbaa85c51f6cdd99d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/solver.py": "b3c4daab764490f57c179d0a53cc6a42fa6109470d7fab957e3682a52e0e8cba",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/triangulation.py": "021079056380b0c2cc11f3d089b8db513c6cfb2617e49c5f6d96880acec979d6",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_2d/distribution.py": "340177fd65a93988a07bee6320fcc51666c6f597aafcbbf5c9cd13c05754ef68",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/scripts/generate_synthetic_3d.py": "18831a17f199f8fb39dc01f4047b5afa1bfe95e21fe05609fbedd0c52b236390",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/triangulation.py": "f6eb34522f5e8bd92fba82bd51250d81151c01f3f9c46ddda391992b02e67cf2",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/schema/court.py": "04e63de5dde6459a847f74a1e9221c69a6ee53f3b42bf24a20fe199fa7fb75ba"
+  },
+  "counts": {
+    "train": 4,
+    "val": 4,
+    "test": 4
+  },
+  "workers": 4,
+  "environment": {
+    "python": "3.11.15",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "torch": "2.13.0+cu130"
+  },
+  "rallies": [],
+  "error": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25.",
+  "elapsed_seconds": 14.57289936102461
+}
