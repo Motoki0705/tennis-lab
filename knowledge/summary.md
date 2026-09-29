@@ -1,4 +1,4 @@
-<!-- knowledge-review: 2b3b85267db130a6d3b8de283451a7dd5309be09dd9400f9f7b334c3a2056c8a on 2026-09-29 -->
+<!-- knowledge-review: f483ef3af39f60a779fd9532b3f732157529992da611c453396d93afb1712e05 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -313,6 +313,8 @@ float32画素変換の共分散丸めを修正しても、広いprior/K=3のcame
 [絶対x0 flow matchingのCPU 100-update診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)
 は解析的fixtureで計算graphを確認した段階。12-rallyの成功・学習精度・GPU性能の証拠ではなく、
 本学習/実LOCO/pipelineの前には生成器の修正と#935からの劣化較正が必要。
+[GPU診断](nodes/ball_refiner_3d/000005-run-i936-x0-memory-r2-20260929.md)も100 updatesを完了し、
+allocated/reserved/driver使用量は許可範囲内だった。解析的fixtureでの資源測定に限る。
 
 ### Court Detection
 
