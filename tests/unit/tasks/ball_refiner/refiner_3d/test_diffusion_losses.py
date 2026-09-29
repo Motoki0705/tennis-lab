@@ -36,3 +36,18 @@ def test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients():
     # Removing all amodal presence explicitly removes observation supervision.
     absent = replace(batch, presence_2d=torch.zeros_like(batch.presence_2d))
     assert robust_reprojection(outlier.detach(), absent).item() == 0
+
+
+def test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture():
+    batch = analytic_memory_batch(FIXTURE, batch_size=1, frames=16, seed=0)
+    padding = batch.condition.padding_mask.clone()
+    padding[:, -4:] = True
+    condition = replace(batch.condition, padding_mask=padding)
+    baseline = robust_reprojection(batch.target_positions_m, replace(batch, condition=condition))
+    covariance, weights = batch.covariance_2d_px2.clone(), batch.weights_2d.clone()
+    covariance[:, :, -4:] = 0
+    weights[:, :, -4:] = 0
+    actual = robust_reprojection(batch.target_positions_m, replace(batch, condition=condition, covariance_2d_px2=covariance, weights_2d=weights))
+    torch.testing.assert_close(actual, baseline)
+    absent = replace(batch, presence_2d=torch.zeros_like(batch.presence_2d), covariance_2d_px2=torch.zeros_like(covariance), weights_2d=torch.zeros_like(weights))
+    assert robust_reprojection(batch.target_positions_m, absent).item() == 0
