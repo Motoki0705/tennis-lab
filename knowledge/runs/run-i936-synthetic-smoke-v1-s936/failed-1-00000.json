@@ -1,0 +1,6 @@
+{
+  "error": "val-00000 frame=0 seed=724086207: Covariance must be symmetric",
+  "type": "RuntimeError",
+  "split_index": 1,
+  "rally_index": 0
+}
