@@ -125,3 +125,16 @@ def test_invalid_inputs_or_dependency_choices_fail_before_models(
 
 def test_detector_can_be_replaced_without_changing_the_runner() -> None:
     assert _runtime(["people_models.detector=yolo"]).people.detector == "yolo"
+
+
+def test_default_player_checkpoint_and_explicit_coco_comparison() -> None:
+    runtime = _runtime([])
+    assert runtime.people.detector == "dino"
+    assert runtime.people.detector_checkpoint == (
+        runtime.roots.checkpoint_root / "player_detection/chat-player-v1-e8-best-pr937.pth"
+    )
+    legacy = _runtime(["people_models.dino_checkpoint=dino/checkpoint0029_4scale_swin.pth"])
+    assert legacy.people.detector_checkpoint == (
+        legacy.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
+    )
+    assert legacy.people.runtime.dino_detector == runtime.people.runtime.dino_detector

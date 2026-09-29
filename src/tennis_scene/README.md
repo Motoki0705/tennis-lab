@@ -6,7 +6,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 ## 標準経路
 
 1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
-2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
+2. 選手用にfine-tuneしたDINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
 3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
 5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
@@ -21,7 +21,7 @@ camera alignmentと身体viewの選択は、clip全体を約30fpsの格子で1�
 `frame_sampling.max_frames`を超えるclipは切り詰めずに拒否します。
 reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
 
-設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。既定値は実clip（Meiji）で完走した構成です。
+設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。検出器を#937の選手検出器へ切り替えています（#964で実clip評価）。
 既定の配布名は配置規約であり、重みを自動取得・自動選定する処理はありません。
 有効な機能が参照するcheckpointが欠けていれば、実行前のdefinition構築時に停止します。
 
