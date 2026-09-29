@@ -1,0 +1,9 @@
+{
+  "frames_verified": 4809,
+  "components_per_frame": 64,
+  "float32_spd": true,
+  "positive_active_camera_means": true,
+  "minimum_active_depth_after_float32": 0.13096262795096436,
+  "maximum_camera_subset_mass_error_after_float32": 3.0355999924847055e-07,
+  "component_flags_match_achieved_tolerances": true
+}
