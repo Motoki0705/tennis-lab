@@ -1,0 +1,691 @@
+[
+  {
+    "case": {
+      "key": "case_009",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 79,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      2
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 27,
+    "cost": 4.457347582792154,
+    "optimality": 0.00029901020484907206,
+    "point": [
+      -0.13656690707654243,
+      19.415163511938626,
+      2.511643647112192
+    ],
+    "depths": [
+      31.668304545750054,
+      -0.799557209253269
+    ]
+  },
+  {
+    "case": {
+      "key": "case_009",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 79,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      2,
+      1
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 34,
+    "cost": 11.623731872928074,
+    "optimality": 0.00018925088363031252,
+    "point": [
+      -2.8583426710014495,
+      27.72900638356937,
+      1.7582399430322515
+    ],
+    "depths": [
+      39.80462396109181,
+      -8.624713869047191
+    ]
+  },
+  {
+    "case": {
+      "key": "case_019",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      0
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 21,
+    "cost": 1.6613986902768132,
+    "optimality": 5.835965424760957e-07,
+    "point": [
+      -0.4992056471774709,
+      21.264667297973944,
+      2.918928736982773
+    ],
+    "depths": [
+      32.85329029706143,
+      -2.3200656065129763
+    ]
+  },
+  {
+    "case": {
+      "key": "case_019",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      2
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 13,
+    "cost": 1.5111630331226478,
+    "optimality": 3.2135591917476294e-07,
+    "point": [
+      -0.27984948781035984,
+      20.447819166083406,
+      2.8977646787563462
+    ],
+    "depths": [
+      32.11951298493891,
+      -1.5285815404171466
+    ]
+  },
+  {
+    "case": {
+      "key": "case_019",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      1,
+      2
+    ],
+    "combination": [
+      1,
+      2,
+      0
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 19,
+    "cost": 2.0438381908051078,
+    "optimality": 6.480216028717644e-07,
+    "point": [
+      -0.500163723463268,
+      21.079243463160896,
+      2.9040323685211886
+    ],
+    "depths": [
+      32.7163054516072,
+      37.13037369780049,
+      -2.1362464240765924
+    ]
+  },
+  {
+    "case": {
+      "key": "case_019",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      1,
+      2
+    ],
+    "combination": [
+      1,
+      2,
+      2
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 12,
+    "cost": 1.8558843692469456,
+    "optimality": 2.331408816544308e-06,
+    "point": [
+      -0.2886293892311021,
+      20.38956290781682,
+      2.888348899571584
+    ],
+    "depths": [
+      32.08258684062011,
+      36.66992457106432,
+      -1.4694374917547428
+    ]
+  },
+  {
+    "case": {
+      "key": "case_029",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 285,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      2
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 34,
+    "cost": 5.191330415920432,
+    "optimality": 0.007420264192614733,
+    "point": [
+      7.705856444232897,
+      -16.295153310152617,
+      2.537616952846276
+    ],
+    "depths": [
+      -0.05718564843455809,
+      34.087584748928776
+    ]
+  },
+  {
+    "case": {
+      "key": "case_039",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 27,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      1,
+      2
+    ],
+    "combination": [
+      1,
+      0
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 17,
+    "cost": 1.716822338888053,
+    "optimality": 6.896242440511353e-05,
+    "point": [
+      -0.2705861622419827,
+      19.719239061128693,
+      2.82388139998473
+    ],
+    "depths": [
+      36.29254342963921,
+      -0.9953489954698114
+    ]
+  },
+  {
+    "case": {
+      "key": "case_049",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 131,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      2,
+      1
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 18,
+    "cost": 11.653434311946302,
+    "optimality": 5.559734559517795e-05,
+    "point": [
+      9.689604221930123,
+      -18.394182827390214,
+      1.8923029147925832
+    ],
+    "depths": [
+      -0.8747635524998678,
+      36.28687604955081
+    ]
+  },
+  {
+    "case": {
+      "key": "case_049",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 131,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      1,
+      2
+    ],
+    "combination": [
+      2,
+      2,
+      1
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 46,
+    "cost": 53.668589599557514,
+    "optimality": 0.0004329790470132803,
+    "point": [
+      9.190212720786885,
+      -18.2878866135985,
+      2.05520707619908
+    ],
+    "depths": [
+      -0.6229683330030369,
+      9.909838398575525,
+      36.16263699480227
+    ]
+  },
+  {
+    "case": {
+      "key": "case_068",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      0
+    ],
+    "success": false,
+    "message": "The maximum number of function evaluations is exceeded.",
+    "nfev": 100,
+    "cost": 60.52448038905158,
+    "optimality": 0.005646945408484926,
+    "point": [
+      -0.5939970468116197,
+      20.512344628577647,
+      2.769616013844149
+    ],
+    "depths": [
+      34.797699989588665,
+      -1.4646585445453546
+    ]
+  },
+  {
+    "case": {
+      "key": "case_078",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 130,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      2
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 29,
+    "cost": 2.066853605958515,
+    "optimality": 9.804522878934858e-05,
+    "point": [
+      7.884878656415838,
+      -17.94873381096741,
+      2.8414127608668633
+    ],
+    "depths": [
+      -0.005393118569287481,
+      35.761580889590235
+    ]
+  },
+  {
+    "case": {
+      "key": "case_088",
+      "cohort": "run2_failure",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 70,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      2,
+      1
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 26,
+    "cost": 3.78419469555876,
+    "optimality": 0.00028099901132038325,
+    "point": [
+      -0.07531869712302357,
+      19.07975518468522,
+      2.7809555008697893
+    ],
+    "depths": [
+      38.19771021141065,
+      -0.12132331602297342
+    ]
+  },
+  {
+    "case": {
+      "key": "case_098",
+      "cohort": "run2_failure",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 38,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      1,
+      2
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 36,
+    "cost": 2.9078063173025637,
+    "optimality": 0.00034047690418350935,
+    "point": [
+      -0.1751711159656913,
+      19.254822192370895,
+      2.7957242471145127
+    ],
+    "depths": [
+      37.765693386028694,
+      -0.36788742421451914
+    ]
+  },
+  {
+    "case": {
+      "key": "case_108",
+      "cohort": "run2_failure",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 14,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ]
+    },
+    "active": [
+      0,
+      2
+    ],
+    "combination": [
+      2,
+      1
+    ],
+    "success": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "nfev": 68,
+    "cost": 8.410718818286341,
+    "optimality": 0.0016924686658449813,
+    "point": [
+      9.724345569670156,
+      -21.799914192469586,
+      3.6893910543047097
+    ],
+    "depths": [
+      -0.3430389800104834,
+      39.4113743892086
+    ]
+  }
+]
