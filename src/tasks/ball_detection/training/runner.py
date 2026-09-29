@@ -8,6 +8,7 @@ from typing import Any
 import pytorch_lightning as pl
 import torch
 
+from src.tasks.ball_detection.configuration import validate_epoch_candidate_policy
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
@@ -21,6 +22,11 @@ class BallDetectionTrainingRunner(BaseTrainingRunner):
 
     Overrides datamodule/model construction for ball detection.
     """
+
+    def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
+        runtime = super().validate_runtime_config(config)
+        validate_epoch_candidate_policy(config)
+        return runtime
 
     def maybe_load_init_weights(
         self, config: TrainingRuntimeConfig, lightning_module: pl.LightningModule,

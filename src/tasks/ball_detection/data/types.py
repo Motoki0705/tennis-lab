@@ -20,6 +20,24 @@ class FrameLabel:
     state: str = "visible"
 
 
+class CandidateReference(TypedDict):
+    """Unaugmented validation identity/GT; tensor axes gain B on collation.
+
+    xy is (T,2) in stored pixels, observed is (T,) and requires exactly one
+    observed instance. frame_id is a row in the explicitly named namespace.
+    source_scale is stored pixels/source pixel, identical on both axes.
+    Empty camera means the source has no camera identity.
+    """
+
+    xy: Tensor
+    observed: Tensor
+    frame_id: Tensor
+    window_start: Tensor
+    source_scale: Tensor
+    namespace: str
+    camera: str
+
+
 class BallDetectionSample(TypedDict):
     """One supervised ball detection sample.
 
@@ -48,6 +66,7 @@ class BallDetectionSample(TypedDict):
     heatmap_size: Tensor
     window_id: str
     source: str
+    candidate_reference: CandidateReference
 
 
 class BallDetectionBatch(TypedDict):
@@ -77,6 +96,7 @@ class BallDetectionBatch(TypedDict):
     heatmap_size: Tensor
     window_id: list[str]
     source: list[str]
+    candidate_reference: dict[str, Tensor | list[str]]
 
 
 __all__ = [

@@ -111,6 +111,59 @@ def test_training_rejects_conflicting_checkpoint_inputs() -> None:
         validate_training(config)
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("training.checkpoint.enabled", False),
+        ("training.checkpoint.save_top_k", 1),
+        ("training.checkpoint.filename", "best"),
+        ("training.trainer.check_val_every_n_epoch", 2),
+        ("training.validation_candidates.max_candidates", 1),
+        ("training.validation_candidates.nms_kernel", 3),
+        ("training.validation_candidates.patch_size", 3),
+        ("training.validation_candidates.subpixel_refine", False),
+        ("training.validation_candidates.radius_source_px", 4.0),
+    ],
+)
+def test_training_rejects_policy_that_loses_epoch_candidates(key: str, value: object) -> None:
+    from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
+
+    config = _compose("train")
+    OmegaConf.update(config, key, value)
+    with pytest.raises(ConfigurationError):
+        validate_training(config)
+    with pytest.raises(ConfigurationError):
+        BallDetectionTrainingRunner().validate_runtime_config(config)
+
+
+def test_training_does_not_default_missing_candidate_settings() -> None:
+    config = _compose("train")
+    with open_dict(config):
+        del config.training.validation_candidates
+    with pytest.raises(ConfigurationError, match="validation_candidates"):
+        validate_training(config)
+
+
+@pytest.mark.parametrize(
+    ("name", "overrides"),
+    [("train", []), ("train", ["training=gan"]), ("train", ["training=lora"]),
+     ("train_meiji_mixed", []), ("train_staged", []),
+     ("staged_phase1", []), ("staged_phase2", []), ("staged_phase3", []), ("staged_phase4", [])],
+)
+def test_all_training_profiles_keep_every_epoch_with_the_same_candidate_metric(
+    name: str, overrides: list[str],
+) -> None:
+    from src.tasks.ball_detection.configuration import validate_epoch_candidate_policy
+
+    config = _compose(name, overrides=overrides)
+    validate_epoch_candidate_policy(config)
+    assert config.training.checkpoint.save_top_k == -1
+    assert config.training.checkpoint.mode == "max"
+    assert config.training.checkpoint.monitor == (
+        "val/meiji/candidate_recall_at_8_20px" if name == "train_meiji_mixed" else "val/candidate_recall_at_8_20px"
+    )
+
+
 def test_web_training_rejects_removed_temporal_only_key() -> None:
     config = _compose("train", overrides=["data=web_frames"])
     with open_dict(config):
