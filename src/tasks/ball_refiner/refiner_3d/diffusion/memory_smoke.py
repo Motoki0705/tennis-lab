@@ -46,12 +46,17 @@ def run_memory_smoke(config_path: Path, fixture: Path, output: Path, *, device: 
     torch.set_num_threads(1)
     torch.manual_seed(raw["seed"])
     started = time.perf_counter()
+    device_memory_peak: int | None = None
     if device == "cuda":
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA requested but unavailable")
         total = torch.cuda.get_device_properties(0).total_memory
         torch.cuda.set_per_process_memory_fraction(min(1., raw["allocator_limit_gib"] * 1024 ** 3 / total), 0)
         torch.cuda.reset_peak_memory_stats()
+        free, capacity = torch.cuda.mem_get_info()
+        device_memory_peak = capacity - free
+        if device_memory_peak > 6 * 1024 ** 3:
+            raise RuntimeError("Device memory already exceeds the 6 GiB smoke budget")
     batch = analytic_memory_batch(fixture, batch_size=raw["batch_size"], frames=raw["frames"], seed=raw["seed"]).to(device)
     model = TrajectoryDenoiser(model_config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=raw["learning_rate"])
@@ -81,6 +86,11 @@ def run_memory_smoke(config_path: Path, fixture: Path, output: Path, *, device: 
                 optimizer.step()
                 if device == "cuda":
                     torch.cuda.synchronize()
+                    free, capacity = torch.cuda.mem_get_info()
+                    assert device_memory_peak is not None
+                    device_memory_peak = max(device_memory_peak, capacity - free)
+                    if device_memory_peak > 6 * 1024 ** 3:
+                        raise RuntimeError("Device memory exceeded the 6 GiB smoke budget")
                 row = {"update": update, "loss": loss.item(), "gradient_norm": norm.item(), **{key: value.item() for key, value in terms.items()}}
                 log.write(json.dumps(row, allow_nan=False) + "\n")
                 log.flush()
@@ -90,6 +100,8 @@ def run_memory_smoke(config_path: Path, fixture: Path, output: Path, *, device: 
             status="complete", updates=raw["updates"], elapsed_seconds=time.perf_counter() - started,
             peak_allocated_bytes=torch.cuda.max_memory_allocated() if device == "cuda" else None,
             peak_reserved_bytes=torch.cuda.max_memory_reserved() if device == "cuda" else None,
+            peak_device_used_bytes=device_memory_peak,
+            device_memory_note="CUDA driver total-minus-free, sampled per update; includes unrelated device usage and can miss between-update peaks",
             checkpoint_bytes=checkpoint.stat().st_size, checkpoint_sha256=sha256(checkpoint),
         )
     except Exception as exc:
