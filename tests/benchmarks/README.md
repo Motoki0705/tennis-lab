@@ -130,6 +130,8 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   映像をdecodeせず、ラベルを作らない。未ラベル・調整未完了・評価試行0の予約だけを変更できる。
 
 - `player_detection_far_diagnosis.py --phase preflight --repo <元repo> --comparison <run1/meiji/comparison.json> --report <新規出力先>`
+  はrun 3の履歴再現用。2026-09-29のユーザー判断でGPU jobは中止し、高解像度・tileの追加実行は行わない。
+  新しいCPU比較は下記`person_selection_cpu.py`を使う。
   は、既存4開発clip・動画/ラベル/重みhash・固定court ROIと未見予約の非重複をCPUで確認する。
   その後`player_detection_far_diagnosis.sh <元repo> <comparison.json> <report>`を1つのGPU queue jobで実行する。
   #937の既定resizeでscore 0.01まで保存し閾値曲線を作る。native 1080、1080/1440/1800/2160/2880/4320の
@@ -141,3 +143,16 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--phase summarize`は全raw archiveのhashを検証しCPUだけで再集計する（出力済みrunは別directoryへ複製してから使う）。
   ms/frameはscore 0.01の共通forward＋ROI/unionで、動画decode/load/warmup/保存は除く。未ラベル予測数も別記する。
   pipeline設定・重み・既定thresholdの変更、方式の最終比較、未見clipの評価は行わない。
+
+- `person_selection_cpu.py --repo <元repo> --report <新規出力先> --phase sources --progress <run3/progress.json>`
+  は中止済みrun 3のft_base 12件・ft_1080 11件をhash検証し、保存済みCOCOと比較する。閾値
+  0.01/0.02/0.05/0.1/0.3のcamera×近遠表、共通11件の表、ROI内外人数を`sources.{json,csv}`へ書く。
+  参照はCOCO由来の旧boxでCOCOに有利。COCOはROI後しか保存されておらず、ROI外の人数は不明。
+  FT/COCOの推論時間は計測範囲が違うためJSONの`runtime_scope`を必ず読む。
+  同じreportで`--phase tracks`はFT base 0.01・COCO・unionをCPU Ultralytics BoT-SORTへ渡す。
+  元scoreは保持し、追跡段の追加score gate/fusionと人物全体の上限は無効。検出row対応を検証し、raw/Kalman両boxを保存する。
+  `--phase select`は足元の既存校正・領域・presence fractionで選手候補を選び、上限6を適用する。
+  既定CLIP-ReIDもCPUで実行し、#933の区間分割・短い曖昧区間除外・handoffを含むcamera間対応を第2確認に使う。
+  未決定は理由を残し、成功結果へ戻さない。旧検出＋旧追跡の保存済み出力もbaselineとして同じ選別に通す。
+  `--phase video`はunionのdev clip_000から、全人物を灰色、選手を予測identity色で示す12秒3camera動画を作る。
+  pipeline既定やencoder比較は変更しない。全人物のpose/外観が未保存のBoT-SORT-style derivativeはこの診断では未評価。
