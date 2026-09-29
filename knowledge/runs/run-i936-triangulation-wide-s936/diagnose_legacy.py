@@ -1,5 +1,6 @@
 """Replay every product of the ten run-2 failure frames, recording raw fits."""
 import json
+import sys
 from itertools import product
 from pathlib import Path
 
@@ -35,5 +36,5 @@ for row in metadata["records"]:
                 legacy.fit_component(matrices[active],cases[key+"_means"][active,index],cases[key+"_covariance"][active,index],prior,max_nfev=100)
             except RuntimeError:
                 pass  # Recorded raw failure above; no input/product is removed.
-(root/"legacy-diagnosis.json").write_text(json.dumps(records,indent=2,allow_nan=False)+"\n")
+Path(sys.argv[1]).write_text(json.dumps(records,indent=2,allow_nan=False)+"\n")
 print(json.dumps(records,indent=2,allow_nan=False))

@@ -1,0 +1,178 @@
+{
+  "rally_id": "train-00001",
+  "split": "train",
+  "seed": 3716130156,
+  "physics_proposals": [
+    {
+      "seed": 3716130156,
+      "status": "accepted"
+    }
+  ],
+  "geometry_clip": "video_002/clip_010",
+  "geometry_sha256": "9d2488976a168697807e457819ea8801e6dfe1e0035717c023ba740859d51619",
+  "frames": 497,
+  "native_frames": 1988,
+  "fps_numerator": 60000,
+  "fps_denominator": 1001,
+  "native_hz": 240,
+  "events": [
+    {
+      "kind": "hit",
+      "native_frame": 135,
+      "seconds": 0.5625,
+      "frame": 34
+    },
+    {
+      "kind": "net",
+      "native_frame": 415,
+      "seconds": 1.7291666666666667,
+      "frame": 104
+    },
+    {
+      "kind": "bounce",
+      "native_frame": 545,
+      "seconds": 2.2708333333333335,
+      "frame": 136
+    },
+    {
+      "kind": "bounce",
+      "native_frame": 885,
+      "seconds": 3.6875,
+      "frame": 221
+    },
+    {
+      "kind": "hit",
+      "native_frame": 911,
+      "seconds": 3.7958333333333334,
+      "frame": 228
+    },
+    {
+      "kind": "net",
+      "native_frame": 1162,
+      "seconds": 4.841666666666667,
+      "frame": 290
+    },
+    {
+      "kind": "bounce",
+      "native_frame": 1322,
+      "seconds": 5.508333333333334,
+      "frame": 330
+    },
+    {
+      "kind": "hit",
+      "native_frame": 1387,
+      "seconds": 5.779166666666667,
+      "frame": 346
+    },
+    {
+      "kind": "net",
+      "native_frame": 1596,
+      "seconds": 6.65,
+      "frame": 399
+    },
+    {
+      "kind": "bounce",
+      "native_frame": 1619,
+      "seconds": 6.745833333333334,
+      "frame": 404
+    },
+    {
+      "kind": "bounce",
+      "native_frame": 1831,
+      "seconds": 7.629166666666666,
+      "frame": 457
+    }
+  ],
+  "end_reason": "out",
+  "physics": {
+    "gravity": 9.809409999847412,
+    "k_drag": 0.012855540215969085,
+    "k_magnus": 0.0006610107719898224,
+    "e_z": 0.7394507169723511,
+    "mu": 0.19837525188922883,
+    "alpha_net": 0.3,
+    "alpha_net_cord": 0.05,
+    "alpha_fence": 0.3,
+    "net_half_thickness": 0.03,
+    "net_cord_radius": 0.03,
+    "dt": 0.004166666666666667,
+    "use_drag": true,
+    "use_magnus": true,
+    "wind": [
+      -1.1323372421463058,
+      -2.4661544164686346,
+      0.0
+    ],
+    "gravity_range": null,
+    "k_drag_range": null,
+    "k_magnus_range": null,
+    "e_z_range": null,
+    "mu_range": null,
+    "wind_speed_range": null,
+    "wind_direction_range_deg": null
+  },
+  "simulation_seconds": 0.7730976629536599,
+  "triangulation_seconds": 280.14575112302555,
+  "elapsed_seconds": 281.01976397796534,
+  "peak_worker_rss_kib": 852196,
+  "npz_bytes": 1329645,
+  "npz_sha256": "8abb169a47106a33cd9fe4d3ea6b41b6430df673fb4bab3334c4306deb421b88",
+  "components_per_frame": 64,
+  "component_method_labels": [
+    "prior",
+    "laplace",
+    "volume:camera_boundary",
+    "volume:boundary_laplace_tail",
+    "volume:iteration_budget",
+    "volume:line_search",
+    "volume:no_feasible_initial_point"
+  ],
+  "component_method_counts": {
+    "prior": 497,
+    "volume:boundary_laplace_tail": 6023,
+    "laplace": 25036,
+    "volume:camera_boundary": 210,
+    "volume:iteration_budget": 42
+  },
+  "float32_zero_weight_components": 82,
+  "all_camera_occluded_frames": 16,
+  "out_of_frame_camera_frames": 48,
+  "events_hit": 3,
+  "events_bounce": 5,
+  "event_region_frames": 84,
+  "free_flight_frames": 361,
+  "gap_intervals": [
+    {
+      "cameras": [
+        0,
+        1,
+        2
+      ],
+      "start": 240,
+      "stop": 256
+    },
+    {
+      "cameras": [
+        0
+      ],
+      "start": 394,
+      "stop": 395
+    },
+    {
+      "cameras": [
+        1
+      ],
+      "start": 178,
+      "stop": 182
+    },
+    {
+      "cameras": [
+        2
+      ],
+      "start": 261,
+      "stop": 262
+    }
+  ],
+  "shared_gap_length": 16,
+  "clipped_component_means": 242
+}

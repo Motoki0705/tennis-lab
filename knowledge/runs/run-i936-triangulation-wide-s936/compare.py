@@ -26,6 +26,8 @@ laplace = LaplaceConfig(64, 100)
 hybrid = HybridConfig(laplace, voxel)
 records = []
 out = root / sys.argv[1]
+if out.exists():
+    raise FileExistsError(out)
 methods = sys.argv[2:] or ["A", "B", "C", "H"]
 for n, row in enumerate(config["records"]):
     if methods in (["B_hi", "H_hi"], ["R_hi"], ["R_top"]) and not (row["frame"] == 0 or row["cohort"] in ("shared_gap", "run2_failure")):
