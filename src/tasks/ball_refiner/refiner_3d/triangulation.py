@@ -6,7 +6,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
+from src.tasks.ball_refiner.refiner_2d.distribution import FLOAT_DTYPES, BallGMM2D
+from src.tasks.base.model_io.tensors import TensorSpec
 from src.utils.geometry.probabilistic_triangulation import CameraGMM
 
 
@@ -20,6 +21,9 @@ def frame_observations(
     """
     if not 0 <= frame < distribution.means.shape[1]:
         raise ValueError("Frame index is outside the refiner sequence")
+    TensorSpec((distribution.means.shape[0], 2), FLOAT_DTYPES).validate("source_size_wh", source_size_wh)
+    if source_size_wh.device != distribution.means.device:
+        raise ValueError("Source image sizes must share the original GMM device")
     # Promote the source Cholesky factor BEFORE either matrix product/scaling.
     # Float32 D*Sigma*D can round the two off-diagonals differently on a
     # non-square image. This avoids the roundoff, without symmetrizing/jittering.
