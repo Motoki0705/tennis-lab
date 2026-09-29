@@ -22,6 +22,7 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "ImageFeatureResult",
         "PersonDetectionRequest",
         "PersonDetectionResult",
+        "Pose2DFrameSequenceRequest",
         "Pose2DRequest",
         "Pose2DResult",
         "SmplCoco17Reconstructor",

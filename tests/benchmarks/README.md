@@ -123,3 +123,8 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 - `player_detection_disagreements.py`（CPU）は保存済み`--comparison`とdataset内ラベルから、
   未一致の旧boxをIoU・box高・camera・近遠（画像内のbox下端順位）別に集計し、
   `--report`へ旧box/新検出の短い比較動画を書く。旧COCO box由来の偏りがあるため検出recallとは呼ばない。
+
+- `player_association_reserve.py --repo <元repo> --report <新規出力先>`（CPU）は、人物処理の設計・評価・
+  擬似ラベル校正の履歴とclip metadataだけを読み、各動画から600frame以上の最長の未使用clipを予約する。
+  datasetの`annotations/player_association/unseen_protocol.json`を更新し、旧予約・選定/除外理由・hashをreportへ保存する。
+  映像をdecodeせず、ラベルを作らない。未ラベル・調整未完了・評価試行0の予約だけを変更できる。
