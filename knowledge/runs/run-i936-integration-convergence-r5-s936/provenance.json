@@ -1,0 +1,22 @@
+{
+  "numerical_core_commit": "a642c5c774622f3afa0744e5cd7886925e9c39f6",
+  "core_sha256": {
+    "src/utils/geometry/probabilistic_triangulation/__init__.py": "55fdc0c59f62b18e5131d4cdb58289ad2b77d395339b727dbc9817fd9218eb27",
+    "src/utils/geometry/probabilistic_triangulation/convergence.py": "50f15030368ed94e99cab5b1aedfb5db042fd675db0af655b8bdf54375b1882e",
+    "src/utils/geometry/probabilistic_triangulation/distributions.py": "29144899a662a2b00f9b9a8e26262ccfe2ebc12616dbad3f42c1b3e51d9e7b9b",
+    "src/utils/geometry/probabilistic_triangulation/optimization.py": "5bb8e03dd91226e1723ce8afe1218426013909522ae9600c65d93e7f5ff19197",
+    "src/utils/geometry/probabilistic_triangulation/solver.py": "a9823c050f4a69dca1a29ab807d9b01c62c038488aa730b70158d777b372ceea",
+    "src/utils/geometry/probabilistic_triangulation/volume.py": "0eb02436b089074e8062a9feb0747877b2c7b9a954d4af147a37800dc8bed3ee",
+    "src/tasks/ball_refiner/refiner_3d/triangulation.py": "d8a3b260c565972455046b9d7baa6f27d41ebaf54c8f0806c7cebe1ad9df9c98",
+    "src/tasks/ball_refiner/refiner_2d/distribution.py": "340177fd65a93988a07bee6320fcc51666c6f597aafcbbf5c9cd13c05754ef68",
+    "src/utils/geometry/triangulation.py": "f6eb34522f5e8bd92fba82bd51250d81151c01f3f9c46ddda391992b02e67cf2"
+  },
+  "plan_sha256": "5d9c5b4c9f45c5b07aa957359f82aca9ec26180aa314b1f949a0367a418a36af",
+  "source_dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-r3",
+  "audit_output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-convergence-r5",
+  "python": "3.11.15",
+  "numpy": "2.3.5",
+  "native_threads": 1,
+  "maximum_concurrent_workers": 4,
+  "gpu": false
+}
