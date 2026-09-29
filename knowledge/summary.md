@@ -1,4 +1,4 @@
-<!-- knowledge-review: 803624b6d9da10260ded54c6fdbcf40384acfd70bc9fdcc7d267ca4e3ac08dd0 on 2026-09-29 -->
+<!-- knowledge-review: 53db25aeaca1e446711a1e687eea909aee48ec2175779067992eeb2ff890f9a8 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -35,7 +35,8 @@ CLIP付きの第2確認も全clipでは決定できず、この基準のまま�
 足元連続性と利用可能なCLIPで断片を連結すると、隣コートを除外しFT/unionのcam0 far保持を改善できた。
 単frameの足元跳びで分割する初回案は投影ノイズで過分割になり不採用。時間窓と1秒以内のgapに修正したが、
 他camera/旧経路の選手保持低下とコート内へ投影される非選手が残るため、既定へは採用しない。
-COCOだけROI後保存という比較の不公平は全画面COCOのqueue jobで解消する予定で、結果回収・公平な最終比較は次run。
+[全画面COCOのqueue job](nodes/player_detection/000003-run-i964-coco-fullframe-r5-20260929.md)は12 camera-clip完了し、全archiveのhash一致を確認した。
+ROI前で公平に比較できる入力が揃った。選別済みtrackの領域外観測を保持する修正と、同じルールでの比較はrun 6で進める。
 最終方式・encoder選択、v3への新group接続、全pipeline完走、未見一回評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
