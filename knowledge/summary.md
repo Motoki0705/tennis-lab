@@ -1,4 +1,4 @@
-<!-- knowledge-review: d5bfa3fe0a39fd272fc156fa1f01da770ffb51fa18a165498697cf39bb348bc3 on 2026-09-29 -->
+<!-- knowledge-review: 572e3d3cd30d58b078e76c8bf60604863aad62648a9729441d44b25e6132f383 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -198,9 +198,12 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 [修正版の3checkpoint比較](nodes/ball_refiner/000013-run-i935-val-candidate-recall-r15-20260929.md)は完了した。
 Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6のepoch 0選択とは逆転した。
 全camera・chat val・TrackNet game9の候補recallもe11が最大だが、候補内での順位誤りとTrackNet top-1の退行は残る。
-2026-09-29のユーザー判断で、r6と同じ学習recipeを毎epoch候補recall・全epoch保存で再実行し、Meiji valだけで最良epochを選ぶ。
-中間epochと最終epochの上昇傾向は再学習結果で確認し、自動延長しない。testは最終報告専用とする。
-候補cacheと文脈なしpilotの更新は最良epoch確定後。比較だけでdeployを変更せず、文脈の採否も同一母数のfull/ablationで判断する。
+[全epoch保存の混合FT再学習](nodes/ball_refiner/000014-run-i935-mixed-ft-val-recall-s42-r16-20260929.md)はepoch 10中にCUDA unknown errorで失敗した。
+保存済みepoch 0–9のMeiji val recall@8を照合し、2026-09-29のユーザー判断どおり単独最大のepoch 9を選択した。
+peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
+候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
+次は選択重みで旧cacheと同条件のtrain/val証拠を新規生成し、その後に文脈なしpilotを再学習する。testは最終報告専用。
+#964完了までperson/poseを使用しない。比較だけでdeployを変更せず、文脈の採否も同一母数のfull/ablationで判断する。
 
 ### Court Detection
 
