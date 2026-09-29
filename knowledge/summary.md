@@ -1,4 +1,4 @@
-<!-- knowledge-review: 301e0a7dc40c206b4e730552830ca49e08d3dbf3e50f5b4e7402130e0dcb6ee2 on 2026-09-29 -->
+<!-- knowledge-review: d0bf48bb057b3ea6900697cc0e5fdbf7953c97763e1debc3a92ba96b599da9cf on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -22,7 +22,9 @@ CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未
 
 共通人物特徴の[初回smoke](nodes/person_tracking/000001-run-i964-features-smoke-r2-20260929.md)は、
 ViTPoseの回帰heatmap peakを確率とみなす検査で停止した。実入力のCPU再現で有限の1超scoreを確認し、
-生値を保持する契約へ修正する。非有限値の停止は維持する。GPU再実行と追跡の品質評価は未完了。
+生値を保持する契約へ修正した。[GPU再実行](nodes/person_tracking/000002-run-i964-features-smoke-r3-20260929.md)は
+同じ入力の1超scoreを保持して3camera×120frameを完走し、同じ#937検出のUltralytics BoT-SORT baselineも完走した。
+これは機能smokeに限り、追跡品質の比較ではない。遠側診断と最終方式選択は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
 
