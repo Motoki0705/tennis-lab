@@ -1,0 +1,20 @@
+{
+  "measured_directory_bytes": {
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-preflight-r5": 1891916,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-convergence-r5": 36584358,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-provisional-degradation-r5-s936": 1671450,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-integration-convergence-r5-s936": 4198325,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/i936-r5": 5119383,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-dev-r5-frozen": 907121475
+  },
+  "measured_sum_bytes": 956586907,
+  "budget_bytes": 10000000000,
+  "note": "logical directory sizes before launch; Git object growth and small source/cache files excluded; projected dev NPZ about 275 MB",
+  "frozen_generation_source": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-dev-r5-frozen",
+    "commit": "4d89fe6e8faec34ab6c5fa6932453e7124d18330",
+    "clean": true,
+    "plan_inputs_verified": 33,
+    "reason": "keep long-running generation inputs immutable while the development worktree remains editable"
+  }
+}
