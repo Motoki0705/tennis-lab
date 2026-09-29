@@ -26,7 +26,8 @@ def merge_extra(primary: PersonDetectionResult, extra: PersonDetectionResult, *,
     """Preserve FT boxes; add score-ordered, nonduplicate extra boxes.
 
     Scores across COCO/FT are not calibrated, so extra boxes never replace FT.
-    Caller applies the same court ROI to both before merging. Small means box
+    Caller uses the same spatial scope for both (full frame or one explicit ROI).
+    Small means box
     height <= max_height in source pixels; zero-area boxes are rejected.
     """
     if not 0 < dedup_iou <= 1 or (max_height is not None and max_height <= 0):

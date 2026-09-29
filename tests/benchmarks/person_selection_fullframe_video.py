@@ -29,10 +29,12 @@ def windows(comparison: dict[str, Any], source: str) -> list[dict[str, Any]]:
     for clip in DEV_CLIPS:
         value = comparison['results'][source][clip]
         with gzip.open(value['units']['path'], 'rt') as src:
-            units = [u for line in src if (u := json.loads(line))['stage'] == 'selected']
+            all_units = [json.loads(line) for line in src]
+        units = [u for u in all_units if u['stage'] == 'selected']
+        cross = next(r for r in comparison['association'] if r['source'] == source and r['clip'] == clip)
         length = max(u['frame'] for u in units) + 1
         width = min(240, length)  # four seconds at the fixed Meiji source rate
-        for kind in ('worst', 'wide', 'adjacent'):
+        for kind in ('worst', 'wide', 'adjacent', 'association'):
             loss = np.zeros(length, np.int64)
             for u in units:
                 value = (u['role'] == 'player' and not u['selected_03']) or (u['role'] != 'player' and u['selected_03'])
@@ -40,12 +42,17 @@ def windows(comparison: dict[str, Any], source: str) -> list[dict[str, Any]]:
                     value = u['role'] == 'player' and u['reference_wide'] is True
                 elif kind == 'adjacent':
                     value = u['kind'] == 'adjacent_court'
+                elif kind == 'association':
+                    value = False
                 loss[u['frame']] += int(value)
+            if kind == 'association' and cross['metrics']:
+                for failure in cross['metrics']['0.3']['failed_frame_runs']:
+                    loss[failure['start']:failure['end']] += 1
             sums = np.convolve(loss, np.ones(width, np.int64), mode='valid')
             start = int(np.argmax(sums))
             item = {'clip': clip, 'start': start, 'end': start + width, 'kind': kind, 'score': int(sums[start])}
             (result if kind == 'worst' else extra).append(item)
-    for kind in ('wide', 'adjacent'):
+    for kind in ('wide', 'adjacent', 'association'):
         best = max((r for r in extra if r['kind'] == kind), key=lambda r: r['score'])
         if best['score']:
             result.append(best)
@@ -80,8 +87,10 @@ def render(report: Path, source: str) -> None:
             records = sorted((r for r in inputs if r['clip'] == clip), key=lambda r: r['camera'])
             labels = ClipLabels.load(Path(records[0]['label_path']))
             with gzip.open(verdict['units']['path'], 'rt') as handle:
-                units = [u for line in handle if (u := json.loads(line))['stage'] == 'selected']
+                all_units = [json.loads(line) for line in handle]
+            units = [u for u in all_units if u['stage'] == 'selected']
             unit_index = {(u['camera'], u['frame'], u['person']): u for u in units}
+            associated_index = {(u['camera'], u['frame'], u['person']): u for u in all_units if u['stage'] == 'associated'}
             captures, data = [], []
             for record in records:
                 saved = verdict['cameras'][record['camera']]
@@ -118,7 +127,7 @@ def render(report: Path, source: str) -> None:
                             originals = [bgr for _, bgr in current]
                     canvas: np.ndarray = np.zeros((shape[1], shape[0], 3), np.uint8)
                     text_at(canvas, f'{source} | {clip} | {case["kind"]} | frame {frame} | association: {verdict["association"]["status"]}', 10, 25, .62)
-                    text_at(canvas, 'Green: selected | Grey: excluded track | Red: missed COCO-derived reference (IoU < .3) | P*: resolved cross-camera ID', 10, 50, .58)
+                    text_at(canvas, 'Green: selected | Grey: excluded | Red: missed reference | Amber: no association ID | P*: cross-camera ID | COCO-derived reference', 10, 50, .55)
                     for ci, (record, image, a) in enumerate(zip(records, originals, data, strict=True)):
                         panel = cv2.resize(image, (640, 360))
                         annotated = image.copy()
@@ -141,10 +150,17 @@ def render(report: Path, source: str) -> None:
                             xyxy = candidates[np.prod(candidates[:, 2:] - candidates[:, :2], axis=1).argmax()]
                             u = unit_index[record['camera'], int(frame), name]
                             missed = u['role'] == 'player' and not u['selected_03']
+                            associated = associated_index.get((record['camera'], int(frame), name))
+                            no_identity = bool(u['role'] == 'player' and u['selected_03'] and associated is not None and not associated['selected_03'])
                             if missed:
                                 box(panel, xyxy, (30, 30, 255), f'ref {name}')
                                 box(annotated, xyxy, (30, 30, 255), f'ref {name}', scale=1.)
+                            elif no_identity:
+                                box(panel, xyxy, (0, 180, 255), f'no ID {name}')
+                                box(annotated, xyxy, (0, 180, 255), f'no ID {name}', scale=1.)
                             priority = 10 * int(missed) + int(u['near_far'] == 'far')
+                            if case['kind'] == 'association':
+                                priority += 20 * int(no_identity)
                             if case['kind'] == 'wide':
                                 priority += 20 * int(u['reference_wide'] is True and u['role'] == 'player')
                             if case['kind'] == 'adjacent':
@@ -196,7 +212,7 @@ def render(report: Path, source: str) -> None:
     write_json_atomic(report / 'video.json', {'path': str(target), 'sha256': dual_sha256(target), 'bytes': target.stat().st_size,
         'source': source, 'comparison_sha256': dual_sha256(comparison_path), 'cases': cases, 'previews': previews,
         'fps': fps, 'frames': count, 'shape': [820, 1920, 3], 'readback': 'all frames verified',
-        'worst_definition': 'maximize count of selected-stage missed player units plus retained nonplayer units in a 240-source-frame window, separately for each clip; then add maximum-wide and maximum-adjacent reference windows',
+        'worst_definition': 'maximize count of selected-stage missed player units plus retained nonplayer units in a 240-source-frame window, separately for each clip; then add maximum-wide, maximum-adjacent and maximum association-failed-frame windows (existing #933 group metric, IoU .3)',
         'labels': 'post-hoc window selection and red review overlay only; COCO-derived and biased'})
 
 
