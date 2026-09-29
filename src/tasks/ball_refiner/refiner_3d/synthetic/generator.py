@@ -25,24 +25,13 @@ from src.tasks.ball_refiner.refiner_3d.synthetic.observations import (
     make_distribution,
     perturb_cameras,
 )
+from src.tasks.ball_refiner.refiner_3d.synthetic.simulation import accepted_rally
 from src.tasks.ball_refiner.refiner_3d.synthetic.timebase import (
     event_masks,
     resample,
     retained_events,
 )
 from src.tasks.ball_refiner.refiner_3d.triangulation import frame_observations
-from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
-from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
-    NUM_CELLS_PER_SIDE,
-    CellManager,
-)
-from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
-    RallyConfig,
-    RallySimulator,
-)
-from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
-    TargetedVelocityConfig,
-)
 from src.utils.geometry.probabilistic_triangulation import (
     GaussianPrior3D,
     LaplaceConfig,
@@ -61,18 +50,10 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
     started = time.perf_counter()
     torch.set_num_threads(1)
     seed = int(np.random.SeedSequence([plan.values["seed"], split_index, index]).generate_state(1)[0])
-    torch.manual_seed(seed)
-    rng = np.random.default_rng(seed)
     source = plan.values["geometry"]["sources"][split_index]
     split = source["split"]
     rally_id = f"{split}-{index:05d}"
-    physics = PhysicsConfig(**plan.physics).sample()
-    simulator = RallySimulator(
-        physics_config=physics, rally_config=RallyConfig(**plan.rally),
-        targeted_velocity_config=TargetedVelocityConfig(**{**plan.targeted, "gravity": physics.gravity}),
-        cell_manager=CellManager(), device="cpu",
-    )
-    result = simulator.generate_rally(from_cell=int(rng.integers(0, NUM_CELLS_PER_SIDE)), from_side="near" if index % 2 == 0 else "far")
+    result, physics, rng, proposals = accepted_rally(plan, seed=seed, index=index)
     sample = plan.values["sampling"]
     timestamps, positions = resample(
         result.trajectory_sim.numpy(), native_hz=result.sim_fps,
@@ -136,6 +117,7 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
     np.savez_compressed(destination, **arrays)
     metadata = {
         "rally_id": rally_id, "split": split, "seed": seed,
+        "physics_proposals": proposals,
         "geometry_clip": source["clip_id"], "geometry_sha256": source["sha256"],
         "frames": len(timestamps), "native_frames": len(result.trajectory_sim),
         "fps_numerator": sample["fps_numerator"], "fps_denominator": sample["fps_denominator"],
