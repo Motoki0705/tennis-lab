@@ -44,6 +44,10 @@ class ProbabilisticTriangulation:
     camera_subsets: NDArray[np.bool_]  # M,V; same order as mixture components
     prior_only_probability: float
     component_methods: tuple[str, ...]
+    component_log_evidence: FloatArray
+
+
+ComponentCache = dict[tuple[int, ...], tuple[FloatArray, FloatArray, float] | str]
 
 
 
@@ -193,6 +197,7 @@ def triangulate_hybrid(
 def _triangulate(
     observations: CameraGMM, cameras: tuple[PinholeCamera, ...], *,
     prior: GaussianPrior3D, config: LaplaceConfig, volume: VoxelConfig | None,
+    regular_cache: ComponentCache | None = None,
 ) -> ProbabilisticTriangulation:
     v, _, _ = observations.means_px.shape
     if len(cameras) != v or len({c.camera_id for c in cameras}) != v:
@@ -209,21 +214,29 @@ def _triangulate(
     subsets = camera_subsets(observations.presence)
     matrices = np.stack([c.matrix for c in cameras])
     means, covariances, weights, masks = [], [], [], []
-    methods = []
+    methods, component_evidence = [], []
     for active, probability in subsets:
         evidence = []
         for combination in product(*(nonzero[i] for i in active)):
             index = np.asarray(combination, dtype=np.int64)
             method = "laplace" if len(active) else "prior"
+            key = tuple(int(index[list(active).index(i)]) if i in active else -1 for i in range(v))
             try:
-                mean, cov, log_evidence = fit_component(
-                    matrices[active],
-                    observations.means_px[active, index],
-                    observations.covariance_px2[active, index],
-                    prior,
-                    max_nfev=config.max_nfev,
-                )
+                cached = regular_cache.get(key) if regular_cache is not None else None
+                if isinstance(cached, str):
+                    raise NonregularComponentError(cached)
+                if cached is None:
+                    cached = fit_component(
+                        matrices[active], observations.means_px[active, index],
+                        observations.covariance_px2[active, index], prior,
+                        max_nfev=config.max_nfev,
+                    )
+                    if regular_cache is not None:
+                        regular_cache[key] = cached
+                mean, cov, log_evidence = cached
             except NonregularComponentError as exc:
+                if regular_cache is not None:
+                    regular_cache[key] = exc.reason
                 if volume is None:
                     raise
                 method = f"volume:{exc.reason}"
@@ -232,6 +245,7 @@ def _triangulate(
                     observations.covariance_px2[active, index], prior, volume,
                 )
             methods.append(method)
+            component_evidence.append(log_evidence)
             evidence.append(
                 log_evidence + float(np.log(observations.weights[active, index]).sum())
             )
@@ -247,4 +261,5 @@ def _triangulate(
         np.stack(masks),
         float(np.prod(1 - observations.presence)),
         tuple(methods),
+        np.asarray(component_evidence, dtype=np.float64),
     )

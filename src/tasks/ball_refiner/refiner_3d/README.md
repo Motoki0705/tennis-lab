@@ -29,8 +29,8 @@ video_002/clip_010、cam0/1/2（1920×1080）。
 設定の正本は [dataset_plan.yaml](dataset_plan.yaml)。
 `synthetic/` はBLCSの240Hz原系列を正確な60000/1001Hzへ線形補間し、
 合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 明示的なA/B併用の順で生成する。
-全64成分とcamera集合、全共分散を保存し、点推定への置換はしない。
-数値は仮定した劣化で、#935の実出力に較正した値ではない。
+全camera集合と全共分散を保存する。v2は保存済み#935 pilotのK=4を保ち、
+全125成分を列挙する。点推定への置換はしない。
 
 `timebase.py` は実際に残ったshot区間のイベントだけを採用し、native frame/秒と
 最近傍frameを保持する。打球・bounceの±5frameとnet通過付近を物理lossから除外する。
@@ -39,14 +39,25 @@ fence時刻を返さないsimulatorに対しては、fence近傍も保守的に�
 使うclean geometry条件を作る。真/推定行列は別fieldで保存する。
 校正誤差条件は未実装。実ボール座標や注釈は入力にしない。
 
-遮蔽はpresenceを下げず、分布を広げて代替位置の重みを変える。
-画面外は別maskと低presenceで表す。GMM headの範囲に合わせる明示的な画像境界clipを
-適用し、その成分数をmetadataへ保存する。平均誤差と予測共分散のscaleは別の設定であり、
-gap/distractorの分散拡大を平均誤差へそのまま掛けない。最初のstress生成では
-一部の成分組合せのMAPがcamera背後へ進んだため、memory smokeの平均誤差を限定した。
-この条件を実refinerの誤差分布や較正改善とは扱わない。数値問題への対応は、正depth領域の最適化と非正則成分の体積積分で行う。
-方式・切替理由をframe×成分で保存し、全64成分を保持する。
-run 3はrun 2の固定seed/平均誤差scaleを維持し、成功seedや成分を選別しない。
+`calibration.py`は#959の較正用validationに保存済みの全GMMと教師から、camera別・
+観測/人工証拠欠損別にuv残差、全Cholesky因子、全混合logit、存在logitを抽出する。
+checkpoint・manifest・全NPZのSHAと誤差/共分散比・重み・正例の存在統計は
+[暫定較正bundle](../../../../knowledge/runs/run-i936-provisional-degradation-r5-s936/calibration.json)を正本とする。
+GPU再推論や実3D軌道評価は行わない。これは**文脈なし旧detector pilotからの暫定劣化**であり、
+新detector/person contextの最終較正ではない。
+
+`observations.py`はcameraごとに連続する採点frameを最大16frameのblockで再標本化し、
+全成分のuv残差を合成投影へ移す。欠損中もamodal存在logitを保持し、visibilityから
+不在を作らない。frame間の相関はblock内だけ、camera間は独立という暫定近似。
+32/64frameのgapは保存済み1/4/8/16frame gapからの外挿である。画面外の存在logitは
+負例不足のため設定で明示した仮定。平均は#935 headと同じ[0,1]へclipし件数を保存する。
+再標本化元の全row indexとbank hashを各ラリーに保存し、readerで全重み・共分散・存在を照合する。
+
+積分は[共通の収束判定](../../../utils/geometry/probabilistic_triangulation/README.md#積分の収束判定)を使う。
+frame/成分別の収束flag・達成差分・使用予算・全履歴を保存する。上限で未収束のframeも
+最後の全分布を保持し、収束済みへ読み替えたり学習loaderで黙って除外したりしない。
+数値失敗は別の明示的errorである。v1の仮定劣化/K=3からのデータ移行は再生成で行う。
+過去のv1はschemaを指定した読込だけを維持し、新しい生成には使用しない。
 
 BLCSが既知prefixで棄却した物理提案だけを設定の有限予算で再標本化し、
 全提案seed・棄却理由・採用seedをmetadataへ残す。元のnative上限でsimulateした後に
@@ -57,10 +68,10 @@ BLCSが既知prefixで棄却した物理提案だけを設定の有限予算で�
 生成CLIは `python -m src.tasks.ball_refiner.scripts.generate_synthetic_3d`。
 `--project-root`（作業checkout）、`--data-root`（共有data）、
 `--plan`（上記YAML）、`--output`（新しいDATA内directory）を絶対pathで指定し、
-`--mode smoke` または `--mode pilot` を明示する。
+`--mode smoke`、`--mode dev`（64/16/16ラリー）、または `--mode pilot` を明示する。
 OMP/MKL/OPENBLASのthread数を1にして起動する。process数はYAMLの値で最大4。
 
-各rallyを可変長のNPZ+JSONで保存し、進捗manifestはatomicに更新する。
+各rallyを可変長のNPZ+JSONで保存し、進捗manifestと16frame間隔の各rally progressはatomicに更新する。
 timestamp/cameraはfloat64、軌道/GMMはfloat32、maskはbool。
 float32 export後もSPDと有限性を検査する。未完了/失敗は`complete`にしない。
 入力設定・校正・生成codeのSHA、全イベント、実frame/bytes、simulation/triangulation時間、
@@ -106,5 +117,5 @@ NaN/Inf、予算超過、CUDAなしをerrorにする。別deviceや小batchへ�
 peak allocated/reserved bytes・checkpoint SHAを記録する。
 GPUのcontext/library分はPyTorch allocator測定に含まれない。
 
-本学習・同backbone回帰・合成評価・Meiji LOCOは、12-rally生成の修正と#935の
+本学習・同backbone回帰・合成評価・Meiji LOCOは、開発datasetと最終的な#935の
 劣化較正を経て別runで実施する。現在の方式比較とmemory smokeを性能の採否に使わない。
