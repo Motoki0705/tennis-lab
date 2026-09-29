@@ -60,7 +60,7 @@ def test_reader_rejects_false_convergence_and_modified_calibration(mutation):
     flags[1, -1] = False
     arrays = {
         'integration_component_changes': changes, 'integration_component_converged': flags,
-        'integration_converged': np.array([True, False]), 'integration_rounds': np.array([2, 3]),
+        'integration_converged': np.array([True, False]), 'integration_rounds': np.array([3, 5]),
         'integration_nll_delta_nat': np.array([.01, .06]), 'calibration_rows': rows,
         'occlusion_mask': np.tile([False, True], (3, 1)), 'out_of_frame_mask': np.zeros((3, 2), dtype=bool),
         'gmm2d_scale_tril_uv': source.arrays['scale_tril_uv'][rows].copy(),

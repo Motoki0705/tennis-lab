@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,6 +11,7 @@ from numpy.typing import NDArray
 from src.utils.geometry.triangulation import PinholeCamera
 
 from .distributions import CameraGMM, FloatArray, GaussianPrior3D
+from .ray import RayConfig, RayProposal
 from .solver import (
     ComponentCache,
     LaplaceConfig,
@@ -47,6 +49,52 @@ class ConvergenceConfig:
         return VoxelConfig(self.initial_cells[index], self.levels[index], self.refine_cells[index], self.prior_sigmas)
 
 
+    @property
+    def round_limit(self) -> int:
+        return len(self.initial_cells)
+
+    def budget_record(self, index: int) -> dict[str, int]:
+        return {"initial_cells": self.initial_cells[index], "levels": self.levels[index], "refine_cells": self.refine_cells[index]}
+
+
+@dataclass(frozen=True)
+class RayConvergenceConfig:
+    orders: tuple[int, ...]
+    nll_tolerance_nat: float
+    log_evidence_tolerance_nat: float
+    mean_tolerance: float
+    covariance_relative_tolerance: float
+
+    def __post_init__(self) -> None:
+        if len(self.orders) < 3 or any(b <= a for a, b in zip(self.orders[:-1], self.orders[1:], strict=True)):
+            raise ValueError("Ray quadrature needs >=3 strictly increasing orders")
+        for order in self.orders:
+            RayConfig(order)
+        for value in (self.nll_tolerance_nat, self.log_evidence_tolerance_nat, self.mean_tolerance, self.covariance_relative_tolerance):
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError("Convergence tolerances must be positive and finite")
+
+    @property
+    def round_limit(self) -> int:
+        return len(self.orders)
+
+    def budget(self, index: int) -> RayConfig:
+        return RayConfig(self.orders[index])
+
+    def budget_record(self, index: int) -> dict[str, int]:
+        return {"quadrature_order": self.orders[index]}
+
+
+def convergence_config(values: dict[str, Any]) -> ConvergenceConfig | RayConvergenceConfig:
+    settings = dict(values)
+    method = settings.pop("method", "voxel")  # Historical schema explicitly defines voxel.
+    if method == "ray":
+        return RayConvergenceConfig(**settings)
+    if method == "voxel":
+        return ConvergenceConfig(**settings)
+    raise ValueError(f"Unknown integration method: {method}")
+
+
 @dataclass(frozen=True)
 class CheckedTriangulation:
     posterior: ProbabilisticTriangulation
@@ -61,7 +109,7 @@ class CheckedTriangulation:
 
 def triangulate_converged(
     observations: CameraGMM, cameras: tuple[PinholeCamera, ...], *,
-    prior: GaussianPrior3D, laplace: LaplaceConfig, config: ConvergenceConfig,
+    prior: GaussianPrior3D, laplace: LaplaceConfig, config: ConvergenceConfig | RayConvergenceConfig,
 ) -> CheckedTriangulation:
     """Check independent, increasingly fine grids, always retain the last one.
 
@@ -71,11 +119,12 @@ def triangulate_converged(
     These finite-grid checks do not bound box truncation or Laplace model error.
     """
     cache: ComponentCache = {}
+    ray_cache: dict[tuple[int, ...], RayProposal] = {}
     previous: ProbabilisticTriangulation | None = None
     initial_probes = np.empty((0, 3))
     history: list[dict[str, float | int | bool]] = []
-    for index in range(len(config.initial_cells)):
-        current = _triangulate(observations, cameras, prior=prior, config=laplace, volume=config.budget(index), regular_cache=cache)
+    for index in range(config.round_limit):
+        current = _triangulate(observations, cameras, prior=prior, config=laplace, volume=config.budget(index), regular_cache=cache, ray_cache=ray_cache)
         if previous is None:
             initial_probes = _probes(current)
         else:
@@ -88,17 +137,16 @@ def triangulate_converged(
             passed = (changes <= np.asarray([config.log_evidence_tolerance_nat, config.mean_tolerance, config.covariance_relative_tolerance])).all(-1)
             probes = np.concatenate((initial_probes, _probes(previous), _probes(current)))
             nll_delta = float(np.max(np.abs(b.log_prob(probes) - a.log_prob(probes))))
-            converged = bool(passed.all() and nll_delta <= config.nll_tolerance_nat)
+            converged = bool(passed.all() and nll_delta <= config.nll_tolerance_nat and (not isinstance(config, RayConvergenceConfig) or index >= 2))
             history.append({
-                "round": index + 1, "initial_cells": config.initial_cells[index],
+                "round": index + 1, **config.budget_record(index),
                 "nll_delta_nat": nll_delta,
                 "max_log_evidence_delta_nat": float(changes[:, 0].max()),
-                "levels": config.levels[index], "refine_cells": config.refine_cells[index],
                 "max_mean_delta": float(changes[:, 1].max()),
                 "max_covariance_relative_delta": float(changes[:, 2].max()),
                 "nonconverged_components": int((~passed).sum()), "converged": converged,
             })
-            if converged or index == len(config.initial_cells) - 1:
+            if converged or index == config.round_limit - 1:
                 return CheckedTriangulation(current, converged, index + 1, passed, changes, nll_delta, tuple(history))
         previous = current
     raise AssertionError("At least two refinement rounds are required")

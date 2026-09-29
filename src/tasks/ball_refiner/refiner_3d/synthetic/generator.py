@@ -38,7 +38,7 @@ from src.utils.geometry.probabilistic_triangulation import (
     LaplaceConfig,
 )
 from src.utils.geometry.probabilistic_triangulation.convergence import (
-    ConvergenceConfig,
+    convergence_config,
     triangulate_converged,
 )
 from src.utils.geometry.probabilistic_triangulation.solver import (
@@ -80,7 +80,7 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
     distribution, masks, observation_metadata = make_distribution(positions, cameras, sizes, degradation, rng, rally_index=index, calibration=plan.calibration)
     prior = GaussianPrior3D(np.asarray(degradation["prior_mean_m"], dtype=float), np.diag(degradation["prior_covariance_diagonal_m2"]).astype(float))
     laplace = LaplaceConfig(degradation["max_components"], degradation["max_nfev"])
-    convergence = ConvergenceConfig(**degradation["boundary_convergence"])
+    convergence = convergence_config(degradation["boundary_convergence"])
     tri_started = time.perf_counter()
     posteriors = []
     checks = []

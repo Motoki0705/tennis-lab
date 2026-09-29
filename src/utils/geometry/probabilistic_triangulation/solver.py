@@ -20,9 +20,10 @@ from src.utils.geometry.probabilistic_triangulation.distributions import (
 from src.utils.geometry.triangulation import PinholeCamera
 
 from .optimization import NonregularComponentError, feasible_start
+from .ray import RayConfig, RayProposal, single_view_moments
 from .volume import VoxelConfig, integrate_component
 
-COMPONENT_METHODS = (
+COMPONENT_METHODS: tuple[str, ...] = (
     "prior", "laplace", "volume:camera_boundary", "volume:boundary_laplace_tail",
     "volume:iteration_budget", "volume:line_search", "volume:no_feasible_initial_point",
 )
@@ -45,6 +46,9 @@ class ProbabilisticTriangulation:
     prior_only_probability: float
     component_methods: tuple[str, ...]
     component_log_evidence: FloatArray
+
+
+COMPONENT_METHODS += tuple(method.replace("volume:", "ray:") for method in COMPONENT_METHODS if method.startswith("volume:"))
 
 
 ComponentCache = dict[tuple[int, ...], tuple[FloatArray, FloatArray, float] | str]
@@ -196,8 +200,9 @@ def triangulate_hybrid(
 
 def _triangulate(
     observations: CameraGMM, cameras: tuple[PinholeCamera, ...], *,
-    prior: GaussianPrior3D, config: LaplaceConfig, volume: VoxelConfig | None,
+    prior: GaussianPrior3D, config: LaplaceConfig, volume: VoxelConfig | RayConfig | None,
     regular_cache: ComponentCache | None = None,
+    ray_cache: dict[tuple[int, ...], RayProposal] | None = None,
 ) -> ProbabilisticTriangulation:
     v, _, _ = observations.means_px.shape
     if len(cameras) != v or len({c.camera_id for c in cameras}) != v:
@@ -239,11 +244,23 @@ def _triangulate(
                     regular_cache[key] = exc.reason
                 if volume is None:
                     raise
-                method = f"volume:{exc.reason}"
-                mean, cov, log_evidence = integrate_component(
-                    tuple(cameras[i] for i in active), observations.means_px[active, index],
-                    observations.covariance_px2[active, index], prior, volume,
-                )
+                selected_cameras = tuple(cameras[i] for i in active)
+                selected_means = observations.means_px[active, index]
+                selected_covariance = observations.covariance_px2[active, index]
+                if isinstance(volume, RayConfig):
+                    method = f"ray:{exc.reason}"
+                    if len(active) == 1:
+                        mean, cov, log_evidence = single_view_moments(selected_cameras[0], selected_means[0], selected_covariance[0], prior, volume.order)
+                    else:
+                        proposal = ray_cache.get(key) if ray_cache is not None else None
+                        if proposal is None:
+                            proposal = RayProposal(selected_cameras, selected_means, selected_covariance, prior)
+                            if ray_cache is not None:
+                                ray_cache[key] = proposal
+                        mean, cov, log_evidence = proposal.integrate(volume.order)
+                else:
+                    method = f"volume:{exc.reason}"
+                    mean, cov, log_evidence = integrate_component(selected_cameras, selected_means, selected_covariance, prior, volume)
             methods.append(method)
             component_evidence.append(log_evidence)
             evidence.append(
