@@ -14,9 +14,14 @@ from typing import Any
 import numpy as np
 from hydra import compose, initialize_config_dir
 
-from src.submodules.models import ViTPosePose2D
+from src.submodules.models import (
+    BotSortAssociator,
+    PersonDetectionResult,
+    ViTPosePose2D,
+)
 from src.tasks.person_tracking.archive import load_features, save_features
 from src.tasks.person_tracking.botsort_pose import BotSortPoseConfig
+from src.tasks.person_tracking.contracts import DetectionFeatures, TrackCapacityExceeded
 from src.tasks.person_tracking.features import (
     FeatureConfig,
     FeatureExtractor,
@@ -113,6 +118,33 @@ def extract(args: argparse.Namespace) -> None:
     write_json_atomic(report / 'features.json', manifest)
 
 
+def track_baseline(frames: list[DetectionFeatures], provenance: dict[str, Any], max_tracks: int) -> dict[str, Any]:
+    """Actual old Ultralytics path, including image-based sparse optical flow.
+
+    Replay exactly the same #937 detections as the derivative. This smoke
+    records the wrapper's observed boxes/IDs; they are Kalman-updated boxes,
+    not falsely claimed as a detection-row mapping or final tracking metrics.
+    """
+    video = provenance['source']
+    if dual_sha256(Path(video['path'])) != video['sha256']:
+        raise ValueError('Baseline video content changed')
+    tracker = BotSortAssociator()
+    observed = []
+    seen: set[int] = set()
+    for packet in OpenCVVideoFrameReader(Path(video['path']), max_frames=len(frames)):
+        feature = frames[packet.index]
+        tracks = tracker.update(PersonDetectionResult(feature.boxes, feature.scores), packet.frame)
+        seen.update(track['id'] for track in tracks)
+        if len(seen) > max_tracks:
+            raise TrackCapacityExceeded(f'Ultralytics baseline exceeds cumulative camera cap {max_tracks}')
+        observed.append({'frame': packet.index, 'tracks': json_value(tracks)})
+    if len(observed) != len(frames):
+        raise ValueError('Baseline video timeline differs from shared features')
+    return {'frames': len(frames), 'track_ids': sorted(seen),
+            'observed_detections': sum(len(item['tracks']) for item in observed),
+            'assignment_schema': 'ultralytics_observed_boxes_not_detection_rows', 'observations': observed}
+
+
 def track(args: argparse.Namespace) -> None:
     report = args.report.resolve()
     target = report / f'tracking.{args.method}.json'
@@ -124,11 +156,20 @@ def track(args: argparse.Namespace) -> None:
     config = BotSortPoseConfig()
     result: dict[str, Any] = {'method': args.method, 'config': asdict(config), 'cameras': {},
                                'features_sha256': dual_sha256(report / 'features.json'), 'scope': source['scope']}
+    if args.method == 'ultralytics_botsort':
+        result['config'] = {'backend': 'src.submodules.models.BotSortAssociator',
+                            'with_reid': False, 'gmc_method': 'sparseOptFlow', 'max_tracks': config.max_tracks}
+        result['method_label'] = 'Ultralytics BoT-SORT baseline (same #937 detections)'
+    else:
+        result['method_label'] = 'BoT-SORT-style derivative with appearance and pose'
     for camera, record in source['cameras'].items():
         path = Path(record['path'])
         if dual_sha256(path) != record['sha256']:
             raise ValueError(f'Feature content changed for {camera}')
         frames, provenance = load_features(path)
+        if args.method == 'ultralytics_botsort':
+            result['cameras'][camera] = track_baseline(frames, provenance, config.max_tracks)
+            continue
         method = build_tracker(args.method, fps=float(provenance['source']['fps']), config=config)
         assignments = [method.update(frame) for frame in frames]
         result['cameras'][camera] = {'frames': len(frames),
@@ -136,7 +177,7 @@ def track(args: argparse.Namespace) -> None:
             'observed_detections': sum(len(a.detection_rows) for a in assignments),
             'assignments': [json_value(a) for a in assignments]}
     write_json_atomic(target, result)
-    print(json.dumps({c: {k: v for k, v in r.items() if k != 'assignments'} for c, r in result['cameras'].items()}))
+    print(json.dumps({c: {k: v for k, v in r.items() if k not in {'assignments', 'observations'}} for c, r in result['cameras'].items()}))
 
 
 def main() -> None:
