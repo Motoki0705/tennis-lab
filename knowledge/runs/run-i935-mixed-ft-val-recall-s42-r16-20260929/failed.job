@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# name: i935-mixed-ft-val-recall-s42-r16-20260929
+# added: 2026-09-29T23:19:43+09:00
+# provider: codex
+# session: 01a0ed7c-698e-7130-b127-badc4ab7ee8f
+# issue: 935
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection
+export TENNIS_RUN_ID=1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929 --name i935-mixed-ft-val-recall-s42-r16-20260929 --provider codex --session 01a0ed7c-698e-7130-b127-badc4ab7ee8f --issue 935 --cmd $'timeout --signal=TERM --kill-after=15s 28785s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/bin/python -u -c \'import hashlib, json, os, runpy, signal, time\nfrom pathlib import Path\nimport torch\nroot = Path(\'"\'"\'/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929\'"\'"\')\nif root.exists():\n    raise FileExistsError(root)\ncheckpoint = Path(\'"\'"\'/home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt\'"\'"\')\nwith checkpoint.open(\'"\'"\'rb\'"\'"\') as stream:\n    if hashlib.file_digest(stream, \'"\'"\'sha256\'"\'"\').hexdigest() != \'"\'"\'cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892\'"\'"\':\n        raise ValueError(\'"\'"\'ft-e13 checkpoint hash changed\'"\'"\')\nfor name, expected in {\'"\'"\'metadata.json\'"\'"\': \'"\'"\'b7796c1d9a99c2b44496264f54102729bea1ff26dd2550ef2b470780a93ef4c0\'"\'"\', \'"\'"\'index.npz\'"\'"\': \'"\'"\'a078912bc31c207b5be807b453bfba203da30b2ec2815993eebe98f896cb7523\'"\'"\'}.items():\n    with (Path(\'"\'"\'/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1\'"\'"\') / name).open(\'"\'"\'rb\'"\'"\') as stream:\n        if hashlib.file_digest(stream, \'"\'"\'sha256\'"\'"\').hexdigest() != expected:\n            raise ValueError(\'"\'"\'ball store identity changed: \'"\'"\' + name)\ntorch.set_num_threads(4)\ndevice = torch.device(\'"\'"\'cuda\'"\'"\', torch.cuda.current_device())\nlimit = 8 * 1024 ** 3\ntorch.cuda.set_per_process_memory_fraction(limit / torch.cuda.get_device_properties(device).total_memory, device)\ntorch.cuda.reset_peak_memory_stats(device)\nstarted = time.monotonic()\nstatus = \'"\'"\'failed\'"\'"\'\ndef interrupted(signum, frame):\n    raise SystemExit(128 + signum)\nsignal.signal(signal.SIGTERM, interrupted)\ntry:\n    runpy.run_module(\'"\'"\'src.tasks.ball_detection.scripts.train\'"\'"\', run_name=\'"\'"\'__main__\'"\'"\')\n    status = \'"\'"\'complete\'"\'"\'\nfinally:\n    metrics = {\'"\'"\'status\'"\'"\': status, \'"\'"\'seconds\'"\'"\': time.monotonic() - started,\n               \'"\'"\'peak_cuda_allocated_bytes\'"\'"\': torch.cuda.max_memory_allocated(device),\n               \'"\'"\'peak_cuda_reserved_bytes\'"\'"\': torch.cuda.max_memory_reserved(device),\n               \'"\'"\'pytorch_allocator_limit_bytes\'"\'"\': limit,\n               \'"\'"\'queue_job\'"\'"\': os.environ.get(\'"\'"\'TENNIS_RUN_ID\'"\'"\'),\n               \'"\'"\'test_after_fit\'"\'"\': False, \'"\'"\'epoch_limit\'"\'"\': 12}\n    root.mkdir(parents=True, exist_ok=True)\n    destination = root / \'"\'"\'resource_usage.json\'"\'"\'\n    temporary = destination.with_suffix(\'"\'"\'.json.tmp\'"\'"\')\n    temporary.write_text(json.dumps(metrics, indent=2) + \'"\'"\'\\n\'"\'"\')\n    temporary.replace(destination)\n    print(json.dumps({\'"\'"\'i935_training_resources\'"\'"\': metrics}), flush=True)\n\' --config-name train_meiji_mixed paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection paths.data_root=/home/kamimura/projects/tennis-lab/data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs paths.cache_root=/home/kamimura/projects/tennis-lab/.cache paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party run.output_dir=ball_detection/train/i935_mixed_ft/s42-r16-20260929'
+timeout --signal=TERM --kill-after=15s 28785s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/bin/python -u -c 'import hashlib, json, os, runpy, signal, time
+from pathlib import Path
+import torch
+root = Path('"'"'/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929'"'"')
+if root.exists():
+    raise FileExistsError(root)
+checkpoint = Path('"'"'/home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt'"'"')
+with checkpoint.open('"'"'rb'"'"') as stream:
+    if hashlib.file_digest(stream, '"'"'sha256'"'"').hexdigest() != '"'"'cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892'"'"':
+        raise ValueError('"'"'ft-e13 checkpoint hash changed'"'"')
+for name, expected in {'"'"'metadata.json'"'"': '"'"'b7796c1d9a99c2b44496264f54102729bea1ff26dd2550ef2b470780a93ef4c0'"'"', '"'"'index.npz'"'"': '"'"'a078912bc31c207b5be807b453bfba203da30b2ec2815993eebe98f896cb7523'"'"'}.items():
+    with (Path('"'"'/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1'"'"') / name).open('"'"'rb'"'"') as stream:
+        if hashlib.file_digest(stream, '"'"'sha256'"'"').hexdigest() != expected:
+            raise ValueError('"'"'ball store identity changed: '"'"' + name)
+torch.set_num_threads(4)
+device = torch.device('"'"'cuda'"'"', torch.cuda.current_device())
+limit = 8 * 1024 ** 3
+torch.cuda.set_per_process_memory_fraction(limit / torch.cuda.get_device_properties(device).total_memory, device)
+torch.cuda.reset_peak_memory_stats(device)
+started = time.monotonic()
+status = '"'"'failed'"'"'
+def interrupted(signum, frame):
+    raise SystemExit(128 + signum)
+signal.signal(signal.SIGTERM, interrupted)
+try:
+    runpy.run_module('"'"'src.tasks.ball_detection.scripts.train'"'"', run_name='"'"'__main__'"'"')
+    status = '"'"'complete'"'"'
+finally:
+    metrics = {'"'"'status'"'"': status, '"'"'seconds'"'"': time.monotonic() - started,
+               '"'"'peak_cuda_allocated_bytes'"'"': torch.cuda.max_memory_allocated(device),
+               '"'"'peak_cuda_reserved_bytes'"'"': torch.cuda.max_memory_reserved(device),
+               '"'"'pytorch_allocator_limit_bytes'"'"': limit,
+               '"'"'queue_job'"'"': os.environ.get('"'"'TENNIS_RUN_ID'"'"'),
+               '"'"'test_after_fit'"'"': False, '"'"'epoch_limit'"'"': 12}
+    root.mkdir(parents=True, exist_ok=True)
+    destination = root / '"'"'resource_usage.json'"'"'
+    temporary = destination.with_suffix('"'"'.json.tmp'"'"')
+    temporary.write_text(json.dumps(metrics, indent=2) + '"'"'\n'"'"')
+    temporary.replace(destination)
+    print(json.dumps({'"'"'i935_training_resources'"'"': metrics}), flush=True)
+' --config-name train_meiji_mixed paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection paths.data_root=/home/kamimura/projects/tennis-lab/data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.output_root=/home/kamimura/projects/tennis-lab/outputs paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs paths.cache_root=/home/kamimura/projects/tennis-lab/.cache paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party run.output_dir=ball_detection/train/i935_mixed_ft/s42-r16-20260929
