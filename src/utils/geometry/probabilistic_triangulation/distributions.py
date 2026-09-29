@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import product
 from typing import TypeAlias
 
 import numpy as np
@@ -116,3 +117,15 @@ class GaussianMixture3D:
             "m,mi,mj->ij", self.weights, centered, centered
         )
         return mean, covariance
+
+
+def camera_subsets(presence: FloatArray) -> list[tuple[NDArray[np.int64], float]]:
+    """Positive-mass independent Bernoulli subsets; exact zeros/ones stay exact."""
+    choices = [(False, True) if 0 < p < 1 else (bool(p),) for p in presence]
+    result = []
+    for selected in product(*choices):
+        mask = np.asarray(selected, dtype=bool)
+        probability = float(np.prod(np.where(mask, presence, 1 - presence)))
+        result.append((np.flatnonzero(mask), probability))
+    return result
+
