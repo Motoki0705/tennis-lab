@@ -42,6 +42,8 @@ def summarize_fullframe(ft_progress: Path, coco_inference: Path, report: Path) -
         raise FileExistsError(report)
     ft, coco = (json.loads(p.read_text()) for p in (ft_progress, coco_inference))
     expected = {f'{clip}/{cam}' for clip in DEV_CLIPS for cam in ('cam0', 'cam1', 'cam2')}
+    if ft['baseline_size'] != [800, 1333] or ft['floor'] != .01:
+        raise ValueError('FT baseline resize/floor differ')
     if coco['status'] != 'ok' or coco['scope'] != 'full_frame_no_roi' or coco['floor'] != .01 or coco['baseline_size'] != [800, 1333]:
         raise ValueError('COCO full-frame inference is incomplete or has different settings')
     for plan, name in ((ft, 'ft_base'), (coco, 'coco_fullframe_0.01')):
