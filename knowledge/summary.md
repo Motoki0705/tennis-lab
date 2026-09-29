@@ -1,4 +1,4 @@
-<!-- knowledge-review: f483ef3af39f60a779fd9532b3f732157529992da611c453396d93afb1712e05 on 2026-09-29 -->
+<!-- knowledge-review: d335caad184506480d0bd87c9093b5bdf076b75a5e1ce2d792f7658898e64229 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -306,8 +306,11 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 float32画素変換の共分散丸めを修正しても、広いprior/K=3のcamera間成分組合せで
 背後MAPや最適化の未収束が残った。v2は要求12件のうち1件だけ完了し、
 学習datasetとしては未成立。平均誤差を小さくするだけでは解消しない。
-次は正depth領域と境界modeの近似を検証し、全成分保持と両立する定義を固める。
-方式Aの限定条件での比較と、一般系列への採用可否を分ける。
+[広いpriorの再比較](nodes/ball_refiner_3d/000006-run-i936-triangulation-wide-s936.md)で、
+背後MAPと未収束がcamera plane越えに由来することを固定frameで確認した。
+正depthを保つAと非正則成分の体積積分を明示的に併用するHは108予定frame+10失敗frameを全て処理した。
+全64成分を保つsmoke用にHへ変更する。ただし境界近くの1frameはvoxel予算でNLLが約1 nat動き、
+光線座標の積分試行も不安定で却下した。Hの全件成功を積分精度の収束や本学習の承認と読み替えない。
 [絶対x0 flow matchingのCPU 100-update診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)
 は解析的fixtureで計算graphを確認した段階。12-rallyの成功・学習精度・GPU性能の証拠ではなく、
 本学習/実LOCO/pipelineの前には生成器の修正と#935からの劣化較正が必要。
