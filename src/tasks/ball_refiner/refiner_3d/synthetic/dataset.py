@@ -16,6 +16,9 @@ from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.tasks.ball_refiner.refiner_3d.synthetic.calibration import load_calibration
 from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import sha256
 from src.tasks.ball_refiner.refiner_3d.synthetic.timebase import resample
+from src.utils.geometry.probabilistic_triangulation.convergence import (
+    convergence_config,
+)
 from src.utils.geometry.probabilistic_triangulation.solver import COMPONENT_METHODS
 from src.utils.paths import PROJECT_ROOT
 
@@ -81,7 +84,8 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
     if subsets.shape != (t, components, 3) or subsets.dtype != np.bool_ or not np.array_equal(subsets, np.broadcast_to(subsets[0], subsets.shape)):
         raise ValueError("Camera subset topology changed within a rally")
     codes = arrays["gmm3d_method_codes"]
-    if codes.shape != (t, components) or codes.dtype != np.uint8 or (codes >= len(COMPONENT_METHODS)).any() or tuple(record["component_method_labels"]) != COMPONENT_METHODS:
+    labels = tuple(record["component_method_labels"])
+    if codes.shape != (t, components) or codes.dtype != np.uint8 or (codes >= len(labels)).any() or labels not in (COMPONENT_METHODS[:7], COMPONENT_METHODS):
         raise ValueError("Invalid component integration diagnostics")
     counts = dict(Counter(COMPONENT_METHODS[int(code)] for code in codes.ravel()))
     if counts != record["component_method_counts"]:
@@ -122,6 +126,8 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
     if not np.array_equal(occlusion, arrays["occlusion_mask"]):
         raise ValueError("Gap interval/mask mismatch")
     if plan["schema_version"] == 1:
+        if "boundary_convergence" in plan["degradation"]:
+            _validate_integration(arrays, record, plan, components)
         expected_logits = np.where(arrays["out_of_frame_mask"], -plan["degradation"]["presence_logit_magnitude"], plan["degradation"]["presence_logit_magnitude"])
         if not np.array_equal(arrays["gmm2d_presence_logits"], expected_logits):
             raise ValueError("Occlusion must not change amodal presence")
@@ -134,7 +140,7 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
             raise ValueError("v1 clean geometry requires matched true/estimated cameras")
 
 
-def _validate_v2(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan: dict[str, Any], components: int) -> None:
+def _validate_integration(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan: dict[str, Any], components: int) -> None:
     t = record["frames"]
     config = plan["degradation"]["boundary_convergence"]
     changes, flags = arrays["integration_component_changes"], arrays["integration_component_converged"]
@@ -146,12 +152,17 @@ def _validate_v2(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan: 
     tolerances = np.asarray([config["log_evidence_tolerance_nat"], config["mean_tolerance"], config["covariance_relative_tolerance"]])
     if not np.array_equal(flags, (changes <= tolerances).all(-1)) or not np.array_equal(converged, flags.all(-1) & (nll <= config["nll_tolerance_nat"])):
         raise ValueError("Convergence flags disagree with achieved tolerance")
-    cap = len(config["initial_cells"])
+    cap = convergence_config(config).round_limit
     if not np.issubdtype(rounds.dtype, np.integer) or (rounds < 2).any() or (rounds > cap).any() or (rounds[~converged] != cap).any():
         raise ValueError("Nonconverged frames must exhaust the explicit cap")
     summary = record["integration"]
     if summary["rule"] != config or summary["converged_frames"] != int(converged.sum()) or summary["nonconverged_frames"] != int((~converged).sum()):
         raise ValueError("Convergence summary mismatch")
+
+
+def _validate_v2(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan: dict[str, Any], components: int) -> None:
+    _validate_integration(arrays, record, plan, components)
+    t = record["frames"]
     settings = plan["degradation"]["calibration"]
     bank = load_calibration(PROJECT_ROOT / settings["bank"], settings["bank_sha256"]).arrays
     rows = arrays["calibration_rows"]

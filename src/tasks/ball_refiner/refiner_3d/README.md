@@ -28,7 +28,7 @@ video_002/clip_010、cam0/1/2（1920×1080）。
 
 設定の正本は [dataset_plan.yaml](dataset_plan.yaml)。
 `synthetic/` はBLCSの240Hz原系列を正確な60000/1001Hzへ線形補間し、
-合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 明示的なA/B併用の順で生成する。
+合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 正則A/非正則ray積分の順で生成する。
 全camera集合と全共分散を保存する。v2は保存済み#935 pilotのK=4を保ち、
 全125成分を列挙する。点推定への置換はしない。
 

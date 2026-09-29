@@ -31,7 +31,7 @@ from src.utils.geometry.probabilistic_triangulation import (
     LaplaceConfig,
 )
 from src.utils.geometry.probabilistic_triangulation.convergence import (
-    ConvergenceConfig,
+    convergence_config,
     triangulate_converged,
 )
 from src.utils.geometry.triangulation import PinholeCamera
@@ -104,14 +104,14 @@ def test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes
     np.testing.assert_array_equal(distribution.mixture_logits.numpy(), calibration.arrays["mixture_logits"][rows])
     assert bool((distribution.covariance[..., 0, 1] != 0).all())
     observations = frame_observations(distribution, torch.from_numpy(sizes), frame=40)
-    checked = triangulate_converged(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), laplace=LaplaceConfig(125, 100), config=ConvergenceConfig(**settings["boundary_convergence"]))
+    checked = triangulate_converged(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), laplace=LaplaceConfig(125, 100), config=convergence_config(settings["boundary_convergence"]))
     result = checked.posterior
     assert checked.rounds >= 2
     assert result.distribution.means.shape == (125, 3)
     assert len(np.unique(result.camera_subsets, axis=0)) == 8
     assert result.prior_only_probability > 0
     assert len(result.component_methods) == 125
-    assert any(method.startswith("volume:") for method in result.component_methods)
+    assert any(method.startswith("ray:") for method in result.component_methods)
     np.linalg.cholesky(result.distribution.covariance.astype(np.float32))
     np.testing.assert_allclose(result.distribution.weights.sum(), 1)
 
