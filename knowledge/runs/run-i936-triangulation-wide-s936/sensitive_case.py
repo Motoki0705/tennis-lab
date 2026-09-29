@@ -1,5 +1,5 @@
 """Reproduce the non-convergence of voxel budget sensitivity on case_078."""
-import json, time
+import json, time, sys
 from pathlib import Path
 import numpy as np
 from src.utils.geometry.probabilistic_triangulation import CameraGMM, GaussianPrior3D, LaplaceConfig
@@ -16,4 +16,4 @@ for initial,levels,refine in [(24,8,1024),(32,9,2048)]:
     start=time.perf_counter()
     result=triangulate_hybrid(obs,cameras,prior=prior,config=HybridConfig(LaplaceConfig(64,100),VoxelConfig(initial,levels,refine,4.))).distribution
     records.append(dict(initial_cells=initial,levels=levels,refine_cells=refine,nll=-float(result.log_prob(case[key+"_truth"])),seconds=time.perf_counter()-start,weights=result.weights.tolist()))
-(root/"sensitive-case.json").write_text(json.dumps(records,indent=2)+"\n")
+Path(sys.argv[1]).write_text(json.dumps(records,indent=2)+"\n")

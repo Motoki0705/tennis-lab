@@ -1,0 +1,12 @@
+{"completed": "train-00000", "frames": 254, "seconds": 195.07082003098913}
+{"completed": "train-00002", "frames": 512, "seconds": 279.287226363027}
+{"completed": "train-00001", "frames": 497, "seconds": 281.01976397796534}
+{"completed": "train-00003", "frames": 512, "seconds": 281.8619067010004}
+{"completed": "val-00000", "frames": 178, "seconds": 108.54005465196678}
+{"completed": "val-00003", "frames": 199, "seconds": 159.29969822696876}
+{"completed": "val-00001", "frames": 512, "seconds": 205.92746373900445}
+{"completed": "val-00002", "frames": 512, "seconds": 234.17310940701282}
+{"completed": "test-00001", "frames": 266, "seconds": 128.51023344800342}
+{"completed": "test-00000", "frames": 343, "seconds": 305.208252128039}
+{"completed": "test-00002", "frames": 512, "seconds": 205.11640519596403}
+{"completed": "test-00003", "frames": 512, "seconds": 286.1881845240132}
