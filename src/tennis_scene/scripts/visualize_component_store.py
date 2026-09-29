@@ -412,10 +412,10 @@ class Review:
         timeline = _save_plot(self.output / "images" / f"{camera}_detections_timeline.png", plot)
         return [image, timeline], [("detections", str(len(scores))), ("max in one frame", str(int(counts.max())))]
 
-    @renders("person_tracking", "person_tracks", 3)
+    @renders("person_tracking", "person_tracks", 4)
     def render_person_tracking(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         boxes, observed, ids = (_array(value[key]) for key in ("boxes_xyxy", "observed", "track_ids"))
-        confirmed = self.player_labels(camera, ids)
+        confirmed = self.player_labels(camera, ids) if node.startswith("player_selection/") else None
         def draw(image: np.ndarray, frame: int) -> None:
             for row, track_id in enumerate(ids):
                 box = boxes[row, frame]
@@ -423,10 +423,6 @@ class Review:
                 color = (150, 150, 150) if global_id == -1 else COLORS_BGR[row % len(COLORS_BGR)]
                 label = f"track {track_id}" if global_id is None else (f"excluded track {track_id}" if global_id < 0 else f"player {global_id} / track {track_id}")
                 if not observed[row, frame]:
-                    frames = np.flatnonzero(observed[row])
-                    if len(frames) and frames[0] < frame < frames[-1]:
-                        _dashed_box(image, box, color)
-                        _text(image, f"{label} interp", tuple(np.rint(box[:2]).astype(int)), color)
                     continue
                 cv2.rectangle(image, tuple(np.rint(box[:2]).astype(int)), tuple(np.rint(box[2:]).astype(int)), color, 4)
                 _text(image, label, tuple(np.rint(box[:2]).astype(int)), color)
@@ -439,7 +435,7 @@ class Review:
                 ax.scatter(frames, np.full(len(frames), row), marker="|", s=25, color=COLORS_MPL[row % len(COLORS_MPL)])
             ax.set(xlabel="source frame", ylabel="stable camera ID", yticks=np.arange(len(ids)), yticklabels=[str(v) for v in ids], title=f"{camera} observed tracks")
             ax.grid(axis="x", alpha=.2)
-        timeline = _save_plot(self.output / "images" / f"{camera}_tracks_timeline.png", plot)
+        timeline = _save_plot(self.output / "images" / f"{node.replace(chr(47), chr(95))}_tracks_timeline.png", plot)
         details = [(f"ID {track_id}", f"{_count(observed[row])} observed frames; source tracklets {value['source_track_ids'][row]}") for row, track_id in enumerate(ids)]
         if confirmed is not None:
             details += [(f"track {track_id} player", _player_summary(np.where(observed[row], confirmed[int(track_id)], -1)))
@@ -451,6 +447,14 @@ class Review:
                             f"gap {item['missing_frames']} frames; {overlap}location {item['center_distance_diagonals']:.2f} box diagonals; "
                             f"clothing ΔLab {item['appearance_lab_distance']:.1f}"))
         return [image, timeline], details
+
+    @renders("player_selection", "selected_player_tracks", 1)
+    def render_player_selection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        images, details = self.render_person_tracking(node, camera, value["tracks"])
+        details.append(("retained raw observations", str(_count(value["selected"]))))
+        details.append(("group observations", str(_count(value["tracks"]["observed"]))))
+        details.append(("selection evidence", str(value["diagnostics"])))
+        return images, details
 
     @renders("pose_estimation", "person_poses", 1)
     def render_pose_estimation(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
@@ -512,7 +516,7 @@ class Review:
             ax.imshow(np.ma.masked_less(table, 0), aspect="auto", interpolation="nearest", cmap=palette, vmin=0, vmax=9)
             ax.set(yticks=np.arange(len(labels)), yticklabels=labels, xlabel="source frame", title="Player carried by each camera-local track")
         images = [_save_plot(self.output / "images" / "player_association_table.png", plot, figsize=(10, 6))]
-        required = ["court_calibration", "court_side", *(f"person_tracking/{camera_id}" for camera_id in self.camera_ids)]
+        required = ["court_calibration", "court_side", *(f"player_selection/{camera_id}" for camera_id in self.camera_ids)]
         if all(parent in self.references and not self.stale_dependencies(parent) for parent in required):
             ground_image, comparisons = self.ground_distance_matrix()
             images.append(ground_image)
@@ -533,7 +537,8 @@ class Review:
             camera_id = view["camera"]["camera_id"]
             camera = PinholeCamera(camera_id, *(_array(view["camera"][key]).astype(np.float64)
                                                 for key in ("intrinsic", "rotation", "translation"))).half_turned(turns[camera_id])
-            tracking, _ = self.payload(f"person_tracking/{camera_id}")
+            selection, _ = self.payload(f"player_selection/{camera_id}")
+            tracking = selection["tracks"]
             boxes, observed = _array(tracking["boxes_xyxy"]), _array(tracking["observed"])
             for row, track_id in enumerate(_array(tracking["track_ids"])):
                 box = boxes[row]

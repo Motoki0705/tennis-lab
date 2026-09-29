@@ -101,7 +101,7 @@ def player_association_io(camera_ids: tuple[str, ...]) -> ComponentIO[PlayerAsso
     """The node's contract: calibration, the decided side and the tracks of every source camera."""
     return ComponentIO(PLAYER_ASSOCIATION, PlayerAssociationInput, PlayerIdentitiesOutput,
         {"calibration": InputPort("local_court_calibration"), "side": SIDE_PORT,
-         **{f"tracks_{c}": InputPort("person_tracks", 3) for c in camera_ids}},
+         **{f"tracks_{c}": InputPort("selected_player_tracks") for c in camera_ids}},
         IDENTITIES_PORT.schema, IDENTITIES_PORT.version)
 
 

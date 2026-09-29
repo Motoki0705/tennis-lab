@@ -1,11 +1,11 @@
-"""Dev-only fragment linking and exclusive-court dwell, with no score/GT gate.
+"""Fixed court player-selection rule (#964, 2026-09-30), with no score/GT gate.
 
 The calibrated z=0 plane uses the court model's singles width as a dwell
 core, doubles width as a diagnostic corridor and 5 m of baseline
 runoff. Neither region expands laterally past the target court's sidelines.
 The inner core adds 1.37 m of protection against noisy box-bottom projections
 at the lateral boundary; a track parked only in that border cannot qualify.
-These are conservative singles-dev rules, not a general venue segmentation.
+The rule was selected on four singles dev clips, not general venue segmentation.
 Calibration/footpoint error can still misplace people; no such error bound is
 claimed. The region decides membership only: every real observation of a
 selected fragment is retained, including wide runs and invalid footpoints.
@@ -75,7 +75,7 @@ def exclusive_region(points: NDArray[np.floating], config: LinkingConfig, *, cor
     if points.shape[-1:] != (2,):
         raise ValueError('Court coordinates must be (..., 2)')
     half_width = HALF_SINGLES_WIDTH if core else HALF_DOUBLES_WIDTH
-    return (np.abs(points[..., 0]) <= half_width) & (np.abs(points[..., 1]) <= HALF_LENGTH + config.baseline_margin_m)
+    return (np.abs(points[..., 0]) <= half_width) & (np.abs(points[..., 1]) <= round(HALF_LENGTH + config.baseline_margin_m, 12))
 
 
 @dataclass(frozen=True)

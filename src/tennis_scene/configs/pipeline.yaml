@@ -1,5 +1,5 @@
 # Declared component pipeline (see src/tennis_scene/pipeline/README.md). Defaults are the
-# configuration that completed on the real Meiji clip (knowledge tennis_scene/000008, #931).
+# person source/selection follow the 2026-09-30 decision in #964; full pipeline qualification is pending.
 defaults:
 - paths: default
 - _self_
@@ -19,6 +19,7 @@ execution:
   court_calibration: execute
   person_detection: execute
   person_tracking: execute
+  player_selection: execute
   pose_estimation: execute
   ball_detection: execute
   player_association: execute
@@ -57,9 +58,8 @@ court_kp:
     ambiguity_displacement_ratio: 0.03
 people_models:
   detector: dino
-  # PR #937: epoch 3 selected by validation mAP, exported to DINO format.
-  # The Lightning .ckpt is a training artifact, not an inference checkpoint.
-  dino_checkpoint: player_detection/chat-player-v1-e8-best-pr937.pth
+  # COCO full-frame source (#964). #937 is available through an explicit checkpoint override.
+  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
   dino_repository: DINO
   yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
@@ -103,13 +103,10 @@ people_models:
 person_observations:
   enabled: true
   visibility_threshold: 0.15
+  # Calibration diagnostic polygon only; person detection has no ROI gate.
   sideline_margin_m: 1.0
-  # Far-baseline players stand well behind the court (5 m lost them on the Meiji clip).
   baseline_margin_m: 10.0
-  # Cumulative camera-local track IDs per clip; more stops tracking (IDs are never recycled or
-  # merged to fit). Non-player tracks (ball persons, the neighbouring court) are excluded later by
-  # player_association, so the cap must leave room for them: 12 Meiji clips reached up to 11
-  # tracks in one camera (#933, i933-observe-v1).
+  # Cap linked player groups AFTER court dwell selection; never cap raw person tracks.
   max_tracks_per_camera: 6
 ball_detection:
   enabled: true

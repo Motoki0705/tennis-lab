@@ -122,6 +122,10 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         PersonTrackingModule,
         PersonTrackingOutput,
     )
+    from src.tennis_scene.pipeline.components.player_selection import (
+        PlayerSelectionModule,
+        PlayerSelectionOutput,
+    )
     from src.tennis_scene.pipeline.components.pose_estimation import (
         PoseEstimationModule,
     )
@@ -146,6 +150,11 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))
+        tracks = stages[f"person_tracking/{camera}"].result
+        origins = np.broadcast_to(np.arange(count, dtype=np.int64)[:, None], (count, frames)).copy()
+        origins[~tracks.observed] = -1
+        fixed(f"player_selection/{camera}", PlayerSelectionModule.io,
+              PlayerSelectionOutput(camera, tracks.track_ids, tracks.observed, tracks, origins, {}))
         poses = people.select_views((v,))
         pose_boxes = np.zeros((*poses.observed.shape, 3), np.float32)
         pose_boxes[..., 2] = 100
