@@ -71,23 +71,42 @@ Top-K pruning、全混合の単一Gaussian化、point推定への切替は行わ
 float32 exportの重み和の丸め誤差は、契約検証後に再正規化する。
 成分の選別・閾値処理は含まない。
 
+## 光線座標での積分
+
+`ray.py`は非正則productのための別の明示的な積分法。単眼では
+`x=C+d*r(u,v)`、体積要素`d²/|det K|`へ変数変換し、Gaussian priorの
+正depth積分（2〜4次moment）を解析的に計算する。角度方向は2D Gaussianに
+合わせたGauss–Hermite則で積分する。有限のworld boxやdepth quantile格子を使わない。
+解析漸化式の安定領域を超える極端な背後priorは明示的にerrorにする。
+
+複数視点では全active cameraから決定論的にmode探索を開始する。物理target値でpilot位置を
+求め、その位置に最も近いcameraを積分座標の原点にする。他cameraを省略する操作ではない。
+正depth半空間の交差からdepthの上下限を求め、有限区間はlogit、無限区間はlogへ変換する。
+Jacobianを含む非線形targetの解析勾配で中心を求め、勾配差分の全Hessianで積分座標を白色化する。
+Gauss–Newtonだけではcamera中心近くのdepth分散を過大にするため使わない。
+Hessian・積分共分散が非SPDならerrorとし、jitterや別方式への自動切替はしない。
+
+全成分の方式と非正則理由を`ray:<reason>`で保持する。正則Aは従来どおりで、
+ray積分は全targetを評価してevidence/momentsを返す。全組合せを保持したまま、
+各productを1つのGaussianへ要約する近似も従来どおり残る。
+
 ## 積分の収束判定
 
-`convergence.triangulate_converged`は、明示した複数のvoxel予算でHを再計算する。
-正則Laplaceの結果と非正則理由は1frame内でcacheし、Bだけを細分化する。
-各隣接段階で全成分のlog evidence絶対差、平均のL2差、共分散の相対Frobenius差
-（分母は前後のnormの大きい方）を検査する。重み0へunderflowした成分も検査対象。
-さらに、最初/直前/現在の全成分平均と各軸±1周辺標準偏差で混合NLLの最大絶対差を検査する。
-GTや選別したseedを停止条件に使わない。単位は呼び出し側のworld単位とnat。
+`convergence.triangulate_converged`は明示した積分予算を増やし、正則Aの結果と
+rayの座標を1frame内でcacheする。`RayConvergenceConfig.orders`は角度/変換depthの
+Gauss–Hermite次数で、最低3段階を検査する。旧`ConvergenceConfig`はvoxel再現用。
+設定読込の`convergence_config`はmethodを検証し、未指定の歴史的schemaだけvoxelと解釈する。
+新生成設定は`method: ray`を明記する。
 
-全条件が指定閾値以下なら終了し、未達なら指定capまで進む。最後の分布を必ず返し、
-未収束flag、frame/成分別達成差分、各段階の予算と判定を返却する。NLLの良い格子を
-選んだり成分を落としたりしない。全B成分を同じ段階で再積分するため、通常のHより高コスト。
-数値の正本は呼び出し側の設定であり、ball refinerはdataset_plan.yamlに置く。
+各隣接段階で全成分のlog evidence絶対差、平均L2差、共分散相対Frobenius差
+（分母は前後normの大きい方）を検査する。重み0へunderflowした成分も対象。
+最初/直前/現在の全成分平均と各軸±1周辺標準偏差で混合NLLの最大絶対差も検査する。
+GTを停止条件や積分座標の決定に使わない。閾値と上限の正本は呼び出し側の設定。
+最後の全分布、frame/成分flag、達成差分、使用予算、履歴を必ず返す。
 
-これは**有限格子間の安定性チェック**で、連続積分の誤差上界ではない。
-有限box外tail、単一productのGaussian moment近似、Laplace誤差は保証しない。
-離散化差が小さくても共通の系統誤差は残り得る。cap到達を収束と記録しない。
+隣接次数の差は**経験的な数値誤差推定**であり、連続積分の誤差上界ではない。
+共通して見落とす離れたmode、AのLaplace近似、Gaussian moment近似は保証しない。
+NLL probe集合以外の密度誤差も保証しない。cap到達を収束と記録しない。
 
 ## 検証と比較
 
