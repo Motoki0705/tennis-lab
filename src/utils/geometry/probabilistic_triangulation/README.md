@@ -71,6 +71,24 @@ Top-K pruning、全混合の単一Gaussian化、point推定への切替は行わ
 float32 exportの重み和の丸め誤差は、契約検証後に再正規化する。
 成分の選別・閾値処理は含まない。
 
+## 積分の収束判定
+
+`convergence.triangulate_converged`は、明示した複数のvoxel予算でHを再計算する。
+正則Laplaceの結果と非正則理由は1frame内でcacheし、Bだけを細分化する。
+各隣接段階で全成分のlog evidence絶対差、平均のL2差、共分散の相対Frobenius差
+（分母は前後のnormの大きい方）を検査する。重み0へunderflowした成分も検査対象。
+さらに、最初/直前/現在の全成分平均と各軸±1周辺標準偏差で混合NLLの最大絶対差を検査する。
+GTや選別したseedを停止条件に使わない。単位は呼び出し側のworld単位とnat。
+
+全条件が指定閾値以下なら終了し、未達なら指定capまで進む。最後の分布を必ず返し、
+未収束flag、frame/成分別達成差分、各段階の予算と判定を返却する。NLLの良い格子を
+選んだり成分を落としたりしない。全B成分を同じ段階で再積分するため、通常のHより高コスト。
+数値の正本は呼び出し側の設定であり、ball refinerはdataset_plan.yamlに置く。
+
+これは**有限格子間の安定性チェック**で、連続積分の誤差上界ではない。
+有限box外tail、単一productのGaussian moment近似、Laplace誤差は保証しない。
+離散化差が小さくても共通の系統誤差は残り得る。cap到達を収束と記録しない。
+
 ## 検証と比較
 
 [unit tests](../../../../tests/unit/utils/geometry/test_probabilistic_triangulation.py) は
