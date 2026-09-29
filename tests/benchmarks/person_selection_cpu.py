@@ -23,6 +23,7 @@ import ultralytics
 from numpy.typing import NDArray
 
 from src.tasks.person_tracking.court_candidates import DwellConfig, select_candidates
+from src.tasks.person_tracking.court_consistency import court_consistency
 from src.tasks.person_tracking.selection_metrics import aggregate_units, selection_units
 from src.tasks.person_tracking.selection_report import write_review_report
 from src.tasks.player_association.appearance.encoders import (
@@ -273,6 +274,36 @@ def draw_box(image: np.ndarray, raw: np.ndarray, color: tuple[int, int, int], te
         cv2.putText(image, text, (x1, max(13, y1 - 3)), cv2.FONT_HERSHEY_SIMPLEX, .45, color, 1, cv2.LINE_AA)
 
 
+def consistency_report(report: Path) -> None:
+    source = load_sources(report)
+    selection = json.loads((report / 'selection.json').read_text())
+    sides_path = Path(selection['side_decisions'])
+    if dual_sha256(sides_path) != selection['side_sha256']:
+        raise ValueError('Court side input changed')
+    sides = json.loads(sides_path.read_text())
+    config = load_association_config(CODE_ROOT / 'src/tasks/player_association/configs/association.yaml', players_per_side=1)
+    table: list[dict[str, Any]] = []
+    for variant, clips in selection['records'].items():
+        for clip, verdict in clips.items():
+            if verdict['association']['status'] != 'ok':
+                continue  # Explicitly undecided: no inferred identity to verify.
+            side = next(s for s in sides['clips'] if s['clip_id'] == clip)
+            turns = dict(zip(side['camera_ids'], side['annotation']['view_half_turns'], strict=True))
+            cameras, identities = [], []
+            for record in sorted((r for r in source['inputs'] if r['clip'] == clip), key=lambda r: r['camera']):
+                saved = verdict['cameras'][record['camera']]
+                for entry in (saved, saved['identities']):
+                    if dual_sha256(Path(entry['path'])) != entry['sha256']:
+                        raise ValueError('Saved selection changed')
+                with np.load(saved['path']) as data, np.load(saved['identities']['path']) as ids:
+                    cameras.append(CameraTracks(calibration(record, turns[record['camera']]), (1920, 1080), data['track_ids'], data['boxes'], data['observed']))
+                    identities.append(ids['player_ids'])
+            table.extend({'source': variant, 'clip': clip, **row} for row in court_consistency(cameras, identities, config.footpoints))
+    write_json_atomic(report / 'court_consistency.json', {'selection_sha256': dual_sha256(report / 'selection.json'),
+        'scope': 'Post-association footpoint distances on z=0; successful clips only; no new threshold; not full body 3D', 'table': table})
+    write_csv(report / 'court_consistency.csv', table)
+
+
 def render(report: Path) -> None:
     source, selection = load_sources(report), json.loads((report / 'selection.json').read_text())
     variant, clip = 'union_0.30', 'video_000/clip_000'
@@ -363,6 +394,7 @@ def main() -> None:
     elif args.phase == 'video':
         render(args.report)
     else:
+        consistency_report(args.report)
         write_review_report(args.report)
 
 

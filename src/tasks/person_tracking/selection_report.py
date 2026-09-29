@@ -19,8 +19,10 @@ def _pct(numerator: int, denominator: int) -> str:
 def write_review_report(report: Path) -> None:
     sources = json.loads((report / 'sources.json').read_text())
     selection = json.loads((report / 'selection.json').read_text())
+    consistency = json.loads((report / 'court_consistency.json').read_text())
     video = json.loads((report / 'video.json').read_text())
-    if selection['sources_sha256'] != dual_sha256(report / 'sources.json') or video['selection_sha256'] != dual_sha256(report / 'selection.json'):
+    if selection['sources_sha256'] != dual_sha256(report / 'sources.json') or video['selection_sha256'] != dual_sha256(report / 'selection.json') \
+            or consistency['selection_sha256'] != dual_sha256(report / 'selection.json'):
         raise ValueError('Report inputs are not the evaluated versions')
     grouped: dict[tuple[str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
     identities: dict[tuple[str, str, str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -72,6 +74,7 @@ def write_review_report(report: Path) -> None:
         'associatedは地面上の足元整合を含む対応結果であり、完全な3D人体再構成の検証ではない。未決定clipに最終IDを補わない。',
         'old_pipelineは保存済み旧COCO＋旧BoT-SORT/Lab再連結のbaseline。derivativeは今回の全人物入力のpose/外観が未保存のため未評価。最終追跡方式比較ではない。',
         'identity保持はその人物のラベル単位の50%以上が残ること、非選手identity除外は選択単位がゼロであること。単位は人物×camera×frameで旧重複boxをまとめる。',
+        '非選手identityはreviewのラベルIDでまとめたもの。#933では非選手のcamera間同一性は確認されていないため、その正しさを評価した数字ではない。',
         'IoU .3/.5両方を記録。以下はラケットを含むFT boxを考慮した .3。全非選手の除外には未検出を含むため、追跡でhitした単位のうち選別で除外した数も別に示す。', '',
         '|source|段|成功clip|選手identity保持|選手単位保持|非選手identity全除外|非選手単位除外|追跡hit非選手の選別除外|隣コート除外|コート外除外|',
         '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|']
@@ -86,6 +89,12 @@ def write_review_report(report: Path) -> None:
     for variant, clips in selection['records'].items():
         for clip, r in clips.items():
             lines.append(f"- {variant} / {clip}: {r['association']['status']} {r['association'].get('reason', '')}; 候補数 " + str({c: v['candidates'] for c, v in r['cameras'].items()}))
+    lines += ['', '対応後の第2確認: 同じ予測identityのcamera間足元距離（z=0のコート平面）。完全な人体3Dの精度ではなく、新しい閾値で受理/棄却しない。成功clipのみで、全identity・camera組の詳細はcourt_consistency.csv。', '',
+              '|source|成功clipのcamera/identity組|median距離の範囲(m)|p95距離の最大(m)|', '|---|---:|---:|---:|']
+    for variant in selection['records']:
+        rows = [r for r in consistency['table'] if r['source'] == variant and r['shared_frames']]
+        if rows:
+            lines.append(f"|{variant}|{len(rows)}|{min(r['median_m'] for r in rows):.3f}–{max(r['median_m'] for r in rows):.3f}|{max(r['p95_m'] for r in rows):.3f}|")
     lines += ['', '## 3camera動画', '', f"`{video['path']}`", '',
         f"SHA-256 `{video['sha256']}`。{video['frames']}frame / {video['fps']}fps、全frameのdecode読戻しを検証。灰色=利用可能な全人物box、色=コート滞在＋CLIP対応の予測identity。GTを色付けに使わない。", '',
         '## camera×近遠の全ソース表', '', '候補人数は当該側のbox数を全camera-frameで割った値。ms/frameはcamera全体の値。', '',

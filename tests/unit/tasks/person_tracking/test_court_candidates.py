@@ -1,9 +1,13 @@
 """Dwell counts real ground observations; the cap never limits input persons."""
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
+import pytest
 
 from src.tasks.person_tracking.court_candidates import DwellConfig, select_candidates
+from src.tasks.person_tracking.court_consistency import court_consistency
 from src.tasks.person_tracking.selection_metrics import aggregate_units, selection_units
 from src.tasks.player_association.association.associate import CameraTracks
 from src.tasks.player_association.evaluation.labels import (
@@ -61,3 +65,16 @@ def test_missing_nonplayer_is_not_counted_as_geometric_rejection() -> None:
     assert result['non_player_excluded_05'] == 2
     assert result['non_player_rejected_among_tracked_05'] == 0
     assert result['player_identities_kept50_05'] == result['non_player_identities_rejected_all_05'] == 1
+
+
+def test_post_association_3d_ground_check_uses_only_shared_observations() -> None:
+    first = camera_tracks([(0., 5.)], np.ones((1, 2), bool))
+    other = camera_tracks([(1., 5.)], np.ones((1, 2), bool))
+    second = replace(other, camera=replace(other.camera, camera_id='cam1'))
+    result = court_consistency([first, second], [np.array([[0, 0]]), np.array([[0, -1]])], FootpointConfig())
+    assert len(result) == 1 and result[0]['shared_frames'] == 1
+    assert result[0]['median_m'] == pytest.approx(1.)
+    assert result[0]['p95_m'] == pytest.approx(1.)
+    duplicate = camera_tracks([(0., 5.), (1., 5.)], np.ones((2, 2), bool))
+    with pytest.raises(ValueError, match='same-camera identity overlap'):
+        court_consistency([duplicate], [np.zeros((2, 2), np.int64)], FootpointConfig())
