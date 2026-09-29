@@ -1,4 +1,4 @@
-<!-- knowledge-review: b66612aba1ac53f66452cab5b639408fdbff66b968cb9af2a34950d3bc9cdb5b on 2026-09-30 -->
+<!-- knowledge-review: 404c1d2367a13760149e69d882fdef1cc8519f9fb8eda1d41142a4b11e6eee41 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -37,7 +37,9 @@ CLIP付きの第2確認も全clipでは決定できず、この基準のまま�
 他camera/旧経路の選手保持低下とコート内へ投影される非選手が残るため、既定へは採用しない。
 [全画面COCOのqueue job](nodes/player_detection/000003-run-i964-coco-fullframe-r5-20260929.md)は12 camera-clip完了し、全archiveのhash一致を確認した。
 [run 6](nodes/person_tracking/000005-run-i964-fullframe-selection-r6-20260930.md)では選択済み断片の全観測を保持するよう修正し、
-元データ固定のauditでwide観測の大半を回復し隣コート除外を維持した。ROI前7条件の追跡は完了し、同じCLIP/選別/対応による比較はCPU実行中。
+元データ固定のauditでwide観測の大半を回復し隣コート除外を維持した。ROI前7条件のCPU比較を完了し、
+現行の追跡/選別にはCOCO全画面 .30を暫定推薦する。unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。
+低閾値COCOはraw候補と断片が増え、対応が決定しても観測を失った。参照はCOCOに有利で、既定はユーザー判断前のまま。
 最終方式・encoder選択、v3への新group接続、全pipeline完走、未見一回評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
