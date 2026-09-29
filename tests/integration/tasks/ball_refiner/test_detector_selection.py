@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from dataclasses import asdict, replace
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -25,6 +26,34 @@ from src.tasks.ball_refiner.data.evidence_inference import (
 from src.tasks.ball_refiner.data.targets import project_store_targets
 from src.utils.checksum import dual_sha256
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+
+
+@pytest.mark.parametrize('requested,index', [('cuda', 2), ('cuda:1', 1)])
+def test_cuda_budget_uses_explicit_device_index_without_a_gpu(monkeypatch, requested, index):
+    calls = []
+    monkeypatch.setattr(torch.cuda, 'current_device', lambda: 2)
+
+    def properties(device):
+        assert device == torch.device('cuda', index)
+        return SimpleNamespace(total_memory=16 * 2**30)
+
+    def fraction(value, device):
+        assert device.index is not None  # torch rejects bare torch.device('cuda') here
+        calls.append((value, device))
+
+    monkeypatch.setattr(torch.cuda, 'get_device_properties', properties)
+    monkeypatch.setattr(torch.cuda, 'set_per_process_memory_fraction', fraction)
+    monkeypatch.setattr(torch.cuda, 'reset_peak_memory_stats', lambda device: calls.append(('reset', device)))
+    assert selection.configure_comparison_device(requested, 5) == torch.device('cuda', index)
+    assert calls == [(5 / 16, torch.device('cuda', index)), ('reset', torch.device('cuda', index))]
+
+
+def test_cpu_budget_does_not_initialize_cuda(monkeypatch):
+    def fail():
+        raise AssertionError('CPU comparison must not initialize CUDA')
+
+    monkeypatch.setattr(torch.cuda, 'current_device', fail)
+    assert selection.configure_comparison_device('cpu', 5) == torch.device('cpu')
 
 
 @pytest.fixture

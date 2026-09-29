@@ -292,8 +292,12 @@ import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0�
 有効poseの存在をプレー中の人物のrecallや文脈の有効性と同一視しない。
 [最長3sourceの分割probe](nodes/ball_refiner/000011-group-i935-context-shards-r12-probe.md)も全frameの生成・読込が成功し、18分以内で完走した。
 Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあり、chatのcourt欠損も続く。保存成功を文脈品質の保証としない。
-次は同一identityを凍結して残り326clipを生成し、全被覆だけを統合する。timeout/品質の悪いclipも黙って除外しない。
-文脈の採否は同一母数のfull/ablationで判断し、現時点のdeploy判断は変えない。
+2026-09-29の[#964のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5889433860)で人物契約が変わるため、
+旧全clip生成は停止した。r13 shardsは保持して学習には使わず、#964完了まではperson/pose生成・延長・学習を行わない。
+[validation候補recall比較](nodes/ball_refiner/000012-run-i935-val-candidate-recall-r14-20260929.md)はCUDA memory APIのdevice index不足で推論前に失敗した。
+デバイス指定を修正したが同runの1 GPU job枠を消費したため再投入せず、winnerは未確定。
+次は新しいGPU枠で3checkpointをMeiji video_000の候補recallにより選び、TrackNet game9/chat val・camera別にも報告する。
+testは最終報告だけに使う。将来のdetector学習にはval候補recallの毎epoch記録と全epoch保存が必要で、文脈の採否は同一母数のfull/ablationで判断する。
 
 ### Court Detection
 
