@@ -19,7 +19,9 @@ from src.utils.configuration import (
     PathResolver,
     PathRole,
 )
-from src.utils.geometry.probabilistic_triangulation.convergence import ConvergenceConfig
+from src.utils.geometry.probabilistic_triangulation.convergence import (
+    convergence_config,
+)
 
 from .calibration import CalibrationBank, load_calibration
 
@@ -83,7 +85,7 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("Need >=72 frames of capacity for the 64-frame gap")
     if degradation["triangulation"] != "src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged":
         raise ValueError("This recipe requires convergence-checked A/B integration")
-    ConvergenceConfig(**degradation["boundary_convergence"])
+    convergence_config(degradation["boundary_convergence"])
     calibration = degradation["calibration"]
     paths = CALIBRATION_BOUNDARY.validate(
         {key: resolver.resolve(PathRole.PROJECT, calibration[key]) for key in ("bank", "report")}, resolver=resolver,
