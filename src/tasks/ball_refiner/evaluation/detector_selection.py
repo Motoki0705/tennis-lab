@@ -223,6 +223,20 @@ def comparison_markdown(manifest: dict[str, Any]) -> str:
     return "\n".join(rows)
 
 
+def configure_comparison_device(device: str, cuda_allocator_limit_gib: float) -> torch.device:
+    """Bind CUDA's current device to an explicit index before memory-limit APIs."""
+    target = torch.device(device)
+    if target.type not in ("cpu", "cuda") or not 0 < cuda_allocator_limit_gib <= 6:
+        raise ValueError("Use cpu/cuda and a positive CUDA allocator limit of at most 6 GiB")
+    if target.type == "cuda":
+        index = torch.cuda.current_device() if target.index is None else target.index
+        target = torch.device("cuda", index)
+        total = torch.cuda.get_device_properties(target).total_memory
+        torch.cuda.set_per_process_memory_fraction(min(1.0, cuda_allocator_limit_gib * 2**30 / total), target)
+        torch.cuda.reset_peak_memory_stats(target)
+    return target
+
+
 def compare_detectors(
     *, store_directory: Path, cache_manifest: Path, checkpoints: tuple[SelectionCheckpoint, ...],
     output: Path, device: str, batch_size: int, cuda_allocator_limit_gib: float,
@@ -232,13 +246,7 @@ def compare_detectors(
     if output.exists():
         raise FileExistsError(f"Comparison output already exists: {output}")
     store, clips, manifest = prepare_comparison(store_directory, cache_manifest, checkpoints)
-    target = torch.device(device)
-    if target.type not in ("cpu", "cuda") or not 0 < cuda_allocator_limit_gib <= 6:
-        raise ValueError("Use cpu/cuda and a positive CUDA allocator limit of at most 6 GiB")
-    if target.type == "cuda":
-        total = torch.cuda.get_device_properties(target).total_memory
-        torch.cuda.set_per_process_memory_fraction(min(1.0, cuda_allocator_limit_gib * 2**30 / total), target)
-        torch.cuda.reset_peak_memory_stats(target)
+    target = configure_comparison_device(device, cuda_allocator_limit_gib)
     output.mkdir(parents=True)
     manifest.update(status="running", batch_size=batch_size, device=str(target), torch_version=str(torch.__version__),
                     cuda_allocator_limit_gib=cuda_allocator_limit_gib)
