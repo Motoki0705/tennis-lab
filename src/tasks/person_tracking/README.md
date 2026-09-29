@@ -33,4 +33,7 @@ IoUだけで重複trackを削除しない。原論文の追試とは呼ばない
 
 単独の実データ実行は`tests/benchmarks/person_tracking_features.py`。GPUでの特徴生成は共有training queueを使う。
 `features` phaseが元検出artifactのhash、ViTPose/CLIP重みのSHA-256、feature config、source動画、出力hashを保存し、
-`track` phaseは同じNPZをCPUで使う。`--max-frames`を指定したrunはsmokeであり全clipの評価ではない。
+`track` phaseは同じNPZをCPUで使う。BoT-SORT-style derivativeの結果には必ず
+`--method ultralytics_botsort`の旧実装（同じ#937検出、sparse optical flowあり）を並べる。
+baselineは旧wrapperの観測box/IDを保存し、Kalman更新boxを検出row対応とは称さない。
+`--max-frames`を指定したrunはsmokeであり全clipの評価ではない。

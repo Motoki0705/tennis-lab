@@ -128,3 +128,16 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   擬似ラベル校正の履歴とclip metadataだけを読み、各動画から600frame以上の最長の未使用clipを予約する。
   datasetの`annotations/player_association/unseen_protocol.json`を更新し、旧予約・選定/除外理由・hashをreportへ保存する。
   映像をdecodeせず、ラベルを作らない。未ラベル・調整未完了・評価試行0の予約だけを変更できる。
+
+- `player_detection_far_diagnosis.py --phase preflight --repo <元repo> --comparison <run1/meiji/comparison.json> --report <新規出力先>`
+  は、既存4開発clip・動画/ラベル/重みhash・固定court ROIと未見予約の非重複をCPUで確認する。
+  その後`player_detection_far_diagnosis.sh <元repo> <comparison.json> <report>`を1つのGPU queue jobで実行する。
+  #937の既定resizeでscore 0.01まで保存し閾値曲線を作る。native 1080、1080/1440/1800/2160/2880/4320の
+  probeで全3cameraを通った最大試行サイズ、画像上半分の重複tile＋既定、旧COCOのROI内小box（高さ64px以下）unionを比較する。
+  最大値はこのGPU/float32での試行結果で、モデル固有の上限とは称さない。OOMはprobeの証拠として記録し、通常推論の失敗は停止する。
+  `diagnosis.{json,csv,md}`にcamera×近遠×variantの旧box一致率・追加既知非選手単位・hit率・ms/frame、
+  `missed_old_scores.jsonl.gz`に全未一致選手単位の最高score（IoU≥0.3、ROI前後）、
+  `old_vs_best_variants.mp4`に旧boxと開発一致率上位2条件の24秒比較を出す。
+  `--phase summarize`は全raw archiveのhashを検証しCPUだけで再集計する（出力済みrunは別directoryへ複製してから使う）。
+  ms/frameはscore 0.01の共通forward＋ROI/unionで、動画decode/load/warmup/保存は除く。未ラベル予測数も別記する。
+  pipeline設定・重み・既定thresholdの変更、方式の最終比較、未見clipの評価は行わない。
