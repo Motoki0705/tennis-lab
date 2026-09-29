@@ -10,10 +10,14 @@
 | `archive.py` | 連続frame・一意rowを検証して特徴をNPZへ保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
 | `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `methods.py` | 方式の明示選択。未実装名は停止し、別方式へ戻さない。Deep OC-SORT/StrongSORT++のadapterも同じ入出力を使う |
+| `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
+| `selection_metrics.py` | #933の人物/frame単位とidentity単位による選別評価。非検出と、追跡後の非選手除外を分ける |
 
 `DetectionFeatures.rows`はclip・cameraの元検出row。並べ替えや欠落でrowの意味を変えない。
 track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わない。累計6 IDを超えれば停止し、IDを再利用しない。
 1 cameraごとにtrackerを構築し、空frameも含め0から順に渡す。
+この累計上限は未接続の派生trackerの現実装であり、2026-09-29の新方針への移行は未完了。
+新方針の候補上限は`court_candidates.py`と[CPU診断](../../../tests/benchmarks/README.md)で検証する。
 
 外観はCLIP-ReID既定。低いcrop等の外観不足はzero embeddingとmaskで明示する。poseの第3channelは
 ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加工せず保持する。1を超える値や負の値を
