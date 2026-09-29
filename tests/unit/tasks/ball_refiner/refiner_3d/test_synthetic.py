@@ -9,6 +9,7 @@ import pytest
 import torch
 import yaml
 
+from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import SyntheticDataset
 from src.tasks.ball_refiner.refiner_3d.synthetic.observations import (
     make_distribution,
     perturb_cameras,
@@ -116,3 +117,18 @@ def test_short_rally_gap_fails_instead_of_shortening_requested_gap():
     cameras, sizes, plan = _fixture()
     with pytest.raises(ValueError, match="too short"):
         make_distribution(np.tile([0., 0., 2.], (50, 1)), cameras, sizes, plan["degradation"], np.random.default_rng(0), rally_index=3)
+
+
+def test_reader_rejects_partial_dataset_and_corrupt_rally(tmp_path):
+    record = {"rally_id": "train-00000", "split": "train", "npz_bytes": 1, "npz_sha256": "wrong"}
+    manifest = {"schema": "ball_refiner_3d.synthetic.v1", "status": "failed", "rallies": [record], "counts": {"train": 1}}
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="complete"):
+        SyntheticDataset(tmp_path)
+    manifest["status"] = "complete"
+    path.write_text(json.dumps(manifest))
+    (tmp_path / "train-00000.npz").write_bytes(b"x")
+    dataset = SyntheticDataset(tmp_path)
+    with pytest.raises(ValueError, match="Corrupt"):
+        dataset.load(dataset.records[0])
