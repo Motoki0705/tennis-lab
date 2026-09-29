@@ -1,4 +1,4 @@
-<!-- knowledge-review: 848078e24b8afd28a92100559297a172f0f4350a890478471cdbaf40e54724de on 2026-09-29 -->
+<!-- knowledge-review: 803624b6d9da10260ded54c6fdbcf40384acfd70bc9fdcc7d267ca4e3ac08dd0 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -30,8 +30,13 @@ ViTPoseの回帰heatmap peakを確率とみなす検査で停止した。実入�
 [保存済みデータのCPU選別診断](nodes/person_tracking/000003-run-i964-court-selection-cpu-r4-20260929.md)では、
 高い旧box一致率でもcamera-local滞在選別で遠側の観測を失い、FT低閾値/unionは隣コート人物も残した。
 CLIP付きの第2確認も全clipでは決定できず、この基準のまま既定に採用しない。
-23archive・全条件表・identity/unit選別・3camera動画をユーザーへ提示する段階に達した。
-短いtrack断片と領域境界の扱いは次の判断事項で、最終方式・encoder選択と未見評価は未完了。
+続く[原因分離と断片連結](nodes/person_tracking/000004-run-i964-court-selection-r5-20260929.md)では、
+確認できる隣コートunitは選手との混在ではなく横余白で採用されていた。主コート内の滞在coreと外側境界を分け、
+足元連続性と利用可能なCLIPで断片を連結すると、隣コートを除外しFT/unionのcam0 far保持を改善できた。
+単frameの足元跳びで分割する初回案は投影ノイズで過分割になり不採用。時間窓と1秒以内のgapに修正したが、
+他camera/旧経路の選手保持低下とコート内へ投影される非選手が残るため、既定へは採用しない。
+COCOだけROI後保存という比較の不公平は全画面COCOのqueue jobで解消する予定で、結果回収・公平な最終比較は次run。
+最終方式・encoder選択、v3への新group接続、全pipeline完走、未見一回評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
 

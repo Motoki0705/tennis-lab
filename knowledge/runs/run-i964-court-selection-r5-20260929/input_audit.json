@@ -1,0 +1,35 @@
+{
+  "pipeline_config_sha256": "839ba623c6493d266b9849b02dda4042ee65dfa89df40595f4fabb4ee2783268",
+  "pipeline_default_unchanged": true,
+  "weights": {
+    "coco": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+      "verified": true
+    },
+    "ft": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/player_detection/chat-player-v1-e8-best-pr937.pth",
+      "sha256": "eb8db0ac1b87a0c0a4730534e5dc8107487a53273221ef90231b9351f1d979d4",
+      "verified": true
+    }
+  },
+  "reviews": {
+    "video_000/clip_000": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/review.yaml",
+      "sha256": "7b90ecf4769562df326a7ab6951236af8e7e273f466f9a181f5e34c0e96b36d7"
+    },
+    "video_000/clip_007": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/annotations/player_association/review.yaml",
+      "sha256": "1e4c1fe7203c89d36a084795fdfc32a88aa97c6834af922add879daae934530f"
+    },
+    "video_001/clip_001": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/annotations/player_association/review.yaml",
+      "sha256": "86ec217aa50714543b403fc6a54e139bf4d9784ba3e2f8797e116927acadd36d"
+    },
+    "video_002/clip_013": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/annotations/player_association/review.yaml",
+      "sha256": "76fe810270d552d2d3ee2e11239c9ce1280b793d7189e1dd1639d047621313e9"
+    }
+  },
+  "cpu_code_commit": "b9fec834949ca002ff15804dd3b6f0839a1b0745"
+}
