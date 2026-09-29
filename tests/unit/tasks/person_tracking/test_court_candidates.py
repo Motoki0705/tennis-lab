@@ -12,6 +12,7 @@ from src.tasks.person_tracking.court_linking import (
     LinkingConfig,
     select_linked_candidates,
 )
+from src.tasks.person_tracking.selection_diagnosis import diagnose_tracks
 from src.tasks.person_tracking.selection_metrics import aggregate_units, selection_units
 from src.tasks.player_association.appearance.sampling import TrackAppearance
 from src.tasks.player_association.association.associate import CameraTracks
@@ -137,3 +138,28 @@ def test_short_ambiguous_fragments_are_not_forced_and_handoff_counts_once() -> N
     seen[1, 7:12] = True
     _, diag = select_linked_candidates(camera_tracks([(0., 5.)] * 2, seen), 30., LinkingConfig(), FootpointConfig())
     assert not diag['links']
+
+
+def test_frame_noise_does_not_refragment_a_continuous_far_track() -> None:
+    tracks = camera_tracks([(0., 5.), (0., 7.)], np.ones((2, 80), bool))
+    boxes = tracks.boxes_xyxy[:1].copy()
+    boxes[0, ::2] = tracks.boxes_xyxy[1, ::2]  # 2 m jitter in single-frame ground points
+    noisy = replace(tracks, track_ids=tracks.track_ids[:1], boxes_xyxy=boxes, observed=tracks.observed[:1])
+    selected, diag = select_linked_candidates(noisy, 30., LinkingConfig(), FootpointConfig())
+    assert selected.sum() == 80
+    assert len(diag['fragments']) == 1
+
+
+def test_diagnosis_attributes_kept_duplicate_and_distinguishes_mixing_from_margin() -> None:
+    tracks = camera_tracks([(6., 5.)] * 2, np.ones((2, 4), bool))
+    labels = ClipLabels('video_000/clip_000', 4,
+        (LabelledPerson('A', 'player', ''), LabelledPerson('X1', 'non_player', 'adjacent')),
+        {'cam0': CameraLabels(np.arange(4, dtype=np.int64), np.array([0, 0, 1, 1], np.int64), tracks.boxes_xyxy[0])}, {})
+    mask: np.ndarray = np.zeros((2, 4), bool)
+    mask[1] = True  # rejected duplicate must not steal the selected unit
+    diag = diagnose_tracks(tracks, mask, labels)
+    assert diag['tracks'][0]['track_id'] == 1
+    assert diag['tracks'][0]['composition'] == {'A': 2, 'X1': 2}
+    assert diag['tracks'][0]['player_and_adjacent_mixed']
+    assert diag['tracks'][0]['adjacent_inside_old'] == 2
+    assert diag['tracks'][0]['adjacent_inside_corridor'] == 0
