@@ -12,11 +12,11 @@ its observed frame count. ``sheets`` (CPU) renders, per clip and camera, a
 contact sheet of every observed track (evenly spaced crops with their frame
 index) from the stored tracks; it is the reviewing aid for the evaluation
 labels. ``labels`` (CPU) turns a reviewed track assignment (``--review``, see
-``tests/benchmarks/labels/player_association``) into tracker-independent box
-labels, one JSON per clip under ``--labels-dir``.
+the task README) into box labels under each clip's
+``annotations/player_association/`` directory.
 
 ``calibrate`` (CPU) fits the data-driven association parameters on observed
-clips that are *not* labelled (the labels stay a test set): cross-camera track
+clips that are *not* labelled: cross-camera track
 pairs sharing ``--min-shared-s`` are pseudo-labelled by their median footpoint
 distance (same person below ``--positive-below-m``, different people above
 ``--negative-above-m``); the Rayleigh scale of the positives is the geometry
@@ -26,8 +26,7 @@ labelled clip with ``--config`` (optionally geometry only) and scores it
 against the labels; per clip it also draws the court-plane footpoints coloured
 by predicted player and by label. Both read the side of every camera from the
 reviewed-ball decision of ``court_side_clips.py`` (``--sides``). Track
-appearances are cached per clip under ``--report/appearance``. Nothing else is
-written outside ``--report``.
+appearances are cached per clip under ``--report/appearance``. The labels phase writes dataset annotations; other phases write only ``--report``.
 """
 
 from __future__ import annotations
@@ -68,6 +67,10 @@ from src.tasks.player_association.evaluation import (
     ClipLabels,
     evaluate,
     match_to_labels,
+)
+from src.tasks.player_association.evaluation.dataset_labels import (
+    discover_labels,
+    label_path,
 )
 from src.tasks.player_association.evaluation.labels import (
     ReviewedTrack,
@@ -205,7 +208,7 @@ def sheets(clip: Path, store_root: Path, output: Path, *, samples: int, crop_hei
     return written
 
 
-def labels(dataset: Path, report: Path, review_path: Path, output: Path) -> list[str]:
+def labels(dataset: Path, report: Path, review_path: Path) -> list[str]:
     """Materialize the reviewed clips of ``review_path`` from the observation stores under ``report``."""
     review = yaml.safe_load(review_path.read_text())
     observed = json.loads((report / "observe.json").read_text())
@@ -231,7 +234,13 @@ def labels(dataset: Path, report: Path, review_path: Path, output: Path) -> list
                       "observation": {"run": review["observe_run"], "code_sha256": observed["code_sha256"],
                                       "config_overrides": observed["config_overrides"]}}
         clip_labels = materialize(clip_id, source.num_frames, clip_review, tracks, provenance)
-        path = output / f"{clip_id}.json"
+        path = label_path(dataset, clip_id)
+        if path.exists():
+            raise FileExistsError(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        saved_review = path.parent / "review.yaml"
+        saved_review.write_text(yaml.safe_dump({"observe_run": review["observe_run"], "clips": {clip_id: clip_review}}, sort_keys=False))
+        clip_labels.provenance["review"].update(path=saved_review.name, sha256=review_sha256(saved_review))
         clip_labels.save(path)
         written.append(str(path))
     return written
@@ -305,7 +314,7 @@ def calibrate(args: argparse.Namespace, dataset: Path, report: Path) -> dict[str
     observe_report = args.observe.resolve()
     observed = json.loads((observe_report / "observe.json").read_text())
     sides = json.loads(args.sides.read_text())
-    labelled = {ClipLabels.load(path).clip_id for path in sorted(args.labels_dir.resolve().glob("*/*.json"))}
+    labelled = {ClipLabels.load(path).clip_id for path in discover_labels(dataset)}
     if set(args.clip) & labelled:
         raise ValueError(f"Labelled clips {sorted(set(args.clip) & labelled)} must not be used for calibration")
     wanted = args.clip or sorted(set(observed["clips"]) - labelled)
@@ -410,8 +419,8 @@ def evaluate_clips(args: argparse.Namespace, dataset: Path, report: Path) -> dic
     config = load_association_config(args.config, players_per_side=args.players_per_side,
                                      overrides={"appearance": None} if args.geometry_only else None)
     results: dict[str, Any] = {}
-    for label_path in sorted(args.labels_dir.resolve().glob("*/*.json")):
-        labels = ClipLabels.load(label_path)
+    for labels_file in discover_labels(dataset):
+        labels = ClipLabels.load(labels_file)
         if args.clip and labels.clip_id not in args.clip:
             continue
         source, tracks, cameras = load_observation(dataset, observe_report, labels.clip_id)
@@ -489,7 +498,6 @@ def main() -> None:
     parser.add_argument("--report", type=Path, required=True, help="Run-owned directory: player_association/evaluate/<experiment>/<run-id>")
     parser.add_argument("--phase", choices=("observe", "sheets", "labels", "calibrate", "evaluate"), default="observe")
     parser.add_argument("--review", type=Path, help="labels: reviewed track assignment (YAML)")
-    parser.add_argument("--labels-dir", type=Path, help="labels: output directory (<video>/<clip>.json)")
     parser.add_argument("--samples", type=int, default=12, help="sheets: crops per track")
     parser.add_argument("--crop-height", type=int, default=160, help="sheets: crop height in pixels")
     parser.add_argument("--clip", action="append", default=[], help="Restrict to clip IDs (repeatable)")
@@ -508,15 +516,15 @@ def main() -> None:
     repo, dataset, report = args.repo.resolve(), args.dataset.resolve(), args.report.resolve()
     report.mkdir(parents=True, exist_ok=True)
     if args.phase in ("calibrate", "evaluate"):
-        if args.observe is None or args.sides is None or args.labels_dir is None:
-            parser.error(f"--phase {args.phase} requires --observe, --sides and --labels-dir")
+        if args.observe is None or args.sides is None:
+            parser.error(f"--phase {args.phase} requires --observe, --sides")
         result = calibrate(args, dataset, report) if args.phase == "calibrate" else evaluate_clips(args, dataset, report)
         print(json.dumps(result), flush=True)
         return
     if args.phase == "labels":
-        if args.review is None or args.labels_dir is None:
-            parser.error("--phase labels requires --review and --labels-dir")
-        print(json.dumps({"labels": labels(dataset, report, args.review.resolve(), args.labels_dir.resolve())}), flush=True)
+        if args.review is None:
+            parser.error("--phase labels requires --review")
+        print(json.dumps({"labels": labels(dataset, report, args.review.resolve())}), flush=True)
         return
     manifest = load_dataset_manifest(dataset)
     records = [manifest.clips[key] for key in sorted(manifest.clips) if not args.clip or key in args.clip]

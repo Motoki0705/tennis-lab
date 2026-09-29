@@ -44,6 +44,7 @@ from src.tasks.player_association.evaluation import (
     ClipLabels,
     match_to_labels,
 )
+from src.tasks.player_association.evaluation.dataset_labels import discover_labels
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
@@ -100,7 +101,6 @@ def main() -> None:
     parser.add_argument("--repo", type=Path, required=True, help="Root holding ckpt/ and third_party/")
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--observe", type=Path, required=True, help="Report directory of player_association_clips.py observe")
-    parser.add_argument("--labels-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--encoder", action="append", choices=ENCODER_CANDIDATES, default=[])
     parser.add_argument("--min-purity", type=float, default=.9)
@@ -113,7 +113,7 @@ def main() -> None:
     sampling = CropSamplingConfig()
     pairs: dict[str, list[dict[str, Any]]] = {name: [] for name in names}
     clips: dict[str, Any] = {}
-    for path in sorted(args.labels_dir.resolve().glob("*/*.json")):
+    for path in discover_labels(args.dataset.resolve()):
         labels = ClipLabels.load(path)
         source, tracks = clip_tracks(args.dataset.resolve(), args.observe.resolve(), labels.clip_id)
         identities = track_identities(labels, tracks, args.min_purity)
@@ -184,7 +184,7 @@ def main() -> None:
         print(json.dumps({"encoder": name, **{k: v for k, v in summary[name].items() if k != "top1_per_clip"}}), flush=True)
     write_json_atomic(report / "appearance.json", {"schema": "player_association_appearance_v1", "encoders": names,
                                                    "sampling": json_value(sampling), "min_purity": args.min_purity,
-                                                   "observe": str(args.observe.resolve()), "labels_dir": str(args.labels_dir.resolve()),
+                                                   "observe": str(args.observe.resolve()), "labels_dataset": str(args.dataset.resolve()),
                                                    "summary": summary, "tracks": clips, "pairs": pairs})
 
 

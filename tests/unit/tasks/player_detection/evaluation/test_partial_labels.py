@@ -23,7 +23,7 @@ def test_duplicate_labels_are_one_person_and_unknown_detections_are_not_false_po
     result = metrics.compute()
     assert result["detections"] == 5
     assert result["known_player_units"] == 2 and result["matched_player_units"] == 1
-    assert result["known_player_recall"] == .5
+    assert result["known_player_box_agreement"] == .5
     assert result["duplicate_player_detections"] == 1
     assert result["known_non_player_hit_rate"] == 1.
     assert result["ambiguous_detections"] == 1 and result["unlabelled_detections"] == 1
@@ -37,7 +37,7 @@ def test_one_prediction_cannot_recover_two_people() -> None:
     metrics = PartialDetectionMetrics()
     metrics.update(np.asarray([[0, 0, 15, 10]], np.float32), np.ones(1, np.float32),
                    labels=labels, roles=np.asarray(["player", "player"]), frame=0)
-    assert metrics.compute()["known_player_recall"] == .5
+    assert metrics.compute()["known_player_box_agreement"] == .5
 
 
 def test_assignment_maximizes_valid_matches_before_overlap() -> None:
@@ -52,7 +52,7 @@ def test_known_labels_take_priority_over_ambiguous_boxes() -> None:
     metrics = PartialDetectionMetrics()
     metrics.update(np.asarray([[0, 0, 10, 10]], np.float32), np.ones(1, np.float32),
                    labels=labels, roles=np.asarray(["player"]), frame=0)
-    assert metrics.compute()["known_player_recall"] == 1.
+    assert metrics.compute()["known_player_box_agreement"] == 1.
     assert metrics.compute()["ambiguous_detections"] == 0
 
 
@@ -67,7 +67,7 @@ def test_empty_frames_keep_missing_labels_and_unlabelled_predictions_distinct() 
     first.merge(second)
     result = first.compute()
     assert result["frames"] == 2 and result["labelled_frames"] == 1
-    assert result["known_player_recall"] == 0 and result["unlabelled_detections"] == 1
+    assert result["known_player_box_agreement"] == 0 and result["unlabelled_detections"] == 1
     assert result["known_non_player_hit_rate"] is None
     assert result["mean_matched_player_iou"] is None
     with pytest.raises(ValueError, match="thresholds"):

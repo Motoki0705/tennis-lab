@@ -1,7 +1,7 @@
-<!-- knowledge-review: 419ae89d3642e6e703f07074f023e9c7178451f17b780aeb937555db6e806d57 on 2026-09-28 -->
+<!-- knowledge-review: 702f06f947be425cf88fdeaeac3dfb245264cc2d6343f733373bc325004f6345 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,15 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-09-29の選手検出切替（#964）
+
+[#937のFT検出器比較](nodes/player_detection/000001-run-i964-detectors-val-meiji-r1-20260929.md)では、
+重み選択に使ったchat validationでprecisionが改善した。Meijiの参照は旧COCO boxに基づくため、
+そこでの数字は旧boxとの一致率であり検出recallではない。FTの不一致はcam0の小さい遠側人物に集中し、
+多くはIoU=0で、単なるbox形状差と決めつけられない。ユーザー指定のFT切替を保ち、追跡比較ではcoverageを併記する。
+CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
+既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
 
 ## 2026-09-27のcamera間人物対応（#933）
 

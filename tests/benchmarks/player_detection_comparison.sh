@@ -46,5 +46,4 @@ fi
 
 "$python" "$code_root/tests/benchmarks/player_detection_clips.py" \
     --repo "$asset_root" --dataset "$asset_root/data/tennis_multivew/processed/meiji_3cam/dataset" \
-    --labels-dir "$code_root/tests/benchmarks/labels/player_association/meiji_3cam" \
     --report "$report/meiji"

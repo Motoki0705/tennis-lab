@@ -1,4 +1,4 @@
-"""Detection coverage on reviewed, incomplete person labels (Meiji #944).
+"""Agreement with reviewed old-detector boxes (Meiji #944), not detection recall.
 
 The labels contain only boxes produced by the old tracker, with possible
 duplicates. A unit is one labelled person in one camera/frame. Its overlap
@@ -9,7 +9,10 @@ unit are duplicates. Known people take precedence over ambiguous labels.
 
 An unmatched prediction may be a newly found player, a non-player or a false
 positive: report it as unlabelled, never as an FP. These counts support known
-player recall and known non-player hit rate, NOT full-scene AP/precision.
+player-box agreement and known non-player hit rate, NOT detection recall or
+full-scene AP/precision. The reference boxes come from the COCO detector being
+compared, so the comparison is circular and favours that detector. Lower
+non-player agreement is expected from a player-specific detector.
 """
 
 from __future__ import annotations
@@ -110,7 +113,7 @@ class PartialDetectionMetrics:
         counts = self._counts
         return {
             **counts,
-            "known_player_recall": counts["matched_player_units"] / counts["known_player_units"]
+            "known_player_box_agreement": counts["matched_player_units"] / counts["known_player_units"]
                 if counts["known_player_units"] else None,
             "known_non_player_hit_rate": counts["matched_non_player_units"] / counts["known_non_player_units"]
                 if counts["known_non_player_units"] else None,

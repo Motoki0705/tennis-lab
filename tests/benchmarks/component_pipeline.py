@@ -7,7 +7,7 @@ receipt lists it under ``imported_nodes`` so that nothing imported is mistaken
 for model output. ``court_side`` is decided by its component from the imported
 ball and ``player_association`` by its component from the tracks. With
 ``--association-labels`` (a box label file of
-``tests/benchmarks/labels/player_association``) the association is scored
+the clip's ``annotations/player_association/labels.json``) the association is scored
 against the labels. GPU execution goes through the shared training queue.
 
 With ``--dataset`` the clip belongs to a structured dataset: the store is the
