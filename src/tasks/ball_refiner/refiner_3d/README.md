@@ -1,7 +1,7 @@
 # 3D Ball Refiner (#936)
 
 CPUでの入力分布・合成系列生成と、絶対x0を予測するdiffusionの土台を提供する。
-12-rally生成の未解決条件はknowledgeに記録する。pipeline接続は未実装。
+生成と方式比較の結果はknowledgeに記録する。pipeline接続は未実装。
 要件の正本は [#936](https://github.com/Motoki0705/tennis-lab/issues/936)。
 2D契約は [親README](../README.md#2dモデルのapi) を参照する。
 
@@ -28,7 +28,7 @@ video_002/clip_010、cam0/1/2（1920×1080）。
 
 設定の正本は [dataset_plan.yaml](dataset_plan.yaml)。
 `synthetic/` はBLCSの240Hz原系列を正確な60000/1001Hzへ線形補間し、
-合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 方式Aの順で生成する。
+合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 明示的なA/B併用の順で生成する。
 全64成分とcamera集合、全共分散を保存し、点推定への置換はしない。
 数値は仮定した劣化で、#935の実出力に較正した値ではない。
 
@@ -44,12 +44,15 @@ fence時刻を返さないsimulatorに対しては、fence近傍も保守的に�
 適用し、その成分数をmetadataへ保存する。平均誤差と予測共分散のscaleは別の設定であり、
 gap/distractorの分散拡大を平均誤差へそのまま掛けない。最初のstress生成では
 一部の成分組合せのMAPがcamera背後へ進んだため、memory smokeの平均誤差を限定した。
-この条件を実refinerの誤差分布や較正改善とは扱わない。元のstress条件は未解決である。
+この条件を実refinerの誤差分布や較正改善とは扱わない。数値問題への対応は、正depth領域の最適化と非正則成分の体積積分で行う。
+方式・切替理由をframe×成分で保存し、全64成分を保持する。
+run 3はrun 2の固定seed/平均誤差scaleを維持し、成功seedや成分を選別しない。
 
 BLCSが既知prefixで棄却した物理提案だけを設定の有限予算で再標本化し、
 全提案seed・棄却理由・採用seedをmetadataへ残す。元のnative上限でsimulateした後に
 保存prefixを切り出す。未知例外、予算枯渇、短すぎるrally、solver失敗、非SPDは停止する。
-三角測量の再試行、成分削除、jitter、自動resumeはしない。
+別seedでの三角測量再試行、成分削除、jitter、自動resumeはしない。
+1ラリーが失敗しても提出済み全ラリーの成否をmanifestへ集め、datasetはfailedにする。
 
 生成CLIは `python -m src.tasks.ball_refiner.scripts.generate_synthetic_3d`。
 `--project-root`（作業checkout）、`--data-root`（共有data）、
@@ -93,7 +96,7 @@ hit/bounce BCEを実装する。再投影はbehind predictionを捨てずdepth p
 
 入力は `analytic_memory_fixture_v1` と明示した解析的tensorで、失敗datasetの代用品を
 本学習へ流す機能ではない。全64成分・相関2D分布・64frameの分散拡大を持つ。
-12-rally生成が未完了でも計算graph/100 updates/VRAMを独立に測定できるが、
+このfixtureでは計算graph/100 updates/VRAMを独立に測定するが、
 データ経路の完走、物理精度、汎化、較正の証拠にはならない。
 出力checkpointは `diagnostic_only=true` で、学習pilotへ再利用しない。
 
