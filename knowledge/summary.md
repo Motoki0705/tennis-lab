@@ -1,4 +1,4 @@
-<!-- knowledge-review: d0bf48bb057b3ea6900697cc0e5fdbf7953c97763e1debc3a92ba96b599da9cf on 2026-09-29 -->
+<!-- knowledge-review: eea0c93ce82ea4f26186ff354ead015d29465695e5e1297432c9f4dbab15c9d4 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -16,7 +16,9 @@
 [#937のFT検出器比較](nodes/player_detection/000001-run-i964-detectors-val-meiji-r1-20260929.md)では、
 重み選択に使ったchat validationでprecisionが改善した。Meijiの参照は旧COCO boxに基づくため、
 そこでの数字は旧boxとの一致率であり検出recallではない。FTの不一致はcam0の小さい遠側人物に集中し、
-多くはIoU=0で、単なるbox形状差と決めつけられない。ユーザー指定のFT切替を保ち、追跡比較ではcoverageを併記する。
+閾値0.3での不一致をそのまま検出失敗とは扱えない。ユーザーは2Dを全人物の候補生成へ、選手判定をコート座標での滞在時間へ移すと決めた。
+[遠側GPU診断](nodes/player_detection/000002-run-i964-far-r3-20260929.md)はこの方針変更でcancelled。保存済み23archiveのhashを確認し、CPU比較へ再利用する。
+1080/1920は11/12 camera-clipに限り、高解像度・tileは追加実行しない。既定変更前に選別精度と動画を確認する。
 CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
 既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
 
