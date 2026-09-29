@@ -9,13 +9,16 @@ These are conservative singles-dev rules, not a general venue segmentation.
 Calibration/footpoint error can still misplace people; no such error bound is
 claimed. Outside-corridor observations are excluded even on a selected track.
 
-Split real observations at >0.5 s gaps or impossible jumps, then connect
-temporally neighbouring fragments by court position. A <=0.2 s overlapping
+Split real observations at >0.5 s gaps or the existing 0.25 s-window / 3 m
+footpoint jumps (not noisy single-frame steps), then connect
+temporally neighbouring fragments by court position. For a gap, compare the
+median positions within 0.1 s of each endpoint: distance <= 0.8 m + 6 m/s *
+the time between those window centres. Both fragments need a core observation,
+so a border-only bystander cannot borrow a player's dwell. A <=0.2 s overlapping
 handoff also needs spatial agreement. Available CLIP embeddings veto a link
 below cosine .8; missing appearance is explicitly recorded. Mutual nearest
 links must beat each runner-up by .2 in spatial-distance/limit + gap/max-gap.
-Ambiguous fragments
-shorter than 1 s are excluded, never forced into a chain. Count distinct
+Ambiguous fragments shorter than 1 s are excluded, never forced into a chain. Count distinct
 observed core frames per chain; require 25% of the clip, THEN cap at 6 chains.
 No interpolated frame counts as dwell, and overlapping handoffs count once.
 """
@@ -32,6 +35,10 @@ from src.tasks.player_association.association.associate import CameraTracks
 from src.tasks.player_association.geometry.footpoints import (
     FootpointConfig,
     ground_footpoints,
+)
+from src.tasks.player_association.geometry.switches import (
+    SwitchConfig,
+    switch_candidates,
 )
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, HALF_SINGLES_WIDTH
 
@@ -80,8 +87,8 @@ def _fragments(tracks: CameraTracks, points: NDArray[np.float64], valid: NDArray
     for row in range(len(tracks.track_ids)):
         frames = np.flatnonzero(valid[row]).astype(np.int64)
         gaps = np.diff(frames) / fps
-        distances = np.linalg.norm(np.diff(points[row, frames], axis=0), axis=1)
-        cuts = np.flatnonzero((gaps > config.max_gap_s) | (distances > config.position_slack_m + config.max_speed_m_s * gaps)) + 1
+        switches = switch_candidates(points[row], valid[row], fps, SwitchConfig(.25, 3.))
+        cuts = np.unique(np.r_[np.flatnonzero(gaps > config.max_gap_s) + 1, np.searchsorted(frames, switches)])
         for indices in np.split(frames, cuts):
             if not len(indices):
                 continue
@@ -99,12 +106,18 @@ def _pair(a: Fragment, b: Fragment, fps: float, config: LinkingConfig) -> dict[s
     gap = (int(b.frames[0]) - int(a.frames[-1])) / fps
     if gap > config.max_gap_s or gap < -config.max_handoff_s:
         return None
+    if not exclusive_region(a.points, config, core=True).any() or not exclusive_region(b.points, config, core=True).any():
+        return None  # a border-only bystander cannot borrow a player's dwell
     shared, ia, ib = np.intersect1d(a.frames, b.frames, return_indices=True)
     if len(shared):
         distance = float(np.median(np.linalg.norm(a.points[ia] - b.points[ib], axis=1)))
+        interval = 0.
     else:
-        distance = float(np.linalg.norm(a.points[-1] - b.points[0]))
-    limit = config.position_slack_m + config.max_speed_m_s * max(gap, 0.)
+        end = a.frames >= a.frames[-1] - .1 * fps
+        start = b.frames <= b.frames[0] + .1 * fps
+        distance = float(np.linalg.norm(np.median(a.points[end], axis=0) - np.median(b.points[start], axis=0)))
+        interval = float((np.median(b.frames[start]) - np.median(a.frames[end])) / fps)
+    limit = config.position_slack_m + config.max_speed_m_s * max(interval, 0.)
     if distance > limit:
         return None
     cosine = None
@@ -112,7 +125,7 @@ def _pair(a: Fragment, b: Fragment, fps: float, config: LinkingConfig) -> dict[s
         cosine = float(a.embedding @ b.embedding)
         if cosine < config.min_cosine:
             return None
-    return {'distance_m': distance, 'gap_s': gap, 'overlap_frames': len(shared),
+    return {'distance_m': distance, 'gap_s': gap, 'endpoint_interval_s': interval, 'overlap_frames': len(shared),
             'cosine': cosine, 'appearance': 'available' if cosine is not None else 'missing',
             'cost': distance / limit + max(gap, 0.) / config.max_gap_s}
 
@@ -122,11 +135,11 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
     if not np.isfinite(fps) or fps <= 0:
         raise ValueError('FPS must be positive and finite')
     points, valid = ground_footpoints(tracks.boxes_xyxy, tracks.observed, tracks.camera, tracks.image_size[1], footpoints)
-    # Excluding outside observations before splitting also prevents dwell from
-    # leaking across a long excursion into another court on the same raw ID.
     outer = valid & exclusive_region(points, config, core=False)
     core = outer & exclusive_region(points, config, core=True)
-    fragments = _fragments(tracks, points, outer, fps, config)
+    # Keep temporal continuity through isolated bad footpoints. Region rejection
+    # is applied to dwell and output, not used to invent new fragmentation.
+    fragments = _fragments(tracks, points, valid, fps, config)
     pairs = []
     for i, a in enumerate(fragments):
         for j, b in enumerate(fragments):
@@ -183,7 +196,7 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
         # source ID as a deterministic tie-break, not the detector score.
         for i in sorted(candidate['fragments'], key=lambda i: (int(tracks.track_ids[fragments[i].row]), i)):
             f = fragments[i]
-            keep = f.frames[~occupied[f.frames]]
+            keep = f.frames[~occupied[f.frames] & outer[f.row, f.frames]]
             selected[f.row, keep] = True
             occupied[keep] = True
     for candidate in candidates:

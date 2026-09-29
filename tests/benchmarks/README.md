@@ -156,6 +156,8 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `diagnosis.json`は旧選別で残った隣コートunitのtrack構成・座標・旧/新領域内外を記録する。
   COCO/unionのROI保存差はまだ残るので、全画面COCO完了後の公平な最終比較には代えない。
   camera間対応は再実行せず、person_identities v3の安全策とCLIP既定は変更しない。
+  `person_selection_failure_video.py --report <同report>` は2つの隣コート失敗例をFT/union各4秒、
+  3camera同期映像・cam0拡大・コート足元図で16秒にまとめる。ラベルは事後の失敗例指定に限る。
 
 - `person_selection_cpu.py --repo <元repo> --report <新規出力先> --phase sources --progress <run3/progress.json>`
   は中止済みrun 3のft_base 12件・ft_1080 11件をhash検証し、保存済みCOCOと比較する。閾値
