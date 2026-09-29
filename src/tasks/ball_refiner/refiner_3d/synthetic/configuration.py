@@ -19,6 +19,7 @@ from src.utils.configuration import (
     PathResolver,
     PathRole,
 )
+from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
 
 SOURCE_BOUNDARY = NonHydraPathBoundary(
     name="ball_refiner.synthetic_sources",
@@ -68,6 +69,9 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("Physics timestep or event exclusion differs from v1")
     if sampling["max_frames_per_rally"] < 72:
         raise ValueError("Need >=72 frames of capacity for the 64-frame gap")
+    if degradation["triangulation"] != "src.utils.geometry.probabilistic_triangulation.solver.triangulate_hybrid":
+        raise ValueError("This recipe requires explicit cheirality A/B hybrid")
+    VoxelConfig(**degradation["boundary_volume"])
     if degradation["components_per_camera"] != 3 or degradation["max_components"] != 64:
         raise ValueError("Require K=3 and all (K+1)^3=64 components")
     if degradation["occlusion_changes_presence"] or not degradation["out_of_frame_changes_presence"]:

@@ -7,7 +7,8 @@ import multiprocessing
 import platform
 import resource
 import time
-from concurrent.futures import ProcessPoolExecutor
+from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -35,8 +36,13 @@ from src.tasks.ball_refiner.refiner_3d.triangulation import frame_observations
 from src.utils.geometry.probabilistic_triangulation import (
     GaussianPrior3D,
     LaplaceConfig,
-    triangulate_gmm,
 )
+from src.utils.geometry.probabilistic_triangulation.solver import (
+    COMPONENT_METHODS,
+    HybridConfig,
+    triangulate_hybrid,
+)
+from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
 from src.utils.schema.court import X_MAX, Y_MAX
 
 
@@ -73,12 +79,13 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
     distribution, masks, observation_metadata = make_distribution(positions, cameras, sizes, degradation, rng, rally_index=index)
     prior = GaussianPrior3D(np.asarray(degradation["prior_mean_m"], dtype=float), np.diag(degradation["prior_covariance_diagonal_m2"]).astype(float))
     laplace = LaplaceConfig(degradation["max_components"], degradation["max_nfev"])
+    hybrid = HybridConfig(laplace, VoxelConfig(**degradation["boundary_volume"]))
     tri_started = time.perf_counter()
     posteriors = []
     for frame in range(len(timestamps)):
         try:
             observations = frame_observations(distribution, torch.from_numpy(sizes), frame=frame)
-            posterior = triangulate_gmm(observations, cameras, prior=prior, config=laplace)
+            posterior = triangulate_hybrid(observations, cameras, prior=prior, config=hybrid)
         except (ValueError, RuntimeError) as exc:
             raise RuntimeError(f"{rally_id} frame={frame} seed={seed}: {exc}") from exc
         if len(posterior.distribution.weights) != 64:
@@ -102,6 +109,7 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
         "gmm3d_covariance_m2": np.stack([p.distribution.covariance for p in posteriors]).astype(np.float32),
         "gmm3d_weights": np.stack([p.distribution.weights for p in posteriors]).astype(np.float32),
         "gmm3d_camera_subsets": np.stack([p.camera_subsets for p in posteriors]),
+        "gmm3d_method_codes": np.asarray([[COMPONENT_METHODS.index(method) for method in p.component_methods] for p in posteriors], dtype=np.uint8),
         "prior_only_probability": np.asarray([p.prior_only_probability for p in posteriors], dtype=np.float32),
     }
     for label, selected in (("base", base_cameras), ("true", cameras), ("estimated", cameras)):
@@ -128,6 +136,9 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
         "peak_worker_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "npz_bytes": destination.stat().st_size, "npz_sha256": sha256(destination),
         "components_per_frame": 64,
+        "component_method_labels": COMPONENT_METHODS,
+        "component_method_counts": dict(Counter(method for p in posteriors for method in p.component_methods)),
+        "float32_zero_weight_components": int((arrays["gmm3d_weights"] == 0).sum()),
         "all_camera_occluded_frames": int(masks["occlusion_mask"].all(0).sum()),
         "out_of_frame_camera_frames": int(masks["out_of_frame_mask"].sum()),
         "events_hit": int(labels[:, 0].sum()), "events_bounce": int(labels[:, 1].sum()),
@@ -168,10 +179,22 @@ def generate_dataset(plan: GenerationPlan, output: Path, *, mode: str) -> dict[s
     jobs = [(plan, split_index, index, output) for split_index, split in enumerate(("train", "val", "test")) for index in range(counts[split])]
     try:
         with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn")) as pool:
-            for record in pool.map(_job, jobs):
-                manifest["rallies"].append(record)
+            futures = {pool.submit(_job, job): job[1:3] for job in jobs}
+            failures = []
+            for future in as_completed(futures):
+                try:
+                    record = future.result()
+                except Exception as exc:
+                    split_index, index = futures[future]
+                    failures.append({"split_index": split_index, "rally_index": index, "error": str(exc)})
+                else:
+                    manifest["rallies"].append(record)
+                    print(json.dumps({"completed": record["rally_id"], "frames": record["frames"], "seconds": record["elapsed_seconds"]}), flush=True)
+                manifest["failures"] = failures
                 write_json(output / "manifest.json", manifest)
-                print(json.dumps({"completed": record["rally_id"], "frames": record["frames"], "seconds": record["elapsed_seconds"]}), flush=True)
+            if failures:
+                raise RuntimeError(f"{len(failures)} of {len(jobs)} rallies failed; all outcomes recorded")
+        manifest["rallies"].sort(key=lambda record: record["rally_id"])
         plan.verify_inputs()
     except Exception as exc:
         manifest.update(status="failed", error=str(exc), elapsed_seconds=time.perf_counter() - started)
