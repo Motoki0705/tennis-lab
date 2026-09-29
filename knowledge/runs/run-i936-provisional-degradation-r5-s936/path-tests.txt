@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [8 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+[gw0] [ 12%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+[gw0] [ 25%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+[gw3] [ 37%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+[gw2] [ 50%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+[gw1] [ 62%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+[gw2] [ 75%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+[gw3] [ 87%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+[gw1] [100%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+
+============================== 8 passed in 7.61s ===============================

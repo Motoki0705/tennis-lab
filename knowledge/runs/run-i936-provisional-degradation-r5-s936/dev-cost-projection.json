@@ -1,0 +1,34 @@
+{
+  "method": "split-specific 72-frame pilot cost times old smoke mean frame count; ideal four-worker scaling",
+  "splits": [
+    {
+      "split": "train",
+      "dev_rallies": 64,
+      "old_mean_rally_frames": 443.75,
+      "preflight_seconds_per_frame": 4.472164358680958,
+      "projected_worker_seconds": 127009.46778653919,
+      "projected_npz_bytes": 193271466.66666666
+    },
+    {
+      "split": "val",
+      "dev_rallies": 16,
+      "old_mean_rally_frames": 350.25,
+      "preflight_seconds_per_frame": 3.7323138684449884,
+      "projected_worker_seconds": 20915.886918765715,
+      "projected_npz_bytes": 34961176.666666664
+    },
+    {
+      "split": "test",
+      "dev_rallies": 16,
+      "old_mean_rally_frames": 408.25,
+      "preflight_seconds_per_frame": 5.555938576694946,
+      "projected_worker_seconds": 36291.390782971386,
+      "projected_npz_bytes": 47233254.88888889
+    }
+  ],
+  "ideal_four_worker_seconds": 46054.186372069074,
+  "ideal_four_worker_hours": 12.792829547796964,
+  "npz_bytes": 275465898.2222222,
+  "limits": "one seed/prefix per split, 64/72 shared gap, 3-process timings; not measured 96-rally completion or guaranteed upper bound",
+  "conservative_launch_estimate_seconds": 55800
+}
