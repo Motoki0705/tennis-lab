@@ -21,7 +21,7 @@ B軸を呼び出し側が同期させたcamera順のV軸へ写す。成分は平
 video_002/clip_010、cam0/1/2（1920×1080）。
 既存court校正artifactのパスとSHA256を含み、実ボールの観測・評価には使っていない。
 比較のCLIは `python -m src.tasks.ball_refiner.scripts.compare_triangulation`。
-`--fixture` と未使用の `--output` を明示し、CPU/native threadを1に制限する。
+`--fixture` と未使用の `--output` を絶対pathで明示し、CPU/native threadを1に制限する。
 
 ## 59.94fpsデータ生成計画
 
