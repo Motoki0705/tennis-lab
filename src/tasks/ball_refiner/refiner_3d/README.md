@@ -1,6 +1,7 @@
 # 3D Ball Refiner (#936)
 
-CPUでの入力分布・合成系列の生成を提供する。pipeline接続は未実装。
+CPUでの入力分布・合成系列生成と、絶対x0を予測するdiffusionの土台を提供する。
+12-rally生成の未解決条件はknowledgeに記録する。pipeline接続は未実装。
 要件の正本は [#936](https://github.com/Motoki0705/tennis-lab/issues/936)。
 2D契約は [親README](../README.md#2dモデルのapi) を参照する。
 
@@ -63,20 +64,44 @@ float32 export後もSPDと有限性を検査する。未完了/失敗は`complet
 process RSS、全量生成の線形予測をmanifestへ記録する。出力は上書きしない。
 RGB生成、実Meiji評価、pipeline統合はこの入口の範囲外。
 
-## 次のGPU実験
+## Diffusion scaffold
 
-run 2はCPU smokeとforward/backward成功後の100-update memory smokeだけが承認済み。
-本学習・較正・精度比較は別runで申請する。
-空間位置そのものをx0予測するflow matchingモデルと、同じbackboneの
-1-step回帰対照を作る。サンプル間の分散をuncertaintyとして出す。
-損失・評価・禁止事項はissueの要件をそのまま受入条件とする。
+`diffusion/model.py` の `TrajectoryDenoiser` は、各3D成分の平均・全共分散・
+camera subsetを非線形に符号化してから混合重みで集約し、時間Transformerへ渡す。
+出力headは正規化court座標の絶対位置x0とhit/bounceの2 logits。
+座標は共有の `isotropic_half_length` 契約を使い、三角測量の平均への残差加算はしない。
+実frameの欠損と右paddingは別で、全camera欠損でも実frameはattentionへ残る。
 
-| 段階 | データ/計算予算案 | 時間・VRAM・出力の見積 |
-|---|---|---|
-| memory smoke | 12 rally、T=128、batch=2、幅128/4層、100 update、fp32 | 10分上限、4–6GB、0.2GB |
-| diffusion pilot | train512/val64、T=128、batch=8、幅128/4層、10k update、bf16、1 seed | 2時間上限、6–10GB、1GB |
-| 同backbone回帰 | 同一split/seed/batch、10k update | 2時間上限、6–10GB、1GB |
-| 合成評価 | test64、16 samples×16 ODE steps、3方式平滑化対照 | 30分上限、6–10GB、0.5GB |
+`diffusion/flow.py` は `x_t=(1-t)noise+t*x0` の経路でx0を回帰し、
+`v_t=(predicted_x0-x_t)/(1-t)` のEuler法でsampleする。
+t=1で速度を評価しない。x0 MSEは一様tで学習し、velocity MSEで見れば
+`(1-t)^2` の重みに相当する。sample全体の平均・不偏共分散をuncertaintyとして返す。
+同じbackboneの1-step回帰はnoisy-state/time入力を0に固定する。
 
-いずれも実測前の概算。12GBを超える構成は実行せず、smoke実測後にbatch/窓長を確定。
-実MeijiのLOCO評価・pipeline統合は、学習済み#935と別runの許可を待つ。
+`diffusion/losses.py` はx0、全2D成分を使うStudent-t再投影、自由飛行の重力残差、
+hit/bounce BCEを実装する。再投影はbehind predictionを捨てずdepth penaltyを付ける。
+重力項はdrag/Magnus/windを再現しない**弱いprior**であり、BLCSの完全な物理残差ではない。
+イベント前後のmaskと差分stencilの全3frameが有効な箇所だけに適用する。
+現段階では実datasetの学習loader、品質評価、deploymentを提供しない。
+
+## CPU/GPU memory diagnostic
+
+数値の正本は [memory_smoke.yaml](memory_smoke.yaml)。
+`python -m src.tasks.ball_refiner.scripts.memory_smoke_3d` に
+`--config`、`--fixture`（camera-only JSON）、新しい `--output` を絶対pathで指定し、
+`--device cpu` または `--device cuda` を必ず明示する。CUDAは共有training queue専用。
+
+入力は `analytic_memory_fixture_v1` と明示した解析的tensorで、失敗datasetの代用品を
+本学習へ流す機能ではない。全64成分・相関2D分布・64frameの分散拡大を持つ。
+12-rally生成が未完了でも計算graph/100 updates/VRAMを独立に測定できるが、
+データ経路の完走、物理精度、汎化、較正の証拠にはならない。
+出力checkpointは `diagnostic_only=true` で、学習pilotへ再利用しない。
+
+runnerはfp32/eager/100 updates、明示allocator上限と時間上限で実行し、
+NaN/Inf、予算超過、CUDAなしをerrorにする。別deviceや小batchへの自動切替はしない。
+各updateの全loss/gradient normをJSONLへ即時保存し、最終manifestに時刻・
+peak allocated/reserved bytes・checkpoint SHAを記録する。
+GPUのcontext/library分はPyTorch allocator測定に含まれない。
+
+本学習・同backbone回帰・合成評価・Meiji LOCOは、12-rally生成の修正と#935の
+劣化較正を経て別runで実施する。現在の方式比較とmemory smokeを性能の採否に使わない。
