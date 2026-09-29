@@ -45,6 +45,8 @@ priorの位置・幅は結果に影響するため、設定と実験記録に必
 `LaplaceConfig.max_components` を超える列挙は開始前に拒否する。
 Top-K pruning、moment matchingによる単一Gaussian化、point推定への切替は行わない。
 `moments()` は成分間分散も含む要約、`sample()` / `log_prob()` は混合全体を扱う。
+float32 exportの重み和の丸め誤差は、契約検証後に再正規化する。
+成分の選別・閾値処理は含まない。
 
 ## 検証と比較
 

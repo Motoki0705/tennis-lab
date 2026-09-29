@@ -248,3 +248,17 @@ def test_source_pixel_rescaling_preserves_3d_density():
     np.testing.assert_allclose(before.weights, after.weights, atol=1e-12)
     np.testing.assert_allclose(before.means, after.means, atol=1e-10)
     np.testing.assert_allclose(before.covariance, after.covariance, atol=1e-10)
+
+
+def test_float32_weight_roundoff_remains_sampleable():
+    weights = np.array([0.7, 0.3], dtype=np.float32).astype(np.float64)
+    mixture = GaussianMixture3D(
+        np.zeros((2, 3)), np.tile(np.eye(3), (2, 1, 1)), weights
+    )
+    assert np.isfinite(mixture.sample(8, np.random.default_rng(1))).all()
+    observations = CameraGMM(
+        np.zeros((1, 2, 2)), np.tile(np.eye(2), (1, 2, 1, 1)), weights[None], np.ones(1)
+    )
+    assert float(observations.weights.sum()) == pytest.approx(1.0, abs=1e-15)
+    with pytest.raises(ValueError, match="sum to one"):
+        replace(observations, weights=np.array([[0.6, 0.3]]))
