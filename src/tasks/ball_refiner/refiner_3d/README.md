@@ -40,8 +40,15 @@ fence時刻を返さないsimulatorに対しては、fence近傍も保守的に�
 
 遮蔽はpresenceを下げず、分布を広げて代替位置の重みを変える。
 画面外は別maskと低presenceで表す。GMM headの範囲に合わせる明示的な画像境界clipを
-適用し、その成分数をmetadataへ保存する。短すぎるrally、solver失敗、非SPDは停止する。
-seedの引き直し、成分削除、jitter、自動resumeはしない。
+適用し、その成分数をmetadataへ保存する。平均誤差と予測共分散のscaleは別の設定であり、
+gap/distractorの分散拡大を平均誤差へそのまま掛けない。最初のstress生成では
+一部の成分組合せのMAPがcamera背後へ進んだため、memory smokeの平均誤差を限定した。
+この条件を実refinerの誤差分布や較正改善とは扱わない。元のstress条件は未解決である。
+
+BLCSが既知prefixで棄却した物理提案だけを設定の有限予算で再標本化し、
+全提案seed・棄却理由・採用seedをmetadataへ残す。元のnative上限でsimulateした後に
+保存prefixを切り出す。未知例外、予算枯渇、短すぎるrally、solver失敗、非SPDは停止する。
+三角測量の再試行、成分削除、jitter、自動resumeはしない。
 
 生成CLIは `python -m src.tasks.ball_refiner.scripts.generate_synthetic_3d`。
 `--project-root`（作業checkout）、`--data-root`（共有data）、

@@ -58,6 +58,8 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
     simulation, sampling, degradation = raw["simulation"], raw["sampling"], raw["degradation"]
     if simulation["device"] != "cpu" or simulation["workers"] not in range(1, 5):
         raise ValueError("CPU generation requires 1..4 workers")
+    if type(simulation["maximum_physics_attempts_per_rally"]) is not int or simulation["maximum_physics_attempts_per_rally"] < 1:
+        raise ValueError("Need a finite positive physics proposal budget")
     if simulation["class"] != "src.tasks.blcs.generate_dataset.simulation.rally_simulator.RallySimulator":
         raise ValueError("Unsupported simulator")
     if (simulation["sim_fps"], simulation["native_output_fps"], sampling["fps_numerator"], sampling["fps_denominator"]) != (240, 240, 60000, 1001):
@@ -80,6 +82,8 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("Invalid 2D covariance range")
     if not 0 <= degradation["error_ar1"] < 1 or degradation["max_nfev"] < 1:
         raise ValueError("Invalid AR1 or optimizer budget")
+    if not np.isfinite(degradation["mean_error_sigma_multiplier"]) or degradation["mean_error_sigma_multiplier"] <= 0:
+        raise ValueError("Mean error multiplier must be finite and positive")
     for key in ("observed_weights", "gap_weights"):
         weights = np.asarray(degradation[key], dtype=float)
         if weights.shape != (3,) or not np.isfinite(weights).all() or (weights <= 0).any() or not np.isclose(weights.sum(), 1):
@@ -126,8 +130,6 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
     physics["dt"] = 1 / simulation["sim_fps"]
     rally["sim_fps"] = simulation["sim_fps"]
     rally["output_fps"] = simulation["native_output_fps"]
-    # Simulate only the prefix we will store, with two interpolation guard samples.
-    rally["max_total_frames"] = int(np.ceil(sampling["max_frames_per_rally"] * 240 * 1001 / 60000)) + 2
     for directory in (
         "src/tasks/ball_refiner/refiner_3d/synthetic",
         "src/tasks/blcs/generate_dataset/simulation",
