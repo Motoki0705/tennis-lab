@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-provisional-degradation-r5-s936/preflight.py", line 53, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-provisional-degradation-r5-s936/preflight.py", line 27, in main
+    original = load_plan(args.project_root / 'src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml', PathResolver(roots))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/synthetic/configuration.py", line 88, in load_plan
+    paths = CALIBRATION_BOUNDARY.validate({key: calibration[key] for key in ("bank", "report")}, resolver=resolver)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/configuration/paths.py", line 491, in validate
+    field_values = tuple(
+                   ^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/configuration/paths.py", line 492, in <genexpr>
+    self._validate_path(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/configuration/paths.py", line 532, in _validate_path
+    raise PathContractError(
+src.utils.configuration.errors.PathContractError: ball_refiner.synthetic_calibration.bank must be an explicit absolute input path for role project; got knowledge/runs/run-i936-provisional-degradation-r5-s936/bank.npz.
