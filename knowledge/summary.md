@@ -1,4 +1,4 @@
-<!-- knowledge-review: 52f98c1072c35cc112e378dcb18960e62b1cbe1a8192df99f2deed6f02a8a669 on 2026-09-30 -->
+<!-- knowledge-review: 1e0d293abb6521363cba1c6c0d07b4c967cd51df08c8d6c906d4084ecc1054aa on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -197,6 +197,12 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 
 ### 3D Ball Refiner
 
+[全4,809frameの収束監査](nodes/ball_refiner_3d/000009-run-i936-integration-convergence-r5-s936.md)は処理失敗0だが、
+全成分を含む厳格基準で100%が3段階capに達し未収束。混合NLL probeの未達も91.2%だった。
+未収束成分の質量は中央値では小さいが、279frameで0.5を超え、微小成分だけの問題とは言えない。
+全frameと達成差分を保持して開発生成へ渡し、収束済み・品質保証とは扱わない。
+全量前には#935の最終較正に加え、積分方式/予算と大きくなった費用の再判断が必要である。
+
 [保存済みpilotからの暫定劣化](nodes/ball_refiner_3d/000008-run-i936-provisional-degradation-r5-s936.md)を96ラリー開発用に導入した。
 全K=4の誤差・共分散・重み・存在をcamera/条件別に保持し、3Dは全125成分とする。
 負例、長いgap、camera間相関、新detector/person contextは未較正で、full生成の承認とは区別する。
@@ -221,10 +227,10 @@ float32画素変換の共分散丸めを修正しても、広いprior/K=3のcame
 光線座標の積分試行も不安定で却下した。Hの全件成功を積分精度の収束や本学習の承認と読み替えない。
 [固定12ラリーsmoke](nodes/ball_refiner_3d/000007-run-i936-synthetic-smoke-r3-s936.md)は全件成功し、
 4,809frame・全64成分・各splitの64frame共有gapを保存/再読込した。比較118frameとの入力一致も確認済み。
-640ラリーは4 workerで約11.03時間/NPZ0.743GBの外挿で、全量は未実行。劣化較正と積分精度の判断を先行する。
+旧K=3/固定予算での640ラリー外挿は約11.03時間/NPZ0.743GBだった。新K=4/収束判定には流用せず、全量は未実行。
 [絶対x0 flow matchingのCPU 100-update診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)
 は解析的fixtureで計算graphを確認した段階。12-rallyの成功・学習精度・GPU性能の証拠ではなく、
-本学習/実LOCO/pipelineの前には生成器の修正と#935からの劣化較正が必要。
+本学習/実LOCO/pipelineの前には#935の最終較正と、未収束入力の扱いの判断が必要。
 [GPU診断](nodes/ball_refiner_3d/000005-run-i936-x0-memory-r2-20260929.md)も100 updatesを完了し、
 allocated/reserved/driver使用量は許可範囲内だった。解析的fixtureでの資源測定に限る。
 

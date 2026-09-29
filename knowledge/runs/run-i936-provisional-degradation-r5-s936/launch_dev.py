@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import math
 import shlex
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -20,7 +21,7 @@ plan_path = args.project_root / 'src/tasks/ball_refiner/refiner_3d/dataset_plan.
 plan = yaml.safe_load(plan_path.read_text())
 if plan['counts']['dev_rallies'] != {'train': 64, 'val': 16, 'test': 16} or plan['simulation']['workers'] != 4:
     raise ValueError('This launch permits exactly 96 rallies and four CPU workers')
-if args.expected_seconds <= 0 or args.dataset.exists() or args.run_output.exists():
+if not math.isfinite(args.expected_seconds) or args.expected_seconds <= 0 or args.dataset.exists() or args.run_output.exists():
     raise ValueError('Need a positive estimate and fresh output paths')
 mem = {line.split(':')[0]: int(line.split()[1]) * 1024 for line in Path('/proc/meminfo').read_text().splitlines() if ':' in line}
 if mem['MemAvailable'] < 6 * 1024 ** 3:
@@ -29,7 +30,7 @@ head = subprocess.check_output(['git', '-C', str(args.project_root), 'rev-parse'
 subprocess.run(['git', '-C', str(args.project_root), 'diff', '--quiet', 'HEAD'], check=True)
 args.run_output.mkdir(parents=True, exist_ok=False)
 log = args.run_output / 'generation.log'
-command = ['setsid', 'nohup', 'env', 'OMP_NUM_THREADS=1', 'MKL_NUM_THREADS=1', 'OPENBLAS_NUM_THREADS=1', 'CUDA_VISIBLE_DEVICES=',
+command = ['setsid', 'nohup', 'env', 'OMP_NUM_THREADS=1', 'MKL_NUM_THREADS=1', 'OPENBLAS_NUM_THREADS=1', 'CUDA_VISIBLE_DEVICES=', 'PYTHONPATH=' + str(args.project_root),
     'nice', '-n', '10', str(args.project_root / '.venv/bin/python'), '-u', '-m', 'src.tasks.ball_refiner.scripts.generate_synthetic_3d',
     '--project-root', str(args.project_root), '--data-root', str(args.data_root), '--plan', str(plan_path),
     '--output', str(args.dataset), '--mode', 'dev']
