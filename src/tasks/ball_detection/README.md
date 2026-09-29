@@ -52,6 +52,7 @@
 - **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction`（点・score・native heatmap・候補の局所特徴）を返す。
 
 ### evaluation/
+- **`candidate_recall.py`**: 閾値なし候補集合のsource画素recall、候補外、順位誤りの加算可能な件数。[refinerのvalidation選定](../ball_refiner/README.md#validationによる検出器選定)で利用する。
 - **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
 - **`configuration.py`**: checkpoint設定読み出しとモデル名整合性検証。
 - **`dataset_provenance.py`**: データセットの provenance(ハッシュ・ソース)記録。
