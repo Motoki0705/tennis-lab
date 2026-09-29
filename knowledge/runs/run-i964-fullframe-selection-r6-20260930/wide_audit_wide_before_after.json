@@ -1,0 +1,17 @@
+{
+  "ft_base_0.01": {
+    "wide_units": 143,
+    "r5_kept": 46,
+    "fixed_kept": 141
+  },
+  "union_0.30": {
+    "wide_units": 143,
+    "r5_kept": 5,
+    "fixed_kept": 123
+  },
+  "old_pipeline": {
+    "wide_units": 143,
+    "r5_kept": 0,
+    "fixed_kept": 123
+  }
+}
