@@ -1,7 +1,7 @@
-<!-- knowledge-review: 404c1d2367a13760149e69d882fdef1cc8519f9fb8eda1d41142a4b11e6eee41 on 2026-09-30 -->
+<!-- knowledge-review: 0cec74116bb15af1b648329af107a24851af2ba43c2f0e80de18f8420d2c3bc3 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
+更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,14 +11,14 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
-## 2026-09-29の選手検出切替（#964）
+## 2026-09-30の人物source・コート選別（#964）
 
 [#937のFT検出器比較](nodes/player_detection/000001-run-i964-detectors-val-meiji-r1-20260929.md)では、
 重み選択に使ったchat validationでprecisionが改善した。Meijiの参照は旧COCO boxに基づくため、
 そこでの数字は旧boxとの一致率であり検出recallではない。FTの不一致はcam0の小さい遠側人物に集中し、
 閾値0.3での不一致をそのまま検出失敗とは扱えない。ユーザーは2Dを全人物の候補生成へ、選手判定をコート座標での滞在時間へ移すと決めた。
 [遠側GPU診断](nodes/player_detection/000002-run-i964-far-r3-20260929.md)はこの方針変更でcancelled。保存済み23archiveのhashを確認し、CPU比較へ再利用する。
-1080/1920は11/12 camera-clipに限り、高解像度・tileは追加実行しない。既定変更前に選別精度と動画を確認する。
+1080/1920は11/12 camera-clipに限り、高解像度・tileは追加実行しない。選別精度と動画をrun 6で確認した。
 CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
 既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
 
@@ -38,9 +38,10 @@ CLIP付きの第2確認も全clipでは決定できず、この基準のまま�
 [全画面COCOのqueue job](nodes/player_detection/000003-run-i964-coco-fullframe-r5-20260929.md)は12 camera-clip完了し、全archiveのhash一致を確認した。
 [run 6](nodes/person_tracking/000005-run-i964-fullframe-selection-r6-20260930.md)では選択済み断片の全観測を保持するよう修正し、
 元データ固定のauditでwide観測の大半を回復し隣コート除外を維持した。ROI前7条件のCPU比較を完了し、
-現行の追跡/選別にはCOCO全画面 .30を暫定推薦する。unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。
-低閾値COCOはraw候補と断片が増え、対応が決定しても観測を失った。参照はCOCOに有利で、既定はユーザー判断前のまま。
-最終方式・encoder選択、v3への新group接続、全pipeline完走、未見一回評価は未完了。
+ユーザーはCOCO全画面 .30を選択し、[run 7](nodes/person_tracking/000006-run-i964-default-solider-cpu-r7-20260930.md)でpipeline既定とコート選別/v3接続へ反映した。
+unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低閾値COCOはraw候補と断片を増やした。
+参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致したが、精度比較は未完了。
+全人物のViTPose/CLIP/SOLIDER特徴抽出を次に行う。最終方式・encoder選択、全pipeline完走、未見一回評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
 

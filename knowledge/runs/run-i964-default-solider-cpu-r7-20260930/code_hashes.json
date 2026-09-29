@@ -1,0 +1,6 @@
+{
+  "src/tasks/player_association/appearance/solider.py": "69c43935796e9284ef439cfa2126653d2a3f02b9d765733512dc8066a4d0ad32",
+  "src/tasks/player_association/appearance/solider_vendor/swin_transformer.py": "9f5d4145d5a19545e642b1fc287bdc39f0a6b509e910d640e1ef4c15d257a018",
+  "src/tasks/person_tracking/features.py": "8e02dea4e39a6097b5a5f3a017aa4d6aa1772dcd2a9b7852dad11ef4fa97531c",
+  "tests/benchmarks/person_tracking_dev_features.py": "2cd11ffffa4c77d1c3ef1b0f4064d47accf4b213fb8569ff0b8403ad336a7ad4"
+}
