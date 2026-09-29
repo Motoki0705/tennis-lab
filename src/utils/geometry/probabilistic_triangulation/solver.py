@@ -8,7 +8,6 @@ from itertools import product
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import least_squares
 from scipy.special import logsumexp
 
 from src.utils.geometry.probabilistic_triangulation.distributions import (
@@ -16,8 +15,17 @@ from src.utils.geometry.probabilistic_triangulation.distributions import (
     FloatArray,
     GaussianMixture3D,
     GaussianPrior3D,
+    camera_subsets,
 )
 from src.utils.geometry.triangulation import PinholeCamera
+
+from .optimization import NonregularComponentError, feasible_start
+from .volume import VoxelConfig, integrate_component
+
+COMPONENT_METHODS = (
+    "prior", "laplace", "volume:camera_boundary", "volume:boundary_laplace_tail",
+    "volume:iteration_budget", "volume:line_search", "volume:no_feasible_initial_point",
+)
 
 
 @dataclass(frozen=True)
@@ -35,17 +43,8 @@ class ProbabilisticTriangulation:
     distribution: GaussianMixture3D
     camera_subsets: NDArray[np.bool_]  # M,V; same order as mixture components
     prior_only_probability: float
+    component_methods: tuple[str, ...]
 
-
-def camera_subsets(presence: FloatArray) -> list[tuple[NDArray[np.int64], float]]:
-    """Positive-mass independent Bernoulli subsets; exact zeros/ones stay exact."""
-    choices = [(False, True) if 0 < p < 1 else (bool(p),) for p in presence]
-    result = []
-    for selected in product(*choices):
-        mask = np.asarray(selected, dtype=bool)
-        probability = float(np.prod(np.where(mask, presence, 1 - presence)))
-        result.append((np.flatnonzero(mask), probability))
-    return result
 
 
 def project_with_jacobian(
@@ -74,7 +73,7 @@ def fit_component(
     """Return MAP, Gauss-Newton Laplace covariance and log evidence.
 
     A Gaussian spatial prior is mandatory, including for zero/one view.
-    Numerical failure or a mode behind an active camera is an explicit error;
+    All iterates stay in front of active cameras; a nonregular mode is an error;
     no component is silently dropped, jittered, or replaced by a point estimate.
     """
     if len(matrices) == 0:
@@ -95,34 +94,64 @@ def fit_component(
         _, jac, _ = project_with_jacobian(point, matrices)
         return np.concatenate((prior_whitening, (whitening @ jac).reshape(-1, 3)))
 
-    fit = least_squares(
-        residual,
-        prior.mean,
-        jac=jacobian,
-        max_nfev=max_nfev,
-        ftol=1e-10,
-        xtol=1e-10,
-        gtol=1e-10,
-    )
-    if not fit.success or not np.isfinite(fit.x).all():
-        raise RuntimeError(f"Triangulation optimization failed: {fit.message}")
-    _, _, depth = project_with_jacobian(fit.x, matrices)
-    if (depth <= 0).any():
-        raise RuntimeError("Triangulation mode is behind an active camera")
-    jac = jacobian(fit.x)
+    # Every accepted/trial iterate stays in the positive-depth convex region.
+    minimum_depth = 1e-4
+    point = feasible_start(prior.mean, matrices, minimum_depth)
+    r = residual(point)
+    evaluations = 1
+    converged = False
+    while evaluations < max_nfev:
+        jac = jacobian(point)
+        precision = jac.T @ jac
+        step = -np.linalg.solve(precision, jac.T @ r)
+        cost = .5 * float(r @ r)
+        if float(-step @ (jac.T @ r)) < 1e-12 * (1 + cost):
+            converged = True
+            break
+        depth = matrices[:, 2, :3] @ point + matrices[:, 2, 3]
+        change = matrices[:, 2, :3] @ step
+        approaching = change < 0
+        fraction = min(1., float(np.min(.99 * (depth[approaching] - minimum_depth) / -change[approaching]))) if approaching.any() else 1.
+        if float(depth.min()) < 10 * minimum_depth:
+            raise NonregularComponentError("camera_boundary")
+        for _ in range(40):
+            candidate = point + fraction * step
+            if evaluations >= max_nfev:
+                raise NonregularComponentError('iteration_budget')
+            trial = residual(candidate)
+            evaluations += 1
+            trial_cost = .5 * float(trial @ trial)
+            if trial_cost <= cost + 1e-4 * fraction * float((jac.T @ r) @ step):
+                break
+            fraction *= .5
+        else:
+            raise NonregularComponentError("line_search")
+        point, r = candidate, trial
+        if abs(cost - trial_cost) < 1e-12 * (1 + cost):
+            converged = True
+            break
+    if not converged:
+        raise NonregularComponentError("iteration_budget")
+    _, _, depth = project_with_jacobian(point, matrices)
+    if (depth <= minimum_depth).any():
+        raise NonregularComponentError("camera_boundary")
+    jac = jacobian(point)
     posterior_covariance = np.linalg.inv(jac.T @ jac)
+    depth_sigma = np.sqrt(np.einsum('vi,ij,vj->v', matrices[:, 2, :3], posterior_covariance, matrices[:, 2, :3]))
+    if (depth < 3 * depth_sigma).any():
+        raise NonregularComponentError('boundary_laplace_tail')
     log_normalizer = 0.5 * (
         (3 + 2 * len(matrices)) * math.log(2 * math.pi)
         + float(np.linalg.slogdet(prior.covariance)[1])
         + float(np.linalg.slogdet(covariance)[1].sum())
     )
     log_evidence = (
-        -0.5 * float(residual(fit.x) @ residual(fit.x))
+        -0.5 * float(residual(point) @ residual(point))
         - log_normalizer
         + 1.5 * math.log(2 * math.pi)
         + 0.5 * float(np.linalg.slogdet(posterior_covariance)[1])
     )
-    return np.asarray(fit.x, np.float64), posterior_covariance, log_evidence
+    return np.asarray(point, np.float64), posterior_covariance, log_evidence
 
 
 def triangulate_gmm(
@@ -139,6 +168,32 @@ def triangulate_gmm(
     covariance determinants and the Laplace volume, not just reprojection error.
     This is a conditional fusion approximation, not a generative absence model.
     """
+    return _triangulate(observations, cameras, prior=prior, config=config, volume=None)
+
+
+@dataclass(frozen=True)
+class HybridConfig:
+    laplace: LaplaceConfig
+    volume: VoxelConfig
+
+
+def triangulate_hybrid(
+    observations: CameraGMM, cameras: tuple[PinholeCamera, ...], *,
+    prior: GaussianPrior3D, config: HybridConfig,
+) -> ProbabilisticTriangulation:
+    """Explicit A/B dispatch per product, with mandatory component diagnostics.
+
+    Regular positive-depth modes use A. Boundary and nonconverged products use
+    the configured volume integral for evidence/moments. Every product remains
+    present, and any volume failure aborts the frame.
+    """
+    return _triangulate(observations, cameras, prior=prior, config=config.laplace, volume=config.volume)
+
+
+def _triangulate(
+    observations: CameraGMM, cameras: tuple[PinholeCamera, ...], *,
+    prior: GaussianPrior3D, config: LaplaceConfig, volume: VoxelConfig | None,
+) -> ProbabilisticTriangulation:
     v, _, _ = observations.means_px.shape
     if len(cameras) != v or len({c.camera_id for c in cameras}) != v:
         raise ValueError("Distinct cameras must match the GMM view axis")
@@ -154,17 +209,29 @@ def triangulate_gmm(
     subsets = camera_subsets(observations.presence)
     matrices = np.stack([c.matrix for c in cameras])
     means, covariances, weights, masks = [], [], [], []
+    methods = []
     for active, probability in subsets:
         evidence = []
         for combination in product(*(nonzero[i] for i in active)):
             index = np.asarray(combination, dtype=np.int64)
-            mean, cov, log_evidence = fit_component(
-                matrices[active],
-                observations.means_px[active, index],
-                observations.covariance_px2[active, index],
-                prior,
-                max_nfev=config.max_nfev,
-            )
+            method = "laplace" if len(active) else "prior"
+            try:
+                mean, cov, log_evidence = fit_component(
+                    matrices[active],
+                    observations.means_px[active, index],
+                    observations.covariance_px2[active, index],
+                    prior,
+                    max_nfev=config.max_nfev,
+                )
+            except NonregularComponentError as exc:
+                if volume is None:
+                    raise
+                method = f"volume:{exc.reason}"
+                mean, cov, log_evidence = integrate_component(
+                    tuple(cameras[i] for i in active), observations.means_px[active, index],
+                    observations.covariance_px2[active, index], prior, volume,
+                )
+            methods.append(method)
             evidence.append(
                 log_evidence + float(np.log(observations.weights[active, index]).sum())
             )
@@ -179,4 +246,5 @@ def triangulate_gmm(
         GaussianMixture3D(np.stack(means), np.stack(covariances), np.asarray(weights)),
         np.stack(masks),
         float(np.prod(1 - observations.presence)),
+        tuple(methods),
     )

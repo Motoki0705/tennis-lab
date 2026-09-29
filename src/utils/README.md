@@ -42,7 +42,7 @@
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
 - **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。対応済み2D観測と同じ座標系のカメラ行列から3D点・valid maskを返す。
-- **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化とLaplace近似で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
+- **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化と、正depthを保つLaplace/明示的な体積積分で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
 
 ### `matching/`
 - **`multiview_clustering.py`**: `cluster_multiview()`。任意の対称 score 行列から、view 排他（同じ view の item は同一 identity にしない）と推移律を満たす最大 score の分割を MILP で厳密に解く。`with_margins=True` で各 pair の決定を反転したときの目的関数の低下（反転マージン）を返し、`ambiguous_pairs()` で次点と僅差の決定を列挙する。`decision_margins()` は解いた後で、指定した item に触れる pair だけのマージンを計算する（それ以外は `nan` で、`ambiguous_pairs()` は判定を拒む）。最適性が証明できなければ停止する。
