@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,9 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
     bank = load_calibration(bank_path, calibration["bank_sha256"])
     if sha256(report_path) != calibration["report_sha256"]:
         raise ValueError("Calibration report SHA mismatch")
+    report = json.loads(report_path.read_text())
+    if report["schema"] != "ball_refiner_3d.degradation_calibration.v1" or report["bank_sha256"] != calibration["bank_sha256"] or report["components"] != bank.components or report["status"] != degradation["status"]:
+        raise ValueError("Calibration bank/report identity mismatch")
     if degradation["components_per_camera"] != bank.components or degradation["max_components"] != (bank.components + 1) ** 3:
         raise ValueError("Require every calibrated component and camera-subset product")
     if type(calibration["block_frames"]) is not int or not 1 <= calibration["block_frames"] <= 16:
@@ -113,8 +117,8 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("Need one ordered camera source per split")
     if [source["clip_id"].split("/")[0] for source in sources] != ["video_002", "video_000", "video_001"]:
         raise ValueError("Camera recording split must match #934")
-    if any(len(source["camera_keys"]) != 3 or len(set(source["camera_keys"])) != 3 for source in sources):
-        raise ValueError("Need three distinct camera keys")
+    if any(source["camera_keys"] != ["cam_0_params", "cam_1_params", "cam_2_params"] for source in sources):
+        raise ValueError("Camera order must match the cam0/cam1/cam2 calibration bank")
     paths = SOURCE_BOUNDARY.validate({"cameras": [source["path"] for source in sources]}, resolver=resolver)
     camera_paths = tuple(value.path for value in paths.declared_many("cameras"))
     hashes = {str(path): sha256(path)}
