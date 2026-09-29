@@ -181,3 +181,5 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--phase select --repo <元repo> --max-clips 1` はcameraごとにCLIP/選別を保存し、1 source×clipずつ進める。
   `--phase report` は全7×4結果のhash・全選択断片の観測保持・上限を検証して、camera×近遠・identity・wideの表を書く。
   領域/CLIP/fragment/handoffの定義は[`court_linking.py`](../../src/tasks/person_tracking/court_linking.py)を正本とする。
+  `person_selection_fullframe_video.py --report <同report> --source <選んだsource>` は各clipの最大誤り窓とwide/隣コート窓を
+  3camera同期で描き、全frame読戻し・hash・窓の選定基準を保存する。ラベルは事後の可視化にのみ使う。
