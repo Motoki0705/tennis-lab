@@ -37,12 +37,13 @@ from src.utils.geometry.probabilistic_triangulation import (
     GaussianPrior3D,
     LaplaceConfig,
 )
+from src.utils.geometry.probabilistic_triangulation.convergence import (
+    ConvergenceConfig,
+    triangulate_converged,
+)
 from src.utils.geometry.probabilistic_triangulation.solver import (
     COMPONENT_METHODS,
-    HybridConfig,
-    triangulate_hybrid,
 )
-from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
 from src.utils.schema.court import X_MAX, Y_MAX
 
 
@@ -76,21 +77,26 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
     base_cameras, sizes = load_cameras(plan.camera_paths[split_index], source["camera_keys"])
     cameras = perturb_cameras(base_cameras, plan.values["geometry"]["perturbation_per_scene"], rng)
     degradation = plan.values["degradation"]
-    distribution, masks, observation_metadata = make_distribution(positions, cameras, sizes, degradation, rng, rally_index=index)
+    distribution, masks, observation_metadata = make_distribution(positions, cameras, sizes, degradation, rng, rally_index=index, calibration=plan.calibration)
     prior = GaussianPrior3D(np.asarray(degradation["prior_mean_m"], dtype=float), np.diag(degradation["prior_covariance_diagonal_m2"]).astype(float))
     laplace = LaplaceConfig(degradation["max_components"], degradation["max_nfev"])
-    hybrid = HybridConfig(laplace, VoxelConfig(**degradation["boundary_volume"]))
+    convergence = ConvergenceConfig(**degradation["boundary_convergence"])
     tri_started = time.perf_counter()
     posteriors = []
+    checks = []
     for frame in range(len(timestamps)):
         try:
             observations = frame_observations(distribution, torch.from_numpy(sizes), frame=frame)
-            posterior = triangulate_hybrid(observations, cameras, prior=prior, config=hybrid)
+            checked = triangulate_converged(observations, cameras, prior=prior, laplace=laplace, config=convergence)
+            posterior = checked.posterior
         except (ValueError, RuntimeError) as exc:
             raise RuntimeError(f"{rally_id} frame={frame} seed={seed}: {exc}") from exc
-        if len(posterior.distribution.weights) != 64:
-            raise ValueError("The v1 recipe must preserve every one of the 64 components")
+        if len(posterior.distribution.weights) != degradation["max_components"]:
+            raise ValueError("The recipe must preserve every calibrated component product")
         posteriors.append(posterior)
+        checks.append(checked)
+        if frame % 16 == 0 or frame == len(timestamps) - 1:
+            write_json(output / f"{rally_id}.progress.json", {"rally_id": rally_id, "completed_frames": frame + 1, "frames": len(timestamps), "nonconverged_frames": sum(not item.converged for item in checks), "elapsed_seconds": time.perf_counter() - started})
     triangulation_seconds = time.perf_counter() - tri_started
     arrays = {
         "timestamps_seconds": timestamps,
@@ -110,6 +116,11 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
         "gmm3d_weights": np.stack([p.distribution.weights for p in posteriors]).astype(np.float32),
         "gmm3d_camera_subsets": np.stack([p.camera_subsets for p in posteriors]),
         "gmm3d_method_codes": np.asarray([[COMPONENT_METHODS.index(method) for method in p.component_methods] for p in posteriors], dtype=np.uint8),
+        "integration_converged": np.asarray([item.converged for item in checks], dtype=bool),
+        "integration_rounds": np.asarray([item.rounds for item in checks], dtype=np.uint8),
+        "integration_component_converged": np.stack([item.component_converged for item in checks]),
+        "integration_component_changes": np.stack([item.component_changes for item in checks]),
+        "integration_nll_delta_nat": np.asarray([item.nll_delta_nat for item in checks]),
         "prior_only_probability": np.asarray([p.prior_only_probability for p in posteriors], dtype=np.float32),
     }
     for label, selected in (("base", base_cameras), ("true", cameras), ("estimated", cameras)):
@@ -135,7 +146,8 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
         "elapsed_seconds": time.perf_counter() - started,
         "peak_worker_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "npz_bytes": destination.stat().st_size, "npz_sha256": sha256(destination),
-        "components_per_frame": 64,
+        "components_per_frame": degradation["max_components"],
+        "integration": {"converged_frames": sum(item.converged for item in checks), "nonconverged_frames": sum(not item.converged for item in checks), "nonconverged_rate": sum(not item.converged for item in checks) / len(checks), "rule": degradation["boundary_convergence"], "history": [item.history for item in checks]},
         "component_method_labels": COMPONENT_METHODS,
         "component_method_counts": dict(Counter(method for p in posteriors for method in p.component_methods)),
         "float32_zero_weight_components": int((arrays["gmm3d_weights"] == 0).sum()),
@@ -159,16 +171,16 @@ def _job(arguments: tuple[GenerationPlan, int, int, Path]) -> dict[str, Any]:
 
 
 def generate_dataset(plan: GenerationPlan, output: Path, *, mode: str) -> dict[str, Any]:
-    if mode not in ("smoke", "pilot"):
-        raise ValueError("Mode must be smoke or pilot")
+    if mode not in ("smoke", "dev", "pilot"):
+        raise ValueError("Mode must be smoke, dev or pilot")
     if output.exists():
         raise FileExistsError(output)
     plan.verify_inputs()
-    counts = {split: plan.values["counts"]["smoke_rallies_per_split"] for split in ("train", "val", "test")} if mode == "smoke" else plan.values["counts"]["pilot_rallies"]
+    counts = {split: plan.values["counts"]["smoke_rallies_per_split"] for split in ("train", "val", "test")} if mode == "smoke" else plan.values["counts"][f"{mode}_rallies"]
     workers = plan.values["simulation"]["workers"]
     output.mkdir(parents=True, exist_ok=False)
     manifest: dict[str, Any] = {
-        "schema": "ball_refiner_3d.synthetic.v1", "status": "running", "mode": mode,
+        "schema": "ball_refiner_3d.synthetic.v2", "status": "running", "mode": mode,
         "plan": plan.values, "resolved_simulator": {"physics": plan.physics, "rally": plan.rally, "targeted": plan.targeted},
         "input_hashes": plan.input_hashes, "counts": counts, "workers": workers,
         "environment": {"python": platform.python_version(), "numpy": np.__version__, "scipy": scipy.__version__, "torch": torch.__version__},
@@ -205,6 +217,7 @@ def generate_dataset(plan: GenerationPlan, output: Path, *, mode: str) -> dict[s
         status="complete", elapsed_seconds=time.perf_counter() - started,
         total_frames=sum(r["frames"] for r in records),
         npz_bytes=sum(r["npz_bytes"] for r in records),
+        nonconverged_frames=sum(r["integration"]["nonconverged_frames"] for r in records),
         sum_rally_seconds=sum(r["elapsed_seconds"] for r in records),
     )
     pilot_counts = plan.values["counts"]["pilot_rallies"]

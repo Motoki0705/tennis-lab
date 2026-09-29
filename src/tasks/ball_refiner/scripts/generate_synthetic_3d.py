@@ -30,7 +30,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("plan", "output", "project-root", "data-root"):
         parser.add_argument(f"--{name}", type=Path, required=True)
-    parser.add_argument("--mode", choices=("smoke", "pilot"), required=True)
+    parser.add_argument("--mode", choices=("smoke", "dev", "pilot"), required=True)
     args = parser.parse_args()
     if not all(p.is_absolute() for p in (args.plan, args.output, args.project_root, args.data_root)):
         parser.error("All paths must be absolute")
