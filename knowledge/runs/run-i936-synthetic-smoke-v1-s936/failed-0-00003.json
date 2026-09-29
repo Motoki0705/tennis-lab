@@ -1,0 +1,6 @@
+{
+  "error": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25.",
+  "type": "RuntimeError",
+  "split_index": 0,
+  "rally_index": 3
+}

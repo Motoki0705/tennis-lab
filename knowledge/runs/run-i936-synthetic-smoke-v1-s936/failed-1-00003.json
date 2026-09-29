@@ -1,0 +1,6 @@
+{
+  "error": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side.",
+  "type": "RuntimeError",
+  "split_index": 1,
+  "rally_index": 3
+}

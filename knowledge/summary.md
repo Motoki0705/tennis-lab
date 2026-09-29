@@ -1,4 +1,4 @@
-<!-- knowledge-review: 4758f91804c790cb7183b5dfbd1a2534ecbe915ef3218e6e91e40076c7b4958f on 2026-10-01 -->
+<!-- knowledge-review: 2b3b85267db130a6d3b8de283451a7dd5309be09dd9400f9f7b334c3a2056c8a on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -303,8 +303,16 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 多峰条件でNLLが悪く、粒子増量だけでは解消しなかった。presenceの周辺化はcamera間独立と
 不在cameraの幾何を捨てる近似で、low presenceの100% coverageを較正改善とは呼ばない。
 狭い既知prior・小Kの結果であり、実Meiji精度や3D diffusionの優位は未検証。
-次は240Hz物理原系列から60000/1001Hzへ再標本化するCPU smokeと、広いcourt prior・
-長欠損・camera摂動での健全性を確認し、#935較正後に劣化を固定する。
+[12-rally smoke v1](nodes/ball_refiner_3d/000002-run-i936-synthetic-smoke-v1-s936.md)と
+[再試行v2](nodes/ball_refiner_3d/000003-run-i936-synthetic-smoke-v2-s936.md)は失敗した。
+float32画素変換の共分散丸めを修正しても、広いprior/K=3のcamera間成分組合せで
+背後MAPや最適化の未収束が残った。v2は要求12件のうち1件だけ完了し、
+学習datasetとしては未成立。平均誤差を小さくするだけでは解消しない。
+次は正depth領域と境界modeの近似を検証し、全成分保持と両立する定義を固める。
+方式Aの限定条件での比較と、一般系列への採用可否を分ける。
+[絶対x0 flow matchingのCPU 100-update診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)
+は解析的fixtureで計算graphを確認した段階。12-rallyの成功・学習精度・GPU性能の証拠ではなく、
+本学習/実LOCO/pipelineの前には生成器の修正と#935からの劣化較正が必要。
 
 ### Court Detection
 

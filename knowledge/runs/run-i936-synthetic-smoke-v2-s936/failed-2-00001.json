@@ -1,0 +1,6 @@
+{
+  "error": "test-00001 frame=38 seed=1606478505: Triangulation mode is behind an active camera",
+  "type": "RuntimeError",
+  "split_index": 2,
+  "rally_index": 1
+}

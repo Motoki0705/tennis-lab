@@ -1,0 +1,49 @@
+{
+  "status": "complete",
+  "diagnostic_only": true,
+  "device": "cpu",
+  "config": {
+    "input_kind": "analytic_memory_fixture_v1",
+    "seed": 936,
+    "updates": 100,
+    "batch_size": 2,
+    "frames": 128,
+    "learning_rate": 0.0001,
+    "maximum_seconds": 780,
+    "allocator_limit_gib": 4.0,
+    "model": {
+      "width": 128,
+      "layers": 4,
+      "heads": 4,
+      "feedforward_multiplier": 4,
+      "time_frequencies": 8,
+      "dropout": 0.0
+    },
+    "loss": {
+      "x0": 1.0,
+      "reprojection": 0.01,
+      "physics": 0.0001,
+      "event": 0.1
+    }
+  },
+  "config_sha256": "6233d0dde9fed20a6328f55328d0d8d57cbb8573167eb5a98079a9db30652e8c",
+  "fixture_sha256": "6db3a7e4c9e2c313d34838623e9dfd9e52e41b27148cdadc77d222e6c6a22380",
+  "parameters": 817285,
+  "court_coordinate_normalization": {
+    "identity": "isotropic_half_length",
+    "scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "position_unit": "m / scale_xyz_m",
+    "velocity_unit": "m/s / scale_xyz_m"
+  },
+  "dataset_status": "not_used; analytic tensors only; synthetic rally generator remains a separate gate",
+  "updates": 100,
+  "elapsed_seconds": 12.519750058010686,
+  "peak_allocated_bytes": null,
+  "peak_reserved_bytes": null,
+  "checkpoint_bytes": 3291460,
+  "checkpoint_sha256": "c8f4e9277819108c160a290aa254819977919ad3834dc62dc82aebed1b4a4319"
+}
