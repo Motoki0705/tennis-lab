@@ -1,4 +1,4 @@
-<!-- knowledge-review: 85cdf9f94a186a23963f757e345cf1ce85d32dcb57e95ea81e3575d0d7d81358 on 2026-10-01 -->
+<!-- knowledge-review: 5a16d0cacd7af6bffcd2030672ee8474096e81d97b60254c95a6bb1ac4225a92 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -294,6 +294,17 @@ import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0�
 Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあり、chatのcourt欠損も続く。保存成功を文脈品質の保証としない。
 次は同一identityを凍結して残り326clipを生成し、全被覆だけを統合する。timeout/品質の悪いclipも黙って除外しない。
 文脈の採否は同一母数のfull/ablationで判断し、現時点のdeploy判断は変えない。
+
+### 3D Ball Refiner
+
+[確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
+Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
+小さい計算時間で得たため、次の合成生成用の暫定実装に選ぶ。2D標本化→三角測量→KDEのCは
+多峰条件でNLLが悪く、粒子増量だけでは解消しなかった。presenceの周辺化はcamera間独立と
+不在cameraの幾何を捨てる近似で、low presenceの100% coverageを較正改善とは呼ばない。
+狭い既知prior・小Kの結果であり、実Meiji精度や3D diffusionの優位は未検証。
+次は240Hz物理原系列から60000/1001Hzへ再標本化するCPU smokeと、広いcourt prior・
+長欠損・camera摂動での健全性を確認し、#935較正後に劣化を固定する。
 
 ### Court Detection
 

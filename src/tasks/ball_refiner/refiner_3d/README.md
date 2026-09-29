@@ -26,32 +26,26 @@ video_002/clip_010、cam0/1/2（1920×1080）。
 ## 59.94fpsデータ生成計画
 
 実装前の計画であり、生成済みdatasetではない。
+数値・split・校正SHA・劣化・保存fieldの正本は
+[dataset_plan.yaml](dataset_plan.yaml)。これは計画用configで、まだ生成CLIの入力ではない。
 
-- BLCSの `RallySimulator` をCPUで使い、`sim_fps=output_fps=240`、
-  `physics.dt=1/240` として元のsimulation時系列とイベントindexを得る。
-  現行実装は整数strideなので `output_fps=59.94` へ直接変えてはいけない。
-  出力時刻を正確に `n*1001/60000` 秒として線形補間し、イベントは元の秒を
-  保存して最近傍frameへ対応させる。打球/バウンスをまたぐ速度差分は物理lossから除外する。
-- cameraは既存のcourt校正からK/R/tとsource画像サイズだけを取り出す。
-  実2D/3Dボール座標は読まない。clip/camera、校正のSHA256、近似校正で歪み補正が
-  ないことをmanifestに残す。旧geometry replayのsplitを流用しない。
-  #934/#935に合わせ、video_002=train、video_000=val、video_001=test。
-- scene単位でcamera中心の標準偏差0.15m、軸角0.5度、焦点距離1%、主点2pxの
-  摂動を固定する。最初は真の投影と三角測量に同じ摂動cameraを使用。
-  校正誤差を加える別条件では真/推定cameraを分けて保存する。
-- 合成3D→source pixel投影→2D refiner相当の `BallGMM2D` →
+- BLCSの `RallySimulator` から240Hz原系列とイベントindexを得て、
+  出力を正確な60000/1001Hz時刻へ線形補間する。現行実装の整数strideへ
+  小数fpsを直接渡さない。イベント秒を保持して最近傍frameへ対応させ、
+  打球/バウンスをまたぐ速度差分を物理lossから除外する。
+- cameraはcourt校正のK/R/tとsource画像サイズだけを使用する。実2D/3D球座標は
+  読まない。旧geometry replayのsplitを流用せず、#934/#935の録画splitを維持する。
+  scene内で同じ摂動cameraを真投影と推定に使うclean条件を先に確認し、
+  校正誤差の条件は真/推定cameraを分けて保存する。
+- 合成3D→source pixel投影→refiner相当の `BallGMM2D` →
   `pixel_moments()` →確率的三角測量の順を必須とする。
-  観測/短欠損/全camera長欠損（1,4,8,16,32,64frame）、
-  代替位置仮説、相関を持つ共分散、時間相関した誤差を作る。
-  遮蔽だけでpresenceを下げない。画面外と遮蔽を別maskで保存する。
-  GMMの較正パラメータは#935 train/valから後で固定し、仮定した劣化を実測とは呼ばない。
-- 保存物は秒、3D教師、イベント秒/frame、欠損mask、camera/sourceサイズ、
-  全2D GMM＋presence、全3D GMM、生成seed/設定/hash。
-  camera集合の不在項も落とさず保存する。動画・RGBは生成しない。
-- 最初のCPU smokeは各split 4 rally。次にtrain/val/test=512/64/64 rally、
-  最大512frame、K=3、3cameraを候補とする。全64個の3D成分をfloat32で保存すると
-  上限約1.1GB（2D・教師・metadata込みは1.5GBを計画上限）で、実測を報告する。
-  sceneごとのseed分割、変長padding mask、重複windowのsplit禁止を検証する。
+  短欠損・全camera長欠損・持続する代替位置・相関共分散・時間相関誤差を含める。
+  遮蔽だけでpresenceを下げず、画面外と遮蔽を別maskにする。
+  劣化パラメータは#935 train/valから後で固定し、仮定した劣化を実測とは呼ばない。
+- CPU smoke後にpilotを生成する。全camera集合の不在項と全3D成分を保存する。
+  動画/RGBは生成しない。scene単位のseed/split、変長padding、重複窓のsplit禁止、
+  イベント補間境界、実際のframe数とbytesを検証する。
+  今回はcamera fixtureだけを生成し、rally/datasetの生成は未実施。
 
 ## 次のGPU実験（未承認・未投入）
 
