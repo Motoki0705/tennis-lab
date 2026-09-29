@@ -93,12 +93,17 @@ def render(report: Path) -> None:
                 adjacent = evidence['adjacent_units']
                 frames = start + np.round(np.arange(80) * records[0]['video']['fps'] / 20).astype(int)
                 cases.append({'source': source, 'clip': clip, 'source_frames': frames.tolist()})
+                for capture in captures:
+                    capture.set(cv2.CAP_PROP_POS_FRAMES, int(frames[0]))
+                next_frame = int(frames[0])
                 try:
                     for n, frame in enumerate(frames):
                         canvas: NDArray[np.uint8] = np.zeros((720, 1920, 3), np.uint8)
                         unit = min(adjacent, key=lambda u: abs(u['frame'] - frame))
                         for k, capture in enumerate(captures):
-                            capture.set(cv2.CAP_PROP_POS_FRAMES, int(frame))
+                            for _ in range(next_frame, int(frame)):
+                                if not capture.grab():
+                                    raise ValueError('Dev video skipped-frame decode failed')
                             ok, image = capture.read()
                             if not ok:
                                 raise ValueError('Dev video decode failed')
@@ -130,6 +135,7 @@ def render(report: Path) -> None:
                         for line, text in enumerate(lines):
                             text_at(canvas, text, 1290, 388 + line * 31, .49)
                         writer.write(canvas)
+                        next_frame = int(frame) + 1
                         if n == 35:
                             preview = report / f'adjacent_preview_{len(cases)}.jpg'
                             if not cv2.imwrite(str(preview), canvas):
