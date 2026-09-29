@@ -81,3 +81,32 @@ def test_reader_rejects_false_convergence_and_modified_calibration(mutation):
         arrays['gmm2d_presence_logits'][0, 1] = -4
     with pytest.raises(ValueError):
         _validate_v2(arrays, record, plan, components)
+
+
+def test_relative_calibration_paths_resolve_inside_explicit_project_root(tmp_path):
+    import hashlib
+
+    from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import load_plan
+    from src.utils.configuration import PathResolver, RuntimePathRoots
+
+    values = yaml.safe_load((PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml').read_text())
+    for i, source in enumerate(values['geometry']['sources']):
+        # Loading a plan verifies source identity; camera decoding has its own tests.
+        camera = tmp_path / f'camera-{i}.json'
+        camera.write_text('{}')
+        source['path'] = str(camera)
+        source['sha256'] = hashlib.sha256(camera.read_bytes()).hexdigest()
+    path = tmp_path / 'plan.yaml'
+    path.write_text(yaml.safe_dump(values))
+    resolver = PathResolver(RuntimePathRoots(project_root=PROJECT_ROOT, data_root=tmp_path,
+        artifact_root=tmp_path, output_root=tmp_path, checkpoint_root=tmp_path,
+        cache_root=tmp_path, external_asset_root=tmp_path))
+    plan = load_plan(path, resolver)
+    assert plan.calibration.components == 4
+    assert len(plan.camera_paths) == 3
+    assert PROJECT_ROOT / values['degradation']['calibration']['bank'] in plan.input_paths
+    plan.verify_inputs()
+    values['geometry']['sources'][0]['camera_keys'].reverse()
+    path.write_text(yaml.safe_dump(values))
+    with pytest.raises(ValueError, match='Camera order'):
+        load_plan(path, resolver)
