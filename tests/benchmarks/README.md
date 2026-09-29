@@ -178,3 +178,6 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   全24 raw archiveのhash・全12 camera-clip・入力/校正/未見予約の一致を検証する。
   `--phase tracks --max-cameras 1`は同じscore gateなしBoT-SORTを再生し、camera境界の完了hashから再開する。
   旧ROI後COCOを補完や代用に使わない。
+  `--phase select --repo <元repo> --max-clips 1` はcameraごとにCLIP/選別を保存し、1 source×clipずつ進める。
+  `--phase report` は全7×4結果のhash・全選択断片の観測保持・上限を検証して、camera×近遠・identity・wideの表を書く。
+  領域/CLIP/fragment/handoffの定義は[`court_linking.py`](../../src/tasks/person_tracking/court_linking.py)を正本とする。

@@ -198,3 +198,25 @@ def test_ambiguous_predecessor_does_not_block_unique_successor_of_a_long_fragmen
     selected, diag = select_linked_candidates(tracks, 30., LinkingConfig(), FootpointConfig())
     assert selected[3].sum() == 20
     assert any(set(g['track_ids']) == {2, 3} and g['selected'] for g in diag['groups'])
+
+
+def test_association_timeline_joins_handoff_but_preserves_original_selection() -> None:
+    from src.tasks.person_tracking.linked_timeline import linked_timeline
+    seen: np.ndarray = np.zeros((2, 80), bool)
+    seen[0, :15] = seen[1, 12:30] = True
+    tracks = camera_tracks([(0., 5.)] * 2, seen)
+    selected, diag = select_linked_candidates(tracks, 30., LinkingConfig(), FootpointConfig())
+    timeline, origins = linked_timeline(tracks, diag)
+    assert selected.sum() == 33 and timeline.observed.sum() == 30
+    assert timeline.observed.shape == (1, 80)
+    assert (origins[0, :15] == 0).all() and (origins[0, 15:30] == 1).all()
+    assert (origins[0, 30:] == -1).all()
+
+
+def test_wide_reference_denominator_comes_from_labels_even_when_untracked() -> None:
+    tracks = camera_tracks([(6., 5.)], np.array([[True, False]]))
+    labels = ClipLabels('video_000/clip_000', 2, (LabelledPerson('A', 'player', ''),),
+        {'cam0': CameraLabels(np.array([0, 1], np.int64), np.array([0, 0], np.int64), tracks.boxes_xyxy[0])}, {})
+    totals = aggregate_units(selection_units(tracks, tracks.observed, labels))
+    assert totals['player_wide_units'] == 2
+    assert totals['player_wide_tracked_03'] == totals['player_wide_kept_03'] == 1

@@ -14,7 +14,12 @@ import numpy as np
 from src.submodules.models import PersonDetectionResult
 from src.tasks.player_association.association.associate import CameraTracks
 from src.tasks.player_association.evaluation.labels import ClipLabels
+from src.tasks.player_association.geometry.footpoints import (
+    FootpointConfig,
+    ground_footpoints,
+)
 from src.tasks.player_detection.evaluation.far_player import unit_rows
+from src.utils.schema.court import HALF_DOUBLES_WIDTH
 
 # Explicit strata from the reviewed #933 YAML (including its auxiliary keys).
 # These are used only for scoring, never for selecting a predicted track.
@@ -45,10 +50,15 @@ def selection_units(tracks: CameraTracks, selected: np.ndarray, labels: ClipLabe
         all_rows, selected_rows = rows(active, frame), rows(accepted, frame)
         for before, after in zip(all_rows, selected_rows, strict=True):
             person = labels.people[before['person']]
+            reference_xy, reference_valid = ground_footpoints(np.asarray(before['old_box']), np.asarray(True),
+                tracks.camera, tracks.image_size[1], FootpointConfig())
             output.append({'clip': labels.clip_id, 'camera': camera, 'frame': frame, 'person': person.person_id,
                 'role': person.role, 'kind': 'player' if person.role == 'player' else NONPLAYER_KIND[(labels.clip_id, person.person_id)],
                 'near_far': before['near_far'], 'tracked_05': before['matched'], 'selected_05': after['matched'],
-                'tracked_03': before['matched_iou03'], 'selected_03': after['matched_iou03']})
+                'tracked_03': before['matched_iou03'], 'selected_03': after['matched_iou03'],
+                'reference_ground_valid': bool(reference_valid),
+                'reference_x_m': float(reference_xy[0]) if reference_valid else None,
+                'reference_wide': bool(abs(reference_xy[0]) > HALF_DOUBLES_WIDTH) if reference_valid else None})
     return output
 
 
@@ -76,4 +86,10 @@ def aggregate_units(units: list[dict[str, Any]]) -> dict[str, Any]:
         result[f'{camera}_far_reference_frames'] = len(far)
         result[f'{camera}_far_covered_03'] = sum(u['selected_03'] for u in far)
         result[f'{camera}_far_covered_05'] = sum(u['selected_05'] for u in far)
+    wide = [u for u in units if u['role'] == 'player' and u.get('reference_wide') is True]
+    result['player_wide_units'] = len(wide)
+    result['player_ground_unknown_units'] = sum(u['role'] == 'player' and not u.get('reference_ground_valid', False) for u in units)
+    for iou in ('03', '05'):
+        result[f'player_wide_tracked_{iou}'] = sum(u[f'tracked_{iou}'] for u in wide)
+        result[f'player_wide_kept_{iou}'] = sum(u[f'selected_{iou}'] for u in wide)
     return result

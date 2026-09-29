@@ -13,6 +13,9 @@
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
 | `court_linking.py` | 開発用選別。足元連続性とCLIPで断片を連結して滞在を集約する。領域はmembership判定にだけ使い、選択済み断片の全実観測を保持する。定義・限界はmodule docstring |
 | `selection_diagnosis.py` | 選択されたtrackの人物unit構成と足元座標から、人物混在と領域の誤採用を分離する事後診断。ラベルを選別へ渡さない |
+| `linked_timeline.py` | 選別で保持した全実観測から既存v3対応用の連結group軸を作る。handoff重複の1box化と元rowを明示 |
+| `appearance_cache.py` | 全raw trackで遮蔽検査し、coreに入るtrackのCLIP cropをCPU計算。完全一致する入力/hashだけ再利用 |
+| `selection_burden.py` | 同じcamera×近遠層でraw/選別trackの観測数・累計ID数・frame負荷を集計 |
 | `selection_metrics.py` | #933の人物/frame単位とidentity単位による選別評価。非検出と、追跡後の非選手除外を分ける |
 | `court_consistency.py` | camera間対応後、同じ予測identityの足元がz=0上でどれだけ一致するかを確認。新しい閾値やidentity補完は加えない |
 
