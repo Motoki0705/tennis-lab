@@ -54,6 +54,10 @@ def _masked_mean(values: Tensor, mask: Tensor) -> Tensor:
 
 
 def robust_reprojection(positions_m: Tensor, batch: TrainingBatch) -> Tensor:
+    weight = batch.presence_2d * (~batch.condition.padding_mask)[:, None]
+    selected = weight > 0
+    if not bool(selected.any()):
+        return positions_m.sum() * 0
     camera = batch.camera_matrices
     q = torch.einsum("bvij,btj->bvti", camera[..., :3], positions_m) + camera[..., 3][:, :, None]
     depth = q[..., 2]
@@ -61,16 +65,16 @@ def robust_reprojection(positions_m: Tensor, batch: TrainingBatch) -> Tensor:
     # Undefined projections are NOT dropped: they receive a depth penalty.
     denominator = torch.where(front, depth, torch.ones_like(depth))
     pixel = q[..., :2] / denominator[..., None]
-    delta = (pixel[..., None, :] - batch.means_2d_px)[..., None]
-    chol = torch.linalg.cholesky(batch.covariance_2d_px2)
+    # Padding/absent observations need no artificial SPD matrix or mixture mass.
+    delta = (pixel[selected][:, None, :] - batch.means_2d_px[selected])[..., None]
+    chol = torch.linalg.cholesky(batch.covariance_2d_px2[selected])
     white = torch.linalg.solve_triangular(chol, delta, upper=False)
     mahalanobis = white.square().sum(dim=(-1, -2))
     # 2D Student-t (nu=4), mixed using every #935 component weight.
     log_density = -math.log(2 * math.pi) - chol.diagonal(dim1=-2, dim2=-1).log().sum(-1) - 3 * torch.log1p(mahalanobis / 4)
-    robust_nll = -torch.logsumexp(batch.weights_2d.log() + log_density, dim=-1)
-    penalty = 10 * F.relu(1e-3 - depth)
-    weight = batch.presence_2d * (~batch.condition.padding_mask)[:, None]
-    return _masked_mean(robust_nll + penalty, weight)
+    robust_nll = -torch.logsumexp(batch.weights_2d[selected].log() + log_density, dim=-1)
+    penalty = 10 * F.relu(1e-3 - depth[selected])
+    return _masked_mean(robust_nll + penalty, weight[selected])
 
 
 def gravity_residual(positions_m: Tensor, batch: TrainingBatch) -> Tensor:
