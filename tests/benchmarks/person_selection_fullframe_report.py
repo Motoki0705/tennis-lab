@@ -9,6 +9,8 @@ from typing import Any
 import numpy as np
 
 from src.tasks.person_tracking.selection_metrics import aggregate_units
+from src.tasks.player_association.evaluation.labels import ClipLabels
+from src.tasks.player_association.evaluation.metrics import CameraPrediction, evaluate
 from src.tasks.player_detection.evaluation.fullframe_sources import SOURCES
 from src.tasks.player_detection.evaluation.person_sources import DEV_CLIPS, write_csv
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
@@ -22,6 +24,20 @@ def table(headers: list[str], rows: list[list[Any]]) -> str:
 
 def ratio(row: dict[str, Any], numerator: str, denominator: str) -> str:
     return f"{row[numerator]}/{row[denominator]}"
+
+
+def association_metrics(value: dict[str, Any], labels: ClipLabels) -> dict[str, Any]:
+    if value['association']['status'] != 'ok':
+        return {}  # no predicted cross-camera IDs, not a guessed negative result
+    predictions = {}
+    for camera, record in value['cameras'].items():
+        with np.load(record['path'], allow_pickle=False) as a, np.load(record['identities']['path'], allow_pickle=False) as b:
+            predictions[camera] = CameraPrediction(a['track_ids'], a['boxes'], a['observed'], b['player_ids'])
+    result = {}
+    for iou in (.3, .5):
+        metrics = evaluate(labels, predictions, min_iou=iou)
+        result[str(iou)] = {k: metrics[k] for k in ('pairs', 'group_accuracy', 'coverage', 'failed_frame_runs')}
+    return result
 
 
 def summarize(report: Path) -> None:
@@ -66,8 +82,13 @@ def summarize(report: Path) -> None:
             for stage in sorted({u['stage'] for u in units}):
                 clips.append({'source': name, 'clip': clip, 'stage': stage, **aggregate_units([u for u in units if u['stage'] == stage])})
             burden.extend({'source': name, 'clip': clip, **row} for row in value['burden'])
+            labels_path = next(r['label_path'] for r in sources['inputs'] if r['clip'] == clip)
+            cross_metrics = association_metrics(value, ClipLabels.load(Path(labels_path)))
             associations.append({'source': name, 'clip': clip, 'status': value['association']['status'], 'reason': value['association'].get('reason', ''),
-                'camera_groups': {cam: record['linked']['selected_groups'] for cam, record in value['cameras'].items()}})
+                'camera_groups': {cam: record['linked']['selected_groups'] for cam, record in value['cameras'].items()},
+                'pair_f1_03': cross_metrics['0.3']['pairs']['f1'] if cross_metrics else None,
+                'pair_f1_05': cross_metrics['0.5']['pairs']['f1'] if cross_metrics else None,
+                'metrics': cross_metrics})
         for stage in sorted({u['stage'] for u in all_units}):
             rows = [u for u in all_units if u['stage'] == stage]
             totals.append({'source': name, 'stage': stage, 'clips': len({u['clip'] for u in rows}), **aggregate_units(rows)})
@@ -124,8 +145,11 @@ def summarize(report: Path) -> None:
         [[r['source'], r['camera'], r['near_far'], r['persons'], f"{r['persons_per_frame']:.3f}", r['tracks_total'],
           f"{r['tracks_per_frame']:.3f}", r['max_tracks_per_frame'], f"{r['selected_per_frame']:.3f}"]
          for r in population if (r['camera']=='all' and r['near_far']=='all') or (r['camera']!='all' and r['near_far'] in ('near','far','unknown'))]), '',
-        '## 既存CLIPのcamera間対応', '', table(['source','clip','状態','理由','camera別候補group'],
-        [[r['source'], r['clip'], r['status'], r['reason'], r['camera_groups']] for r in associations]), '',
+        '## 既存CLIPのcamera間対応', '', table(['source','clip','状態','理由','camera別候補group','pair F1 IoU .3','.5'],
+        [[r['source'], r['clip'], r['status'], r['reason'], r['camera_groups'],
+          f"{r['pair_f1_03']:.4f}" if r['pair_f1_03'] is not None else '—',
+          f"{r['pair_f1_05']:.4f}" if r['pair_f1_05'] is not None else '—'] for r in associations]), '',
+        'pair F1は既存#933指標で、追跡boxに照合できたunit間だけの条件付き指標。未追跡の選手unitは主表の保持分母には残るがpair F1には入らない。値が高くても観測取りこぼしや未決定clipを無視して良い意味ではない。', '',
         '成功clipだけの対応指標を全4clipの主表と同一視しない。sideは既存の注釈ballによる判定を固定した。最終方式・encoder比較、未見、全pipeline完走は未実施。pipeline既定・#937重み/閾値は変更していない。', '']
     (report / 'report.md').write_text('\n'.join(lines))
     print(json.dumps(primary, indent=2), flush=True)
