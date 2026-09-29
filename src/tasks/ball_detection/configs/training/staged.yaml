@@ -1,3 +1,7 @@
+defaults:
+  - _validation_candidates
+  - _self_
+
 # Training settings for the staged manual-optimization schedule (issue #579).
 trainer:
   max_epochs: 5
@@ -50,9 +54,9 @@ allow_tf32: true
 checkpoint:
   enabled: true
   filename: "staged-{epoch:02d}"
-  monitor: val/loss
-  mode: min
-  save_top_k: 1
+  monitor: val/candidate_recall_at_8_20px
+  mode: max
+  save_top_k: -1
   save_last: true
 
 early_stopping:

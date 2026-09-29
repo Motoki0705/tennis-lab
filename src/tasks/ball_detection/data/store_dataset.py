@@ -16,7 +16,11 @@ from src.tasks.ball_detection.data.dataset import (
     WindowFrame,
     WindowFrames,
 )
-from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
+from src.tasks.ball_detection.data.store import (
+    POINT_KIND_CODES,
+    BallFrameStore,
+    ClipRecord,
+)
 from src.tasks.ball_detection.data.supervision import FrameSupervision
 
 if TYPE_CHECKING:
@@ -46,15 +50,18 @@ def select_store_windows(
     *,
     length: int,
     stride: int,
+    validation: bool = False,
 ) -> WindowSelection:
     """Every ``stride``-th window of ``length`` frames that has a supervised frame.
 
-    A clip shorter than ``length`` yields no window, and a window whose frames
-    are all unsupervised carries no training signal; both are counted in
-    ``stats`` so a selection never shrinks silently.
+    Training/test skip short clips and wholly unsupervised windows, recording
+    both in stats. Validation includes label-independent windows and a real
+    tail backfill, and rejects short clips or strides that leave gaps.
     """
     if length <= 0 or stride <= 0:
         raise ValueError("Window length and stride must be positive")
+    if validation and stride > length:
+        raise ValueError("Validation stride cannot leave gaps between windows")
     windows: list[StoreWindow] = []
     stats: dict[str, dict[str, int]] = {}
     for clip in clips:
@@ -75,14 +82,20 @@ def select_store_windows(
         counts["frames"] += int(rows.size)
         counts["supervised_frames"] += int(supervised.sum())
         if clip.frame_count < length:
+            if validation:
+                raise ValueError(f"{clip.clip_id}: validation clip is shorter than the model window")
             counts["clips_shorter_than_window"] += 1
             continue
         # Number of supervised frames in each window [start, start + length).
         cumulative = np.concatenate([[0], np.cumsum(supervised, dtype=np.int64)])
-        for start in range(0, clip.frame_count - length + 1, stride):
+        starts = list(range(0, clip.frame_count - length + 1, stride))
+        if validation and starts[-1] != clip.frame_count - length:
+            starts.append(clip.frame_count - length)
+        for start in starts:
             if cumulative[start + length] - cumulative[start] == 0:
                 counts["windows_without_supervision"] += 1
-                continue
+                if not validation:
+                    continue
             windows.append(StoreWindow(clip=clip.index, start=start))
             counts["windows"] += 1
     return WindowSelection(windows=tuple(windows), stats=stats)
@@ -134,12 +147,23 @@ class BallStoreDataset(BallDetectionDataset):
                 xy = self.store.instances["xy"][start:stop]
                 positive = self.supervision.positive[start:stop]
                 points = tuple((float(x), float(y)) for x, y in xy[positive])
-            frames.append(WindowFrame(self.store.read_bgr(row), points, supervised))
+            instances = self.store.instances_of(row)
+            observed = (
+                bool(self.store.frames["annotated"][row])
+                and len(instances.point_kind) == 1
+                and instances.point_kind[0] == POINT_KIND_CODES["observed"]
+            )
+            observed_xy = (float(instances.xy[0, 0]), float(instances.xy[0, 1])) if observed else None
+            frames.append(WindowFrame(self.store.read_bgr(row), points, supervised, row, observed_xy))
         return WindowFrames(
             frames=tuple(frames),
             original_size=(clip.width, clip.height),
             window_id=f"{clip.clip_id}:{window.start}",
             source=clip.source,
+            namespace="store",
+            camera=clip.camera_id if clip.camera_id is not None else "",
+            source_scale=clip.scale,
+            window_start=first,
         )
 
 
