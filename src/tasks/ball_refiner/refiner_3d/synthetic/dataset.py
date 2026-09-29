@@ -26,6 +26,8 @@ class SyntheticDataset:
         self.manifest = json.loads((directory / "manifest.json").read_text())
         if self.manifest["schema"] not in ("ball_refiner_3d.synthetic.v1", "ball_refiner_3d.synthetic.v2") or self.manifest["status"] != "complete":
             raise ValueError("Require a complete synthetic.v1/v2 dataset")
+        if self.manifest["schema"].endswith(".v2") and self.manifest["plan"]["schema_version"] != 2:
+            raise ValueError("Dataset/plan schema mismatch")
         self.records = self.manifest["rallies"]
         ids = [record["rally_id"] for record in self.records]
         if len(set(ids)) != len(ids) or any(not re.fullmatch(r"(train|val|test)-[0-9]{5}", name) for name in ids):
@@ -65,6 +67,8 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
     )
     k = plan["degradation"]["components_per_camera"]
     components = (k + 1) ** 3
+    if record["components_per_frame"] != components:
+        raise ValueError("Component count metadata mismatch")
     if distribution.means.shape != (3, t, k, 2):
         raise ValueError("Wrong camera/time/component axes")
     covariance, weights = arrays["gmm3d_covariance_m2"], arrays["gmm3d_weights"]
