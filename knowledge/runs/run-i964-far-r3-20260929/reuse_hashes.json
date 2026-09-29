@@ -1,0 +1,235 @@
+{
+  "progress_sha256": "ee14cadca96d0ff8ceea27b01febf78323c885027f642bdfd9a37a37f8c4dce6",
+  "archives": [
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_000/clip_000/cam0",
+      "detections": 30073,
+      "frames": 1010,
+      "ms_per_frame": 560.1925424332408,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_000/clip_000/cam0.npz",
+      "sha256": "958c02889baf69c9001be762693b670617f7a44ce19d96a161e331a134b17d37",
+      "verified_sha256": "958c02889baf69c9001be762693b670617f7a44ce19d96a161e331a134b17d37"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_000/clip_000/cam1",
+      "detections": 3721,
+      "frames": 1010,
+      "ms_per_frame": 560.383870232606,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_000/clip_000/cam1.npz",
+      "sha256": "45d14df6bedb0ab5102d4bdf9e9a876d4ab7c5733f89f703bba98e9d90e5d6c4",
+      "verified_sha256": "45d14df6bedb0ab5102d4bdf9e9a876d4ab7c5733f89f703bba98e9d90e5d6c4"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_000/clip_000/cam2",
+      "detections": 3924,
+      "frames": 1010,
+      "ms_per_frame": 560.1983354840713,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_000/clip_000/cam2.npz",
+      "sha256": "c29b4c4c2779bd2d06fee31b3671bc867b0b14d7def8a1c4a401c74569aa9908",
+      "verified_sha256": "c29b4c4c2779bd2d06fee31b3671bc867b0b14d7def8a1c4a401c74569aa9908"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_000/clip_007/cam0",
+      "detections": 7901,
+      "frames": 652,
+      "ms_per_frame": 562.6571679087334,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_000/clip_007/cam0.npz",
+      "sha256": "b0c24d5272439829e8ce45ea2819643c62dc56296ce1f018ed9730ab75db0ea2",
+      "verified_sha256": "b0c24d5272439829e8ce45ea2819643c62dc56296ce1f018ed9730ab75db0ea2"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_000/clip_007/cam1",
+      "detections": 2958,
+      "frames": 652,
+      "ms_per_frame": 570.586848473912,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_000/clip_007/cam1.npz",
+      "sha256": "a3ae96599074fdae9b803acb95ce82263d08738273e546636b5d6ccbe401e51b",
+      "verified_sha256": "a3ae96599074fdae9b803acb95ce82263d08738273e546636b5d6ccbe401e51b"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_000/clip_007/cam2",
+      "detections": 3994,
+      "frames": 652,
+      "ms_per_frame": 576.1553975449057,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_000/clip_007/cam2.npz",
+      "sha256": "0110a5760ff3ea4c42f1968510ad8119ceca0ad895e7762c23e47d9f2f0b4a7c",
+      "verified_sha256": "0110a5760ff3ea4c42f1968510ad8119ceca0ad895e7762c23e47d9f2f0b4a7c"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_001/clip_001/cam0",
+      "detections": 22404,
+      "frames": 1300,
+      "ms_per_frame": 574.5380728004966,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_001/clip_001/cam0.npz",
+      "sha256": "2fafa5771c92522bcf42113034e1e70156ba9eb15e6115dd8ab52d2cbd0252c4",
+      "verified_sha256": "2fafa5771c92522bcf42113034e1e70156ba9eb15e6115dd8ab52d2cbd0252c4"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_001/clip_001/cam1",
+      "detections": 7200,
+      "frames": 1300,
+      "ms_per_frame": 579.1302230688653,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_001/clip_001/cam1.npz",
+      "sha256": "98f7e19a82d27774be70512203ee68f1f4e4ec889138f39e09a8ebadcc111498",
+      "verified_sha256": "98f7e19a82d27774be70512203ee68f1f4e4ec889138f39e09a8ebadcc111498"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_001/clip_001/cam2",
+      "detections": 13720,
+      "frames": 1300,
+      "ms_per_frame": 578.4976757586433,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_001/clip_001/cam2.npz",
+      "sha256": "97968ebf0cf73286692cffb86fdb2b534399898207b2bfb753941c9ae40ab1eb",
+      "verified_sha256": "97968ebf0cf73286692cffb86fdb2b534399898207b2bfb753941c9ae40ab1eb"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_002/clip_013/cam0",
+      "detections": 16747,
+      "frames": 535,
+      "ms_per_frame": 572.9608879080826,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_002/clip_013/cam0.npz",
+      "sha256": "63bf143b13eb7c90a90e6e247c2b4716c7207e69e66b4d0a32337fad8da4f70e",
+      "verified_sha256": "63bf143b13eb7c90a90e6e247c2b4716c7207e69e66b4d0a32337fad8da4f70e"
+    },
+    {
+      "variant": "ft_1080",
+      "camera_clip": "video_002/clip_013/cam1",
+      "detections": 1275,
+      "frames": 535,
+      "ms_per_frame": 573.0570363939444,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_1080/video_002/clip_013/cam1.npz",
+      "sha256": "ada0fb80f60a8377599c2aaae130e0ae2a1d47a6dad4d48ace92a1d912e4387c",
+      "verified_sha256": "ada0fb80f60a8377599c2aaae130e0ae2a1d47a6dad4d48ace92a1d912e4387c"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_000/clip_000/cam0",
+      "detections": 7067,
+      "frames": 1010,
+      "ms_per_frame": 290.13974868616384,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_000/clip_000/cam0.npz",
+      "sha256": "6d8aaa232026d47c6e6c269001b94a487fa5d271bd5e454561a41025203d656f",
+      "verified_sha256": "6d8aaa232026d47c6e6c269001b94a487fa5d271bd5e454561a41025203d656f"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_000/clip_000/cam1",
+      "detections": 2992,
+      "frames": 1010,
+      "ms_per_frame": 288.52463624760566,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_000/clip_000/cam1.npz",
+      "sha256": "bc93d49474e08140560871ae8b6a3e28f7220ce3d3b73482b5dcc03f64bc58f7",
+      "verified_sha256": "bc93d49474e08140560871ae8b6a3e28f7220ce3d3b73482b5dcc03f64bc58f7"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_000/clip_000/cam2",
+      "detections": 3635,
+      "frames": 1010,
+      "ms_per_frame": 294.74697661370567,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_000/clip_000/cam2.npz",
+      "sha256": "fb53861f4316071a6d5e2622417c31d137097b82dc0ec667744ffe7d65b40f13",
+      "verified_sha256": "fb53861f4316071a6d5e2622417c31d137097b82dc0ec667744ffe7d65b40f13"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_000/clip_007/cam0",
+      "detections": 3657,
+      "frames": 652,
+      "ms_per_frame": 292.13946925274786,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_000/clip_007/cam0.npz",
+      "sha256": "be33fe78ace44601f2680c9631de7a4ac4535a2dfe2b3eeddd216aa540c9e79b",
+      "verified_sha256": "be33fe78ace44601f2680c9631de7a4ac4535a2dfe2b3eeddd216aa540c9e79b"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_000/clip_007/cam1",
+      "detections": 2277,
+      "frames": 652,
+      "ms_per_frame": 292.3143645602977,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_000/clip_007/cam1.npz",
+      "sha256": "17486e751e76db5d6ee4691d53fabaca5e384ddfba36af7d59abbe5a5496386e",
+      "verified_sha256": "17486e751e76db5d6ee4691d53fabaca5e384ddfba36af7d59abbe5a5496386e"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_000/clip_007/cam2",
+      "detections": 3308,
+      "frames": 652,
+      "ms_per_frame": 291.970287966117,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_000/clip_007/cam2.npz",
+      "sha256": "fde57bd7fa27fac255562de4153680bc66e8cf7b16b4acc3483c707255732763",
+      "verified_sha256": "fde57bd7fa27fac255562de4153680bc66e8cf7b16b4acc3483c707255732763"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_001/clip_001/cam0",
+      "detections": 11997,
+      "frames": 1300,
+      "ms_per_frame": 291.9047332855497,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_001/clip_001/cam0.npz",
+      "sha256": "8ce3fa25ffb2fdf000e1ae825f66fa6f9596e33950058398a8da3cfae5794298",
+      "verified_sha256": "8ce3fa25ffb2fdf000e1ae825f66fa6f9596e33950058398a8da3cfae5794298"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_001/clip_001/cam1",
+      "detections": 5268,
+      "frames": 1300,
+      "ms_per_frame": 291.1275925464445,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_001/clip_001/cam1.npz",
+      "sha256": "789d03880a1ae561c40c76c2cdd043ec372f88b09c1750219560781a85ccd86c",
+      "verified_sha256": "789d03880a1ae561c40c76c2cdd043ec372f88b09c1750219560781a85ccd86c"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_001/clip_001/cam2",
+      "detections": 12501,
+      "frames": 1300,
+      "ms_per_frame": 286.13510379563263,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_001/clip_001/cam2.npz",
+      "sha256": "6f31000aa083b014aab0d39001e51f179a0519b861694642727c4d5ab725dc7b",
+      "verified_sha256": "6f31000aa083b014aab0d39001e51f179a0519b861694642727c4d5ab725dc7b"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_002/clip_013/cam0",
+      "detections": 2200,
+      "frames": 535,
+      "ms_per_frame": 285.7613434586413,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_002/clip_013/cam0.npz",
+      "sha256": "985e2f82affe6b13e1c1051c8cf004d82c0209d3b14cec7bdd4300ceb3efd7af",
+      "verified_sha256": "985e2f82affe6b13e1c1051c8cf004d82c0209d3b14cec7bdd4300ceb3efd7af"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_002/clip_013/cam1",
+      "detections": 1436,
+      "frames": 535,
+      "ms_per_frame": 285.2101370508382,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_002/clip_013/cam1.npz",
+      "sha256": "a2101901f0144e0060c438faec809ce5b8cb306c7c3fb699750308f40a2436a6",
+      "verified_sha256": "a2101901f0144e0060c438faec809ce5b8cb306c7c3fb699750308f40a2436a6"
+    },
+    {
+      "variant": "ft_base",
+      "camera_clip": "video_002/clip_013/cam2",
+      "detections": 1152,
+      "frames": 535,
+      "ms_per_frame": 285.5317301027668,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/raw/ft_base/video_002/clip_013/cam2.npz",
+      "sha256": "24b4ba16cd71c377ae6ed3ed59b7c4bb5516843c91ad7e107dee32ad7c3cb01c",
+      "verified_sha256": "24b4ba16cd71c377ae6ed3ed59b7c4bb5516843c91ad7e107dee32ad7c3cb01c"
+    }
+  ]
+}
