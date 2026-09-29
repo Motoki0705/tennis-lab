@@ -11,6 +11,7 @@ import src.submodules.models.vitpose.pose2d as pose2d_module
 from src.submodules.configuration import ViTPoseHeadConfig
 from src.submodules.models.tracker.common import TrackResult
 from src.submodules.models.vitpose.pose2d import (
+    Pose2DFrameSequenceRequest,
     Pose2DRequest,
     ViTPosePose2D,
 )
@@ -127,3 +128,42 @@ def test_vitpose_consumes_one_completed_track_and_returns_unidentified_coco17(
     assert set(vars(request)) == {"video_path", "bbx_xys", "frame_indices"}
     assert request.frame_indices is None
     assert set(vars(result)) == {"keypoints"}
+
+
+def test_vitpose_frame_sequence_shares_udp_and_batches_multiple_people(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Real crop and UDP paths, deterministic heatmap head; no video or weights.
+    class PeakPose(torch.nn.Module):
+        def forward(self, images: torch.Tensor) -> torch.Tensor:
+            result = torch.zeros(len(images), 17, 64, 48)
+            result[:, :, 31, 23] = 0.8
+            return result
+
+    def no_video(*args, **kwargs):
+        raise AssertionError("An image request attempted video decoding")
+
+    monkeypatch.setattr(pose2d_module, "get_batch", no_video)
+    monkeypatch.setattr(pose2d_module, "iter_person_crops", no_video)
+    boxes = torch.tensor([[20., 24., 18.], [42., 24., 20.], [22., 24., 18.]])
+    indices = torch.tensor([0, 0, 2])
+    decoded: list[int] = []
+
+    def frames():
+        for index in range(5):
+            decoded.append(index)
+            yield index, np.full((48, 64, 3), 25 * index, np.uint8)
+
+    model = ViTPosePose2D(tmp_path / "absent.ckpt", device="cpu", flip_test=True,
+                         batch_size=2, head_config=_head_config())
+    model._pose, model._loaded = PeakPose(), True
+    result = model.predict(Pose2DFrameSequenceRequest(frames(), boxes, indices)).keypoints
+    assert result.shape == (3, 17, 3) and result.dtype == torch.float32
+    assert decoded == [0, 1, 2]
+    assert bool(torch.isfinite(result).all())
+    # Source-pixel decoding respects each person's box, including repeated IDs.
+    torch.testing.assert_close(result[2, :, :2] - result[0, :, :2], torch.tensor([2., 0.]).expand(17, 2))
+    assert bool((result[1, :, 0] > result[0, :, 0]).all())
+    model.batch_size = 1
+    other = model.predict(Pose2DFrameSequenceRequest(frames(), boxes, indices)).keypoints
+    torch.testing.assert_close(result, other, rtol=0, atol=0)
