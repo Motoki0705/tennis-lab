@@ -1,6 +1,6 @@
 # 3D Ball Refiner (#936)
 
-CPUでの入力分布の準備段階。モデル・pipeline接続は未実装。
+CPUでの入力分布・合成系列の生成を提供する。pipeline接続は未実装。
 要件の正本は [#936](https://github.com/Motoki0705/tennis-lab/issues/936)。
 2D契約は [親README](../README.md#2dモデルのapi) を参照する。
 
@@ -23,33 +23,43 @@ video_002/clip_010、cam0/1/2（1920×1080）。
 比較のCLIは `python -m src.tasks.ball_refiner.scripts.compare_triangulation`。
 `--fixture` と未使用の `--output` を絶対pathで明示し、CPU/native threadを1に制限する。
 
-## 59.94fpsデータ生成計画
+## 59.94fps合成系列の生成
 
-実装前の計画であり、生成済みdatasetではない。
-数値・split・校正SHA・劣化・保存fieldの正本は
-[dataset_plan.yaml](dataset_plan.yaml)。これは計画用configで、まだ生成CLIの入力ではない。
+設定の正本は [dataset_plan.yaml](dataset_plan.yaml)。
+`synthetic/` はBLCSの240Hz原系列を正確な60000/1001Hzへ線形補間し、
+合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 方式Aの順で生成する。
+全64成分とcamera集合、全共分散を保存し、点推定への置換はしない。
+数値は仮定した劣化で、#935の実出力に較正した値ではない。
 
-- BLCSの `RallySimulator` から240Hz原系列とイベントindexを得て、
-  出力を正確な60000/1001Hz時刻へ線形補間する。現行実装の整数strideへ
-  小数fpsを直接渡さない。イベント秒を保持して最近傍frameへ対応させ、
-  打球/バウンスをまたぐ速度差分を物理lossから除外する。
-- cameraはcourt校正のK/R/tとsource画像サイズだけを使用する。実2D/3D球座標は
-  読まない。旧geometry replayのsplitを流用せず、#934/#935の録画splitを維持する。
-  scene内で同じ摂動cameraを真投影と推定に使うclean条件を先に確認し、
-  校正誤差の条件は真/推定cameraを分けて保存する。
-- 合成3D→source pixel投影→refiner相当の `BallGMM2D` →
-  `pixel_moments()` →確率的三角測量の順を必須とする。
-  短欠損・全camera長欠損・持続する代替位置・相関共分散・時間相関誤差を含める。
-  遮蔽だけでpresenceを下げず、画面外と遮蔽を別maskにする。
-  劣化パラメータは#935 train/valから後で固定し、仮定した劣化を実測とは呼ばない。
-- CPU smoke後にpilotを生成する。全camera集合の不在項と全3D成分を保存する。
-  動画/RGBは生成しない。scene単位のseed/split、変長padding、重複窓のsplit禁止、
-  イベント補間境界、実際のframe数とbytesを検証する。
-  今回はcamera fixtureだけを生成し、rally/datasetの生成は未実施。
+`timebase.py` は実際に残ったshot区間のイベントだけを採用し、native frame/秒と
+最近傍frameを保持する。打球・bounceの±5frameとnet通過付近を物理lossから除外する。
+fence時刻を返さないsimulatorに対しては、fence近傍も保守的に除外する。
+`observations.py` は#934の録画splitを維持し、各sceneの摂動cameraを真/推定の双方に
+使うclean geometry条件を作る。真/推定行列は別fieldで保存する。
+校正誤差条件は未実装。実ボール座標や注釈は入力にしない。
 
-## 次のGPU実験（未承認・未投入）
+遮蔽はpresenceを下げず、分布を広げて代替位置の重みを変える。
+画面外は別maskと低presenceで表す。GMM headの範囲に合わせる明示的な画像境界clipを
+適用し、その成分数をmetadataへ保存する。短すぎるrally、solver失敗、非SPDは停止する。
+seedの引き直し、成分削除、jitter、自動resumeはしない。
 
-上のCPU smokeと#935の契約/較正確定後にqueueへ申請する。
+生成CLIは `python -m src.tasks.ball_refiner.scripts.generate_synthetic_3d`。
+`--project-root`（作業checkout）、`--data-root`（共有data）、
+`--plan`（上記YAML）、`--output`（新しいDATA内directory）を絶対pathで指定し、
+`--mode smoke` または `--mode pilot` を明示する。
+OMP/MKL/OPENBLASのthread数を1にして起動する。process数はYAMLの値で最大4。
+
+各rallyを可変長のNPZ+JSONで保存し、進捗manifestはatomicに更新する。
+timestamp/cameraはfloat64、軌道/GMMはfloat32、maskはbool。
+float32 export後もSPDと有限性を検査する。未完了/失敗は`complete`にしない。
+入力設定・校正・生成codeのSHA、全イベント、実frame/bytes、simulation/triangulation時間、
+process RSS、全量生成の線形予測をmanifestへ記録する。出力は上書きしない。
+RGB生成、実Meiji評価、pipeline統合はこの入口の範囲外。
+
+## 次のGPU実験
+
+run 2はCPU smokeとforward/backward成功後の100-update memory smokeだけが承認済み。
+本学習・較正・精度比較は別runで申請する。
 空間位置そのものをx0予測するflow matchingモデルと、同じbackboneの
 1-step回帰対照を作る。サンプル間の分散をuncertaintyとして出す。
 損失・評価・禁止事項はissueの要件をそのまま受入条件とする。
