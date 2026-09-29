@@ -83,6 +83,14 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   PYTHONPATH=. .venv/bin/python tests/benchmarks/court_side_clips.py --repo $R \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT
   ```
+- `player_detection_clips.py`: 標準pipelineのcourt ROI付き人物検出を、既定の選手重みと明示したCOCO重みで比較する（GPU、共有training queue経由）。
+  `--repo`・`--dataset`・`--labels-dir`（#944のMeijiラベル）・`--report`を必須とし、両variantのcomponent storeと`comparison.json`を出力する。
+  ラベルに無い予測をFPとせず、既知選手の捕捉率・既知非選手への反応・未照合件数を分ける。指標の正本は
+  [`partial_labels.py`](../../src/tasks/player_detection/evaluation/partial_labels.py)。chat-player-v1 valのAP比較は既存の
+  [`player_detection.scripts.evaluate`](../../src/tasks/player_detection/README.md)を`evaluate.split=val`で実行する。
+  一括実行用のqueue入口は`player_detection_comparison.sh <元repo> <新しいreport directory>`。
+  DINO拡張をrun内でbuildし、検出器の設定をpipeline.yamlから読んで両評価へ渡す。
+
 - `player_association_clips.py`: camera間の人物対応を、ラベル付きclipで評価するための観測。`observe`（GPU、共有training queue経由）は
   court検出・校正と、人物検出・tracking・poseをcameraごとに`--report/stores/<clip>`へ実行する（ball・身体・再構成は無効）。
   trackingが停止したcameraは停止理由と証跡を、完走したcameraは全trackの観測frame数を`observe.json`に残す。
