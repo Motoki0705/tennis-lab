@@ -6,6 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from string import Formatter
 from types import MappingProxyType
 from typing import Any, Literal, cast
 from urllib.parse import urlsplit
@@ -1087,6 +1088,36 @@ def validate_data(
     return data
 
 
+def validate_candidate_settings(value: object) -> ConfigMapping:
+    """The campaign candidate metric is fixed; no compatibility defaults."""
+    expected: dict[str, int | float | bool] = {
+        "max_candidates": 8, "nms_kernel": 5, "patch_size": 5,
+        "subpixel_refine": True, "radius_source_px": 20.0,
+    }
+    settings = exact_mapping(value, path="training.validation_candidates", required=set(expected))
+    for key, required in expected.items():
+        actual = typed(settings, key, (int, float) if type(required) is float else type(required),
+                       path="training.validation_candidates")
+        if actual != required:
+            raise SemanticConfigurationError(f"training.validation_candidates.{key} must be {required!r}")
+    return settings
+
+
+def validate_epoch_candidate_policy(config: DictConfig) -> None:
+    """Every detector training entry must validate and retain every epoch."""
+    training = as_mapping(config.training, path="training")
+    validate_candidate_settings(typed(training, "validation_candidates", (dict, DictConfig), path="training"))
+    checkpoint = as_mapping(training["checkpoint"], path="training.checkpoint")
+    trainer = as_mapping(training["trainer"], path="training.trainer")
+    if checkpoint["enabled"] is not True or checkpoint["save_top_k"] != -1:
+        raise SemanticConfigurationError("Ball training must keep every epoch: checkpoint.enabled=true, save_top_k=-1")
+    if trainer["check_val_every_n_epoch"] != 1:
+        raise SemanticConfigurationError("Ball candidate recall must be validated every epoch")
+    fields = {field for _, field, _, _ in Formatter().parse(checkpoint["filename"])}
+    if "epoch" not in fields:
+        raise SemanticConfigurationError("Ball checkpoint.filename must include {epoch} to retain every epoch")
+
+
 def validate_training(config: DictConfig) -> None:
     """Validate a complete normal/staged training composition."""
     root = exact_mapping(
@@ -1150,6 +1181,7 @@ def validate_training(config: DictConfig) -> None:
         "qualitative_logging",
         "qualitative_rendering",
         "gan",
+        "validation_candidates",
     }
     if "staged" in training:
         training_fields.add("staged")
@@ -1341,6 +1373,7 @@ def validate_training(config: DictConfig) -> None:
     # Task-owned maps are exact-closed before the shared projections parse them.
     BaseRunConfig.from_mapping(run, resolver=paths.resolver)
     BaseTrainingConfig.from_validated_task_mapping(training)
+    validate_epoch_candidate_policy(config)
 
 
 def _validate_metrics(metrics: ConfigMapping) -> None:
@@ -1680,8 +1713,10 @@ def _validate_eval_training_mapping(value: object) -> ConfigMapping:
             "qualitative_logging",
             "qualitative_rendering",
             "gan",
+            "validation_candidates",
         },
     )
+    validate_candidate_settings(training["validation_candidates"])
     exact_mapping(
         training["trainer"],
         path="training.trainer",

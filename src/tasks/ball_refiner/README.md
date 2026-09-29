@@ -368,7 +368,7 @@ checkpoint・store・JPEGの不変性を検証し、途中成果は`status=runni
 CUDA context等のためにVRAM予算の余裕を別に確保する。OOM時のbatch/精度変更やCPU切替はしない。
 `comparison.md`と`manifest.json`に表・hash・選定結果・e11>e0の判定を残す。
 e11がe0を上回った場合は結果を報告し、全epoch保存による再学習は別判断とする。
-今後のdetector学習はval候補recallの毎epoch記録と全epoch checkpoint保存を実装・確認してから実行する。
+今後のdetector学習は[毎epochの候補recallとcheckpoint保存](../ball_detection/README.md#毎epochの候補recallとcheckpoint)に従う。
 
 ### cache生成契約
 

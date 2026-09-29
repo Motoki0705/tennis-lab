@@ -82,23 +82,29 @@ class WebBallDetectionDataset(BallDetectionDataset):
 
     def read_window(self, index: int, num_frames: int) -> WindowFrames:
         indices = self.windows[index][:num_frames]
-        frames = tuple(
-            WindowFrame(
-                image_bgr=self.store.decode_bgr(frame),
-                points=tuple(
-                    (label.x, label.y)
-                    for label in self.store.labels(frame)
-                    if label.visibility > 0 and label.role != "distractor"
-                ),
-                supervised=True,
+        frames = []
+        for frame in indices:
+            points = tuple(
+                (label.x, label.y)
+                for label in self.store.labels(frame)
+                if label.visibility > 0 and label.role != "distractor"
             )
-            for frame in indices
-        )
+            frames.append(WindowFrame(
+                image_bgr=self.store.decode_bgr(frame),
+                points=points,
+                supervised=True,
+                frame_id=frame,
+                observed_xy=points[0] if len(points) == 1 else None,
+            ))
         return WindowFrames(
-            frames=frames,
+            frames=tuple(frames),
             original_size=self.store.original_size(indices[0]),
             window_id=f"web:{','.join(str(frame) for frame in indices)}",
             source=self.store.source_name(indices[0]),
+            namespace="web",
+            camera="",
+            source_scale=1.0,
+            window_start=indices[0],
         )
 
 
