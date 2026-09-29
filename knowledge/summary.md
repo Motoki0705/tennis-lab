@@ -1,4 +1,4 @@
-<!-- knowledge-review: 640afce3d205fa50ee3d97e8aa2c32bdfee5e61d58c945317fd220ff44193d23 on 2026-09-30 -->
+<!-- knowledge-review: 52f98c1072c35cc112e378dcb18960e62b1cbe1a8192df99f2deed6f02a8a669 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -298,6 +298,8 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 [保存済みpilotからの暫定劣化](nodes/ball_refiner_3d/000008-run-i936-provisional-degradation-r5-s936.md)を96ラリー開発用に導入した。
 全K=4の誤差・共分散・重み・存在をcamera/条件別に保持し、3Dは全125成分とする。
 負例、長いgap、camera間相関、新detector/person contextは未較正で、full生成の承認とは区別する。
+全125成分の3つの短いprefixは保存/再読込に成功したが、全216frameが規定capで未収束だった。
+追加積分の費用も大きく、96ラリーの外挿は理想4 processで約12.8時間。旧1.7時間の見込みを更新する。
 
 [確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
 Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
