@@ -31,7 +31,9 @@ ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加
 clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2のみを読み、v1を暗黙変換しない。
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。外観不一致はhigh/low両段でIoUによって打ち消さない。
-特徴抽出のprompt契約は将来のKPRに対応するが、**SOLIDER/KPR推論はまだ実装していない**。
+特徴抽出のprompt契約は将来のKPRに対応する。SOLIDERの推論adapterは実装済み、KPRは未移植。
+SOLIDERの出自と前処理は[notice](../player_association/appearance/solider_vendor/NOTICE.md)を参照。
+`encode_appearance`は保存済みposeを再利用し、encoder追加でViTPoseを再推論しない。
 CLIP用adapterはpromptを使わないことを明示する。重み不足やモデル出力不正は停止する。
 
 [BoT-SORT原論文](https://arxiv.org/abs/2206.14651)と

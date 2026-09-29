@@ -15,6 +15,7 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
 | `geometry/switches.py` | track 内の足元の跳びから ID switch の候補 frame を出す |
 | `geometry/region.py` | プレー領域（ダブルスコート＋余白） |
 | `appearance/encoders.py`・`sampling.py` | Re-ID encoder（既定 CLIP-ReID）と重みの場所、crop の選び方と track ごとの embedding（`embed_tracks`） |
+| `appearance/solider.py` | SOLIDER-REIDの厳密なcheckpoint読み込みと推論adapter。移植元・変更・MIT表示は[notice](appearance/solider_vendor/NOTICE.md)。CLIPとの精度比較は未完了 |
 | `appearance/affinity.py` | 区間の平均 embedding の cosine の対数尤度比（camera 間の組だけ） |
 | `evaluation/` | 評価ラベルと指標（下記） |
 

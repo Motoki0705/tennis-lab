@@ -183,3 +183,11 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   領域/CLIP/fragment/handoffの定義は[`court_linking.py`](../../src/tasks/person_tracking/court_linking.py)を正本とする。
   `person_selection_fullframe_video.py --report <同report> --source <選んだsource>` は各clipの最大誤り窓とwide/隣コート窓を
   3camera同期で描き、全frame読戻し・hash・窓の選定基準を保存する。ラベルは事後の可視化にのみ使う。
+
+- `person_tracking_dev_features.py --phase plan --repo <元repo> --sources <run6/sources.json> --report <新規出力先>`
+  はCOCO全画面0.30の4 dev clip×3cameraだけをhash検証し、重み/入力/未見予約を固定する（CPU）。
+  `--phase extract --repo <元repo> --report <同出力先>` は共有queueの1 jobでViTPose＋CLIP→SOLIDERを抽出する。
+  全人物rowを保持し、SOLIDERには保存済みposeを使う。モデル選択・追跡比較・GT照合を実行しない。
+  allocator上限7 GiB、pose batch4、appearance batch8、外側timeout5400秒を必須とする。
+  KPRは未移植で対象外。成功は`features.json`、進捗/失敗は`features.progress.json`、NPZはencoder/clip/camera別。
+  既存の成功/失敗出力は上書きしない。

@@ -172,8 +172,8 @@ class DINOv3Encoder:
         return F.normalize(features["x_norm_clstoken"].float(), dim=-1).cpu()
 
 
-ENCODER_CANDIDATES = ("osnet_ain_x1_0_msmt17", "osnet_x1_0_msmt17", "clipreid_vitb16_market1501", "dinov3_vits16", "dinov3_vitb16")
-"""Encoders compared for #933. Re-ID weights live under ``<checkpoint_root>/player_association``; DINOv3 under ``<external_root>/dinov3``."""
+ENCODER_CANDIDATES = ("osnet_ain_x1_0_msmt17", "osnet_x1_0_msmt17", "clipreid_vitb16_market1501", "dinov3_vits16", "dinov3_vitb16", "solider_swin_base_msmt17")
+"""Available encoders (#933 comparisons plus SOLIDER awaiting #964 measurements). Re-ID weights live under ``<checkpoint_root>/player_association``; DINOv3 under ``<external_root>/dinov3``."""
 
 
 def encoder_weights(name: str, *, checkpoint_root: Path, external_root: Path) -> Path:
@@ -182,6 +182,7 @@ def encoder_weights(name: str, *, checkpoint_root: Path, external_root: Path) ->
     dinov3 = external_root / "dinov3/checkpoints"
     weights = {"osnet_ain_x1_0_msmt17": reid / "osnet_ain_x1_0_msmt17.pth", "osnet_x1_0_msmt17": reid / "osnet_x1_0_msmt17_combineall.pth",
                "clipreid_vitb16_market1501": reid / "person_vit_clip_reid.pth",
+               "solider_swin_base_msmt17": reid / "solider/swin_base_msmt17.pth",
                "dinov3_vits16": dinov3 / "dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
                "dinov3_vitb16": dinov3 / "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"}
     if name not in weights:
@@ -197,5 +198,8 @@ def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, devi
         return OSNetEncoder(name, "osnet_x1_0", weights, device)
     if name == "clipreid_vitb16_market1501":
         return ClipReIDEncoder(name, weights, device)
+    if name == "solider_swin_base_msmt17":
+        from src.tasks.player_association.appearance.solider import SoliderEncoder
+        return SoliderEncoder(name, weights, device)
     assert name.startswith("dinov3_")
     return DINOv3Encoder(name, name, external_root / "dinov3", weights, device)

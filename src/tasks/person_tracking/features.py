@@ -5,7 +5,7 @@ owns media provenance. No detector, tracker or identity selection runs here.
 """
 
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import Protocol
 
 import numpy as np
 import torch
@@ -47,11 +47,13 @@ class UnpromptedEncoder:
 
     @property
     def name(self) -> str:
-        return cast(str, self.encoder.name)
+        name: str = self.encoder.name
+        return name
 
     @property
     def input_size(self) -> tuple[int, int]:
-        return cast(tuple[int, int], self.encoder.input_size)
+        size: tuple[int, int] = self.encoder.input_size
+        return size
 
     def embed(self, crops: torch.Tensor, prompts: torch.Tensor) -> torch.Tensor:
         return self.encoder.embed(crops)
@@ -107,21 +109,34 @@ class FeatureExtractor:
             bad = np.argwhere(~np.isfinite(poses))
             details = [(int(rows[i]), int(j), int(k), str(poses[i, j, k])) for i, j, k in bad]
             raise ValueError(f"Nonfinite pose at frame {frame}: (detection row, joint, channel, value)={details}")
-        height, width = image.shape[:2]
-        clipped = np.rint(boxes).astype(np.float32)
-        clipped[:, [0, 2]] = np.clip(clipped[:, [0, 2]], 0, width)
-        clipped[:, [1, 3]] = np.clip(clipped[:, [1, 3]], 0, height)
-        crop_size = clipped[:, 2:] - clipped[:, :2]
-        scale = np.hypot(width, height) / np.hypot(1920, 1080)
-        valid = (crop_size[:, 0] > 0) & (crop_size[:, 1] >= self.config.min_appearance_height_px * scale)
-        selected = np.flatnonzero(valid)
-        for start in range(0, len(selected), self.config.appearance_batch_size):
-            batch = selected[start:start + self.config.appearance_batch_size]
-            pixels = torch.from_numpy(np.stack([crop(image, boxes[row], self.encoder.input_size) for row in batch]))
-            prompts = poses[batch].copy()
-            prompts[..., :2] = (prompts[..., :2] - clipped[batch, None, :2]) / crop_size[batch, None, :]
-            encoded = self.encoder.embed(pixels, torch.from_numpy(prompts)).detach().cpu().numpy()
-            if encoded.shape != (len(batch), self.encoder.dimension):
-                raise ValueError("Appearance model changed the detection or embedding axis")
-            embeddings[batch] = encoded
-        return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
+        return encode_appearance(frame, image, rows, boxes, scores, poses, self.encoder, self.config)
+
+
+def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int64],
+                      boxes: NDArray[np.float32], scores: NDArray[np.float32], poses: NDArray[np.float32],
+                      encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG) -> DetectionFeatures:
+    """Encode another backbone using the identical saved pose/detection rows."""
+    n = len(rows)
+    embeddings: NDArray[np.float32] = np.zeros((n, encoder.dimension), np.float32)
+    valid: NDArray[np.bool_] = np.zeros(n, bool)
+    DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
+    if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8 or min(image.shape[:2]) < 2:
+        raise ValueError("Feature image must be uint8 BGR (H,W,3)")
+    height, width = image.shape[:2]
+    clipped = np.rint(boxes).astype(np.float32)
+    clipped[:, [0, 2]] = np.clip(clipped[:, [0, 2]], 0, width)
+    clipped[:, [1, 3]] = np.clip(clipped[:, [1, 3]], 0, height)
+    crop_size = clipped[:, 2:] - clipped[:, :2]
+    scale = np.hypot(width, height) / np.hypot(1920, 1080)
+    valid = (crop_size[:, 0] > 0) & (crop_size[:, 1] >= config.min_appearance_height_px * scale)
+    selected = np.flatnonzero(valid)
+    for start in range(0, len(selected), config.appearance_batch_size):
+        batch = selected[start:start + config.appearance_batch_size]
+        pixels = torch.from_numpy(np.stack([crop(image, boxes[row], encoder.input_size) for row in batch]))
+        prompts = poses[batch].copy()
+        prompts[..., :2] = (prompts[..., :2] - clipped[batch, None, :2]) / crop_size[batch, None, :]
+        encoded = encoder.embed(pixels, torch.from_numpy(prompts)).detach().cpu().numpy()
+        if encoded.shape != (len(batch), encoder.dimension):
+            raise ValueError("Appearance model changed the detection or embedding axis")
+        embeddings[batch] = encoded
+    return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
