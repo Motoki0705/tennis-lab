@@ -1,4 +1,4 @@
-<!-- knowledge-review: eea0c93ce82ea4f26186ff354ead015d29465695e5e1297432c9f4dbab15c9d4 on 2026-09-29 -->
+<!-- knowledge-review: 848078e24b8afd28a92100559297a172f0f4350a890478471cdbaf40e54724de on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -26,7 +26,12 @@ CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未
 ViTPoseの回帰heatmap peakを確率とみなす検査で停止した。実入力のCPU再現で有限の1超scoreを確認し、
 生値を保持する契約へ修正した。[GPU再実行](nodes/person_tracking/000002-run-i964-features-smoke-r3-20260929.md)は
 同じ入力の1超scoreを保持して3camera×120frameを完走し、同じ#937検出のUltralytics BoT-SORT baselineも完走した。
-これは機能smokeに限り、追跡品質の比較ではない。遠側診断と最終方式選択は未完了。
+これは機能smokeに限り、追跡品質の比較ではない。
+[保存済みデータのCPU選別診断](nodes/person_tracking/000003-run-i964-court-selection-cpu-r4-20260929.md)では、
+高い旧box一致率でもcamera-local滞在選別で遠側の観測を失い、FT低閾値/unionは隣コート人物も残した。
+CLIP付きの第2確認も全clipでは決定できず、この基準のまま既定に採用しない。
+23archive・全条件表・identity/unit選別・3camera動画をユーザーへ提示する段階に達した。
+短いtrack断片と領域境界の扱いは次の判断事項で、最終方式・encoder選択と未見評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
 
