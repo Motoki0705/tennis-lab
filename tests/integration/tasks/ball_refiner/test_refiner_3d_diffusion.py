@@ -15,6 +15,7 @@ from src.tasks.ball_refiner.refiner_3d.diffusion.memory_fixture import (
 from src.tasks.ball_refiner.refiner_3d.diffusion.model import (
     ModelConfig,
     TrajectoryDenoiser,
+    validate_flow_state,
 )
 from src.utils.paths import PROJECT_ROOT
 
@@ -110,3 +111,17 @@ def test_same_backbone_one_step_regression_ignores_flow_rng():
     torch.testing.assert_close(a, b)
     a.backward()
     assert model.position_head.weight.grad is not None
+
+
+@pytest.mark.parametrize("kind", ["shape", "nan", "time"])
+def test_flow_boundary_rejects_invalid_state(kind):
+    batch = analytic_memory_batch(FIXTURE, batch_size=1, frames=16, seed=9)
+    state, time = torch.zeros(1, 16, 3), torch.zeros(1)
+    if kind == "shape":
+        state = state[:, :-1]
+    elif kind == "nan":
+        state[0, 0, 0] = float("nan")
+    else:
+        time[:] = 1.1
+    with pytest.raises(ValueError):
+        validate_flow_state(state, time, batch.condition)

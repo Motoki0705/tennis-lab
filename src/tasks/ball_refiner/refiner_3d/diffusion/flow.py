@@ -16,6 +16,7 @@ from src.tasks.ball_refiner.refiner_3d.diffusion.losses import (
 from src.tasks.ball_refiner.refiner_3d.diffusion.model import (
     MixtureCondition,
     TrajectoryDenoiser,
+    validate_flow_state,
 )
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
@@ -39,8 +40,10 @@ def training_objective(
         state = torch.zeros_like(clean)
     else:
         raise ValueError(f"Unknown training objective: {objective}")
+    validate_flow_state(state, time, batch.condition)
     output = model(state, time, batch.condition)
-    return trajectory_loss(output, batch, config)
+    loss, terms = trajectory_loss(output, batch, config)
+    return loss, terms
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,7 @@ def sample_trajectories(
                 state = torch.randn((b, t, 3), device=condition.means_m.device, generator=generator)
                 for step in range(steps):
                     time = torch.full((b,), step / steps, device=state.device)
+                    validate_flow_state(state, time, condition)
                     x0 = model(state, time, condition).positions_norm
                     # v_t = (x0 - x_t)/(1-t), with no evaluation at singular t=1.
                     state = state + (x0 - state) / (steps - step)
