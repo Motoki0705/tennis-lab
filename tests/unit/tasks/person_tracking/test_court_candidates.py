@@ -163,3 +163,22 @@ def test_diagnosis_attributes_kept_duplicate_and_distinguishes_mixing_from_margi
     assert diag['tracks'][0]['player_and_adjacent_mixed']
     assert diag['tracks'][0]['adjacent_inside_old'] == 2
     assert diag['tracks'][0]['adjacent_inside_corridor'] == 0
+
+
+def test_subsecond_gap_links_but_does_not_fill_missing_observations() -> None:
+    seen: np.ndarray = np.zeros((2, 240), bool)
+    seen[0, :50] = seen[1, 75:125] = True
+    tracks = camera_tracks([(0., 5.)] * 2, seen)
+    selected, diag = select_linked_candidates(tracks, 30., LinkingConfig(), FootpointConfig())
+    assert selected.sum() == 100 and not selected[:, 50:75].any()
+    assert diag['selected_groups'] == 1
+    assert not select_linked_candidates(tracks, 30., replace(LinkingConfig(), max_gap_s=.5), FootpointConfig())[0].any()
+
+
+def test_ambiguous_predecessor_does_not_block_unique_successor_of_a_long_fragment() -> None:
+    seen: np.ndarray = np.zeros((4, 150), bool)
+    seen[:2, :40] = seen[2, 40:80] = seen[3, 80:100] = True
+    tracks = camera_tracks([(-.1, 5.), (.1, 5.), (0., 5.), (0., 5.)], seen)
+    selected, diag = select_linked_candidates(tracks, 30., LinkingConfig(), FootpointConfig())
+    assert selected[3].sum() == 20
+    assert any(set(g['track_ids']) == {2, 3} and g['selected'] for g in diag['groups'])

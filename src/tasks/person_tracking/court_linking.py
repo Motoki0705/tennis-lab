@@ -9,7 +9,7 @@ These are conservative singles-dev rules, not a general venue segmentation.
 Calibration/footpoint error can still misplace people; no such error bound is
 claimed. Outside-corridor observations are excluded even on a selected track.
 
-Split real observations at >0.5 s gaps or the existing 0.25 s-window / 3 m
+Split real observations at >1 s gaps or the existing 0.25 s-window / 3 m
 footpoint jumps (not noisy single-frame steps), then connect
 temporally neighbouring fragments by court position. For a gap, compare the
 median positions within 0.1 s of each endpoint: distance <= 0.8 m + 6 m/s *
@@ -45,7 +45,7 @@ from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, HALF_SINGLES
 
 @dataclass(frozen=True)
 class LinkingConfig:
-    max_gap_s: float = .5
+    max_gap_s: float = 1.
     max_handoff_s: float = .2
     position_slack_m: float = .8
     max_speed_m_s: float = 6.
@@ -152,18 +152,23 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
         outgoing.setdefault(pair['a'], []).append(pair)
         incoming.setdefault(pair['b'], []).append(pair)
     ambiguous: set[int] = set()
-    for options in (*outgoing.values(), *incoming.values()):
-        if len(options) > 1 and options[1]['cost'] - options[0]['cost'] < config.ambiguity_margin:
-            for pair in options:
-                if pair['cost'] - options[0]['cost'] < config.ambiguity_margin:
-                    ambiguous.update((pair['a'], pair['b']))
+    ambiguous_out: set[int] = set()
+    ambiguous_in: set[int] = set()
+    for choices, blocked in ((outgoing, ambiguous_out), (incoming, ambiguous_in)):
+        for index, options in choices.items():
+            if len(options) > 1 and options[1]['cost'] - options[0]['cost'] < config.ambiguity_margin:
+                blocked.add(index)
+                for pair in options:
+                    if pair['cost'] - options[0]['cost'] < config.ambiguity_margin:
+                        ambiguous.update((pair['a'], pair['b']))
     excluded = {i for i in ambiguous if len(fragments[i].frames) / fps < config.ambiguous_min_s}
     groups = [{i} for i in range(len(fragments))]
     owner = list(range(len(fragments)))
     links = []
     for pair in sorted(pairs, key=lambda p: (p['cost'], p['a'], p['b'])):
         a, b = pair['a'], pair['b']
-        if a in ambiguous or b in ambiguous or outgoing[a][0] is not pair or incoming[b][0] is not pair:
+        if a in excluded or b in excluded or a in ambiguous_out or b in ambiguous_in \
+                or outgoing[a][0] is not pair or incoming[b][0] is not pair:
             continue
         ga, gb = owner[a], owner[b]
         if ga == gb:
