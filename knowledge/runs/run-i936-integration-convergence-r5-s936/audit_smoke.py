@@ -68,6 +68,7 @@ def main():
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--batch', type=int, required=True)
     parser.add_argument('--batch-size', type=int, default=1000)
+    parser.add_argument('--workers', type=int, default=4)
     args = parser.parse_args()
     if not all(p.is_absolute() for p in (args.source, args.output, args.plan)):
         parser.error('Use absolute paths')
@@ -76,7 +77,7 @@ def main():
         raise ValueError('Require complete fixed 12-rally smoke')
     settings = yaml.safe_load(args.plan.read_text())['degradation']
     selected_start, selected_stop = args.batch * args.batch_size, (args.batch + 1) * args.batch_size
-    if args.batch < 0 or args.batch_size < 1 or selected_start >= sum(r['frames'] for r in manifest['rallies']):
+    if args.workers not in range(1, 5) or args.batch < 0 or args.batch_size < 1 or selected_start >= sum(r['frames'] for r in manifest['rallies']):
         raise ValueError('Invalid batch')
     args.output.mkdir(parents=True, exist_ok=True)
     progress = args.output / f'progress-{args.batch}.json'
@@ -90,9 +91,9 @@ def main():
         offset += record['frames']
     began = time.monotonic()
     records, failures = [], []
-    state = {'status': 'running', 'batch': args.batch, 'batch_size': args.batch_size, 'source_manifest_sha256': hashlib.sha256((args.source / 'manifest.json').read_bytes()).hexdigest(), 'plan_sha256': hashlib.sha256(args.plan.read_bytes()).hexdigest(), 'settings': settings['boundary_convergence']}
+    state = {'status': 'running', 'batch': args.batch, 'batch_size': args.batch_size, 'workers': args.workers, 'source_manifest_sha256': hashlib.sha256((args.source / 'manifest.json').read_bytes()).hexdigest(), 'plan_sha256': hashlib.sha256(args.plan.read_bytes()).hexdigest(), 'settings': settings['boundary_convergence']}
     write_json(progress, state)
-    with ProcessPoolExecutor(max_workers=4, mp_context=multiprocessing.get_context('spawn')) as pool:
+    with ProcessPoolExecutor(max_workers=args.workers, mp_context=multiprocessing.get_context('spawn')) as pool:
         futures = {pool.submit(chunk, job): job[3:] for job in jobs}
         for future in as_completed(futures):
             try:

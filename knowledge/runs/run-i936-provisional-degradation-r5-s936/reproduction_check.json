@@ -1,0 +1,8 @@
+{
+  "all_array_values_equal": true,
+  "statistics_and_source_provenance_equal": true,
+  "npz_byte_identity": false,
+  "reason": "NPZ member order follows Python set iteration; original bank remains pinned by hash",
+  "original_bank_sha256": "aea209600cfe218e239612cfaa828706b7ffabedebc9291ea0634acce31c482c",
+  "reproduced_bank_sha256": "c4a7204832e4be3d601d9de7e8d323ddd1bb07c8bea41ca93dde584760417b55"
+}
