@@ -84,6 +84,15 @@ class DenoiserOutput:
     event_logits: Tensor  # hit/bounce are two independent classes
 
 
+def validate_flow_state(noisy_positions_norm: Tensor, flow_time: Tensor, condition: MixtureCondition) -> None:
+    """Validate at the train/sample boundary, outside computation-only forward."""
+    b, t = condition.padding_mask.shape
+    if noisy_positions_norm.shape != (b, t, 3) or flow_time.shape != (b,):
+        raise ValueError("Invalid noisy trajectory or flow time shape")
+    if not bool(torch.isfinite(noisy_positions_norm).all()) or not bool(torch.isfinite(flow_time).all()) or bool(((flow_time < 0) | (flow_time > 1)).any()):
+        raise ValueError("Flow state must be finite with time in [0,1]")
+
+
 class TrajectoryDenoiser(nn.Module):
     """Predict x0 itself. There is no offset addition to a triangulated path."""
 
@@ -108,10 +117,6 @@ class TrajectoryDenoiser(nn.Module):
 
     def forward(self, noisy_positions_norm: Tensor, flow_time: Tensor, condition: MixtureCondition) -> DenoiserOutput:
         b, t, _, _ = condition.means_m.shape
-        if noisy_positions_norm.shape != (b, t, 3) or flow_time.shape != (b,):
-            raise ValueError("Invalid noisy trajectory or flow time shape")
-        if not bool(torch.isfinite(noisy_positions_norm).all()) or not bool(torch.isfinite(flow_time).all()) or bool(((flow_time < 0) | (flow_time > 1)).any()):
-            raise ValueError("Flow state must be finite with time in [0,1]")
         scale = condition.means_m.new_tensor(COURT_COORD_SCALE_XYZ)
         covariance_norm = condition.covariance_m2 / (scale[:, None] * scale[None, :])
         features = torch.cat((
