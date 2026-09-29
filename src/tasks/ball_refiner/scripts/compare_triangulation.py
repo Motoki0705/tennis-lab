@@ -22,6 +22,15 @@ from src.tasks.ball_refiner.refiner_3d.comparison import (
     triangulate_volume,
 )
 from src.tasks.ball_refiner.refiner_3d.triangulation import frame_observations
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from src.utils.geometry.probabilistic_triangulation import (
     CameraGMM,
     GaussianPrior3D,
@@ -30,6 +39,14 @@ from src.utils.geometry.probabilistic_triangulation import (
 )
 from src.utils.geometry.probabilistic_triangulation.distributions import FloatArray
 from src.utils.geometry.triangulation import PinholeCamera
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="ball_refiner.compare_triangulation",
+    fields=(
+        BoundaryPathField("fixture", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+        BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY),
+    ),
+)
 
 
 class Density(Protocol):
@@ -233,9 +250,21 @@ def main() -> None:
     parser.add_argument("--levels", type=int, default=5)
     parser.add_argument("--refine-cells", type=int, default=512)
     args = parser.parse_args()
+    if not args.fixture.is_absolute() or not args.output.is_absolute():
+        parser.error("--fixture and --output must be absolute")
+    roots = RuntimePathRoots(
+        project_root=args.output.parent, data_root=args.fixture.parent,
+        artifact_root=args.fixture.parent, output_root=args.output.parent,
+        checkpoint_root=args.output.parent, cache_root=args.output.parent,
+        external_asset_root=args.output.parent,
+    )
+    paths = PATH_BOUNDARY.validate(
+        {"fixture": args.fixture, "output": args.output},
+        resolver=PathResolver(roots),
+    )
     run_comparison(
-        args.fixture,
-        args.output,
+        paths.declared("fixture").path,
+        paths.declared("output").path,
         trials=args.trials,
         seed=args.seed,
         particles=args.particles,
