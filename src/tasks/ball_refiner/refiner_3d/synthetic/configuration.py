@@ -85,7 +85,9 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("This recipe requires convergence-checked A/B integration")
     ConvergenceConfig(**degradation["boundary_convergence"])
     calibration = degradation["calibration"]
-    paths = CALIBRATION_BOUNDARY.validate({key: calibration[key] for key in ("bank", "report")}, resolver=resolver)
+    paths = CALIBRATION_BOUNDARY.validate(
+        {key: resolver.resolve(PathRole.PROJECT, calibration[key]) for key in ("bank", "report")}, resolver=resolver,
+    )
     bank_path, report_path = (paths.declared(key).path for key in ("bank", "report"))
     bank = load_calibration(bank_path, calibration["bank_sha256"])
     if sha256(report_path) != calibration["report_sha256"]:
