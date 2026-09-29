@@ -7,7 +7,7 @@
 
 - `refiner_2d/`: cameraごとに独立して、検出証拠・COCO17の肘/手首・静的court・時間窓から
   1球の位置分布と存在確率を推定する。GMMの各成分は同じ球の位置仮説で、複数球ではない。
-- [`refiner_3d/`](refiner_3d/README.md): #936の確率的三角測量へのadapterとCPU方式比較、59.94fps合成計画。3Dモデル・pipeline接続は未実装。
+- [`refiner_3d/`](refiner_3d/README.md): #936の確率的三角測量へのadapterとCPU方式比較、59.94fps合成生成。詳細は専用READMEを参照。
 - データ生成・評価はこのtask直下へ置き、#936と共有する。モデル入力には他camera、
   camera ID、正解座標、三角測量を渡さない。検出器の時間的な参照範囲は
   [証拠cache](#検出器の局所証拠)へ記録し、refinerのattention窓長と区別する。
