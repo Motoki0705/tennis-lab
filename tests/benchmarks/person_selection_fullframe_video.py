@@ -34,7 +34,7 @@ def windows(comparison: dict[str, Any], source: str) -> list[dict[str, Any]]:
         cross = next(r for r in comparison['association'] if r['source'] == source and r['clip'] == clip)
         length = max(u['frame'] for u in units) + 1
         width = min(240, length)  # four seconds at the fixed Meiji source rate
-        for kind in ('worst', 'wide', 'adjacent', 'association'):
+        for kind in ('worst', 'wide', 'adjacent', 'association', 'nonplayer'):
             loss = np.zeros(length, np.int64)
             for u in units:
                 value = (u['role'] == 'player' and not u['selected_03']) or (u['role'] != 'player' and u['selected_03'])
@@ -44,17 +44,23 @@ def windows(comparison: dict[str, Any], source: str) -> list[dict[str, Any]]:
                     value = u['kind'] == 'adjacent_court'
                 elif kind == 'association':
                     value = False
+                elif kind == 'nonplayer':
+                    value = u['role'] != 'player' and u['selected_03']
                 loss[u['frame']] += int(value)
             if kind == 'association' and cross['metrics']:
                 for failure in cross['metrics']['0.3']['failed_frame_runs']:
                     loss[failure['start']:failure['end']] += 1
             sums = np.convolve(loss, np.ones(width, np.int64), mode='valid')
             start = int(np.argmax(sums))
+            if kind == 'nonplayer' and loss.any():
+                # Centre a short failure instead of placing it at the last
+                # frame of a four-second window; the preview then shows it.
+                start = int(np.clip(int(np.flatnonzero(loss)[len(np.flatnonzero(loss)) // 2]) - width // 2, 0, length - width))
             item = {'clip': clip, 'start': start, 'end': start + width, 'kind': kind, 'score': int(sums[start])}
             (result if kind == 'worst' else extra).append(item)
-    for kind in ('wide', 'adjacent', 'association'):
+    for kind in ('wide', 'adjacent', 'association', 'nonplayer'):
         best = max((r for r in extra if r['kind'] == kind), key=lambda r: r['score'])
-        if best['score']:
+        if best['score'] and not any((r['clip'], r['start'], r['end']) == (best['clip'], best['start'], best['end']) for r in result):
             result.append(best)
     return result
 
@@ -66,13 +72,15 @@ def box(image: np.ndarray, xyxy: np.ndarray, color: tuple[int, int, int], label:
         cv2.putText(image, label, (x1, max(15, y1 - 3)), cv2.FONT_HERSHEY_SIMPLEX, .42, color, 1, cv2.LINE_AA)
 
 
-def render(report: Path, source: str) -> None:
+def render(report: Path, source: str, stem: str) -> None:
     cv2.setNumThreads(1)
     comparison_path = report / 'comparison.json'
     comparison = json.loads(comparison_path.read_text())
     inputs = json.loads((report / 'sources.json').read_text())['inputs']
     cases = windows(comparison, source)
-    target, raw_path = report / 'best_source_failures_3cam.mp4', report / 'best_source_failures_3cam.raw.mp4'
+    if not stem or Path(stem).name != stem:
+        raise ValueError('Video stem must be a filename')
+    target, raw_path = report / f'{stem}.mp4', report / f'{stem}.raw.mp4'
     if target.exists() or raw_path.exists():
         raise FileExistsError(target)
     shape, fps = (1920, 820), 20.
@@ -127,7 +135,7 @@ def render(report: Path, source: str) -> None:
                             originals = [bgr for _, bgr in current]
                     canvas: np.ndarray = np.zeros((shape[1], shape[0], 3), np.uint8)
                     text_at(canvas, f'{source} | {clip} | {case["kind"]} | frame {frame} | association: {verdict["association"]["status"]}', 10, 25, .62)
-                    text_at(canvas, 'Green: selected | Grey: excluded | Red: missed reference | Amber: no association ID | P*: cross-camera ID | COCO-derived reference', 10, 50, .55)
+                    text_at(canvas, 'Green/P*: selected / cross-camera ID | Grey: excluded | Red: missed ref | Amber: no ID | Magenta: kept non-player ref (COCO-derived)', 10, 50, .53)
                     for ci, (record, image, a) in enumerate(zip(records, originals, data, strict=True)):
                         panel = cv2.resize(image, (640, 360))
                         annotated = image.copy()
@@ -152,15 +160,21 @@ def render(report: Path, source: str) -> None:
                             missed = u['role'] == 'player' and not u['selected_03']
                             associated = associated_index.get((record['camera'], int(frame), name))
                             no_identity = bool(u['role'] == 'player' and u['selected_03'] and associated is not None and not associated['selected_03'])
+                            nonplayer = u['role'] != 'player' and u['selected_03']
                             if missed:
                                 box(panel, xyxy, (30, 30, 255), f'ref {name}')
                                 box(annotated, xyxy, (30, 30, 255), f'ref {name}', scale=1.)
                             elif no_identity:
                                 box(panel, xyxy, (0, 180, 255), f'no ID {name}')
                                 box(annotated, xyxy, (0, 180, 255), f'no ID {name}', scale=1.)
+                            elif nonplayer:
+                                box(panel, xyxy, (255, 0, 255), f'kept ref {name}')
+                                box(annotated, xyxy, (255, 0, 255), f'kept ref {name}', scale=1.)
                             priority = 10 * int(missed) + int(u['near_far'] == 'far')
                             if case['kind'] == 'association':
                                 priority += 20 * int(no_identity)
+                            if case['kind'] == 'nonplayer':
+                                priority += 20 * int(nonplayer)
                             if case['kind'] == 'wide':
                                 priority += 20 * int(u['reference_wide'] is True and u['role'] == 'player')
                             if case['kind'] == 'adjacent':
@@ -184,7 +198,7 @@ def render(report: Path, source: str) -> None:
                     writer.write(canvas)
                     frames_written += 1
                     if local_index == len(frames) // 2:
-                        preview = report / f'best_preview_{case_index}.jpg'
+                        preview = report / f'{stem}_preview_{case_index}.jpg'
                         if not cv2.imwrite(str(preview), canvas):
                             raise RuntimeError('Preview write failed')
                         previews.append({'path': str(preview), 'sha256': dual_sha256(preview), 'case': case_index, 'source_frame': int(frame)})
@@ -209,10 +223,10 @@ def render(report: Path, source: str) -> None:
     if count != frames_written:
         raise ValueError('Encoded review video failed full readback')
     raw_path.unlink()  # only this run's temporary intermediate
-    write_json_atomic(report / 'video.json', {'path': str(target), 'sha256': dual_sha256(target), 'bytes': target.stat().st_size,
+    write_json_atomic(report / f'{stem}.json', {'path': str(target), 'sha256': dual_sha256(target), 'bytes': target.stat().st_size,
         'source': source, 'comparison_sha256': dual_sha256(comparison_path), 'cases': cases, 'previews': previews,
         'fps': fps, 'frames': count, 'shape': [820, 1920, 3], 'readback': 'all frames verified',
-        'worst_definition': 'maximize count of selected-stage missed player units plus retained nonplayer units in a 240-source-frame window, separately for each clip; then add maximum-wide, maximum-adjacent and maximum association-failed-frame windows (existing #933 group metric, IoU .3)',
+        'worst_definition': 'per-clip max selected-stage missed-player + retained-nonplayer count over 240 source frames; add maximum-wide, adjacent, association-failed-frame (#933 group metric, IoU .3), and centred retained-nonplayer windows; identical windows appear once',
         'labels': 'post-hoc window selection and red review overlay only; COCO-derived and biased'})
 
 
@@ -220,8 +234,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report', type=Path, required=True)
     parser.add_argument('--source', choices=SOURCES, required=True)
+    parser.add_argument('--stem', default='best_source_failures_3cam')
     args = parser.parse_args()
-    render(args.report, args.source)
+    render(args.report, args.source, args.stem)
 
 
 if __name__ == '__main__':
