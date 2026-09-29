@@ -132,12 +132,28 @@ def test_short_ambiguous_fragments_are_not_forced_and_handoff_counts_once() -> N
     seen = np.zeros((2, 80), bool)
     seen[0, :15] = seen[1, 12:30] = True  # 0.1 s overlap
     selected, diag = select_linked_candidates(camera_tracks([(0., 5.)] * 2, seen), 30., LinkingConfig(), FootpointConfig())
-    assert selected.sum() == 30 and selected.sum(0).max() == 1
+    assert selected.sum() == 33 and selected.sum(0).max() == 2
     assert diag['groups'][0]['in_core_frames'] == 30
     # A longer overlap is not an allowed handoff.
     seen[1, 7:12] = True
     _, diag = select_linked_candidates(camera_tracks([(0., 5.)] * 2, seen), 30., LinkingConfig(), FootpointConfig())
     assert not diag['links']
+
+
+def test_selected_player_keeps_wide_and_invalid_observations_without_lending_dwell() -> None:
+    tracks = camera_tracks([(0., 5.), (6., 5.), (0., -30.), (5.1, 5.)], np.ones((4, 120), bool))
+    boxes = tracks.boxes_xyxy.copy()
+    # A continuous run from centre to beyond doubles width, then border loss.
+    for frame in range(30, 90):
+        fraction = (frame - 30) / 59
+        boxes[0, frame] = (1 - fraction) * boxes[0, frame] + fraction * boxes[1, frame]
+    boxes[0, 90:115] = boxes[1, 90:115]
+    boxes[0, 115:] = boxes[2, 115:]
+    selected, diag = select_linked_candidates(replace(tracks, boxes_xyxy=boxes), 30., LinkingConfig(), FootpointConfig())
+    assert selected[0].all()  # region and projection validity never trim a player
+    assert not selected[1:].any()  # no core dwell, including doubles-border person
+    assert diag['selected_outside_corridor'] > 25
+    assert diag['selected_invalid_footpoints'] == 5
 
 
 def test_frame_noise_does_not_refragment_a_continuous_far_track() -> None:

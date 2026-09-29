@@ -11,7 +11,7 @@
 | `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `methods.py` | 方式の明示選択。未実装名は停止し、別方式へ戻さない。Deep OC-SORT/StrongSORT++のadapterも同じ入出力を使う |
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
-| `court_linking.py` | run 5の開発用改善。足元連続性と保存済みCLIPで断片を連結してから滞在を集約し、主コートの横幅を越えない領域で選別する。定義・限界はmodule docstring |
+| `court_linking.py` | 開発用選別。足元連続性とCLIPで断片を連結して滞在を集約する。領域はmembership判定にだけ使い、選択済み断片の全実観測を保持する。定義・限界はmodule docstring |
 | `selection_diagnosis.py` | 選択されたtrackの人物unit構成と足元座標から、人物混在と領域の誤採用を分離する事後診断。ラベルを選別へ渡さない |
 | `selection_metrics.py` | #933の人物/frame単位とidentity単位による選別評価。非検出と、追跡後の非選手除外を分ける |
 | `court_consistency.py` | camera間対応後、同じ予測identityの足元がz=0上でどれだけ一致するかを確認。新しい閾値やidentity補完は加えない |

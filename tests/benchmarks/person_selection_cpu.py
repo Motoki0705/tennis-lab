@@ -74,7 +74,7 @@ def load_sources(report: Path) -> dict[str, Any]:
     return source
 
 
-def replay(report: Path) -> None:
+def replay(report: Path, *, names: tuple[str, ...] = SOURCES, max_cameras: int | None = None) -> None:
     from ultralytics.engine.results import Boxes
     from ultralytics.trackers.bot_sort import BOTSORT
     source = load_sources(report)
@@ -87,17 +87,32 @@ def replay(report: Path) -> None:
         'score_policy': 'source threshold only; no further #937 gate or score fusion; no person capacity',
         'boxes': 'raw observed detection row for scoring/footpoint, Kalman box also archived',
         'derivative': 'not ready for these inputs: full all-person pose/appearance not saved; no substitute features'}
+    progress = report / 'tracks.progress.json'
+    if progress.exists():
+        saved_progress = json.loads(progress.read_text())
+        if {k: v for k, v in saved_progress.items() if k != 'records'} != {k: v for k, v in result.items() if k != 'records'}:
+            raise ValueError('Tracking resume provenance changed')
+        result = saved_progress
+    processed = 0
     for record in source['inputs']:
         key = f"{record['clip']}/{record['camera']}"
+        if all(key in result['records'].get(name, {}) for name in names):
+            for name in names:
+                saved = result['records'][name][key]
+                if dual_sha256(Path(saved['path'])) != saved['sha256'] or saved['source_sha256'] != source['archives'][name][key]['sha256']:
+                    raise ValueError('Tracking resume archive changed')
+            continue
+        if max_cameras is not None and processed >= max_cameras:
+            return
         video = record['video']
         if dual_sha256(Path(video['path'])) != video['sha256']:
             raise ValueError('Video changed')
-        archives = {name: DetectionArchive.load(source['archives'][name][key]) for name in SOURCES}
-        trackers = {name: BOTSORT(SimpleNamespace(**TRACKER_CONFIG)) for name in SOURCES}
+        archives = {name: DetectionArchive.load(source['archives'][name][key]) for name in names}
+        trackers = {name: BOTSORT(SimpleNamespace(**TRACKER_CONFIG)) for name in names}
         # Like the old wrapper, track_buffer is 30 frames at source ~60Hz.
         ids: dict[str, NDArray[np.int64]] = {name: np.full(len(a.scores), -1, np.int64) for name, a in archives.items()}
         kalman = {name: np.zeros_like(a.boxes) for name, a in archives.items()}
-        elapsed = dict.fromkeys(SOURCES, 0.)
+        elapsed = dict.fromkeys(names, 0.)
         count = 0
         for packet in OpenCVVideoFrameReader(Path(video['path'])):
             for name, archive in archives.items():
@@ -117,7 +132,7 @@ def replay(report: Path) -> None:
             count += 1
         if count != video['num_frames']:
             raise ValueError('Video ended before complete timeline')
-        for name in SOURCES:
+        for name in names:
             path = report / 'tracks' / name / f'{key}.npz'
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open('xb') as handle:
@@ -126,7 +141,8 @@ def replay(report: Path) -> None:
                 'source_sha256': source['archives'][name][key]['sha256'], 'frames': count,
                 'track_count': len(np.unique(ids[name][ids[name] >= 0])), 'ms_per_frame': elapsed[name] * 1000 / count}
         write_json_atomic(report / 'tracks.progress.json', result)
-        print(f'tracked {key}: ' + str({n: result['records'][n][key]['track_count'] for n in SOURCES}), flush=True)
+        print(f'tracked {key}: ' + str({n: result['records'][n][key]['track_count'] for n in names}), flush=True)
+        processed += 1
     write_json_atomic(target, result)
 
 

@@ -172,3 +172,9 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--phase video`はunionのdev clip_000から、全人物を灰色、選手を予測identity色で示す12秒3camera動画を作る。
   `--phase report`はidentity/camera別の表と日本語`report.md`を作り、対応後の足元のcamera間距離（z=0）を第2確認として記録する。
   pipeline既定やencoder比較は変更しない。全人物のpose/外観が未保存のBoT-SORT-style derivativeはこの診断では未評価。
+
+- `person_selection_fullframe.py --phase sources --ft-progress <run3/progress.json> --coco-inference <COCO/inference.json> --report <新規出力先>`
+  はFT .01/.02/.05、全画面COCO .05/.10/.30、両者 .30のunionを同じ800/1333・ROI前の条件で比較するCPU診断。
+  全24 raw archiveのhash・全12 camera-clip・入力/校正/未見予約の一致を検証する。
+  `--phase tracks --max-cameras 1`は同じscore gateなしBoT-SORTを再生し、camera境界の完了hashから再開する。
+  旧ROI後COCOを補完や代用に使わない。

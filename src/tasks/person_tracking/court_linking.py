@@ -1,13 +1,16 @@
 """Dev-only fragment linking and exclusive-court dwell, with no score/GT gate.
 
 The calibrated z=0 plane uses the court model's singles width as a dwell
-core, doubles width as the outer acceptance corridor and 5 m of baseline
+core, doubles width as a diagnostic corridor and 5 m of baseline
 runoff. Neither region expands laterally past the target court's sidelines.
 The inner core adds 1.37 m of protection against noisy box-bottom projections
 at the lateral boundary; a track parked only in that border cannot qualify.
 These are conservative singles-dev rules, not a general venue segmentation.
 Calibration/footpoint error can still misplace people; no such error bound is
-claimed. Outside-corridor observations are excluded even on a selected track.
+claimed. The region decides membership only: every real observation of a
+selected fragment is retained, including wide runs and invalid footpoints.
+The corridor is never an observation mask. Switch/gap cuts and ambiguous
+fragment rejection remain identity safeguards, independent of this region.
 
 Split real observations at >1 s gaps or the existing 0.25 s-window / 3 m
 footpoint jumps (not noisy single-frame steps), then connect
@@ -20,7 +23,9 @@ below cosine .8; missing appearance is explicitly recorded. Mutual nearest
 links must beat each runner-up by .2 in spatial-distance/limit + gap/max-gap.
 Ambiguous fragments shorter than 1 s are excluded, never forced into a chain. Count distinct
 observed core frames per chain; require 25% of the clip, THEN cap at 6 chains.
-No interpolated frame counts as dwell, and overlapping handoffs count once.
+No interpolated frame counts as dwell, and overlapping handoffs count once
+for dwell. Both original observations survive in the selection mask; a
+one-box-per-group timeline is built separately for cross-camera association.
 """
 from __future__ import annotations
 
@@ -78,6 +83,7 @@ class Fragment:
     row: int
     frames: NDArray[np.int64]
     points: NDArray[np.float64]
+    valid: NDArray[np.bool_]
     embedding: NDArray[np.float64] | None
 
 
@@ -85,7 +91,7 @@ def _fragments(tracks: CameraTracks, points: NDArray[np.float64], valid: NDArray
                fps: float, config: LinkingConfig) -> list[Fragment]:
     fragments = []
     for row in range(len(tracks.track_ids)):
-        frames = np.flatnonzero(valid[row]).astype(np.int64)
+        frames = np.flatnonzero(tracks.observed[row]).astype(np.int64)
         gaps = np.diff(frames) / fps
         switches = switch_candidates(points[row], valid[row], fps, SwitchConfig(.25, 3.))
         cuts = np.unique(np.r_[np.flatnonzero(gaps > config.max_gap_s) + 1, np.searchsorted(frames, switches)])
@@ -96,7 +102,7 @@ def _fragments(tracks: CameraTracks, points: NDArray[np.float64], valid: NDArray
             if tracks.appearance is not None:
                 a = tracks.appearance[row]
                 embedding = segment_embedding(a.frames, a.embeddings, int(indices[0]), int(indices[-1]) + 1)
-            fragments.append(Fragment(row, indices, points[row, indices], embedding))
+            fragments.append(Fragment(row, indices, points[row, indices], valid[row, indices], embedding))
     return fragments
 
 
@@ -106,17 +112,22 @@ def _pair(a: Fragment, b: Fragment, fps: float, config: LinkingConfig) -> dict[s
     gap = (int(b.frames[0]) - int(a.frames[-1])) / fps
     if gap > config.max_gap_s or gap < -config.max_handoff_s:
         return None
-    if not exclusive_region(a.points, config, core=True).any() or not exclusive_region(b.points, config, core=True).any():
+    if not (a.valid & exclusive_region(a.points, config, core=True)).any() or not (b.valid & exclusive_region(b.points, config, core=True)).any():
         return None  # a border-only bystander cannot borrow a player's dwell
-    shared, ia, ib = np.intersect1d(a.frames, b.frames, return_indices=True)
+    af, bf = a.frames[a.valid], b.frames[b.valid]
+    ap, bp = a.points[a.valid], b.points[b.valid]
+    # Invalid footpoints remain observations, but cannot supply link evidence.
+    if (a.frames[-1] - af[-1]) / fps > config.max_gap_s or (bf[0] - b.frames[0]) / fps > config.max_gap_s:
+        return None
+    shared, ia, ib = np.intersect1d(af, bf, return_indices=True)
     if len(shared):
-        distance = float(np.median(np.linalg.norm(a.points[ia] - b.points[ib], axis=1)))
+        distance = float(np.median(np.linalg.norm(ap[ia] - bp[ib], axis=1)))
         interval = 0.
     else:
-        end = a.frames >= a.frames[-1] - .1 * fps
-        start = b.frames <= b.frames[0] + .1 * fps
-        distance = float(np.linalg.norm(np.median(a.points[end], axis=0) - np.median(b.points[start], axis=0)))
-        interval = float((np.median(b.frames[start]) - np.median(a.frames[end])) / fps)
+        end = af >= af[-1] - .1 * fps
+        start = bf <= bf[0] + .1 * fps
+        distance = float(np.linalg.norm(np.median(ap[end], axis=0) - np.median(bp[start], axis=0)))
+        interval = float((np.median(bf[start]) - np.median(af[end])) / fps)
     limit = config.position_slack_m + config.max_speed_m_s * max(interval, 0.)
     if distance > limit:
         return None
@@ -138,7 +149,7 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
     outer = valid & exclusive_region(points, config, core=False)
     core = outer & exclusive_region(points, config, core=True)
     # Keep temporal continuity through isolated bad footpoints. Region rejection
-    # is applied to dwell and output, not used to invent new fragmentation.
+    # is applied only to dwell, never to the output observations.
     fragments = _fragments(tracks, points, valid, fps, config)
     pairs = []
     for i, a in enumerate(fragments):
@@ -196,14 +207,9 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
     selected_groups = ranked[:config.max_candidates]
     selected = np.zeros_like(tracks.observed)
     for candidate in selected_groups:
-        occupied = np.zeros(tracks.observed.shape[1], bool)
-        # A handoff contributes one observed box per group/frame, with earlier
-        # source ID as a deterministic tie-break, not the detector score.
-        for i in sorted(candidate['fragments'], key=lambda i: (int(tracks.track_ids[fragments[i].row]), i)):
+        for i in candidate['fragments']:
             f = fragments[i]
-            keep = f.frames[~occupied[f.frames] & outer[f.row, f.frames]]
-            selected[f.row, keep] = True
-            occupied[keep] = True
+            selected[f.row, f.frames] = True
     for candidate in candidates:
         candidate['selected'] = candidate in selected_groups
         candidate['reason'] = ('selected' if candidate['selected'] else
@@ -215,5 +221,7 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
                        'excluded_short_ambiguous': i in excluded} for i, f in enumerate(fragments)],
         'links': links, 'groups': candidates, 'selected_groups': len(selected_groups),
         'outside_observations': int((tracks.observed & ~outer).sum()),
+        'selected_outside_corridor': int((selected & valid & ~outer).sum()),
+        'selected_invalid_footpoints': int((selected & ~valid).sum()),
         'valid_footpoints': int(valid.sum()), 'within_corridor': int(outer.sum())}
     return selected, diagnostic
