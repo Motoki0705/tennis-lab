@@ -76,19 +76,8 @@ degradation:
   mean_bounds_policy: clip_to_source_grid
   triangulation: src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged
   boundary_convergence:
-    initial_cells:
-    - 16
-    - 24
-    - 32
-    levels:
-    - 7
-    - 8
-    - 9
-    refine_cells:
-    - 512
-    - 1024
-    - 2048
-    prior_sigmas: 4.0
+    method: ray
+    orders: [12, 20, 32, 48, 64]
     nll_tolerance_nat: 0.05
     log_evidence_tolerance_nat: 0.05
     mean_tolerance: 0.02
