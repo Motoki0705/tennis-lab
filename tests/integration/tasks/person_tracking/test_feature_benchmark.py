@@ -1,3 +1,4 @@
+import importlib.util
 import json
 from argparse import Namespace
 from pathlib import Path
@@ -8,7 +9,15 @@ import pytest
 from src.tasks.person_tracking.archive import save_features
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.utils.checksum import dual_sha256
-from tests.benchmarks.person_tracking_features import track
+from src.utils.paths import PROJECT_ROOT
+
+
+def track(args: Namespace) -> None:
+    spec = importlib.util.spec_from_file_location("feature_benchmark", PROJECT_ROOT / "tests/benchmarks/person_tracking_features.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.track(args)
 
 
 def test_cpu_benchmark_replays_shared_features_and_rejects_changed_archive(tmp_path: Path) -> None:
