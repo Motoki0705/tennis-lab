@@ -1,0 +1,3291 @@
+{
+  "voxel": {
+    "initial_cells": 16,
+    "levels": 7,
+    "refine_cells": 512,
+    "prior_sigmas": 4.0
+  },
+  "laplace": {
+    "max_components": 64,
+    "max_nfev": 100
+  },
+  "particles": 128,
+  "hdr_samples": 1024,
+  "records": [
+    {
+      "key": "case_000",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.12015882600098848,
+      "status": "success",
+      "nll_m3": -4.056176869784421,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_001",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 36,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07349712902214378,
+      "status": "success",
+      "nll_m3": -3.00799542647139,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_002",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 72,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09036705503240228,
+      "status": "success",
+      "nll_m3": -3.3400523302524547,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_003",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 108,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09273380500962958,
+      "status": "success",
+      "nll_m3": -5.167742476506666,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_004",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 144,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.14469297201139852,
+      "status": "success",
+      "nll_m3": 1.3368492375917043,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_005",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 180,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.017872246040496975,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_006",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 216,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.15657383197685704,
+      "status": "success",
+      "nll_m3": 2.2523712512578618,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_007",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 253,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.015755050000734627,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_008",
+      "cohort": "shared_gap",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 127,
+      "gap": true,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11419612902682275,
+      "status": "success",
+      "nll_m3": 5.038560359711549,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_009",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 0,
+      "seed": 3349379694,
+      "frame": 79,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3349379694,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 257161112,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=1.2253811359405518, tolerance_m=0.25."
+        },
+        {
+          "seed": 354489699,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.075955390930176, tolerance_m=0.25."
+        },
+        {
+          "seed": 397968245,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.040073838958051056,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_010",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03170722699724138,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_011",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 70,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10176025697728619,
+      "status": "success",
+      "nll_m3": -1.6402370258125416,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_012",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 141,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09631895500933751,
+      "status": "success",
+      "nll_m3": -1.9863815336406472,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_013",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 212,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.12078901095082983,
+      "status": "success",
+      "nll_m3": -4.142671148049507,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_014",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 283,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07720407500164583,
+      "status": "success",
+      "nll_m3": -1.243353329094385,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_015",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 354,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1484845140366815,
+      "status": "success",
+      "nll_m3": -1.9860091724197724,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_016",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 425,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09094500303035602,
+      "status": "success",
+      "nll_m3": -1.8434861528831634,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_017",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 496,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10891762602841482,
+      "status": "success",
+      "nll_m3": 0.43266706619596873,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_018",
+      "cohort": "shared_gap",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 248,
+      "gap": true,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10377917403820902,
+      "status": "success",
+      "nll_m3": 2.292369458854571,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_019",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 1,
+      "seed": 3716130156,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 3716130156,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03353990300092846,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_020",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1283340259687975,
+      "status": "success",
+      "nll_m3": -4.327007826187583,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_021",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 73,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10025897598825395,
+      "status": "success",
+      "nll_m3": -3.382254417498668,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_022",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.12456754903541878,
+      "status": "success",
+      "nll_m3": -2.4215893011262213,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_023",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 219,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09764521499164402,
+      "status": "success",
+      "nll_m3": -2.4258695822021368,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_024",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 292,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.036547855008393526,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_025",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 365,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03947082697413862,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_026",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 438,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03887149097863585,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_027",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 511,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation optimization failed: The maximum number of function evaluations is exceeded.",
+      "seconds": 0.043169679993297905,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_028",
+      "cohort": "shared_gap",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 256,
+      "gap": true,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08592426998075098,
+      "status": "success",
+      "nll_m3": 1.4289515702950433,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_029",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 2,
+      "seed": 669701129,
+      "frame": 285,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 669701129,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=2.2563021183013916, tolerance_m=0.25."
+        },
+        {
+          "seed": 3785811500,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03922928695101291,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_030",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10145719902357087,
+      "status": "success",
+      "nll_m3": -1.3102707278739747,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_031",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 73,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07246524200309068,
+      "status": "success",
+      "nll_m3": -0.3027374177725839,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_032",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.046271350991446525,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_033",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 219,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10810408199904487,
+      "status": "success",
+      "nll_m3": -0.7140008550306007,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_034",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 292,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08859440899686888,
+      "status": "success",
+      "nll_m3": -1.2621224791221752,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_035",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 365,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08202585799153894,
+      "status": "success",
+      "nll_m3": -1.0524444038381615,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_036",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 438,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09269886702531949,
+      "status": "success",
+      "nll_m3": -1.835734315728153,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_037",
+      "cohort": "scheduled",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 511,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.049581373983528465,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_038",
+      "cohort": "shared_gap",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 256,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.13740672200219706,
+      "status": "success",
+      "nll_m3": 3.5027768695453565,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_039",
+      "cohort": "run2_failure",
+      "split": "train",
+      "rally": 3,
+      "seed": 1189098374,
+      "frame": 27,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 1189098374,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=inf, tolerance_m=0.25."
+        },
+        {
+          "seed": 3504258645,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=5.139936447143555, tolerance_m=0.25."
+        },
+        {
+          "seed": 221511365,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.015605596010573208,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_040",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.06990777200553566,
+      "status": "success",
+      "nll_m3": -1.196529026905345,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_041",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 25,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09172008803579956,
+      "status": "success",
+      "nll_m3": -0.7500559820251509,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_042",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 50,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11125312902731821,
+      "status": "success",
+      "nll_m3": -0.7947290398602154,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_043",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 75,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08433240704471245,
+      "status": "success",
+      "nll_m3": -1.5083259569150371,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_044",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 101,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09154422796564177,
+      "status": "success",
+      "nll_m3": -2.882014131213761,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_045",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 126,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1465395190170966,
+      "status": "success",
+      "nll_m3": -3.6103004699996375,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_046",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 151,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.0532515169470571,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_047",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 177,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.025502573989797384,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_048",
+      "cohort": "shared_gap",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 89,
+      "gap": true,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09765107597922906,
+      "status": "success",
+      "nll_m3": 2.388920542691931,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_049",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 0,
+      "seed": 724086207,
+      "frame": 131,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 724086207,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.05132193100871518,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_050",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.0855716799851507,
+      "status": "success",
+      "nll_m3": -2.9598507564167935,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_051",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 73,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09812237101141363,
+      "status": "success",
+      "nll_m3": -3.992135573859198,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_052",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09849170403322205,
+      "status": "success",
+      "nll_m3": -2.3154959896402514,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_053",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 219,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08235803700517863,
+      "status": "success",
+      "nll_m3": -2.5190602543139033,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_054",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 292,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09224892099155113,
+      "status": "success",
+      "nll_m3": -3.0806714731678126,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_055",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 365,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11330403998726979,
+      "status": "success",
+      "nll_m3": -3.0300544303065062,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_056",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 438,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.13263372104847804,
+      "status": "success",
+      "nll_m3": -2.8372156856388147,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_057",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 511,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09135130100185052,
+      "status": "success",
+      "nll_m3": -2.580412021703957,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_058",
+      "cohort": "shared_gap",
+      "split": "val",
+      "rally": 1,
+      "seed": 1583466478,
+      "frame": 256,
+      "gap": true,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1583466478,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10470847197575495,
+      "status": "success",
+      "nll_m3": 1.8998903362704591,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_059",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation optimization failed: The maximum number of function evaluations is exceeded.",
+      "seconds": 0.038519516005180776,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_060",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 73,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.036075948970392346,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_061",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.0789613850065507,
+      "status": "success",
+      "nll_m3": -1.5251790906506644,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_062",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 219,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.13275470799999312,
+      "status": "success",
+      "nll_m3": -4.3250662150413,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_063",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 292,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.0972830550163053,
+      "status": "success",
+      "nll_m3": 1.4517728085163133,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_064",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 365,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.17050778097473085,
+      "status": "success",
+      "nll_m3": -2.2248500086385836,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_065",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 438,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08795781299704686,
+      "status": "success",
+      "nll_m3": -1.605754440549099,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_066",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 511,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11305677104974166,
+      "status": "success",
+      "nll_m3": -4.993105395344544,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_067",
+      "cohort": "shared_gap",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 256,
+      "gap": true,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09602047799853608,
+      "status": "success",
+      "nll_m3": 2.8127660583868885,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_068",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 2,
+      "seed": 1338722038,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 1338722038,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2536197606,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation optimization failed: The maximum number of function evaluations is exceeded.",
+      "seconds": 0.04746887000510469,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_069",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08397495601093397,
+      "status": "success",
+      "nll_m3": -0.8268835369698143,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_070",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 28,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07422009599395096,
+      "status": "success",
+      "nll_m3": -1.2281440732133682,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_071",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 56,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08456223999382928,
+      "status": "success",
+      "nll_m3": -1.8670240639923033,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_072",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 84,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.21696986799361184,
+      "status": "success",
+      "nll_m3": 2.154119334043035,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_073",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 113,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.13190287799807265,
+      "status": "success",
+      "nll_m3": 1.9064808390047019,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_074",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 141,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.05379225604701787,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_075",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 169,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.0358595970319584,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_076",
+      "cohort": "scheduled",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 198,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03451379499165341,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_077",
+      "cohort": "shared_gap",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 99,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.12407702195923775,
+      "status": "success",
+      "nll_m3": 1.6617521827008517,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_078",
+      "cohort": "run2_failure",
+      "split": "val",
+      "rally": 3,
+      "seed": 535296226,
+      "frame": 130,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 535296226,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 2688272821,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.06612313399091363,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_079",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11114482599077746,
+      "status": "success",
+      "nll_m3": -0.3329906410830562,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_080",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 48,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09235793503466994,
+      "status": "success",
+      "nll_m3": 0.038833447024975876,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_081",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 97,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.12892718898365274,
+      "status": "success",
+      "nll_m3": 2.042394036705576,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_082",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1070367600186728,
+      "status": "success",
+      "nll_m3": -0.45572394622179324,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_083",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 195,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09621067601256073,
+      "status": "success",
+      "nll_m3": -1.4171390387522864,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_084",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 244,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.0636333730071783,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_085",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 293,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.027472295972984284,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_086",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 342,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.030423284973949194,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_087",
+      "cohort": "shared_gap",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 171,
+      "gap": true,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.14785277599003166,
+      "status": "success",
+      "nll_m3": 3.8465784599180908,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_088",
+      "cohort": "run2_failure",
+      "split": "test",
+      "rally": 0,
+      "seed": 3741586814,
+      "frame": 70,
+      "gap": false,
+      "shared_gap_length": 8,
+      "physics_proposals": [
+        {
+          "seed": 3741586814,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.04117861803388223,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_089",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1051367680192925,
+      "status": "success",
+      "nll_m3": 0.2509963035680445,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_090",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 37,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.0929938229965046,
+      "status": "success",
+      "nll_m3": -2.45921324051627,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_091",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 75,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07809383701533079,
+      "status": "success",
+      "nll_m3": -2.1804455582046387,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_092",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 113,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08450517704477534,
+      "status": "success",
+      "nll_m3": -2.6082879778457944,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_093",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 151,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09778799198102206,
+      "status": "success",
+      "nll_m3": -2.2014656977281297,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_094",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 189,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1424424079596065,
+      "status": "success",
+      "nll_m3": 0.1977080536949687,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_095",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 227,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11947280797176063,
+      "status": "success",
+      "nll_m3": 1.7752009254151204,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_096",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 265,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1515946440049447,
+      "status": "success",
+      "nll_m3": 1.4406543478812737,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_097",
+      "cohort": "shared_gap",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 133,
+      "gap": true,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07060729700606316,
+      "status": "success",
+      "nll_m3": 1.9880646709219427,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_098",
+      "cohort": "run2_failure",
+      "split": "test",
+      "rally": 1,
+      "seed": 1606478505,
+      "frame": 38,
+      "gap": false,
+      "shared_gap_length": 16,
+      "physics_proposals": [
+        {
+          "seed": 1606478505,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.7547714710235596, tolerance_m=0.25."
+        },
+        {
+          "seed": 4037541813,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.30988943576812744, tolerance_m=0.25."
+        },
+        {
+          "seed": 1841505019,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.5190240740776062, tolerance_m=0.25."
+        },
+        {
+          "seed": 330764760,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.03651302901562303,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_099",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10981616197386757,
+      "status": "success",
+      "nll_m3": -2.511165686998212,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_100",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 73,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10066187800839543,
+      "status": "success",
+      "nll_m3": -1.185524959032578,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_101",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1122387500363402,
+      "status": "success",
+      "nll_m3": -0.8874908823939913,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_102",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 219,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09639011998660862,
+      "status": "success",
+      "nll_m3": -1.2679698489949294,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_103",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 292,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.0864897919818759,
+      "status": "success",
+      "nll_m3": -1.242932271428881,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_104",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 365,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09515781997470185,
+      "status": "success",
+      "nll_m3": -0.7965058301234267,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_105",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 438,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11720230203354731,
+      "status": "success",
+      "nll_m3": -1.9923071652074738,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_106",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 511,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11541959102032706,
+      "status": "success",
+      "nll_m3": -0.9848110488677004,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_107",
+      "cohort": "shared_gap",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 256,
+      "gap": true,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08280181704321876,
+      "status": "success",
+      "nll_m3": 4.06936987854053,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_108",
+      "cohort": "run2_failure",
+      "split": "test",
+      "rally": 2,
+      "seed": 883072688,
+      "frame": 14,
+      "gap": false,
+      "shared_gap_length": 32,
+      "physics_proposals": [
+        {
+          "seed": 883072688,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing within the requested-side tolerance; best_error_m=0.6034001111984253, tolerance_m=0.25."
+        },
+        {
+          "seed": 2481696287,
+          "status": "rejected",
+          "reason": "Full-physics targeted-velocity refinement produced no valid landing return window on the requested canonical court side."
+        },
+        {
+          "seed": 1183976830,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "status": "failed",
+      "error": "Triangulation mode is behind an active camera",
+      "seconds": 0.052068057004362345,
+      "nll_m3": null,
+      "coverage90": false,
+      "coverage95": false
+    },
+    {
+      "key": "case_109",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 0,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09410618495894596,
+      "status": "success",
+      "nll_m3": -4.167169310381976,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_110",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 73,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.11681778699858114,
+      "status": "success",
+      "nll_m3": -4.2274737830047355,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_111",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 146,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.10555990500142798,
+      "status": "success",
+      "nll_m3": -5.2292531807080005,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_112",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 219,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.07902954402379692,
+      "status": "success",
+      "nll_m3": -3.5093991774572717,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_113",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 292,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.09691118798218668,
+      "status": "success",
+      "nll_m3": -3.4333488206741305,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_114",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 365,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.13153738400433213,
+      "status": "success",
+      "nll_m3": -6.283279954062548,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_115",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 438,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08121245604706928,
+      "status": "success",
+      "nll_m3": -3.9427512129145215,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_116",
+      "cohort": "scheduled",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 511,
+      "gap": false,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.1016641779569909,
+      "status": "success",
+      "nll_m3": -4.999318383536779,
+      "coverage90": true,
+      "coverage95": true
+    },
+    {
+      "key": "case_117",
+      "cohort": "shared_gap",
+      "split": "test",
+      "rally": 3,
+      "seed": 2488589600,
+      "frame": 256,
+      "gap": true,
+      "shared_gap_length": 64,
+      "physics_proposals": [
+        {
+          "seed": 2488589600,
+          "status": "accepted"
+        }
+      ],
+      "method": "A0",
+      "seconds": 0.08559305098606274,
+      "status": "success",
+      "nll_m3": 1.5078670025750935,
+      "coverage90": true,
+      "coverage95": true
+    }
+  ]
+}

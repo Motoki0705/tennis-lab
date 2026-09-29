@@ -1,0 +1,131 @@
+{
+  "summary": [
+    {
+      "cohort": "main",
+      "method": "A0",
+      "total": 108,
+      "success": 89,
+      "failure_rate": 0.17592592592592593,
+      "mean_nll_success": -1.2438095166571745,
+      "coverage90_all": 0.8240740740740741,
+      "coverage95_all": 0.8240740740740741,
+      "median_ms": 95.58914898661897,
+      "p95_ms": 147.3931360495044
+    },
+    {
+      "cohort": "main",
+      "method": "A",
+      "total": 108,
+      "success": 0,
+      "failure_rate": 1.0,
+      "mean_nll_success": null,
+      "coverage90_all": 0.0,
+      "coverage95_all": 0.0,
+      "median_ms": 0.9819194965530187,
+      "p95_ms": 1.6110906464746217
+    },
+    {
+      "cohort": "main",
+      "method": "B",
+      "total": 108,
+      "success": 108,
+      "failure_rate": 0.0,
+      "mean_nll_success": -0.38855062463480305,
+      "coverage90_all": 0.9629629629629629,
+      "coverage95_all": 0.9722222222222222,
+      "median_ms": 331.123309006216,
+      "p95_ms": 421.46197750407714
+    },
+    {
+      "cohort": "main",
+      "method": "C",
+      "total": 108,
+      "success": 23,
+      "failure_rate": 0.787037037037037,
+      "mean_nll_success": 0.29460611983196694,
+      "coverage90_all": 0.21296296296296297,
+      "coverage95_all": 0.21296296296296297,
+      "median_ms": 49.05362849240191,
+      "p95_ms": 181.77514034614427
+    },
+    {
+      "cohort": "main",
+      "method": "H",
+      "total": 108,
+      "success": 108,
+      "failure_rate": 0.0,
+      "mean_nll_success": -0.6143428411397144,
+      "coverage90_all": 0.9814814814814815,
+      "coverage95_all": 0.9814814814814815,
+      "median_ms": 359.24208399956115,
+      "p95_ms": 1093.5969977610512
+    },
+    {
+      "cohort": "run2_failure",
+      "method": "A0",
+      "total": 10,
+      "success": 0,
+      "failure_rate": 1.0,
+      "mean_nll_success": null,
+      "coverage90_all": 0.0,
+      "coverage95_all": 0.0,
+      "median_ms": 40.62622849596664,
+      "p95_ms": 59.79834934696554
+    },
+    {
+      "cohort": "run2_failure",
+      "method": "A",
+      "total": 10,
+      "success": 0,
+      "failure_rate": 1.0,
+      "mean_nll_success": null,
+      "coverage90_all": 0.0,
+      "coverage95_all": 0.0,
+      "median_ms": 1.0213759960606694,
+      "p95_ms": 1.6275615111226212
+    },
+    {
+      "cohort": "run2_failure",
+      "method": "B",
+      "total": 10,
+      "success": 10,
+      "failure_rate": 0.0,
+      "mean_nll_success": 0.005089802075612671,
+      "coverage90_all": 0.9,
+      "coverage95_all": 0.9,
+      "median_ms": 336.0288275289349,
+      "p95_ms": 482.4959809309802
+    },
+    {
+      "cohort": "run2_failure",
+      "method": "C",
+      "total": 10,
+      "success": 1,
+      "failure_rate": 0.9,
+      "mean_nll_success": -0.6708598032219668,
+      "coverage90_all": 0.1,
+      "coverage95_all": 0.1,
+      "median_ms": 36.09824751038104,
+      "p95_ms": 111.93628986948164
+    },
+    {
+      "cohort": "run2_failure",
+      "method": "H",
+      "total": 10,
+      "success": 10,
+      "failure_rate": 0.0,
+      "mean_nll_success": -0.9784594450398073,
+      "coverage90_all": 1.0,
+      "coverage95_all": 1.0,
+      "median_ms": 453.7451085052453,
+      "p95_ms": 981.5158908633744
+    }
+  ],
+  "hybrid_component_counts": {
+    "prior": 118,
+    "volume:boundary_laplace_tail": 1456,
+    "laplace": 5785,
+    "volume:camera_boundary": 187,
+    "volume:iteration_budget": 6
+  }
+}
