@@ -144,6 +144,12 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   ms/frameはscore 0.01の共通forward＋ROI/unionで、動画decode/load/warmup/保存は除く。未ラベル予測数も別記する。
   pipeline設定・重み・既定thresholdの変更、方式の最終比較、未見clipの評価は行わない。
 
+- `person_coco_fullframe.py --phase preflight --repo <元repo> --comparison <run1/meiji/comparison.json> --report <新規出力先>`
+  は4 dev clip × 3cameraだけをhash検証する。`timeout 5400 bash tests/benchmarks/person_coco_fullframe.sh <元repo> <comparison.json> <report>`
+  を共有GPU queueへ1件登録すると、旧COCO DINOの800/1333、score 0.01の全画面box・scoreをROI前に保存する。
+  torch allocatorは6 GiBに制限。camera単位のarchive/hash・進捗・peak allocated/reservedを残し、途中runを上書きしない。
+  ROI後の旧storeと区別し、最終のソース比較とCPU閾値sweepは別runで行う。
+
 - `person_selection_cpu.py --repo <元repo> --report <新規出力先> --phase sources --progress <run3/progress.json>`
   は中止済みrun 3のft_base 12件・ft_1080 11件をhash検証し、保存済みCOCOと比較する。閾値
   0.01/0.02/0.05/0.1/0.3のcamera×近遠表、共通11件の表、ROI内外人数を`sources.{json,csv}`へ書く。
