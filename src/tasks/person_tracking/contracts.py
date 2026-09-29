@@ -13,7 +13,7 @@ class DetectionFeatures:
     rows: NDArray[np.int64]  # original, clip-global detection row IDs
     boxes: NDArray[np.float32]  # N,4 source-pixel xyxy
     scores: NDArray[np.float32]  # N
-    poses: NDArray[np.float32]  # N,17,3 source-pixel x,y,confidence
+    poses: NDArray[np.float32]  # N,17,3 source-pixel x,y,raw ViTPose heatmap peak (unbounded)
     embeddings: NDArray[np.float32]  # N,E; zero when appearance_valid is false
     appearance_valid: NDArray[np.bool_]
 
@@ -29,9 +29,8 @@ class DetectionFeatures:
         for array in (self.boxes, self.scores, self.poses, self.embeddings):
             if array.dtype != np.float32 or not np.isfinite(array).all():
                 raise ValueError("Feature values must be finite float32")
-        if (self.boxes[:, 2:] <= self.boxes[:, :2]).any() or ((self.scores < 0) | (self.scores > 1)).any() \
-                or ((self.poses[..., 2] < 0) | (self.poses[..., 2] > 1)).any():
-            raise ValueError("Boxes must have positive area and confidences must be probabilities")
+        if (self.boxes[:, 2:] <= self.boxes[:, :2]).any() or ((self.scores < 0) | (self.scores > 1)).any():
+            raise ValueError("Boxes must have positive area and detection scores must be probabilities")
         norms = np.linalg.norm(self.embeddings[self.appearance_valid], axis=1)
         if not np.allclose(norms, 1., atol=1e-4) or (self.embeddings[~self.appearance_valid] != 0).any():
             raise ValueError("Valid embeddings must have unit norm; masked embeddings must be zero")

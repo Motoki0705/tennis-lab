@@ -11,7 +11,8 @@ import numpy as np
 from src.tasks.person_tracking.contracts import DetectionFeatures
 
 _FIELDS = ('rows', 'boxes', 'scores', 'poses', 'embeddings', 'appearance_valid')
-_SCHEMA = 'person_detection_features_v1'
+# v2 explicitly preserves unbounded ViTPose heatmap peaks. v1 required [0,1].
+_SCHEMA = 'person_detection_features_v2'
 
 
 def save_features(path: Path, frames: list[DetectionFeatures], provenance: dict[str, Any]) -> None:

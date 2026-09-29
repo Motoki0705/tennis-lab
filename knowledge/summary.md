@@ -1,4 +1,4 @@
-<!-- knowledge-review: 702f06f947be425cf88fdeaeac3dfb245264cc2d6343f733373bc325004f6345 on 2026-09-29 -->
+<!-- knowledge-review: 301e0a7dc40c206b4e730552830ca49e08d3dbf3e50f5b4e7402130e0dcb6ee2 on 2026-09-29 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
@@ -19,6 +19,10 @@
 多くはIoU=0で、単なるbox形状差と決めつけられない。ユーザー指定のFT切替を保ち、追跡比較ではcoverageを併記する。
 CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
 既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
+
+共通人物特徴の[初回smoke](nodes/person_tracking/000001-run-i964-features-smoke-r2-20260929.md)は、
+ViTPoseの回帰heatmap peakを確率とみなす検査で停止した。実入力のCPU再現で有限の1超scoreを確認し、
+生値を保持する契約へ修正する。非有限値の停止は維持する。GPU再実行と追跡の品質評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
 

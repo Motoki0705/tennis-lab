@@ -55,7 +55,11 @@ class Pose2DFrameSequenceRequest:
 
 @dataclass(frozen=True)
 class Pose2DResult:
-    """COCO-17 keypoints ``(F, 17, 3)`` as (x, y, confidence) in pixels."""
+    """COCO-17 ``(F, 17, 3)``: pixel x/y and raw regression heatmap peak.
+
+    The last channel is a confidence score, not a probability: the linear
+    heatmap head does not bound it to [0,1]. No sigmoid/clipping is applied.
+    """
 
     keypoints: torch.Tensor
 

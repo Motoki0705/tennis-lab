@@ -15,7 +15,10 @@
 track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わない。累計6 IDを超えれば停止し、IDを再利用しない。
 1 cameraごとにtrackerを構築し、空frameも含め0から順に渡す。
 
-外観はCLIP-ReID既定。低いcrop等の外観不足はzero embeddingとmaskで明示する。poseはjoint confidenceを持ち、
+外観はCLIP-ReID既定。低いcrop等の外観不足はzero embeddingとmaskで明示する。poseの第3channelは
+ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加工せず保持する。1を超える値や負の値を
+clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2のみを読み、v1を暗黙変換しない。
+非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。外観不一致はhigh/low両段でIoUによって打ち消さない。
 特徴抽出のprompt契約は将来のKPRに対応するが、**SOLIDER/KPR推論はまだ実装していない**。
 CLIP用adapterはpromptを使わないことを明示する。重み不足やモデル出力不正は停止する。
