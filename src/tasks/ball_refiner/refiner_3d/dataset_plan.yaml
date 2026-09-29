@@ -1,6 +1,6 @@
-schema_version: 1
-status: cpu_generator_v1
-purpose: '#936 CPU synthetic dataset; no real ball annotations are read'
+schema_version: 2
+status: cpu_generator_v2
+purpose: '#936 development dataset with provisional #935 saved-validation degradation'
 seed: 936
 simulation:
   class: src.tasks.blcs.generate_dataset.simulation.rally_simulator.RallySimulator
@@ -54,17 +54,16 @@ geometry:
     principal_point_sigma_px: 2.0
   calibration_error_condition: clean_shared_perturbed_camera
 degradation:
-  status: 'hypothesized parameters; recalibrate against #935 train/val before production'
+  status: provisional_context_free_ft_e13
   distribution_class: src.tasks.ball_refiner.refiner_2d.distribution.BallGMM2D
-  components_per_camera: 3
-  source_pixel_sigma_range:
-  - 3
-  - 24
-  correlation_range:
-  - -0.7
-  - 0.7
-  error_ar1: 0.9
-  mean_error_sigma_multiplier: 0.25
+  components_per_camera: 4
+  calibration:
+    bank: knowledge/runs/run-i936-provisional-degradation-r5-s936/bank.npz
+    bank_sha256: aea209600cfe218e239612cfaa828706b7ffabedebc9291ea0634acce31c482c
+    report: knowledge/runs/run-i936-provisional-degradation-r5-s936/calibration.json
+    report_sha256: 7a2ea393b0a4c4c62c9f5903b577af9a64bb7fa9a5cc9b5f0fb4a31378ad360d
+    block_frames: 16
+    out_of_frame_presence_logit: -4.0
   gap_lengths_frames:
   - 1
   - 4
@@ -74,21 +73,26 @@ degradation:
   - 64
   occlusion_changes_presence: false
   out_of_frame_changes_presence: true
-  alternatives: persistent shifted trajectory plus broad distractor; no raw detector
-    points
-  alternative_shift_m: [1.2, 2.4, 0.4]
-  observed_weights: [0.7, 0.2, 0.1]
-  gap_weights: [0.4, 0.4, 0.2]
-  gap_sigma_multiplier: 4.0
-  distractor_sigma_multiplier: 3.0
-  presence_logit_magnitude: 4.0
   mean_bounds_policy: clip_to_source_grid
-  triangulation: src.utils.geometry.probabilistic_triangulation.solver.triangulate_hybrid
-  boundary_volume:
-    initial_cells: 16
-    levels: 7
-    refine_cells: 512
+  triangulation: src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged
+  boundary_convergence:
+    initial_cells:
+    - 16
+    - 24
+    - 32
+    levels:
+    - 7
+    - 8
+    - 9
+    refine_cells:
+    - 512
+    - 1024
+    - 2048
     prior_sigmas: 4.0
+    nll_tolerance_nat: 0.05
+    log_evidence_tolerance_nat: 0.05
+    mean_tolerance: 0.02
+    covariance_relative_tolerance: 0.05
   prior_mean_m:
   - 0.0
   - 0.0
@@ -97,7 +101,7 @@ degradation:
   - 36.0
   - 144.0
   - 9.0
-  max_components: 64
+  max_components: 125
   max_nfev: 100
 counts:
   smoke_rallies_per_split: 4
@@ -105,6 +109,10 @@ counts:
     train: 512
     val: 64
     test: 64
+  dev_rallies:
+    train: 64
+    val: 16
+    test: 16
 storage:
   format: float32 NPZ per rally plus JSON manifest; all mixture components preserved
   estimated_pilot_limit_bytes: 1500000000
@@ -120,6 +128,8 @@ storage:
   - 3d_means_covariance_weights_camera_subsets
   - prior_only_probability
   - seed_config_and_source_hashes
+  - integration_convergence_per_frame_and_component
+  - calibration_row_provenance
 acceptance_checks:
 - exact 60000/1001Hz timestamps without integer-stride drift
 - event seconds retained and masks cover interpolation boundaries

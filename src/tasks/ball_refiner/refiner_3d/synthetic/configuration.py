@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import yaml
 from omegaconf import OmegaConf
 
@@ -19,7 +18,9 @@ from src.utils.configuration import (
     PathResolver,
     PathRole,
 )
-from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
+from src.utils.geometry.probabilistic_triangulation.convergence import ConvergenceConfig
+
+from .calibration import CalibrationBank, load_calibration
 
 SOURCE_BOUNDARY = NonHydraPathBoundary(
     name="ball_refiner.synthetic_sources",
@@ -31,6 +32,15 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+CALIBRATION_BOUNDARY = NonHydraPathBoundary(
+    name="ball_refiner.synthetic_calibration",
+    fields=(
+        BoundaryPathField("bank", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+        BoundaryPathField("report", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+    ),
+)
+
+
 @dataclass(frozen=True)
 class GenerationPlan:
     values: dict[str, Any]
@@ -40,6 +50,7 @@ class GenerationPlan:
     camera_paths: tuple[Path, ...]
     input_paths: tuple[Path, ...]
     input_hashes: dict[str, str]
+    calibration: CalibrationBank
 
     def verify_inputs(self) -> None:
         for path in self.input_paths:
@@ -54,8 +65,8 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         "geometry", "degradation", "counts", "storage", "acceptance_checks",
     }:
         raise ValueError("Unknown or incomplete generation plan")
-    if raw["schema_version"] != 1 or raw["status"] != "cpu_generator_v1":
-        raise ValueError("Plan is not an executable CPU v1 recipe")
+    if raw["schema_version"] != 2 or raw["status"] != "cpu_generator_v2":
+        raise ValueError("Plan is not an executable CPU v2 recipe")
     simulation, sampling, degradation = raw["simulation"], raw["sampling"], raw["degradation"]
     if simulation["device"] != "cpu" or simulation["workers"] not in range(1, 5):
         raise ValueError("CPU generation requires 1..4 workers")
@@ -69,40 +80,32 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("Physics timestep or event exclusion differs from v1")
     if sampling["max_frames_per_rally"] < 72:
         raise ValueError("Need >=72 frames of capacity for the 64-frame gap")
-    if degradation["triangulation"] != "src.utils.geometry.probabilistic_triangulation.solver.triangulate_hybrid":
-        raise ValueError("This recipe requires explicit cheirality A/B hybrid")
-    VoxelConfig(**degradation["boundary_volume"])
-    if degradation["components_per_camera"] != 3 or degradation["max_components"] != 64:
-        raise ValueError("Require K=3 and all (K+1)^3=64 components")
+    if degradation["triangulation"] != "src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged":
+        raise ValueError("This recipe requires convergence-checked A/B integration")
+    ConvergenceConfig(**degradation["boundary_convergence"])
+    calibration = degradation["calibration"]
+    paths = CALIBRATION_BOUNDARY.validate({key: calibration[key] for key in ("bank", "report")}, resolver=resolver)
+    bank_path, report_path = (paths.declared(key).path for key in ("bank", "report"))
+    bank = load_calibration(bank_path, calibration["bank_sha256"])
+    if sha256(report_path) != calibration["report_sha256"]:
+        raise ValueError("Calibration report SHA mismatch")
+    if degradation["components_per_camera"] != bank.components or degradation["max_components"] != (bank.components + 1) ** 3:
+        raise ValueError("Require every calibrated component and camera-subset product")
+    if type(calibration["block_frames"]) is not int or not 1 <= calibration["block_frames"] <= 16:
+        raise ValueError("Pilot evidence supports bootstrap blocks of 1..16 frames")
+    if not -10 <= calibration["out_of_frame_presence_logit"] < 0 or degradation["max_nfev"] < 1:
+        raise ValueError("Invalid explicit out-of-frame presence or optimizer budget")
     if degradation["occlusion_changes_presence"] or not degradation["out_of_frame_changes_presence"]:
         raise ValueError("Presence is amodal in-image existence, not visibility")
     if raw["geometry"]["calibration_error_condition"] != "clean_shared_perturbed_camera":
         raise ValueError("Calibration-error generation is not implemented")
-    for key in ("source_pixel_sigma_range", "correlation_range"):
-        bounds = np.asarray(degradation[key], dtype=float)
-        if bounds.shape != (2,) or not np.isfinite(bounds).all() or bounds[0] >= bounds[1]:
-            raise ValueError(f"Invalid {key}")
-    if degradation["source_pixel_sigma_range"][0] <= 0 or not all(-1 < v < 1 for v in degradation["correlation_range"]):
-        raise ValueError("Invalid 2D covariance range")
-    if not 0 <= degradation["error_ar1"] < 1 or degradation["max_nfev"] < 1:
-        raise ValueError("Invalid AR1 or optimizer budget")
-    if not np.isfinite(degradation["mean_error_sigma_multiplier"]) or degradation["mean_error_sigma_multiplier"] <= 0:
-        raise ValueError("Mean error multiplier must be finite and positive")
-    for key in ("observed_weights", "gap_weights"):
-        weights = np.asarray(degradation[key], dtype=float)
-        if weights.shape != (3,) or not np.isfinite(weights).all() or (weights <= 0).any() or not np.isclose(weights.sum(), 1):
-            raise ValueError(f"Invalid {key}")
     if degradation["mean_bounds_policy"] != "clip_to_source_grid":
         raise ValueError("Unsupported synthetic mean bounding policy")
     if degradation["gap_lengths_frames"] != [1, 4, 8, 16, 32, 64]:
-        raise ValueError("The v1 gap schedule must cover 1/4/8/16/32/64 frames")
-    if not 0 < degradation["presence_logit_magnitude"] <= 10:
-        raise ValueError("Presence must remain interior for full enumeration")
-    if any(not np.isfinite(degradation[key]) or degradation[key] < 1 for key in ("gap_sigma_multiplier", "distractor_sigma_multiplier")):
-        raise ValueError("Covariance multipliers must be finite and >=1")
+        raise ValueError("The gap schedule must cover 1/4/8/16/32/64 frames")
     if type(raw["seed"]) is not int or raw["seed"] < 0:
         raise ValueError("Need a nonnegative integer seed")
-    counts = [raw["counts"]["smoke_rallies_per_split"], *raw["counts"]["pilot_rallies"].values()]
+    counts = [raw["counts"]["smoke_rallies_per_split"], *raw["counts"]["pilot_rallies"].values(), *raw["counts"]["dev_rallies"].values()]
     if any(type(count) is not int or count < 1 for count in counts):
         raise ValueError("Rally counts must be positive integers")
     sources = raw["geometry"]["sources"]
@@ -115,7 +118,7 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
     paths = SOURCE_BOUNDARY.validate({"cameras": [source["path"] for source in sources]}, resolver=resolver)
     camera_paths = tuple(value.path for value in paths.declared_many("cameras"))
     hashes = {str(path): sha256(path)}
-    input_paths = [path, *camera_paths]
+    input_paths = [path, *camera_paths, bank_path, report_path]
     for source, camera_path in zip(sources, camera_paths, strict=True):
         hashes[str(camera_path)] = sha256(camera_path)
         if hashes[str(camera_path)] != source["sha256"]:
@@ -149,4 +152,4 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
     ):
         input_paths.append(resolver.resolve(PathRole.PROJECT, name))
     hashes.update({str(value): sha256(value) for value in input_paths})
-    return GenerationPlan(raw, physics, rally, targeted, camera_paths, tuple(input_paths), hashes)
+    return GenerationPlan(raw, physics, rally, targeted, camera_paths, tuple(input_paths), hashes, bank)
