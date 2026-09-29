@@ -1,0 +1,6 @@
+{
+  "error": "train-00000 frame=79 seed=3349379694: Triangulation mode is behind an active camera",
+  "type": "RuntimeError",
+  "split_index": 0,
+  "rally_index": 0
+}
