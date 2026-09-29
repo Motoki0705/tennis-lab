@@ -100,8 +100,13 @@ class FeatureExtractor:
         if result.keypoints.shape != (n, 17, 3):
             raise ValueError("Pose model changed the detection row axis")
         poses = result.keypoints.detach().cpu().numpy().astype(np.float32)
-        if not np.isfinite(poses).all() or ((poses[..., 2] < 0) | (poses[..., 2] > 1)).any():
-            raise ValueError("Pose model returned invalid coordinates/confidences")
+        # ViTPose returns regression heatmap peaks, not probabilities. Preserve
+        # them (including values >1 or <0); clipping would change pose weights
+        # and the prompt supplied to a pose-aware appearance encoder.
+        if not np.isfinite(poses).all():
+            bad = np.argwhere(~np.isfinite(poses))
+            details = [(int(rows[i]), int(j), int(k), str(poses[i, j, k])) for i, j, k in bad]
+            raise ValueError(f"Nonfinite pose at frame {frame}: (detection row, joint, channel, value)={details}")
         height, width = image.shape[:2]
         clipped = np.rint(boxes).astype(np.float32)
         clipped[:, [0, 2]] = np.clip(clipped[:, [0, 2]], 0, width)

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import numpy as np
@@ -23,3 +24,11 @@ def test_archive_roundtrip_keeps_empty_frame_and_noncontiguous_row_identity(tmp_
         save_features(path, [observed], provenance)
     with pytest.raises(ValueError, match='consecutive'):
         save_features(tmp_path / 'wrong.npz', [empty], provenance)
+    with np.load(path, allow_pickle=False) as archive:
+        legacy = {name: archive[name] for name in archive.files}
+    metadata = json.loads(legacy['metadata'].item())
+    metadata['schema'] = 'person_detection_features_v1'
+    legacy['metadata'] = np.asarray(json.dumps(metadata))
+    np.savez_compressed(tmp_path / 'legacy.npz', **legacy)
+    with pytest.raises(ValueError, match='Unsupported feature archive schema'):
+        load_features(tmp_path / 'legacy.npz')

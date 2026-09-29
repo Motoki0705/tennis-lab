@@ -38,8 +38,8 @@ from src.utils.video import OpenCVVideoFrameReader
 
 def extract(args: argparse.Namespace) -> None:
     report = args.report.resolve()
-    if (report / 'features.json').exists():
-        raise FileExistsError(report / 'features.json')
+    if any(report.glob('*.features.npz')) or (report / 'features.progress.json').exists() or (report / 'features.json').exists():
+        raise FileExistsError(f'Existing feature run (including failed output) is immutable: {report}')
     report.mkdir(parents=True, exist_ok=True)
     source = json.loads((args.store / 'scene.json').read_text())['source']
     store = ClipStore(args.store, source)
@@ -60,9 +60,10 @@ def extract(args: argparse.Namespace) -> None:
                       'pose': {'path': str(people.vitpose_checkpoint), 'sha256': dual_sha256(people.vitpose_checkpoint),
                                'runtime': json_value(people.runtime.vitpose), 'precision': 'float32'}}
     feature_config = FeatureConfig(bbox_enlarge=people.runtime.tracking.bbox_enlarge)
-    manifest: dict[str, Any] = {'schema': 'tracking_feature_run_v1', 'source': source, 'cameras': {},
+    manifest: dict[str, Any] = {'schema': 'tracking_feature_run_v2', 'source': source, 'cameras': {},
                                 'models': model_identity, 'feature_config': asdict(feature_config),
                                 'scope': 'prefix_smoke' if args.max_frames is not None else 'full_clip',
+                                'pose_score_semantics': 'unbounded_raw_vitpose_heatmap_peak',
                                 'detector_scope': 'saved_pipeline_court_roi', 'status': 'running'}
     write_json_atomic(report / 'features.progress.json', manifest)
     pose = ViTPosePose2D(people.vitpose_checkpoint, device=args.device, flip_test=people.runtime.vitpose.flip_test,
@@ -85,6 +86,8 @@ def extract(args: argparse.Namespace) -> None:
             frames = []
             for packet in OpenCVVideoFrameReader(Path(video['path']), max_frames=count):
                 start, end = detections.frame_offsets[packet.index:packet.index + 2]
+                manifest['current_input'] = {'camera': camera, 'frame': packet.index,
+                    'rows': [int(start), int(end)], 'boxes': detections.boxes_xyxy[start:end].tolist()}
                 frames.append(extractor.extract(packet.index, packet.frame, np.arange(start, end, dtype=np.int64),
                                                 detections.boxes_xyxy[start:end], detections.confidence[start:end]))
             if len(frames) != count:
@@ -97,8 +100,13 @@ def extract(args: argparse.Namespace) -> None:
                 raise ValueError('Feature roundtrip lost its provenance')
             manifest['cameras'][camera] = {'path': str(path), 'sha256': dual_sha256(path), 'frames': count,
                 'detections': sum(len(f.rows) for f in frames),
-                'appearance_valid': sum(int(f.appearance_valid.sum()) for f in frames)}
+                'appearance_valid': sum(int(f.appearance_valid.sum()) for f in frames),
+                'pose_score_outside_0_1': sum(int(((f.poses[..., 2] < 0) | (f.poses[..., 2] > 1)).sum()) for f in frames)}
             write_json_atomic(report / 'features.progress.json', manifest)
+    except Exception as error:
+        manifest.update(status='failed', error_type=type(error).__name__, error=str(error))
+        write_json_atomic(report / 'features.progress.json', manifest)
+        raise
     finally:
         pose.unload()
     manifest['status'] = 'ok'
