@@ -38,7 +38,13 @@ track＋court＋side（＋動画のcrop） → player_association
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
-人物detectorはDINO/YOLOを選べる。trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
+人物detectorはDINO/YOLOを選べる。既定のDINOは[#937の選手検出器](../../tasks/player_detection/README.md)で、
+検出対象は主コートの選手であり、全人物を網羅する観測ではない。汎用COCO版との比較には
+`people_models.dino_checkpoint=dino/checkpoint0029_4scale_swin.pth`を明示する。
+指定重みが無い・DINO形式でない場合は停止し、別の重みを選び直さない。
+`person_detections` v1の配列契約は同じで、checkpointのSHA-256がartifact identityと下流の依存参照を変える。
+古い検出器で作ったpose・学習用文脈は、新しい検出器の成果物として再利用できない。
+trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
 ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは`person_observations.max_tracks_per_camera`以下で、超えたclipは停止する。ID/slotの再利用や暗黙統合は行わない。
 BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する
 （閾値は`TrackletLinkPolicy`で、成果物identityに含む）。

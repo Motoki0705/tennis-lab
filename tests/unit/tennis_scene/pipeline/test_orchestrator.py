@@ -58,6 +58,18 @@ def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
     standard_definition(disabled, _source(tmp_path), code_identity="test")
 
 
+def test_missing_player_checkpoint_does_not_select_available_coco_weights(tmp_path: Path) -> None:
+    from src.tennis_scene.pipeline.definition import standard_definition
+
+    cfg = _runtime_with_assets(tmp_path)
+    legacy = cfg.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_bytes(b"available legacy checkpoint")
+    cfg.people.detector_checkpoint.unlink()
+    with pytest.raises(FileNotFoundError, match="chat-player-v1-e8-best-pr937"):
+        standard_definition(cfg, _source(tmp_path), code_identity="test")
+
+
 def test_the_association_records_its_encoder_weights_and_needs_them_only_with_people(tmp_path: Path) -> None:
     from dataclasses import replace
 
