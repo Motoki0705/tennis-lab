@@ -1,0 +1,166 @@
+{
+  "generation": {
+    "status": "complete",
+    "wall_seconds": 3120.884794619982,
+    "generator_wall_seconds": 3108.5596245399793,
+    "cpu": {
+      "User time (seconds)": "11721.44",
+      "System time (seconds)": "35.24",
+      "Percent of CPU this job got": "388%",
+      "Maximum resident set size (kbytes)": "991444"
+    },
+    "minimum_available_host_bytes": 14676054016,
+    "data_bytes": 221776838,
+    "npz_bytes": 219734725,
+    "splits": {
+      "train": {
+        "rallies": 64,
+        "frames": 27676,
+        "min_frames": 149,
+        "max_frames": 512,
+        "npz_bytes": 149181781
+      },
+      "val": {
+        "rallies": 16,
+        "frames": 6383,
+        "min_frames": 178,
+        "max_frames": 512,
+        "npz_bytes": 34357694
+      },
+      "test": {
+        "rallies": 16,
+        "frames": 6715,
+        "min_frames": 195,
+        "max_frames": 512,
+        "npz_bytes": 36195250
+      }
+    },
+    "components": 5096750,
+    "failed_rallies": [],
+    "unassessed_frames": 40774,
+    "nonconverged_frames": 0,
+    "sum_simulation_seconds": 202.5692971808021,
+    "sum_triangulation_seconds": 12059.327445535862,
+    "component_methods": {
+      "prior": 40774,
+      "volume:boundary_laplace_tail": 1258528,
+      "laplace": 3572927,
+      "volume:camera_boundary": 214487,
+      "volume:iteration_budget": 10034
+    },
+    "physics_proposals": 226,
+    "zero_weight_components": 64345,
+    "clipped_2d_component_means": 33405,
+    "all_camera_gap_frames": 2880
+  },
+  "verification": {
+    "status": "complete",
+    "manifest_sha256": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+    "elapsed_seconds": 303.3194548469619,
+    "frames": 40774,
+    "components": 5096750,
+    "presence_mass_max_error": 4.4776831131798644e-08,
+    "weight_sum_max_error": 4.439372602860203e-08,
+    "samples": 2048,
+    "coverage": {
+      "train/observed": {
+        "count": 72063,
+        "covered": [
+          36185,
+          59048,
+          62270
+        ],
+        "hdr50_90_95": [
+          0.5021300806238985,
+          0.8193941412375283,
+          0.8641050192192943
+        ]
+      },
+      "train_val/observed": {
+        "count": 88227,
+        "covered": [
+          44263,
+          72039,
+          76020
+        ],
+        "hdr50_90_95": [
+          0.5016944926156393,
+          0.8165187527627596,
+          0.8616409942534599
+        ]
+      },
+      "train/gap": {
+        "count": 5880,
+        "covered": [
+          2878,
+          4957,
+          5193
+        ],
+        "hdr50_90_95": [
+          0.4894557823129252,
+          0.8430272108843537,
+          0.8831632653061224
+        ]
+      },
+      "train_val/gap": {
+        "count": 7244,
+        "covered": [
+          3564,
+          6113,
+          6413
+        ],
+        "hdr50_90_95": [
+          0.4919933738266151,
+          0.843870789618995,
+          0.885284373274434
+        ]
+      },
+      "val/observed": {
+        "count": 16164,
+        "covered": [
+          8078,
+          12991,
+          13750
+        ],
+        "hdr50_90_95": [
+          0.4997525365008661,
+          0.8036995793120515,
+          0.8506557782727048
+        ]
+      },
+      "val/gap": {
+        "count": 1364,
+        "covered": [
+          686,
+          1156,
+          1220
+        ],
+        "hdr50_90_95": [
+          0.5029325513196481,
+          0.8475073313782991,
+          0.8944281524926686
+        ]
+      }
+    }
+  },
+  "real_pilot_reference": {
+    "source": "https://github.com/Motoki0705/tennis-lab/blob/89cf0737/knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/comparison.md",
+    "precision": "rounded to 3 decimals in the run19 table; not recomputed here",
+    "observed": {
+      "count": 23007,
+      "hdr50_90_95": [
+        0.456,
+        0.873,
+        0.908
+      ]
+    },
+    "gap": {
+      "count": 5077,
+      "hdr50_90_95": [
+        0.565,
+        0.852,
+        0.907
+      ]
+    }
+  }
+}
