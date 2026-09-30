@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 import torch
 import yaml
+from numpy.typing import NDArray
 
 from src.tasks.ball_refiner.refiner_3d.synthetic.calibration import (
     CalibrationBank,
@@ -30,9 +31,9 @@ from src.utils.geometry.probabilistic_triangulation import (
     GaussianPrior3D,
     LaplaceConfig,
 )
-from src.utils.geometry.probabilistic_triangulation.convergence import (
-    convergence_config,
-    triangulate_converged,
+from src.utils.geometry.probabilistic_triangulation.conditioning import (
+    conditioning_config,
+    triangulate_conditioning,
 )
 from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.paths import PROJECT_ROOT
@@ -104,14 +105,15 @@ def test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes
     np.testing.assert_array_equal(distribution.mixture_logits.numpy(), calibration.arrays["mixture_logits"][rows])
     assert bool((distribution.covariance[..., 0, 1] != 0).all())
     observations = frame_observations(distribution, torch.from_numpy(sizes), frame=40)
-    checked = triangulate_converged(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), laplace=LaplaceConfig(125, 100), config=convergence_config(settings["boundary_convergence"]))
+    assert settings["boundary_convergence"] == dict(method="fixed_hybrid", initial_cells=8, levels=4, refine_cells=64, prior_sigmas=5.)
+    checked = triangulate_conditioning(observations, cameras, prior=GaussianPrior3D(np.array(settings["prior_mean_m"]), np.diag(settings["prior_covariance_diagonal_m2"])), laplace=LaplaceConfig(125, 100), config=conditioning_config(settings["boundary_convergence"]))
     result = checked.posterior
-    assert checked.rounds >= 2
+    assert checked.rounds == 1 and not checked.convergence_assessed
     assert result.distribution.means.shape == (125, 3)
     assert len(np.unique(result.camera_subsets, axis=0)) == 8
     assert result.prior_only_probability > 0
     assert len(result.component_methods) == 125
-    assert any(method.startswith("ray:") for method in result.component_methods)
+    assert any(method.startswith("volume:") for method in result.component_methods)
     np.linalg.cholesky(result.distribution.covariance.astype(np.float32))
     np.testing.assert_allclose(result.distribution.weights.sum(), 1)
 
@@ -188,3 +190,50 @@ def test_generation_records_late_results_after_a_rally_failure(tmp_path, monkeyp
     assert manifest["status"] == "failed"
     assert {r["rally_id"] for r in manifest["rallies"]} == {"train-00000", "test-00000"}
     assert manifest["failures"] == [{"split_index": 1, "rally_index": 0, "error": "numerical failure"}]
+
+
+def test_fixed_budget_generator_roundtrip_keeps_unassessed_flags(tmp_path, monkeypatch):
+    from dataclasses import dataclass
+
+    from src.tasks.ball_refiner.refiner_3d.synthetic import generator
+    from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import GenerationPlan
+    from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import validate_rally
+    from src.tasks.ball_refiner.refiner_3d.synthetic.observations import (
+        calibrated_distribution,
+    )
+
+    cameras, sizes, values = _fixture()
+    values["sampling"]["max_frames_per_rally"] = 2
+    values["degradation"]["boundary_convergence"] = dict(method="fixed_hybrid", initial_cells=8, levels=4, refine_cells=64, prior_sigmas=5.)
+    settings = values["degradation"]["calibration"]
+    calibration = load_calibration(PROJECT_ROOT / settings["bank"], settings["bank_sha256"])
+    plan = GenerationPlan(values=values, physics={}, rally={}, targeted={}, camera_paths=(tmp_path / "camera",), input_paths=(), input_hashes={}, calibration=calibration)
+
+    @dataclass
+    class Physics:
+        gravity: float = 9.81
+
+    result = SimpleNamespace(trajectory_sim=torch.tensor([[0., 0., 2.]] * 9), sim_fps=240, fps_out=240, shot_events=[], end_reason=SimpleNamespace(value="unit_fixture"))
+    monkeypatch.setattr(generator, "accepted_rally", lambda *args, **kwargs: (result, Physics(), np.random.default_rng(936), []))
+    monkeypatch.setattr(generator, "load_cameras", lambda *args: (cameras, sizes))
+    monkeypatch.setattr(generator, "perturb_cameras", lambda *args: cameras)
+
+    def tiny_distribution(positions, cameras, sizes, settings, rng, *, rally_index, calibration):
+        mask: NDArray[np.bool_] = np.zeros((3, len(positions)), dtype=bool)
+        pixels = np.stack([camera.project(positions)[0] for camera in cameras])
+        distribution, rows, clipped = calibrated_distribution(pixels, sizes, settings, rng, calibration=calibration, occlusion=mask, out_of_frame=mask)
+        return distribution, {"calibration_rows": rows, "occlusion_mask": mask, "out_of_frame_mask": mask}, {"gap_intervals": [], "clipped_component_means": clipped}
+
+    monkeypatch.setattr(generator, "make_distribution", tiny_distribution)
+    record = generator.generate_rally(plan, 0, 0, tmp_path)
+    manifest = dict(schema="ball_refiner_3d.synthetic.v2", status="complete", plan=values, rallies=[record], counts={"train": 1})
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    arrays = SyntheticDataset(tmp_path).load(record)
+    assert arrays["gmm3d_weights"].shape == (2, 125)
+    assert not arrays["integration_convergence_assessed"].any()
+    assert not arrays["integration_converged"].any()
+    assert record["integration"]["unassessed_frames"] == 2
+    assert record["integration"]["nonconverged_frames"] == 0
+    arrays["integration_converged"][0] = True
+    with pytest.raises(ValueError, match="cannot claim convergence"):
+        validate_rally(arrays, record, values)
