@@ -75,3 +75,7 @@ clip ごとの選定理由と人物の説明は review YAML の `selection`・`p
 | ID switch P/R | 予測 track 上の、ラベル人物の変化（正解）と予測 ID の変化（予測）を ±`switch_tolerance` frame で1対1に照合 |
 
 ラベルと照合できなかった予測 box は coverage として別に報告し、対応の誤りには数えない。
+
+較正の明示optionは [association_i964_r14_lovo_a.yaml](configs/association_i964_r14_lovo_a.yaml)。
+pipelineでは `player_association.config=src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml` を指定する。
+LOVO採否と限界は [run14の証拠](../../../knowledge/nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)を参照。既定への採用・設定凍結は未確定。
