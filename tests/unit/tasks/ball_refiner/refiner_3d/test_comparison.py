@@ -6,6 +6,7 @@ import pytest
 from src.tasks.ball_refiner.refiner_3d.comparison import (
     VoxelConfig,
     triangulate_samples,
+    triangulate_stratified_samples,
     triangulate_volume,
 )
 from src.utils.geometry.probabilistic_triangulation import CameraGMM, GaussianPrior3D
@@ -80,3 +81,21 @@ def test_particle_linear_limit_has_known_mean_covariance():
         np.cov(result.means.T), np.diag([1 / 5, 1 / 9, 1 / 5]), atol=0.045
     )
     assert np.isfinite(result.log_prob(np.zeros(3)))
+
+
+def test_stratified_sampling_keeps_small_mass_products_and_exact_absence():
+    views = cameras()
+    obs = CameraGMM(np.zeros((2, 2, 2)), np.tile(np.eye(2) * .25, (2, 2, 1, 1)),
+                    np.tile([1 - 1e-9, 1e-9], (2, 1)), np.array([.2, .7]))
+    prior = GaussianPrior3D(np.zeros(3), np.eye(3))
+    kwargs = dict(prior=prior, samples_per_product=8, seed=93608, max_nfev=100)
+    result = triangulate_stratified_samples(obs, views, **kwargs)
+    assert len(result.distribution.weights) == 9
+    assert (result.distribution.weights > 0).all()
+    assert result.prior_only_probability == pytest.approx(.24)
+    np.testing.assert_array_equal(result.distribution.covariance[0], prior.covariance)
+    repeat = triangulate_stratified_samples(obs, views, **kwargs)
+    np.testing.assert_array_equal(result.distribution.means, repeat.distribution.means)
+    for active in np.unique(result.camera_subsets, axis=0):
+        mass = result.distribution.weights[(result.camera_subsets == active).all(1)].sum()
+        assert mass == pytest.approx(np.prod(np.where(active, obs.presence, 1 - obs.presence)))

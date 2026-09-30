@@ -38,7 +38,8 @@ def observations(cameras, point, sigma=0.2, presence=None):
     )
 
 
-def test_known_linear_limit_posterior_mean_and_covariance():
+@pytest.mark.parametrize("diagnose_nonregular", [False, True])
+def test_known_linear_limit_posterior_mean_and_covariance(diagnose_nonregular):
     cameras = orthogonal_cameras()
     prior = GaussianPrior3D(np.zeros(3), np.eye(3) * 4)
     obs = observations(cameras, np.zeros(3))
@@ -46,7 +47,7 @@ def test_known_linear_limit_posterior_mean_and_covariance():
     # Independent Gaussian conjugate posterior: x,z observed once, y twice.
     covariance = np.diag(1 / (np.array([25.0, 50.0, 25.0]) + 0.25))
     mean = covariance @ (25 * np.array([0.3, 0.1, 0.5]))
-    result = triangulate_gmm(obs, cameras, prior=prior, config=CONFIG)
+    result = triangulate_gmm(obs, cameras, prior=prior, config=replace(CONFIG, diagnose_nonregular=diagnose_nonregular))
     got_mean, got_cov = result.distribution.moments()
     np.testing.assert_allclose(got_mean, mean, atol=4e-5)
     np.testing.assert_allclose(got_cov, covariance, rtol=2e-4, atol=4e-6)

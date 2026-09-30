@@ -85,7 +85,7 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
         raise ValueError("Camera subset topology changed within a rally")
     codes = arrays["gmm3d_method_codes"]
     labels = tuple(record["component_method_labels"])
-    if codes.shape != (t, components) or codes.dtype != np.uint8 or (codes >= len(labels)).any() or labels not in (COMPONENT_METHODS[:7], COMPONENT_METHODS[:12], COMPONENT_METHODS):
+    if codes.shape != (t, components) or codes.dtype != np.uint8 or (codes >= len(labels)).any() or labels not in (COMPONENT_METHODS[:7], COMPONENT_METHODS[:12], COMPONENT_METHODS[:17], COMPONENT_METHODS):
         raise ValueError("Invalid component integration diagnostics")
     counts = dict(Counter(COMPONENT_METHODS[int(code)] for code in codes.ravel()))
     if counts != record["component_method_counts"]:

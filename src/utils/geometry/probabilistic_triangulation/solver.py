@@ -34,6 +34,7 @@ COMPONENT_METHODS: tuple[str, ...] = (
 class LaplaceConfig:
     max_components: int
     max_nfev: int
+    diagnose_nonregular: bool = False
 
     def __post_init__(self) -> None:
         if self.max_components < 1 or self.max_nfev < 1:
@@ -48,10 +49,12 @@ class ProbabilisticTriangulation:
     component_methods: tuple[str, ...]
     component_log_evidence: FloatArray
     component_integration_diagnostics: tuple[dict[str, float | int | bool], ...] = ()
+    component_optimization_diagnostics: tuple[dict[str, float | int | bool], ...] = ()
 
 
 COMPONENT_METHODS += tuple(method.replace("volume:", "ray:") for method in COMPONENT_METHODS if method.startswith("volume:"))
 COMPONENT_METHODS += tuple(method.replace("volume:", "adaptive_ray:") for method in COMPONENT_METHODS if method.startswith("volume:"))
+COMPONENT_METHODS += tuple(method.replace("volume:", "laplace_diagnostic:") for method in COMPONENT_METHODS if method.startswith("volume:") and not method.endswith("no_feasible_initial_point"))
 
 
 ComponentCache = dict[tuple[int, ...], tuple[FloatArray, FloatArray, float] | str]
@@ -73,22 +76,34 @@ def project_with_jacobian(
     return uv, jac, depth
 
 
-def fit_component(
+@dataclass(frozen=True)
+class ComponentFit:
+    mean: FloatArray
+    covariance: FloatArray
+    log_evidence: float
+    reason: str | None
+    diagnostics: dict[str, float | int | bool]
+
+
+def _fit_component(
     matrices: FloatArray,
     means: FloatArray,
     covariance: FloatArray,
     prior: GaussianPrior3D,
     *,
     max_nfev: int,
-) -> tuple[FloatArray, FloatArray, float]:
-    """Return MAP, Gauss-Newton Laplace covariance and log evidence.
+    strict: bool,
+) -> ComponentFit:
+    """Return the last positive-depth Gauss-Newton approximation and diagnostics.
 
     A Gaussian spatial prior is mandatory, including for zero/one view.
-    All iterates stay in front of active cameras; a nonregular mode is an error;
-    no component is silently dropped, jittered, or replaced by a point estimate.
+    Boundary/tail/iteration diagnostics do not change this deterministic path.
+    A budget-limited point is not claimed to be a MAP. Invalid arithmetic, an
+    infeasible camera intersection, or a non-SPD covariance still raises.
     """
     if len(matrices) == 0:
-        return prior.mean.copy(), prior.covariance.copy(), 0.0
+        return ComponentFit(prior.mean.copy(), prior.covariance.copy(), 0.0, None,
+                            {"optimizer_converged": True, "evaluations": 0})
     whitening = np.linalg.inv(np.linalg.cholesky(covariance))
     prior_whitening = np.linalg.inv(np.linalg.cholesky(prior.covariance))
 
@@ -111,6 +126,7 @@ def fit_component(
     r = residual(point)
     evaluations = 1
     converged = False
+    reason: str | None = None
     while evaluations < max_nfev:
         jac = jacobian(point)
         precision = jac.T @ jac
@@ -124,11 +140,13 @@ def fit_component(
         approaching = change < 0
         fraction = min(1., float(np.min(.99 * (depth[approaching] - minimum_depth) / -change[approaching]))) if approaching.any() else 1.
         if float(depth.min()) < 10 * minimum_depth:
-            raise NonregularComponentError("camera_boundary")
+            reason = "camera_boundary"
+            break
         for _ in range(40):
             candidate = point + fraction * step
             if evaluations >= max_nfev:
-                raise NonregularComponentError('iteration_budget')
+                reason = "iteration_budget"
+                break
             trial = residual(candidate)
             evaluations += 1
             trial_cost = .5 * float(trial @ trial)
@@ -136,13 +154,17 @@ def fit_component(
                 break
             fraction *= .5
         else:
-            raise NonregularComponentError("line_search")
+            reason = "line_search"
+        if reason is not None:
+            break
         point, r = candidate, trial
         if abs(cost - trial_cost) < 1e-12 * (1 + cost):
             converged = True
             break
     if not converged:
-        raise NonregularComponentError("iteration_budget")
+        reason = reason or "iteration_budget"
+    if strict and reason is not None:
+        raise NonregularComponentError(reason)
     _, _, depth = project_with_jacobian(point, matrices)
     if (depth <= minimum_depth).any():
         raise NonregularComponentError("camera_boundary")
@@ -150,7 +172,9 @@ def fit_component(
     posterior_covariance = np.linalg.inv(jac.T @ jac)
     depth_sigma = np.sqrt(np.einsum('vi,ij,vj->v', matrices[:, 2, :3], posterior_covariance, matrices[:, 2, :3]))
     if (depth < 3 * depth_sigma).any():
-        raise NonregularComponentError('boundary_laplace_tail')
+        reason = reason or "boundary_laplace_tail"
+    if strict and reason is not None:
+        raise NonregularComponentError(reason)
     log_normalizer = 0.5 * (
         (3 + 2 * len(matrices)) * math.log(2 * math.pi)
         + float(np.linalg.slogdet(prior.covariance)[1])
@@ -162,7 +186,27 @@ def fit_component(
         + 1.5 * math.log(2 * math.pi)
         + 0.5 * float(np.linalg.slogdet(posterior_covariance)[1])
     )
-    return np.asarray(point, np.float64), posterior_covariance, log_evidence
+    return ComponentFit(np.asarray(point, np.float64), posterior_covariance, log_evidence,
+                        reason, {"optimizer_converged": converged, "evaluations": evaluations,
+                                 "minimum_depth": float(depth.min()),
+                                 "minimum_depth_sigmas": float((depth / depth_sigma).min())})
+
+
+def fit_component_approximate(
+    matrices: FloatArray, means: FloatArray, covariance: FloatArray,
+    prior: GaussianPrior3D, *, max_nfev: int,
+) -> ComponentFit:
+    """Explicit diagnostic policy: keep a positive-depth approximation and flags."""
+    return _fit_component(matrices, means, covariance, prior, max_nfev=max_nfev, strict=False)
+
+
+def fit_component(
+    matrices: FloatArray, means: FloatArray, covariance: FloatArray,
+    prior: GaussianPrior3D, *, max_nfev: int,
+) -> tuple[FloatArray, FloatArray, float]:
+    """Strict regular-interior policy used by the historical hybrid methods."""
+    fit = _fit_component(matrices, means, covariance, prior, max_nfev=max_nfev, strict=True)
+    return fit.mean, fit.covariance, fit.log_evidence
 
 
 def triangulate_gmm(
@@ -223,18 +267,31 @@ def _triangulate(
     matrices = np.stack([c.matrix for c in cameras])
     means, covariances, weights, masks = [], [], [], []
     methods, component_evidence, diagnostics = [], [], []
+    optimizer_diagnostics = []
     for active, probability in subsets:
         evidence = []
         for combination in product(*(nonzero[i] for i in active)):
             index = np.asarray(combination, dtype=np.int64)
             method = "laplace" if len(active) else "prior"
             diagnostic: dict[str, float | int | bool] = {}
+            optimizer_diagnostic: dict[str, float | int | bool] = {}
             key = tuple(int(index[list(active).index(i)]) if i in active else -1 for i in range(v))
             try:
                 cached = regular_cache.get(key) if regular_cache is not None else None
                 if isinstance(cached, str):
                     raise NonregularComponentError(cached)
-                if cached is None:
+                if config.diagnose_nonregular:
+                    if volume is not None or regular_cache is not None:
+                        raise ValueError("Diagnostic Laplace is a single path, not a hybrid")
+                    fit = fit_component_approximate(
+                        matrices[active], observations.means_px[active, index],
+                        observations.covariance_px2[active, index], prior, max_nfev=config.max_nfev,
+                    )
+                    cached = fit.mean, fit.covariance, fit.log_evidence
+                    optimizer_diagnostic = fit.diagnostics
+                    if fit.reason is not None:
+                        method = f"laplace_diagnostic:{fit.reason}"
+                elif cached is None:
                     cached = fit_component(
                         matrices[active], observations.means_px[active, index],
                         observations.covariance_px2[active, index], prior,
@@ -276,6 +333,7 @@ def _triangulate(
                     mean, cov, log_evidence = integrate_component(selected_cameras, selected_means, selected_covariance, prior, volume)
             methods.append(method)
             diagnostics.append(diagnostic)
+            optimizer_diagnostics.append(optimizer_diagnostic)
             component_evidence.append(log_evidence)
             evidence.append(
                 log_evidence + float(np.log(observations.weights[active, index]).sum())
@@ -294,4 +352,5 @@ def _triangulate(
         tuple(methods),
         np.asarray(component_evidence, dtype=np.float64),
         tuple(diagnostics),
+        tuple(optimizer_diagnostics),
     )
