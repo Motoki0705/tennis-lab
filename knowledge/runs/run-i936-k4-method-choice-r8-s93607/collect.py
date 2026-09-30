@@ -99,7 +99,9 @@ def main():
         summary['methods'][method]['reference_deviation'] = dict(reference_converged_frames=len(reference_indices), compared_frames=len(differences),
             metrics={key: dict(mean=float(np.mean([r[key] for r in differences])), p95=float(np.quantile([r[key] for r in differences], .95)), max=float(max(r[key] for r in differences))) for key in ('mean_l2_m', 'gt_nll_abs_nat', 'weights_l1')} if differences else {})
     (bundle / 'summary.json').write_text(json.dumps(summary, indent=2, allow_nan=False) + '\n')
-    lines = []
+    lines = ['N/fail = attempted frames / failed frames. NLL, HDR and mean error are conditional on successful distributions when fail > 0; cost includes all attempts.',
+             'HDR uses the full mixture density (8192 fixed-seed draws/frame); error is mean Euclidean distance in metres. Weighted rows use stopped-population/sample stratum ratios.',
+             'Time is solver wall seconds per frame with 4 workers and one native thread each; quantiles use the inverse empirical CDF. Full definitions and limitations: [knowledge node](../../nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md).', '']
     for group in ('overall', *sample['strata'], 'weighted'):
         lines += [f'### {group}', '', '| Method | N/fail | NLL nat | HDR50/90/95 % | Mean error m | Cost mean/p50/p95/max s |', '|---|---:|---:|---:|---:|---:|']
         for method in METHODS:
