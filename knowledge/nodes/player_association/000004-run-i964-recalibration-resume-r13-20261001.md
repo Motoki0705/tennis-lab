@@ -42,3 +42,13 @@ peak GPU 4,548,722,688 bytes、最少available RAM 11,544,985,600 bytes、
 [再見積り](../../runs/run-i964-recalibration-resume-r13-20261001/estimate.json)は実測最遅cameraに
 300秒のbuild/起動と2.2倍の夜間負荷余裕を加え約3.5時間。上限4.5時間、peak見積り6GB、
 GPU停止9.5GB、追加出力見積り0.5GBで残り9cameraを1jobにする。
+
+[登録前見積り](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5914000338)の後、
+1件だけ `1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001` をenqueueした（[receipt](../../runs/run-i964-recalibration-resume-r13-20261001/queue.json)）。
+GPU完了は待たない。
+
+[dev投影/CPU再追跡](../../runs/run-i964-recalibration-resume-r13-20261001/dev-retracking.json)は
+clip_000/cam1の1行、video_001/clip_001/cam0の8行をproduction maskへ整合し、
+既定StrongSORT++＋pose/CLIPで全長再生成した。元row/box一致、NPZ roundtrip、
+GSI読戻し/synthetic非観測を確認。他10cameraは投影後値が同じで旧track/hashを再利用する。
+元cache/trackは保持し、人物ラベル・新dev精度は見ていない。
