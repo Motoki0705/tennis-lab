@@ -12,7 +12,7 @@
 | `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `deep_ocsort_pose.py` | 公式Deep OC-SORTのobservation-centric Kalman再更新・方向速度・adaptive appearanceに共通poseコストを加えたadapter。出自・差分は`deep_ocsort_vendor/NOTICE.md` |
 | `feature_tracks.py` / `evaluation.py` | 元検出rowを維持するscatter・共通外観samplingと、部分参照ラベル上のcamera内IDF1/switch/fragment |
-| `methods.py` | 方式の明示選択。未実装名は停止し、別方式へ戻さない。Deep OC-SORT/StrongSORT++のadapterも同じ入出力を使う |
+| `methods.py` | BoT-SORT+pose / Deep OC-SORT+poseの明示選択。未実装名は停止し、別方式へ戻さない |
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
 | `court_linking.py` | 標準pipelineと開発比較で共有する固定選別。足元連続性とCLIPで断片を連結して滞在を集約する。領域はmembership判定にだけ使い、選択済み断片の全実観測を保持する。定義・限界はmodule docstring |
 | `selection_diagnosis.py` | 選択されたtrackの人物unit構成と足元座標から、人物混在と領域の誤採用を分離する事後診断。ラベルを選別へ渡さない |
@@ -32,7 +32,8 @@ ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加
 clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2のみを読み、v1を暗黙変換しない。
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。外観不一致はhigh/low両段でIoUによって打ち消さない。
-特徴抽出のprompt契約は将来のKPRに対応する。SOLIDERの推論adapterは実装済み、KPRは未移植。
+特徴抽出のprompt契約はKPRの入力にも使える。KPR推論portはnative parts/visibilityを保持し、
+共通の単一embeddingへ暗黙変換しない。追跡/対応への距離契約の接続は後続。
 SOLIDERの出自と前処理は[notice](../player_association/appearance/solider_vendor/NOTICE.md)を参照。
 `encode_appearance`は保存済みposeを再利用し、encoder追加でViTPoseを再推論しない。
 CLIP用adapterはpromptを使わないことを明示する。重み不足やモデル出力不正は停止する。

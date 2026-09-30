@@ -10,6 +10,14 @@
 比較範囲・主副指標・既知の偏り・パラメータ・推薦規則の正本は
 [事前commitしたrun-8プロトコル](../../knowledge/runs/run-i964-tracker-matrix-r8-20260930/protocol.md)。
 baselineのLab連結が停止した場合も停止として保存し、候補追跡で補完しない。
+`person_tracking_matrix_video.py --report <同出力先>`は固定した最大差5秒窓を3camera動画にする。
+
+`person_kpr_parity.py --upstream <公式repoの固定checkout> --repo <main root> --features <run-7 root> --report <JSON>`
+は同じ実dev cropで上流とportのstate key・prompt・native outputをCPU照合する。
+`person_kpr_features.py --phase plan --repo <main root> --features <run-7 root> --parity <成功JSON> --report <新規出力先>`
+で入力を固定し、同じrepo/reportの`--phase extract`を共有queueから1件だけ実行する。
+KPRは各検出の6×512特徴・可視性と元row/box/score/poseを保存し、同frameの他検出poseをnegative promptにする。
+検出/pose再推論やtracking/評価は行わず、完了manifestと全値の保存読戻しを記録する。
 
 ## Meiji ball holdout
 
@@ -198,5 +206,5 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--phase extract --repo <元repo> --report <同出力先>` は共有queueの1 jobでViTPose＋CLIP→SOLIDERを抽出する。
   全人物rowを保持し、SOLIDERには保存済みposeを使う。モデル選択・追跡比較・GT照合を実行しない。
   allocator上限7 GiB、pose batch4、appearance batch8、外側timeout5400秒を必須とする。
-  KPRは未移植で対象外。成功は`features.json`、進捗/失敗は`features.progress.json`、NPZはencoder/clip/camera別。
+  KPRは別のnative-part特徴入口を使うため対象外。成功は`features.json`、進捗/失敗は`features.progress.json`、NPZはencoder/clip/camera別。
   既存の成功/失敗出力は上書きしない。
