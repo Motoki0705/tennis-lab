@@ -1,0 +1,44 @@
+{
+  "status": "preparation_passed",
+  "fit_executed": false,
+  "dev_scoring_executed": false,
+  "gpu_jobs_completed_this_run": 0,
+  "reserved_media_opened": 0,
+  "tests": {
+    "passed": 10,
+    "command": ".venv/bin/python -m pytest -n 4 tests/integration/tasks/person_tracking/test_recalibration_features.py tests/integration/tasks/person_tracking/test_feature_guard.py tests/integration/tasks/person_tracking/test_feature_benchmark.py"
+  },
+  "ruff": "passed",
+  "mypy": "passed",
+  "commit_hooks": "passed",
+  "shell_syntax": "passed",
+  "knowledge": {
+    "nodes": 427,
+    "errors": 0,
+    "warnings": 215,
+    "base_ref": "origin/campaign930/i964-1-player-detection"
+  },
+  "repro_paths": {
+    "scripts": 276,
+    "references": 335,
+    "missing": 0,
+    "unverifiable": 0
+  },
+  "sizes": {
+    "output_bytes_before_gpu": 91407027,
+    "aflink_local_copy_bytes": 4348705,
+    "tracked_bundle_bytes": 267820
+  },
+  "dev_cache": {
+    "rows": 40531,
+    "explicit_missing_appearance_rows": 9,
+    "reuse_exact_input_track": 10,
+    "cpu_retrack_required": 2
+  },
+  "full_pipeline": {
+    "assets": 15,
+    "nodes": 28,
+    "cpu_only": true,
+    "executed": false
+  }
+}
