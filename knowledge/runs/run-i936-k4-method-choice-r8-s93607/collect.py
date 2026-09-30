@@ -45,8 +45,14 @@ def summarize(rows, weights):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--results', type=Path, required=True)
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    bundle = Path(__file__).resolve().parent
+    bundle = args.output if args.output is not None else args.results / 'collected'
+    if not bundle.is_absolute():
+        raise ValueError('Use an absolute collection output')
+    bundle.mkdir(parents=True, exist_ok=True)
+    if (bundle / 'summary.json').exists():
+        raise FileExistsError(bundle / 'summary.json')
     sample = json.loads(SAMPLE.read_text())
     order = [(r['rally_id'], r['frame']) for r in sample['frames']]
     ids = {identity: i for i, identity in enumerate(order)}
