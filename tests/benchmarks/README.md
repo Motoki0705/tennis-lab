@@ -282,3 +282,18 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   allocator上限7 GiB、pose batch4、appearance batch8、外側timeout5400秒を必須とする。
   KPRは別のnative-part特徴入口を使うため対象外。成功は`features.json`、進捗/失敗は`features.progress.json`、NPZはencoder/clip/camera別。
   既存の成功/失敗出力は上書きしない。
+
+## 凍結後の人物未見評価
+
+`person_unseen_freeze.py --repo <main root> --report <唯一の出力先> --target <git内freeze.json>` は
+予約映像を開かず人物設定・全資産hashを固定する。manifestをcommit/pushした後だけ、
+`person_unseen.py --phase plan --freeze <freeze.json> --freeze-commit <commit> --report <出力先>` が
+指定3clipのmetadata/media hash・devと同じ注釈ball由来side・10 court/person nodeを検証する。
+`timeout -k 10s 7190s bash tests/benchmarks/person_unseen.sh <main root> <出力先>` を
+共有queueのresource=allの1jobとして登録する。失敗・途中出力を再利用して再試行しない。
+GPU側は人物ラベルを読まず、元row/pose/CLIP/GSIをcomponent storeへ保存し、devと同じ
+raw外観→選別/linked group→候補Aの対応、全長3camera動画を出す。
+推論途中でもattempt/progress/各node receiptを残す。採点は次runに
+`person_unseen_score.py --report <同出力先> --labels <clip IDからlabels.jsonへのJSON mapping>` で一回だけ実行する。
+raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を保存する。
+対象・指標・限界・凍結の根拠は[run16](../../knowledge/nodes/player_association/000006-run-i964-unseen-r16-20261001.md)を参照。
