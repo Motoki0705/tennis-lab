@@ -19,6 +19,7 @@ from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import sha256
 from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import SyntheticDataset
 from src.tasks.ball_refiner.refiner_3d.synthetic.generator import write_json
 
+from .cohort import reference_validation
 from .curves import plot_dev_curves
 from .data import collate_windows, rally_window, window_starts
 from .dev_config import DevConfig, load_config
@@ -135,7 +136,8 @@ def _train_one(
     return arm
 
 
-def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: str) -> dict[str, Any]:
+def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: str,
+                     validation_reference: Path | None = None) -> dict[str, Any]:
     if output.exists():
         raise FileExistsError(output)
     config = load_config(config_path)
@@ -143,6 +145,9 @@ def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: 
     source = SyntheticDataset(dataset)
     if source.manifest['counts'] != config.expected_counts or source.manifest['plan']['degradation']['boundary_convergence']['method'] != 'fixed_hybrid':
         raise ValueError('Dev run requires the declared counts and fixed-budget H')
+    validation_ids = {r['rally_id'] for r in source.records if r['split'] == 'val'}
+    if validation_reference is not None:
+        validation_ids = reference_validation(source.records, json.loads(validation_reference.read_text()))
     budget = RunBudget(config, device)
     manifest: dict[str, Any] = {'status': 'running', 'diagnostic_only': True, 'device': device,
         'config': asdict(config), 'config_sha256': sha256(config_path), 'dataset': str(dataset),
@@ -150,6 +155,10 @@ def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: 
         'selection': 'fixed updates and seed; no checkpoint selection, tuning or test-rally reads',
         'precision': 'fp32 eager', 'windows': [], 'read_rallies': [],
         'input_diagnostics': {'frames': 0, 'unassessed_frames': 0, 'nonconverged_frames': 0}}
+    if validation_reference is not None:
+        manifest['validation_reference'] = {'path': str(validation_reference), 'sha256': sha256(validation_reference),
+            'rallies': sorted(validation_ids), 'unused_val_rallies': sorted(r['rally_id'] for r in source.records
+                if r['split'] == 'val' and r['rally_id'] not in validation_ids)}
     output.mkdir(parents=True, exist_ok=False)
     write_json(output / 'manifest.json', manifest)
     try:
@@ -157,6 +166,8 @@ def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: 
         validation = []
         for record in sorted(source.records, key=lambda row: row['rally_id']):
             if record['split'] == 'test':
+                continue
+            if record['split'] == 'val' and record['rally_id'] not in validation_ids:
                 continue
             if record['split'] not in ('train', 'val'):
                 raise ValueError('Unknown split')

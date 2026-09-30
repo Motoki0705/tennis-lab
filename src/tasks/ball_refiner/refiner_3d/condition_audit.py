@@ -39,11 +39,12 @@ IDENTITY_METADATA = ('rally_id', 'split', 'seed', 'frames', 'native_frames', 'na
     'geometry_clip', 'geometry_sha256', 'gap_intervals', 'end_reason')
 
 
-def audit_manifest(source: SyntheticDataset) -> dict[str, Any]:
+def audit_manifest(source: SyntheticDataset, *, expected_counts: dict[str, int] | None = None) -> dict[str, Any]:
     """File hashes/JSON only for test: no test NPZ array reads or GT scoring."""
     manifest = source.manifest
-    if manifest['counts'] != {'train': 64, 'val': 16, 'test': 16} or manifest['failures']:
-        raise ValueError('Require a failure-free 96-rally dev set')
+    counts = {'train': 64, 'val': 16, 'test': 16} if expected_counts is None else expected_counts
+    if manifest['counts'] != counts or manifest['failures']:
+        raise ValueError('Require the complete failure-free declared dataset')
     expected_ids = {f'{split}-{i:05d}' for split, count in manifest['counts'].items() for i in range(count)}
     if {r['rally_id'] for r in source.records} != expected_ids or list(source.directory.glob('failed-*.json')):
         raise ValueError('Missing/unexpected rally IDs or failure artifacts')
@@ -59,7 +60,7 @@ def audit_manifest(source: SyntheticDataset) -> dict[str, Any]:
     expected = yaml.safe_load(plan_paths[0].read_text())
     calibration = plan['degradation']['calibration']
     expected['degradation'] = with_calibration_report(expected['degradation'], PROJECT_ROOT / calibration['report'])
-    if expected != plan or plan['counts']['dev_rallies'] != manifest['counts']:
+    if manifest['mode'] not in ('dev', 'pilot') or expected != plan or plan['counts'][manifest['mode'] + '_rallies'] != counts:
         raise ValueError('Expanded manifest disagrees with source plan/report')
     records = []
     for record in sorted(source.records, key=lambda r: r['rally_id']):
@@ -78,7 +79,7 @@ def audit_manifest(source: SyntheticDataset) -> dict[str, Any]:
                 or record['geometry_sha256'] != geometry['sha256'] or record['components_per_frame'] != 125):
             raise ValueError('Rally seed/geometry/component identity mismatch')
         records.append({key: record[key] for key in (*IDENTITY_METADATA, 'npz_sha256', 'npz_bytes', 'components_per_frame')})
-    if len(records) != 96 or sum(r['frames'] for r in records) != manifest['total_frames']:
+    if len(records) != sum(counts.values()) or sum(r['frames'] for r in records) != manifest['total_frames']:
         raise ValueError('Aggregate manifest count/frame mismatch')
     return {'manifest_sha256': sha256(source.directory / 'manifest.json'), 'counts': manifest['counts'], 'plan': plan,
             'rallies': records, 'failures': manifest['failures'], 'source_plan_matches': True,
