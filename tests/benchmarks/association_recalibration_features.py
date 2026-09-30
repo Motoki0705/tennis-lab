@@ -213,11 +213,16 @@ def validate_plan(manifest: dict[str, Any], repo: Path) -> None:
 
 
 def extract(repo: Path, report: Path) -> None:
+    from association_recalibration_resume import (  # type: ignore[import-not-found]
+        resume_records,
+    )
+
     target = report / 'features.progress.json'
     if target.exists() or (report / 'features.json').exists():
         raise FileExistsError('Feature runs, including failures, are immutable')
     manifest = json.loads((report / 'plan.json').read_text())
     validate_plan(manifest, repo)
+    reused, reused_detections = resume_records(manifest)
     torch.set_num_threads(4)
     torch.set_num_interop_threads(1)
     cv2.setNumThreads(1)
@@ -235,17 +240,21 @@ def extract(repo: Path, report: Path) -> None:
         raise ValueError('Runtime changed after planning')
     config = FeatureConfig(**manifest['feature_config'])
     progress: dict[str, Any] = {'schema': 'i964_recalibration_features_v1', 'status': 'running',
-        'plan_sha256': dual_sha256(report / 'plan.json'), 'records': {}, 'detections': {}}
+        'plan_sha256': dual_sha256(report / 'plan.json'), 'records': reused, 'detections': reused_detections,
+        'reused_keys': sorted(reused), 'timings': {}}
     start_time = time.monotonic()
     write_json_atomic(target, progress)
     try:
         # Separate model stages keep DINO out of memory while ViTPose/CLIP run.
         for record in manifest['inputs']:
+            if record['key'] in reused:
+                continue
             if psutil.virtual_memory().available < 6 * 1024**3:
                 raise RuntimeError('Require at least 6 GiB available host RAM')
             key, meta = record['key'], record['video']
             progress['current'] = {'key': key, 'stage': 'detector'}
             write_json_atomic(target, progress)
+            camera_start = time.monotonic()
             video = SourceVideo(**{k: Path(v) if k == 'path' else v for k, v in meta.items()})
             detections = PersonDetectionModule(cfg.people, merge_duplicates=False).process(PersonDetectionInput(video))
             path = report / 'detections' / f'{key}.npz'
@@ -254,8 +263,10 @@ def extract(repo: Path, report: Path) -> None:
                 np.savez_compressed(handle, offsets=detections.frame_offsets, boxes=detections.boxes_xyxy,
                                     scores=detections.confidence, source_rows=detections.source_rows)
             progress['detections'][key] = file_identity(path)
+            progress['timings'][key] = {'detector_and_save_seconds': time.monotonic() - camera_start}
             progress['current']['stage'] = 'pose_clip'
             write_json_atomic(target, progress)
+            feature_start = time.monotonic()
             pose = ViTPosePose2D(cfg.people.vitpose_checkpoint, device='cuda',
                 flip_test=cfg.people.runtime.vitpose.flip_test, batch_size=4,
                 head_config=cfg.people.runtime.vitpose.head, precision='float32')
@@ -294,6 +305,9 @@ def extract(repo: Path, report: Path) -> None:
             progress.update(elapsed_seconds=time.monotonic() - start_time,
                 peak_allocated_bytes=torch.cuda.max_memory_allocated(),
                 peak_reserved_bytes=torch.cuda.max_memory_reserved())
+            progress['timings'][key].update(
+                pose_clip_and_save_seconds=time.monotonic() - feature_start,
+                camera_seconds=time.monotonic() - camera_start)
             if sum(p.stat().st_size for p in report.rglob('*') if p.is_file()) > manifest['budget']['disk_limit_bytes']:
                 raise RuntimeError('Feature output exceeded its disk budget')
             write_json_atomic(target, progress)
@@ -302,17 +316,30 @@ def extract(repo: Path, report: Path) -> None:
         progress.update(status='failed', error_type=type(error).__name__, error=str(error))
         write_json_atomic(target, progress)
         raise
+    if set(progress['records']) != {r['key'] for r in manifest['inputs']}:
+        raise ValueError('Final feature manifest is missing cameras')
     progress['status'] = 'ok'
     write_json_atomic(report / 'features.json', progress)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--phase', choices=('plan', 'extract'), required=True)
+    parser.add_argument('--phase', choices=('plan', 'resume-plan', 'extract'), required=True)
     parser.add_argument('--repo', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--source-report', type=Path)
     args = parser.parse_args()
-    (plan if args.phase == 'plan' else extract)(args.repo.resolve(), args.report.resolve())
+    if args.phase == 'resume-plan':
+        from association_recalibration_resume import (
+            plan_resume,  # type: ignore[import-not-found]
+        )
+        if args.source_report is None:
+            parser.error('resume-plan requires --source-report')
+        plan_resume(args.repo.resolve(), args.report.resolve(), args.source_report.resolve())
+    else:
+        if args.source_report is not None:
+            parser.error('--source-report is only valid for resume-plan')
+        (plan if args.phase == 'plan' else extract)(args.repo.resolve(), args.report.resolve())
 
 
 if __name__ == '__main__':
