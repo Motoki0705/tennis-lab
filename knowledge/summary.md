@@ -1,4 +1,4 @@
-<!-- knowledge-review: 0e50b27fc720ebeba888c70f70c1c6303bd7fcc57abbee4965ae0db60357f979 on 2026-09-30 -->
+<!-- knowledge-review: ba58a86c2a1b07c9e7d9692a39c87a3144b33a3830479e2b25f4c54a28c5ca23 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -215,7 +215,11 @@ detectorの一様gap密度によるcoverage=1は全画面領域の自明な結�
 run20 directiveに従いcourt-only先行案を保留し、同一recipeの長期化と候補を保持する平均の比較を先に行う。
 run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、checkpoint/val結果は得られなかった。
 モデル精度による棄却とは扱わず、[消失競合を修正した同条件retry](nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)で
-事前宣言した3案を比較する。結果は未測定。#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
+事前宣言した3案を比較し、全108checkpointと420val NPZを回収した。
+候補残差12kはdetectorより各source/camera/halfの位置誤差を改善し、長期化だけより典型精度がよい。
+ただしcalibration halfの観測HDR90/95は0.80/0.85、人工gapでも0.84/0.88で過信が残る。
+全valの集計を独立較正性能とみなさず、設計採用・default切替・裾較正はユーザーへの提案段階とする。
+#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
 
 ### Court Detection
 
