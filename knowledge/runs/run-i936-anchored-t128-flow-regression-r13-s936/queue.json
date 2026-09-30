@@ -1,0 +1,19 @@
+{
+  "job_id": "1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930",
+  "job_file": "/home/kamimura/projects/tennis-lab/.training_queue/jobs/1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930.job",
+  "resource": "all",
+  "state_at_registration": "jobs",
+  "added_at": "2026-09-30T21:24:38.331022+09:00",
+  "enqueue_commit": "768e34190a52727d4a4d001fb405d08fa8630abf",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "queue_directory": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "preceding_campaign_jobs": [
+    "1790765753424020525_1202525_i935-anchored-seed44-r24-20260930.job",
+    "1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930.job",
+    "1790770959248007705_1601943_i964-recalibration-features-r12-20260930.job"
+  ],
+  "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930.log",
+  "repro": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r13-anchored-s936-t128-20k",
+  "stdout": "queued: 1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930.job\n"
+}
