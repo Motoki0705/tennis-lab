@@ -1,7 +1,7 @@
-<!-- knowledge-review: 357d8d8e1b4293da13b44e3c0def2157fade0231933197c599f606172e22dd92 on 2026-09-30 -->
+<!-- knowledge-review: 11a4a028d1c5f317f627547c1b70b46b27f848ad84af06842689f3d6a1698db0 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）
+更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -19,7 +19,7 @@
 閾値0.3での不一致をそのまま検出失敗とは扱えない。ユーザーは2Dを全人物の候補生成へ、選手判定をコート座標での滞在時間へ移すと決めた。
 [遠側GPU診断](nodes/player_detection/000002-run-i964-far-r3-20260929.md)はこの方針変更でcancelled。保存済み23archiveのhashを確認し、CPU比較へ再利用する。
 1080/1920は11/12 camera-clipに限り、高解像度・tileは追加実行しない。選別精度と動画をrun 6で確認した。
-CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
+CLIP-ReID/SOLIDER/KPRと複数trackerの固定dev比較はrun 9までに実施した。既定採用と新clipの調整後一回の未見評価は未完了。
 既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
 
 共通人物特徴の[初回smoke](nodes/person_tracking/000001-run-i964-features-smoke-r2-20260929.md)は、
@@ -40,7 +40,7 @@ CLIP付きの第2確認も全clipでは決定できず、この基準のまま�
 元データ固定のauditでwide観測の大半を回復し隣コート除外を維持した。ROI前7条件のCPU比較を完了し、
 ユーザーはCOCO全画面 .30を選択し、[run 7](nodes/person_tracking/000006-run-i964-default-solider-cpu-r7-20260930.md)でpipeline既定とコート選別/v3接続へ反映した。
 unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低閾値COCOはraw候補と断片を増やした。
-参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致したが、精度比較は未完了。
+参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致し、run 7時点では精度比較の前段に留まった。
 [特徴job回収](nodes/person_tracking/000007-run-i964-coco-person-features-r7-20260930.md)で全24 NPZ・各40,531rowのhash/値/出自一致を確認した。
 [事前固定した2方式×2encoder比較](nodes/person_tracking/000008-run-i964-tracker-matrix-r8-20260930.md)では候補内でDeep OC-SORT+pose/CLIPを推薦する。
 新検出+旧追跡はLab連結曖昧により1camera停止（11/12完走）、候補は全camera完走した。停止を予測空として扱う固定規則の下で
