@@ -18,6 +18,7 @@ class DevConfig:
     batch_size: int
     frames: int
     stride: int
+    validation_frames: int | None
     learning_rate: float
     weight_decay: float
     evaluate_updates: tuple[int, ...]
@@ -36,6 +37,11 @@ class DevConfig:
             raise ValueError('Dev dimensions/budgets must be positive integers')
         if self.frames < 4 or not 1 <= self.stride <= self.frames or self.samples < 2:
             raise ValueError('Invalid dev windows/sampling')
+        if self.validation_frames is not None and (
+            type(self.validation_frames) is not int or self.validation_frames != self.frames
+            or self.stride != self.frames
+        ):
+            raise ValueError('Windowed validation must match training frames and stride')
         if (not self.evaluate_updates or any(type(n) is not int for n in self.evaluate_updates)
                 or tuple(sorted(set(self.evaluate_updates))) != self.evaluate_updates
                 or self.evaluate_updates[0] != 0 or self.evaluate_updates[-1] != self.updates
