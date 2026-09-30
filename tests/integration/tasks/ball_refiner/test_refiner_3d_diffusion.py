@@ -15,9 +15,11 @@ from src.tasks.ball_refiner.refiner_3d.diffusion.memory_fixture import (
 from src.tasks.ball_refiner.refiner_3d.diffusion.model import (
     ModelConfig,
     TrajectoryDenoiser,
+    condition_features,
     validate_flow_state,
 )
 from src.utils.paths import PROJECT_ROOT
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 ROOT = PROJECT_ROOT / "src/tasks/ball_refiner/refiner_3d"
 FIXTURE = ROOT / "fixtures/meiji_video_002_clip_010.json"
@@ -66,6 +68,24 @@ def test_full_mixture_permutation_invariance_and_last_component_influence():
     changed = condition.means_m.clone()
     changed[:, :, -1, 0] += 20
     assert not torch.allclose(model(state, time, replace(condition, means_m=changed)).positions_norm, baseline)
+
+
+def test_condition_readout_preserves_units_full_covariance_and_last_component() -> None:
+    batch = analytic_memory_batch(FIXTURE, batch_size=1, frames=16, seed=5)
+    condition = batch.condition
+    features = condition_features(condition)
+    scale = condition.means_m.new_tensor(COURT_COORD_SCALE_XYZ)
+    torch.testing.assert_close(features[..., :3] * scale, condition.means_m)
+    torch.testing.assert_close(features[..., 3:12].reshape_as(condition.covariance_m2) * scale[:, None] * scale[None, :], condition.covariance_m2)
+    assert torch.equal(features[..., 12:].bool(), condition.camera_subsets)
+    model = small_model().eval()
+    before = model.encode_condition(condition)
+    permutation = torch.arange(63, -1, -1)
+    permuted = replace(condition, means_m=condition.means_m[:, :, permutation], covariance_m2=condition.covariance_m2[:, :, permutation], weights=condition.weights[:, :, permutation], camera_subsets=condition.camera_subsets[:, :, permutation])
+    torch.testing.assert_close(model.encode_condition(permuted), before)
+    changed = condition.means_m.clone()
+    changed[:, :, -1, 0] += 20
+    assert not torch.allclose(model.encode_condition(replace(condition, means_m=changed)), before)
 
 
 def test_padding_never_changes_real_frames_or_becomes_a_gap():
