@@ -41,7 +41,11 @@ from src.tasks.person_tracking.evaluation import (
 from src.tasks.person_tracking.feature_tracks import sampled_appearance, scatter_tracks
 from src.tasks.person_tracking.linked_timeline import linked_timeline
 from src.tasks.person_tracking.part_archive import load_part_features
-from src.tasks.person_tracking.strongsort import StrongSort, StrongSortConfig
+from src.tasks.person_tracking.strongsort import (
+    InvalidPrediction,
+    StrongSort,
+    StrongSortConfig,
+)
 from src.tasks.person_tracking.strongsort_offline import AFLink, gaussian_interpolation
 from src.tasks.player_association.association.associate import (
     AssociationUndecided,
@@ -187,7 +191,7 @@ def track_variant(args: argparse.Namespace, variant: str, method: str, encoder: 
                     np.savez_compressed(out, boxes=smooth.boxes, observed=smooth.observed,
                                         interpolated=smooth.interpolated, origins=origins, track_ids=raw.track_ids)
                 result.update(gsi=record_file(path), interpolated_boxes=int(smooth.interpolated.sum()))
-        except ReconstructionUnavailable as error:
+        except (ReconstructionUnavailable, InvalidPrediction) as error:
             result.update(status='failed', reason=str(error))
             raw = CameraTracks(camera, (1920, 1080), np.empty(0, np.int64),
                                np.zeros((0, len(frames), 4), np.float32), np.zeros((0, len(frames)), bool))

@@ -7,7 +7,11 @@ import pytest
 from src.tasks.person_tracking.archive import save_features
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.deep_ocsort_pose import DeepOCSortPose
-from src.tasks.person_tracking.strongsort import MotionState, StrongSort
+from src.tasks.person_tracking.strongsort import (
+    InvalidPrediction,
+    MotionState,
+    StrongSort,
+)
 from src.tasks.person_tracking.strongsort_offline import (
     aflink_inputs,
     gaussian_interpolation,
@@ -96,6 +100,15 @@ def test_nsa_covariance_gives_high_confidence_measurement_more_weight() -> None:
     high.update(box + 5, .9)
     assert high.mean[0] > low.mean[0]
     assert np.linalg.eigvalsh(high.covariance).min() > 0
+
+
+def test_invalid_prediction_fails_with_frame_and_id_without_silently_dropping_track() -> None:
+    tracker = StrongSort()
+    tracker.update(frame(0))
+    tracker.tracks[0].motion.mean[6] = -10
+    with pytest.raises(InvalidPrediction, match='frame=1 track=1'):
+        tracker.update(frame(1))
+    assert len(tracker.tracks) == 1
 
 
 def test_deep_native_parts_survive_gap_and_cannot_be_silently_saved_as_v2(tmp_path: Path) -> None:
