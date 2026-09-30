@@ -111,7 +111,8 @@ pipelineの既定値は、較正・追加seed確認・元動画3cameraのexecute
 
 `refiner_2d/calibration.py`はcheckpoint SHA256とartifact SHA256を必須とする明示的な読込API。
 `CovarianceCalibration.apply()`はΣをs倍（Choleskyを√s倍）し、全成分の平均とlogitを保持する。
-artifactの自動探索・倍率1への省略補完はしない。現在のpipeline/bundleはこのAPIをまだ呼ばない。
+artifactの自動探索・倍率1への省略補完はしない。pipelineの明示的な較正optionと保存schemaは
+[専用recipe](../../tennis_scene/pipeline/README.md#2d-ball-refinerの専用recipe)を参照。
 `evaluation/calibration_fit.py`が位置NLLのfit、`evaluation/covariance_calibration.py`が
 保存済みval出力のhash/教師/PTS照合・clip交差検証・層別比較を担当する。
 calibration halfでは全cameraをまとめたleave-one-clip-out、その他のvalでは
