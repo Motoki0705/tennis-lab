@@ -25,7 +25,8 @@ from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import denormalize_court_position
 
 
-def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 8) -> tuple[Path, Path, list[str]]:
+def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 8,
+              extra_validation: bool = False) -> tuple[Path, Path, list[str]]:
     times = np.arange(frames) * 1001 / 60000
     positions = np.column_stack((times, times * 0, times * 0 + 2)).astype(np.float32)
     rotation = np.tile(np.eye(3), (3, 1, 1))
@@ -54,18 +55,20 @@ def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 
         'camera_estimated_K': intrinsic, 'camera_estimated_R': rotation, 'camera_estimated_t': translation,
     }
     loaded: list[str] = []
+    counts = {'train': 2, 'val': 2 if extra_validation else 1, 'test': 1}
     records = [{'rally_id': f'{split}-{index:05d}', 'split': split, 'frames': frames, 'seed': 936 + index,
                 'npz_sha256': 'fixture', 'physics': {'gravity': 9.81}}
-               for split, count in (('train', 2), ('val', 1), ('test', 1)) for index in range(count)]
+               for split, count in counts.items() for index in range(count)]
 
     class Source:
         def __init__(self, path: Path) -> None:
             self.records = records
-            self.manifest = {'counts': {'train': 2, 'val': 1, 'test': 1},
+            self.manifest = {'counts': counts,
                              'plan': {'degradation': {'boundary_convergence': {'method': 'fixed_hybrid'}}}}
 
         def load(self, record: dict[str, Any]) -> dict[str, Any]:
             assert record['split'] != 'test', 'Test split must never be opened'
+            assert record['rally_id'] != 'val-00001', 'Extra validation must not change the reference cohort'
             loaded.append(record['rally_id'])
             return arrays
 
@@ -75,7 +78,7 @@ def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 
     (dataset / 'manifest.json').write_text('{}')
     config = yaml.safe_load((PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/training_dev.yaml').read_text())
     config.update(updates=2, evaluate_updates=[0, 1, 2], frames=4, stride=4, batch_size=2, samples=2, steps=2,
-                  expected_counts={'train': 2, 'val': 1, 'test': 1},
+                  expected_counts=counts,
                   model={'width': 16, 'layers': 1, 'heads': 2, 'feedforward_multiplier': 2, 'time_frequencies': 2, 'dropout': 0.})
     config_path = tmp_path / 'config.yaml'
     config_path.write_text(yaml.safe_dump(config))
@@ -239,3 +242,16 @@ def test_validation_preserves_context_tail_and_derivative_seams(tmp_path: Path, 
     assert metric['acceleration_free_flight']['count'] == 7
     assert metric['jerk_free_flight']['count'] == 6
     assert metric['acceleration_free_flight']['p95'] > 1
+
+
+def test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dataset, config, loaded = setup_run(tmp_path, monkeypatch, extra_validation=True)
+    reference = tmp_path / 'control.json'
+    reference.write_text(json.dumps({'status': 'complete', 'read_rallies': [{'rally_id': 'val-00000', 'npz_sha256': 'fixture'}],
+                                     'config': {'expected_counts': {'val': 1}}}))
+    output = tmp_path / 'result'
+    result = dev_training.run_dev_training(dataset, config, output, device='cpu', validation_reference=reference)
+    assert loaded == ['train-00000', 'train-00001', 'val-00000']
+    assert result['validation_reference']['unused_val_rallies'] == ['val-00001']
+    assert result['baselines']['rallies'] == ['val-00000']
+    assert all(row['rallies'] == 1 and row['frames'] == 8 for arm in result['arms'].values() for row in arm['validation'])
