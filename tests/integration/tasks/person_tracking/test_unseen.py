@@ -191,9 +191,9 @@ def test_all_person_cameras_run_before_independent_court_failures(
     assert json.loads((tmp_path / 'person-execute.json').read_text())['statuses'] == dict.fromkeys(person_names, 'executed')
 
 
-@pytest.mark.parametrize('stop_status', ['undecided', 'stopped'])
+@pytest.mark.parametrize(('stop_status', 'uncalibrated'), [('undecided', False), ('stopped', False), ('stopped', True)])
 def test_scoring_retains_abstained_clip_and_cannot_repeat(
-    unseen: Any, tmp_path: Path, stop_status: str,
+    unseen: Any, tmp_path: Path, stop_status: str, uncalibrated: bool,
 ) -> None:
     from src.tasks.player_association.evaluation.labels import (
         CameraLabels,
@@ -228,6 +228,10 @@ def test_scoring_retains_abstained_clip_and_cannot_repeat(
                 f'{c}_ids': np.concatenate((assigned, np.full((1, 4), -1, np.int64))),
                 f'{c}_group_ids': assigned,
             })
+            if index == 2 and uncalibrated:
+                arrays[f'{c}_selected'][:] = False
+                for field in ('group_boxes', 'group_observed', 'group_track_ids', 'group_ids'):
+                    arrays[f'{c}_{field}'] = arrays[f'{c}_{field}'][:0]
         np.savez_compressed(root / 'predictions.npz', **arrays)
         (root / 'prediction.json').write_text(json.dumps({'status': 'ok' if index < 2 else stop_status,
             'reason': None if index < 2 else 'margin', 'arrays': file_identity(root / 'predictions.npz')}))
@@ -242,8 +246,8 @@ def test_scoring_retains_abstained_clip_and_cannot_repeat(
     assert result['association']['total_clips'] == 3
     assert result['association']['decided_clips'] == 2
     assert result['association']['pairs'] == {'tp': 48, 'fp': 0, 'fn': 24, 'f1': .8}
-    assert result['tracking']['raw']['idf1'] == 1.
-    assert result['tracking']['group']['idf1'] == 1.
+    assert result['tracking']['raw']['idf1'] == (.8 if uncalibrated else 1.)
+    assert result['tracking']['group']['idf1'] == (.8 if uncalibrated else 1.)
     assert result['tracking']['associated']['idf1'] == .8
     assert result['tracking']['raw']['nonplayer_units_kept'] == 0
     assert (tmp_path / 'scoring/raw-camera-near-far.csv').is_file()

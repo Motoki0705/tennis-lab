@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One all-capacity queue job; outer timeout -k 10s 7190s includes everything.
+# One all-capacity queue job; run-17 outer timeout -k 10s 10790s includes everything.
 set -euo pipefail
 if [[ $# -ne 2 ]]; then
     echo "usage: $0 <main-repo> <report-with-plan>" >&2
@@ -12,5 +12,5 @@ export PYTHONPATH="$code_root:$2/dino_extension/lib"
 "$code_root/.venv/bin/python" "$code_root/tests/benchmarks/association_feature_guard.py" --report "$2" -- \
     bash -euo pipefail -c '
         bash "$1/tests/benchmarks/build_dino_extension.sh" "$2" "$3/dino_extension"
-        "$1/.venv/bin/python" "$1/tests/benchmarks/person_unseen.py" --phase execute --report "$3"
+        exec "$1/.venv/bin/python" "$1/tests/benchmarks/person_unseen.py" --phase execute --report "$3"
     ' unseen "$code_root" "$1" "$2"

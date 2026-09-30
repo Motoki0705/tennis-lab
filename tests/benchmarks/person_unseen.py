@@ -24,6 +24,10 @@ from person_unseen_freeze import (  # type: ignore[import-not-found]
     require_pushed,
     verify,
 )
+from person_unseen_resume import (  # type: ignore[import-not-found]
+    load_addendum,
+    require_unstarted_directory,
+)
 from person_unseen_video import render  # type: ignore[import-not-found]
 
 from src.tasks.person_tracking.court_linking import (
@@ -98,14 +102,28 @@ def selected_sides(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return result
 
 
-def plan(freeze: Path, commit: str, report: Path) -> None:
+def plan(freeze: Path, commit: str, report: Path, *, addendum: Path | None = None,
+         addendum_commit: str | None = None) -> None:
     frozen = require_pushed(freeze, commit)
     if report != Path(frozen['report']):
         raise ValueError('Use the one frozen output directory')
     verify(frozen)
-    # Existing or failed preparation must be investigated, never silently replaced.
-    report.mkdir(parents=True, exist_ok=False)
-    claim(report / 'opening.json', {'freeze': file_identity(freeze), 'freeze_commit': commit,
+    if (addendum is None) != (addendum_commit is None):
+        raise ValueError('Resumed preparation requires both addendum and its pushed commit')
+    execution_addendum = None
+    budget = frozen['budget']
+    opening_name = 'opening.json'
+    if addendum is not None and addendum_commit is not None:
+        resumed = load_addendum(addendum, addendum_commit, freeze, commit, frozen)
+        require_unstarted_directory(report)
+        execution_addendum = {'file': file_identity(addendum), 'commit': addendum_commit}
+        budget = resumed['budget']
+        opening_name = 'resumed-opening-r17.json'
+    else:
+        # Existing or failed preparation must be investigated, never silently replaced.
+        report.mkdir(parents=True, exist_ok=False)
+    claim(report / opening_name, {'freeze': file_identity(freeze), 'freeze_commit': commit,
+        'execution_addendum': execution_addendum,
         'time_unix': time.time(), 'event': 'pre-open gate passed; metadata/hash preparation begins',
         'inference_attempts': 0, 'scoring_batches': 0})
     repo = Path(frozen['repo'])
@@ -113,6 +131,9 @@ def plan(freeze: Path, commit: str, report: Path) -> None:
     reservation = json.loads(checked(frozen['reservation']).read_text())
     side_path = repo / 'outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json'
     sides = selected_sides(json.loads(side_path.read_text()))
+    missing = [c for c in CLIPS if sides[c]['view_half_turns'] is None]
+    if missing and (execution_addendum is None or missing != resumed['allowed_missing_sides']):
+        raise ValueError('Missing side requires the explicit pushed execution addendum')
     records = []
     from omegaconf import OmegaConf
     for clip in CLIPS:
@@ -145,13 +166,15 @@ def plan(freeze: Path, commit: str, report: Path) -> None:
                         'node_order': list(runner.order),
                         'node_settings': {n.name: dict(n.settings) for n in nodes},
                         'labels_exist': (clip_root / 'annotations/player_association/labels.json').exists()})
-    receipt = {'schema': 'i964_unseen_plan_v1', 'freeze': file_identity(freeze), 'freeze_commit': commit,
-               'side_reference': file_identity(side_path), 'records': records, 'budget': frozen['budget'],
+    receipt = {'schema': 'i964_unseen_plan_v2', 'freeze': file_identity(freeze), 'freeze_commit': commit,
+               'execution_addendum': execution_addendum,
+               'side_reference': file_identity(side_path), 'records': records, 'budget': budget,
                'camera_frames': sum(r['source']['videos'][0]['num_frames'] * 3 for r in records),
                'labels_opened': False, 'scoring_batches': 0,
                'entrypoints': [file_identity(CODE / 'tests/benchmarks' / name) for name in
                    ('person_unseen.py', 'person_unseen_video.py', 'person_unseen_score.py', 'person_unseen.sh',
-                    'association_feature_guard.py', 'association_recalibration_dev.py', 'build_dino_extension.sh')]}
+                    'person_unseen_resume.py', 'association_feature_guard.py', 'association_recalibration_dev.py',
+                    'build_dino_extension.sh')]}
     write_json_atomic(report / 'plan.json', receipt)
     print(json.dumps({'frames': receipt['camera_frames'],
                       'clips': [{k: r[k] for k in ('clip', 'view_half_turns', 'labels_exist')} for r in records]}))
@@ -302,9 +325,16 @@ def execute(report: Path) -> None:
     from omegaconf import OmegaConf
     plan_doc = json.loads((report / 'plan.json').read_text())
     frozen = require_pushed(checked(plan_doc['freeze']), plan_doc['freeze_commit'])
-    if report != Path(frozen['report']) or plan_doc['schema'] != 'i964_unseen_plan_v1':
+    if report != Path(frozen['report']) or plan_doc['schema'] != 'i964_unseen_plan_v2':
         raise ValueError('Unexpected unseen plan')
     verify(frozen)
+    expected_budget = frozen['budget']
+    if plan_doc['execution_addendum'] is not None:
+        resumed = plan_doc['execution_addendum']
+        expected_budget = load_addendum(checked(resumed['file']), resumed['commit'], checked(plan_doc['freeze']),
+                                       plan_doc['freeze_commit'], frozen)['budget']
+    if plan_doc['budget'] != expected_budget:
+        raise ValueError('Execution budget differs from the pushed authorization')
     for record in (*plan_doc['entrypoints'], plan_doc['side_reference']):
         checked(record)
     claim(report / 'attempt.json', {'time_unix': time.time(), 'plan': file_identity(report / 'plan.json'),
@@ -361,10 +391,13 @@ if __name__ == '__main__':
     parser.add_argument('--report', type=Path, required=True)
     parser.add_argument('--freeze', type=Path)
     parser.add_argument('--freeze-commit')
+    parser.add_argument('--addendum', type=Path)
+    parser.add_argument('--addendum-commit')
     args = parser.parse_args()
     if args.phase == 'plan':
         if args.freeze is None or args.freeze_commit is None:
             parser.error('plan requires --freeze and --freeze-commit')
-        plan(args.freeze.resolve(), args.freeze_commit, args.report.resolve())
+        plan(args.freeze.resolve(), args.freeze_commit, args.report.resolve(),
+             addendum=None if args.addendum is None else args.addendum.resolve(), addendum_commit=args.addendum_commit)
     else:
         execute(args.report.resolve())
