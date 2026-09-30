@@ -57,5 +57,16 @@ JPEGだけでなく、1080pから720pへの中間縮小が実質的な入力差�
 全行とpixel hashは[pixels](../../runs/run-i935-source-tail-audit-r27-20261001/pixels/summary.json)。
 CPU 152.0秒、最低host空き13.79 GB。新規画像・動画は保存せず、結果CSV/JSONだけを保存した。
 これらは媒体差の証拠であり、入力差が実際のp90を生んだかは次のdetector再推論で調べる。
-cam2を既存pipelineコードのままraw/resizeのみ/reencodedのCPU実行で比較中。
-bootstrapも進行中で、現段階で(a)/(b)/(c)の結論はまだ確定していない。
+cam2の再encode介入は完了した。**既存のBallDetectionModule._predict_videoを呼び、readerが返す画素だけを変更**。
+全67窓についてstore側のRGB batchとmodel入力の一致を確認し、同じe9/anchored seed42/固定倍率をCPUで推論した。
+cacheに対しnative cellは2150/2160候補slot、全順位は265/270frameで一致。
+CPU/CUDAの小さな数値差により低順位候補の入替が残り、同順位座標の最大差だけで一致性を判断できない。
+cam2 observed p90はpipeline座標のままで55.162 px、store座標規約も合わせると55.189 px。
+保存cacheの55.047 pxと近く、元動画158.177 pxから裾が戻った。自由成分最大も60→42でcacheの42と一致。
+座標規約の相違はstore幅比で戻すかsource端点で戻すかで、uv倍率[0.999739,0.999537]、最大0.5 px/軸。
+これを変更せず入力だけを変えた場合でも裾が戻るため、今回の大きな差を説明する主因ではない。
+
+正本は[CPU isolation](../../runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-reencoded/summary.json)。
+CPU約210秒、GPU未初期化。初期の診断runnerでruntime設定からYAML設定へ変換する際のdevice/enable key errorが2回あり、
+いずれもdetector推論前に停止。scriptを修正して再実行し、失敗logも残した。productionのbugではない。
+raw/resizeのみの同一CPU対照とbootstrapは進行中。現段階では(b)を強く支持するが、最終結論は対照と併せて記録する。
