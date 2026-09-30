@@ -136,8 +136,10 @@ def _statistics(parts: list[dict[str, Array]]) -> dict[str, Any]:
     }
 
 
-def build_calibration(source: Path, output: Path) -> dict[str, Any]:
+def build_calibration(source: Path, output: Path, *, status: str = "provisional_saved_validation") -> dict[str, Any]:
     """Extract all scored positive rows from a frozen calibration partition."""
+    if not status.strip():
+        raise ValueError("Calibration status must be explicit and nonempty")
     manifest_path = source / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
     if manifest["schema"] != "ball_refiner_validation_diagnostics.v1" or manifest["partition"] != "calibration":
@@ -187,7 +189,7 @@ def build_calibration(source: Path, output: Path) -> dict[str, Any]:
     bank_path = output / "bank.npz"
     np.savez_compressed(bank_path, **bank.arrays)
     report = {
-        "schema": "ball_refiner_3d.degradation_calibration.v1", "status": "provisional_context_free_ft_e13",
+        "schema": "ball_refiner_3d.degradation_calibration.v1", "status": status,
         "source_directory": str(source), "source_manifest_sha256": _sha(manifest_path),
         "source_checkpoint": manifest["checkpoint"], "source_inputs": manifest["input_sha256"], "source_predictions": inputs,
         "components": bank.components, "rows": len(bank.arrays["error_uv"]), "bank_sha256": _sha(bank_path),

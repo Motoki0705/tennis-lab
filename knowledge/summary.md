@@ -1,4 +1,4 @@
-<!-- knowledge-review: e6527f29ddc6174d1144de17b03057ef44e24e7149cef9f79d1311ac89db04ff on 2026-09-30 -->
+<!-- knowledge-review: 7fea5c7025789c9ab144e7951426b4578972278bedd1a3880f6dfde390db2301 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -203,11 +203,16 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 単眼のdepth解析積分、非正則な複数視点のmode中心積分、camera変更時のmode移送を採用した。
 隣接次数の差は経験的誤差推定で、Laplace近似や共通して見落とすmodeの保証ではない。
 
-全camera欠損の収束は162/360（45%）で、別K=4の固定9frameも2件しか収束しなかった。
-全体率を欠損区間や最終#935条件へ一般化しない。未収束frame/成分を保持し、広い複数視点productの
-適応積分または複数modeのimportance積分を次に検証する。旧96件jobは3D条件の変化を受け停止し、
-9件のplumbing出力を保持した。約30時間というK=4再生成費用の提案はあるが、再開しない。
-640件は収束法と最終#935較正を待つ。
+[事前登録K=4監査](nodes/ball_refiner_3d/000012-run-i936-k4-audit-r7-s93607.md)では、
+固定311frameの規定収束率が適応rayで45.66→70.74%、全欠損44→74%、処理失敗3→0へ改善した。
+一方、全体95%・欠損90%・0.6秒/frameはすべて未達。補助的な積分誤差目標も多く残り、
+有限段階の通過を高精度積分の保証にはしない。平均5.56秒/frame、停止データの層比率加重では
+6.13秒で、640件の理想4 CPU外挿は約123h。完了済みtrain9件の開発標本であり全量を代表しない。
+研究用adaptive_rayは明示指定に留め、通常生成の既定rayと未収束flag・全125成分を維持する。
+次は2視点の有界/無界depth切替で角度領域を分割する数値実験を行う。GPU化は積分だけでなく
+mode探索もbatch化する必要があり、未実装のbenchmark提案に留める。
+旧96件jobと9件の出力は停止・保持し、再開提案は出さない。640件は収束法と最終#935較正を待つ。
+較正reportを1入力で交換できるため、次の較正も同じ標本identityで比較できる。
 
 [保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
 全40windowの形状/4損失を検証し、2つのtrain prefixで400 updatesを完了した。
