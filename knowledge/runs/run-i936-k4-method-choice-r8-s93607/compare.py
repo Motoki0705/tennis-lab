@@ -73,7 +73,11 @@ def one(job):
         p = posterior.distribution
         if len(p.weights) != 125:
             raise ValueError('Every candidate must retain 125 component products')
-        np.linalg.cholesky(p.covariance.astype(np.float32))
+        try:
+            np.linalg.cholesky(p.covariance.astype(np.float32))
+            record['float32_spd'] = True
+        except np.linalg.LinAlgError:
+            record['float32_spd'] = False
         error = 0.
         for mask in np.unique(posterior.camera_subsets, axis=0):
             mass = p.weights[(posterior.camera_subsets == mask).all(1)].sum()
