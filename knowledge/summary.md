@@ -1,4 +1,4 @@
-<!-- knowledge-review: ab8e746834027f030c7aab28c0a5bbbeebf036c4eae65899c74da445f8e4613a on 2026-10-01 -->
+<!-- knowledge-review: 667d538016b351a8087a4278f022b577250b97face50344031599a5ca0e5ba45 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -94,7 +94,8 @@ court_sideがcam2反転のmargin .118504 < .15で停止した。scene export・�
 同じ校正/規則のball反実仮想はobserved注釈margin .604826、e9 cache top-1 .381587、
 e9＋現行score/gate .406997でFFTに決まる。e9は720p JPEG/採用窓も異なり、元MP4本番への一般化は未確認。
 ball labelはclip_000の診断専用で使用し、production import・人物label再採点・未見の開封は0。
-閾値/既定は変えず対策候補を整理する。
+閾値/既定は変更していない。診断nodeに、#935と接続する入力整合/ball証拠改善と、
+#932で別評価が要るball-only集約/rig蓄積の費用・不確実性を提示した。どの対策も選択せず、全pipeline受入は未達。
 旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
