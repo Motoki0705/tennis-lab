@@ -1,0 +1,62 @@
+{
+  "selected_method": "H",
+  "cost_ceiling_mean_worker_seconds": 0.6,
+  "eligible_by_mean_cost": [
+    "A",
+    "H"
+  ],
+  "selection": "Lower overall and weighted GT NLL and mean absolute HDR calibration error among cost-eligible methods; convergence diagnostic only",
+  "workers": 4,
+  "native_threads": 1,
+  "simulation_seconds_per_rally": 1.7662566878716461,
+  "other_seconds_per_rally": 0.18322375390238854,
+  "old_npz_bytes_per_frame": 6275.024280350438,
+  "projections": [
+    {
+      "rallies": 96,
+      "frames_per_rally": 450,
+      "ideal_wall_hours": 0.8405458138373864,
+      "with_20pct_margin_hours": 1.0086549766048636,
+      "npz_bytes_estimate": 271081048.9111389
+    },
+    {
+      "rallies": 96,
+      "frames_per_rally": 512,
+      "ideal_wall_hours": 0.954563714301056,
+      "with_20pct_margin_hours": 1.1454764571612672,
+      "npz_bytes_estimate": 308429993.42778474
+    },
+    {
+      "rallies": 640,
+      "frames_per_rally": 450,
+      "ideal_wall_hours": 5.603638758915909,
+      "with_20pct_margin_hours": 6.724366510699091,
+      "npz_bytes_estimate": 1807206992.740926
+    },
+    {
+      "rallies": 640,
+      "frames_per_rally": 512,
+      "ideal_wall_hours": 6.363758095340373,
+      "with_20pct_margin_hours": 7.636509714408447,
+      "npz_bytes_estimate": 2056199956.1852314
+    }
+  ],
+  "dev_proposal": {
+    "rallies": {
+      "train": 64,
+      "val": 16,
+      "test": 16
+    },
+    "schedule_minutes": 90,
+    "cpu_processes": 4,
+    "estimated_peak_ram_gb": 6,
+    "disk_reservation_bytes": 750000000,
+    "gpu": false,
+    "started": false,
+    "calibration_report": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-provisional-degradation-r5-s936/calibration.json",
+    "calibration_report_sha256": "7a2ea393b0a4c4c62c9f5903b577af9a64bb7fa9a5cc9b5f0fb4a31378ad360d",
+    "bank_sha256": "aea209600cfe218e239612cfaa828706b7ffabedebc9291ea0634acce31c482c"
+  },
+  "pipeline_10minute_clip_solver_hours_4workers": 0.6853481191581737,
+  "limits": "Completed train-only sample; new split/geometry/seed/calibration may change costs. 640 rallies await final #935. Pipeline number is arithmetic only, not pipeline integration."
+}
