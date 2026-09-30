@@ -8,7 +8,7 @@
 
 ## 追加条件
 
-1. **StrongSORT++ + pose / CLIP** (`strongsort_pp_pose__clip_reid_market1501`):
+1. **StrongSORT++ + pose / CLIP** (`strongsort_pp_pose__clipreid_vitb16_market1501`):
    run 9の論文再実装StrongSORTに、Deep OC-SORT+poseと同じ`local_pose` / `pose_distance`を使う。
    poseを元検出box内で正規化し、双方confidence >= .3の共通関節が4以上のとき、
    confidenceの小さい側を重みにした平均Euclidean距離を .25 で割り、1にclipする。
@@ -22,7 +22,7 @@
      上限をpose込みcostに適用するため、pose不一致で照合を拒否する場合もある。
    - その他の確認待ち、NSA、EMA、age、AFLink、GSIはrun 9のStrongSORT++と同じ。
      poseなし条件の既定は重み0を維持し、run 9のCLIP/KPR出力を回帰確認する。
-2. **Deep OC-SORT+pose / CLIP + AFLink + GSI** (`deep_ocsort_pose_aflink_gsi__clip_reid_market1501`):
+2. **Deep OC-SORT+pose / CLIP + AFLink + GSI** (`deep_ocsort_pose_aflink_gsi__clipreid_vitb16_market1501`):
    run 9のDeep/CLIPと同じオンライン追跡（pose重み .15を含む）を再実行し、
    元row/ID/boxが保存済みオンライン結果と配列一致することを確認した後、
    run 9と同じAFLink→GSIを適用する。旧Lab連結は足さない。

@@ -48,9 +48,12 @@ def draw(image: np.ndarray, box: np.ndarray, text: str, color: tuple[int, int, i
     cv2.putText(image, text, (max(0, x1), max(16, y1 - 3)), cv2.FONT_HERSHEY_SIMPLEX, .43, color, 1, cv2.LINE_AA)
 
 
-def render(report: Path) -> None:
+def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant: str | None = None) -> None:
     manifest = json.loads((report / 'comparison.json').read_text())
-    chosen = recommendation(manifest['table'])
+    chosen = recommendation(manifest['table']) if candidate_variant is None else candidate_variant
+    available = {r['variant'] for r in manifest['table']}
+    if baseline_variant not in available or chosen not in available or baseline_variant == chosen:
+        raise ValueError('Video requires two distinct evaluated conditions')
     identity = json.loads(checked(manifest['identity']).read_text())
     plan = json.loads(checked(identity['plan']).read_text())
     source = json.loads(checked(plan['sources']).read_text())
@@ -67,7 +70,7 @@ def render(report: Path) -> None:
     try:
         for clip in sorted({r['clip'] for r in source['inputs']}):
             records = sorted([r for r in source['inputs'] if r['clip'] == clip], key=lambda r: r['camera'])
-            baseline, bu = load_result(report, 'new_old', clip)
+            baseline, bu = load_result(report, baseline_variant, clip)
             candidate, cu = load_result(report, chosen, clip)
             before, after = states(baseline, bu), states(candidate, cu)
             if set(before) != set(after):
@@ -80,7 +83,7 @@ def render(report: Path) -> None:
             start = int(sums.argmax())
             end = start + width
             windows.append({'clip': clip, 'start': start, 'end': end, 'differing_player_units': int(sums[start]),
-                            'baseline': 'new_old', 'candidate': chosen})
+                            'baseline': baseline_variant, 'candidate': chosen})
             arrays = []
             for result in (baseline, candidate):
                 cams = []
@@ -108,7 +111,8 @@ def render(report: Path) -> None:
                     if (frame - start) % 4:
                         continue
                     canvas: np.ndarray = np.zeros((800, 1920, 3), np.uint8)
-                    for stage, (result, units, title) in enumerate(((baseline, bu, 'COCO .30 + old BoT-SORT/Lab'),
+                    baseline_title = 'COCO .30 + old BoT-SORT/Lab' if baseline_variant == 'new_old' else baseline_variant.replace(CLIP, 'CLIP')
+                    for stage, (result, units, title) in enumerate(((baseline, bu, baseline_title),
                                                                   (candidate, cu, chosen.replace(CLIP, 'CLIP')))):
                         y = stage * 400
                         cv2.putText(canvas, f'{clip}  frame {frame}  {title}  | green=correct magenta=error orange=nonplayer',
@@ -165,7 +169,7 @@ def render(report: Path) -> None:
     if video.wait() != 0:
         raise RuntimeError('ffmpeg failed')
     write_json_atomic(report / 'review.json', {'video': record_file(output), 'windows': windows,
-        'comparison': record_file(report / 'comparison.json'), 'candidate': chosen,
+        'comparison': record_file(report / 'comparison.json'), 'candidate': chosen, 'baseline': baseline_variant,
         'event_overlay': 'switch/fragment persists 18 source frames for 15fps readability'})
     print(json.dumps({'candidate': chosen, 'video': str(output), 'windows': windows}, indent=2))
 
@@ -173,5 +177,8 @@ def render(report: Path) -> None:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report', required=True, type=Path)
+    parser.add_argument('--baseline', default='new_old')
+    parser.add_argument('--candidate')
     cv2.setNumThreads(1)
-    render(parser.parse_args().report)
+    args = parser.parse_args()
+    render(args.report, baseline_variant=args.baseline, candidate_variant=args.candidate)

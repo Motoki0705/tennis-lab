@@ -20,6 +20,11 @@ baselineのLab連結が停止した場合も停止として保存し、候補追
 `person_strongsort_parity.py --upstream <別途取得した固定版> --weight <AFLink重み> --report <JSON>`は
 ラベルを使わず合成trackletでAFLinkの前処理・学習済み推論の数値互換を確認する。
 `person_tracking_linking_report.py --report <run 9 root>`は全表・対応表と推薦規則の結果を出す。
+`person_tracking_hybrids.py`は[run 10 addendum](../../knowledge/runs/run-i964-tracker-hybrids-r10-20260930/protocol-addendum.md)の2条件を実行する。
+run 9と同じ引数を使い、`--previous`にはrun 9確定出力を指定する。
+`--phase reproduce`（旧9条件の再採点）→`regression`（poseなしStrongSORTの配列一致）→
+`track`（新2条件）→`evaluate`で全11条件を保存する。
+動画は共通入口の`--baseline <Deep/CLIP名> --candidate <事前規則で選んだ新条件名>`で比較対象を明示する。
 `person_tracking_cam1_diagnosis.py --matrix <run 8 root> --report <診断出力先>`は固定3窓を選び、
 camera内の全割当/元検出と診断専用のpose/appearance除去を保存する。
 `person_tracking_cam1_video.py --diagnosis <diagnosis.json> --matrix <run 8 root> --output <mp4>`は
