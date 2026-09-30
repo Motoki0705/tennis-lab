@@ -24,6 +24,7 @@ baselineのLab連結が停止した場合も停止として保存し、候補追
 run 9と同じ引数を使い、`--previous`にはrun 9確定出力を指定する。
 `--phase reproduce`（旧9条件の再採点）→`regression`（poseなしStrongSORTの配列一致）→
 `track`（新2条件）→`evaluate`で全11条件を保存する。
+表は`person_tracking_linking_report.py --report <run 10 root> --run 10`で生成する。
 動画は共通入口の`--baseline <Deep/CLIP名> --candidate <事前規則で選んだ新条件名>`で比較対象を明示する。
 `person_tracking_cam1_diagnosis.py --matrix <run 8 root> --report <診断出力先>`は固定3窓を選び、
 camera内の全割当/元検出と診断専用のpose/appearance除去を保存する。

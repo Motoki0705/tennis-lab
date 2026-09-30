@@ -12,7 +12,9 @@ legal clean-room certification.
 The comparison substitutes the fixed COCO .30 detections and precomputed CLIP
 for YOLOX/BoT, disables ECC on the fixed cameras, and retains detection-row
 identity and real-observation masks. GSI output remains a separate reconstruction;
-it is never relabelled as a real detection. No pose cost is added to StrongSORT.
+it is never relabelled as a real detection. The run-9 condition adds no pose cost.
+The optional run-10 hybrid adds this repository's shared pose evidence to both
+association stages; it is an extension, not part of the StrongSORT paper.
 This is a specified adaptation, not a reproduction of the MOT benchmark scores.
 NSA follows paper equation 9 literally: the **covariance** is multiplied by
 `1-confidence`. A synthetic black-box check found that the reference code instead
@@ -22,6 +24,7 @@ prediction agreed exactly with the reference in that check. Missed latent Kalman
 states may extrapolate through zero height before expiry, as in the reference;
 they are retained internally but never emitted as detections.
 All comparison settings have one source, the [run-9 addendum](../../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md).
+The two hybrid changes are specified in the [run-10 addendum](../../../knowledge/runs/run-i964-tracker-hybrids-r10-20260930/protocol-addendum.md).
 
 AFLink checkpoint: the official README's [Google Drive folder](https://drive.google.com/drive/folders/1Zk6TaSJPbpnqbz1w4kfhkKFCEzQbjfp_),
 file ID `1DFMUkL-dc-j8-fibcJIq-46Xoq_bFoO9`, `AFLink_epoch20.pth`, 4,348,705 bytes,

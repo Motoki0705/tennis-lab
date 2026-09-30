@@ -1,0 +1,59 @@
+reproduced scores old_old/video_000/clip_000
+reproduced scores old_old/video_000/clip_007
+reproduced scores old_old/video_001/clip_001
+reproduced scores old_old/video_002/clip_013
+reproduced scores new_old/video_000/clip_000
+reproduced scores new_old/video_000/clip_007
+reproduced scores new_old/video_001/clip_001
+reproduced scores new_old/video_002/clip_013
+reproduced scores botsort_pose__clipreid_vitb16_market1501/video_000/clip_000
+reproduced scores botsort_pose__clipreid_vitb16_market1501/video_000/clip_007
+reproduced scores botsort_pose__clipreid_vitb16_market1501/video_001/clip_001
+reproduced scores botsort_pose__clipreid_vitb16_market1501/video_002/clip_013
+reproduced scores botsort_pose__solider_swin_base_msmt17/video_000/clip_000
+reproduced scores botsort_pose__solider_swin_base_msmt17/video_000/clip_007
+reproduced scores botsort_pose__solider_swin_base_msmt17/video_001/clip_001
+reproduced scores botsort_pose__solider_swin_base_msmt17/video_002/clip_013
+reproduced scores deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_000
+reproduced scores deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_007
+reproduced scores deep_ocsort_pose__clipreid_vitb16_market1501/video_001/clip_001
+reproduced scores deep_ocsort_pose__clipreid_vitb16_market1501/video_002/clip_013
+reproduced scores deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_000
+reproduced scores deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_007
+reproduced scores deep_ocsort_pose__solider_swin_base_msmt17/video_001/clip_001
+reproduced scores deep_ocsort_pose__solider_swin_base_msmt17/video_002/clip_013
+reproduced scores deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000
+reproduced scores deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007
+reproduced scores deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001
+reproduced scores deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013
+reproduced scores strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000
+reproduced scores strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007
+reproduced scores strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001
+reproduced scores strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013
+reproduced scores best_kpr__kpr_market_solider_parts/video_000/clip_000
+reproduced scores best_kpr__kpr_market_solider_parts/video_000/clip_007
+reproduced scores best_kpr__kpr_market_solider_parts/video_001/clip_001
+reproduced scores best_kpr__kpr_market_solider_parts/video_002/clip_013
+	Command being timed: "timeout 1100 bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-tracker-hybrids-r10-20260930/run.sh reproduce"
+	User time (seconds): 34.89
+	System time (seconds): 0.95
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:36.28
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1044456
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 229643
+	Voluntary context switches: 188
+	Involuntary context switches: 463
+	Swaps: 0
+	File system inputs: 104
+	File system outputs: 6984
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

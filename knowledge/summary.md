@@ -1,4 +1,4 @@
-<!-- knowledge-review: 11a4a028d1c5f317f627547c1b70b46b27f848ad84af06842689f3d6a1698db0 on 2026-09-30 -->
+<!-- knowledge-review: a6e38aa8b318e1ba4ad7007b6ca9825167e0e16003d1c9431eb451ec035cbad3 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -55,6 +55,14 @@ KPRの[全12 archive回収](nodes/person_tracking/000010-run-i964-kpr-native-fea
 camera間では固定CLIP尺度の転用が大半で曖昧停止となった。重み条件未確認のAFLinkを含め最終採用はユーザー判断を要する。
 cam1遠側の欠測には全件元検出があり、重複検出由来の競合IDと別人trackへの移行/選別除外が主因だった。
 小cropの外観/pose不良だけでは説明できない。全pipeline完走・調整凍結後の未見一回評価は後続とする。
+
+[ユーザー指定の2 hybridを固定比較したrun 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)では、
+StrongSORT++＋pose/CLIPがraw/group IDF1の候補内推薦となった。poseなしよりswitchと選手保持は改善したが、
+fragmentは増え、cam1遠側の改善も小さい。camera間pair F1はDeep+pose/CLIPより低く、下流での一律な勝利ではない。
+Deep+poseへAFLink/GSIを足すとrawは改善するがgroupは悪化し、pair F1の差は僅かだった。
+旧9条件の全144層と決定済みpair指標を完全再現し、変えたStrongSORTのオンライン出力もpose重み0で一致した。
+GSI syntheticは別maskのままで評価の実観測へ入れていない。費用付き重複box対策は未実装の提案に留めた。
+既定はユーザーがraw/groupとpair/coverageのどちらを重視するか判断してから選び、AFLink重みの利用条件も引き続き確認対象とする。
 
 ## 2026-09-27のcamera間人物対応（#933）
 
@@ -305,4 +313,3 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
-
