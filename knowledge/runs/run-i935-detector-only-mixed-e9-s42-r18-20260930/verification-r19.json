@@ -1,0 +1,13 @@
+{
+  "collection": "verified; 139 input hashes, 560 paired and 36 diagnostic NPZ, 12 checkpoints, 512 exact reductions",
+  "tests": {
+    "command": ".venv/bin/python -m pytest -n 4 tests/unit/tasks/ball_refiner/evaluation tests/integration/tasks/ball_refiner/test_pilot_comparison.py tests/integration/tasks/ball_refiner/test_evaluation.py",
+    "passed": 34,
+    "seconds": 14.59
+  },
+  "ruff": "2 collection/report files pass",
+  "mypy": "2 files, --follow-imports=skip, pass",
+  "knowledge": "0 errors, base origin/campaign930/i935-10-detector-selection",
+  "repro": "278 scripts, 329 references, 0 missing/unverifiable",
+  "gpu_jobs_this_run": 0
+}
