@@ -1,4 +1,4 @@
-<!-- knowledge-review: b89b0115f230638efa6178a2118f73c4b16d9695ee1b5ad2ed5d170f28701f40 on 2026-09-30 -->
+<!-- knowledge-review: e06b6c777e88c0645765b44f66d864940fc299d11adf20aa8c629c385375a07c on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -212,7 +212,7 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 採用基準から外した。adaptive rayはGT品質がHに近く、費用は約20倍だった。
 Hにも過小被覆と一部層の大きい位置誤差が残り、較正や最終性能の合格とはしない。
 停止データの完成済みtrain9件だけの標本で、全量・別splitの保証ではない。
-[96件H dev](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を約52分・222 MBで生成し、40,774 frame/全125成分のreader・float32 SPD・存在質量・未評価flagを検証した。合成train/valの2D HDR90/95はobserved81.65/86.16%、gap84.39/88.53%で、新しい実pilotのvalより低い。母集団差はあるが暫定劣化の較正差が残り、項目2の最終完了とはしない。[固定2k更新の回収](nodes/ball_refiner_3d/000015-run-i936-h-dev-flow-regression-r9-s936-20260930.md)では、flow/回帰のval RMSEは8.01/8.20m、加速度p95は約2,940/4,057m/s²で有用性未達。335秒・allocated 0.425GBを実測した。同一16 valの混合平均7.36m/RTS6.97mより悪く、3camera可視のframeで大きく悪化する一方1camera可視では改善した。RTSはRMSE/再投影/加速度で両armを上回るが、絶対加速度は依然過大。[20k回収](nodes/ball_refiner_3d/000016-run-i936-h-dev-long-flow-regression-r10-s936-20260930.md)ではtrain x0が低下する一方val RMSEは9.80/9.15mへ悪化し、過学習を支持した。ただしonline T128 trainと全ラリーvalの差、物理項の因果は未分離。次は凍結条件tokenから全混合平均を読むCPU線形probeを1件行う。
+[96件H dev](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を約52分・222 MBで生成し、40,774 frame/全125成分のreader・float32 SPD・存在質量・未評価flagを検証した。合成train/valの2D HDR90/95はobserved81.65/86.16%、gap84.39/88.53%で、新しい実pilotのvalより低い。母集団差はあるが暫定劣化の較正差が残り、項目2の最終完了とはしない。[固定2k更新の回収](nodes/ball_refiner_3d/000015-run-i936-h-dev-flow-regression-r9-s936-20260930.md)では、flow/回帰のval RMSEは8.01/8.20m、加速度p95は約2,940/4,057m/s²で有用性未達。335秒・allocated 0.425GBを実測した。同一16 valの混合平均7.36m/RTS6.97mより悪く、3camera可視のframeで大きく悪化する一方1camera可視では改善した。RTSはRMSE/再投影/加速度で両armを上回るが、絶対加速度は依然過大。[20k回収](nodes/ball_refiner_3d/000016-run-i936-h-dev-long-flow-regression-r10-s936-20260930.md)ではtrain x0が低下する一方val RMSEは9.80/9.15mへ悪化し、過学習を支持した。ただしonline T128 trainと全ラリーvalの差、物理項の因果は未分離。[凍結tokenのCPU read-out](nodes/ball_refiner_3d/000017-run-i936-condition-readout-r11-s936.md)は入力混合平均をtrain 1.65mm / val 7.49mmで再現した。pooled tokenでの大きな平均情報欠落は支持されず、次は重みを変えずvalの推論文脈をT128へ揃える単一因子のCPU比較を提案する。その後のphysics weight比較は別実験。
 #959暫定reportの旧devを対照として保持する。ユーザー判断Dに従い、#935のanchored headの共分散較正後のbank/hashを受け取ってから別directoryへdevを再生成する。640件も最終#935出力を待つ。
 
 [保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
