@@ -1,0 +1,61 @@
+{
+  "default_change": {
+    "commit": "60175414",
+    "pytest_passed": 42,
+    "seconds": 18.31,
+    "tests": [
+      "tests/unit/tennis_scene/test_configuration.py",
+      "tests/unit/tasks/player_association/test_association.py",
+      "tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py"
+    ],
+    "ci": "https://github.com/Motoki0705/tennis-lab/actions/runs/36788884575",
+    "ci_status": "success"
+  },
+  "freeze_and_prior_gates": {
+    "pytest_passed": 8,
+    "seconds": 12.29,
+    "tests": [
+      "tests/integration/tasks/person_tracking/test_unseen_freeze.py",
+      "tests/integration/tasks/person_tracking/test_recalibration_dev.py",
+      "tests/integration/tasks/person_tracking/test_recalibration_fit_gate.py"
+    ]
+  },
+  "final_unseen_and_freeze": {
+    "pytest_passed": 7,
+    "seconds": 81.07,
+    "tests": [
+      "tests/integration/tasks/person_tracking/test_unseen.py",
+      "tests/integration/tasks/person_tracking/test_unseen_freeze.py"
+    ]
+  },
+  "pytest_workers": 4,
+  "unique_tests_passed": 55,
+  "ruff": "passed",
+  "mypy": "passed (--follow-imports=skip)",
+  "commit_hooks": "passed",
+  "knowledge": {
+    "nodes": 432,
+    "errors": 0
+  },
+  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "source_changes_after_freeze": [],
+  "inference_attempts": 0,
+  "scoring_batches": 0,
+  "gpu_jobs_enqueued": 0,
+  "not_verified": [
+    "unseen real GPU inference",
+    "unseen metrics",
+    "unseen full videos",
+    "clip_000 full pipeline"
+  ],
+  "resource_interruption": {
+    "own_pytest_interrupted": 1,
+    "tests_run": 0,
+    "reason": "host available RAM dropped below 6 GiB; repeated only after recovery"
+  },
+  "independent_validator": {
+    "requested": 0,
+    "attempted": 0,
+    "completed": 0
+  }
+}
