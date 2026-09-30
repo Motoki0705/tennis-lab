@@ -1,0 +1,31 @@
+{
+  "status": "verified_dataset_planned_not_enqueued",
+  "job_name": "i936-h-dev-flow-regression-r9-s936-20260930",
+  "dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r9-s936",
+  "resource": "all",
+  "estimated_wall_minutes": [
+    20,
+    55
+  ],
+  "soft_maximum_seconds": 3300,
+  "timeout_seconds": 3540,
+  "kill_after_seconds": 15,
+  "estimated_peak_vram_bytes": [
+    2000000000,
+    4000000000
+  ],
+  "allocator_limit_gib": 6,
+  "maximum_device_bytes": 10000000000,
+  "disk_reservation_bytes": 250000000,
+  "seed": 936,
+  "updates_per_arm": 2000,
+  "arms": [
+    "flow",
+    "regression"
+  ],
+  "test_rallies_used": false,
+  "prior_measurement": "run-i936-x0-memory-r2-20260929: B2/T128/M64 fp32 width128/4 layers,100 updates9.91s,device1.448GB; this job B8/T128/M125, val B1/T<=512",
+  "source_manifest_sha256": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+  "config_sha256": "e5731032350a2893ad5003e2f554223be40cadbd9bc891d94ac8344c5aee6673"
+}
