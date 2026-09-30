@@ -1,0 +1,264 @@
+{
+  "status": "complete",
+  "camera_frames": 810,
+  "cameras": [
+    {
+      "camera": "cam0",
+      "frames": 270,
+      "opencv_pyav_equal": 270,
+      "reencoded_jpeg_bytes_equal": 270,
+      "reencoded_store_pixels_equal": 270,
+      "detector_reencoded_store_equal": 270,
+      "decoder_mae": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "decoder_rmse": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "decoder_max_abs": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "jpeg_at_720p_mae": {
+        "mean": 1.4339880492952135,
+        "min": 1.4189702272415161,
+        "max": 1.4405906200408936
+      },
+      "jpeg_at_720p_rmse": {
+        "mean": 2.348264550279688,
+        "min": 2.338674306869507,
+        "max": 2.3524491786956787
+      },
+      "jpeg_at_720p_max_abs": {
+        "mean": 33.57037037037037,
+        "min": 31.0,
+        "max": 36.0
+      },
+      "detector_total_mae": {
+        "mean": 2.3331914054022893,
+        "min": 2.3208844661712646,
+        "max": 2.340078830718994
+      },
+      "detector_total_rmse": {
+        "mean": 4.424228571079396,
+        "min": 4.412348747253418,
+        "max": 4.441315174102783
+      },
+      "detector_total_max_abs": {
+        "mean": 52.05185185185185,
+        "min": 48.0,
+        "max": 55.0
+      },
+      "detector_resize_only_mae": {
+        "mean": 1.9118173855322378,
+        "min": 1.8997124433517456,
+        "max": 1.9194765090942383
+      },
+      "detector_resize_only_rmse": {
+        "mean": 4.085298013687134,
+        "min": 4.0762939453125,
+        "max": 4.103764533996582
+      },
+      "detector_resize_only_max_abs": {
+        "mean": 49.262962962962966,
+        "min": 49.0,
+        "max": 50.0
+      },
+      "detector_jpeg_only_mae": {
+        "mean": 0.9682857818073697,
+        "min": 0.9588442444801331,
+        "max": 0.9748919606208801
+      },
+      "detector_jpeg_only_rmse": {
+        "mean": 1.559536842505137,
+        "min": 1.549749732017517,
+        "max": 1.567108392715454
+      },
+      "detector_jpeg_only_max_abs": {
+        "mean": 22.107407407407408,
+        "min": 20.0,
+        "max": 25.0
+      }
+    },
+    {
+      "camera": "cam1",
+      "frames": 270,
+      "opencv_pyav_equal": 270,
+      "reencoded_jpeg_bytes_equal": 270,
+      "reencoded_store_pixels_equal": 270,
+      "detector_reencoded_store_equal": 270,
+      "decoder_mae": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "decoder_rmse": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "decoder_max_abs": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "jpeg_at_720p_mae": {
+        "mean": 1.1551489057364288,
+        "min": 1.1265274286270142,
+        "max": 1.1752618551254272
+      },
+      "jpeg_at_720p_rmse": {
+        "mean": 1.6317315808048956,
+        "min": 1.6045453548431396,
+        "max": 1.6599916219711304
+      },
+      "jpeg_at_720p_max_abs": {
+        "mean": 19.87037037037037,
+        "min": 14.0,
+        "max": 56.0
+      },
+      "detector_total_mae": {
+        "mean": 1.3854885812158937,
+        "min": 1.3542864322662354,
+        "max": 1.4179213047027588
+      },
+      "detector_total_rmse": {
+        "mean": 2.1807876525101837,
+        "min": 2.1348953247070312,
+        "max": 2.2455079555511475
+      },
+      "detector_total_max_abs": {
+        "mean": 31.544444444444444,
+        "min": 26.0,
+        "max": 45.0
+      },
+      "detector_resize_only_mae": {
+        "mean": 0.8091139389408959,
+        "min": 0.7785395979881287,
+        "max": 0.8397623896598816
+      },
+      "detector_resize_only_rmse": {
+        "mean": 1.699589196840922,
+        "min": 1.6545225381851196,
+        "max": 1.7727458477020264
+      },
+      "detector_resize_only_max_abs": {
+        "mean": 29.274074074074075,
+        "min": 25.0,
+        "max": 43.0
+      },
+      "detector_jpeg_only_mae": {
+        "mean": 0.9254895870332365,
+        "min": 0.9035282731056213,
+        "max": 0.9365302324295044
+      },
+      "detector_jpeg_only_rmse": {
+        "mean": 1.2977607674068874,
+        "min": 1.2792953252792358,
+        "max": 1.3116531372070312
+      },
+      "detector_jpeg_only_max_abs": {
+        "mean": 13.707407407407407,
+        "min": 10.0,
+        "max": 29.0
+      }
+    },
+    {
+      "camera": "cam2",
+      "frames": 270,
+      "opencv_pyav_equal": 270,
+      "reencoded_jpeg_bytes_equal": 270,
+      "reencoded_store_pixels_equal": 270,
+      "detector_reencoded_store_equal": 270,
+      "decoder_mae": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "decoder_rmse": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "decoder_max_abs": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "jpeg_at_720p_mae": {
+        "mean": 1.1683312036372997,
+        "min": 1.104967474937439,
+        "max": 1.1886931657791138
+      },
+      "jpeg_at_720p_rmse": {
+        "mean": 1.7965624380994727,
+        "min": 1.758554220199585,
+        "max": 1.8144259452819824
+      },
+      "jpeg_at_720p_max_abs": {
+        "mean": 29.825925925925926,
+        "min": 25.0,
+        "max": 36.0
+      },
+      "detector_total_mae": {
+        "mean": 1.5183046292375635,
+        "min": 1.454045057296753,
+        "max": 1.5415740013122559
+      },
+      "detector_total_rmse": {
+        "mean": 2.730352095321373,
+        "min": 2.701204299926758,
+        "max": 2.753875970840454
+      },
+      "detector_total_max_abs": {
+        "mean": 34.98518518518519,
+        "min": 32.0,
+        "max": 41.0
+      },
+      "detector_resize_only_mae": {
+        "mean": 0.9789927385471485,
+        "min": 0.9279875755310059,
+        "max": 0.9990482926368713
+      },
+      "detector_resize_only_rmse": {
+        "mean": 2.3212962132913093,
+        "min": 2.296807050704956,
+        "max": 2.3415589332580566
+      },
+      "detector_resize_only_max_abs": {
+        "mean": 31.685185185185187,
+        "min": 28.0,
+        "max": 37.0
+      },
+      "detector_jpeg_only_mae": {
+        "mean": 0.9272942924941028,
+        "min": 0.8814810514450073,
+        "max": 0.9404839277267456
+      },
+      "detector_jpeg_only_rmse": {
+        "mean": 1.3799719311572887,
+        "min": 1.3474719524383545,
+        "max": 1.3929930925369263
+      },
+      "detector_jpeg_only_max_abs": {
+        "mean": 21.05925925925926,
+        "min": 17.0,
+        "max": 28.0
+      }
+    }
+  ],
+  "seconds": 152.00568493898027,
+  "minimum_host_available_bytes": 13791068160,
+  "recipe": "PyAV bgr24 1920x1080 -> INTER_AREA 1280x720 -> JPEG quality90 -> OpenCV BGR -> INTER_LINEAR 512x288 -> RGB float32 /255",
+  "pixel_units": "8-bit 0..255; aggregate means over equally sized frames; max is max across all pixels",
+  "versions": {
+    "cv2": "5.0.0",
+    "av": "18.1.0",
+    "torch": "2.13.0+cu130"
+  }
+}
