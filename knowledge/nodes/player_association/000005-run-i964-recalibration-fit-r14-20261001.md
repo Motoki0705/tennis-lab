@@ -66,6 +66,11 @@ YAML/fit証拠のcommit **b03eb152** をpushした後、commit内のblobとorigi
 投影に伴う2camera再追跡後でも、旧尺度の全4clipのstatus/metricsはrun11と完全一致した。
 旧/新の予測ID配列も全12cameraで完全一致し、尺度変更によるdev改善はなかった。
 
+| 設定 | sigma_m | slope | center | min_margin / max_runner_up_ratio |
+|---|---:|---:|---:|---:|
+| 旧 | 1.05 | 62.7 | .847 | 1.0 / .5 |
+| 新LOVO A | .7381677290433 | 36.70286491794044 | .8298172161822686 | 1.0 / .5 |
+
 | 条件 | decided | pair TP/FP/FN | F1 | group accuracy | exclusion TP/FP/FN | label box coverage |
 |---|---:|---:|---:|---:|---:|---:|
 | 旧尺度/閾値 | 4/4 | 18459/6/1648 | .957119 | 2663/3489=.763256 | 4432/840/3 | 25055/25147 |

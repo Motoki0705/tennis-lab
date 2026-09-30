@@ -1,4 +1,4 @@
-<!-- knowledge-review: 886b7e29e692e614a8cee05c615d3596903b0e64d6523e6d3901bbe36708bf49 on 2026-10-01 -->
+<!-- knowledge-review: a3ab0847dfcb85f3b8a2442a502504a22d83188d6550d903ff3a9a392e14ba23 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -88,7 +88,7 @@ video_001/clip_020の停止を母数へ含み、同動画recall54.97%という�
 dev後の再fit/再選択は行わない。
 [clip_000資格確認](nodes/tennis_scene/000026-run-i964-clip000-qualification-r14-20261001.md)は、
 名前付き設定を明示した15資産/28nodeのCPU preflightが成功し、全execute→別processでのload検証→
-全長3camera動画を1件の共有GPU queueで実行する準備を終えた。実GPU結果は未取得。
+全長3camera動画を1件の共有GPU queueへ登録した。実GPU結果は未取得。
 旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
