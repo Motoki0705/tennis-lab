@@ -1,4 +1,4 @@
-<!-- knowledge-review: 70d932d9b02707cfb30667a9f53cb08e8fd78eb501b2670a501749d7e83cd59a on 2026-09-30 -->
+<!-- knowledge-review: fbd076e99c7938c5b922ce1795a8c44160f418bd9dac93daf190abea752aaa3c on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -310,7 +310,7 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 採用基準から外した。adaptive rayはGT品質がHに近く、費用は約20倍だった。
 Hにも過小被覆と一部層の大きい位置誤差が残り、較正や最終性能の合格とはしない。
 停止データの完成済みtrain9件だけの標本で、全量・別splitの保証ではない。
-96件は4 CPU・90分枠・disk0.75GBの提案まで（20%余裕込み外挿1.01〜1.15h）で、開始していない。
+[96件dev生成](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を4 CPU・90分枠・disk0.75GBで開始した。保存監査・2D較正比較・短時間学習を順に検証中で、性能の結論は保留する。
 #959暫定reportを単一入力として維持し、640件は最終#935出力を待つ。
 
 [保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
