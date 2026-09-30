@@ -48,6 +48,13 @@ camera境界1e-3以内、局所depthが3σ未満、評価予算の枯渇、line 
 地面下のtailも残る。priorの位置・幅を必ず設定と記録に含める。
 数値失敗や非正定値共分散を黙って修復しない。
 
+`LaplaceConfig(diagnose_nonregular=True)`は、同じ正depth最適化の最終点を
+全成分について返す明示的な近似方針。境界・広いtail・評価予算到達・line search停止を
+`laplace_diagnostic:<reason>`と`component_optimization_diagnostics`へ記録する。
+予算で停止した点をMAPや収束済みとは呼ばない。別積分への切替、成分削除、jitterはしない。
+共通正depth領域がない場合や非SPDなどの数値失敗は依然errorになる。
+既定のstrict方針とhybridの非正則dispatchは維持する。
+
 ## 明示的なA/B併用
 
 `solver.triangulate_hybrid`は`HybridConfig(laplace, volume)`を必須にする別API。
