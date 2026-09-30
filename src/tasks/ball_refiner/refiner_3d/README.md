@@ -252,3 +252,19 @@ HDR体積はR³上の独立MC推定、報告するMC標準誤差は推定閾値�
 複数窓を跨ぐ箇所と窓内を分ける。自由飛行はstencil全frameで判定する。
 5frameの誤差trendと残差は窓内・自由飛行だけで計算し、診断後の軌道で元の指標を置換しない。
 再現script・全16valの数値・解釈は[粗さ診断](../../../../knowledge/nodes/ball_refiner_3d/000022-run-i936-roughness-r14-s936.md)を参照。
+
+### 一因子の学習比較と固定validation
+
+`python -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan <絶対path> --device cuda`
+は共有queueで実行する。planに固定したcode/config/controlのhashと、生成の完全manifest・
+全NPZ/JSON・seed・入力hash・展開planをCPUで監査してから学習へ進む。
+未完了/失敗・設定の追加差分・出力先の既存利用は停止し、待機や自動retryはしない。
+`--device cpu --audit-only`は同じ監査を保存して終了するため、学習jobとは別の出力先を指定する。
+
+`diffusion/cohort.py`は参照学習manifestの全val identity/hashを要求し、datasetが増えても
+同じvalだけを読む。参照外valとtestは学習・評価で開かず、未使用valをmanifestへ明示する。
+[512train設定](training_pilot512_t128.yaml)はrun13から宣言countsだけを変更し、
+[physics設定](training_physics10_t128.yaml)は元64trainのままphysics weightだけ10倍にする。
+`diffusion/experiment.py`が各差分と元train/val保存hashの一致を要求する。
+`condition_audit.audit_manifest(..., expected_counts=...)`は指定したdev/pilotをhashで監査する。
+testはファイルhashとJSONの整合確認のみで、配列を開かない。
