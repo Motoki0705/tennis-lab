@@ -1,0 +1,6 @@
+{
+  "source_commit": "d9af0182c39c465eebff140d83b041541ffe270a",
+  "session": "01a0f48a-352c-7fe0-8609-b27d0b56436b",
+  "probe_sha256": "7f666f04f8c403915de4fcd8c3bfacd5007da5c351dd1aa8fc62a5e0a6530249",
+  "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 CUDA_VISIBLE_DEVICES= PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined-overlap-cpu-r17-s936/probe.py"
+}

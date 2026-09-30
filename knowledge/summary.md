@@ -1,4 +1,4 @@
-<!-- knowledge-review: 50b62504d91715756b56374c5d0cc5f3ff4687e5b9850c7e06cd3e6974d91413 on 2026-10-01 -->
+<!-- knowledge-review: c58dccf82a62bc4e848f2c38da38ddef3a41b7cca20ad155b5f41ec048b48b78 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -428,3 +428,9 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
+
+[併用(c)の固定CPU overlap](nodes/ball_refiner_3d/000028-run-i936-combined-overlap-cpu-r17-s936.md)も回収した。
+flow RMSE1.971→1.632m・behind4→0、seamの二乗和は大幅に減ったが、
+camera2 RMSEと窓内free粗さの悪化で診断不合格。回帰も再投影meanと窓内粗さで不合格。
+両armの正式規則はRTSに対するfree accel/jerk・reprojection mean/p50で未達。
+最大の相対差はflow repro p50約4.9倍で、blendの調整より保存予測の観測忠実度を調べる。
