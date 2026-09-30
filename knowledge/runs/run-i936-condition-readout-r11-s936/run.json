@@ -1,0 +1,24 @@
+{
+  "id": "run-i936-condition-readout-r11-s936",
+  "name": "i936-condition-readout-r11-s936",
+  "provider": "codex",
+  "issue": 936,
+  "commit": "cf406ab46afb332ed905ca25b24b4c0a1d3b1c88",
+  "branch": "campaign930/i936-2-synthetic-diffusion",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "command": "timeout --signal=TERM --kill-after=10s 300s env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.probe_conditioning_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936 --training-output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r10-s936-20k --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-readout",
+  "queue_job": null,
+  "repro_state": "clean at execution and collection",
+  "input_hashes": {
+    "training_manifest": "4528297cc2541224a18c84ce540b1714e11f2b2cfbdcfe887e889576a7239a00",
+    "dataset_manifest": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+    "checkpoint": "a14be65ef59f5253b0bdb6966a6c8fdf9e7e0109395f5abfb7ad69d4cc64af77"
+  },
+  "source_output": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-readout",
+  "resources": {
+    "elapsed_seconds": 42.75992155598942,
+    "peak_process_rss_bytes": 1017815040,
+    "minimum_available_host_bytes": 12746555392,
+    "gpu_jobs": 0
+  }
+}
