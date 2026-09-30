@@ -273,3 +273,10 @@ testはファイルhashとJSONの整合確認のみで、配列を開かない�
 二因子を併用する候補モデル。`factor: training_rallies_and_physics_weight`を明示し、
 専用guardが64→512件とphysics10倍以外の差分を拒否する。
 一因子の診断としては受け付けず、候補の判定規則は実験knowledgeに固定する。
+
+### 固定重みの重複窓診断
+
+`diffusion/overlap_inference.py`は全sampleを正の三角重みでblendする明示的な推論API。
+元の窓推論と同じ絶対時刻・右padding・全ラリーnoiseを使い、教師/eventで重みを変えない。
+短い末尾も実frameだけで正規化する。学習validationと既定のearliest-window推論は変更しない。
+固定16valのCPU比較・規則・再現scriptは[診断knowledge](../../../../knowledge/nodes/ball_refiner_3d/000027-run-i936-overlap-cpu-r16-s936.md)を参照。
