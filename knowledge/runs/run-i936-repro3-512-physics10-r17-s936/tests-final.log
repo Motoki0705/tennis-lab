@@ -1,0 +1,77 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [32 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_combined_candidate_is_explicit_and_rejects_any_extra_factor 
+[gw0] [  3%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+[gw1] [  6%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+[gw3] [  9%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+[gw2] [ 12%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_combined_candidate_is_explicit_and_rejects_any_extra_factor 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors 
+[gw0] [ 15%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+[gw3] [ 18%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_chained_validation_requires_complete_explicit_subset_partition 
+[gw0] [ 21%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_chained_validation_requires_complete_explicit_subset_partition 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+[gw2] [ 25%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors 
+[gw1] [ 28%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[None] 
+[gw3] [ 31%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[4] 
+[gw0] [ 34%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_nonfinite_loss_records_failure_without_regression_retry 
+[gw1] [ 37%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_device_bytes-10000000001] 
+[gw1] [ 40%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_device_bytes-10000000001] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule0] 
+[gw0] [ 43%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_nonfinite_loss_records_failure_without_regression_retry 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[updates-20001] 
+[gw1] [ 46%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule0] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule1] 
+[gw1] [ 50%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule1] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule3] 
+[gw0] [ 53%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[updates-20001] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule2] 
+[gw1] [ 56%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule3] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule4] 
+[gw0] [ 59%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule2] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget 
+[gw0] [ 62%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[True] 
+[gw1] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule4] 
+[gw0] [ 68%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[True] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_anchored_config_changes_only_validation_context_and_declared_schedule 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[3] 
+[gw1] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_anchored_config_changes_only_validation_context_and_declared_schedule 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[8] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[3] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[4.0] 
+[gw1] [ 78%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[8] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_validation_preserves_context_tail_and_derivative_seams 
+[gw0] [ 81%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[4.0] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val 
+[gw1] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_validation_preserves_context_tail_and_derivative_seams 
+[gw3] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[4] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[allocator_limit_gib-7.0] 
+[gw3] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[allocator_limit_gib-7.0] 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[None] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_seconds-5101] 
+[gw2] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_seconds-5101] 
+[gw0] [100%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val 
+
+============================= 32 passed in 39.78s ==============================
