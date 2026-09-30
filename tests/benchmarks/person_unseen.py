@@ -82,6 +82,8 @@ def selected_sides(document: dict[str, Any]) -> dict[str, list[bool]]:
         if len(matches) != 1:
             raise ValueError(f'Missing/duplicate side reference: {clip}')
         row = matches[0]
+        if 'observe_failed' in row:
+            raise ValueError(f'Annotation-ball side is unavailable after court observation failure: {clip}')
         if row['camera_ids'] != list(CAMERAS) or not row['annotation']['decided']:
             raise ValueError(f'Annotation-ball side is unavailable: {clip}')
         turns = row['annotation']['view_half_turns']
@@ -120,7 +122,7 @@ def plan(freeze: Path, commit: str, report: Path) -> None:
         runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=True)
         source = build_clip_source(runtime.video_paths, runtime.camera_ids, clip_id=clip)
         if source.camera_ids != CAMERAS or source.num_frames != reserved['num_frames'] \
-                or source.fps != reserved['fps'] or source.num_frames != metadata['num_frames']:
+                or not np.isclose(source.fps, reserved['fps'], rtol=0., atol=1e-6) or source.num_frames != metadata['num_frames']:
             raise ValueError('Reserved camera/timeline changed')
         for camera in CAMERAS:
             if file_identity(source.video(camera).path) != reserved['videos'][camera]:
