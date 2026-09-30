@@ -1,0 +1,26 @@
+{
+  "commit": "cf406ab46afb332ed905ca25b24b4c0a1d3b1c88",
+  "output_files": {
+    "head.npz": {
+      "sha256": "114239445055602fbc7ba410b2dad530f41e946a2132a1d78a66f97575f37c0d",
+      "bytes": 4474
+    },
+    "manifest.json": {
+      "sha256": "cd11b581c7ee2f5550f6958c0ce76a646bcf4855dfb6eb9c3d6b681de504eb39",
+      "bytes": 20117
+    },
+    "train.npz": {
+      "sha256": "e41a44b43667080e57c31d09f6a2ad6b51ad65bb49b6997c3617b5d0912d6c9d",
+      "bytes": 1289545
+    },
+    "val.npz": {
+      "sha256": "f8e64df403559eca8ad5c5ed0ef358948b3c65fe64a4f05a727daeec3d6b77a8",
+      "bytes": 297959
+    }
+  },
+  "source_bytes": 1612095,
+  "whole_train_val_frames": 34059,
+  "test_npz_reads": 0,
+  "gpu_jobs": 0,
+  "attempts": 1
+}
