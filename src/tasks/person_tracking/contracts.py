@@ -6,6 +6,8 @@ from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.player_association.appearance.parts import NativeParts
+
 
 @dataclass(frozen=True)
 class DetectionFeatures:
@@ -16,9 +18,12 @@ class DetectionFeatures:
     poses: NDArray[np.float32]  # N,17,3 source-pixel x,y,raw ViTPose heatmap peak (unbounded)
     embeddings: NDArray[np.float32]  # N,E; zero when appearance_valid is false
     appearance_valid: NDArray[np.bool_]
+    parts: NativeParts | None = None
 
     def __post_init__(self) -> None:
         n = len(self.rows)
+        if self.parts is not None and (len(self.parts.embeddings) != n or self.appearance_valid.any()):
+            raise ValueError('Native parts must align to detections and cannot silently coexist with whole-image features')
         if type(self.frame) is not int or self.frame < 0 or self.rows.shape != (n,) or self.rows.dtype != np.int64 \
                 or (self.rows < 0).any() or len(np.unique(self.rows)) != n:
             raise ValueError("Features require a nonnegative frame and unique int64 detection rows")

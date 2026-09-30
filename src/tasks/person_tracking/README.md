@@ -2,7 +2,7 @@
 
 #964のcamera内追跡。検出rowごとの特徴を保存し、同じ検出・pose・外観を複数の追跡方式で使う。
 標準pipelineの人物sourceとコート選別は[pipeline README](../../tennis_scene/pipeline/README.md)を参照。
-外観＋pose追跡は2方式のCPU比較段階。pipelineの方式既定は比較結果を確認してから決める。
+追跡は3方式のCPU比較段階。pipelineの方式既定は比較結果を確認してから決める。
 
 | モジュール | 責務 |
 |---|---|
@@ -11,6 +11,8 @@
 | `archive.py` | 連続frame・一意rowを検証して特徴をNPZへ保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
 | `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `deep_ocsort_pose.py` | 公式Deep OC-SORTのobservation-centric Kalman再更新・方向速度・adaptive appearanceに共通poseコストを加えたadapter。出自・差分は`deep_ocsort_vendor/NOTICE.md` |
+| `strongsort.py` / `strongsort_offline.py` | 論文からのStrongSORT・AFLink・GSI推論再実装。GSI補間は別maskで保持。[出自と重みの制約](strongsort_NOTICE.md) |
+| `part_archive.py` | 検証済みKPR native archiveのreader。Deep OC-SORT / StrongSORTへ共通可視partのEuclidean距離を渡す |
 | `feature_tracks.py` / `evaluation.py` | 元検出rowを維持するscatter・共通外観samplingと、部分参照ラベル上のcamera内IDF1/switch/fragment |
 | `methods.py` | BoT-SORT+pose / Deep OC-SORT+poseの明示選択。未実装名は停止し、別方式へ戻さない |
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
@@ -33,7 +35,8 @@ clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2�
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。外観不一致はhigh/low両段でIoUによって打ち消さない。
 特徴抽出のprompt契約はKPRの入力にも使える。KPR推論portはnative parts/visibilityを保持し、
-共通の単一embeddingへ暗黙変換しない。追跡/対応への距離契約の接続は後続。
+共通の単一embeddingへ暗黙変換しない。距離・EMA・区間平均は`player_association/appearance/parts.py`、
+比較の明示的な尺度転用は[run 9 addendum](../../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)を参照。
 SOLIDERの出自と前処理は[notice](../player_association/appearance/solider_vendor/NOTICE.md)を参照。
 `encode_appearance`は保存済みposeを再利用し、encoder追加でViTPoseを再推論しない。
 CLIP用adapterはpromptを使わないことを明示する。重み不足やモデル出力不正は停止する。

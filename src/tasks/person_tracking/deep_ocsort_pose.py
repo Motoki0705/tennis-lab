@@ -6,6 +6,7 @@ are off. Both association rounds receive the same confidence-masked pose cost.
 Only source detection rows are emitted; internal virtual observations stay private.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,6 +25,11 @@ from src.tasks.person_tracking.deep_ocsort_vendor.track import (
     k_previous_obs,
 )
 from src.tasks.person_tracking.pose_distance import local_pose, pose_distance
+from src.tasks.player_association.appearance.parts import (
+    NativeParts,
+    part_distance,
+    update_parts,
+)
 
 
 @dataclass(frozen=True)
@@ -54,13 +60,15 @@ class _Track:
     pose: NDArray[np.float32]
     has_appearance: bool
     detection_row: int
+    parts: NativeParts | None = None
 
 
 DEFAULT_CONFIG = DeepOCSortPoseConfig()
 
 
 class DeepOCSortPose:
-    def __init__(self, fps: float, config: DeepOCSortPoseConfig = DEFAULT_CONFIG) -> None:
+    def __init__(self, fps: float, config: DeepOCSortPoseConfig = DEFAULT_CONFIG,
+                 trace: Callable[[dict[str, Any]], None] | None = None) -> None:
         if not np.isfinite(fps) or fps <= 0:
             raise ValueError('Tracking requires positive finite source FPS')
         self.config = config
@@ -69,6 +77,8 @@ class DeepOCSortPose:
         self.next_id = 1
         self.dimension: int | None = None
         self.seen_rows: set[int] = set()
+        self.trace = trace
+        self.part_mode: bool | None = None
 
     def _pose_cost(self, features: DetectionFeatures, rows: NDArray[np.int64], tracks: list[_Track]) -> NDArray[np.float64]:
         result: NDArray[np.float64] = np.zeros((len(rows), len(tracks)), np.float64)
@@ -87,7 +97,10 @@ class DeepOCSortPose:
         cfg = self.config
         detections = np.column_stack((features.boxes[rows], features.scores[rows]))
         iou = iou_batch(detections, boxes)
-        similarity = iou - self._pose_cost(features, rows, tracks)
+        pose = self._pose_cost(features, rows, tracks)
+        similarity = iou - pose
+        appearance = np.zeros_like(iou)
+        cosine = np.zeros_like(iou)
         if first:
             previous = np.asarray([k_previous_obs(t.state.observations, t.state.age, cfg.delta_t) for t in tracks])
             velocities = np.asarray([t.state.velocity if t.state.velocity is not None else [0., 0.] for t in tracks])
@@ -95,14 +108,31 @@ class DeepOCSortPose:
             angle = np.arccos(np.clip(velocities[:, 0, None] * dy + velocities[:, 1, None] * dx, -1, 1))
             direction = ((np.pi / 2 - np.abs(angle)) / np.pi) * (previous[:, 4, None] >= 0)
             similarity += direction.T * cfg.inertia * features.scores[rows, None]
-            embedded = np.asarray([t.state.emb for t in tracks])
-            cosine = features.embeddings[rows] @ embedded.T
-            present = features.appearance_valid[rows, None] & np.asarray([t.has_appearance for t in tracks])[None]
+            if features.parts is not None:
+                native = [t.parts for t in tracks]
+                if any(p is None for p in native):
+                    raise ValueError('Native part state missing')
+                stored = NativeParts(np.concatenate([p.embeddings for p in native if p is not None]),
+                                     np.concatenate([p.visible for p in native if p is not None]))
+                distance, present = part_distance(features.parts.take(rows), stored)
+                cosine = 1 - distance  # explicit native similarity, not a cosine
+            else:
+                embedded = np.asarray([t.state.emb for t in tracks])
+                cosine = features.embeddings[rows] @ embedded.T
+                present = features.appearance_valid[rows, None] & np.asarray([t.has_appearance for t in tracks])[None]
             cosine = np.where(present, cosine, 0.)
-            similarity += cosine * compute_aw_new_metric(cosine, cfg.appearance_weight, cfg.adaptive_weight)
+            appearance = cosine * compute_aw_new_metric(cosine, cfg.appearance_weight, cfg.adaptive_weight)
+            similarity += appearance
         # Upstream accepts an assignment only if its IoU also passes. Pose does
         # not turn a spatially impossible pair into a match.
         di, ti = linear_sum_assignment(-similarity)
+        if self.trace is not None:
+            self.trace({'frame': features.frame, 'first': first, 'rows': features.rows[rows].tolist(),
+                        'track_ids': [t.identity for t in tracks], 'iou': iou.tolist(), 'pose_cost': pose.tolist(),
+                        'appearance_similarity': cosine.tolist(), 'appearance_cost': appearance.tolist(),
+                        'similarity': similarity.tolist(), 'proposed': list(zip(di.tolist(), ti.tolist(), strict=True)),
+                        'accepted': [(int(features.rows[rows[d]]), tracks[t].identity)
+                                     for d, t in zip(di, ti, strict=True) if iou[d, t] >= cfg.iou_threshold]})
         return [(int(rows[d]), tracks[t]) for d, t in zip(di, ti, strict=True) if iou[d, t] >= cfg.iou_threshold]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
@@ -112,6 +142,9 @@ class DeepOCSortPose:
             raise ValueError('Appearance dimension changed within a camera')
         if self.seen_rows.intersection(features.rows.tolist()):
             raise ValueError('Detection row reused across frames')
+        if self.part_mode is not None and self.part_mode != (features.parts is not None):
+            raise ValueError('Appearance representation changed within camera')
+        self.part_mode = features.parts is not None
         self.frame = features.frame
         self.dimension = features.embeddings.shape[1]
         self.seen_rows.update(features.rows.tolist())
@@ -131,6 +164,13 @@ class DeepOCSortPose:
         for row, track in matched:
             observation = np.r_[features.boxes[row], features.scores[row]]
             track.state.update(observation)
+            if features.parts is not None:
+                current = features.parts.take(np.asarray([row], np.int64))
+                trust = (float(features.scores[row]) - self.config.detection_threshold) / (1 - self.config.detection_threshold)
+                alpha = self.config.alpha + (1 - self.config.alpha) * (1 - trust)
+                if track.parts is None:
+                    raise ValueError('Native part state missing')
+                track.parts = update_parts(track.parts, current, alpha)
             if features.appearance_valid[row]:
                 trust = (float(features.scores[row]) - self.config.detection_threshold) / (1 - self.config.detection_threshold)
                 alpha = self.config.alpha + (1 - self.config.alpha) * (1 - trust)
@@ -150,7 +190,8 @@ class DeepOCSortPose:
             state = KalmanBoxTracker(np.r_[features.boxes[row], features.scores[row]], delta_t=self.config.delta_t,
                                      emb=features.embeddings[row].copy(), new_kf=False)
             self.tracks.append(_Track(self.next_id, state, local_pose(features.boxes[row], features.poses[row]),
-                                      bool(features.appearance_valid[row]), int(features.rows[row])))
+                                      bool(features.appearance_valid[row]), int(features.rows[row]),
+                                      None if features.parts is None else features.parts.take(np.asarray([row], np.int64))))
             self.next_id += 1
         emitted = sorted((t for t in self.tracks if t.state.time_since_update < 1
                           and (t.state.hit_streak >= self.config.min_hits or self.frame + 1 <= self.config.min_hits)),
