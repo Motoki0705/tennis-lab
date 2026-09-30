@@ -4,7 +4,7 @@ type: run
 task: ball_refiner
 sequence: 22
 recorded_at: '2026-09-30'
-title: 'e9 anchored seed42明示option: 元動画3camera execute/load（投入準備）'
+title: 'e9 anchored seed42明示option: 元動画3camera execute/load（queue投入済み・結果待ち）'
 provider: codex
 status: planned
 config:
@@ -19,6 +19,7 @@ metrics: {}
 artifacts:
   run_dir: knowledge/runs/run-i935-pipeline-candidate-r24-20260930
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r24-20260930
+  queue_job: 1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930
 parents:
 - run-i935-covariance-loco-s42-r23-20260930
 relations: []
@@ -35,6 +36,7 @@ repro:
     /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python
     -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py
     --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/plan.json
+  commit: 28bdcd3fcbe774f99f526481b038749bd581a6a1
 ---
 
 [ユーザー判断B](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5908081470)の既定切替条件に備え、名前付きe9_anchored_s42_covarianceを追加した。既定のft-e13/現refinerは維持。schema v2は補正済み全GMM・存在logit・元frame/PTS/採用窓・倍率・元checkpoint/hashを保存し、fresh loadでは補正を再適用しない。資産が欠落/不一致ならexecute/loadとも停止する。通常検証は[pipeline/configuration 410件](../../runs/run-i935-pipeline-candidate-r24-20260930/pipeline-tests.log)、[全要素比較4件](../../runs/run-i935-pipeline-candidate-r24-20260930/parity-tests.log)が成功。
@@ -46,3 +48,5 @@ seed42のselected epoch41 checkpointからCPUでbundleを書き出し、[manifes
 [CPU preflight](../../runs/run-i935-pipeline-candidate-r24-20260930/preflight.json)でsource寸法/270frame/cachedNPZ/frame軸/hashと固定optionを照合した。見積3–8分/VRAM2–6GB/約1.5GB、timeout1185秒+kill15秒、device監視7.5GB/allocator6GiB/disk3GB、前jobと同じRAM guard。seed44の後へ1件のみqueue投入する。結果の評価・既定切替は次run。person/pose/courtやvideo_001は使用しない。
 
 最終通常検証は[guard/parity 19件](../../runs/run-i935-pipeline-candidate-r24-20260930/guard-parity-tests.log)、ruff/mypy（変更src/testsの8ファイル）成功。knowledge validatorは0error、repro path検査は0missing。独立validatorは指定がなく0回。
+
+登録済みjob: 1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930。共有worker PID3216003が存在したため再起動せずFIFOへ追加した。引き継ぎ時点では先行chat annotation jobがhalfを使用しており、seed44はmain-exclusive-lock待ち、元動画jobはその後のFIFO待機。実行完了を待たず終了する。結果・実資源は未回収。
