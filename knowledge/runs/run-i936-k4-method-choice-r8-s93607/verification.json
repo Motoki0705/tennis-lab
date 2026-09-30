@@ -1,0 +1,37 @@
+{
+  "source_hashes_unchanged": {
+    "train-00000": "f9eec79723df845b64cb16ef5f123316aff55152d64b287c7b3d28ff2dd5f1bc",
+    "train-00001": "e0e6f7102f7b2f7d753ce38aea828e55bde0cda8c1a259b15e48afb35fb080ea",
+    "train-00002": "adb0d41de72da67549a133ea29a1503696040e6090c7bb0abe67225d81e68b71",
+    "train-00003": "3fa63703c634ca5e78d33d8e5b6c41f192f281ee52fdde158308d3dc5a667789",
+    "train-00004": "dae69caa3df47a37dee194d82440f2668e4d36b42a4067695e11c6ef508e5fd9",
+    "train-00005": "4692936123b6618109924b3c7ce19c1725a4c1b29df5f5410ab83a09a0cff809",
+    "train-00006": "a7d0f8012f7766753bc7eb547a813b45b0647c051f60b955c8bfb0349549d4b5",
+    "train-00007": "6609667296b6327b4f8c66ae2df0fc07bce58c280bb66ca803d8de4a9bb88d99",
+    "train-00008": "1894c31ec51ea3352ac493c0749b44bd888c745ec6101668e86e117659777e7c"
+  },
+  "prior_reference": {
+    "overall": {
+      "nll_nat": 9.345593593603512,
+      "mean_error_m": 12.115071741229519,
+      "hdr50": 0.6302250803858521,
+      "hdr90": 0.9485530546623794,
+      "hdr95": 0.9871382636655949
+    },
+    "weighted": {
+      "nll_nat": 9.086160561177454,
+      "mean_error_m": 10.030044560258418,
+      "hdr50": 0.7580675844806005,
+      "hdr90": 0.9714543178973716,
+      "hdr95": 0.9853617021276596
+    }
+  },
+  "H_float32_export": {
+    "frames": 311,
+    "components_per_frame": 125,
+    "float32_covariance_spd": true,
+    "max_gt_nll_delta_nat": 7.993360389590976e-06,
+    "max_mixture_mean_delta_m": 7.833031157328266e-07,
+    "retained_zero_weight_components": 599
+  }
+}
