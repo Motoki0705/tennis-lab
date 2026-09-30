@@ -1,0 +1,10 @@
+{
+  "stopped_at": "2026-09-30T08:32:10.503772+09:00",
+  "process_group": 3812111,
+  "signal": "SIGTERM",
+  "live_members_after": 0,
+  "manifest_before_sha256": "13c1e1c89d6ea40cca555d54f7b4d9ef5919e72c26333cb493976f658f49b5a4",
+  "completed_rallies": 9,
+  "disk_bytes": 32438753,
+  "reason": "Ray integral changes single-view component means by up to 0.57 m in representative fixed frames; old all-nonconverged integration is not suitable for reliable conditions."
+}

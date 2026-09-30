@@ -1,0 +1,23 @@
+	Command being timed: "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation .venv/bin/python -u -m src.tasks.ball_refiner.scripts.training_smoke_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-ray-r6 --config /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_smoke.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/training/i936-cpu-overfit-r6"
+	User time (seconds): 15.55
+	System time (seconds): 1.65
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:17.09
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1002436
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 119
+	Minor (reclaiming a frame) page faults: 1076677
+	Voluntary context switches: 378
+	Involuntary context switches: 127
+	Swaps: 0
+	File system inputs: 20256
+	File system outputs: 920
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
