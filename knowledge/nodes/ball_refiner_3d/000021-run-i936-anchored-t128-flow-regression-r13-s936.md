@@ -4,7 +4,7 @@ type: run
 task: ball_refiner_3d
 sequence: 21
 recorded_at: '2026-09-30'
-title: 新bank devのT128学習・検証を揃えた20k比較を事前固定
+title: 新bank devのT128学習・検証を揃えた20k比較をqueueへ登録
 issue: 936
 provider: codex
 status: planned
@@ -22,6 +22,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-i936-anchored-t128-flow-regression-r13-s936
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r13-anchored-s936-t128-20k
+  log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930.log
 parents:
 - run-i936-anchored-dev-comparison-r12-s936
 - run-i936-context-t128-r12-s936
@@ -34,7 +35,13 @@ tags: []
 [enqueue前の比較定義・判定規則](https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5911005227)を先に投稿した。
 [固定plan](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/plan.json)に実行コマンド、
 入力・設定hash、80件のtrain/val identity、費用見積・上限を記録する。
-このノード作成時には未enqueue、結果は未観測。TensorBoardは使わず、jobは全updateのJSONL/PNGと
+planはenqueue前のsnapshotとして保持する。2026-09-30 21:24:38 JSTに
+job **1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930** を1件だけ登録した。
+[queue登録票](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/queue.json)と
+[job原本](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/queued.job)にcwd、log/repro、
+#935の2件→#964 feature→本jobという順序を保存した。既存worker PID3216003を使用し、
+他job/workerは操作していない。登録時点ではqueuedで、結果は未観測。
+TensorBoardは使わず、jobは全updateのJSONL/PNGと
 全評価時点の予測・指標を出力する。quota休止後にqueueのdone/failedを回収し、statusと証拠を更新する。
 
 新bankの64train/16valで各20kのflowと同backbone回帰を学習する。
@@ -59,3 +66,6 @@ Hの方式選定、test品質、独立Meiji LOCO、最終pipeline採用はこの
 resource=allを1件、最大5,355秒（89分15秒）、allocator6GiB/driver10GB、空きRAM6GiB下限。
 640生成を4CPUで継続するためnative threadと他CPU作業を1に制限する。
 通常検証99tests（pytest -n1）、ruff/mypy/pre-commit成功。GPUの数値・資源は未測定。
+[検証記録](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/verification.json)は
+21:25時点の640生成28件成功/失敗0、空きRAM14.92GB、生成途中出力64.23MBを含む。
+640生成入力36hashは不変で、GPU出力はまだ作られていない。全job完了まで実行sourceを固定する。
