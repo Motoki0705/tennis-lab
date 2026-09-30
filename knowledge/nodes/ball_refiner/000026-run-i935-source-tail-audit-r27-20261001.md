@@ -1,0 +1,42 @@
+---
+id: run-i935-source-tail-audit-r27-20261001
+type: run
+task: ball_refiner
+sequence: 26
+recorded_at: '2026-10-01'
+title: source/cacheの裾差を候補・入力・block bootstrapで切り分ける
+provider: codex
+status: running
+issue: 935
+date: '2026-10-01'
+config: {clip: meiji/video_000/clip_010, cameras: [cam0, cam1, cam2], device: cpu}
+metrics: {camera_frames: 810, winner_component_changes: 146}
+artifacts: {run_dir: knowledge/runs/run-i935-source-tail-audit-r27-20261001}
+parents: [run-i935-source-b-gate-r26-20261001]
+relations: []
+papers: []
+tags: []
+---
+
+## 考察 / Findings
+
+run27の最初の節目。固定Bゲートの失敗理由を調査し、default・gate・共分散倍率は変更しない。
+3camera×270frameのframe/PTS/実秒、検出器8frame/stride4とrefiner33frame/stride16の採用窓は一致した。
+検出器の同順位native cell一致は859/6480候補slotのみ。20 source px以内の空間対応では
+3306/6480候補が対応し、758/810frameで対応候補の順位が入れ替わる。
+この対応は同一物体の識別ではなく、候補変化を調べるための最大対応数・最短距離の診断である。
+
+| camera | 最大weight成分の変更 /270 | 両経路でanchor成分が最大 | そのanchorの空間対応変更 | 自由成分が最大 cache→source |
+|---|---:|---:|---:|---:|
+| cam0 | 60 | 202 | 23 | 59→22 |
+| cam1 | 24 | 236 | 19 | 27→22 |
+| cam2 | 62 | 191 | 10 | 42→60 |
+
+全行の正本は[frames.csv](../../runs/run-i935-source-tail-audit-r27-20261001/frames/frames.csv)、
+候補の位置・score・順序は[candidates.csv](../../runs/run-i935-source-tail-audit-r27-20261001/frames/candidates.csv)、
+全成分の平均・weight・anchor slotは[components.csv](../../runs/run-i935-source-tail-audit-r27-20261001/frames/components.csv)。
+NPZには局所patchと全GMMの基礎fieldも残した。対応判定・無効候補・modelと同点順序の一致を3テストで検証、ruff/mypy成功。
+入力hashを実行前後に照合。GPU未使用、学習を行わないためTensorBoard曲線はない。
+
+次に同frameのOpenCV/PyAV decode、store JPEG再現、二段階resize・圧縮の画素差と
+camera内の連続block bootstrapを調べる。現段階で(a)/(b)/(c)の因果結論は確定していない。
