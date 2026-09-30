@@ -163,7 +163,9 @@ observed/人工gap別の50/90/95%被覆と分母を保存する。testは保存�
 CUDAは共有queue専用。CPU指定は通常検証用で、自動device切替はしない。
 固定Hの全入力を保持し、未評価/未収束flagは診断として数える。trainの全ラリーを
 窓にし、同じ初期重み・窓のshuffle順からflowと1-step回帰を別々に学習する。
-valはラリー全体を一度に推論し、testラリーを開かず、checkpoint選択や調整をしない。
+validationの文脈は設定で必ず明示する。旧対照の `validation_frames: null` は全ラリー、
+`validation_frames: 128` は学習と同じT128/stride128で推論する。
+testラリーを開かず、checkpoint選択や調整をしない。
 
 各更新の4損失・速度・メモリをJSONLに即時保存し、明示した全評価時点のval予測・曲線PNG・
 開発専用checkpointを残す。RMSEは全体、全camera人工gap、全camera証拠なし、hit/bounce±5。
@@ -192,6 +194,14 @@ dataset/valラリーのhashと予測に保存したGT・mask・cameraを照合�
 `<arm>/predictions/update-<番号>/`に保存する。
 [training_dev_long.yaml](training_dev_long.yaml)は更新数、評価時点、時間予算だけを
 短時間設定から変えたdev実験で、初期化・窓順・モデル・loss・較正は同じ。
+[training_dev_anchored_t128.yaml](training_dev_anchored_t128.yaml)は20k設定のvalidationを
+学習と揃え、評価時点を0/2k/5k/10k/20kに固定する。新bankのdevを明示して実行する。
+窓推論は`context_inference.py`をCPU診断と共有し、絶対時刻・右padding・
+短い末尾の重複は早い窓の採用を維持する。初期noiseと教師ありprobeは
+全ラリーに一度だけ生成して窓へ切り出し、同deviceの評価時点間で固定する。
+loss・加速度・jerkは全frameを一度ずつ継いだ元系列で計算し、窓境界も含める。
+両armの完了時に全評価時点・平均/全sample・無学習baseline・GTを同じ
+`comparison.json/md`へ出力し、GTと分母の一致を要求する。
 可視camera数（occlusion/out_of_frameのどちらもない台数）で全指標も層別する。
 差分は元時系列で計算し、加速度は中央frame、jerkは左中央frameの層へ割り当てる。
 層ごとに離れたframeを連結して差分を取らない。

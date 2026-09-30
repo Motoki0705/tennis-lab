@@ -1,5 +1,6 @@
 """CPU integration of both arms; poison test data and compare initialization/order."""
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -8,13 +9,23 @@ import pytest
 import torch
 import yaml
 
+from src.tasks.ball_refiner.refiner_3d.baseline_comparison import training_comparison
 from src.tasks.ball_refiner.refiner_3d.diffusion import dev_training
 from src.tasks.ball_refiner.refiner_3d.diffusion.dev_config import load_config
+from src.tasks.ball_refiner.refiner_3d.diffusion.dev_evaluation import (
+    RallyInput,
+    evaluate_dev,
+)
+from src.tasks.ball_refiner.refiner_3d.diffusion.model import (
+    DenoiserOutput,
+    MixtureCondition,
+    TrajectoryDenoiser,
+)
 from src.utils.paths import PROJECT_ROOT
+from src.utils.schema.court_normalization import denormalize_court_position
 
 
-def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, list[str]]:
-    frames = 8
+def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 8) -> tuple[Path, Path, list[str]]:
     times = np.arange(frames) * 1001 / 60000
     positions = np.column_stack((times, times * 0, times * 0 + 2)).astype(np.float32)
     rotation = np.tile(np.eye(3), (3, 1, 1))
@@ -35,9 +46,9 @@ def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pa
         'integration_converged': np.zeros(frames, dtype=bool),
         'integration_convergence_assessed': np.zeros(frames, dtype=bool),
         'event_labels': np.zeros((frames, 2), dtype=bool),
-        'event_region_mask': np.array([False] * 4 + [True] * 4),
-        'free_flight_mask': np.array([True] * 4 + [False] * 4),
-        'occlusion_mask': np.tile([False] * 4 + [True] * 4, (3, 1)),
+        'event_region_mask': np.arange(frames) >= 4,
+        'free_flight_mask': np.arange(frames) < 4,
+        'occlusion_mask': np.tile(np.arange(frames) >= 4, (3, 1)),
         'out_of_frame_mask': np.zeros((3, frames), dtype=bool),
         'camera_true_K': intrinsic, 'camera_true_R': rotation, 'camera_true_t': translation,
         'camera_estimated_K': intrinsic, 'camera_estimated_R': rotation, 'camera_estimated_t': translation,
@@ -71,8 +82,12 @@ def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pa
     return dataset, config_path, loaded
 
 
-def test_two_arms_train_from_identical_initialization_without_test_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize('validation_frames', [None, 4])
+def test_two_arms_train_from_identical_initialization_without_test_reads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, validation_frames: int | None) -> None:
     dataset, config, loaded = setup_run(tmp_path, monkeypatch)
+    raw = yaml.safe_load(config.read_text())
+    raw['validation_frames'] = validation_frames
+    config.write_text(yaml.safe_dump(raw))
     output = tmp_path / 'result'
     result = dev_training.run_dev_training(dataset, config, output, device='cpu')
     assert result['status'] == 'complete'
@@ -92,6 +107,9 @@ def test_two_arms_train_from_identical_initialization_without_test_reads(tmp_pat
         val = result['arms'][arm]['validation'][-1]
         assert val['metrics']['mean']['rmse_m_overall']['count'] == 8
         assert val['metrics']['samples']['rmse_m_overall']['count'] == (16 if arm == 'flow' else 8)
+        assert val['validation_frames'] == validation_frames
+        if validation_frames is not None:
+            assert [w['owned_start'] for w in val['windows']['val-00000']] == [0, 4]
         assert [v['update'] for v in result['arms'][arm]['validation']] == [0, 1, 2]
         for update in (0, 1, 2):
             assert (output / arm / 'predictions' / f'update-{update:05d}' / 'val-00000.npz').is_file()
@@ -101,6 +119,19 @@ def test_two_arms_train_from_identical_initialization_without_test_reads(tmp_pat
     assert orders[0] == orders[1]
     assert result['baselines']['methods']['mixture_mean']['metrics']['rmse_m_overall']['value'] < 1e-6
     assert result['baselines']['frames'] == 8
+    comparison = json.loads((output / 'comparison.json').read_text())
+    assert comparison['primary_update'] == 2
+    assert set(comparison['methods']) == {
+        'truth', 'mixture_mean', 'top_component', 'mixture_mean_rts',
+        *(f'{arm}_{update:05d}_{kind}' for arm in ('flow', 'regression') for update in (0, 1, 2) for kind in ('mean', 'samples')),
+    }
+    assert comparison['methods']['truth'] == result['baselines']['methods']['truth']
+    assert 'accel p95 all/free' in (output / 'comparison.md').read_text()
+    from copy import deepcopy
+    mismatched = deepcopy(result)
+    mismatched['arms']['flow']['validation'][0]['metrics']['truth']['rmse_m_overall']['count'] += 1
+    with pytest.raises(ValueError, match='Historical support differs'):
+        training_comparison(mismatched)
     with pytest.raises(FileExistsError):
         dev_training.run_dev_training(dataset, config, output, device='cpu')
 
@@ -147,3 +178,64 @@ def test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget() 
     assert differences == {'updates', 'evaluate_updates', 'maximum_seconds'}
     assert long.updates == 20000
     assert long.evaluate_updates == (0, 2000, 5000, 10000, 15000, 20000)
+
+
+def test_anchored_config_changes_only_validation_context_and_declared_schedule() -> None:
+    from dataclasses import asdict
+    root = PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d'
+    old = load_config(root / 'training_dev_long.yaml')
+    new = load_config(root / 'training_dev_anchored_t128.yaml')
+    assert {key for key, value in asdict(old).items() if asdict(new)[key] != value} == {'validation_frames', 'evaluate_updates'}
+    assert new.validation_frames == new.frames == new.stride == 128
+    assert new.evaluate_updates == (0, 2000, 5000, 10000, 20000)
+
+
+@pytest.mark.parametrize('frames', [True, 3, 8, 4.0])
+def test_invalid_validation_context_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, frames: Any) -> None:
+    _, path, _ = setup_run(tmp_path, monkeypatch)
+    raw = yaml.safe_load(path.read_text())
+    raw['validation_frames'] = frames
+    path.write_text(yaml.safe_dump(raw))
+    with pytest.raises(ValueError, match='match training'):
+        load_config(path)
+
+
+def test_validation_preserves_context_tail_and_derivative_seams(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dataset, path, _ = setup_run(tmp_path, monkeypatch, frames=9)
+    config = replace(load_config(path), validation_frames=4)
+    source = dev_training.SyntheticDataset(dataset)
+    record = next(r for r in source.records if r['split'] == 'val')
+    arrays = source.load(record)
+    arrays['free_flight_mask'][:] = True
+    arrays['event_region_mask'][:] = False
+    lengths = []
+
+    class ContextMean(TrajectoryDenoiser):
+        def forward(self, state: torch.Tensor, time: torch.Tensor, condition: MixtureCondition) -> DenoiserOutput:
+            lengths.append(state.shape[1])
+            valid = ~condition.padding_mask
+            stamps = condition.timestamps_seconds
+            center = (stamps * valid).sum(1) / valid.sum(1)
+            positions = (stamps + center[:, None])[..., None].expand(-1, -1, 3)
+            return DenoiserOutput(positions, torch.zeros_like(state[..., :2]))
+
+    model = ContextMean(config.model).train()
+    output = tmp_path / 'windowed'
+    result = evaluate_dev(model, [RallyInput(record, arrays)], config, device='cpu',
+                          objective='regression', check_budget=lambda: None, predictions=output)
+    assert model.training
+    assert lengths == [4, 4, 4]
+    assert result['windows']['val-00000'][-1] == {
+        'window_start': 6, 'real_stop': 9, 'owned_start': 8, 'owned_stop': 9, 'padded_frames': 1,
+    }
+    stamps = torch.from_numpy(arrays['timestamps_seconds']).float()
+    centers = torch.cat((stamps[:4].mean().expand(4), stamps[4:8].mean().expand(4), stamps[6:].mean().expand(1)))
+    expected = denormalize_court_position((stamps + centers)[:, None].expand(-1, 3)).numpy()
+    with np.load(output / 'val-00000.npz') as saved:
+        np.testing.assert_allclose(saved['mean_m'], expected, rtol=0, atol=1e-6)
+        assert len(saved['mean_m']) == 9
+    metric = result['metrics']['mean']
+    # All seven second differences include seams, instead of 2 per complete window.
+    assert metric['acceleration_free_flight']['count'] == 7
+    assert metric['jerk_free_flight']['count'] == 6
+    assert metric['acceleration_free_flight']['p95'] > 1

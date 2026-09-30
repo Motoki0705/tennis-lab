@@ -34,17 +34,18 @@ def comparison_markdown(methods: dict[str, Any]) -> str:
     def number(value: float | None) -> str:
         return 'N/A' if value is None else f'{value:.3f}'
 
-    lines = ['# 同一16 valラリーの無学習ベースライン比較', '',
+    lines = ['# 同一validationラリーの軌道比較', '',
              'RMSEはframe加重の3D距離、再投影は画面内合成GTとの画素誤差。正depth条件付きの値にはbehind件数を併記する。',
-             '加速度はm/s²、jerkはm/s³。freeは全差分stencilが自由飛行のもの。flow_samplesは全4標本をpoolし、最良標本を選ばない。', '',
-             '| 方法 | N | RMSE m | gap m | no evidence m | event±5 m | accel p95 all/free | jerk p95 all/free | repro p50/p95 px | behind |',
+             '加速度はm/s²、jerkはm/s³。freeは全差分stencilが自由飛行のもの。samplesは全標本をpoolし、最良標本を選ばない。', '',
+             '| 方法 | N | RMSE m | gap m | no evidence m | event±5 m | accel p95 all/free | jerk p95 all/free | repro mean/p50/p95 px | behind |',
              '|---|---:|---:|---:|---:|---:|---|---|---|---:|']
     for name, result in methods.items():
         m = result['metrics']
         errors = [number(m['rmse_m_' + k]['value']) for k in ('overall', 'gap', 'no_evidence', 'event_pm5')]
         derivatives = [' / '.join(number(m[key + '_' + support]['p95']) for support in ('all', 'free_flight')) for key in ('acceleration', 'jerk')]
-        repro = ' / '.join(number(m['reprojection_px_all'][key]) for key in ('p50', 'p95'))
-        lines.append('| ' + ' | '.join([name, str(m['rmse_m_overall']['count']), *errors, *derivatives, repro, str(m['behind_all']['invalid_count'])]) + ' |')
+        repro = ' / '.join(number(m['reprojection_px_all'][key]) for key in ('mean', 'p50', 'p95'))
+        behind = f"{m['behind_all']['invalid_count']}/{m['behind_all']['count']}"
+        lines.append('| ' + ' | '.join([name, str(m['rmse_m_overall']['count']), *errors, *derivatives, repro, behind]) + ' |')
     lines.extend(['', '可視camera = occlusionもout_of_frameもないcamera数。存在確率とは別。',
                   '層別の差分は元の連続時系列で計算し、加速度は中央frame、jerkは左中央frameの層へ割り当てる。', '',
                   '| 可視camera数 | 方法 | N | RMSE m | gap m | event±5 m | accel free p95 | jerk free p95 | repro p95 px | behind |',
@@ -54,8 +55,36 @@ def comparison_markdown(methods: dict[str, Any]) -> str:
             m = result['by_visible_cameras'][cameras]
             vals = [number(m['rmse_m_' + k]['value']) for k in ('overall', 'gap', 'event_pm5')]
             vals += [number(m[k]['p95']) for k in ('acceleration_free_flight', 'jerk_free_flight', 'reprojection_px_all')]
-            lines.append('| ' + ' | '.join([cameras, name, str(m['rmse_m_overall']['count']), *vals, str(m['behind_all']['invalid_count'])]) + ' |')
+            behind = f"{m['behind_all']['invalid_count']}/{m['behind_all']['count']}"
+            lines.append('| ' + ' | '.join([cameras, name, str(m['rmse_m_overall']['count']), *vals, behind]) + ' |')
     return '\n'.join(lines) + '\n'
+
+
+def training_comparison(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Pool every scheduled validation next to baselines and identical GT support."""
+    baselines = manifest['baselines']
+    methods = dict(baselines['methods'])
+    truth = methods['truth']
+    for objective in ('flow', 'regression'):
+        arm = manifest['arms'][objective]
+        if arm['status'] != 'complete' or [r['update'] for r in arm['validation']] != list(manifest['config']['evaluate_updates']):
+            raise ValueError('Comparison requires both complete scheduled learning curves')
+        for row in arm['validation']:
+            if row['frames'] != baselines['frames']:
+                raise ValueError('Model and baseline frame counts differ')
+            assert_same_metrics(row['metrics']['truth'], truth['metrics'])
+            assert_same_metrics(row['by_visible_cameras']['truth'], truth['by_visible_cameras'])
+            for kind in ('mean', 'samples'):
+                methods[f"{objective}_{row['update']:05d}_{kind}"] = {
+                    'metrics': row['metrics'][kind],
+                    'by_visible_cameras': row['by_visible_cameras'][kind],
+                }
+    return {'methods': methods, 'frames': baselines['frames'], 'rallies': baselines['rallies'],
+            'read_rallies': [r for r in manifest['read_rallies'] if r['rally_id'].startswith('val-')],
+            'source_manifest_sha256': manifest['source_manifest_sha256'],
+            'evaluate_updates': manifest['config']['evaluate_updates'],
+            'primary_update': manifest['config']['updates'],
+            'selection': 'final update primary; every scheduled update reported; no best checkpoint/sample selection'}
 
 
 def compare_saved_dev(dataset: Path, training_output: Path, output: Path) -> dict[str, Any]:
@@ -74,7 +103,7 @@ def compare_saved_dev(dataset: Path, training_output: Path, output: Path) -> dic
         raise ValueError('Validation identity/hash mismatch')
     rallies = [RallyInput(r, source.load(r)) for r in records]  # Never open train or test.
     output.mkdir(parents=True)
-    result = evaluate_baselines(rallies, predictions=output / 'predictions')
+    result: dict[str, Any] = evaluate_baselines(rallies, predictions=output / 'predictions')
     methods = result['methods']
     for arm in ('flow', 'regression'):
         accumulated = {kind: TrajectoryMetrics() for kind in ('mean', 'samples')}
