@@ -18,6 +18,12 @@ run 13の再開は同じ入口の `--phase resume-plan --source-report <失敗ru
 未完了cameraは新しいdirectoryで最初から再計算する。旧出力は保持し、黙った再試行はしない。
 今回許可された外側timeoutは `timeout -k 10s 16180s`（build込み4.5時間以内）。
 
+`association_recalibration_dev_tracks.py --reuse <run12/reuse.json> --report <新規directory>` は
+承認済み9行のmask投影を照合し、該当2cameraをCPU再追跡する。ラベル/採点入口を持たない。
+`association_recalibration_fit.py --repo <main root> --features <完了feature root> --reuse <run12/reuse.json> --report <新規directory>`
+は全18cameraの完了・hash検証後にのみCPUで既定追跡/選別と較正を行う。
+提案YAMLと証拠は出力先だけに保存し、既定設定を変更しない。実データfitはrun13では未実行。
+
 `pipeline_preflight.py --repo <main root> --clip <structured clip> --report <new output>` は
 全execute構成のcheckpoint/依存schemaをCPUで検査し、CUDA用の解決済みYAMLを出す。
 推論・成果物生成・精度評価の成功とは扱わない。較正後は `--association-config <project-relative YAML>` を渡す。
