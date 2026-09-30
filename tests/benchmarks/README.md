@@ -111,6 +111,11 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
 ## Pipeline診断
 
+- `association_recalibration_dev.py`: run12 protocolのfit証拠と名前付きconfigが指定commit/originへ
+  push済みであることを検証し、run13の投影済みdev trackを旧/新尺度で一度だけ採点するCPU入口。
+  `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
+  未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
+
 - `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
   実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
   `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、
