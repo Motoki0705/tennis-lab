@@ -1,4 +1,4 @@
-<!-- knowledge-review: ff473bc04a92fdfcc7bbedf7df83d3498b63375d476bce174e9f40903ce77510 on 2026-10-01 -->
+<!-- knowledge-review: 8eba258157517965df7dda0f629732c1934079ec9e3fd35d7b157127d6dc4a85 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -325,9 +325,9 @@ calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
 bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
 [seed44再試行](nodes/ball_refiner/000021-run-i935-seed44-retry-r24-20260930.md)は資源上限内で完了したが、[事前10比較](nodes/ball_refiner/000023-run-i935-seed-reproduction-r25-20260930.md)は9/10で不合格。seed44の人工gap NLLだけがabsolute_12kより悪い。位置分位点は両追加seedでe9 top-1を上回るが、これを全条件の再現成功とは扱わない。
 [e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)の[元動画check](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)では、3camera各270frameのexecuteとfresh-process loadが完了し、全保存配列はbit一致した。終了コード1は全phase後のstrict field診断であり、実行失敗ではない。
-[固定BゲートのGT比較](nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)はpooled p90が+46.34 px悪化して許容+5 pxを超えたため不合格。中央値とNLLは許容内だが、既定ft-e13＋旧refinerを維持する。[全810frameの切り分け](nodes/ball_refiner/000026-run-i935-source-tail-audit-r27-20261001.md)はframe/PTS・窓・正規化のbugを支持せず、中間720p縮小とJPEGによる入力差が候補・成分選択に増幅されることを支持する。同じCPU/pipelineでcam2を再encodeするとp90と最大成分選択がcacheへ戻った。pooled差は連続block bootstrapで0を除外できず、短い末尾区間に依存するため一般化は未確認。固定gateを変更せず、入力経路の整合・MP4証拠の再学習・既定維持の選択肢と費用を提示し、対策の選択は保留した。
+[固定BゲートのGT比較](nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)はpooled p90が+46.34 px悪化して許容+5 pxを超えたため不合格。中央値とNLLは許容内だが、run26時点では既定ft-e13＋旧refinerを維持した。[全810frameの切り分け](nodes/ball_refiner/000026-run-i935-source-tail-audit-r27-20261001.md)はframe/PTS・窓・正規化のbugを支持せず、中間720p縮小とJPEGによる入力差が候補・成分選択に増幅されることを支持する。同じCPU/pipelineでcam2を再encodeするとp90と最大成分選択がcacheへ戻った。pooled差は連続block bootstrapで0を除外できず、短い末尾区間に依存するため一般化は未確認。固定gateを変更せず、入力経路の整合・MP4証拠の再学習・既定維持の選択肢と費用を提示し、対策の選択は保留した。
 [追加ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5912616143)どおり、seedの9/10 FAILを保持したまま再現は十分と扱う。今回Bを止める理由はsource精度のp90であり、seed失敗やstrict診断へ置き換えない。固定倍率の三seed診断にはgap/TrackNet NLLの悪化とcalibration halfの過信が残る。
-#964完了までperson/poseを使用せず、証拠のない区間での改善と文脈ablationを後続に残す。testは引き続き未使用。
+[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。既定切替・Meiji valでの規則固定・安全benchは次回実装として未完了。証拠のない区間の改善と文脈ablation、test評価も未完了。
 
 ### Court Detection
 

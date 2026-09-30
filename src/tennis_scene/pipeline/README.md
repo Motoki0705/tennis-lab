@@ -169,7 +169,10 @@ manifestは重み・全入力設定・元checkpointを束縛し、倍率artifact
 既定のscene detector（ft-e13）と現refinerの選択は変更していない。
 このoptionは評価用。元動画3cameraのexecute/fresh-loadは通過したが、
 [固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
-GT位置誤差p90が不合格だったため、既定は切り替えない。seedの事前判定FAILと、
+GT位置誤差p90が不合格だったため、run26時点では既定を維持した。
+[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)は
+e9の既定化とrefiner後のconfidence選別を採用する方針だが、このheadではまだ実装していない。
+seedの事前判定FAILと、
 それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。
 
 ## 成果物
