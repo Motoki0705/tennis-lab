@@ -5,7 +5,9 @@ import pytest
 import torch
 from torch import Tensor
 
-from src.tasks.ball_refiner.refiner_3d.diffusion.context_probe import predict_context
+from src.tasks.ball_refiner.refiner_3d.diffusion.context_inference import (
+    predict_context,
+)
 from src.tasks.ball_refiner.refiner_3d.diffusion.flow import sample_trajectories
 from src.tasks.ball_refiner.refiner_3d.diffusion.memory_fixture import (
     analytic_memory_batch,
