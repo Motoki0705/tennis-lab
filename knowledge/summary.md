@@ -1,4 +1,4 @@
-<!-- knowledge-review: f7bc210a88a1286dbb0b3d9c3bc44dfb7c0cd14b54e65c66182e62d7ef3a97f0 on 2026-10-01 -->
+<!-- knowledge-review: dd93680b42fc3970d6495525766d73355fa10694f05beb792ce5eda12a5cd30d on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -300,7 +300,8 @@ Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6�
 保存済みepoch 0–9のMeiji val recall@8を照合し、2026-09-29のユーザー判断どおり単独最大のepoch 9を選択した。
 peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
 候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
-次は選択重みで旧cacheと同条件のtrain/val証拠を新規生成し、その後に文脈なしpilotを再学習する。testは最終報告専用。
+[epoch 9の新cache回収](nodes/ball_refiner/000015-run-i935-evidence-mixed-e9-trainval-r17-20260930.md)で全329 clip / 145,767 frameのhash・読込が一致し、Meiji候補recallはbf16 validationとcamera別でも0.13 pp未満の差だった。
+旧ft-e13より候補recallが高いこととrefinerの改善は別なので、次は旧pilotのrecipeを維持してcacheだけを変え、同一val frameで位置・分布を比較する。testは使わない。
 #964完了までperson/poseを使用しない。比較だけでdeployを変更せず、文脈の採否も同一母数のfull/ablationで判断する。
 
 ### Court Detection
