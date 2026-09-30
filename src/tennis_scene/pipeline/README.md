@@ -137,7 +137,10 @@ manifestは重み・全入力設定・元checkpointを束縛し、倍率artifact
 倍率、元checkpoint SHA256、artifact SHA256を保存し、load-onlyでは再補正しない。
 既存`bundle` optionは未較正schema v1を維持し、未知optionや暗黙の倍率1は許可しない。
 既定のscene detector（ft-e13）と現refinerの選択は変更していない。
-このoptionは評価用で、Bの既定切替はseed確認と元動画3camera execute/load照合後に判断する。
+このoptionは評価用。元動画3cameraのexecute/fresh-loadは通過したが、
+[固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
+GT位置誤差p90が不合格だったため、既定は切り替えない。seedの事前判定FAILと、
+それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。
 
 ## 成果物
 
