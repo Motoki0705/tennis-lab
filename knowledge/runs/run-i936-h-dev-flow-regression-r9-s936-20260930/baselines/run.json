@@ -1,0 +1,9 @@
+{
+  "commit": "cca6e5af1be1e3917f06c56ef31c4ea7930c1eb5",
+  "device": "cpu",
+  "threads": 1,
+  "training_commit": "a0ef7dd67f72097fff50afc8018faff93078a3e7",
+  "rallies": "all 16 val, 6383 frames",
+  "source": "immutable H dev r9 and promoted saved predictions",
+  "command": "bash knowledge/runs/run-i936-h-dev-flow-regression-r9-s936-20260930/baselines/repro.sh <new-absolute-output>"
+}

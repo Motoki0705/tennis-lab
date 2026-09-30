@@ -1,0 +1,60 @@
+{
+  "job_name": "i936-h-dev-long-flow-regression-r10-s936-20260930",
+  "resource": "all",
+  "count": 1,
+  "automatic_retry": false,
+  "estimate_minutes": [
+    55,
+    75
+  ],
+  "training_seconds_at_measured_rate": 3054.5426935353316,
+  "estimate_peak_driver_gb": [
+    2,
+    3
+  ],
+  "measured_previous_allocated_bytes": 424876032,
+  "measured_previous_driver_bytes": 1751711744,
+  "disk_reserved_bytes": 150000000,
+  "outer_timeout_seconds": 5340,
+  "kill_grace_seconds": 15,
+  "maximum_wall_seconds": 5355,
+  "soft_budget_seconds": 5100,
+  "allocator_limit_gib": 6,
+  "driver_budget_bytes": 10000000000,
+  "host_available_minimum_gib": 6,
+  "dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+  "config": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_dev_long.yaml",
+  "config_sha256": "af1122fcc71b499162f184d4a14c5268a47cd543e360c681ccd2fc8229b3fd76",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r10-s936-20k",
+  "updates_each_arm": 20000,
+  "evaluation_updates": [
+    0,
+    2000,
+    5000,
+    10000,
+    15000,
+    20000
+  ],
+  "experimental_factor": "number of updates only; evaluation schedule and wall budget extend accordingly",
+  "kept_fixed": [
+    "seed936",
+    "initialization",
+    "window shuffle",
+    "B8/T128/stride128",
+    "width128/layers4/817285parameters",
+    "AdamW lr1e-4 wd0.01",
+    "x0/reprojection/physics/event weights",
+    "H/M125",
+    "provisional #959 calibration",
+    "64 train/16 val",
+    "fp32",
+    "flow 4samples x 8steps"
+  ],
+  "excluded": [
+    "test reads",
+    "real Meiji evaluation",
+    "640 rally generation",
+    "calibration change",
+    "pipeline integration"
+  ]
+}
