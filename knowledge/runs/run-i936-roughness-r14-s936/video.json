@@ -1,0 +1,41 @@
+{
+  "rally": "val-00000",
+  "rule": "lexicographically first validation ID, full rally, fixed 20k; chosen before rendering",
+  "rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5914941598",
+  "frames": 178,
+  "source_fps": 59.94005994005994,
+  "playback_fps": 15,
+  "views": [
+    "top XY",
+    "side YZ",
+    "oblique 3D"
+  ],
+  "common_limits": [
+    [
+      -6.60681513671875,
+      -45.46821180419922,
+      -1.7844238956938476
+    ],
+    [
+      9.659504345703125,
+      16.133386059570313,
+      2.0929950060744007
+    ]
+  ],
+  "smoothing": false,
+  "trajectory_selection": false,
+  "discarded_frames": 0,
+  "poster_frame": 128,
+  "seams": [
+    128
+  ],
+  "device": "cpu",
+  "ffmpeg_threads": 1,
+  "sources": {
+    "baseline_predictions/val-00000.npz": "57b7eab184db4a36b02787e91057e2d9baf2ef9934e2dc0dd67cc2f011c83172",
+    "flow/predictions/val-00000.npz": "8eb4681478a5be5e26eff64e22658c0a7f1f1a765674980c4e9bb81912635008",
+    "regression/predictions/val-00000.npz": "ffdabd02849932d56ffb01759a9fd6637ed92543bb3f57155cb55e009bf1c698"
+  },
+  "video_sha256": "3a8853e2a42d91224dd83840fedac780975df85d9a5b8870d8da5d6df332cffa",
+  "video_bytes": 328728
+}
