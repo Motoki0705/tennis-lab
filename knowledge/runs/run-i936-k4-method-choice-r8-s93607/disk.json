@@ -1,0 +1,8 @@
+{
+  "benchmark_temporary_bytes": 85597401,
+  "knowledge_bundle_bytes_before_disk_record": 23466071,
+  "budget_bytes": 5000000000,
+  "dataset_generation_bytes": 0,
+  "gpu_jobs": 0,
+  "note": "Current-run comparison, logs and evidence only; original stopped data/frozen worktree preserved. Two-frame pytest fixture is temporary test output, not development generation."
+}
