@@ -106,11 +106,13 @@ def test_anchored_model_gap_and_amp_preserve_distribution_contract() -> None:
     assert torch.linalg.eigvalsh(result.covariance).min() > 0
 
 
-def test_compile_captures_candidate_sort_and_residual_means() -> None:
-    pair, batch = build_ball_refiner_2d(anchored_config()), inputs()
+@pytest.mark.parametrize("anchored", [False, True])
+def test_compile_captures_fixed_head_schema(anchored: bool) -> None:
+    cfg = anchored_config() if anchored else config(use_pose=False, use_court=False)
+    pair, batch = build_ball_refiner_2d(cfg), inputs()
     pair.model.eval()
     call = pair.build_call(batch)
     expected = pair.model(*call.args)
     # Graph capture is CPU-only here; CUDA/Inductor performance belongs to the job.
     compiled = torch.compile(pair.model, backend='eager', fullgraph=True)
-    torch.testing.assert_close(compiled(*call.args), expected)
+    torch.testing.assert_close(compiled(*call.args), expected, rtol=0, atol=0)
