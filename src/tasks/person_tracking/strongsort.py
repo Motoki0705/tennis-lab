@@ -32,6 +32,10 @@ class StrongSortConfig:
     ema_alpha: float = .9
 
 
+class InvalidPrediction(RuntimeError):
+    """A predicted state cannot describe a box; caller must record a failed camera."""
+
+
 def measurement(box: NDArray[np.float32]) -> NDArray[np.float64]:
     width, height = box[2:] - box[:2]
     return np.asarray([*(box[:2] + box[2:]) / 2, width / height, height], np.float64)
@@ -57,7 +61,7 @@ class MotionState:
         self.mean = transition @ self.mean
         self.covariance = transition @ self.covariance @ transition.T + np.diag(std ** 2)
         if not np.isfinite(self.mean).all() or self.mean[3] <= 0 or self.mean[2] <= 0:
-            raise ValueError('StrongSORT predicted an invalid box')
+            raise InvalidPrediction(f'StrongSORT predicted an invalid box: xyah={self.mean[:4].tolist()}')
 
     def project(self, confidence: float = 0.) -> NDArray[np.float64]:
         h = self.mean[3]
@@ -135,7 +139,10 @@ class StrongSort:
         self.frame = features.frame
         self.seen_rows.update(features.rows.tolist())
         for track in self.tracks:
-            track.motion.predict()
+            try:
+                track.motion.predict()
+            except InvalidPrediction as error:
+                raise InvalidPrediction(f'frame={self.frame} track={track.identity} age={track.age}: {error}') from error
             track.age += 1
         confirmed = [t for t in self.tracks if t.confirmed]
         matched: list[tuple[_Track, int]] = []
