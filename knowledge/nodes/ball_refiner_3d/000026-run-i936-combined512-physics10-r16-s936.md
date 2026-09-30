@@ -8,13 +8,15 @@ title: 512trainとphysics10を併用する固定20k候補
 issue: 936
 provider: codex
 date: '2026-10-01'
-status: planned
+status: done
 config:
   source: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_pilot512_physics10_t128.yaml
   primary_update: 20000
   factor: training_rallies_and_physics_weight
   validation_rallies: 16
-metrics: {}
+metrics:
+  flow_val_rmse_m: 1.9531850263102082
+  regression_val_rmse_m: 2.054918208718
 artifacts:
   run_dir: knowledge/runs/run-i936-combined512-physics10-r16-s936
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r16-combined512-physics10-s936-t128-20k
@@ -62,3 +64,43 @@ ruff/mypy成功。今回の型検査はfollow-imports=skipで既存returnのAny�
 (d)はCPU完了・GPU0件で、追加GPU jobやretryは行わない。CPU overlapの結果を(c)設定へ反映せず、元stride128を維持。
 log/reproは共有queue内の本job ID、出力は上記output_dirと同pathの`-preflight.json`。
 GPU完了を待たずWAITING_QUEUE。次runでpreflight/repro/全5評価時点/全予測/hash/資源を回収し、事前登録の候補診断と正式規則を別々に適用する。
+
+## Run 17: 全評価点の回収と固定20k判定
+
+queueはdone、実行commit **50098f0e6923b11ce0f856ef473e0d8bc4d4c8a0**、reproのstatus/patchは空。
+[全時点・全軸の比較表](../../runs/run-i936-combined512-physics10-r16-s936/collected/comparison.md)、
+[回収監査・正式規則](../../runs/run-i936-combined512-physics10-r16-s936/collected/collection.json)、
+[両効果保持診断](../../runs/run-i936-combined512-physics10-r16-s936/collected/diagnostic-rule.json)を保存した。
+全160予測の平均/全sample・可視camera層を再集計し、元metric/分母/Markdownと一致。
+GT/mask/camera、同16val/6,383frame、run12 baseline、初期重み/初期平均metric、
+(a)と両armの全40,000更新窓・実frame数も一致。preflightの再計算・66固定hashを確認した。
+追加48val/test配列は開いていない。directiveの27数値は指定桁で全て一致した。
+
+| 20k | RMSE/gap m | accel all/free p95 | jerk all/free p95 | repro mean/p50/p95 px | behind |
+|---|---|---|---|---|---|
+| RTS | 4.408/3.020 | 669/158 | 87998/7133 | 16.436/2.472/74.812 | 1/17528 |
+| flow平均 | 1.953/1.944 | 412/183 | 42809/14299 | 20.731/12.096/64.352 | 4/17528 |
+| flow全sample | 1.956/1.946 | 416/185 | 43143/14446 | 20.736/12.104/64.216 | 16/70112 |
+| 回帰 | 2.055/2.170 | 753/196 | 91523/13783 | 18.581/9.624/60.007 | 4/17528 |
+
+**両効果保持はflow平均/全sampleが不合格、回帰は合格**。
+flowの失敗軸は1camera可視RMSEだけで、(a)比6.151/5.800m=1.0605、
+全sampleは6.163/5.812m=1.0602。105%上限を超えるため両arm共通の保持とはしない。
+他の誤差軸、(b)比のfull/窓内free accel/jerk、behind非増加は通過した。
+**正式15軸＋behind=0は両arm未達**。flowはRTSにfree accel/jerkとrepro mean/p50が悪く、
+混合平均にもrepro mean/p50が悪い。回帰に対してもevent/camera2/3・free jerk・repro3軸が悪い。
+回帰もRTS比の粗さ4軸とrepro mean/p50が悪い。全失敗軸は上のJSONに残した。
+
+全5評価点を残す。flowのRMSEは0/2k/5k/10k/20kで14.265/3.539/2.180/2.077/1.953m、
+回帰は16.333/3.268/1.965/2.612/2.055m。回帰5kなどへのcheckpoint再選択はしない。
+二因子併用であり、これだけでdata量/physicsの相互作用の因果を断定しない。
+
+trainer3141.439秒（52.357分）、queue wall2973秒（05:31:02→06:20:35 JST）。
+168.439秒の時計差の原因は未確認で、短い方だけを費用として採用しない。
+allocated422,902,272 bytes、reserved471,859,200 bytes、driver最大観測1,772,683,264 bytes
+（連続peakではない）、最小空きRAM24,100,556,800 bytes、元出力46,011,370 bytes。
+再計算scriptはcollect.py→diagnostic.pyの順に、当bundleが追加されたcommitをcheckoutしてCPU/native1で実行する。
+学習再現commitと、後から追加した収集scriptを含むcommitを区別する。TensorBoardなし、全更新JSONL.gzと曲線PNGを保存。
+
+次は指示された同一固定blendを(c)20kへCPUで適用し、RTSへの残差を保存予測で分解する。
+H/default・bank・#959 control・正式規則は不変。実Meiji/pipelineは未評価。
