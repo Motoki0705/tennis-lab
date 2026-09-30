@@ -313,7 +313,9 @@ detectorの一様gap密度によるcoverage=1は全画面領域の自明な結�
 絶対座標headの平均はほぼ候補peak上になく、epochで偏りの向きが反転するため、
 格子解像度やsigma床だけよりも平均parameterizationと未収束/揺れる最適化が主要な候補となる。
 run20 directiveに従いcourt-only先行案を保留し、同一recipeの長期化と候補を保持する平均の比較を先に行う。
-GPU結果は未測定。#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
+run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、checkpoint/val結果は得られなかった。
+モデル精度による棄却とは扱わず、[消失競合を修正した同条件retry](nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)で
+事前宣言した3案を比較する。結果は未測定。#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
 
 ### Court Detection
 
