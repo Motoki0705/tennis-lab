@@ -1,4 +1,4 @@
-<!-- knowledge-review: b6390fa3b9929e593a385052d81c38d63a06b4599e7e0d701cf7f8890c6d5317 on 2026-09-30 -->
+<!-- knowledge-review: 778555294f00a3dc09c751683d8eb80c74086bce25b80a8f85fe15ac8077fd85 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）
@@ -41,7 +41,8 @@ CLIP付きの第2確認も全clipでは決定できず、この基準のまま�
 ユーザーはCOCO全画面 .30を選択し、[run 7](nodes/person_tracking/000006-run-i964-default-solider-cpu-r7-20260930.md)でpipeline既定とコート選別/v3接続へ反映した。
 unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低閾値COCOはraw候補と断片を増やした。
 参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致したが、精度比較は未完了。
-全人物のViTPose/CLIP/SOLIDER特徴抽出を次に行う。最終方式・encoder選択、全pipeline完走、未見一回評価は未完了。
+[特徴job回収](nodes/person_tracking/000007-run-i964-coco-person-features-r7-20260930.md)で全24 NPZ・各40,531rowのhash/値/出自一致を確認した。
+[事前プロトコル](nodes/person_tracking/000008-run-i964-tracker-matrix-r8-20260930.md)を固定して方式比較へ進む。最終方式・encoder選択、全pipeline完走、未見一回評価は未完了。
 
 ## 2026-09-27のcamera間人物対応（#933）
 
