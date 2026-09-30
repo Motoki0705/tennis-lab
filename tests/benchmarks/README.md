@@ -288,11 +288,15 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 `person_unseen_freeze.py --repo <main root> --report <唯一の出力先> --target <git内freeze.json>` は
 予約映像を開かず人物設定・全資産hashを固定する。manifestをcommit/pushした後だけ、
 `person_unseen.py --phase plan --freeze <freeze.json> --freeze-commit <commit> --report <出力先>` が
-指定3clipのmetadata/media hash・devと同じ注釈ball由来side・10 court/person nodeを検証する。
+指定3clipのmetadata/media hash・devと同じ注釈ball由来side・9 court/person nodeを検証する。
 `timeout -k 10s 7190s bash tests/benchmarks/person_unseen.sh <main root> <出力先>` を
 共有queueのresource=allの1jobとして登録する。失敗・途中出力を再利用して再試行しない。
 GPU側は人物ラベルを読まず、元row/pose/CLIP/GSIをcomponent storeへ保存し、devと同じ
 raw外観→選別/linked group→候補Aの対応、全長3camera動画を出す。
+各clipの全cameraの人物処理を保存してから、cameraごとに既存court検出/局所校正を行う。
+side欠測では対応だけを停止し、全ID=-1と理由を保存する。選別はsideなしの局所cameraで同じ規則を使う。
+court検出に支持候補が無いcameraは明示停止し、既存選別と同じ理由付き空結果を保存する。
+raw人物は全cameraで保持し、校正欠測clipも採点母数に含む。checkpoint/契約エラーはジョブを停止する。
 推論途中でもattempt/progress/各node receiptを残す。採点は次runに
 `person_unseen_score.py --report <同出力先> --labels <clip IDからlabels.jsonへのJSON mapping>` で一回だけ実行する。
 raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を保存する。
