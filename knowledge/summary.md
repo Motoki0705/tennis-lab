@@ -1,4 +1,4 @@
-<!-- knowledge-review: d47ce6ddece5ae7c7c3472d5a1deabc6b37270c759a696c4bd53a68b6d56f16d on 2026-10-01 -->
+<!-- knowledge-review: 9d1b3eb59c2cd1d9b51811ebb56932528718d1da1199da926739ca17a7adbeec on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -324,8 +324,9 @@ calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
 配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
 bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
 [seed44再試行](nodes/ball_refiner/000021-run-i935-seed44-retry-r24-20260930.md)は資源上限内で完了したが、[事前10比較](nodes/ball_refiner/000023-run-i935-seed-reproduction-r25-20260930.md)は9/10で不合格。seed44の人工gap NLLだけがabsolute_12kより悪い。位置分位点は両追加seedでe9 top-1を上回るが、これを全条件の再現成功とは扱わない。
-[e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)の元動画checkはcompiler cacheがreportを先に作るsetup bugでGPU前に停止した。[cacheを兄弟directoryへ分離する再投入](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)を準備した。実動画Bゲートは事前の実行・fresh-load・GT精度差で判定し、strict field一致は診断に限定する。seed再現の不合格も残るため、check通過だけでは既定切替しない。固定倍率の三seed診断ではMeiji observed NLLは改善するがgap NLLは全seedで悪化し、calibration halfのHDR90/95には過信が残る。TrackNet observed NLLも全seedで悪化する。次は元動画checkを回収し、seed不合格を含む負の結果についてBを判断する。
-#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
+[e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)のsetup bugを直した[元動画checkの回収](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)では、3camera各270frameのexecuteとfresh-process loadが完了し、全保存配列はbit一致した。終了コード1は全phase後のstrict field診断であり、実行失敗ではない。Bの3条件のうちGT精度差はCPU集計待ちで、まだ既定切替しない。
+[2026-09-30の追加ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5912616143)により、事前seed判定の9/10 FAILは保持したうえで再現は十分と扱い、Bの固定された実行・fresh-load・GT精度条件すべてを満たしたら既定を切り替える。固定倍率の三seed診断ではMeiji observed NLLは改善するがgap NLLとTrackNet observed NLLは全seedで悪化し、calibration halfのHDR90/95には過信が残る。
+#964完了までperson/poseを使用せず、証拠のない区間での改善と文脈ablationを後続に残す。testは引き続き未使用。
 
 ### Court Detection
 

@@ -1,0 +1,10 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790774709010605164_1159028_i935-e9-anchored-source3cam-r25-20260930 (commit=f7930387c818 provider=codex session=01a0f263-c4b3-7972-a86a-90c1f4c56cc8)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 302, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 298, in main
+    run(args.plan, plan)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 266, in run
+    raise RuntimeError("Source/cache parity exceeds predeclared tolerances; pipeline default must stay unchanged")
+RuntimeError: Source/cache parity exceeds predeclared tolerances; pipeline default must stay unchanged
+exit_code=1
