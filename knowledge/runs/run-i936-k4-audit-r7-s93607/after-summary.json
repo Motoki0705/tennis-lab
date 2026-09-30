@@ -1,0 +1,145 @@
+{
+  "balanced_sample": {
+    "frames": 311,
+    "converged": 220,
+    "rate": 0.707395498392283,
+    "failures": 0,
+    "worker_seconds_mean": 5.564342333225105,
+    "worker_seconds_p50": 3.583906232030131,
+    "worker_seconds_p95": 18.300640764005948,
+    "worker_seconds_max": 26.971304503036663,
+    "cpu_seconds_mean": 5.390953033627013
+  },
+  "all_missing": {
+    "frames": 100,
+    "converged": 74,
+    "rate": 0.74,
+    "failures": 0,
+    "worker_seconds_mean": 4.056510466200416,
+    "worker_seconds_p50": 2.9262994205055293,
+    "worker_seconds_p95": 13.422042132803472,
+    "worker_seconds_max": 18.195396659022663,
+    "cpu_seconds_mean": 3.9372584225299994
+  },
+  "strata": {
+    "views0-away": {
+      "frames": 50,
+      "converged": 42,
+      "rate": 0.84,
+      "failures": 0,
+      "worker_seconds_mean": 3.4488846370799,
+      "worker_seconds_p50": 1.949802921502851,
+      "worker_seconds_p95": 12.005223145557094,
+      "worker_seconds_max": 14.466752498003189,
+      "cpu_seconds_mean": 3.3440899051199984
+    },
+    "views0-event": {
+      "frames": 50,
+      "converged": 32,
+      "rate": 0.64,
+      "failures": 0,
+      "worker_seconds_mean": 4.664136295320932,
+      "worker_seconds_p50": 3.9047927925130352,
+      "worker_seconds_p95": 13.552348376100417,
+      "worker_seconds_max": 18.195396659022663,
+      "cpu_seconds_mean": 4.530426939939998
+    },
+    "views1-away": {
+      "frames": 4,
+      "converged": 4,
+      "rate": 1.0,
+      "failures": 0,
+      "worker_seconds_mean": 5.2242494987440296,
+      "worker_seconds_p50": 5.09318094549235,
+      "worker_seconds_p95": 5.9052997240098195,
+      "worker_seconds_max": 6.000307261012495,
+      "cpu_seconds_mean": 5.074710839250002
+    },
+    "views1-event": {
+      "frames": 7,
+      "converged": 7,
+      "rate": 1.0,
+      "failures": 0,
+      "worker_seconds_mean": 0.9332058837005336,
+      "worker_seconds_p50": 0.9261451119673438,
+      "worker_seconds_p95": 0.9809656542667653,
+      "worker_seconds_max": 0.9953300709603354,
+      "cpu_seconds_mean": 0.9092038192857136
+    },
+    "views2-away": {
+      "frames": 50,
+      "converged": 37,
+      "rate": 0.74,
+      "failures": 0,
+      "worker_seconds_mean": 8.324661942140665,
+      "worker_seconds_p50": 5.749867929000175,
+      "worker_seconds_p95": 21.109827266691717,
+      "worker_seconds_max": 24.024065478995908,
+      "cpu_seconds_mean": 8.078750771420005
+    },
+    "views2-event": {
+      "frames": 50,
+      "converged": 37,
+      "rate": 0.74,
+      "failures": 0,
+      "worker_seconds_mean": 7.966607000797521,
+      "worker_seconds_p50": 4.610058647987898,
+      "worker_seconds_p95": 18.95357194766111,
+      "worker_seconds_max": 22.714720345975365,
+      "cpu_seconds_mean": 7.737364498019999
+    },
+    "views3-away": {
+      "frames": 50,
+      "converged": 26,
+      "rate": 0.52,
+      "failures": 0,
+      "worker_seconds_mean": 6.106801630364498,
+      "worker_seconds_p50": 4.206938603514573,
+      "worker_seconds_p95": 16.16032057304692,
+      "worker_seconds_max": 26.971304503036663,
+      "cpu_seconds_mean": 5.930310502420001
+    },
+    "views3-event": {
+      "frames": 50,
+      "converged": 35,
+      "rate": 0.7,
+      "failures": 0,
+      "worker_seconds_mean": 3.5505290233390405,
+      "worker_seconds_p50": 2.716141841519857,
+      "worker_seconds_p95": 8.425682835862965,
+      "worker_seconds_max": 19.242742492002435,
+      "cpu_seconds_mean": 3.3775198503999935
+    }
+  },
+  "stopped_data_population_weighted": {
+    "rate": 0.6,
+    "worker_seconds_mean": 6.1348775390716295,
+    "cpu_seconds_mean": 5.949546940854349
+  },
+  "methods": {
+    "prior": 311,
+    "ray:boundary_laplace_tail": 3732,
+    "laplace": 26072,
+    "adaptive_ray:boundary_laplace_tail": 6355,
+    "adaptive_ray:camera_boundary": 2330,
+    "adaptive_ray:iteration_budget": 75
+  },
+  "actual_wall_seconds": 448.5170421730145,
+  "ideal_four_worker_wall_seconds": 432.6276164082519,
+  "failures": [],
+  "projections": {
+    "96": {
+      "population_weighted_hours": 18.404632617214887,
+      "balanced_stress_hours": 16.693026999675315,
+      "population_weighted_hours_with_20pct_margin": 22.085559140657864,
+      "balanced_512_frame_hours_with_20pct_margin": 22.791546196890028
+    },
+    "640": {
+      "population_weighted_hours": 122.6975507814326,
+      "balanced_stress_hours": 111.28684666450211,
+      "population_weighted_hours_with_20pct_margin": 147.23706093771912,
+      "balanced_512_frame_hours_with_20pct_margin": 151.94364131260022
+    }
+  },
+  "limits": "train-only, completion-biased stopped-dev population; within-rally correlated sample; development audit, not held-out accuracy or full 640-rally guarantee; includes time spent in failures"
+}
