@@ -245,3 +245,10 @@ train/valだけをreaderへ戻して全3D混合のGT NLL・HDR50/90/95被覆/体
 HDR体積はR³上の独立MC推定、報告するMC標準誤差は推定閾値に条件付き。
 `compare_condition_reports()`はbank以外のplan・全96件のseed/metadata・
 80件の軌道/camera/イベント/gap maskのhash一致を要求する。
+
+### 保存軌道の粗さのCPU分解
+
+`diffusion/roughness.py`は保存済み窓ownershipを使い、加速度/jerkのstencilが
+複数窓を跨ぐ箇所と窓内を分ける。自由飛行はstencil全frameで判定する。
+5frameの誤差trendと残差は窓内・自由飛行だけで計算し、診断後の軌道で元の指標を置換しない。
+再現script・全16valの数値・解釈は[粗さ診断](../../../../knowledge/nodes/ball_refiner_3d/000022-run-i936-roughness-r14-s936.md)を参照。
