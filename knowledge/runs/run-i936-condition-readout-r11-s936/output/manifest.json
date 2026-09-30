@@ -1,0 +1,694 @@
+{
+  "status": "complete",
+  "diagnostic_only": true,
+  "device": "cpu",
+  "dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+  "training_output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r10-s936-20k",
+  "input_hashes": {
+    "training_manifest": "4528297cc2541224a18c84ce540b1714e11f2b2cfbdcfe887e889576a7239a00",
+    "dataset_manifest": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+    "checkpoint": "a14be65ef59f5253b0bdb6966a6c8fdf9e7e0109395f5abfb7ad69d4cc64af77"
+  },
+  "encoder": {
+    "objective": "flow",
+    "updates": 20000,
+    "frozen": true,
+    "location": "weighted nonlinear component tokens before state addition and temporal attention"
+  },
+  "solver": {
+    "driver": "gelsd",
+    "rcond": 1e-12,
+    "ridge": 0.0,
+    "intercept": true,
+    "dtype": "float64",
+    "rank": 129,
+    "columns": 129
+  },
+  "readout_tolerance_m": 0.1,
+  "court_normalization": {
+    "identity": "isotropic_half_length",
+    "scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "position_unit": "m / scale_xyz_m",
+    "velocity_unit": "m/s / scale_xyz_m"
+  },
+  "selection": "all train frames fit, all val frames evaluate, no test NPZ reads; no GT target in fit",
+  "read_rallies": [
+    {
+      "rally_id": "train-00000",
+      "npz_sha256": "8261a04fa95d0cc62a792b3e3481261e4ef4ab1f699b2be074c4d8c985f14cbf",
+      "split": "train",
+      "frames": 254,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00001",
+      "npz_sha256": "8b1cb49f86d4f29c16d9a5d0484380394a87878cee91aa57c7b0ab4e21e22b37",
+      "split": "train",
+      "frames": 497,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00002",
+      "npz_sha256": "cc15b58c19f3221919000203adb94780467b9c9d144ff687c091c0408be13a4a",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00003",
+      "npz_sha256": "0c3c1471fd5daf65f4dee9b1aaca5f55a14416420d919783f54e5b23efcc69ad",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00004",
+      "npz_sha256": "cce29f93ea2a35089afe0d71ad1a8136297de5691e74a56f0c8e21f6da163452",
+      "split": "train",
+      "frames": 351,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00005",
+      "npz_sha256": "058940fbf846de6d4434190f9a0d8736898f21a4e26487927fb0f3cb912cec7a",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00006",
+      "npz_sha256": "48255cf1ed5e96628885ec180036dd3ae3a07f28beda4d88600a843b7b2fea69",
+      "split": "train",
+      "frames": 333,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00007",
+      "npz_sha256": "ad1d3d7a76cc104fb43f6a8f141a0d5fa18d495c2904709ed9862b78d032b716",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00008",
+      "npz_sha256": "b932d02a811576ec040e7bf314997d1abc31cef72351fa5d194e54a5e78e49c0",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00009",
+      "npz_sha256": "4c34b8b1c097d013cb2bb4f7efd619fed996e80286f297244a2a3608d36b7388",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00010",
+      "npz_sha256": "fff39fa78b67c47bed0031c15c7a525e4205e5e3b3f8b629ec9e16c8c3b8e0ca",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00011",
+      "npz_sha256": "c188864db939c96fe8aaae720b68e18353a53fcf478f12ec816bb1a7d944a708",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00012",
+      "npz_sha256": "91b4e9612dd85991bd4c811109370c1e0ef1f802cff4747c52328d9e8f2c0144",
+      "split": "train",
+      "frames": 429,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00013",
+      "npz_sha256": "c5605dedec3893c0282da40aa4b57192f104e198c1591f3f551c8943041e19ac",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00014",
+      "npz_sha256": "67565b4670645183a76e4414d1e8109922abbd30c01486ad01b93e7afe3eb2c0",
+      "split": "train",
+      "frames": 350,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00015",
+      "npz_sha256": "86d05e97494a1b568b145c0c46f7ea1201b85dddab281079acb8502f1c0ed61f",
+      "split": "train",
+      "frames": 337,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00016",
+      "npz_sha256": "d6ca36c77567748ff846fdf370a320a259524c14e4e43011e5525aba5e56d626",
+      "split": "train",
+      "frames": 302,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00017",
+      "npz_sha256": "a923329a67b3456cc4e5e4fb91321322d424af2c7b886558eb3868f2341fafc0",
+      "split": "train",
+      "frames": 465,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00018",
+      "npz_sha256": "dabe8bae2b52b78413db29975df600ca811ef790e59e4ab27ca2325943ca919a",
+      "split": "train",
+      "frames": 149,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00019",
+      "npz_sha256": "29dadc304c177a9d23ac229a0abadd69f582c8c7e03fd6047321f071b0a308d8",
+      "split": "train",
+      "frames": 305,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00020",
+      "npz_sha256": "6dd2b2429978bea9e90c70b20139a0dfefbdc36a8d03800c03fc174c9b2f3872",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00021",
+      "npz_sha256": "fefd66ffd094048c9cbbb32d192720e1359930b4562bdca529d3149d0a2f4de8",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00022",
+      "npz_sha256": "8dcb9f92ee5b043f95d0ef879cff37decbc7cc67a59de6e1591034695ba69284",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00023",
+      "npz_sha256": "a3b0b90da544cd036aec032e91fde6b5c702d5982529584d61b5a37b35970557",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00024",
+      "npz_sha256": "ef392dc161848e8593a34b03a837cd5bbbb6c34d0139cf37610c5b24855b99dd",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00025",
+      "npz_sha256": "1630670faed30dac3f3b5fd3f50c0cca1dc4a5a0d2020c66554015ea6b960d73",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00026",
+      "npz_sha256": "3b2a1e17f18bf8e03d385f8d11824107be299ab7f20c98e0f69cfad8cc327be0",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00027",
+      "npz_sha256": "48eb92ebe1af7a2e1c0b42a84a959a3d0e6914473d14734f66187cd9683cf74c",
+      "split": "train",
+      "frames": 315,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00028",
+      "npz_sha256": "3bbb2d2c04c9abd7b7a961bcd992cf73d70e7f3a7ee76adeccedbc7196442182",
+      "split": "train",
+      "frames": 303,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00029",
+      "npz_sha256": "0ed6255cfaaa61ea6b4e773efe1645f7228b59e608d6b7af936b386d40868209",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00030",
+      "npz_sha256": "44cd3bb62bcf5d044bb3c61e786226142313ff6149e86e0f588e8472df38479e",
+      "split": "train",
+      "frames": 182,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00031",
+      "npz_sha256": "05e2a78edecdb06d9a955b8acdd822262f02e7e86c34ba2d2c966861bee8de2f",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00032",
+      "npz_sha256": "00bb9078c523f4eb399db53c3c9527048888573da756d0a553945b8839075d32",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00033",
+      "npz_sha256": "a57112cc3e6f01b24c4cd45451ba9c5c632bf4c6cd173efbd7920fe68e50f65c",
+      "split": "train",
+      "frames": 288,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00034",
+      "npz_sha256": "6ff9a251ff297231aad2d013c98282a058d436c887df890e1832f2cb1280b4bc",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00035",
+      "npz_sha256": "83b6fd3ae8504cda03eb72e0d8164ec37f37098acc58f5d32a8b6484d596ce43",
+      "split": "train",
+      "frames": 413,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00036",
+      "npz_sha256": "f77b4a94ea94bd11950c4875c2ed6869f77c581a63bda94e6e901d511598647c",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00037",
+      "npz_sha256": "f8cf641cb5c96c0e96cc530e49a8162a43ef30ea1bf647c2a9c00e60a197f5e8",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00038",
+      "npz_sha256": "aa55a2c30c41156c23929a3fe54413334f76148dcafc2c976129e05ac2265149",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00039",
+      "npz_sha256": "4e969c2470c83c20a373a535e02116f9401229161fd7d9355f0dc30b4fe3afd1",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00040",
+      "npz_sha256": "192bffde080944ba6e2af86df68ca8c3caf6709cf31d122e32471a7235beee76",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00041",
+      "npz_sha256": "5d1882b99f20231bae7d700780fc24af1de776105bdd9d8b7a805ac26dcb4f5f",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00042",
+      "npz_sha256": "d1519be7e81ea1ff94c494212d635dd7600fbeef991c8b9c34b1dd44851ebd9d",
+      "split": "train",
+      "frames": 469,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00043",
+      "npz_sha256": "12f7a3594c0cbb22074aef780922c9781d04388e667fd177b68af78d6710e51f",
+      "split": "train",
+      "frames": 330,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00044",
+      "npz_sha256": "ccaea7176b8280ee433ba162fe93ef6813eca78b545280d29303b23ed6158b5c",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00045",
+      "npz_sha256": "b55ade081546af955cb1bcc997731a160e749de1c155632eca27238fa8800848",
+      "split": "train",
+      "frames": 198,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00046",
+      "npz_sha256": "20d47472107ab20244e5d3e9c99c1c7d1dd51234f1842176752d57d2a2bacf2c",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00047",
+      "npz_sha256": "03d447718d5bb4ff01d35611bc3c6c8a3fca75e4c9929f92015ab0c7431bc7ae",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00048",
+      "npz_sha256": "5ee0e9908f39e91958470d8520bd38f0989d08a744599ee5c6f74f25bd72886f",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00049",
+      "npz_sha256": "b75a7637ef22dc4ae406e12cc2a0daeec76a5ce65327ef52c78be95e25a65fca",
+      "split": "train",
+      "frames": 477,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00050",
+      "npz_sha256": "01e39d04b35e8d876d3055996bf14a28926d064754d940e514bd2e6b2f03381d",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00051",
+      "npz_sha256": "2920990dba413eb80a2792c90c0ef420a12cdff589e82d6fc3247e6c84c56242",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00052",
+      "npz_sha256": "557b21cf0cad1c4e4c095da4cba8b0354757fc6e9409d14788f9fcd61e817f56",
+      "split": "train",
+      "frames": 324,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00053",
+      "npz_sha256": "c0f6fd53e3d9c201692eb74a7753f269f2225ef23f14bbbe737a4cf45e5a7018",
+      "split": "train",
+      "frames": 190,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00054",
+      "npz_sha256": "c0cee7a0c776f75060f13c04d0145658dfc6115ee9421ec503d8d098d3caa846",
+      "split": "train",
+      "frames": 375,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00055",
+      "npz_sha256": "5e3fda694cac232fc48b232188139e7fc0d91e231cc26cd8093f65990799b87e",
+      "split": "train",
+      "frames": 493,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00056",
+      "npz_sha256": "403572c839da83fd243ff8ba21c8bab993417e4dbafac9426a0d5f5af0f50a49",
+      "split": "train",
+      "frames": 285,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00057",
+      "npz_sha256": "9ad41d8a7e1fae2c6d8c275d60ca7bd6764d93aaddfac99c69cceb72e616ed1b",
+      "split": "train",
+      "frames": 187,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00058",
+      "npz_sha256": "6e1358e6ef4b240e7f23769e0e02bcb02ce69c03e67602752d7f40406aea0872",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00059",
+      "npz_sha256": "6753acb0dbdabfd1e93b5136b3f3f53749dd45a1c5351cdf69a063ab61feff90",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00060",
+      "npz_sha256": "c7d24ba9704a33ba090429794cf3d981323c8b80fd103234e07afc5abd5ec42d",
+      "split": "train",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00061",
+      "npz_sha256": "1a95ec1e9885833c33ba260385042b3e5e84326ec207297078da13ce55e92abf",
+      "split": "train",
+      "frames": 312,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00062",
+      "npz_sha256": "8d7d3fc349f19fb0073652e809a9a99b732971cd710bb39d06a8ac2879eac945",
+      "split": "train",
+      "frames": 506,
+      "components": 125
+    },
+    {
+      "rally_id": "train-00063",
+      "npz_sha256": "9ba661b74c8d5cce34aec4369c0ea6c6fa9c9113f9f532d6836a04b112abcc76",
+      "split": "train",
+      "frames": 337,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00000",
+      "npz_sha256": "7e116e2f44266e3e256bac14dad66e827a466d9e8885e55c0142b878ad2c9097",
+      "split": "val",
+      "frames": 178,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00001",
+      "npz_sha256": "c5e1b4d55ceb9712012016da29da015bb57fba3c99f66c25e1f8843d4e1c09e8",
+      "split": "val",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00002",
+      "npz_sha256": "488018060f69f1470abf33d241d65bbc00f9fc889c6acaf5a91a138f913b7dcb",
+      "split": "val",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00003",
+      "npz_sha256": "24ae97a4b3c6d622609f7b7755a89ab93d2dd8e3f62434c04b9994786ca6598d",
+      "split": "val",
+      "frames": 199,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00004",
+      "npz_sha256": "66441c9e9160de4dd43c73593e8022423478abf7143cddd8399b716cedb0f9cc",
+      "split": "val",
+      "frames": 416,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00005",
+      "npz_sha256": "cca22e1d9abd3429b457c097468edd802f050a7735b0d3ab1af762ad3cb250ee",
+      "split": "val",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00006",
+      "npz_sha256": "9623e57ddf22de2a1c209c7ab0ed2b3ba6a35cc729c211feb1dc0b8fd37a6909",
+      "split": "val",
+      "frames": 425,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00007",
+      "npz_sha256": "acf42babd18a50767d35d59a9d288c4037d0d1d3d2b7d870de5bdbf896506304",
+      "split": "val",
+      "frames": 286,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00008",
+      "npz_sha256": "f3afc7afb122167c4e953326edd7a67a6f49e208a52858c5b9c76f8cec65a58c",
+      "split": "val",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00009",
+      "npz_sha256": "a198de049d1e372b22ef9f740649a539afa6305e9ea91605c961f81df622b8f5",
+      "split": "val",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00010",
+      "npz_sha256": "3e298cc713ce8a4e88d28f17432f2ca0e0a56c4cb689d0ffc2489113c1f20630",
+      "split": "val",
+      "frames": 411,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00011",
+      "npz_sha256": "215b5ff0173f9e07dd2080e7bdfe47bd547c629055bae397b0a4240babe9205a",
+      "split": "val",
+      "frames": 512,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00012",
+      "npz_sha256": "d27946028143bb2509d704cad65fc8d685febb598c383f2d1dd7e58835cdc9b1",
+      "split": "val",
+      "frames": 452,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00013",
+      "npz_sha256": "188b11e5b53161836f428ef94340718ec3ad90e18c404620ef4e5726f5bfab82",
+      "split": "val",
+      "frames": 290,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00014",
+      "npz_sha256": "1693ef4cd30a02aeba6d62e3a00b4ae89ec2f77985be8afe07236fd392852b49",
+      "split": "val",
+      "frames": 450,
+      "components": 125
+    },
+    {
+      "rally_id": "val-00015",
+      "npz_sha256": "81926f7f29c879de22042534f6c3d64290ee9d2e3fe02f4503bf36958e9142af",
+      "split": "val",
+      "frames": 204,
+      "components": 125
+    }
+  ],
+  "results": {
+    "train": {
+      "overall": {
+        "frames": 27676,
+        "rmse_m": 0.0016491827595806771,
+        "p95_m": 0.003384700546915627,
+        "maximum_m": 0.019249701109699733
+      },
+      "by_visible_cameras": {
+        "0": {
+          "frames": 1923,
+          "rmse_m": 0.0016760529508650594,
+          "p95_m": 0.0031650763173982467,
+          "maximum_m": 0.01578153390036183
+        },
+        "1": {
+          "frames": 746,
+          "rmse_m": 0.003814121769636884,
+          "p95_m": 0.00687147826557007,
+          "maximum_m": 0.014363254182837657
+        },
+        "2": {
+          "frames": 3704,
+          "rmse_m": 0.0030938174266856265,
+          "p95_m": 0.0064517992620806205,
+          "maximum_m": 0.015759426396370842
+        },
+        "3": {
+          "frames": 21303,
+          "rmse_m": 0.0010517571913092815,
+          "p95_m": 0.002076397454053507,
+          "maximum_m": 0.019249701109699733
+        }
+      }
+    },
+    "val": {
+      "overall": {
+        "frames": 6383,
+        "rmse_m": 0.007494029801436203,
+        "p95_m": 0.007468573105323891,
+        "maximum_m": 0.10955820032334314
+      },
+      "by_visible_cameras": {
+        "0": {
+          "frames": 483,
+          "rmse_m": 0.004568145780303077,
+          "p95_m": 0.010199710562136623,
+          "maximum_m": 0.02454525736382332
+        },
+        "1": {
+          "frames": 467,
+          "rmse_m": 0.026077992346157222,
+          "p95_m": 0.08834764450864417,
+          "maximum_m": 0.10955820032334314
+        },
+        "2": {
+          "frames": 602,
+          "rmse_m": 0.006305998011766222,
+          "p95_m": 0.01401859905358225,
+          "maximum_m": 0.02441431926325299
+        },
+        "3": {
+          "frames": 4831,
+          "rmse_m": 0.001192107626299893,
+          "p95_m": 0.0021869850078035857,
+          "maximum_m": 0.012040467027818596
+        }
+      }
+    }
+  },
+  "meets_diagnostic_tolerance": true,
+  "maximum_round_trip_abs_m": 3.552713678800501e-15,
+  "maximum_raw_feature_readout_abs_m": 1.7718318296999769e-06,
+  "resources": {
+    "elapsed_seconds": 42.75992155598942,
+    "peak_process_rss_bytes": 1017815040,
+    "minimum_available_host_bytes": 12746555392,
+    "gpu_jobs": 0
+  },
+  "artifacts": {
+    "head.npz": {
+      "sha256": "114239445055602fbc7ba410b2dad530f41e946a2132a1d78a66f97575f37c0d",
+      "bytes": 4474
+    },
+    "train.npz": {
+      "sha256": "e41a44b43667080e57c31d09f6a2ad6b51ad65bb49b6997c3617b5d0912d6c9d",
+      "bytes": 1289545
+    },
+    "val.npz": {
+      "sha256": "f8e64df403559eca8ad5c5ed0ef358948b3c65fe64a4f05a727daeec3d6b77a8",
+      "bytes": 297959
+    }
+  }
+}
