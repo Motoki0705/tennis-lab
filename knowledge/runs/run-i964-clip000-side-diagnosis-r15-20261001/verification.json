@@ -1,0 +1,8 @@
+{
+  "tests": "24 court-side/trajectory + 4 collection + 4 counterfactual tests passed (-n 4)",
+  "ruff": "pass",
+  "mypy": "pass",
+  "source_run_commit": "d189770794ab7f97c745a82d6d998067629e6b28",
+  "production_diagnostic_commit": "6b21da4a",
+  "counterfactual_command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/court_side_clip000_counterfactuals.py --qualification /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001 --e9-cache /home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930 --output <new directory>"
+}
