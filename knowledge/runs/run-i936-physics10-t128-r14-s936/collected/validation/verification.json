@@ -1,0 +1,17 @@
+{
+  "pytest": {
+    "passed": 29,
+    "seconds": 72.33,
+    "workers": 4,
+    "native_threads": 1,
+    "paths": [
+      "tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py",
+      "tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py",
+      "tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py",
+      "tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py"
+    ]
+  },
+  "ruff": "passed",
+  "mypy": "2 files passed",
+  "gpu_jobs": 0
+}
