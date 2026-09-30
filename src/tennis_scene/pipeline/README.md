@@ -43,23 +43,36 @@ GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`を明示した場合に使用できる。
 指定重みが無い・DINO形式でない場合は停止し、別の重みを選び直さない。
-`person_detections` v1のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
+`person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
 旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
 
-`person_tracking` v4はrun 6と共通のBoT-SORTを使う。source閾値以降のscore gate/fusion、
-Labによる事前連結、raw ID上限を置かず、実観測には元検出rowのboxを保存する。
-これは方式比較の基準であり、外観＋pose方式の最終採用は特徴抽出後の実測で決める。
-旧wrapperは比較benchmarkの明示baselineとして残る。
+`person_tracking.method=strongsort_pp_pose`が既定。StrongSORT++＋pose/CLIPのrun 10固定profileを
+productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
+`person_tracks` v5は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
+選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式は`person_tracking.method`で明示する。
+重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
+
+`person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
+既存の公開重みを使う場合はこの設定で場所を明示する（絶対パスも可）。hashはAFLink readerが検証する。
+**AFLink重みの利用条件は未確認**で、当面使用するユーザー判断と後日の再学習判断は
+[出自/制約の正本](../../tasks/person_tracking/strongsort_NOTICE.md)を参照。
+
+`people_models.merge_duplicate_person_boxes=false`が既定。trueでは検出直後、追跡/特徴生成前に
+IoU>=.8をgreedyに統合する。高scoreを残し、同点は元row順。boxを平均せず、推移的な連結もしない。
+v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はframe・keep/drop row・両score・IoU。
+旧検出v1/追跡v4/選別v1はloadせず再生成する。cache identityには統合設定と各重みを含める。
 
 `player_selection` は校正z=0の足元から選手候補を選ぶ。固定規則の正本は
 [`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
-`selected_player_tracks` v1の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+`selected_player_tracks` v2の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
-ViTPoseはこのgroupの実観測だけを推論する。欠落を実観測として補間しない。
+既定では追跡前のViTPose/CLIPを元rowでgroup軸へ移し替える。motion-only baselineを明示した場合だけ
+groupの実観測にViTPoseを推論する。欠落を実観測として補間しない。
 
 `player_association`（`components/identity.py`、`person_identities` schema version 3）は
 [src/tasks/player_association](../../tasks/player_association/README.md)の対応付けを、校正済みcameraのtrackのboxと

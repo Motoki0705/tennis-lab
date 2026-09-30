@@ -119,6 +119,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     encoder = None if encoder_name is None else partial(build_encoder, encoder_name,
         checkpoint_root=cfg.roots.checkpoint_root, external_root=cfg.roots.external_asset_root, device=cfg.device)
     body_enabled = cfg.enabled["gvhmr"]
+    tracking_encoder = partial(build_encoder, cfg.tracking.encoder, checkpoint_root=cfg.roots.checkpoint_root,
+                               external_root=cfg.roots.external_asset_root, device=cfg.device)
+    tracking_assets = ({'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights}
+                       if cfg.tracking.method != 'all_person_botsort' else {})
+    if cfg.tracking.offline:
+        tracking_assets['aflink'] = cfg.aflink_checkpoint
 
     def body_assets() -> dict[str, Any]:
         return asset_identities(body_enabled, cfg.people.body_assets())
@@ -132,20 +138,27 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:
-        add(f"person_detection/{camera}", PersonDetectionModule(cfg.people, enabled=people_enabled), PersonDetectionInputAssembler(),
+        add(f"person_detection/{camera}", PersonDetectionModule(cfg.people, enabled=people_enabled,
+            merge_duplicates=cfg.merge_duplicate_person_boxes), PersonDetectionInputAssembler(),
             {}, lambda: {"detector": cfg.people.detector,
              "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.detector_checkpoint}),
-             "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence, "scope": "full_frame", "enabled": people_enabled}, camera=camera)
-        add(f"person_tracking/{camera}", PersonTrackingModule(), PersonTrackingInputAssembler(),
-            {"detections": f"person_detection/{camera}"}, lambda: {"algorithm": "all_person_botsort",
-                "config": ALL_PERSON_BOTSORT_SETTINGS, "boxes": "raw_detection_rows"}, camera=camera)
+             "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence,
+             "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
+             "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
+        add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
+            aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled), PersonTrackingInputAssembler(),
+            {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
+                "baseline": ALL_PERSON_BOTSORT_SETTINGS if cfg.tracking.method == 'all_person_botsort' else None,
+                "assets": asset_identities(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
+                "pose_precision": "float32", "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", PlayerSelectionModule(selection, footpoints=association.footpoints,
             sampling=sampling, encoder=encoder, encoder_name=encoder_name, device=cfg.device, enabled=people_enabled),
             PlayerSelectionInputAssembler(), {"tracks": f"person_tracking/{camera}", "calibration": "court_calibration"},
             lambda: {"rule": selection, "footpoints": association.footpoints, "sampling": sampling, "encoder": encoder_name,
                 "enabled": people_enabled, "assets": asset_identities(people_enabled and weights is not None,
                     {} if weights is None else {"encoder": weights})}, camera=camera)
-        add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people), PoseEstimationInputAssembler(),
+        add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people,
+            require_evidence=people_enabled and cfg.tracking.method != 'all_person_botsort'), PoseEstimationInputAssembler(),
             {"selection": f"player_selection/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
@@ -198,5 +211,7 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
         **({"ball": cfg.ball_detection.checkpoint} if cfg.enabled["ball_detection"] else {}),
         **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
+        **({"tracking_encoder": cfg.tracking_encoder_weights} if people and cfg.tracking.method != 'all_person_botsort' else {}),
+        **({"aflink": cfg.aflink_checkpoint} if people and cfg.tracking.offline else {}),
         **(cfg.people.body_assets() if body else {}),
     }

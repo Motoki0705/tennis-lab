@@ -24,10 +24,11 @@ class PoseEstimationInput:
 
 class PoseEstimationModule:
     io = ComponentIO("pose_estimation", PoseEstimationInput, ObjectObservations,
-        {"selection": InputPort("selected_player_tracks")}, "person_poses")
+        {"selection": InputPort("selected_player_tracks", 2)}, "person_poses")
 
-    def __init__(self, config: PeopleModelConfig) -> None:
+    def __init__(self, config: PeopleModelConfig, *, require_evidence: bool = False) -> None:
         self.config = config
+        self.require_evidence = require_evidence
 
     def process(self, inputs: PoseEstimationInput) -> ObjectObservations:
         video, tracks = inputs.video, inputs.tracks
@@ -41,6 +42,15 @@ class PoseEstimationModule:
         confidence: NDArray[np.float32] = np.zeros(shape, np.float32)
         boxes: NDArray[np.float32] = np.zeros((*shape[:3], 3), np.float32)
         config = self.config
+        if tracks.evidence is not None:
+            for p, track_id in enumerate(ids):
+                boxes[0, :, p] = tracked.bbx_xys(track_id, base_enlarge=config.runtime.tracking.bbox_enlarge).numpy()
+            uv[:] = tracks.evidence.poses[..., :2].transpose(1, 0, 2, 3)[None]
+            confidence[:] = tracks.evidence.poses[..., 2].transpose(1, 0, 2)[None]
+            return ObjectObservations((video.camera_id,), (video.width, video.height), video.fps,
+                uv, confidence, tracks.observed.T[None], tracks.track_ids[None], boxes)
+        if self.require_evidence:
+            raise ValueError('Feature tracker lost per-detection pose evidence; regenerate upstream artifacts')
         pose = ViTPosePose2D(config.vitpose_checkpoint, device=config.runtime.device,
             flip_test=config.runtime.vitpose.flip_test, batch_size=config.runtime.vitpose.batch_size, head_config=config.runtime.vitpose.head)
         try:

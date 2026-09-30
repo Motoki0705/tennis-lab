@@ -3,6 +3,7 @@
 import numpy as np
 
 from src.tasks.person_tracking.contracts import DetectionFeatures, TrackAssignments
+from src.tasks.person_tracking.sequence import TrackEvidence
 from src.tasks.player_association.appearance.parts import NativeParts
 from src.tasks.player_association.appearance.sampling import (
     CropSamplingConfig,
@@ -61,4 +62,17 @@ def sampled_appearance(tracks: CameraTracks, origins: np.ndarray, frames: list[D
                                  np.concatenate([p.visible for p in parts]) if parts else frames[0].parts.visible[:0])
         result.append(TrackAppearance(np.asarray(indices, np.int64),
                                      np.stack(vectors) if vectors else np.empty((len(indices), 0), np.float32), native))
+    return result
+
+
+def evidence_appearance(boxes: np.ndarray, observed: np.ndarray, evidence: TrackEvidence,
+                        image_size: tuple[int, int], config: CropSamplingConfig) -> list[TrackAppearance]:
+    """Use the same crop-sampling rule on saved per-detection CLIP, without inference."""
+    if not np.array_equal(evidence.detection_rows >= 0, observed):
+        raise ValueError('Appearance evidence differs from real observations')
+    samples = sample_tracks(boxes, observed, image_size, config)
+    result = []
+    for row, sample in enumerate(samples):
+        indices = sample.frames[evidence.appearance_valid[row, sample.frames]]
+        result.append(TrackAppearance(indices, evidence.embeddings[row, indices] if len(indices) else np.empty((0, 0), np.float32)))
     return result

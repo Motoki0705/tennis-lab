@@ -4,6 +4,11 @@
 
 ## 人物追跡方式のCPU比較
 
+`person_tracking_merge.py --phase track` → `evaluate` → `audit` は
+[run 11事前定義](../../knowledge/runs/run-i964-default-merge-r11-20260930/protocol-addendum.md)の
+StrongSORT++＋pose/CLIP、重複box統合off/onのCPU比較。productionと同じ`track_sequence`を呼び、
+offの元row/ID/box/GSI・raw/group/pair指標をrun 10と照合する。全drop記録と別人候補のラベル監査を保存する。
+
 `person_tracking_matrix.py` の `--phase track` → `evaluate` → `report` は
 同じ `--repo <main root> --features <run-7 feature root> --report <新規出力先>` を使う。
 単一CPU process・torch4/OpenCV1 thread、入力/出力hashと実行identityを固定しcamera単位で再開できる。
