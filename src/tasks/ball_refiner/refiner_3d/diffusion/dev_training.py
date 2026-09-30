@@ -10,6 +10,10 @@ from typing import Any, Literal
 
 import torch
 
+from src.tasks.ball_refiner.refiner_3d.baseline_comparison import (
+    comparison_markdown,
+    training_comparison,
+)
 from src.tasks.ball_refiner.refiner_3d.baselines import evaluate_baselines
 from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import sha256
 from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import SyntheticDataset
@@ -180,6 +184,9 @@ def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: 
             gc.collect()
             if device == 'cuda':
                 torch.cuda.empty_cache()
+        comparison = training_comparison(manifest)
+        write_json(output / 'comparison.json', comparison)
+        (output / 'comparison.md').write_text(comparison_markdown(comparison['methods']))
         manifest['status'] = 'complete'
     except Exception as exc:
         manifest.update(status='failed', error=f'{type(exc).__name__}: {exc}', resources=budget.report())
