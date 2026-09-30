@@ -1,0 +1,13 @@
+{
+  "new_evidence_bytes": {
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-before": 6899475,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-after": 11888106,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-prototype": 119754,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-prototype57": 117820,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-profile": 128116,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-k4-audit-r7-s93607": 4007429
+  },
+  "total_new_evidence_bytes": 23160700,
+  "disk_budget_bytes": 5000000000,
+  "baseline_snapshot_temporary_removed": true
+}

@@ -90,6 +90,11 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
     counts = dict(Counter(COMPONENT_METHODS[int(code)] for code in codes.ravel()))
     if counts != record["component_method_counts"]:
         raise ValueError("Component integration counts mismatch")
+    if "integration_component_metric_codes" in arrays:
+        chart_codes = arrays["integration_component_metric_codes"]
+        adaptive_codes = [i for i, name in enumerate(COMPONENT_METHODS) if name.startswith("adaptive_ray:")]
+        if not np.array_equal(chart_codes > 0, np.isin(codes, adaptive_codes)):
+            raise ValueError("Adaptive chart diagnostics disagree with component methods")
     points = arrays["gmm3d_means_m"].astype(np.float64)
     for camera in range(3):
         depths = points @ arrays["camera_estimated_R"][camera, 2] + arrays["camera_estimated_t"][camera, 2]
@@ -159,6 +164,9 @@ def _validate_integration(arrays: dict[str, NDArray[Any]], record: dict[str, Any
         embedded = arrays["integration_component_embedded_error"]
         if embedded.shape != (t, components) or (embedded < 0).any() or not np.isfinite(embedded).all():
             raise ValueError("Invalid embedded integration error")
+        charts = arrays["integration_component_metric_codes"]
+        if charts.shape != (t, components) or charts.dtype != np.uint8 or (charts > 2).any():
+            raise ValueError("Invalid adaptive chart diagnostics")
     if not np.array_equal(flags, expected_flags) or not np.array_equal(converged, flags.all(-1) & (nll <= config["nll_tolerance_nat"])):
         raise ValueError("Convergence flags disagree with achieved tolerance")
     if (rounds[~converged] != cap).any():

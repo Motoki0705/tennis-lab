@@ -1,0 +1,63 @@
+{
+  "source_npz_hashes_unchanged": {
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00000.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00001.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00002.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00003.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00004.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00005.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00006.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00007.npz": true,
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00008.npz": true
+  },
+  "audited_numerical_code_unchanged": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/__init__.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/convergence.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/distributions.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/optimization.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/ray.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/solver.py": true,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/volume.py": true
+  },
+  "tests": {
+    "broad_command": "pytest tests/unit/utils/geometry tests/unit/tasks/ball_refiner/refiner_3d tests/unit/utils/configuration -n 4 -q",
+    "broad_before_path_fix": {
+      "passed": 539,
+      "failed": 1
+    },
+    "after_path_fix": {
+      "passed": 12,
+      "failed": 0
+    },
+    "final_targeted_with_saddle": {
+      "passed": 13,
+      "failed": 0,
+      "seconds": 12.77
+    },
+    "final_export_suite": {
+      "passed": 33,
+      "failed": 0,
+      "seconds": 45.29
+    }
+  },
+  "python_ci_32cc5d02": {
+    "run": 36652753411,
+    "conclusion": "success",
+    "passed": 6551,
+    "skipped": 133
+  },
+  "python_ci_1141aed3": {
+    "run": 36655608727,
+    "conclusion": "success",
+    "passed": 6555,
+    "skipped": 133
+  },
+  "gpu_jobs": [],
+  "generation_restarted": false,
+  "knowledge_validation": {
+    "errors": 0,
+    "repro_missing": 0,
+    "repro_unverifiable": 0
+  }
+}
