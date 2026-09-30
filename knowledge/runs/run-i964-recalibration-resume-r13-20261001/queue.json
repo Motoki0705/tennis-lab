@@ -1,0 +1,18 @@
+{
+  "job": "1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001",
+  "resource": "all",
+  "provider": "codex",
+  "session": "01a0f2cc-fffc-7281-bf10-abff6aa0ccf2",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r13-20261001/features",
+  "plan": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r13-20261001/features/plan.json",
+    "sha256": "e3f93244e3bea96868980db25802e844463c46e7a03cece296ec53d833fed63e"
+  },
+  "estimate_comment": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5914000338",
+  "job_file": {
+    "path": "/home/kamimura/projects/tennis-lab/.training_queue/jobs/1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001.job",
+    "sha256": "b79b6b7f6745f2bee31263af235c54faa4ca7e39cef92af338ac09b5bea643b7"
+  },
+  "worker_pid": 3216003,
+  "waited_for_gpu": false
+}
