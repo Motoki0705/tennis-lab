@@ -198,7 +198,7 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
   `--phase calibrate`（CPU）は、ラベルの無い観測済みclipの擬似ラベル（camera間のtrackの組を足元距離で分ける）から、
   幾何の`sigma_m`と外観の`slope`・`center`を当てはめて`calibration.json`へ書く（ラベル付きclipを指定すると停止する）。
-  `--phase evaluate`（CPU）は、ラベル付きclipを`--config`（既定`src/tasks/player_association/configs/association.yaml`、
+  `--phase evaluate`（CPU）は、ラベル付きclipを`--config`（既定は[player_association README](../../src/tasks/player_association/README.md)の候補A、
   `--geometry-only`で外観なし）で対応付けて採点し、`evaluate.json`とclipごとのコート平面の図（`figures/<clip>.png`）を書く。
   どちらもsideを`court_side_clips.py`の注釈ballによる判定（`--sides`）から読み、trackの外観を`--report/appearance`にcacheする。
 
