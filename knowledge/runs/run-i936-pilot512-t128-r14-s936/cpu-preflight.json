@@ -1,0 +1,7 @@
+{
+  "status": "expected_rejection_incomplete_generation",
+  "error": "Require a complete synthetic.v1/v2 dataset",
+  "seconds": 0.6009523859829642,
+  "cuda_allocations": 0,
+  "queued_job_attempts": 0
+}
