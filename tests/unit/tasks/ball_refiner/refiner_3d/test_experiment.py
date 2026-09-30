@@ -9,6 +9,7 @@ import yaml
 
 from src.tasks.ball_refiner.refiner_3d.diffusion.cohort import reference_validation
 from src.tasks.ball_refiner.refiner_3d.diffusion.experiment import (
+    assert_combined_candidate,
     assert_single_factor,
     preflight,
 )
@@ -63,3 +64,29 @@ def test_committed_trial_configs_are_single_factor(filename: str, factor: str) -
     control = yaml.safe_load((directory / 'training_dev_anchored_t128.yaml').read_text())
     candidate = yaml.safe_load((directory / filename).read_text())
     assert_single_factor(candidate, control, factor)
+
+
+def test_combined_candidate_is_explicit_and_rejects_any_extra_factor() -> None:
+    directory = PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d'
+    control = yaml.safe_load((directory / 'training_dev_anchored_t128.yaml').read_text())
+    candidate = yaml.safe_load((directory / 'training_pilot512_physics10_t128.yaml').read_text())
+    assert_combined_candidate(candidate, control)
+    # It must never be admitted/described as either single-factor trial.
+    for factor in ('training_rallies', 'physics_weight'):
+        with pytest.raises(ValueError, match='beyond'):
+            assert_single_factor(candidate, control, factor)
+    for key, value in (('steps', 16), ('seed', 937), ('validation_frames', None)):
+        changed = deepcopy(candidate)
+        changed[key] = value
+        with pytest.raises(ValueError, match='beyond'):
+            assert_combined_candidate(changed, control)
+    for weight in (0.0001, 0.002):
+        changed = deepcopy(candidate)
+        changed['loss']['physics'] = weight
+        with pytest.raises(ValueError, match='10x'):
+            assert_combined_candidate(changed, control)
+    for key in ('train', 'val', 'test'):
+        changed = deepcopy(candidate)
+        changed['expected_counts'][key] += 1
+        with pytest.raises(ValueError, match='counts'):
+            assert_combined_candidate(changed, control)
