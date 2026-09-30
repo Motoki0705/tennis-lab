@@ -2,6 +2,22 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## 人物対応の再較正準備
+
+`association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は
+[run 12 protocol](../../knowledge/runs/run-i964-recalibration-r12-20260930/protocol.md)に従ってmetadataだけで
+無ラベルclipを選び、dev/予約未見との元動画区間の非重複と特徴/重みidentityを固定する。
+`association_recalibration_features.sh <main root> <output>` を共有queueの1job
+（外側 `timeout -k 10s 7190s`）で呼ぶ。DINO全画面→ViTPose/CLIP、元row保持、
+NPZ roundtrip、allocator7GiB、GPU全体9.5GB/RAM/disk監視による停止を含む。fit/採点はしない。
+`association_recalibration_audit.py --repo <main root> --plan <plan.json> --preflight <preflight.json> --report <new output>`
+は既存dev特徴/track/較正courtの再利用をCPU検査する。小cropの明示的なmask投影と出自を別archiveへ保存する。
+
+`pipeline_preflight.py --repo <main root> --clip <structured clip> --report <new output>` は
+全execute構成のcheckpoint/依存schemaをCPUで検査し、CUDA用の解決済みYAMLを出す。
+推論・成果物生成・精度評価の成功とは扱わない。較正後は `--association-config <project-relative YAML>` を渡す。
+次runのfull-pipelineの実行条件は[qualification plan](../../knowledge/runs/run-i964-recalibration-r12-20260930/qualification-plan.md)を正本とする。
+
 ## 人物追跡方式のCPU比較
 
 `person_tracking_merge.py --phase track` → `evaluate` → `audit` は
