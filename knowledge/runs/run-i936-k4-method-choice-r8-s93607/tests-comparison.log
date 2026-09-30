@@ -1,0 +1,93 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [40 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[False] 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+[gw0] [  2%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+[gw1] [  5%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[False] 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[True] 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[True] 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+[gw0] [ 12%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+[gw0] [ 15%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+[gw3] [ 17%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_frozen_behind_camera_case_uses_volume_and_keeps_its_mass 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+[gw1] [ 20%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+[gw3] [ 22%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_diagnostic_policy_still_rejects_impossible_camera_intersection 
+[gw1] [ 25%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+[gw3] [ 27%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_diagnostic_policy_still_rejects_impossible_camera_intersection 
+[gw1] [ 30%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+tests/unit/utils/geometry/test_convergence.py::test_checked_boundary_matches_independent_last_grid_and_reuses_laplace 
+tests/unit/utils/geometry/test_convergence.py::test_cap_retains_nonconverged_tiny_mass_component_without_selection 
+[gw0] [ 32%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_frozen_behind_camera_case_uses_volume_and_keeps_its_mass 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[1] 
+[gw3] [ 35%] PASSED tests/unit/utils/geometry/test_convergence.py::test_checked_boundary_matches_independent_last_grid_and_reuses_laplace 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change0] 
+[gw3] [ 37%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change0] 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change2] 
+[gw3] [ 40%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change2] 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change3] 
+[gw3] [ 42%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change3] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.01] 
+[gw3] [ 45%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.01] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.3] 
+[gw3] [ 47%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.3] 
+[gw0] [ 50%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[1] 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[100] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_multiview_ray_integrates_product_and_cheirality 
+[gw1] [ 52%] PASSED tests/unit/utils/geometry/test_convergence.py::test_cap_retains_nonconverged_tiny_mass_component_without_selection 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change1] 
+[gw1] [ 55%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change1] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_bounded_depth_gradient_matches_independent_finite_difference 
+[gw2] [ 57%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_boundary_volume_evidence_and_moments_match_refined_integral 
+[gw1] [ 60%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_bounded_depth_gradient_matches_independent_finite_difference 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_camera_chart_change_transports_the_pilot_mode 
+[gw2] [ 62%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_boundary_volume_evidence_and_moments_match_refined_integral 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_impossible_positive_region_fails_without_component_removal 
+[gw2] [ 65%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_impossible_positive_region_fails_without_component_removal 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_cap_and_tiny_components_remain_flagged 
+[gw2] [ 67%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_cap_and_tiny_components_remain_flagged 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule 
+[gw3] [ 70%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_multiview_ray_integrates_product_and_cheirality 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_unknown_integrator_and_bad_orders_are_explicit_errors 
+[gw3] [ 72%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_unknown_integrator_and_bad_orders_are_explicit_errors 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw3] [ 75%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+[gw0] [ 77%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[100] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_ray_checks_keep_tiny_components_and_cap 
+[gw0] [ 80%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_ray_checks_keep_tiny_components_and_cap 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+[gw0] [ 82%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+[gw0] [ 85%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+[gw3] [ 87%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+[gw3] [ 90%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+[gw1] [ 92%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_camera_chart_change_transports_the_pilot_mode 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_adaptive_positive_depth_moments_and_evidence 
+[gw2] [ 95%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_saddle_chart_is_explicit_and_does_not_repair_covariance 
+[gw2] [ 97%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_saddle_chart_is_explicit_and_does_not_repair_covariance 
+[gw1] [100%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_adaptive_positive_depth_moments_and_evidence 
+
+============================== 40 passed in 8.19s ==============================
