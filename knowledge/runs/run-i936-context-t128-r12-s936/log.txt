@@ -1,0 +1,17 @@
+{"context_probe_completed": "val-00000"}
+{"context_probe_completed": "val-00001"}
+{"context_probe_completed": "val-00002"}
+{"context_probe_completed": "val-00003"}
+{"context_probe_completed": "val-00004"}
+{"context_probe_completed": "val-00005"}
+{"context_probe_completed": "val-00006"}
+{"context_probe_completed": "val-00007"}
+{"context_probe_completed": "val-00008"}
+{"context_probe_completed": "val-00009"}
+{"context_probe_completed": "val-00010"}
+{"context_probe_completed": "val-00011"}
+{"context_probe_completed": "val-00012"}
+{"context_probe_completed": "val-00013"}
+{"context_probe_completed": "val-00014"}
+{"context_probe_completed": "val-00015"}
+{'whole_rmse_m': 9.797786185321636, 't128_rmse_m': 3.3606069173599993, 'paired_improvement_m': 6.437179267961636, 'context_explains_degradation': True}
