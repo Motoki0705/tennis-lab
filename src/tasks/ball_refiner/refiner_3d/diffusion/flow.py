@@ -56,17 +56,26 @@ class TrajectorySamples:
 def sample_trajectories(
     model: TrajectoryDenoiser, condition: MixtureCondition, *,
     samples: int, steps: int, generator: torch.Generator,
+    initial_noise: Tensor | None = None,
 ) -> TrajectorySamples:
     if samples < 2 or steps < 1:
         raise ValueError("Need >=2 samples for uncertainty and >=1 ODE steps")
     b, t = condition.padding_mask.shape
+    if initial_noise is not None and (
+        initial_noise.shape != (samples, b, t, 3)
+        or initial_noise.dtype != condition.means_m.dtype
+        or initial_noise.device != condition.means_m.device
+        or not bool(torch.isfinite(initial_noise).all())
+    ):
+        raise ValueError("Explicit initial noise must be finite S,B,T,3 on the condition device/dtype")
     trajectories = []
     training = model.training
     model.eval()
     try:
         with torch.no_grad():
-            for _ in range(samples):
-                state = torch.randn((b, t, 3), device=condition.means_m.device, generator=generator)
+            for index in range(samples):
+                state = (torch.randn((b, t, 3), device=condition.means_m.device, generator=generator)
+                         if initial_noise is None else initial_noise[index])
                 for step in range(steps):
                     time = torch.full((b,), step / steps, device=state.device)
                     validate_flow_state(state, time, condition)
