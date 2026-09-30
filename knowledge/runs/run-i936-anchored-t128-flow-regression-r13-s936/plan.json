@@ -1,0 +1,501 @@
+{
+  "status": "planned_not_enqueued",
+  "job_name": "i936-anchored-t128-flow-regression-r13-s936-20260930",
+  "resource": "all",
+  "provider": "codex",
+  "session": "01a0f22b-2c7e-7f40-b507-54d94792695f",
+  "issue": 936,
+  "code_commit": "0c98a9cf9ae8e2b2b85eb1953ec9f6ff37c3a499",
+  "comparison_definition_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5911005227",
+  "config_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_dev_anchored_t128.yaml",
+  "config_sha256": "c782c1ec53e98dbfd1704dcb2923b659c33603910dc18b368c83cf3ae5490e31",
+  "config": {
+    "seed": 936,
+    "updates": 20000,
+    "batch_size": 8,
+    "frames": 128,
+    "stride": 128,
+    "validation_frames": 128,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.01,
+    "evaluate_updates": [
+      0,
+      2000,
+      5000,
+      10000,
+      20000
+    ],
+    "samples": 4,
+    "steps": 8,
+    "maximum_seconds": 5100,
+    "allocator_limit_gib": 6.0,
+    "maximum_device_bytes": 10000000000,
+    "expected_counts": {
+      "train": 64,
+      "val": 16,
+      "test": 16
+    },
+    "model": {
+      "width": 128,
+      "layers": 4,
+      "heads": 4,
+      "feedforward_multiplier": 4,
+      "time_frequencies": 8,
+      "dropout": 0.0
+    },
+    "loss": {
+      "x0": 1.0,
+      "reprojection": 0.01,
+      "physics": 0.0001,
+      "event": 0.1
+    }
+  },
+  "differences_from_run10": [
+    "evaluate_updates",
+    "validation_frames"
+  ],
+  "dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936",
+  "source_manifest_sha256": "ba1759196f3472939c529dc0d7cd5a866cefca064b0fc693ec037a3f239c7366",
+  "calibration": {
+    "bank": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/bank.npz",
+    "bank_sha256": "0697fe921daf79c7960d616ed0437efecd3b7195f3f8a7dd6188048dd8ecc858",
+    "report": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/calibration.json",
+    "report_sha256": "2c9cd7ba9a1d63addeaecb808441fbae0447ad21e4a3a279ed1694fcbf67ae01",
+    "block_frames": 16,
+    "out_of_frame_presence_logit": -4.0
+  },
+  "read_rallies": [
+    {
+      "rally_id": "train-00000",
+      "frames": 254,
+      "npz_sha256": "55f105341d595eee2c5df3db360a80af9d711ab8314fef0c876f6510cd2c26a7"
+    },
+    {
+      "rally_id": "train-00001",
+      "frames": 497,
+      "npz_sha256": "cde3159e67dbd09737bac93babc5291c981f71634e682481c33db6c716ffb82d"
+    },
+    {
+      "rally_id": "train-00002",
+      "frames": 512,
+      "npz_sha256": "65199b7fc3fc2959dd4b81003a43469c931b25345fcf5614ecb9272d88729857"
+    },
+    {
+      "rally_id": "train-00003",
+      "frames": 512,
+      "npz_sha256": "6858489e85ca1fed9f1759c4e32725ab4bd90dbb49f7d515513786fb8684c5d6"
+    },
+    {
+      "rally_id": "train-00004",
+      "frames": 351,
+      "npz_sha256": "df422cce14944a0d6f8b9084132578cba3f9d6a9f7aa08aa8249e9a486d397a7"
+    },
+    {
+      "rally_id": "train-00005",
+      "frames": 512,
+      "npz_sha256": "ee42706c1eca88c3cd4e12cb40d2835f115035fb23ba4f1900b8e2226734af29"
+    },
+    {
+      "rally_id": "train-00006",
+      "frames": 333,
+      "npz_sha256": "bf1aa9a3e9d8eac1218a9578c43e9a6b00b4f908ed6928c25bd20502f44ac1b9"
+    },
+    {
+      "rally_id": "train-00007",
+      "frames": 512,
+      "npz_sha256": "369fb2e28a433e222e1a26f138e59f7669b2b826f6681a52fff6a25c8cc9429e"
+    },
+    {
+      "rally_id": "train-00008",
+      "frames": 512,
+      "npz_sha256": "3877d60d5c63fb94c504f278f166c40800212013933aeba74fef2bc99ac44dce"
+    },
+    {
+      "rally_id": "train-00009",
+      "frames": 512,
+      "npz_sha256": "34e42955025f28084b28c7669bb3516be1eaaec8a0b5092a312bc30c3eb708fc"
+    },
+    {
+      "rally_id": "train-00010",
+      "frames": 512,
+      "npz_sha256": "fdc728fc604c2e9d0e519de7979b591792cadfaf8ec6256d8ed3c29fcd3b723f"
+    },
+    {
+      "rally_id": "train-00011",
+      "frames": 512,
+      "npz_sha256": "f8216fcb6ae0985fcaa62d34b79dd2187031ba2b43c45cfd6d99d857e088c5da"
+    },
+    {
+      "rally_id": "train-00012",
+      "frames": 429,
+      "npz_sha256": "77f62f40db1dd432eb61827bd0614c725442a0af6ad7b38eb8b59e0d40d7e2b9"
+    },
+    {
+      "rally_id": "train-00013",
+      "frames": 512,
+      "npz_sha256": "12f8b8ae5f595c061e4f3750a06321e7e2775b170836eca4d996e55b0a3bcfc7"
+    },
+    {
+      "rally_id": "train-00014",
+      "frames": 350,
+      "npz_sha256": "84b0b76b34853290be4850a54a288afb6566d134223d138d7807c643ecce62b4"
+    },
+    {
+      "rally_id": "train-00015",
+      "frames": 337,
+      "npz_sha256": "c906be7f20eb9aea466761c3812ddb31f0685395fdda41f4b361d24d63583ebe"
+    },
+    {
+      "rally_id": "train-00016",
+      "frames": 302,
+      "npz_sha256": "279e7f14e8512300373196b583b92858f9e3db5081a00e73303b317fcb1c2653"
+    },
+    {
+      "rally_id": "train-00017",
+      "frames": 465,
+      "npz_sha256": "e5c9a9db759940b770cec16ef29b1e250c2984f92c16ed54f2bb512a21247ce8"
+    },
+    {
+      "rally_id": "train-00018",
+      "frames": 149,
+      "npz_sha256": "3f35642d09c732a1f6d3baf0a0067dd474b1b24e73eebfc6fe3fed20221c6b08"
+    },
+    {
+      "rally_id": "train-00019",
+      "frames": 305,
+      "npz_sha256": "22475272628ea3d3d641808a102d930ec0affca913faa23cca822312710f8afc"
+    },
+    {
+      "rally_id": "train-00020",
+      "frames": 512,
+      "npz_sha256": "659502d8a5b3f85210b10d418e58e12573e8391b705d8a998cae9f6200f563cf"
+    },
+    {
+      "rally_id": "train-00021",
+      "frames": 512,
+      "npz_sha256": "4419f78dbf428acfa717444441c97bf238e2e757892f6d2674f8ba9d55496f36"
+    },
+    {
+      "rally_id": "train-00022",
+      "frames": 512,
+      "npz_sha256": "d946c9fa958f2bb98d7d7ef52af71a1c1c9b0c31be7f670cc544e9de22aa7721"
+    },
+    {
+      "rally_id": "train-00023",
+      "frames": 512,
+      "npz_sha256": "0e066504881581884f1f78d2b3bde69a822098ec6375fa60f074d73812ef683c"
+    },
+    {
+      "rally_id": "train-00024",
+      "frames": 512,
+      "npz_sha256": "0ad21f792a98737f89331edcf54325f81714136b51e6bc9947cb3e5f79a6cf28"
+    },
+    {
+      "rally_id": "train-00025",
+      "frames": 512,
+      "npz_sha256": "6d1f6e41955e9d14a32dcd2c1a847103065b5869d6387001b5ff6b55bb50c1c3"
+    },
+    {
+      "rally_id": "train-00026",
+      "frames": 512,
+      "npz_sha256": "8666337f34e635cd6feb08d23a76b6e29c1dd95899309d9e865a16a0b00c471e"
+    },
+    {
+      "rally_id": "train-00027",
+      "frames": 315,
+      "npz_sha256": "82e05256196bc625b670779ad823fee5b94953baa783015a45e5a35d222af46b"
+    },
+    {
+      "rally_id": "train-00028",
+      "frames": 303,
+      "npz_sha256": "89267706cf1cf47cea7ef66fcd60645c09560d59391102aa3a5e2b39d6359bea"
+    },
+    {
+      "rally_id": "train-00029",
+      "frames": 512,
+      "npz_sha256": "bf502a0d4c1897499148154eccdd6828517f25085d8d5be2f5c156a64b793113"
+    },
+    {
+      "rally_id": "train-00030",
+      "frames": 182,
+      "npz_sha256": "746e9929c7831062cf8c2bd099752660dfd07de24b7fb6b6c6a3412caf568bc4"
+    },
+    {
+      "rally_id": "train-00031",
+      "frames": 512,
+      "npz_sha256": "1d69189fb0e31ba8a5e4b507981f634f438a1f7e7a17a36f6e484fa6c75afb59"
+    },
+    {
+      "rally_id": "train-00032",
+      "frames": 512,
+      "npz_sha256": "b429dd76f87a6699d704b3728a0d91c0104ee6c0703bbb0ba8f40107f2e69ba6"
+    },
+    {
+      "rally_id": "train-00033",
+      "frames": 288,
+      "npz_sha256": "ce64a918f37fa1d417849653f33f4eab7843ea9f7973e6a67026c0574808c9d9"
+    },
+    {
+      "rally_id": "train-00034",
+      "frames": 512,
+      "npz_sha256": "569773c0c6a0e7fdd670f970bc82ff008417bb78199a2d4611abd12b818c0559"
+    },
+    {
+      "rally_id": "train-00035",
+      "frames": 413,
+      "npz_sha256": "ea24ceb45302f4588a35bde4fa3179148ce525fcf5b00a8a70d126bd40bfe016"
+    },
+    {
+      "rally_id": "train-00036",
+      "frames": 512,
+      "npz_sha256": "3c722ffc1f5ca7e9880966695ca8ce1c7cb0b776ff813390831c08bddb18795e"
+    },
+    {
+      "rally_id": "train-00037",
+      "frames": 512,
+      "npz_sha256": "db522f79673973d3c07b57f45841a91ef1ff921c7bb3262ea901189d18e0e1fd"
+    },
+    {
+      "rally_id": "train-00038",
+      "frames": 512,
+      "npz_sha256": "f5f807ea835f8aac66aab6f63892bc93ae6f582381eacc84191d851269916f8d"
+    },
+    {
+      "rally_id": "train-00039",
+      "frames": 512,
+      "npz_sha256": "e14a83ebf4831c2b9799ccc6024012c621cc000378c40109577d0da4a1fe7987"
+    },
+    {
+      "rally_id": "train-00040",
+      "frames": 512,
+      "npz_sha256": "59372ea7da18e72c3f3bf64ad0ad226789761813641d305a8663a47a67c848bf"
+    },
+    {
+      "rally_id": "train-00041",
+      "frames": 512,
+      "npz_sha256": "2815723ba97e0758f6ae923b5e2446e2bd443be53913647ee41ad9374d1d38c1"
+    },
+    {
+      "rally_id": "train-00042",
+      "frames": 469,
+      "npz_sha256": "2b62c1ecb536f49c7baa3b7b3b772315e93a98ba8a4d1339a6891a3f756add0c"
+    },
+    {
+      "rally_id": "train-00043",
+      "frames": 330,
+      "npz_sha256": "272800413e57e810f699b99c082a8f51f8f2964d1615a732f968ac7273d391be"
+    },
+    {
+      "rally_id": "train-00044",
+      "frames": 512,
+      "npz_sha256": "d04d9460c2f7a9589f30f738ba3e993801b7845ab7534283fb616fe321e426ad"
+    },
+    {
+      "rally_id": "train-00045",
+      "frames": 198,
+      "npz_sha256": "741479d2b793242518fb99dc271e5a8346f5c6b3a09495cd77bc08e7b163afda"
+    },
+    {
+      "rally_id": "train-00046",
+      "frames": 512,
+      "npz_sha256": "9c4f1032d2f65f79805ffc322b549bb2ef175dd1c8cb2f59251edf631431e6bf"
+    },
+    {
+      "rally_id": "train-00047",
+      "frames": 512,
+      "npz_sha256": "94e716f9486d018fa01d8f44b34bd025d3dacb731b4d49c820c7f19b40f0d60b"
+    },
+    {
+      "rally_id": "train-00048",
+      "frames": 512,
+      "npz_sha256": "2606b50b95f33d46bf6ced90e7d0ec548ada11833c56001bd162588fbb919745"
+    },
+    {
+      "rally_id": "train-00049",
+      "frames": 477,
+      "npz_sha256": "8104d4673c9f66b593147f711c213674bd7383c3b8f6b18dcf25284d65ff362b"
+    },
+    {
+      "rally_id": "train-00050",
+      "frames": 512,
+      "npz_sha256": "a80abdfa38f424e55aedc229ad9a653b0a55d7e105b1e9b3027d7b72fd332851"
+    },
+    {
+      "rally_id": "train-00051",
+      "frames": 512,
+      "npz_sha256": "d86abbdbcb4b49feb6f6bf57cd340ef63c95e5db55ef53fabc9a9bd7e3f961e7"
+    },
+    {
+      "rally_id": "train-00052",
+      "frames": 324,
+      "npz_sha256": "3147bfefd31ea175a44432a5073a3ac7edff330ae9555fb7597bdc27bc378a95"
+    },
+    {
+      "rally_id": "train-00053",
+      "frames": 190,
+      "npz_sha256": "9e636b2b30860593dafb5e2e5ba4da42a4b8619bb4925ce85cbb7930f4a571b0"
+    },
+    {
+      "rally_id": "train-00054",
+      "frames": 375,
+      "npz_sha256": "84778a93c057ba97c84c051834990b5bc203d62bb7ab37aeaa1fc9a312bfbf09"
+    },
+    {
+      "rally_id": "train-00055",
+      "frames": 493,
+      "npz_sha256": "1e51417041e112161d3ef021a41c8bb32cb8aaf398e795d5c1e4e487c211bc2e"
+    },
+    {
+      "rally_id": "train-00056",
+      "frames": 285,
+      "npz_sha256": "1d6412c2b86dc7ac515de9a7c568c95a75c6f914b92f0f4320e2c5d5940ccd67"
+    },
+    {
+      "rally_id": "train-00057",
+      "frames": 187,
+      "npz_sha256": "2dffe2337ae6ff724d5f754285c725405a9b7da31814f5c00aa76d0fe0798350"
+    },
+    {
+      "rally_id": "train-00058",
+      "frames": 512,
+      "npz_sha256": "7248c8273c4094f112af67bacd1d0d33499e49fd9150f3ea6a43a59918fdd420"
+    },
+    {
+      "rally_id": "train-00059",
+      "frames": 512,
+      "npz_sha256": "99d0c48401ff0e14776b7acad39e0dc9003cf77e545e8f52751445a50334554c"
+    },
+    {
+      "rally_id": "train-00060",
+      "frames": 512,
+      "npz_sha256": "5de27e615f19d79d882c6ee9108ed780edd4c8b263137e330d49c467f3ffdca4"
+    },
+    {
+      "rally_id": "train-00061",
+      "frames": 312,
+      "npz_sha256": "cf700edbbd406aa8fb61988e3b1d81abf9dc92bb841d220c09332bd5883532a6"
+    },
+    {
+      "rally_id": "train-00062",
+      "frames": 506,
+      "npz_sha256": "ba9ec4437bac07a73cac9191fe9e100c85e93f0c948bca38b61bb6b6bc0f509e"
+    },
+    {
+      "rally_id": "train-00063",
+      "frames": 337,
+      "npz_sha256": "70f06aee7f9393b4a0aa173b064e9ac219e5ee93bf926f97a651fb1e23c8f3c0"
+    },
+    {
+      "rally_id": "val-00000",
+      "frames": 178,
+      "npz_sha256": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef"
+    },
+    {
+      "rally_id": "val-00001",
+      "frames": 512,
+      "npz_sha256": "7ccd84ed5c86201e1a63cfad52c00105d734d512de8671c87bec0e999acfe0c5"
+    },
+    {
+      "rally_id": "val-00002",
+      "frames": 512,
+      "npz_sha256": "1152f4a4079ef65c6644c6b4da15bd6169b6a72136addce29e58f59ae3e3afab"
+    },
+    {
+      "rally_id": "val-00003",
+      "frames": 199,
+      "npz_sha256": "7506d130babdebcf8eee368496aea13bbc1455e821a39fe86e1f2e31cd689f1a"
+    },
+    {
+      "rally_id": "val-00004",
+      "frames": 416,
+      "npz_sha256": "5a472cfd898573aed990edd0269c6d237d4c8cc46541f5778d2d0a452f8e525e"
+    },
+    {
+      "rally_id": "val-00005",
+      "frames": 512,
+      "npz_sha256": "83f2173e38118fc89584651cc5ce2b6c181ff0e8602151d3a77965dadea3ccae"
+    },
+    {
+      "rally_id": "val-00006",
+      "frames": 425,
+      "npz_sha256": "0108b03e44b3cd2f71d6ee067cebf2b3b5e6bd2a25cd268aa04974b4d5662b9e"
+    },
+    {
+      "rally_id": "val-00007",
+      "frames": 286,
+      "npz_sha256": "5cefa9c0e502dfb745fab87d83826d5b9e1173edbfe2fab8e57d4a7b0016e71e"
+    },
+    {
+      "rally_id": "val-00008",
+      "frames": 512,
+      "npz_sha256": "257d516d9f61ac7eb1fd80e5a621e285db4d51fe9da70ba0826347b57b9af7af"
+    },
+    {
+      "rally_id": "val-00009",
+      "frames": 512,
+      "npz_sha256": "d367fc64a3d3c94740d930dda1e88543f433578cbcc52c77c94ed00a13103c5f"
+    },
+    {
+      "rally_id": "val-00010",
+      "frames": 411,
+      "npz_sha256": "665e1495f65f3543c07699a8fa50761105e56598196155d979c9afce86423897"
+    },
+    {
+      "rally_id": "val-00011",
+      "frames": 512,
+      "npz_sha256": "d2d282c03672918d51218296e122c35f20794be297637f21b0bc87c5fe716c21"
+    },
+    {
+      "rally_id": "val-00012",
+      "frames": 452,
+      "npz_sha256": "404a83f4f6c5b7cccedd7ceadfaeaca3421b3fd931de5abc4bc7207e4f708b02"
+    },
+    {
+      "rally_id": "val-00013",
+      "frames": 290,
+      "npz_sha256": "5e8caef46f2837cc32777fd57e6e8866f795d32f1c9250f9ccca7891a7df642d"
+    },
+    {
+      "rally_id": "val-00014",
+      "frames": 450,
+      "npz_sha256": "4f7d8945ebb9e3838c2932548cdd626e831552aacbca9bb0ed23a18296bc4fd3"
+    },
+    {
+      "rally_id": "val-00015",
+      "frames": 204,
+      "npz_sha256": "27076b213e066edc77be2c1a384841ee4e9ff03427e384566399a39974c99990"
+    }
+  ],
+  "control_manifest_sha256": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+  "preflight": {
+    "new_and_control_file_hashes_verified": 192,
+    "test_arrays_opened": 0,
+    "train_rallies": 64,
+    "val_rallies": 16,
+    "generator": "H",
+    "components": 125
+  },
+  "estimates": {
+    "wall_minutes": [
+      60,
+      85
+    ],
+    "peak_vram_gb": [
+      2,
+      3
+    ],
+    "output_bytes": 150000000
+  },
+  "limits": {
+    "soft_seconds": 5100,
+    "outer_timeout_seconds": 5340,
+    "kill_grace_seconds": 15,
+    "maximum_wall_seconds": 5355,
+    "allocator_gib": 6,
+    "maximum_driver_bytes": 10000000000,
+    "minimum_available_ram_gib": 6,
+    "native_threads": 1
+  },
+  "output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r13-anchored-s936-t128-20k",
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.training_dev_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936 --config /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_dev_anchored_t128.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r13-anchored-s936-t128-20k --device cuda"
+}
