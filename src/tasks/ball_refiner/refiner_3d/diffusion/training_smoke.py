@@ -4,32 +4,29 @@ from __future__ import annotations
 import json
 import math
 import time
-from dataclasses import asdict, fields
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 import torch
 import yaml
 
-from src.tasks.ball_refiner.refiner_3d.diffusion.data import rally_window
+from src.tasks.ball_refiner.refiner_3d.diffusion.data import (
+    collate_windows,
+    rally_window,
+)
 from src.tasks.ball_refiner.refiner_3d.diffusion.flow import (
     sample_trajectories,
     training_objective,
 )
 from src.tasks.ball_refiner.refiner_3d.diffusion.losses import LossConfig, TrainingBatch
 from src.tasks.ball_refiner.refiner_3d.diffusion.model import (
-    MixtureCondition,
     ModelConfig,
     TrajectoryDenoiser,
 )
 from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import sha256
 from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import SyntheticDataset
 from src.tasks.ball_refiner.refiner_3d.synthetic.generator import write_json
-
-
-def _collate(batches: list[TrainingBatch]) -> TrainingBatch:
-    condition = MixtureCondition(**{field.name: torch.cat([getattr(b.condition, field.name) for b in batches]) for field in fields(MixtureCondition)})
-    return TrainingBatch(condition=condition, **{field.name: torch.cat([getattr(b, field.name) for b in batches]) for field in fields(TrainingBatch) if field.name != 'condition'})
 
 
 def run_training_smoke(dataset: Path, config_path: Path, output: Path) -> dict[str, Any]:
@@ -85,7 +82,7 @@ def run_training_smoke(dataset: Path, config_path: Path, output: Path) -> dict[s
             plumbing.append({'rally_id':record['rally_id'],'frames':record['frames'],
                 'nonconverged_frames':int((~arrays['integration_converged']).sum()),'npz_sha256':record['npz_sha256'],'windows':windows})
         write_json(output/'plumbing.json',plumbing)
-        tiny = _collate(batches)
+        tiny = collate_windows(batches)
         manifest['overfit_windows'] = identities
         manifest['nonconverged_overfit_frames'] = sum(r['nonconverged_frames'] for r in identities)
 

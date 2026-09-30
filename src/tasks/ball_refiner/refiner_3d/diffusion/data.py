@@ -1,6 +1,7 @@
 """Validated synthetic rallies to full-GMM training windows, including padding."""
 from __future__ import annotations
 
+from dataclasses import fields
 from typing import Any
 
 import numpy as np
@@ -10,6 +11,20 @@ from numpy.typing import NDArray
 from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.tasks.ball_refiner.refiner_3d.diffusion.losses import TrainingBatch
 from src.tasks.ball_refiner.refiner_3d.diffusion.model import MixtureCondition
+
+
+def collate_windows(batches: list[TrainingBatch]) -> TrainingBatch:
+    if not batches:
+        raise ValueError('Cannot collate empty windows')
+    condition = MixtureCondition(**{field.name: torch.cat([getattr(b.condition, field.name) for b in batches]) for field in fields(MixtureCondition)})
+    return TrainingBatch(condition=condition, **{field.name: torch.cat([getattr(b, field.name) for b in batches]) for field in fields(TrainingBatch) if field.name != 'condition'})
+
+
+def window_starts(length: int, frames: int, stride: int) -> list[int]:
+    """Cover every real frame, retaining a >=3-frame tail without duplicates."""
+    if length < 3 or frames < 3 or not 1 <= stride <= frames:
+        raise ValueError('Invalid window coverage settings')
+    return sorted({min(start, length - 3) for start in range(0, length, stride)})
 
 
 def rally_window(
