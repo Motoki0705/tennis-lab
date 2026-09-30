@@ -1,0 +1,20 @@
+{
+  "status": "failed",
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/association_recalibration_features.py",
+    "--phase",
+    "extract",
+    "--repo",
+    "/home/kamimura/projects/tennis-lab",
+    "--report",
+    "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r12-20260930/features"
+  ],
+  "sample_interval_s": 2.0,
+  "measurement": "NVML via nvidia-smi, entire GPU 0; conservative for an all job",
+  "peak_gpu_bytes": 4548722688,
+  "min_host_available_bytes": 11544985600,
+  "output_bytes": 253657009,
+  "wall_seconds": 7011.681527193985,
+  "error": "Feature supervisor received signal 15"
+}
