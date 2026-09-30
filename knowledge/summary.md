@@ -1,4 +1,4 @@
-<!-- knowledge-review: 6fafd5825b9eee8fead9d5d7557b2fb75af51522070dd82a5d9ccbfe39936207 on 2026-10-01 -->
+<!-- knowledge-review: aafdebfea82652075a1bfd2f0821c9ae18958471bdfd499be7be0159973e5e65 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -317,7 +317,14 @@ run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、
 候補残差12kはdetectorより各source/camera/halfの位置誤差を改善し、長期化だけより典型精度がよい。
 一方、detector誤り件数で選んだ厳しい270frameでは20px成功率が退行し、個別の失敗は残る。
 ただしcalibration halfの観測HDR90/95は0.80/0.85、人工gapでも0.84/0.88で過信が残る。
-全valの集計を独立較正性能とみなさず、設計採用・default切替・裾較正はユーザーへの提案段階とする。
+[2026-09-30のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5908081470)で候補残差headを基準設計に採用した。
+[共分散だけのclip交差検証](nodes/ball_refiner/000019-run-i935-covariance-loco-s42-r23-20260930.md)では、
+calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しNLLも下がった。
+ただし面積は約1.8倍、HDR50は過大被覆、人工gap/他sourceのNLLは悪化し、裾の過信も残る。
+配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+[追加seed43/44の確認](nodes/ball_refiner/000020-run-i935-anchored-seeds-r23-20260930.md)を1件のqueue jobとして準備した。
+次はseed再現性を回収し、元動画3cameraで新assetのexecute/loadを確認してからpipeline切替を判断する。
 #964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
 
 ### Court Detection
