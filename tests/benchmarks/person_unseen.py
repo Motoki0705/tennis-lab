@@ -41,14 +41,17 @@ from src.tasks.player_association.association.associate import (
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
+from src.tennis_scene.pipeline.components.camera_geometry import calibrate_local_courts
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.definition import file_identity, standard_definition
-from src.tennis_scene.pipeline.runner import ComponentRunner
+from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.utils.checksum import dual_sha256
+from src.utils.geometry.triangulation import PinholeCamera
 
-STAGES = frozenset(('court_detection', 'court_calibration', 'person_detection', 'person_tracking'))
+PERSON_STAGES = frozenset(('person_detection', 'person_tracking'))
+STAGES = PERSON_STAGES | {'court_detection'}
 
 
 def checked(record: dict[str, Any]) -> Path:
@@ -75,7 +78,7 @@ def clip_config(frozen: dict[str, Any], clip: Path) -> Any:
     return cfg
 
 
-def selected_sides(document: dict[str, Any]) -> dict[str, list[bool]]:
+def selected_sides(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     result = {}
     for clip in CLIPS:
         matches = [row for row in document['clips'] if row['clip_id'] == clip]
@@ -83,13 +86,15 @@ def selected_sides(document: dict[str, Any]) -> dict[str, list[bool]]:
             raise ValueError(f'Missing/duplicate side reference: {clip}')
         row = matches[0]
         if 'observe_failed' in row:
-            raise ValueError(f'Annotation-ball side is unavailable after court observation failure: {clip}')
+            result[clip] = {'status': 'stopped', 'reason': 'annotation_side_missing_after_court_failure',
+                            'view_half_turns': None, 'observe_failed': row['observe_failed']}
+            continue
         if row['camera_ids'] != list(CAMERAS) or not row['annotation']['decided']:
             raise ValueError(f'Annotation-ball side is unavailable: {clip}')
         turns = row['annotation']['view_half_turns']
         if len(turns) != 3 or any(type(x) is not bool for x in turns):
             raise ValueError('Invalid reference half-turns')
-        result[clip] = turns
+        result[clip] = {'status': 'ok', 'view_half_turns': turns}
     return result
 
 
@@ -133,10 +138,11 @@ def plan(freeze: Path, commit: str, report: Path) -> None:
         nodes = [n for n in standard_definition(runtime, source, code_identity=dual_sha256(freeze))
                  if n.name.split('/')[0] in STAGES]
         runner = ComponentRunner(nodes, ClipStore(report / clip / 'store', json_value(source), memory_entries=0))
-        if len(runner.order) != 10 or any(n.source != 'execute' for n in nodes):
-            raise ValueError('Unseen inference requires exactly ten fresh court/person nodes')
+        if len(runner.order) != 9 or any(n.source != 'execute' for n in nodes):
+            raise ValueError('Unseen inference requires exactly nine fresh court/person nodes')
         records.append({'clip': clip, 'metadata': file_identity(metadata_path), 'config': file_identity(config_path),
-                        'source': json_value(source), 'view_half_turns': sides[clip], 'node_order': list(runner.order),
+                        'source': json_value(source), 'side': sides[clip], 'view_half_turns': sides[clip]['view_half_turns'],
+                        'node_order': list(runner.order),
                         'node_settings': {n.name: dict(n.settings) for n in nodes},
                         'labels_exist': (clip_root / 'annotations/player_association/labels.json').exists()})
     receipt = {'schema': 'i964_unseen_plan_v1', 'freeze': file_identity(freeze), 'freeze_commit': commit,
@@ -176,11 +182,10 @@ def audit_tracks(runner: ComponentRunner, source: ClipSource) -> dict[str, Any]:
 
 
 def predict(runner: ComponentRunner, source: ClipSource, cfg: PipelineRuntimeConfig,
-            turns: list[bool], target: Path) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
+            side: dict[str, Any], cameras: dict[str, PinholeCamera], target: Path,
+            ) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
     """Same raw appearance / linked-group association adapter as the frozen dev batch."""
-    cameras = {v.camera.camera_id: v.camera for v in runner.output('court_calibration').calibration.views}
-    if set(cameras) != set(CAMERAS):
-        raise ValueError('All three cameras require valid court calibration')
+    turns = side['view_half_turns']
     raw_cameras, groups, mappings = [], [], []
     arrays: dict[str, np.ndarray] = {}
     selection_audit = {}
@@ -189,12 +194,29 @@ def predict(runner: ComponentRunner, source: ClipSource, cfg: PipelineRuntimeCon
                       bottom_border_px=cfg.player_association.footpoints.bottom_border_px * scale))
     sampling = CropSamplingConfig()
     sampling = replace(sampling, min_height_px=sampling.min_height_px*scale, border_px=sampling.border_px*scale)
-    for camera, turn in zip(CAMERAS, turns, strict=True):
+    for index, camera in enumerate(CAMERAS):
         tracked = runner.output(f'person_tracking/{camera}')
         if tracked.evidence is None:
             raise ValueError('Unseen association requires original tracked CLIP features')
+        arrays.update({f'{camera}_boxes': tracked.boxes_xyxy, f'{camera}_observed': tracked.observed,
+                       f'{camera}_track_ids': tracked.track_ids,
+                       f'{camera}_ids': np.full(tracked.observed.shape, -1, np.int64)})
+        if camera not in cameras:
+            # Same explicit empty selection as PlayerSelectionModule for an uncalibrated view.
+            # Raw detections/tracks remain available for review and the three-camera video.
+            arrays.update({f'{camera}_selected': np.zeros_like(tracked.observed),
+                           f'{camera}_group_boxes': np.empty((0, source.num_frames, 4), np.float32),
+                           f'{camera}_group_observed': np.zeros((0, source.num_frames), bool),
+                           f'{camera}_group_track_ids': np.empty(0, np.int64),
+                           f'{camera}_group_origins': np.empty((0, source.num_frames), np.int64),
+                           f'{camera}_group_ids': np.empty((0, source.num_frames), np.int64)})
+            selection_audit[camera] = {'status': 'stopped', 'reason': 'camera_not_calibrated'}
+            continue
         appearance = evidence_appearance(tracked.boxes_xyxy, tracked.observed, tracked.evidence, source.size, sampling)
-        raw = CameraTracks(cameras[camera].half_turned(turn), source.size, tracked.track_ids,
+        # Selection is camera-local and half-turn invariant. An absent side is never
+        # invented: the unturned local camera may select, but cannot enter association.
+        local_camera = cameras[camera] if turns is None else cameras[camera].half_turned(turns[index])
+        raw = CameraTracks(local_camera, source.size, tracked.track_ids,
                            tracked.boxes_xyxy, tracked.observed, appearance)
         mask, selection = select_linked_candidates(raw, source.fps, LinkingConfig(max_candidates=cfg.max_tracks_per_camera),
                                                    config.footpoints)
@@ -202,24 +224,30 @@ def predict(runner: ComponentRunner, source: ClipSource, cfg: PipelineRuntimeCon
         raw_cameras.append(raw)
         groups.append(group)
         mappings.append(mapping)
-        selection_audit[camera] = selection
+        selection_audit[camera] = {'status': 'ok', 'linking': selection,
+                                   'orientation': 'camera_local_without_side' if turns is None else 'annotation_side'}
         for name, values in {'boxes': raw.boxes_xyxy, 'observed': raw.observed, 'track_ids': raw.track_ids,
                              'selected': mask, 'group_boxes': group.boxes_xyxy, 'group_observed': group.observed,
-                             'group_track_ids': group.track_ids, 'group_origins': mapping}.items():
+                             'group_track_ids': group.track_ids, 'group_origins': mapping,
+                             'group_ids': np.full(group.observed.shape, -1, np.int64)}.items():
             arrays[f'{camera}_{name}'] = values
     result: dict[str, Any] = {'status': 'ok', 'clip': source.clip_id, 'view_half_turns': turns,
-                              'labels_used': False, 'selection': selection_audit}
-    try:
-        association = associate(groups, source.fps, config)
-    except AssociationUndecided as error:
-        ids = [np.full(g.observed.shape, -1, np.int64) for g in groups]
-        result.update(status='undecided', reason=error.reason, diagnostics=error.diagnostics)
+                              'labels_used': False, 'selection': selection_audit, 'side': side}
+    if turns is None:
+        result.update(status='stopped', reason=side['reason'])
+    elif set(cameras) != set(CAMERAS):
+        result.update(status='stopped', reason='court_calibration_unavailable',
+                      missing_cameras=sorted(set(CAMERAS) - set(cameras)))
     else:
-        ids = association.player_ids
-        result['diagnostics'] = association.diagnostics
-    for camera, raw, mapping, assigned in zip(CAMERAS, raw_cameras, mappings, ids, strict=True):
-        arrays[f'{camera}_ids'] = project_ids(raw, mapping, assigned)
-        arrays[f'{camera}_group_ids'] = assigned
+        try:
+            association = associate(groups, source.fps, config)
+        except AssociationUndecided as error:
+            result.update(status='undecided', reason=error.reason, diagnostics=error.diagnostics)
+        else:
+            result['diagnostics'] = association.diagnostics
+            for camera, raw, mapping, assigned in zip(CAMERAS, raw_cameras, mappings, association.player_ids, strict=True):
+                arrays[f'{camera}_ids'] = project_ids(raw, mapping, assigned)
+                arrays[f'{camera}_group_ids'] = assigned
     with target.open('xb') as stream:
         saved_arrays: dict[str, Any] = dict(arrays)
         np.savez_compressed(stream, **saved_arrays)
@@ -228,6 +256,46 @@ def predict(runner: ComponentRunner, source: ClipSource, cfg: PipelineRuntimeCon
             np.testing.assert_array_equal(restored[key], value)
     result['arrays'] = file_identity(target)
     return result, arrays
+
+
+def run_person_and_court(nodes: list[ComponentNode], store: ClipStore, source: ClipSource,
+                         cfg: PipelineRuntimeConfig, root: Path,
+                         ) -> tuple[ComponentRunner, dict[str, PinholeCamera], dict[str, Any]]:
+    """Run all person cameras before independent court observations; never repair geometry."""
+    person = ComponentRunner([n for n in nodes if n.name.split('/')[0] in PERSON_STAGES], store)
+    try:
+        person.run()
+    finally:
+        write_json_atomic(root / 'person-execute.json', {'statuses': person.statuses, 'seconds': person.seconds,
+                          'active_node': person.active_node, 'references': json_value(person.references)})
+    if len(person.statuses) != 6 or set(person.statuses.values()) != {'executed'}:
+        raise ValueError('All six person nodes must execute once, without cache substitution')
+    audit = audit_tracks(person, source)
+    write_json_atomic(root / 'person-audit.json', audit)
+    cameras = {}
+    court_receipt: dict[str, Any] = {}
+    for camera in CAMERAS:
+        court = ComponentRunner([n for n in nodes if n.name == f'court_detection/{camera}'], store)
+        try:
+            court.run()
+        except ValueError as error:
+            # Only the existing, explicit no-supported-court outcome is recoverable.
+            # Checkpoint/schema/IO errors still fail the job, with person artifacts intact.
+            if not str(error).startswith('No Court region meets model support/geometry requirements:'):
+                raise
+            court_receipt[camera] = {'status': 'stopped', 'reason': 'court_detection_unavailable',
+                                     'error': str(error), 'statuses': court.statuses}
+        else:
+            if list(court.statuses.values()) != ['executed']:
+                raise ValueError('Each court detector must execute once')
+            calibration = calibrate_local_courts(court.output(f'court_detection/{camera}'), (camera,),
+                                                size=source.size, config=cfg.camera_geometry)
+            cameras.update({v.camera.camera_id: v.camera for v in calibration.views})
+            court_receipt[camera] = {'status': 'ok' if calibration.views else 'stopped',
+                                     'calibration': json_value(calibration), 'statuses': court.statuses,
+                                     'references': json_value(court.references), 'seconds': court.seconds}
+        write_json_atomic(root / 'court-execute.json', court_receipt)
+    return person, cameras, audit
 
 
 def execute(report: Path) -> None:
@@ -261,21 +329,16 @@ def execute(report: Path) -> None:
                      if n.name.split('/')[0] in STAGES]
             if {n.name: dict(n.settings) for n in nodes} != record['node_settings']:
                 raise ValueError('Component settings changed')
-            runner = ComponentRunner(nodes, ClipStore(root / 'store', json_value(source), memory_entries=0))
             clip_start = time.monotonic()
-            try:
-                runner.run()
-            finally:
-                write_json_atomic(root / 'execute.json', {'statuses': runner.statuses, 'seconds': runner.seconds,
-                                  'active_node': runner.active_node, 'references': json_value(runner.references)})
-            if set(runner.statuses) != set(record['node_order']) or set(runner.statuses.values()) != {'executed'}:
-                raise ValueError('Every planned node must execute once, with no cache substitution')
-            audit = audit_tracks(runner, source)
-            prediction, arrays = predict(runner, source, cfg, record['view_half_turns'], root / 'predictions.npz')
+            runner, cameras, audit = run_person_and_court(
+                nodes, ClipStore(root / 'store', json_value(source), memory_entries=0), source, cfg, root)
+            prediction, arrays = predict(runner, source, cfg, record['side'], cameras, root / 'predictions.npz')
             write_json_atomic(root / 'prediction.json', prediction)
             video = render(source, arrays, root / 'three_camera_full.mp4', prediction['status'])
             progress['clips'][clip] = {'audit': audit, 'prediction': file_identity(root / 'prediction.json'),
-                                      'execute': file_identity(root / 'execute.json'), 'video': video,
+                                      'person_execute': file_identity(root / 'person-execute.json'),
+                                      'court_execute': file_identity(root / 'court-execute.json'),
+                                      'association_status': prediction['status'], 'video': video,
                                       'seconds': time.monotonic() - clip_start}
             progress['elapsed_seconds'] = time.monotonic() - start
             write_json_atomic(report / 'progress.json', progress)

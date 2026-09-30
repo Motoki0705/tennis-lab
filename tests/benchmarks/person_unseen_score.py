@@ -9,7 +9,8 @@ import argparse
 import gzip
 import json
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import numpy as np
 from association_recalibration_dev import pooled  # type: ignore[import-not-found]
@@ -26,12 +27,7 @@ from src.tasks.player_association.evaluation.labels import ClipLabels
 from src.tasks.player_association.evaluation.metrics import CameraPrediction, evaluate
 from src.tasks.player_detection.evaluation.person_sources import write_csv
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
-from src.tennis_scene.pipeline.components.court_calibration import (
-    CourtCalibrationOutput,
-)
 from src.tennis_scene.pipeline.definition import file_identity
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
-from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 
 
 def score(report: Path, labels_manifest: Path) -> None:
@@ -64,20 +60,17 @@ def score(report: Path, labels_manifest: Path) -> None:
     results = []
     for clip in CLIPS:
         labels, prediction, record = inputs[clip]
-        store = ClipStore(report / clip / 'store', record['source'], memory_entries=0)
-        calibration_ref = store.active('court_calibration')
-        if calibration_ref is None:
-            raise ValueError('Missing calibration artifact')
-        calibration = store.load(calibration_ref, ArtifactCodec(CourtCalibrationOutput))
-        cameras = {v.camera.camera_id: v.camera for v in calibration.calibration.views}
         metrics, predictions = {}, {}
         with np.load(checked(prediction['arrays']), allow_pickle=False) as saved:
             for camera in CAMERAS:
-                size = (record['source']['videos'][0]['width'], record['source']['videos'][0]['height'])
-                raw = CameraTracks(cameras[camera], size, saved[f'{camera}_track_ids'],
-                                   saved[f'{camera}_boxes'], saved[f'{camera}_observed'])
-                group = CameraTracks(cameras[camera], size, saved[f'{camera}_group_track_ids'],
-                                     saved[f'{camera}_group_boxes'], saved[f'{camera}_group_observed'])
+                # Frozen tracking_units reads only camera_id and the 2D track axes.
+                # This evaluation-only adapter has NO synthetic calibration/side.
+                raw = cast(CameraTracks, SimpleNamespace(camera=SimpleNamespace(camera_id=camera),
+                    track_ids=saved[f'{camera}_track_ids'], boxes_xyxy=saved[f'{camera}_boxes'],
+                    observed=saved[f'{camera}_observed']))
+                group = cast(CameraTracks, SimpleNamespace(camera=SimpleNamespace(camera_id=camera),
+                    track_ids=saved[f'{camera}_group_track_ids'], boxes_xyxy=saved[f'{camera}_group_boxes'],
+                    observed=saved[f'{camera}_group_observed']))
                 raw_units, raw_unknown = tracking_units(raw, saved[f'{camera}_selected'], labels)
                 group_units, group_unknown = tracking_units(group, group.observed, labels)
                 assigned = saved[f'{camera}_group_ids']

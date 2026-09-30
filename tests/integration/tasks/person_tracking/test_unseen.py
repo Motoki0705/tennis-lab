@@ -42,12 +42,17 @@ def test_only_decided_annotation_sides_are_accepted(unseen: Any) -> None:
                           'annotation': {'decided': True, 'view_half_turns': [False, False, True]},
                           'detector': {'decided': True, 'view_half_turns': [False, True, False]}}
                          for c in unseen.CLIPS]}
-    assert unseen.selected_sides(document) == dict.fromkeys(unseen.CLIPS, [False, False, True])
+    assert unseen.selected_sides(document) == dict.fromkeys(unseen.CLIPS, {
+        'status': 'ok', 'view_half_turns': [False, False, True]})
     document['clips'][0]['annotation']['decided'] = False
     with pytest.raises(ValueError, match='Annotation-ball side'):
         unseen.selected_sides(document)
     document['clips'][0] = {'clip_id': unseen.CLIPS[0], 'observe_failed': {'status': 'failed'}}
-    with pytest.raises(ValueError, match='court observation failure'):
+    stopped = unseen.selected_sides(document)[unseen.CLIPS[0]]
+    assert stopped == {'status': 'stopped', 'reason': 'annotation_side_missing_after_court_failure',
+                       'view_half_turns': None, 'observe_failed': {'status': 'failed'}}
+    document['clips'].append(document['clips'][0])
+    with pytest.raises(ValueError, match='Missing/duplicate'):
         unseen.selected_sides(document)
 
 
@@ -79,24 +84,125 @@ def test_video_contains_all_frames_of_three_cameras_and_no_labels(unseen: Any, t
         unseen.render(source, arrays, tmp_path / 'three.mp4', 'ok')
 
 
-def test_scoring_retains_abstained_clip_and_cannot_repeat(
-    unseen: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize('missing_camera', [None, 'cam1'])
+def test_missing_side_preserves_selection_and_raw_tracks_without_associating(
+    unseen: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_camera: str | None,
+) -> None:
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    from src.tasks.player_association.association.config import load_association_config
+    from tests.unit.tasks.person_tracking.test_court_candidates import camera_tracks
+
+    tracks = camera_tracks([(0., 5.), (0., -5.), (9., 5.)], np.ones((3, 80), bool))
+    source = ClipSource('synthetic', tuple(SourceVideo(c, tmp_path / f'{c}.mp4', 'unused', 80, 30., 1920, 1080)
+                                        for c in unseen.CAMERAS))
+    raw = SimpleNamespace(boxes_xyxy=tracks.boxes_xyxy, observed=tracks.observed,
+                          track_ids=tracks.track_ids, evidence=object())
+    runner = SimpleNamespace(output=lambda _: raw)
+    cfg = SimpleNamespace(player_association=load_association_config(players_per_side=1), max_tracks_per_camera=6)
+    cameras = {c: replace(tracks.camera, camera_id=c) for c in unseen.CAMERAS if c != missing_camera}
+    monkeypatch.setattr(unseen, 'evidence_appearance', lambda *a: tracks.appearance)
+
+    def forbidden(*args: Any) -> None:
+        pytest.fail('Missing side or calibration must never call association')
+
+    monkeypatch.setattr(unseen, 'associate', forbidden)
+    side = {'status': 'stopped', 'reason': 'annotation_side_missing_after_court_failure', 'view_half_turns': None}
+    result, arrays = unseen.predict(runner, source, cfg, side, cameras, tmp_path / 'predictions.npz')
+    assert result['status'] == 'stopped' and result['view_half_turns'] is None
+    for c in unseen.CAMERAS:
+        np.testing.assert_array_equal(arrays[f'{c}_boxes'], tracks.boxes_xyxy)
+        np.testing.assert_array_equal(arrays[f'{c}_observed'], tracks.observed)
+        assert (arrays[f'{c}_ids'] == -1).all()
+        assert (arrays[f'{c}_group_ids'] == -1).all()
+        if c == missing_camera:
+            assert not arrays[f'{c}_selected'].any()
+            assert arrays[f'{c}_group_observed'].shape == (0, 80)
+            assert result['selection'][c]['reason'] == 'camera_not_calibrated'
+        else:
+            assert arrays[f'{c}_selected'][:2].all() and not arrays[f'{c}_selected'][2].any()
+            assert result['selection'][c]['orientation'] == 'camera_local_without_side'
+    # The available-side path must use the exact same selection rule, including
+    # half-turn invariance; incomplete calibration still cannot call associate.
+    if missing_camera is None:
+        monkeypatch.setattr(unseen, 'associate', lambda groups, *a: SimpleNamespace(
+            player_ids=[np.zeros(g.observed.shape, np.int64) for g in groups], diagnostics={}))
+    decided = {'status': 'ok', 'view_half_turns': [False, False, True]}
+    second, oriented = unseen.predict(runner, source, cfg, decided, cameras, tmp_path / 'oriented.npz')
+    assert second['status'] == ('ok' if missing_camera is None else 'stopped')
+    for c in unseen.CAMERAS:
+        for field in ('selected', 'group_boxes', 'group_observed', 'group_origins'):
+            np.testing.assert_array_equal(arrays[f'{c}_{field}'], oriented[f'{c}_{field}'])
+
+
+@pytest.mark.parametrize('expected_stop', [True, False])
+def test_all_person_cameras_run_before_independent_court_failures(
+    unseen: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expected_stop: bool,
 ) -> None:
     from types import SimpleNamespace
 
+    calls: list[str] = []
+    person_names = [f'{stage}/{c}' for c in unseen.CAMERAS for stage in ('person_detection', 'person_tracking')]
+    nodes = [SimpleNamespace(name=name) for name in person_names + [f'court_detection/{c}' for c in unseen.CAMERAS]]
+
+    class Runner:
+        def __init__(self, selected: list[Any], store: Any) -> None:
+            self.nodes = selected
+            self.statuses: dict[str, str] = {}
+            self.seconds: dict[str, float] = {}
+            self.references: dict[str, Any] = {}
+            self.active_node = None
+
+        def run(self) -> None:
+            for node in self.nodes:
+                calls.append(node.name)
+                if node.name == 'court_detection/cam1':
+                    self.statuses[node.name] = 'failed'
+                    message = 'No Court region meets model support/geometry requirements: []' if expected_stop else 'bad checkpoint'
+                    raise ValueError(message)
+                self.statuses[node.name] = 'executed'
+
+        def output(self, name: str) -> str:
+            return name.split('/')[1]
+
+    def calibrate(camera: str, ids: tuple[str, ...], **kwargs: Any) -> Any:
+        assert ids == (camera,)
+        return SimpleNamespace(views=[], excluded={camera: 'no_accepted_homography'})
+
+    monkeypatch.setattr(unseen, 'ComponentRunner', Runner)
+    monkeypatch.setattr(unseen, 'audit_tracks', lambda *a: {'all_person_cameras_saved': True})
+    monkeypatch.setattr(unseen, 'calibrate_local_courts', calibrate)
+    # A plain mapping suffices for the synthetic calibration receipt.
+    original_json = unseen.json_value
+    monkeypatch.setattr(unseen, 'json_value', lambda value: vars(value) if isinstance(value, SimpleNamespace) else original_json(value))
+    source, cfg = SimpleNamespace(size=(1920, 1080)), SimpleNamespace(camera_geometry=object())
+    if expected_stop:
+        _, cameras, audit = unseen.run_person_and_court(nodes, None, source, cfg, tmp_path)
+        assert cameras == {} and audit == {'all_person_cameras_saved': True}
+        assert calls == person_names + [f'court_detection/{c}' for c in unseen.CAMERAS]
+        receipt = json.loads((tmp_path / 'court-execute.json').read_text())
+        assert set(receipt) == set(unseen.CAMERAS)
+        assert receipt['cam1']['reason'] == 'court_detection_unavailable'
+    else:
+        with pytest.raises(ValueError, match='bad checkpoint'):
+            unseen.run_person_and_court(nodes, None, source, cfg, tmp_path)
+    assert calls[:6] == person_names
+    assert json.loads((tmp_path / 'person-execute.json').read_text())['statuses'] == dict.fromkeys(person_names, 'executed')
+
+
+@pytest.mark.parametrize('stop_status', ['undecided', 'stopped'])
+def test_scoring_retains_abstained_clip_and_cannot_repeat(
+    unseen: Any, tmp_path: Path, stop_status: str,
+) -> None:
     from src.tasks.player_association.evaluation.labels import (
         CameraLabels,
         ClipLabels,
         LabelledPerson,
     )
     from src.tennis_scene.pipeline.definition import file_identity
-    from src.utils.geometry.triangulation import PinholeCamera
 
     scorer = importlib.import_module('person_unseen_score')
-    cameras = [PinholeCamera(c, np.eye(3), np.eye(3), np.zeros(3)) for c in unseen.CAMERAS]
-    calibration = SimpleNamespace(calibration=SimpleNamespace(views=[SimpleNamespace(camera=c) for c in cameras]))
-    monkeypatch.setattr(scorer, 'ClipStore', lambda *a, **kw: SimpleNamespace(
-        active=lambda _: object(), load=lambda *_: calibration))
     clips, records, labels_manifest = {}, [], {}
     for index, clip in enumerate(unseen.CLIPS):
         root = tmp_path / clip
@@ -123,7 +229,7 @@ def test_scoring_retains_abstained_clip_and_cannot_repeat(
                 f'{c}_group_ids': assigned,
             })
         np.savez_compressed(root / 'predictions.npz', **arrays)
-        (root / 'prediction.json').write_text(json.dumps({'status': 'ok' if index < 2 else 'undecided',
+        (root / 'prediction.json').write_text(json.dumps({'status': 'ok' if index < 2 else stop_status,
             'reason': None if index < 2 else 'margin', 'arrays': file_identity(root / 'predictions.npz')}))
         clips[clip] = {'prediction': file_identity(root / 'prediction.json')}
         records.append({'clip': clip, 'source': {'videos': [{'num_frames': 4, 'width': 64, 'height': 36}]}})
