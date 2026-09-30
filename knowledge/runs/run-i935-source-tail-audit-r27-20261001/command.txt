@@ -6,8 +6,10 @@ audit_frames.py
 audit_pixels.py
 isolate_inputs.py --mode reencoded
 isolate_inputs.py --mode raw
+isolate_inputs.py --mode resize_only
 audit_noise.py
 audit_noise.py --balanced
+summarize_isolation.py
 
 入力pathは前runのplan.jsonとaudit_frames.pyで固定。既存の入力/checkpoint/outputは削除しない。
 再実行は各scriptに --output <絶対新規directory> を追加する。既存出力への上書きは拒否する。
