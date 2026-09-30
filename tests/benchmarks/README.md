@@ -111,6 +111,10 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
 ## Pipeline診断
 
+- `pipeline_stop_collection.py --report <qualification root> --queue <shared queue> --job <id> --output <new directory>`
+  はclip_000のcourt_side停止をCPUで回収する。保存済み全artifactのhash/型/依存と人物元row・box・pose、
+  GSI非観測を読み取り専用で照合する。runner再開・label参照・scene完走検証は行わない。
+
 - `pipeline_preflight.py`でroot/重み/source/全execute recipeをCPU検査し、名前付きassociationは
   `--association-config <project-relative YAML>`で指定する。
   `pipeline_qualification.sh <main root> <report>`はhash付きplan/preflightを持つ新規出力へ

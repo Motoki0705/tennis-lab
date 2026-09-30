@@ -1,4 +1,4 @@
-<!-- knowledge-review: a3ab0847dfcb85f3b8a2442a502504a22d83188d6550d903ff3a9a392e14ba23 on 2026-10-01 -->
+<!-- knowledge-review: 94676972416908700973133e28fd971c43459aef9f972d7a62e1258f1071a221 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -87,8 +87,9 @@ video_001/clip_020の停止を母数へ含み、同動画recall54.97%という�
 旧尺度の再計算もrun11に一致した。今回の再較正でdev低下は改善せず、旧尺度が主因という説明は裏付けられない。
 dev後の再fit/再選択は行わない。
 [clip_000資格確認](nodes/tennis_scene/000026-run-i964-clip000-qualification-r14-20261001.md)は、
-名前付き設定を明示した15資産/28nodeのCPU preflightが成功し、全execute→別processでのload検証→
-全長3camera動画を1件の共有GPU queueへ登録した。実GPU結果は未取得。
+run15に失敗を回収した。19/28nodeと153配列はhash/型/依存・人物元row/box/poseを照合できたが、
+court_sideがcam2反転のmargin .118504 < .15で停止した。scene export・全長動画は未生成。
+資源制限ではなくball根拠の曖昧性であり、閾値/既定は変えずCPU診断で対策候補を整理する。
 旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
