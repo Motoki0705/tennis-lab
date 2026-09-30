@@ -1,0 +1,2 @@
+[worker] 2026-10-01T04:10:40+09:00 running: 1790793588875019144_2458716_i936-pilot512-t128-r15-s936-20261001.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790793588875019144_2458716_i936-pilot512-t128-r15-s936-20261001.log)
+[worker] 2026-10-01T05:05:37+09:00 done: 1790793588875019144_2458716_i936-pilot512-t128-r15-s936-20261001.job resource=all slot=all
