@@ -1,0 +1,10 @@
+{
+  "baseline_metrics_match_r10_exactly": true,
+  "rts_diagnostics_match_r10_exactly": true,
+  "resources": {
+    "seconds": 510.39100681303535,
+    "peak_rss_bytes": 951717888,
+    "minimum_available_host_bytes": 11720974336,
+    "gpu_jobs": 0
+  }
+}
