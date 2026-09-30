@@ -48,7 +48,8 @@ def draw(image: np.ndarray, box: np.ndarray, text: str, color: tuple[int, int, i
     cv2.putText(image, text, (max(0, x1), max(16, y1 - 3)), cv2.FONT_HERSHEY_SIMPLEX, .43, color, 1, cv2.LINE_AA)
 
 
-def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant: str | None = None) -> None:
+def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant: str | None = None,
+           merge_audit: Path | None = None) -> None:
     manifest = json.loads((report / 'comparison.json').read_text())
     chosen = recommendation(manifest['table']) if candidate_variant is None else candidate_variant
     available = {r['variant'] for r in manifest['table']}
@@ -57,6 +58,7 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
     identity = json.loads(checked(manifest['identity']).read_text())
     plan = json.loads(checked(identity['plan']).read_text())
     source = json.loads(checked(plan['sources']).read_text())
+    merges = [] if merge_audit is None else json.loads(merge_audit.read_text())['records']
     output = report / 'review.mp4'
     if output.exists():
         raise FileExistsError(output)
@@ -78,11 +80,19 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
             differences = np.zeros(records[0]['video']['num_frames'], np.int64)
             for key in before:
                 differences[key[1]] += before[key] != after[key]
+            if merge_audit is not None:
+                differences[:] = 0
+                for merge in merges:
+                    if merge['clip'] == clip:
+                        differences[merge['frame']] += 1
+                if not differences.any():
+                    continue
             width = min(len(differences), round(5 * records[0]['video']['fps']))
             sums = np.convolve(differences, np.ones(width, np.int64), mode='valid')
             start = int(sums.argmax())
             end = start + width
-            windows.append({'clip': clip, 'start': start, 'end': end, 'differing_player_units': int(sums[start]),
+            windows.append({'clip': clip, 'start': start, 'end': end,
+                            'merged_boxes' if merge_audit is not None else 'differing_player_units': int(sums[start]),
                             'baseline': baseline_variant, 'candidate': chosen})
             arrays = []
             for result in (baseline, candidate):
@@ -108,12 +118,16 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
                         if not ok:
                             raise ValueError('Video ended inside review window')
                         images.append(image)
-                    if (frame - start) % 4:
+                    merge_event = any(m['clip'] == clip and m['frame'] == frame for m in merges)
+                    if (frame - start) % 4 and not merge_event:
                         continue
                     canvas: np.ndarray = np.zeros((800, 1920, 3), np.uint8)
                     baseline_title = 'COCO .30 + old BoT-SORT/Lab' if baseline_variant == 'new_old' else baseline_variant.replace(CLIP, 'CLIP')
+                    candidate_title = chosen.replace(CLIP, 'CLIP')
+                    if merge_audit is not None:
+                        baseline_title, candidate_title = 'StrongSORT++ + pose / CLIP | merge OFF', 'StrongSORT++ + pose / CLIP | merge ON'
                     for stage, (result, units, title) in enumerate(((baseline, bu, baseline_title),
-                                                                  (candidate, cu, chosen.replace(CLIP, 'CLIP')))):
+                                                                  (candidate, cu, candidate_title))):
                         y = stage * 400
                         cv2.putText(canvas, f'{clip}  frame {frame}  {title}  | green=correct magenta=error orange=nonplayer',
                                     (10, y + 27), cv2.FONT_HERSHEY_SIMPLEX, .64, (255, 255, 255), 1, cv2.LINE_AA)
@@ -143,6 +157,10 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
                                 synthetic = archive['gsi_interpolated'][:, frame] & archive['selected'].any(1)
                                 for row in np.flatnonzero(synthetic):
                                     draw(tile, archive['gsi_boxes'][row, frame], f'GSI ID {archive["track_ids"][row]} synthetic', (180, 130, 30))
+                            for merge in (m for m in merges if m['clip'] == clip and m['camera'] == cam and m['frame'] == frame):
+                                draw(tile, np.asarray(merge['kept_box']), f'KEEP row{merge["kept_row"]}', (255, 255, 0))
+                                draw(tile, np.asarray(merge['dropped_box']),
+                                     f'{"DROP" if stage else "DUP"} row{merge["dropped_row"]} IoU {merge["iou"]:.2f}', (0, 0, 255))
                             for unit in (u for u in units if u['camera'] == cam and u['frame'] == frame and u['role'] == 'player' and u['track_id'] is None):
                                 refs = labels.cameras[cam]
                                 at = refs.at(frame)
@@ -160,7 +178,8 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
                             if result['cameras'][cam]['tracking']['status'] != 'ok':
                                 cv2.putText(tile, 'TRACKER STOPPED', (120, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 0, 255), 2)
                             canvas[y + 40:y + 400, view * 640:(view + 1) * 640] = tile
-                    video.stdin.write(canvas.tobytes())
+                    for _ in range(3 if merge_event else 1):
+                        video.stdin.write(canvas.tobytes())
             finally:
                 for capture in captures:
                     capture.release()
@@ -170,6 +189,8 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
         raise RuntimeError('ffmpeg failed')
     write_json_atomic(report / 'review.json', {'video': record_file(output), 'windows': windows,
         'comparison': record_file(report / 'comparison.json'), 'candidate': chosen, 'baseline': baseline_variant,
+        'merge_audit': None if merge_audit is None else record_file(merge_audit),
+        'sampling': 'every fourth source frame; merge events also included and held for 3 output frames' if merge_audit is not None else 'every fourth source frame',
         'event_overlay': 'switch/fragment persists 18 source frames for 15fps readability'})
     print(json.dumps({'candidate': chosen, 'video': str(output), 'windows': windows}, indent=2))
 
@@ -179,6 +200,7 @@ if __name__ == '__main__':
     parser.add_argument('--report', required=True, type=Path)
     parser.add_argument('--baseline', default='new_old')
     parser.add_argument('--candidate')
+    parser.add_argument('--merge-audit', type=Path)
     cv2.setNumThreads(1)
     args = parser.parse_args()
-    render(args.report, baseline_variant=args.baseline, candidate_variant=args.candidate)
+    render(args.report, baseline_variant=args.baseline, candidate_variant=args.candidate, merge_audit=args.merge_audit)

@@ -1,4 +1,4 @@
-<!-- knowledge-review: a6e38aa8b318e1ba4ad7007b6ca9825167e0e16003d1c9431eb451ec035cbad3 on 2026-09-30 -->
+<!-- knowledge-review: 8fff4466d1bdacb85b05529d8d1a2966f0702c621bb86cc1b69a281bc51224e7 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -62,7 +62,17 @@ fragmentは増え、cam1遠側の改善も小さい。camera間pair F1はDeep+po
 Deep+poseへAFLink/GSIを足すとrawは改善するがgroupは悪化し、pair F1の差は僅かだった。
 旧9条件の全144層と決定済みpair指標を完全再現し、変えたStrongSORTのオンライン出力もpose重み0で一致した。
 GSI syntheticは別maskのままで評価の実観測へ入れていない。費用付き重複box対策は未実装の提案に留めた。
-既定はユーザーがraw/groupとpair/coverageのどちらを重視するか判断してから選び、AFLink重みの利用条件も引き続き確認対象とする。
+この時点では既定判断を保留した。次のrun 11でユーザー決定を反映した。
+
+[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)で、ユーザーが選んだ
+**StrongSORT++＋pose/CLIP**を標準pipelineと#935向け共通入口の既定へ接続した。
+元検出row/pose/CLIPを選別後も保持し、GSIを実観測へ昇格しない。AFLink公開重みは利用条件が未確認のまま
+当面使用し、継続利用か自前再学習かを後日判断する。重複boxのgreedy IoU>=.8統合は明示optionで既定off。
+同じ4 dev×3cameraで26boxを削減したが、raw/group IDF1・pair F1・switch/fragment・選手保持は変わらず、
+今回の証拠ではmerge offの維持を推薦する。全26件の前後画像/ラベル監査で別人削除は認めなかったが、
+完全GTや未見の安全性は保証しない。offのrun 10完全一致とschema/共通経路テストは確認済み。
+#935実producerへの積み直し、独立した無ラベルclipでの#933再較正、clip_000全pipeline、
+設定凍結後の予約未見一回は費用付き計画だけを残し、今回実行していない。
 
 ## 2026-09-27のcamera間人物対応（#933）
 
