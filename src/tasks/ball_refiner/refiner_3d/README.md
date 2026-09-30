@@ -274,6 +274,12 @@ testはファイルhashとJSONの整合確認のみで、配列を開かない�
 専用guardが64→512件とphysics10倍以外の差分を拒否する。
 一因子の診断としては受け付けず、候補の判定規則は実験knowledgeに固定する。
 
+[併用候補からの再投影3倍設定](training_pilot512_physics10_repro3_t128.yaml)は
+`factor: reprojection_weight`を明示し、対照から再投影weightだけ3倍にする。
+physics1e-3、512train、dataset hashを維持し、他の設定変更は拒否する。
+対照自身がval subsetを使う場合、保存済みの採用/未使用IDの完全な分割と実読込hashを検査して継承する。
+declared val件数だけを見て評価対象を全64件へ広げることはない。
+
 ### 固定重みの重複窓診断
 
 `diffusion/overlap_inference.py`は全sampleを正の三角重みでblendする明示的な推論API。
