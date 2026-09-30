@@ -1,0 +1,7 @@
+{
+  "commit": "61327fa4002cea4ff5f460dc59fb1207bacc06a0",
+  "tracked_diff": "",
+  "command": "timeout --signal=TERM --kill-after=10s 1100s env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-overlap-cpu-r16-s936/probe.py",
+  "queue_job": null,
+  "attempts": 1
+}
