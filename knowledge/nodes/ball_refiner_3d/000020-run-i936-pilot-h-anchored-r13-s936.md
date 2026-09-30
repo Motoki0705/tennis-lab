@@ -49,3 +49,12 @@ runningの証拠であり、完了・品質の検証結果ではない。生成s
 起動前のMemAvailableは18.13GB。三角測量失敗によるseed変更、成分除外、自動retryを認めない。
 quota休止後にmanifestのcomplete/failed、全640件のhash、入力hash不変、実測資源を回収する。
 完了まで待機せず、この時点ではAcceptance第2項も未完了。CPU生成のため学習曲線/TensorBoardはない。
+
+
+## Run 14の途中監査
+
+[status-run14.json](../../runs/run-i936-pilot-h-anchored-r13-s936/status-run14.json)に観測時刻と途中manifestのhashを保存した。
+453/640成功、失敗0、PID4044520稼働中。完了済み全NPZのhash/bytesとJSON一致、
+全36入力hash不変、run12のexpanded planとの完全一致を確認した。既存devとの共通train/val 64件もNPZ hash一致。
+これは完了監査ではない。test配列は開かず、失敗時の再生成もしない。run14の640学習は
+complete・640件・失敗0・全hash・plan一致をGPU前preflightで要求し、未完了なら即停止する。
