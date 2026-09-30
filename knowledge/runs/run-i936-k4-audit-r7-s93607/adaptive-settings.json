@@ -1,0 +1,65 @@
+{
+  "status": "provisional_context_free_ft_e13",
+  "distribution_class": "src.tasks.ball_refiner.refiner_2d.distribution.BallGMM2D",
+  "components_per_camera": 4,
+  "calibration": {
+    "bank": "knowledge/runs/run-i936-provisional-degradation-r5-s936/bank.npz",
+    "bank_sha256": "aea209600cfe218e239612cfaa828706b7ffabedebc9291ea0634acce31c482c",
+    "report": "knowledge/runs/run-i936-provisional-degradation-r5-s936/calibration.json",
+    "report_sha256": "7a2ea393b0a4c4c62c9f5903b577af9a64bb7fa9a5cc9b5f0fb4a31378ad360d",
+    "block_frames": 16,
+    "out_of_frame_presence_logit": -4.0
+  },
+  "gap_lengths_frames": [
+    1,
+    4,
+    8,
+    16,
+    32,
+    64
+  ],
+  "occlusion_changes_presence": false,
+  "out_of_frame_changes_presence": true,
+  "mean_bounds_policy": "clip_to_source_grid",
+  "triangulation": "src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged",
+  "boundary_convergence": {
+    "method": "adaptive_ray",
+    "orders": [
+      12,
+      20,
+      32,
+      48,
+      64
+    ],
+    "nll_tolerance_nat": 0.05,
+    "log_evidence_tolerance_nat": 0.05,
+    "mean_tolerance": 0.02,
+    "covariance_relative_tolerance": 0.05,
+    "relative_errors": [
+      0.02,
+      0.01,
+      0.003,
+      0.001,
+      0.0003
+    ],
+    "max_cells": [
+      64,
+      128,
+      256,
+      512,
+      1024
+    ]
+  },
+  "prior_mean_m": [
+    0.0,
+    0.0,
+    2.0
+  ],
+  "prior_covariance_diagonal_m2": [
+    36.0,
+    144.0,
+    9.0
+  ],
+  "max_components": 125,
+  "max_nfev": 100
+}
