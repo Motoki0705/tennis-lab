@@ -224,3 +224,14 @@ CPU1 thread専用で、モデル本体・生成器・損失・pipelineは変更�
 T128/stride128、絶対時刻、右paddingを保ち、重複する短い末尾は先の窓を採用する。
 全frameを一度ずつ採点し、loss/加速度/jerkは継ぎ目を含む元時系列で計算する。
 train/testは開かず、判定基準とGPUとの差の扱いは実験knowledgeに記録する。
+
+### Residual bank交換時の3D条件監査
+
+`python -m src.tasks.ball_refiner.scripts.audit_conditions_3d --dataset <絶対path>
+--output <新規絶対path> --samples <各MC標本数>`で、全96件のmanifest/JSON/hashを監査し、
+train/valだけをreaderへ戻して全3D混合のGT NLL・HDR50/90/95被覆/体積・混合平均RMSEを測る。
+可視camera数で層別し、16 valの混合平均と#929 RTSも固定設定で比較する。
+`--audit-only`は品質採点を省いた事前監査。いずれもtest NPZはhash確認だけで配列を開かない。
+HDR体積はR³上の独立MC推定、報告するMC標準誤差は推定閾値に条件付き。
+`compare_condition_reports()`はbank以外のplan・全96件のseed/metadata・
+80件の軌道/camera/イベント/gap maskのhash一致を要求する。
