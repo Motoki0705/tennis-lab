@@ -1,4 +1,4 @@
-<!-- knowledge-review: dbc4da4d0eb42a3bc7a32ccc4966b0c1a8f80cb10f713fcae917ed15d80cca75 on 2026-10-01 -->
+<!-- knowledge-review: 886b7e29e692e614a8cee05c615d3596903b0e64d6523e6d3901bbe36708bf49 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -85,7 +85,10 @@ video_001/clip_020の停止を母数へ含み、同動画recall54.97%という�
 新尺度を名前付きの非既定YAMLとしてcommit/pushした後、devを一度だけ採点した。
 旧/新とも4/4決定、pair F1=.957119、group accuracy=.763256で、全12cameraのID配列が同一。
 旧尺度の再計算もrun11に一致した。今回の再較正でdev低下は改善せず、旧尺度が主因という説明は裏付けられない。
-dev後の再fit/再選択は行わず、名前付き設定でclip_000全pipelineを資格確認する。
+dev後の再fit/再選択は行わない。
+[clip_000資格確認](nodes/tennis_scene/000026-run-i964-clip000-qualification-r14-20261001.md)は、
+名前付き設定を明示した15資産/28nodeのCPU preflightが成功し、全execute→別processでのload検証→
+全長3camera動画を1件の共有GPU queueで実行する準備を終えた。実GPU結果は未取得。
 旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、

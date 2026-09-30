@@ -111,6 +111,13 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
 ## Pipeline診断
 
+- `pipeline_preflight.py`でroot/重み/source/全execute recipeをCPU検査し、名前付きassociationは
+  `--association-config <project-relative YAML>`で指定する。
+  `pipeline_qualification.sh <main root> <report>`はhash付きplan/preflightを持つ新規出力へ
+  全componentを実行し、別のCPUプロセスで全artifactの依存/hash/型・sceneの全配列・GSI非観測を検証する。
+  全長3cameraと最終sceneのコート平面を1動画に描き、全frameを読み戻す。人手label/importは使わない。
+  resource=allの共有queueと外側timeoutを必須とし、buildから動画までresource guardで監視する。
+
 - `association_recalibration_dev.py`: run12 protocolのfit証拠と名前付きconfigが指定commit/originへ
   push済みであることを検証し、run13の投影済みdev trackを旧/新尺度で一度だけ採点するCPU入口。
   `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、

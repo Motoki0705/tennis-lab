@@ -1,7 +1,7 @@
 """CPU-only asset and artifact-contract check for a fresh full-pipeline run.
 
 Does not call ComponentRunner.run or load an inference model. The emitted CUDA
-configuration is a candidate until the association calibration is committed.
+configuration records the explicitly selected association option for this run.
 """
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ def preflight(repo: Path, clip: Path, report: Path, association_config: str | No
                          'source': n.source, 'bindings': dict(n.bindings), 'settings': dict(n.settings)}
                   for n in nodes},
         'unverified': ['GPU inference and numerical artifact values', 'scene export and load-only restart',
-                       'recalibrated association config (not fitted yet)', 'CUDA extension runtime'],
+                       'full-pipeline behavior of the selected association config', 'CUDA extension runtime'],
     }
     write_json_atomic(report / 'preflight.json', receipt)
     return receipt
