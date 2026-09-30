@@ -1,0 +1,14 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/numpy/lib/_nanfunctions_impl.py:1617: RuntimeWarning: All-NaN slice encountered
+  return fnb._ureduce(a,
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_noise.py", line 129, in <module>
+    main(parser.parse_args().balanced)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_noise.py", line 95, in main
+    "cameras": {names[c]: summarize(p90_difference(cached[c], source[c], indices[c])) for c in range(3)}})
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_noise.py", line 95, in <dictcomp>
+    "cameras": {names[c]: summarize(p90_difference(cached[c], source[c], indices[c])) for c in range(3)}})
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_noise.py", line 30, in p90_difference
+    raise ValueError("A bootstrap sample has no observed frames")
+ValueError: A bootstrap sample has no observed frames
