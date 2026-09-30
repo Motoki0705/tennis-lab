@@ -7,7 +7,11 @@ import math
 import torch
 from torch import Tensor, nn
 
-from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
+from src.tasks.ball_refiner.refiner_2d.config import (
+    CandidateAnchoredConfig,
+    Refiner2DConfig,
+)
+from src.tasks.ball_refiner.refiner_2d.mean_anchors import candidate_mean_logits
 
 
 class SetAttention(nn.Module):
@@ -83,6 +87,10 @@ class Refiner2DModel(nn.Module):
         with torch.no_grad():
             self.head.bias.zero_()
             self.head.bias[:-1].view(config.components, 6)[:, 2:4] = initial_scale_logit
+            if isinstance(config, CandidateAnchoredConfig):
+                # Zero offsets preserve subpixel peaks at initialization; other
+                # head rows and the trunk retain the same seed/initialization.
+                self.head.weight[:-1].view(config.components, 6, d)[:config.anchored_components, :2].zero_()
 
     @staticmethod
     def _temporal_encoder(config: Refiner2DConfig) -> nn.TransformerEncoder:
@@ -139,4 +147,10 @@ class Refiner2DModel(nn.Module):
         court_mask = court_valid[:, None].expand(-1, t, -1).reshape(b * t, -1)
         h = self.court_context(h, court, court_mask)
         h = self.temporal_after(h.reshape(b, t, d))
-        return self.head(self.head_norm(h))
+        raw = self.head(self.head_norm(h))
+        if isinstance(self.config, CandidateAnchoredConfig):
+            values = raw[..., :-1].reshape(b, t, self.config.components, 6)
+            means = candidate_mean_logits(values[..., :2], candidate_features, candidate_valid,
+                                          count=self.config.anchored_components, max_offset_uv=self.config.max_offset_uv)
+            return torch.cat((torch.cat((means, values[..., 2:].float()), dim=-1).flatten(-2), raw[..., -1:].float()), dim=-1)
+        return raw
