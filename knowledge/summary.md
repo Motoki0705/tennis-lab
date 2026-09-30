@@ -1,4 +1,4 @@
-<!-- knowledge-review: 223e0dfd045ebc946d9b032a73e065b094d3e9dfeff0c1792447f58f6e485bfc on 2026-09-30 -->
+<!-- knowledge-review: 9d885d5a4f21e590465f81d84ddb7c42f6e9f7f0b1866c2b13c893acded15d72 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -315,7 +315,7 @@ Hにも過小被覆と一部層の大きい位置誤差が残り、較正や最�
 [96件H dev](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を約52分・222 MBで生成し、40,774 frame/全125成分のreader・float32 SPD・存在質量・未評価flagを検証した。合成train/valの2D HDR90/95はobserved81.65/86.16%、gap84.39/88.53%で、新しい実pilotのvalより低い。母集団差はあるが暫定劣化の較正差が残り、項目2の最終完了とはしない。[固定2k更新の回収](nodes/ball_refiner_3d/000015-run-i936-h-dev-flow-regression-r9-s936-20260930.md)では、flow/回帰のval RMSEは8.01/8.20m、加速度p95は約2,940/4,057m/s²で有用性未達。335秒・allocated 0.425GBを実測した。同一16 valの混合平均7.36m/RTS6.97mより悪く、3camera可視のframeで大きく悪化する一方1camera可視では改善した。RTSはRMSE/再投影/加速度で両armを上回るが、絶対加速度は依然過大。[20k回収](nodes/ball_refiner_3d/000016-run-i936-h-dev-long-flow-regression-r10-s936-20260930.md)ではtrain x0が低下する一方val RMSEは9.80/9.15mへ悪化し、過学習を支持した。ただしonline T128 trainと全ラリーvalの差、物理項の因果は未分離。[凍結tokenのCPU read-out](nodes/ball_refiner_3d/000017-run-i936-condition-readout-r11-s936.md)は入力混合平均をtrain 1.65mm / val 7.49mmで再現した。pooled tokenでの大きな平均情報欠落は支持されない。
 
 [同一20k重み・同一CPU/noiseのT128比較](nodes/ball_refiner_3d/000018-run-i936-context-t128-r12-s936.md)では、flowのval RMSEが9.798→3.361m、回帰も9.152→3.454mへ改善した。事前の診断規則を満たしたためphysics-weight GPU比較は実施しない。学習T128と全ラリー検証の文脈差が大きな悪化を説明し、64trainへの過学習を第一原因とした解釈を修正する。ただし2kのT128評価はなく、同文脈での過学習を否定したものではない。flowはbehind-cameraと再投影平均・jerk平均が悪化し、最終パレート優位や本番採用は未達。次は新bank条件を監査し、全armのvalidation文脈を学習と揃える設計を固定する。
-#959暫定reportの旧devを対照として保持する。ユーザー判断Dに従い、#935のanchored headの共分散較正後のbank/hashを受け取ってから別directoryへdevを再生成する。640件も最終#935出力を待つ。
+[#935 anchored bankで同じ96ラリーを再生成・監査](nodes/ball_refiner_3d/000019-run-i936-anchored-dev-comparison-r12-s936.md)し、失敗0、全80train+valの軌道/camera/mask完全一致を確認した。全混合GT NLLは3.678→−2.979nat、HDR95は85.04→92.42%、平均HDR95体積193.0→33.63m³へ改善。HDR50は67.69%の過大被覆、1cameraの大誤差/過小被覆は残る。16valの混合平均/RTS RMSEは4.99/4.41mへ改善したが、RTSのbehind1件を含み最終優位とはしない。旧#959 devは対照として維持。新bankはfit frame由来で独立Meiji/OOF性能ではない。640件は同じ設定で4workers 8.1〜10時間・disk2GBを計画しただけで、#935最終seed/execute-load回収後のorchestrator日程を待つ。
 
 [保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
 全40windowの形状/4損失を検証し、2つのtrain prefixで400 updatesを完了した。

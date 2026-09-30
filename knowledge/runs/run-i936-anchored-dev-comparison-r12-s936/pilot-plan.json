@@ -1,0 +1,193 @@
+{
+  "status": "planned_not_started",
+  "mode": "pilot",
+  "source_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml",
+  "source_plan_sha256": "f76b4642ccab03cd0837cd5403b2a46b615100675d24808b65b48cb39461dcc4",
+  "source_commit": "66d11166",
+  "calibration": {
+    "bank": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/bank.npz",
+    "bank_sha256": "0697fe921daf79c7960d616ed0437efecd3b7195f3f8a7dd6188048dd8ecc858",
+    "report": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/calibration.json",
+    "report_sha256": "2c9cd7ba9a1d63addeaecb808441fbae0447ad21e4a3a279ed1694fcbf67ae01",
+    "block_frames": 16,
+    "out_of_frame_presence_logit": -4.0
+  },
+  "expanded_plan": {
+    "schema_version": 2,
+    "status": "cpu_generator_v2",
+    "purpose": "#936 development dataset with provisional #935 saved-validation degradation",
+    "seed": 936,
+    "simulation": {
+      "class": "src.tasks.blcs.generate_dataset.simulation.rally_simulator.RallySimulator",
+      "device": "cpu",
+      "workers": 4,
+      "maximum_physics_attempts_per_rally": 32,
+      "physics_base": "src/tasks/blcs/configs/physics/default.yaml",
+      "rally_base": "src/tasks/blcs/configs/rally/default.yaml",
+      "targeted_velocity_base": "src/tasks/blcs/configs/targeted_velocity/default.yaml",
+      "sim_fps": 240,
+      "native_output_fps": 240,
+      "physics_dt_seconds": "1/240"
+    },
+    "sampling": {
+      "fps_numerator": 60000,
+      "fps_denominator": 1001,
+      "interpolation": "linear at exact output timestamps",
+      "event_index": "nearest output timestamp; also preserve native time in seconds",
+      "max_frames_per_rally": 512,
+      "physics_event_mask_radius_frames": 5
+    },
+    "geometry": {
+      "sources": [
+        {
+          "split": "train",
+          "clip_id": "video_002/clip_010",
+          "path": "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_002_clip_010_002/scalars.json",
+          "sha256": "9d2488976a168697807e457819ea8801e6dfe1e0035717c023ba740859d51619",
+          "camera_keys": [
+            "cam_0_params",
+            "cam_1_params",
+            "cam_2_params"
+          ]
+        },
+        {
+          "split": "val",
+          "clip_id": "video_000/clip_003",
+          "path": "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_000_clip_003_000/scalars.json",
+          "sha256": "3ec27b1ef446fd48620cbd6dcab7e87f43082deca24d473525fcc3292dfc1d1c",
+          "camera_keys": [
+            "cam_0_params",
+            "cam_1_params",
+            "cam_2_params"
+          ]
+        },
+        {
+          "split": "test",
+          "clip_id": "video_001/clip_018",
+          "path": "/home/kamimura/projects/tennis-lab/data/blcs/meiji_geometry_replay_v1/scenes/meiji_video_001_clip_018_000/scalars.json",
+          "sha256": "4ca0bc2747ea4dbacbea3b1751d93e2b81051bc7233d52f385578c85d57e0b02",
+          "camera_keys": [
+            "cam_0_params",
+            "cam_1_params",
+            "cam_2_params"
+          ]
+        }
+      ],
+      "benchmark_used_only": "video_002/clip_010",
+      "perturbation_per_scene": {
+        "center_sigma_m": 0.15,
+        "axis_angle_sigma_deg": 0.5,
+        "focal_relative_sigma": 0.01,
+        "principal_point_sigma_px": 2.0
+      },
+      "calibration_error_condition": "clean_shared_perturbed_camera"
+    },
+    "degradation": {
+      "status": "anchored_e9_s42_covariance_scaled_calibration_fit_frames",
+      "distribution_class": "src.tasks.ball_refiner.refiner_2d.distribution.BallGMM2D",
+      "components_per_camera": 4,
+      "calibration": {
+        "bank": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/bank.npz",
+        "bank_sha256": "0697fe921daf79c7960d616ed0437efecd3b7195f3f8a7dd6188048dd8ecc858",
+        "report": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/calibration.json",
+        "report_sha256": "2c9cd7ba9a1d63addeaecb808441fbae0447ad21e4a3a279ed1694fcbf67ae01",
+        "block_frames": 16,
+        "out_of_frame_presence_logit": -4.0
+      },
+      "gap_lengths_frames": [
+        1,
+        4,
+        8,
+        16,
+        32,
+        64
+      ],
+      "occlusion_changes_presence": false,
+      "out_of_frame_changes_presence": true,
+      "mean_bounds_policy": "clip_to_source_grid",
+      "triangulation": "src.utils.geometry.probabilistic_triangulation.conditioning.triangulate_conditioning",
+      "boundary_convergence": {
+        "method": "fixed_hybrid",
+        "initial_cells": 8,
+        "levels": 4,
+        "refine_cells": 64,
+        "prior_sigmas": 5.0
+      },
+      "prior_mean_m": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "prior_covariance_diagonal_m2": [
+        36.0,
+        144.0,
+        9.0
+      ],
+      "max_components": 125,
+      "max_nfev": 100
+    },
+    "counts": {
+      "smoke_rallies_per_split": 4,
+      "pilot_rallies": {
+        "train": 512,
+        "val": 64,
+        "test": 64
+      },
+      "dev_rallies": {
+        "train": 64,
+        "val": 16,
+        "test": 16
+      }
+    },
+    "storage": {
+      "format": "float32 NPZ per rally plus JSON manifest; all mixture components preserved",
+      "estimated_pilot_limit_bytes": 1500000000,
+      "fields": [
+        "timestamps_seconds",
+        "positions_3d_m",
+        "events_seconds_and_frame",
+        "occlusion_mask",
+        "out_of_frame_mask",
+        "camera_K_R_t",
+        "source_size_wh",
+        "2d_means_covariance_weights_presence",
+        "3d_means_covariance_weights_camera_subsets",
+        "prior_only_probability",
+        "seed_config_and_source_hashes",
+        "integration_convergence_per_frame_and_component",
+        "calibration_row_provenance"
+      ]
+    },
+    "acceptance_checks": [
+      "exact 60000/1001Hz timestamps without integer-stride drift",
+      "event seconds retained and masks cover interpolation boundaries",
+      "no recording/window crosses splits",
+      "load BallGMM2D then pixel_moments and triangulate; raw observations are not an alternate path",
+      "all finite SPD distributions including long gaps",
+      "persist full covariance and between-mode uncertainty",
+      "report frame counts and bytes per split; generation failures are errors"
+    ]
+  },
+  "counts": {
+    "train": 512,
+    "val": 64,
+    "test": 64
+  },
+  "workers": 4,
+  "native_threads_per_worker": 1,
+  "reference_dev_generation_seconds": 4322.4420120749855,
+  "sum_dev_rally_seconds": 16980.68769009423,
+  "projected_serial_worker_hours": 32.31777086745042,
+  "projected_four_worker_wall_hours": 8.079442716862605,
+  "requested_wall_reservation_hours": [
+    8.1,
+    10.0
+  ],
+  "time_estimate_limitation": "sum of per-rally elapsed times includes shared-machine scheduling and IO; not measured CPU user+system time. 4-worker exclusive-equivalent reservation 32.3-40 core-hours; seed-dependent failures and cost not guaranteed.",
+  "projected_npz_bytes": 1420031172,
+  "projected_metadata_and_progress_bytes": 13648607,
+  "reserved_new_output_bytes": 2000000000,
+  "output": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936",
+  "launch_gate": "orchestrator scheduling after #935 final-seed and execute/load collection; no automatic bank replacement or generation in run12",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.generate_synthetic_3d --project-root /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation --data-root /home/kamimura/projects/tennis-lab/data --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml --mode pilot --calibration-report /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/calibration.json --output /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936"
+}
