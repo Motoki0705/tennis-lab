@@ -97,7 +97,7 @@ class RayProposal:
 
     def __init__(
         self, cameras: tuple[PinholeCamera, ...], means: FloatArray,
-        covariance: FloatArray, prior: GaussianPrior3D, *, anchor_index: int | None = None, _fit_only: bool = False,
+        covariance: FloatArray, prior: GaussianPrior3D, *, anchor_index: int | None = None, _fit_only: bool = False, initial_point: FloatArray | None = None,
     ) -> None:
         if anchor_index is None:
             # All active cameras supply a deterministic optimization start. The
@@ -107,8 +107,8 @@ class RayProposal:
             pilot = min(pilots, key=lambda p: p.physical_cost(p.log_target(p.mode[None])[1][0]))
             point = pilot.log_target(pilot.mode[None])[1][0]
             nearest = int(np.argmin([np.linalg.norm(point - c.center) for c in cameras]))
-            self.__dict__.update(pilots[nearest].__dict__)
-            self.set_metric()
+            recentered = RayProposal(cameras, means, covariance, prior, anchor_index=nearest, initial_point=point)
+            self.__dict__.update(recentered.__dict__)
             return
         anchor = anchor_index
         indices = [anchor] + [i for i in range(len(cameras)) if i != anchor]
@@ -124,20 +124,28 @@ class RayProposal:
         self.rotations = np.stack([c.rotation for c in self.cameras])
         self.translations = np.stack([c.translation for c in self.cameras])
         self.matrices = np.stack([c.matrix for c in self.cameras])
-        ray = np.r_[self.means[0], 1.] @ self.ray_matrix
+        angular = np.zeros(2)
+        if initial_point is not None:
+            projected_start = self.matrices[0, :, :3] @ initial_point + self.matrices[0, :, 3]
+            angular = np.linalg.solve(self.chol, projected_start[:2] / projected_start[2] - self.means[0])
+        ray = np.r_[self.means[0] + self.chol @ angular, 1.] @ self.ray_matrix
         a = ray @ self.prior_precision @ ray
         b = ray @ self.prior_precision @ (self.center - prior.mean)
         depth = (-b + np.sqrt(b * b + 12 * a)) / (2 * a)
+        if initial_point is not None:
+            depth = float(self.rotations[0, 2] @ initial_point + self.translations[0, 2])
         lower, upper = self.bounds(ray[None])
         if upper[0] <= lower[0]:
             raise RuntimeError("Anchor mean ray has no positive-depth interval")
         if np.isfinite(upper[0]):
-            depth = np.clip(depth, lower[0] + .01 * (upper[0] - lower[0]), upper[0] - .01 * (upper[0] - lower[0]))
+            if initial_point is None:
+                depth = np.clip(depth, lower[0] + .01 * (upper[0] - lower[0]), upper[0] - .01 * (upper[0] - lower[0]))
             value = np.log((depth - lower[0]) / (upper[0] - depth))
         else:
-            depth = max(depth, lower[0] + 1.)
+            if initial_point is None:
+                depth = max(depth, lower[0] + 1.)
             value = np.log(depth - lower[0])
-        fit = minimize(self.cost_gradient, np.array([0., 0., value]), method="BFGS", jac=True, options={"gtol": 1e-5, "maxiter": 150})
+        fit = minimize(self.cost_gradient, np.r_[angular, value], method="BFGS", jac=True, options={"gtol": 1e-5, "maxiter": 150})
         # A stationary point is not required for a change of integration variable.
         # A finite centre and strictly positive full Hessian are required; no jitter.
         self.mode: FloatArray = np.asarray(fit.x, np.float64)
