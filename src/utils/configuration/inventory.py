@@ -318,6 +318,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.ball_refiner.scripts.experiment_dev_3d": (
+        "ball_refiner.experiment_dev_3d",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner.scripts.audit_conditions_3d": (
         "ball_refiner.audit_conditions_3d",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -500,6 +504,7 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary("src.tasks.ball_refiner.scripts.experiment_dev_3d", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.audit_conditions_3d", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.probe_context_3d", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.probe_conditioning_3d", "main", domain="ball_refiner", executable_module=True),

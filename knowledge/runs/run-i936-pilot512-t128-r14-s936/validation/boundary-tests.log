@@ -1,0 +1,119 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 1/1 worker
+1 worker [53 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit 
+[gw0] [  1%] PASSED tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit 
+tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed 
+[gw0] [  3%] PASSED tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed 
+tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed 
+[gw0] [  5%] PASSED tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed 
+tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable 
+[gw0] [  7%] PASSED tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable 
+tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings 
+[gw0] [  9%] PASSED tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings 
+tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh 
+[gw0] [ 11%] PASSED tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh 
+tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity 
+[gw0] [ 13%] PASSED tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts] 
+[gw0] [ 15%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts] 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation] 
+[gw0] [ 16%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation] 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation] 
+[gw0] [ 18%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base] 
+[gw0] [ 20%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection] 
+[gw0] [ 22%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs] 
+[gw0] [ 24%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection] 
+[gw0] [ 26%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs] 
+[gw0] [ 28%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs] 
+[gw0] [ 30%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene] 
+[gw0] [ 32%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation] 
+[gw0] [ 33%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules] 
+[gw0] [ 35%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations] 
+[gw0] [ 37%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations] 
+tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy 
+[gw0] [ 39%] PASSED tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy 
+tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none 
+[gw0] [ 41%] PASSED tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none 
+tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities 
+[gw0] [ 43%] PASSED tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities 
+tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths 
+[gw0] [ 45%] PASSED tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths 
+tests/unit/utils/configuration/test_contracts.py::test_ball_refiner_experiment_requires_an_existing_project_plan 
+[gw0] [ 47%] PASSED tests/unit/utils/configuration/test_contracts.py::test_ball_refiner_experiment_requires_an_existing_project_plan 
+tests/unit/utils/configuration/test_contracts.py::test_gvhmr_extraction_boundary_declares_every_storage_and_model_path 
+[gw0] [ 49%] PASSED tests/unit/utils/configuration/test_contracts.py::test_gvhmr_extraction_boundary_declares_every_storage_and_model_path 
+tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema 
+[gw0] [ 50%] PASSED tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema 
+tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root 
+[gw0] [ 52%] PASSED tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root 
+tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries 
+[gw0] [ 54%] PASSED tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries 
+tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles 
+[gw0] [ 56%] PASSED tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.] 
+[gw0] [ 58%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.] 
+[gw0] [ 60%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.] 
+[gw0] [ 62%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.] 
+[gw0] [ 64%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_boundary_catalog_follows_package_reexport_to_actual_adapter 
+[gw0] [ 66%] PASSED tests/unit/utils/configuration/test_contracts.py::test_boundary_catalog_follows_package_reexport_to_actual_adapter 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection] 
+[gw0] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs] 
+[gw0] [ 69%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection] 
+[gw0] [ 71%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs] 
+[gw0] [ 73%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs] 
+[gw0] [ 75%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene] 
+[gw0] [ 77%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation] 
+[gw0] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules] 
+[gw0] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules] 
+tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type 
+[gw0] [ 83%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig] 
+[gw0] [ 84%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallYoutubePathContract] 
+[gw0] [ 86%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallYoutubePathContract] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.TrackQueryModelConfig] 
+[gw0] [ 88%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.TrackQueryModelConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig] 
+[gw0] [ 90%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig] 
+[gw0] [ 92%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig] 
+[gw0] [ 94%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig] 
+[gw0] [ 96%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration] 
+[gw0] [ 98%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig] 
+[gw0] [100%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig] 
+
+======================== 53 passed in 148.66s (0:02:28) ========================
