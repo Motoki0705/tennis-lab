@@ -1,0 +1,2251 @@
+{
+  "status": "complete",
+  "plan_sha256": "323ab7a6e15d4fc1571084203f456d119aa8cdb80f58359d00f11ea664468adc",
+  "read_rallies": [
+    {
+      "rally_id": "val-00000",
+      "npz_sha256": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+      "frames": 178
+    },
+    {
+      "rally_id": "val-00001",
+      "npz_sha256": "7ccd84ed5c86201e1a63cfad52c00105d734d512de8671c87bec0e999acfe0c5",
+      "frames": 512
+    },
+    {
+      "rally_id": "val-00002",
+      "npz_sha256": "1152f4a4079ef65c6644c6b4da15bd6169b6a72136addce29e58f59ae3e3afab",
+      "frames": 512
+    },
+    {
+      "rally_id": "val-00003",
+      "npz_sha256": "7506d130babdebcf8eee368496aea13bbc1455e821a39fe86e1f2e31cd689f1a",
+      "frames": 199
+    },
+    {
+      "rally_id": "val-00004",
+      "npz_sha256": "5a472cfd898573aed990edd0269c6d237d4c8cc46541f5778d2d0a452f8e525e",
+      "frames": 416
+    },
+    {
+      "rally_id": "val-00005",
+      "npz_sha256": "83f2173e38118fc89584651cc5ce2b6c181ff0e8602151d3a77965dadea3ccae",
+      "frames": 512
+    },
+    {
+      "rally_id": "val-00006",
+      "npz_sha256": "0108b03e44b3cd2f71d6ee067cebf2b3b5e6bd2a25cd268aa04974b4d5662b9e",
+      "frames": 425
+    },
+    {
+      "rally_id": "val-00007",
+      "npz_sha256": "5cefa9c0e502dfb745fab87d83826d5b9e1173edbfe2fab8e57d4a7b0016e71e",
+      "frames": 286
+    },
+    {
+      "rally_id": "val-00008",
+      "npz_sha256": "257d516d9f61ac7eb1fd80e5a621e285db4d51fe9da70ba0826347b57b9af7af",
+      "frames": 512
+    },
+    {
+      "rally_id": "val-00009",
+      "npz_sha256": "d367fc64a3d3c94740d930dda1e88543f433578cbcc52c77c94ed00a13103c5f",
+      "frames": 512
+    },
+    {
+      "rally_id": "val-00010",
+      "npz_sha256": "665e1495f65f3543c07699a8fa50761105e56598196155d979c9afce86423897",
+      "frames": 411
+    },
+    {
+      "rally_id": "val-00011",
+      "npz_sha256": "d2d282c03672918d51218296e122c35f20794be297637f21b0bc87c5fe716c21",
+      "frames": 512
+    },
+    {
+      "rally_id": "val-00012",
+      "npz_sha256": "404a83f4f6c5b7cccedd7ceadfaeaca3421b3fd931de5abc4bc7207e4f708b02",
+      "frames": 452
+    },
+    {
+      "rally_id": "val-00013",
+      "npz_sha256": "5e8caef46f2837cc32777fd57e6e8866f795d32f1c9250f9ccca7891a7df642d",
+      "frames": 290
+    },
+    {
+      "rally_id": "val-00014",
+      "npz_sha256": "4f7d8945ebb9e3838c2932548cdd626e831552aacbca9bb0ed23a18296bc4fd3",
+      "frames": 450
+    },
+    {
+      "rally_id": "val-00015",
+      "npz_sha256": "27076b213e066edc77be2c1a384841ee4e9ff03427e384566399a39974c99990",
+      "frames": 204
+    }
+  ],
+  "test_arrays_read": 0,
+  "extra_val_arrays_read": 0,
+  "device": "cpu",
+  "native_threads": 1,
+  "primary_update": 20000,
+  "prediction_windows": {
+    "val-00000": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 178,
+            "owned_start": 128,
+            "owned_stop": 178,
+            "padded_frames": 78
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 178,
+            "padded_frames": 14
+          },
+          {
+            "window_start": 128,
+            "real_stop": 178,
+            "padded_frames": 78
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 178,
+            "owned_start": 128,
+            "owned_stop": 178,
+            "padded_frames": 78
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 178,
+            "padded_frames": 14
+          },
+          {
+            "window_start": 128,
+            "real_stop": 178,
+            "padded_frames": 78
+          }
+        ]
+      }
+    },
+    "val-00001": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      }
+    },
+    "val-00002": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      }
+    },
+    "val-00003": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 199,
+            "owned_start": 128,
+            "owned_stop": 199,
+            "padded_frames": 57
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 199,
+            "padded_frames": 57
+          },
+          {
+            "window_start": 192,
+            "real_stop": 199,
+            "padded_frames": 121
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 199,
+            "owned_start": 128,
+            "owned_stop": 199,
+            "padded_frames": 57
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 199,
+            "padded_frames": 57
+          },
+          {
+            "window_start": 192,
+            "real_stop": 199,
+            "padded_frames": 121
+          }
+        ]
+      }
+    },
+    "val-00004": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 416,
+            "owned_start": 384,
+            "owned_stop": 416,
+            "padded_frames": 96
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 416,
+            "padded_frames": 32
+          },
+          {
+            "window_start": 384,
+            "real_stop": 416,
+            "padded_frames": 96
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 416,
+            "owned_start": 384,
+            "owned_stop": 416,
+            "padded_frames": 96
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 416,
+            "padded_frames": 32
+          },
+          {
+            "window_start": 384,
+            "real_stop": 416,
+            "padded_frames": 96
+          }
+        ]
+      }
+    },
+    "val-00005": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      }
+    },
+    "val-00006": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 425,
+            "owned_start": 384,
+            "owned_stop": 425,
+            "padded_frames": 87
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 425,
+            "padded_frames": 23
+          },
+          {
+            "window_start": 384,
+            "real_stop": 425,
+            "padded_frames": 87
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 425,
+            "owned_start": 384,
+            "owned_stop": 425,
+            "padded_frames": 87
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 425,
+            "padded_frames": 23
+          },
+          {
+            "window_start": 384,
+            "real_stop": 425,
+            "padded_frames": 87
+          }
+        ]
+      }
+    },
+    "val-00007": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 286,
+            "owned_start": 256,
+            "owned_stop": 286,
+            "padded_frames": 98
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 286,
+            "padded_frames": 34
+          },
+          {
+            "window_start": 256,
+            "real_stop": 286,
+            "padded_frames": 98
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 286,
+            "owned_start": 256,
+            "owned_stop": 286,
+            "padded_frames": 98
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 286,
+            "padded_frames": 34
+          },
+          {
+            "window_start": 256,
+            "real_stop": 286,
+            "padded_frames": 98
+          }
+        ]
+      }
+    },
+    "val-00008": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      }
+    },
+    "val-00009": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      }
+    },
+    "val-00010": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 411,
+            "owned_start": 384,
+            "owned_stop": 411,
+            "padded_frames": 101
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 411,
+            "padded_frames": 37
+          },
+          {
+            "window_start": 384,
+            "real_stop": 411,
+            "padded_frames": 101
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 411,
+            "owned_start": 384,
+            "owned_stop": 411,
+            "padded_frames": 101
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 411,
+            "padded_frames": 37
+          },
+          {
+            "window_start": 384,
+            "real_stop": 411,
+            "padded_frames": 101
+          }
+        ]
+      }
+    },
+    "val-00011": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "owned_start": 384,
+            "owned_stop": 512,
+            "padded_frames": 0
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 512,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 448,
+            "real_stop": 512,
+            "padded_frames": 64
+          }
+        ]
+      }
+    },
+    "val-00012": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 452,
+            "owned_start": 384,
+            "owned_stop": 452,
+            "padded_frames": 60
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 452,
+            "padded_frames": 60
+          },
+          {
+            "window_start": 448,
+            "real_stop": 452,
+            "padded_frames": 124
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 452,
+            "owned_start": 384,
+            "owned_stop": 452,
+            "padded_frames": 60
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 452,
+            "padded_frames": 60
+          },
+          {
+            "window_start": 448,
+            "real_stop": 452,
+            "padded_frames": 124
+          }
+        ]
+      }
+    },
+    "val-00013": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 290,
+            "owned_start": 256,
+            "owned_stop": 290,
+            "padded_frames": 94
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 290,
+            "padded_frames": 30
+          },
+          {
+            "window_start": 256,
+            "real_stop": 290,
+            "padded_frames": 94
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 290,
+            "owned_start": 256,
+            "owned_stop": 290,
+            "padded_frames": 94
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 290,
+            "padded_frames": 30
+          },
+          {
+            "window_start": 256,
+            "real_stop": 290,
+            "padded_frames": 94
+          }
+        ]
+      }
+    },
+    "val-00014": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 450,
+            "owned_start": 384,
+            "owned_stop": 450,
+            "padded_frames": 62
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 450,
+            "padded_frames": 62
+          },
+          {
+            "window_start": 447,
+            "real_stop": 450,
+            "padded_frames": 125
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "owned_start": 128,
+            "owned_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "owned_start": 256,
+            "owned_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 450,
+            "owned_start": 384,
+            "owned_stop": 450,
+            "padded_frames": 62
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 256,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 192,
+            "real_stop": 320,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 256,
+            "real_stop": 384,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 320,
+            "real_stop": 448,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 384,
+            "real_stop": 450,
+            "padded_frames": 62
+          },
+          {
+            "window_start": 447,
+            "real_stop": 450,
+            "padded_frames": 125
+          }
+        ]
+      }
+    },
+    "val-00015": {
+      "flow": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 204,
+            "owned_start": 128,
+            "owned_stop": 204,
+            "padded_frames": 52
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 204,
+            "padded_frames": 52
+          },
+          {
+            "window_start": 192,
+            "real_stop": 204,
+            "padded_frames": 116
+          }
+        ]
+      },
+      "regression": {
+        "control": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "owned_start": 0,
+            "owned_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 204,
+            "owned_start": 128,
+            "owned_stop": 204,
+            "padded_frames": 52
+          }
+        ],
+        "overlap": [
+          {
+            "window_start": 0,
+            "real_stop": 128,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 64,
+            "real_stop": 192,
+            "padded_frames": 0
+          },
+          {
+            "window_start": 128,
+            "real_stop": 204,
+            "padded_frames": 52
+          },
+          {
+            "window_start": 192,
+            "real_stop": 204,
+            "padded_frames": 116
+          }
+        ]
+      }
+    }
+  },
+  "frames": 6383,
+  "all_pinned_hashes_unchanged": true,
+  "resources": {
+    "elapsed_seconds": 217.73036215105094,
+    "peak_rss_bytes": 976998400,
+    "minimum_available_host_bytes": 20785803264,
+    "gpu_jobs": 0
+  },
+  "artifacts": {
+    "comparison.json": {
+      "sha256": "589a0a01d128d3e89b3d98ac93eeee40ef0e75c77239b171b8511e9e27459104",
+      "bytes": 118583
+    },
+    "comparison.md": {
+      "sha256": "f553008e63c128f047399c9e76ee331d49cb690bfa77810a1273c6d4c8ce3af0",
+      "bytes": 6741
+    },
+    "roughness.json": {
+      "sha256": "c8702a66bd19e0e159abc5f5f906fb7865af7c12fae8db65b9f1b89cdc9ad600",
+      "bytes": 22125
+    },
+    "rules.json": {
+      "sha256": "1d34b5e46fa158adef6b44dfe9d80adfb9759948a017ca698cbd1c9ca82d686a",
+      "bytes": 41680
+    },
+    "val-00000.npz": {
+      "sha256": "d151ce5655fff4e18905cd19320cac4c217c8a320bcbb0a604bfe85305bd2dfb",
+      "bytes": 34388
+    },
+    "val-00001.npz": {
+      "sha256": "ccacfe76db581282e9f3fb4975a36555a6a79d47efa6716b8f25fe632e1b0bc4",
+      "bytes": 91462
+    },
+    "val-00002.npz": {
+      "sha256": "647c41339e8ad233e52c4abe32c3a8cc822daf779c6ec7b4878aff5c5a060b4b",
+      "bytes": 91926
+    },
+    "val-00003.npz": {
+      "sha256": "c465a13d73909f78fb8031d332174ebf6bff8b6fee28d0d196517897417761af",
+      "bytes": 38062
+    },
+    "val-00004.npz": {
+      "sha256": "f88ef98770451b5cdb7f4e71f585b1cbfe73f9506a1ca5702706ed5793e7cf50",
+      "bytes": 74558
+    },
+    "val-00005.npz": {
+      "sha256": "c0786d56f116fa048afbc8041e7e2b8581aac3c5c9375cdc1c566409b6bd3a9e",
+      "bytes": 91446
+    },
+    "val-00006.npz": {
+      "sha256": "9fddade8388dc73c5b3af06116c0773a3bc34bdf0e26ccdf2b430eb23a6af9d3",
+      "bytes": 77129
+    },
+    "val-00007.npz": {
+      "sha256": "14bc0d3fed17f267a84b812199568326443373fccc7e79a2c698edff415b3e89",
+      "bytes": 53044
+    },
+    "val-00008.npz": {
+      "sha256": "fca949ba26db291b8b4da8b8c3ea73b3ac297a6a72a50c88f7a101c10de5b3fe",
+      "bytes": 92030
+    },
+    "val-00009.npz": {
+      "sha256": "c065dc6b573a097cde36627270fa4f35069482319983d7111da1c9288c7132a6",
+      "bytes": 91831
+    },
+    "val-00010.npz": {
+      "sha256": "220de6d40a7faa06b6bc22e6a4728a52d0580a2acdaeb65bf2d65e149180e970",
+      "bytes": 74510
+    },
+    "val-00011.npz": {
+      "sha256": "e911fbfa13981d6ca8d9cbf56b29d775386fb5294a34c95507e14d96599e82b8",
+      "bytes": 91367
+    },
+    "val-00012.npz": {
+      "sha256": "044ce4d48977331b145671a288e790d1f95a4e22b6b72ec13843d9e5159a01b7",
+      "bytes": 81736
+    },
+    "val-00013.npz": {
+      "sha256": "ad0d15779d070d45a449953fd46daef4f0025966fb26feebf423cc800ed5c4ff",
+      "bytes": 53804
+    },
+    "val-00014.npz": {
+      "sha256": "e9539e95458504545acf81775b9882b6248f10aaec504ab41f290edee57b77a8",
+      "bytes": 80994
+    },
+    "val-00015.npz": {
+      "sha256": "52c8b8c5c7f198872dc48fe46807d0bf76d1471f4c87fc6beb2caa658055d57b",
+      "bytes": 38916
+    }
+  }
+}
