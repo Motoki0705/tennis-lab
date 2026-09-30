@@ -1,4 +1,4 @@
-<!-- knowledge-review: 667d538016b351a8087a4278f022b577250b97face50344031599a5ca0e5ba45 on 2026-10-01 -->
+<!-- knowledge-review: 90ca1cc64654783e88904bacc3d2ee1b5093e55f45d42591ce530c6e82a58ffe on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -96,7 +96,10 @@ e9＋現行score/gate .406997でFFTに決まる。e9は720p JPEG/採用窓も異
 ball labelはclip_000の診断専用で使用し、production import・人物label再採点・未見の開封は0。
 閾値/既定は変更していない。診断nodeに、#935と接続する入力整合/ball証拠改善と、
 #932で別評価が要るball-only集約/rig蓄積の費用・不確実性を提示した。どの対策も選択せず、全pipeline受入は未達。
-旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
+旧#933の結論は旧trackに限定したまま維持する。2026-10-01のユーザー判断により、
+[run16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)で候補Aを既定にし、
+人物設定と資産hashを未見開封前に凍結する。clip_000完走を最後の未完項目として残し、
+予約3clipを同じ注釈ball由来side規約で一回だけ評価する。ft-e13/court_sideは変更しない。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
 旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。
