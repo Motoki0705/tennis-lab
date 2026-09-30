@@ -1,0 +1,75 @@
+{
+  "audit_batches": [
+    {
+      "batch": 0,
+      "frames": 500,
+      "wall_seconds": 206.812156479049,
+      "workers": 4
+    },
+    {
+      "batch": 1,
+      "frames": 500,
+      "wall_seconds": 38.42130442900816,
+      "workers": 4
+    },
+    {
+      "batch": 2,
+      "frames": 500,
+      "wall_seconds": 268.37428090302274,
+      "workers": 4
+    },
+    {
+      "batch": 3,
+      "frames": 500,
+      "wall_seconds": 189.63182262697956,
+      "workers": 4
+    },
+    {
+      "batch": 4,
+      "frames": 500,
+      "wall_seconds": 38.993407936010044,
+      "workers": 4
+    },
+    {
+      "batch": 5,
+      "frames": 500,
+      "wall_seconds": 103.2561587219825,
+      "workers": 4
+    },
+    {
+      "batch": 6,
+      "frames": 500,
+      "wall_seconds": 100.57604293699842,
+      "workers": 4
+    },
+    {
+      "batch": 7,
+      "frames": 500,
+      "wall_seconds": 46.96943521598587,
+      "workers": 4
+    },
+    {
+      "batch": 8,
+      "frames": 500,
+      "wall_seconds": 35.0376966400072,
+      "workers": 4
+    },
+    {
+      "batch": 9,
+      "frames": 309,
+      "wall_seconds": 117.442525424005,
+      "workers": 4
+    }
+  ],
+  "batch_wall_seconds_sum": 1145.5148313130485,
+  "worker_elapsed_seconds_sum": 3316.858735912072,
+  "ram_available_gib_observed_min": 23,
+  "gpu_jobs": 0,
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "torch": "2.13.0+cu130"
+  },
+  "note": "Batch walls exclude pauses for diagnosis/CI; per-frame worker elapsed times include scheduling and are not process CPU times."
+}

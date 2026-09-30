@@ -1,0 +1,21 @@
+{
+  "commit": "fcda13104cd9d40402b71375091341358e3888fd",
+  "files": {
+    "src/utils/geometry/probabilistic_triangulation/volume.py": "0eb02436b089074e8062a9feb0747877b2c7b9a954d4af147a37800dc8bed3ee",
+    "src/utils/geometry/probabilistic_triangulation/distributions.py": "29144899a662a2b00f9b9a8e26262ccfe2ebc12616dbad3f42c1b3e51d9e7b9b",
+    "src/utils/geometry/probabilistic_triangulation/ray.py": "70de4f7fd53bb1ad5def91664b116904a235ec9454d6674750f1e6bc03bd4dfe",
+    "src/utils/geometry/probabilistic_triangulation/convergence.py": "2d93e5494789a5a43840629d2737c97f65ac30305c2241272c8c3c8214b7fedd",
+    "src/utils/geometry/probabilistic_triangulation/solver.py": "7c6bb65bf1354a9565f3f1aded477f971261e76f56c597c61e25c61da6e7659b",
+    "src/utils/geometry/probabilistic_triangulation/__init__.py": "55fdc0c59f62b18e5131d4cdb58289ad2b77d395339b727dbc9817fd9218eb27",
+    "src/utils/geometry/probabilistic_triangulation/optimization.py": "5bb8e03dd91226e1723ce8afe1218426013909522ae9600c65d93e7f5ff19197",
+    "src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml": "a3e47af1446e539020716b655c82957f71b885c37618e35680fe0818908f28ae",
+    "knowledge/runs/run-i936-ray-convergence-r6-s936/audit_smoke.py": "c6f18825b962029abf966619ac522fafa750edf999feeffd6c7425be2b7c4634",
+    "knowledge/runs/run-i936-ray-convergence-r6-s936/audit_balanced.py": "4b4b92c525af5c460670b25fe2e0472de5e461bb93a30c34e693c8345b868db5"
+  },
+  "source": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-r3",
+  "outputs": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-ray-r6-v2",
+  "audit_batches": {
+    "0-2": "audit_smoke.py, 32 frames per scheduling chunk",
+    "3-9": "audit_balanced.py, 8 frames per scheduling chunk"
+  }
+}

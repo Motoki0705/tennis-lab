@@ -1,0 +1,437 @@
+{
+  "source_manifest_sha256": "bcc42426f9c932080be052f665e3903c2dfe830d301ae20f53ceb0577bf9ad1f",
+  "records": [
+    {
+      "rally_id": "train-00003",
+      "frame": 0,
+      "seconds": 11.166634441004135,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.1721976757318977,
+          "max_log_evidence_delta_nat": 0.021418394746337555,
+          "max_mean_delta": 0.3021209604105933,
+          "max_covariance_relative_delta": 0.14039222597378398,
+          "nonconverged_components": 6,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.10076454621026798,
+          "max_log_evidence_delta_nat": 0.011827918501431611,
+          "max_mean_delta": 0.2086065450253715,
+          "max_covariance_relative_delta": 0.16886338145054783,
+          "nonconverged_components": 2,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.05860653176987185,
+          "max_log_evidence_delta_nat": 0.002170679726191338,
+          "max_mean_delta": 0.044427893898207865,
+          "max_covariance_relative_delta": 0.03335262660029389,
+          "nonconverged_components": 1,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.035367633329688175,
+          "max_log_evidence_delta_nat": 0.0032238227561052213,
+          "max_mean_delta": 0.057223551838778135,
+          "max_covariance_relative_delta": 0.046336235522664644,
+          "nonconverged_components": 2,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "76608587cae73e5c26df48c17a7ab7bd80b765594b52f66c8edb1ee9fb229f6d"
+    },
+    {
+      "rally_id": "train-00003",
+      "frame": 36,
+      "seconds": 7.095398770994507,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.2557701241003567,
+          "max_log_evidence_delta_nat": 0.018835965065196802,
+          "max_mean_delta": 0.30306862759506786,
+          "max_covariance_relative_delta": 0.21791217925550313,
+          "nonconverged_components": 5,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.048803546143364684,
+          "max_log_evidence_delta_nat": 0.008981286236231512,
+          "max_mean_delta": 0.1505382844061224,
+          "max_covariance_relative_delta": 0.1377052440466181,
+          "nonconverged_components": 2,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.022138833988323725,
+          "max_log_evidence_delta_nat": 0.0035540647070995135,
+          "max_mean_delta": 0.057176417268442546,
+          "max_covariance_relative_delta": 0.042694109419968,
+          "nonconverged_components": 5,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.023988843769304324,
+          "max_log_evidence_delta_nat": 0.001778962469405343,
+          "max_mean_delta": 0.029727749521155943,
+          "max_covariance_relative_delta": 0.019195113256081607,
+          "nonconverged_components": 2,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "76608587cae73e5c26df48c17a7ab7bd80b765594b52f66c8edb1ee9fb229f6d"
+    },
+    {
+      "rally_id": "train-00003",
+      "frame": 71,
+      "seconds": 5.700042404991109,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.03521101057961573,
+          "max_log_evidence_delta_nat": 0.04604322689397122,
+          "max_mean_delta": 0.5008775063537197,
+          "max_covariance_relative_delta": 0.10106500933612751,
+          "nonconverged_components": 5,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.013631417620292297,
+          "max_log_evidence_delta_nat": 0.016061400308714724,
+          "max_mean_delta": 0.16699613769346475,
+          "max_covariance_relative_delta": 0.13268716391413996,
+          "nonconverged_components": 5,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.004223453527778531,
+          "max_log_evidence_delta_nat": 0.0024674258270742655,
+          "max_mean_delta": 0.06736370962274969,
+          "max_covariance_relative_delta": 0.049642200568223965,
+          "nonconverged_components": 3,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.001714086912544488,
+          "max_log_evidence_delta_nat": 0.001311765269019105,
+          "max_mean_delta": 0.024643709706978722,
+          "max_covariance_relative_delta": 0.031020528919403254,
+          "nonconverged_components": 2,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "76608587cae73e5c26df48c17a7ab7bd80b765594b52f66c8edb1ee9fb229f6d"
+    },
+    {
+      "rally_id": "val-00003",
+      "frame": 0,
+      "seconds": 4.794460067991167,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.05813532368039276,
+          "max_log_evidence_delta_nat": 0.09469813243441294,
+          "max_mean_delta": 0.8772483290467878,
+          "max_covariance_relative_delta": 0.08445744882695859,
+          "nonconverged_components": 6,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.08777661145621529,
+          "max_log_evidence_delta_nat": 0.12774680109372838,
+          "max_mean_delta": 0.4381340939438721,
+          "max_covariance_relative_delta": 0.20986773097323402,
+          "nonconverged_components": 7,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.0630226792994506,
+          "max_log_evidence_delta_nat": 0.07173933313716674,
+          "max_mean_delta": 0.5784764070883383,
+          "max_covariance_relative_delta": 0.06270559922755531,
+          "nonconverged_components": 4,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.053151035817313286,
+          "max_log_evidence_delta_nat": 0.06632159553750938,
+          "max_mean_delta": 0.35139421500476714,
+          "max_covariance_relative_delta": 0.08696375364398178,
+          "nonconverged_components": 3,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "6218e5952900cbbeb45403a9fccd97e9e8515efdfa4a0c7d79e01941f086c986"
+    },
+    {
+      "rally_id": "val-00003",
+      "frame": 36,
+      "seconds": 5.173400446015876,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.07005996311361429,
+          "max_log_evidence_delta_nat": 0.1396625184541307,
+          "max_mean_delta": 1.0175504306126189,
+          "max_covariance_relative_delta": 0.13953567430893407,
+          "nonconverged_components": 12,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.07785891107048748,
+          "max_log_evidence_delta_nat": 0.09916878260350614,
+          "max_mean_delta": 0.6772929306979479,
+          "max_covariance_relative_delta": 0.08457310585857516,
+          "nonconverged_components": 9,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.05017295671866506,
+          "max_log_evidence_delta_nat": 0.06939548472071166,
+          "max_mean_delta": 0.3277782245485261,
+          "max_covariance_relative_delta": 0.07848697980232729,
+          "nonconverged_components": 9,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.011632871553040047,
+          "max_log_evidence_delta_nat": 0.08773407496195773,
+          "max_mean_delta": 0.4903500981076622,
+          "max_covariance_relative_delta": 0.08798869852934375,
+          "nonconverged_components": 7,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "6218e5952900cbbeb45403a9fccd97e9e8515efdfa4a0c7d79e01941f086c986"
+    },
+    {
+      "rally_id": "val-00003",
+      "frame": 71,
+      "seconds": 0.5635115430341102,
+      "converged": true,
+      "components": 125,
+      "rounds": 3,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.0656959036847482,
+          "max_log_evidence_delta_nat": 0.004070908764688852,
+          "max_mean_delta": 0.016069795976264192,
+          "max_covariance_relative_delta": 0.06133189386231735,
+          "nonconverged_components": 1,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.031743633020994366,
+          "max_log_evidence_delta_nat": 0.0008423531305830068,
+          "max_mean_delta": 0.005501984538320011,
+          "max_covariance_relative_delta": 0.023709945503853247,
+          "nonconverged_components": 0,
+          "converged": true
+        }
+      ],
+      "source_npz_sha256": "6218e5952900cbbeb45403a9fccd97e9e8515efdfa4a0c7d79e01941f086c986"
+    },
+    {
+      "rally_id": "test-00003",
+      "frame": 0,
+      "seconds": 15.029275509994477,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.1032499114049461,
+          "max_log_evidence_delta_nat": 0.10945759404405564,
+          "max_mean_delta": 2.065865442569935,
+          "max_covariance_relative_delta": 0.9942447663709167,
+          "nonconverged_components": 10,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.15723729966648214,
+          "max_log_evidence_delta_nat": 1.5389288971698534,
+          "max_mean_delta": 25.401613730788586,
+          "max_covariance_relative_delta": 0.6648742121162958,
+          "nonconverged_components": 8,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.10186824346485501,
+          "max_log_evidence_delta_nat": 0.9617185516506623,
+          "max_mean_delta": 11.509575374931584,
+          "max_covariance_relative_delta": 0.9289250384329629,
+          "nonconverged_components": 6,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.08440128986847917,
+          "max_log_evidence_delta_nat": 0.45411225203241656,
+          "max_mean_delta": 6.777452383088156,
+          "max_covariance_relative_delta": 0.21560867553482618,
+          "nonconverged_components": 5,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "50879142b717b22082d00bcfed807ecc82d87db86aa998450021cfa688fbbca8"
+    },
+    {
+      "rally_id": "test-00003",
+      "frame": 36,
+      "seconds": 11.16175279399613,
+      "converged": false,
+      "components": 125,
+      "rounds": 5,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.06113270744463506,
+          "max_log_evidence_delta_nat": 0.06341977872945392,
+          "max_mean_delta": 0.6372734820750047,
+          "max_covariance_relative_delta": 0.0717379847386028,
+          "nonconverged_components": 25,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.020973680434366315,
+          "max_log_evidence_delta_nat": 0.036953171253770734,
+          "max_mean_delta": 0.3001163264793545,
+          "max_covariance_relative_delta": 0.12139204147819685,
+          "nonconverged_components": 19,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.005312427682898857,
+          "max_log_evidence_delta_nat": 0.011052996776584223,
+          "max_mean_delta": 0.13638805806830273,
+          "max_covariance_relative_delta": 0.06843086852346833,
+          "nonconverged_components": 13,
+          "converged": false
+        },
+        {
+          "round": 5,
+          "quadrature_order": 64,
+          "nll_delta_nat": 0.0030178560188609538,
+          "max_log_evidence_delta_nat": 0.0077113040816350065,
+          "max_mean_delta": 0.14424695156660822,
+          "max_covariance_relative_delta": 0.06340392809686517,
+          "nonconverged_components": 7,
+          "converged": false
+        }
+      ],
+      "source_npz_sha256": "50879142b717b22082d00bcfed807ecc82d87db86aa998450021cfa688fbbca8"
+    },
+    {
+      "rally_id": "test-00003",
+      "frame": 71,
+      "seconds": 4.371858444996178,
+      "converged": true,
+      "components": 125,
+      "rounds": 4,
+      "history": [
+        {
+          "round": 2,
+          "quadrature_order": 20,
+          "nll_delta_nat": 0.05742066350436836,
+          "max_log_evidence_delta_nat": 0.0058247781380309505,
+          "max_mean_delta": 0.0829661285748308,
+          "max_covariance_relative_delta": 0.07508310551772734,
+          "nonconverged_components": 1,
+          "converged": false
+        },
+        {
+          "round": 3,
+          "quadrature_order": 32,
+          "nll_delta_nat": 0.014376674966747771,
+          "max_log_evidence_delta_nat": 0.0009579977570162157,
+          "max_mean_delta": 0.022124088384033066,
+          "max_covariance_relative_delta": 0.027020788246033867,
+          "nonconverged_components": 1,
+          "converged": false
+        },
+        {
+          "round": 4,
+          "quadrature_order": 48,
+          "nll_delta_nat": 0.009146306394130832,
+          "max_log_evidence_delta_nat": 0.0001728988573255208,
+          "max_mean_delta": 0.0038569897668190175,
+          "max_covariance_relative_delta": 0.007146334615277787,
+          "nonconverged_components": 0,
+          "converged": true
+        }
+      ],
+      "source_npz_sha256": "50879142b717b22082d00bcfed807ecc82d87db86aa998450021cfa688fbbca8"
+    }
+  ],
+  "mean_seconds_per_frame": 7.228481602557521,
+  "96_rally_512_frame_4_worker_hours": 24.673217203396334,
+  "caveat": "Nine fixed prefix frames only; not final #935 calibration, no seed/frame quality selection, no generation authorization."
+}
