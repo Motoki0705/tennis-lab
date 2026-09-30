@@ -52,6 +52,9 @@ def test_reader_rejects_false_convergence_and_modified_calibration(mutation):
     from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import _validate_v2
     source = bank()
     plan = yaml.safe_load((PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml').read_text())
+    # Historical refinement diagnostics remain readable after the default changes.
+    plan['degradation']['boundary_convergence'] = dict(method='ray', orders=[4, 6, 8, 10, 12],
+        nll_tolerance_nat=.05, log_evidence_tolerance_nat=.05, mean_tolerance=.02, covariance_relative_tolerance=.05)
     rows = np.array([[np.flatnonzero((source.arrays['camera_index'] == camera) & (source.arrays['condition_index'] == condition))[0] for condition in range(2)] for camera in range(3)])
     components = 125
     changes = np.zeros((2, components, 3))
