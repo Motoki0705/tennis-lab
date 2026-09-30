@@ -39,7 +39,8 @@ CPU追跡/較正/評価30–60分、最大4thread、RAM peak見積り3–5GB。
 ## 2. Meiji video_000/clip_000の全pipeline qualification
 
 設定を凍結し、別store/run IDで **全component execute→scene.json/export→3cameraレンダリング**を行う。
-旧artifact loadを成功扱いにしない。AFLinkは既存の公開weight配置を明示overrideしhashを保存する。
+旧artifact loadを成功扱いにしない。AFLinkは既存の公開weightをcheckpoint root内へ配置し、root相対設定とhashを保存する。
+比較CLIの`--aflink`は絶対パスだが、pipeline設定は共通PathResolverのroot相対契約に従う。
 court_sideのball根拠、v3人物対応の停止理由、選択後上限6、GSI非観測、body/ball成果物のtimelineを監査する。
 sceneの再loadと依存鎖/hash検証、動画全frame読戻しまでを完走条件とする。
 GPU枠は共有training queueで **45–90分、peak 10–12GB、disk 1–2GB** を提案。
