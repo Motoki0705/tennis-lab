@@ -531,6 +531,11 @@ HDRは同密度cellを全て含むので平坦分布のcoverageは保守的に10
 これはRGB遮蔽再推論ではなく、未較正の有限画像密度とR²のGMMとの比較である。
 温度・一様成分率・分散scaleをこの評価でfitしない。設定・実行計画・結果はknowledgeへ記録する。
 
+`visualization/overlay.py`は保存済みGMMの各成分のfull covarianceを表示画素へ変換し、
+2σ楕円を成分weightのalphaで描く。混合平均は点markerとして描き、成分間分散を各楕円へ混ぜない。
+各成分の2σ楕円はGMMの95% HDRではない。storeのsource→JPEG変換率も座標変換に含める。
+具体的なval動画の再現script・入力hash・frame/PTS・読み方は対応するknowledge runへ保存する。
+
 ## 推論bundleの書き出し
 
 `deployment.py`の`export_pilot_bundle`は、完了したpilotのbest checkpointとconfig・data manifest・

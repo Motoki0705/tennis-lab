@@ -9,5 +9,12 @@
   "mypy": "2 files, --follow-imports=skip, pass",
   "knowledge": "0 errors, base origin/campaign930/i935-10-detector-selection",
   "repro": "278 scripts, 329 references, 0 missing/unverifiable",
-  "gpu_jobs_this_run": 0
+  "gpu_jobs_this_run": 0,
+  "overlay_tests": {
+    "passed": 4,
+    "seconds": 4.49,
+    "command": ".venv/bin/python -m pytest -n 4 tests/unit/tasks/ball_refiner/test_overlay.py"
+  },
+  "overlay_lint": "ruff/mypy 4 files pass",
+  "overlay": "270 frames decoded; PTS/order checked, representative original and encoded frames visually inspected"
 }
