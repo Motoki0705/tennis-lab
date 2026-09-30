@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 from scipy.optimize import linear_sum_assignment
 
 from src.tasks.person_tracking.contracts import DetectionFeatures, TrackAssignments
+from src.tasks.person_tracking.pose_distance import local_pose, pose_distance
 from src.tasks.player_association.appearance.parts import (
     NativeParts,
     part_distance,
@@ -30,6 +31,11 @@ class StrongSortConfig:
     motion_gate: float = 9.4877
     appearance_weight: float = .98
     ema_alpha: float = .9
+    pose_weight: float = 0.
+
+    def __post_init__(self) -> None:
+        if not np.isfinite(self.pose_weight) or not 0 <= self.pose_weight <= 1:
+            raise ValueError('StrongSORT pose weight must be finite and in [0, 1]')
 
 
 class InvalidPrediction(RuntimeError):
@@ -93,6 +99,7 @@ class _Track:
     embedding: NDArray[np.float32]
     valid: bool
     parts: NativeParts | None
+    pose: NDArray[np.float32]
     hits: int = 1
     age: int = 0
     confirmed: bool = False
@@ -125,6 +132,19 @@ class StrongSort:
         # No appearance evidence in the appearance stage; IoU stage is explicit.
         return np.where(valid, distance, np.inf)
 
+    def _pose_cost(self, features: DetectionFeatures, rows: NDArray[np.int64], tracks: list[_Track]) -> NDArray[np.float64]:
+        """Same local, last-observed pose evidence as Deep OC-SORT; track x row."""
+        result: NDArray[np.float64] = np.zeros((len(tracks), len(rows)), np.float64)
+        if self.config.pose_weight == 0:
+            return result
+        for j, row in enumerate(rows):
+            pose = local_pose(features.boxes[row], features.poses[row])
+            for i, track in enumerate(tracks):
+                distance = pose_distance(pose, track.pose)
+                if distance is not None:
+                    result[i, j] = self.config.pose_weight * distance
+        return result
+
     @staticmethod
     def _assign(cost: NDArray[np.float64], maximum: float) -> list[tuple[int, int]]:
         if not cost.size:
@@ -152,6 +172,7 @@ class StrongSort:
         if confirmed and len(features.rows):
             distance = np.stack([t.motion.distances(features.boxes) for t in confirmed])
             cost = self.config.appearance_weight * self._appearance(features, confirmed) + (1 - self.config.appearance_weight) * distance
+            cost += self._pose_cost(features, np.arange(len(features.rows), dtype=np.int64), confirmed)
             cost[distance > self.config.motion_gate] = np.inf
             matched = [(confirmed[t], r) for t, r in self._assign(cost, self.config.max_cost)]
         used = {t.identity for t, _ in matched}
@@ -161,6 +182,7 @@ class StrongSort:
         if remaining and len(rows):
             boxes = np.asarray([t.motion.box() for t in remaining])
             cost = 1 - pairwise_iou(boxes, features.boxes[rows])
+            cost += self._pose_cost(features, rows, remaining)
             matched.extend((remaining[t], int(rows[r])) for t, r in self._assign(cost, self.config.max_iou_distance))
         used = {t.identity for t, _ in matched}
         seen = {r for _, r in matched}
@@ -170,6 +192,7 @@ class StrongSort:
             track.hits += 1
             track.confirmed = track.hits >= self.config.n_init
             track.detection_row = int(features.rows[row])
+            track.pose = local_pose(features.boxes[row], features.poses[row])
             if features.parts is not None:
                 if track.parts is None:
                     raise ValueError('StrongSORT native appearance state is missing')
@@ -188,6 +211,7 @@ class StrongSort:
                 self.tracks.append(_Track(self.next_id, MotionState.initiate(features.boxes[row]),
                                           features.embeddings[row].copy(), bool(features.appearance_valid[row]),
                                           None if features.parts is None else features.parts.take(np.asarray([row], np.int64)),
+                                          local_pose(features.boxes[row], features.poses[row]),
                                           detection_row=int(features.rows[row])))
                 self.next_id += 1
         emitted = sorted((t for t in self.tracks if t.confirmed and t.age == 0), key=lambda t: t.detection_row)

@@ -209,9 +209,11 @@ def save_units(path: Path, units: list[dict[str, Any]]) -> dict[str, Any]:
     return dict(record_file(path))
 
 
-def assess_variant(args: argparse.Namespace, variant: str, *, old: bool = False) -> None:
+def assess_variant(args: argparse.Namespace, variant: str, *, old: bool = False,
+                   prepared: tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None = None,
+                   association_encoders: tuple[str, ...] = (CLIP, SOLIDER, KPR)) -> None:
     from src.tasks.person_tracking.archive import load_features
-    features, native, source = setup(args)
+    features, native, source = setup(args) if prepared is None else prepared
     identity = json.loads((args.report / 'identity.json').read_text())
     sides = json.loads(checked(identity['side']).read_text())
     config = load_association_config(CODE / 'src/tasks/player_association/configs/association.yaml', players_per_side=1)
@@ -263,7 +265,7 @@ def assess_variant(args: argparse.Namespace, variant: str, *, old: bool = False)
             originals.append(raw)
             mappings.append(group_origins)
             if saved['source_detection_rows']:
-                for encoder in ((KPR,) if old else (CLIP, SOLIDER, KPR)):
+                for encoder in ((KPR,) if old else association_encoders):
                     frames = load_part_features(checked(native['records'][key]))[0] if encoder == KPR else load_features(checked(features['records'][encoder][key]))[0]
                     appearance = tuple(sampled_appearance(raw, origins, frames))
                     linked, mapping = linked_timeline(replace(raw, appearance=appearance), selection)

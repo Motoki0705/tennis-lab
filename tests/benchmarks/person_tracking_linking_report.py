@@ -25,9 +25,13 @@ def short(name: str) -> str:
     return name.replace(CLIP, 'CLIP').replace(SOLIDER, 'SOLIDER').replace(KPR, 'KPR')
 
 
-def report(root: Path) -> None:
+def report(root: Path, *, run: int = 9) -> None:
     comparison = json.loads((root / 'comparison.json').read_text())
-    selected_method = json.loads((root / 'kpr_method.json').read_text())['chosen']
+    historical = root
+    if run == 10:
+        identity = json.loads(checked(comparison['identity']).read_text())
+        historical = checked(identity['previous']).parent
+    selected_method = json.loads((historical / 'kpr_method.json').read_text())['chosen']
     chosen = recommendation(comparison['table'])
     overall = [row for row in comparison['table'] if row['camera'] == row['near_far'] == 'all']
     pairs: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -77,17 +81,24 @@ def report(root: Path) -> None:
     chosen_row = next(r for r in overall if r['variant'] == chosen)
     write_json_atomic(root / 'recommendation.json', {'chosen': chosen, 'metrics': chosen_row,
         'association': [r for r in association if r['variant'] == chosen], 'pipeline_default_changed': False,
-        'kpr_selected_method': json.loads((root / 'kpr_method.json').read_text())['chosen']})
-    lines = ['# Run 9 固定比較', '', f'主指標による候補内推薦: **{short(chosen)}**。pipeline既定は変更しない。', '',
+        'kpr_selected_method': selected_method,
+        'best_new': recommendation([r for r in comparison['table'] if r['variant'].startswith(('strongsort_pp_pose__', 'deep_ocsort_pose_aflink_gsi__'))]) if run == 10 else None})
+    history_note = ('旧9条件の保存box/IDを再照合しraw/group全144層・決定済みcamera間対応指標がrun 9と完全一致。'
+                    '旧選別/solver決定は保存結果を保持（再推論ではない）。StrongSORTオンライン24cameraとDeepオンライン12cameraも配列一致。'
+                    if run == 10 else '旧6条件のraw指標は12cameraごとに保存済みrun 8と一致を検証した。')
+    lines = [f'# Run {run} 固定比較', '', f'主指標による候補内推薦: **{short(chosen)}**。pipeline既定は変更しない。', '',
              f'表のbest_kprは、事前規則で選んだ **{short(selected_method)} のtracker encoderをKPRへ置換**した条件。', '',
              'raw IDF1はrun 8の主指標。group IDF1はrun 8結果後に追加した副指標で、下流のcamera-local連結groupを測る。',
              '全条件とも同じ固定コート選別。GSI補間は実観測へ昇格せず、主表は実観測のみ。',
-             '旧6条件のraw指標は12cameraごとに保存済みrun 8と一致を検証した。未見性能/完全GT MOTとは呼ばない。', '',
-             '|条件|完走|raw IDF1|group IDF1|raw switch/frag|group switch/frag|raw/group選手保持|非選手raw/group|人物50%|',
-             '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+             history_note + '未見性能/完全GT MOTとは呼ばない。', '',
+             '|条件|完走|raw IDF1|group IDF1|#933 pair F1 / decided|対応label box coverage|raw switch/frag|group switch/frag|raw/group選手保持|非選手raw/group|人物50%|',
+             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     for r in overall:
         complete = sum(a['status'] == 'ok' for a in availability if a['variant'] == r['variant'])
+        pair = next(a for a in association if a['variant'] == r['variant'] and a['encoder'] == CLIP)
+        f1 = f'{pair["pair_f1"]:.6f}' if pair['pair_f1'] is not None else '—'
         lines.append(f'|{short(r["variant"])}|{complete}/12|{r["idf1"]:.6f}|{r["group_idf1"]:.6f}|'
+                     f'{f1} / {pair["decided_clips"]}/{pair["total_clips"]}|{pair["matched_label_boxes"]}/{pair["label_boxes"]}|'
                      f'{r["id_switches"]}/{r["fragments"]}|{r["group_id_switches"]}/{r["group_fragments"]}|'
                      f'{r["player_units_kept"]}/{r["group_player_units_kept"]} of {r["player_units"]}|'
                      f'{r["nonplayer_units_kept"]}/{r["group_nonplayer_units_kept"]}|{r["player_identities_kept50"]}/8|')
@@ -100,7 +111,7 @@ def report(root: Path) -> None:
                 value = next(x for x in comparison['table'] if x['variant'] == r['variant'] and x['camera'] == camera and x['near_far'] == side)
                 cells.append(f'{value["idf1"]:.4f} / {value["group_idf1"]:.4f} (N={value["player_units"]})')
         lines.append('|' + '|'.join([short(r['variant']), *cells]) + '|')
-    lines += ['', 'unknownを含む全144層とIDTP/FP/FN・保持数は`comparison.csv`。停止/未照合数は`availability.csv`。', '',
+    lines += ['', f'unknownを含む全{len(comparison["table"])}層とIDTP/FP/FN・保持数は`comparison.csv`。停止/未照合数は`availability.csv`。', '',
               '## camera間対応', '', 'pair F1はdecided clipのcountsをpool。4/4未満は条件付きの値で、coverageが異なる。',
               'KPR/SOLIDERはCLIPの固定calibrationを転用し、encoder固有の再校正はしていない。', '',
               '|Tracker|camera間encoder|decided|pair F1|TP/FP/FN|group accuracy|label box coverage|',
@@ -119,4 +130,6 @@ def report(root: Path) -> None:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report', type=Path, required=True)
-    report(parser.parse_args().report)
+    parser.add_argument('--run', type=int, choices=(9, 10), default=9)
+    args = parser.parse_args()
+    report(args.report, run=args.run)
