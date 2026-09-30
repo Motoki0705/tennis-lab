@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i936-anchored-t128-flow-regression-r13-s936-20260930
+# added: 2026-09-30T21:24:38+09:00
+# provider: codex
+# session: 01a0f22b-2c7e-7f40-b507-54d94792695f
+# issue: 936
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+export TENNIS_RUN_ID=1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930 --name i936-anchored-t128-flow-regression-r13-s936-20260930 --provider codex --session 01a0f22b-2c7e-7f40-b507-54d94792695f --issue 936 --cmd timeout\ --signal=TERM\ --kill-after=15s\ 5340s\ env\ CUDA_VISIBLE_DEVICES=0\ OMP_NUM_THREADS=1\ MKL_NUM_THREADS=1\ OPENBLAS_NUM_THREADS=1\ NUMEXPR_NUM_THREADS=1\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python\ -u\ -m\ src.tasks.ball_refiner.scripts.training_dev_3d\ --dataset\ /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936\ --config\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_dev_anchored_t128.yaml\ --output\ /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r13-anchored-s936-t128-20k\ --device\ cuda
+timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.training_dev_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936 --config /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_dev_anchored_t128.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r13-anchored-s936-t128-20k --device cuda
