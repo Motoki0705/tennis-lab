@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i936-pilot512-t128-r14-s936-20261001
+# added: 2026-10-01T01:23:41+09:00
+# provider: codex
+# session: 01a0f304-a80a-7ff2-8644-b8f8b8d8cb66
+# issue: 936
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+export TENNIS_RUN_ID=1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001 --name i936-pilot512-t128-r14-s936-20261001 --provider codex --session 01a0f304-a80a-7ff2-8644-b8f8b8d8cb66 --issue 936 --cmd timeout\ --signal=TERM\ --kill-after=15s\ 5340s\ env\ CUDA_VISIBLE_DEVICES=0\ OMP_NUM_THREADS=1\ MKL_NUM_THREADS=1\ OPENBLAS_NUM_THREADS=1\ NUMEXPR_NUM_THREADS=1\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python\ -u\ -m\ src.tasks.ball_refiner.scripts.experiment_dev_3d\ --plan\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-pilot512-t128-r14-s936/plan.json\ --device\ cuda
+timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-pilot512-t128-r14-s936/plan.json --device cuda
