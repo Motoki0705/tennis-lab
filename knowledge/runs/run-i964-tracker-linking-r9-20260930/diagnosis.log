@@ -1,0 +1,4 @@
+diagnosed video_000/clip_000: {'correct': 514, 'miss': 11, 'wrong_identity': 470}
+diagnosed video_000/clip_007: {'wrong_identity': 133, 'miss': 55, 'correct': 464}
+diagnosed video_001/clip_001: {'correct': 949, 'miss': 304}
+diagnosed video_002/clip_013: {'miss': 49, 'wrong_identity': 142, 'correct': 339}
