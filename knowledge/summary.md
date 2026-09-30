@@ -1,4 +1,4 @@
-<!-- knowledge-review: c0aaea415645e83c7406f0c7e5ee0b2d6c486a9e01938aa04c592af6dd15b86b on 2026-10-01 -->
+<!-- knowledge-review: 2b5883165e66bdff0d60f8acb6c6a7048fc3574b5613987696633ad5f954c162 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -82,7 +82,8 @@ GSI syntheticは別maskのままで評価の実観測へ入れていない。費
 旧#933の結論は旧trackに限定したまま維持する。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
-旧見積りは不足していた。残り9cameraの再開jobを4.5時間枠で登録した。fitは合成6clipでのみ検証済みで、
+旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。
+新規9cameraは約76分、peak GPU4.26GBで完了した。fitは合成6clipでのみ検証済みで、
 実fit/新dev採点はまだ行っていない。
 準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
 既定を維持して9行を明示mask投影し、2cameraのCPU再追跡と元row/GSI検証を完了した。

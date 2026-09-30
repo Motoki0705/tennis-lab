@@ -8,8 +8,8 @@ title: '再較正特徴のtimeout回収と検証済みcamera単位再開'
 provider: codex
 issue: 964
 date: '2026-09-30'
-status: running
-metrics: {}
+status: done
+metrics: {complete_cameras: 18, reused_cameras: 9, new_cameras: 9, frames: 16941, detection_rows: 65096}
 artifacts:
   run_dir: knowledge/runs/run-i964-recalibration-resume-r13-20261001
 parents: [run-i964-recalibration-r12-20260930]
@@ -66,3 +66,12 @@ CPU較正モジュールと全18cameraの完了gateを155b6c20で実装した。
 devを開かない。採用できた場合のみYAML/fit証拠をcommit/pushした後、
 投影後の同一trackへ旧/新尺度を適用するdev比較を1回行う。run11の旧値は別条件の参照とする。
 全pipeline qualificationと凍結後の予約未見は未実施であり、PRはdraftを維持する。
+
+run 14で再開jobの成功を回収した（[完了記録](../../runs/run-i964-recalibration-resume-r13-20261001/resume-collection.json)）。
+18camera / 16,941 frame / 65,096元検出rowの全hash、provenance、timeline、box/scoreを再検証した。
+再利用9cameraは元planに結び付けたまま、新規9cameraと区別する。
+新規分のcamera別monotonic時間はDINO＋保存とpose/CLIP＋保存を含む。旧9cameraの段階別monotonicは
+記録されていないため欠測とし、旧mtime代理値を実測に置き換えない。
+guardは成功、4,552.99秒、GPU最大4,262,461,440 bytes、最少available RAM12,220,973,056 bytes。
+新規出力202,065,358 bytes。負荷低下により3.5時間の見積りより早く完了したが、負荷の因果は未計測。
+元queueのrun/repro/logとfeatures/guardをresume接頭辞で保持した。回収時点では実fit・dev採点を行っていない。
