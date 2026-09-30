@@ -84,6 +84,16 @@ class DenoiserOutput:
     event_logits: Tensor  # hit/bounce are two independent classes
 
 
+def condition_features(condition: MixtureCondition) -> Tensor:
+    """The exact normalized per-component features used by the denoiser."""
+    scale = condition.means_m.new_tensor(COURT_COORD_SCALE_XYZ)
+    covariance_norm = condition.covariance_m2 / (scale[:, None] * scale[None, :])
+    return torch.cat((
+        normalize_court_position(condition.means_m), covariance_norm.flatten(-2),
+        condition.camera_subsets.to(condition.means_m.dtype),
+    ), dim=-1)
+
+
 def validate_flow_state(noisy_positions_norm: Tensor, flow_time: Tensor, condition: MixtureCondition) -> None:
     """Validate at the train/sample boundary, outside computation-only forward."""
     b, t = condition.padding_mask.shape
@@ -115,17 +125,15 @@ class TrajectoryDenoiser(nn.Module):
         angles = value[..., None] * self.frequencies
         return torch.cat((angles.sin(), angles.cos()), dim=-1)
 
+    def encode_condition(self, condition: MixtureCondition) -> Tensor:
+        """Expose the existing pooled tokens for frozen read-out diagnostics."""
+        components = self.component_encoder(condition_features(condition))
+        # Nonlinear component encoding precedes pooling: not moment matching.
+        return (components * condition.weights[..., None]).sum(dim=-2)
+
     def forward(self, noisy_positions_norm: Tensor, flow_time: Tensor, condition: MixtureCondition) -> DenoiserOutput:
         b, t, _, _ = condition.means_m.shape
-        scale = condition.means_m.new_tensor(COURT_COORD_SCALE_XYZ)
-        covariance_norm = condition.covariance_m2 / (scale[:, None] * scale[None, :])
-        features = torch.cat((
-            normalize_court_position(condition.means_m), covariance_norm.flatten(-2),
-            condition.camera_subsets.to(condition.means_m.dtype),
-        ), dim=-1)
-        components = self.component_encoder(features)
-        # Nonlinear component encoding precedes pooling: not moment matching.
-        context = (components * condition.weights[..., None]).sum(dim=-2)
+        context = self.encode_condition(condition)
         state = torch.cat((
             noisy_positions_norm,
             self.time_features(flow_time)[:, None].expand(b, t, -1),
