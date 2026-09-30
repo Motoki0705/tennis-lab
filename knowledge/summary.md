@@ -1,4 +1,4 @@
-<!-- knowledge-review: 116e3411af3fa85133b20b731e852fd632bcf25b415ea9a8ee2b419491d3f2f5 on 2026-09-30 -->
+<!-- knowledge-review: 70d932d9b02707cfb30667a9f53cb08e8fd78eb501b2670a501749d7e83cd59a on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -301,13 +301,17 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 単眼のdepth解析積分、非正則な複数視点のmode中心積分、camera変更時のmode移送を採用した。
 隣接次数の差は経験的誤差推定で、Laplace近似や共通して見落とすmodeの保証ではない。
 
-[事前登録K=4監査](nodes/ball_refiner_3d/000012-run-i936-k4-audit-r7-s93607.md)は
-適応rayで収束率45.66→70.74%、失敗3→0を得たが、平均5.56秒/frameで実用費用に届かなかった。
-[run 8の方式比較](nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md)では
-同じ311frame・全125成分について、仕様のGT NLL/HDR coverage/CPU費用で再選定する。
-数値収束率は診断とし、選定・生成のgateにしない。候補予算と採点を固定して比較中。
-標本は停止データの完成済みtrain9件由来で、未完了ラリーや全量を代表する保証はない。
-#959暫定較正を維持し、96/640件の生成は開始しない。640件は最終#935出力を待つ。
+[固定K=4方式比較](nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md)で、
+仕様のGT NLL/HDR/CPU費用から**固定予算Hを生成器の既定**に採用した。
+同じ事前登録311frame・全125成分で、平均0.6秒以内はA/H。Hは両集計のNLLと
+各HDR水準の較正誤差でAを改善し、加重NLL3.890、95% coverage78.79%、平均0.274秒/frame。
+未評価/未収束は診断として保持し、選定・生成のgateにしない。
+[run 7の積分監査](nodes/ball_refiner_3d/000012-run-i936-k4-audit-r7-s93607.md)の数値目標は
+採用基準から外した。adaptive rayはGT品質がHに近く、費用は約20倍だった。
+Hにも過小被覆と一部層の大きい位置誤差が残り、較正や最終性能の合格とはしない。
+停止データの完成済みtrain9件だけの標本で、全量・別splitの保証ではない。
+96件は4 CPU・90分枠・disk0.75GBの提案まで（20%余裕込み外挿1.01〜1.15h）で、開始していない。
+#959暫定reportを単一入力として維持し、640件は最終#935出力を待つ。
 
 [保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
 全40windowの形状/4損失を検証し、2つのtrain prefixで400 updatesを完了した。
