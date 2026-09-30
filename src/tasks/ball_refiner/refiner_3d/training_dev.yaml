@@ -3,6 +3,7 @@ updates: 2000
 batch_size: 8
 frames: 128
 stride: 128
+validation_frames: null
 learning_rate: 0.0001
 weight_decay: 0.01
 evaluate_updates: [0, 500, 1000, 1500, 2000]
