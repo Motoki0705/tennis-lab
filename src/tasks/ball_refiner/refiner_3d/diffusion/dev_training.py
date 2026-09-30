@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 import torch
 
+from src.tasks.ball_refiner.refiner_3d.baselines import evaluate_baselines
 from src.tasks.ball_refiner.refiner_3d.synthetic.configuration import sha256
 from src.tasks.ball_refiner.refiner_3d.synthetic.dataset import SyntheticDataset
 from src.tasks.ball_refiner.refiner_3d.synthetic.generator import write_json
@@ -83,7 +84,7 @@ def _train_one(
     def evaluate(update: int) -> None:
         metrics = evaluate_dev(model, validation, config, device=device, objective=objective,
                                check_budget=budget.check,
-                               predictions=output / 'predictions' if update == config.updates else None)
+                               predictions=output / 'predictions' / f'update-{update:05d}')
         arm['validation'].append({'update': update, **metrics})
         write_json(output / 'manifest.json', arm)
         print(json.dumps({'objective': objective, 'update': update, 'val': metrics['metrics']['mean'], 'budget': budget.report()}), flush=True)
@@ -116,7 +117,7 @@ def _train_one(
                    **budget.report()}
             log.write(json.dumps(row, allow_nan=False) + '\n')
             log.flush()
-            if update % config.evaluate_every == 0:
+            if update in config.evaluate_updates:
                 evaluate(update)
     checkpoint = output / 'dev-only.pt'
     torch.save({'diagnostic_only': True, 'objective': objective, 'config': asdict(config),
@@ -170,6 +171,8 @@ def run_dev_training(dataset: Path, config_path: Path, output: Path, *, device: 
             else:
                 validation.append(RallyInput(record, arrays))
         write_json(output / 'manifest.json', manifest)
+        manifest['baselines'] = evaluate_baselines(validation, predictions=output / 'baseline_predictions')
+        write_json(output / 'baselines.json', manifest['baselines'])
         for objective in ('flow', 'regression'):
             manifest['arms'][objective] = _train_one(config, windows, validation, device=device,
                                                      objective=objective, output=output / objective, budget=budget)
