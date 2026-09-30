@@ -89,6 +89,21 @@ detectorのtop-1/recall集計とcheckpoint選択の既存同率規則には影�
 共分散・weight・presenceの学習、BallGMM2Dの保存契約、joint NLLは共通。
 実験数値・採否はknowledgeを正本とし、この方式をpipeline defaultへ昇格しない。
 
+### proposed: 候補残差headを次の基準設計にする案
+
+**ユーザー判断前の提案であり、現在はexperimentalのまま。**
+上記の方式をscore上位3候補＋有界残差（`max_offset_uv=0.02`）と1自由成分、
+K=4、文脈なし、12,000更新の学習予算で次のrefiner基準設計にする案を提示する。
+検出器は既に候補recallで固定したepoch9を使い、33frame/stride16、
+source平衡・seed・joint NLL・Meiji選択側のobserved/gap等重みNLLによるcheckpoint選択を維持する。
+12,000更新の最終checkpointを無条件採用する意味ではない。
+欠損時の絶対平均分岐・自由成分・full covariance・presenceとBallGMM2D契約も上記のまま。
+
+根拠・反証・較正の限界は[knowledge 000018](../../../knowledge/nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)、
+ユーザーへ提示する設計採用・component切替・裾較正・#936への受渡しの選択肢は
+[提案A–D](../../../knowledge/runs/run-i935-precision-variants-s42-r21-20260930/proposals.md)を参照。
+設計採用とpipelineのasset/default切替は別判断で、現行YAML・asset参照は変更しない。
+
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
 `position_nll_sum / position_weight`を使い、位置教師0件ならN/Aとする。
