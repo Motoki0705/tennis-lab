@@ -1,0 +1,274 @@
+{
+  "job_id": "1790742870654274948_3515634_i936-h-dev-flow-regression-r9-s936-20260930",
+  "queue_state": "done",
+  "source": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r9-s936",
+  "same_initial_weights": true,
+  "same_window_order_all_2000_updates": true,
+  "validation_updates": [
+    0,
+    500,
+    1000,
+    1500,
+    2000
+  ],
+  "files": [
+    {
+      "path": "flow/curves.png",
+      "bytes": 226108,
+      "sha256": "4964d8825131b904dda2dbd682560ab6042830ea4a1f05183fa71ffbd0cecd39",
+      "promoted": true
+    },
+    {
+      "path": "flow/dev-only.pt",
+      "bytes": 3292399,
+      "sha256": "05a80c4a2819f17c4d0b2445531fcd1402b177c56cab40160382501277bbce58",
+      "promoted": false
+    },
+    {
+      "path": "flow/initial-state.pt",
+      "bytes": 3291902,
+      "sha256": "c1b9d479a92530eac9542e74110a4c413ab3525c97e04af9ce3d06f1696ee1ed",
+      "promoted": false
+    },
+    {
+      "path": "flow/manifest.json",
+      "bytes": 37282,
+      "sha256": "1f2d9ede530da9a6875f782c7e18e98692347f8837f6ff3f183d0bde8c6f2560",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00000.npz",
+      "bytes": 20483,
+      "sha256": "f6562b4c5c5e95e52be816293f3c29c059889f4bba9141bed9d8d0e42608fe66",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00001.npz",
+      "bytes": 52176,
+      "sha256": "829c371fedd0ed0ad834064dcd4466900b83a05342992641873f7936024968e5",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00002.npz",
+      "bytes": 52748,
+      "sha256": "3e1a5ba961264b1088c067d2a13f19d1c1091da524f93d49723452a4b7315032",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00003.npz",
+      "bytes": 22372,
+      "sha256": "528c48b16dda59e94e6700c237efbf4e13cddabd952345ea94a66d37246d4979",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00004.npz",
+      "bytes": 42897,
+      "sha256": "facf9b9080d58400883918096b3a6a5fdffa7f0846abd11e6eb123d8a828940f",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00005.npz",
+      "bytes": 51902,
+      "sha256": "24d55c0fab9b48ba87c12fad81f4323b1a66cbd687d3fdeb214cb4c5548f27f5",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00006.npz",
+      "bytes": 44081,
+      "sha256": "d5444c9d8f8251e7bb97fa0c87cdd1ce2b3047bdafff00d337ff3fe47e7bd198",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00007.npz",
+      "bytes": 30777,
+      "sha256": "af975678f82afe41ed39409c68040d75ce3a3622d6d3d7cf96d1981cd3535d78",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00008.npz",
+      "bytes": 52688,
+      "sha256": "e9effa633e5216837ad01ef688b47f094aaf63471fc5f7d771cdc225b084bd5f",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00009.npz",
+      "bytes": 52788,
+      "sha256": "634041d9f0f8557b67fc420beceb14261b556ebbaa9c5ded1c1c5d67377d8762",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00010.npz",
+      "bytes": 43108,
+      "sha256": "f69858d2e68ea97b03b98cd3751177b4b593710d3b4f8be64001e2b03b8ed21d",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00011.npz",
+      "bytes": 52651,
+      "sha256": "6d3699bc236cd5bed6b86e3a87449a6f2600e51a08d4f47073e89b3b61f3ec0e",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00012.npz",
+      "bytes": 46782,
+      "sha256": "7fd1e93ec112f092fc1161e6c488468bb24f93dbcf4942a0db35d54f8b67b7d8",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00013.npz",
+      "bytes": 31320,
+      "sha256": "b43f68d8453039312da2de3036cfa45819076a580934b4d48f59eefab04cd78f",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00014.npz",
+      "bytes": 46483,
+      "sha256": "47ed47fb92a9f6017b5601eb663f77fa7cc3666aa21e6048cfaf543cf843faff",
+      "promoted": true
+    },
+    {
+      "path": "flow/predictions/val-00015.npz",
+      "bytes": 22835,
+      "sha256": "23fa9b7d09fb262e08e3cbe77bd469623e8c939788272c2279d7e3cdbdaa542c",
+      "promoted": true
+    },
+    {
+      "path": "flow/updates.jsonl",
+      "bytes": 1264297,
+      "sha256": "4dde730c122049a51b19ff4a43def23694ee1835e7a43236fbdc073393ea4c0e",
+      "promoted": true
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 116554,
+      "sha256": "80a732f92b6cc133f2482c85b16feec4be364eea3ca45bdf719aae9c6ef22bbb",
+      "promoted": true
+    },
+    {
+      "path": "regression/curves.png",
+      "bytes": 232587,
+      "sha256": "8506f813de754410bf64aab213d2ef28e10ec2caef70ba5fed7b2c50e6b87561",
+      "promoted": true
+    },
+    {
+      "path": "regression/dev-only.pt",
+      "bytes": 3292399,
+      "sha256": "ae6375a29209cab2c9410190e63c65d8cb3f45bc15976a6d8a938182f08494fc",
+      "promoted": false
+    },
+    {
+      "path": "regression/initial-state.pt",
+      "bytes": 3291902,
+      "sha256": "c1b9d479a92530eac9542e74110a4c413ab3525c97e04af9ce3d06f1696ee1ed",
+      "promoted": false
+    },
+    {
+      "path": "regression/manifest.json",
+      "bytes": 37272,
+      "sha256": "49736def096cce338a821a1f86b47183a63fc34f4f844c34f758c3a0a676305d",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00000.npz",
+      "bytes": 10080,
+      "sha256": "138a96d11d1e6c2173a63501cd5620e98f8e67bf5176b6ef277760b0213c6cbe",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00001.npz",
+      "bytes": 22807,
+      "sha256": "bc660473802f034bff9e0b7aa046713147f3cb8329e5af5f6b7fbaa3215b23fb",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00002.npz",
+      "bytes": 22890,
+      "sha256": "1330167f24f6f39ddf515d074a28f37561c464d6dd2636e5d0abd4471dd01acc",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00003.npz",
+      "bytes": 10850,
+      "sha256": "39d50b61bc2aa0a95ebd76084687ad094ebd0245a4a071063d13a3423e2c1ff8",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00004.npz",
+      "bytes": 18985,
+      "sha256": "a96f8cda2f4b536c3bec8fa15fe25d4bcacb9a70ab2965de344288d2fe5b9c27",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00005.npz",
+      "bytes": 22659,
+      "sha256": "654474164e9faa54b8e5ebca009e66d51d8db32731865c565699e24824fc59ff",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00006.npz",
+      "bytes": 19464,
+      "sha256": "ab017819a1831258a4b82fcaffbab185f0ea879ae175a4bead0325d54165c0fa",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00007.npz",
+      "bytes": 14245,
+      "sha256": "0ec29604d456957a45cada65bfd77f57a8ba53ef5c86ca9b10eade9960e407c5",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00008.npz",
+      "bytes": 22908,
+      "sha256": "7d7c535227c29816ed1d851b0a90cd02c49c79087be6bd25a61d54024928e4a7",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00009.npz",
+      "bytes": 22780,
+      "sha256": "103349ec19fd44718c256252ebb7236e8481573c716b6b87a4f8d2da10cf4ac7",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00010.npz",
+      "bytes": 19003,
+      "sha256": "44a805d195fe35a8f08cf34af08efd0b0c954be51f0f344e26a554cc3d2be300",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00011.npz",
+      "bytes": 22915,
+      "sha256": "d0bef578efeccdd06b4aebd59454c9565a648f3a92e41cf03c54d2523de3af4b",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00012.npz",
+      "bytes": 20606,
+      "sha256": "d9e85dcc4f82dbae750908f71ae825c84373affab7fc6b96a6e3082674e6044e",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00013.npz",
+      "bytes": 14455,
+      "sha256": "4774b7c66a807003fdb753c5c7ae45dae08d2a34b5268ff9c1be503cd6e0a7a6",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00014.npz",
+      "bytes": 20372,
+      "sha256": "5b196013c0b16a4579717ef6a9f6197685950aaf317323291fc2ffc49d2bb2a9",
+      "promoted": true
+    },
+    {
+      "path": "regression/predictions/val-00015.npz",
+      "bytes": 10990,
+      "sha256": "472496be7a43b0a976b44da56387802a359cdb83f6d75f89f23d34f7d55d7151",
+      "promoted": true
+    },
+    {
+      "path": "regression/updates.jsonl",
+      "bytes": 1264183,
+      "sha256": "9b7d3b46805fadad869736aa252dc4d71197ec3a558bc05c9a1a38ca3e2df829",
+      "promoted": true
+    }
+  ]
+}
