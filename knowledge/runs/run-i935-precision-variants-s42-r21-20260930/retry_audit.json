@@ -1,0 +1,59 @@
+{
+  "retry_of_job": "1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930",
+  "old_commit": "0d3fd3f8a2498da33edbaf04656c1dee81185c3b",
+  "authorization": "campaign-930 issue 935 run21 ORCHESTRATOR DIRECTIVE: one retry after diagnosed infrastructure bug",
+  "reason": "output_size must handle directory disappearance during iteration; outputs and compiler cache use fresh r21 paths; original r20 artifacts unchanged",
+  "hash_definition": "SHA-256 of exact file bytes, including command.txt final newline",
+  "old_plan_sha256": "f05ad9f4b3ad41a5efd7d8af814918b45666b8c1cfe351e34d14c8cf0e3e20e9",
+  "new_plan_sha256": "0057305eb87f70df50dca6610acc851bbd1ac7064ab49d5f4b848ac0084abe5b",
+  "old_command_sha256": "5b0fe37260dd1b8e40b09605559a90eba5583dce72f8693ee6d50ed404f90258",
+  "new_command_sha256": "fd361cdf3854c019b2cfdb0e163e17da5bf3a0f48a8d5a579b3e19df17cac6cb",
+  "old_script_sha256": "f949c9cc79850a0bc9e06767cd856ec65c9844901aaec6f135a1246c68dfd3b6",
+  "new_script_sha256": "f5e6bb8f4430ecb867da0dfe06458f8a71e6ba1d0a234997ce442d44c33f5e91",
+  "input_files": 678,
+  "unchanged_input_paths_and_hashes": 673,
+  "relocated_inputs": [
+    {
+      "old_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/absolute_12k.yaml",
+      "new_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/absolute_12k.yaml",
+      "old_sha256": "a5f298461dadc50803b508e5f8073933300f902a227a151213230b385b707365",
+      "new_sha256": "64ef089c433643117e89c47575b2681532915010e9ab775fa9c48359797d2c47"
+    },
+    {
+      "old_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/anchored_12k.yaml",
+      "new_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/anchored_12k.yaml",
+      "old_sha256": "664b1d716ea2e1ed588dc55e721c1be1639ec6053a4987189149873505d62f64",
+      "new_sha256": "11f6beb900189b88f7a6d460c1799f862244c95743c86b85467536f5e48f0310"
+    },
+    {
+      "old_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/anchored_3k.yaml",
+      "new_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/anchored_3k.yaml",
+      "old_sha256": "991292911b6f85ee46459aa05397e473575404f208944f46277efa2c6d7d448d",
+      "new_sha256": "196e8fab99d9bcd29f44882a10c32ccfba470670136d1a1408c221d095d38490"
+    },
+    {
+      "old_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/render_comparison.py",
+      "new_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/render_comparison.py",
+      "old_sha256": "62b9deac8495cb6632dd5079e95467ffd998836f70b050dfa9db85aa6ded6705",
+      "new_sha256": "62b9deac8495cb6632dd5079e95467ffd998836f70b050dfa9db85aa6ded6705"
+    },
+    {
+      "old_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/run_variants.py",
+      "new_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/run_variants.py",
+      "old_sha256": "f949c9cc79850a0bc9e06767cd856ec65c9844901aaec6f135a1246c68dfd3b6",
+      "new_sha256": "f5e6bb8f4430ecb867da0dfe06458f8a71e6ba1d0a234997ce442d44c33f5e91"
+    }
+  ],
+  "config_comparison": "all 3 configs identical except run.output_dir; normalized plan exactly matches old plan",
+  "unchanged": [
+    "variant names/order/factors",
+    "seed",
+    "source sampling",
+    "split",
+    "detector epoch9",
+    "selection rule",
+    "evaluation settings",
+    "wall/VRAM/disk/RAM/CPU limits"
+  ],
+  "cpu_red_test": "original r20 output_size raises FileNotFoundError when compiler-temporary directory is deleted at scandir entry; rglob also suppresses PermissionError"
+}

@@ -8,10 +8,16 @@ title: 候補精度の消失をCPU診断し平均parameterizationと学習長を
 provider: codex
 issue: 935
 date: '2026-09-30'
-status: planned
+status: failed
 config: {seed: 42, detector: mixed-e9, context: detector_only}
 metrics: {cpu_meiji_detector_within8_frames: 14182, cpu_meiji_refiner_error_median_px_on_detector_within8: 19.737589086433406}
-artifacts: {run_dir: knowledge/runs/run-i935-precision-variants-s42-r20-20260930}
+artifacts:
+  run_dir: knowledge/runs/run-i935-precision-variants-s42-r20-20260930
+  log: knowledge/runs/run-i935-precision-variants-s42-r20-20260930/queue.log
+  resource_usage: knowledge/runs/run-i935-precision-variants-s42-r20-20260930/resource_usage.json
+repro:
+  commit: 0d3fd3f8a2498da33edbaf04656c1dee81185c3b
+  branch: campaign930/i935-12-precision-diagnosis
 parents: [run-i935-detector-only-mixed-e9-s42-r18-20260930]
 relations: [{to: run-i935-detector-only-ft-e13-s42-r4-20260928, rel: compares}]
 papers: []
@@ -78,7 +84,7 @@ observed/gap NLLだけで選ぶため他sourceの典型位置を保証しない�
 run20 directiveがrun19のcourt-only先行提案を上書きする。
 同じepoch9 cache、seed42、source比、窓、損失、optimizer、val選択規則のまま、
 長期化と候補を保持する平均parameterizationの最大3案を事前固定して比較する。
-plannedはGPU実験の状態。ここまでのCPU診断は完了している。
+CPU診断は完了している。GPU実験は以下の監視障害で失敗し、3案の結果は得られていない。
 pipeline default、BallGMM2D契約、NLL目的を変更せず、court/person/poseとtestを使わない。
 
 ## GPU投入前の3案固定
@@ -125,4 +131,36 @@ CPU数はtorch/OMP/MKL/OpenBLAS2、compile subprocess2、data loader0。
 通常検証はCPU計44件成功（診断3、モデル/anchor26、学習/参照比較15、全てpytest -n4）。
 CPU fullgraph capture、新anchorの勾配・初期peak保持・全gap・AMP・同score集合順序・設定欠落拒否・保存復元、
 実tiny cacheの学習→best復元→比較→bundle exportを検査した。ruff/mypyも成功。
-GPU実行・比較結果・実runtime/VRAM・最終CIはqueue回収後に追記する。これらを実施済みとは扱わない。
+GPU比較結果は得られていない。実runtime/VRAMと障害は以下に記録する。
+
+## run21で回収した監視障害
+
+job `1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930` は
+**failed / exit_code=1、116.4639秒**。
+[元queue job](../../runs/run-i935-precision-variants-s42-r20-20260930/queue.job)、
+[ログ](../../runs/run-i935-precision-variants-s42-r20-20260930/queue.log)、
+[資源記録](../../runs/run-i935-precision-variants-s42-r20-20260930/resource_usage.json)、
+[repro metadata](../../runs/run-i935-precision-variants-s42-r20-20260930/run.json)を保存した。
+共有queueのfailed/job/log/reproは削除・書換えしていない。
+監視90回、device-used最大1,410,334,720 bytes（1.41 GB）、
+CUDA allocated/reserved最大247,112,704 / 262,144,000 bytes。
+停止時compiler cacheは148,215,476 bytes。上限超過やモデル精度による失敗ではない。
+
+ログの最後の学習行は最初の`absolute_12k`のepoch0/step250。
+watchdogは10回ごとのdisk検査で`output_size()`を呼ぶが、元実装の`Path.rglob()`は
+ループ本体のtryより先に次の要素を取得する。そこで子ディレクトリが消えると
+`FileNotFoundError`が漏れ、監視がSIGTERMを送り、Inductor中の主threadが停止する。
+**同じPython 3.11で走査中に子ディレクトリを削除するテストが元実装で同じ例外になった**。
+資源記録の停止理由も`FileNotFoundError(2, 'No such file or directory')`で一致する。
+元ログは監視threadのtraceback/消失pathを保存していないため、消失した個別cache directory名は
+確定できない。compile cacheの一時directory更新と整合し、モデル障害を示す証拠はない。
+
+[部分出力一覧・hash](../../runs/run-i935-precision-variants-s42-r20-20260930/partial_outputs.json)の
+全出力を元の場所に保持した。学習側はconfig/data_manifest/run_stateの3ファイルだけで、
+checkpoint・学習曲線・val NPZ・variant比較は未生成。reportとcompiler cacheを含む回収時の
+実サイズは148,535,536 bytes（停止後のcompiler終了処理による増分を含む）。
+TensorBoard出力はこのrunnerでは生成しない。途中のbatch NLLをvalidation結果として扱わない。
+
+修正とorchestratorが明示承認した同一3案の1job retryは
+[run21](000018-run-i935-precision-variants-s42-r21-20260930.md)に分離する。
+ここにある元plan・command・script・config・既存のCPU診断は失敗時の再現資料として保持する。
