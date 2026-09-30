@@ -63,6 +63,22 @@ def make_distribution(
     front = np.stack([item[1] for item in projected])
     scale = sizes - 1
     out_of_frame = (~front) | (truth_px < 0).any(-1) | (truth_px > scale[:, None]).any(-1)
+    distribution, rows, clipped = calibrated_distribution(truth_px, sizes, settings, rng, calibration=calibration, occlusion=occlusion, out_of_frame=out_of_frame)
+    masks = {"occlusion_mask": occlusion, "out_of_frame_mask": out_of_frame, "calibration_rows": rows}
+    metadata = {"gap_intervals": intervals, "shared_gap_length": shared_length, "clipped_component_means": clipped, "calibration_status": settings["status"], "calibration_bank_sha256": settings["calibration"]["bank_sha256"]}
+    return distribution, masks, metadata
+
+
+def calibrated_distribution(
+    truth_px: NDArray[np.floating], sizes: NDArray[np.float64], settings: dict[str, Any],
+    rng: np.random.Generator, *, calibration: CalibrationBank,
+    occlusion: NDArray[np.bool_], out_of_frame: NDArray[np.bool_],
+) -> tuple[BallGMM2D, NDArray[np.int64], int]:
+    """Apply one swappable bank to fixed projections and masks, retaining all K."""
+    v, t, _ = truth_px.shape
+    if occlusion.shape != (v, t) or out_of_frame.shape != (v, t):
+        raise ValueError("Calibration masks must match fixed projections")
+    scale = sizes - 1
     rows = np.stack([calibration.draw_rows(camera, occlusion[camera], rng, block_frames=settings["calibration"]["block_frames"]) for camera in range(v)])
     bank = calibration.arrays
     means_uv = truth_px[:, :, None] / scale[:, None, None] + bank["error_uv"][rows]
@@ -77,6 +93,4 @@ def make_distribution(
     )
     if not bool(((distribution.presence_probability > 0) & (distribution.presence_probability < 1)).all()) or not bool((distribution.weights > 0).all()):
         raise ValueError("Full enumeration requires interior pilot presence and positive component weights")
-    masks = {"occlusion_mask": occlusion, "out_of_frame_mask": out_of_frame, "calibration_rows": rows}
-    metadata = {"gap_intervals": intervals, "shared_gap_length": shared_length, "clipped_component_means": int(clipped.sum()), "calibration_status": settings["status"], "calibration_bank_sha256": settings["calibration"]["bank_sha256"]}
-    return distribution, masks, metadata
+    return distribution, rows, int(clipped.sum())

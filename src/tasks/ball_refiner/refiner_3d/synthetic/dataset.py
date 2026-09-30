@@ -85,7 +85,7 @@ def validate_rally(arrays: dict[str, NDArray[Any]], record: dict[str, Any], plan
         raise ValueError("Camera subset topology changed within a rally")
     codes = arrays["gmm3d_method_codes"]
     labels = tuple(record["component_method_labels"])
-    if codes.shape != (t, components) or codes.dtype != np.uint8 or (codes >= len(labels)).any() or labels not in (COMPONENT_METHODS[:7], COMPONENT_METHODS):
+    if codes.shape != (t, components) or codes.dtype != np.uint8 or (codes >= len(labels)).any() or labels not in (COMPONENT_METHODS[:7], COMPONENT_METHODS[:12], COMPONENT_METHODS):
         raise ValueError("Invalid component integration diagnostics")
     counts = dict(Counter(COMPONENT_METHODS[int(code)] for code in codes.ravel()))
     if counts != record["component_method_counts"]:
@@ -150,10 +150,18 @@ def _validate_integration(arrays: dict[str, NDArray[Any]], record: dict[str, Any
     if any(value.shape != (t,) for value in (nll, converged, rounds)) or converged.dtype != np.bool_ or (nll < 0).any():
         raise ValueError("Invalid per-frame convergence diagnostics")
     tolerances = np.asarray([config["log_evidence_tolerance_nat"], config["mean_tolerance"], config["covariance_relative_tolerance"]])
-    if not np.array_equal(flags, (changes <= tolerances).all(-1)) or not np.array_equal(converged, flags.all(-1) & (nll <= config["nll_tolerance_nat"])):
-        raise ValueError("Convergence flags disagree with achieved tolerance")
+    expected_flags = (changes <= tolerances).all(-1)
     cap = convergence_config(config).round_limit
-    if not np.issubdtype(rounds.dtype, np.integer) or (rounds < 2).any() or (rounds > cap).any() or (rounds[~converged] != cap).any():
+    minimum_rounds = 2 if config.get("method", "voxel") == "voxel" else 3
+    if not np.issubdtype(rounds.dtype, np.integer) or (rounds < minimum_rounds).any() or (rounds > cap).any():
+        raise ValueError("Invalid convergence round count")
+    if config.get("method") == "adaptive_ray":
+        embedded = arrays["integration_component_embedded_error"]
+        if embedded.shape != (t, components) or (embedded < 0).any() or not np.isfinite(embedded).all():
+            raise ValueError("Invalid embedded integration error")
+    if not np.array_equal(flags, expected_flags) or not np.array_equal(converged, flags.all(-1) & (nll <= config["nll_tolerance_nat"])):
+        raise ValueError("Convergence flags disagree with achieved tolerance")
+    if (rounds[~converged] != cap).any():
         raise ValueError("Nonconverged frames must exhaust the explicit cap")
     summary = record["integration"]
     if summary["rule"] != config or summary["converged_frames"] != int(converged.sum()) or summary["nonconverged_frames"] != int((~converged).sum()):
