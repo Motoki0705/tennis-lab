@@ -114,6 +114,9 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 - `court_side_clip000_diagnosis.py --qualification <failed run> --output <new directory>` は
   clip_000のball gateとcourt_side停止をCPU再現し、観測view別の元cost平均を分解する。
   production phaseはlabelを開かず、規則・閾値・storeを書き換えない。
+  `court_side_clip000_counterfactuals.py --qualification <failed run> --e9-cache <cache> --output <new directory>`
+  は同じdev clipのball注釈（observedのみ）とe9 top-1を診断専用で代入し、全仮説と品質を保存する。
+  e9 cacheの媒体・採用窓差を保持し、本番のside成果物をpublishしない。
 
 - `pipeline_stop_collection.py --report <qualification root> --queue <shared queue> --job <id> --output <new directory>`
   はclip_000のcourt_side停止をCPUで回収する。保存済み全artifactのhash/型/依存と人物元row・box・pose、
