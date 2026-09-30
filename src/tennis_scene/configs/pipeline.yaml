@@ -163,7 +163,7 @@ court_side:
 # Cross-camera association of the person tracks (src/tasks/player_association, #933). The
 # method's parameters live in `config` (project-relative); the game format is the clip's.
 player_association:
-  config: src/tasks/player_association/configs/association.yaml
+  config: src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml
   players_per_side: 1  # 1 = singles, 2 = doubles
 player_reconstruction:
   enabled: true

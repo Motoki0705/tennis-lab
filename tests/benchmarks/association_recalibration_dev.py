@@ -37,7 +37,7 @@ from src.tasks.player_association.association.associate import (
     associate,
 )
 from src.tasks.player_association.association.config import (
-    DEFAULT_CONFIG,
+    LEGACY_CONFIG,
     load_association_config,
 )
 from src.tasks.player_association.evaluation.labels import ClipLabels
@@ -122,10 +122,10 @@ def run(args: argparse.Namespace) -> None:
     if tracks['status'] != 'ok' or set(tracks['records']) != keys \
             or {f'{r["clip"]}/{r["camera"]}' for r in sources['inputs']} != keys:
         raise ValueError('Dev must use exactly the fixed four clips and twelve cameras')
-    configs = {'old': load_association_config(players_per_side=1),
+    configs = {'old': load_association_config(LEGACY_CONFIG, players_per_side=1),
                'fitted': load_association_config(args.config, players_per_side=1)}
     write_json_atomic(report / 'identity.json', {
-        'config_commit': args.config_commit, 'configs': {'old': file_identity(DEFAULT_CONFIG), 'fitted': file_identity(args.config)},
+        'config_commit': args.config_commit, 'configs': {'old': file_identity(LEGACY_CONFIG), 'fitted': file_identity(args.config)},
         'fit': file_identity(args.bundle / 'fit.json'), 'tracks': file_identity(args.tracks),
         'reuse': track_identity['reuse'], 'sources': feature_plan['sources'], 'benchmark': file_identity(Path(__file__)),
         'protocol': 'one batch / no refit / all undecided retained as -1 / reserved clips closed'})

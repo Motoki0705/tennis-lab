@@ -33,7 +33,7 @@ from src.tasks.person_tracking.strongsort_offline import AFLink
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tasks.player_association.association.associate import CameraTracks
 from src.tasks.player_association.association.config import (
-    DEFAULT_CONFIG,
+    LEGACY_CONFIG,
     load_association_config,
 )
 from src.tasks.player_association.calibration.samples import prepare_clip
@@ -73,14 +73,14 @@ def run(repo: Path, feature_root: Path, reuse_path: Path, report: Path) -> None:
         raise ValueError('Calibration geometry differs from the frozen split')
     sides = json.loads(checked(reuse['side_source']).read_text())
     old = json.loads(checked(reuse['old_tracking']).read_text())
-    base = load_association_config(players_per_side=1)
+    base = load_association_config(LEGACY_CONFIG, players_per_side=1)
     if asdict(base) != old['association'] or TrackingConfig().identity() != plan['production_tracking']:
         raise ValueError('Fixed association/tracker defaults changed')
     torch.set_num_threads(4)
     torch.set_num_interop_threads(1)
     aflink = AFLink(checked(plan['models']['aflink']))
     identity = {'features': file_identity(feature_path), 'plan': file_identity(plan_path),
-                'reuse': file_identity(reuse_path), 'base_config': file_identity(DEFAULT_CONFIG),
+                'reuse': file_identity(reuse_path), 'base_config': file_identity(LEGACY_CONFIG),
                 'benchmark': file_identity(Path(__file__)),
                 'fitter': {str(p.relative_to(CODE)): dual_sha256(p)
                            for p in (CODE / 'src/tasks/player_association/calibration').glob('*.py')}}
