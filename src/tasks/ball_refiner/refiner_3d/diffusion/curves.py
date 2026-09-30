@@ -23,6 +23,9 @@ def plot_dev_curves(output: Path) -> None:
     for key in ('overall', 'gap', 'event_pm5'):
         axis.plot([r['update'] for r in manifest['validation']],
                   [r['metrics']['mean']['rmse_m_' + key]['value'] for r in manifest['validation']], 'o-', label=key)
+    baselines = json.loads((output.parent / 'baselines.json').read_text())
+    for method in ('mixture_mean', 'top_component', 'mixture_mean_rts'):
+        axis.axhline(baselines['methods'][method]['metrics']['rmse_m_overall']['value'], linestyle='--', linewidth=.8, label=method)
     axis.set(title='validation mean trajectory RMSE', xlabel='update', ylabel='m')
     axis.legend()
     figure.suptitle(manifest['objective'] + ' — synthetic dev only')

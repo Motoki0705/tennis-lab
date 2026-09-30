@@ -63,7 +63,7 @@ def setup_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Pa
     dataset.mkdir()
     (dataset / 'manifest.json').write_text('{}')
     config = yaml.safe_load((PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/training_dev.yaml').read_text())
-    config.update(updates=2, evaluate_every=2, frames=4, stride=4, batch_size=2, samples=2, steps=2,
+    config.update(updates=2, evaluate_updates=[0, 1, 2], frames=4, stride=4, batch_size=2, samples=2, steps=2,
                   expected_counts={'train': 2, 'val': 1, 'test': 1},
                   model={'width': 16, 'layers': 1, 'heads': 2, 'feedforward_multiplier': 2, 'time_frequencies': 2, 'dropout': 0.})
     config_path = tmp_path / 'config.yaml'
@@ -92,9 +92,15 @@ def test_two_arms_train_from_identical_initialization_without_test_reads(tmp_pat
         val = result['arms'][arm]['validation'][-1]
         assert val['metrics']['mean']['rmse_m_overall']['count'] == 8
         assert val['metrics']['samples']['rmse_m_overall']['count'] == (16 if arm == 'flow' else 8)
-        assert (output / arm / 'predictions/val-00000.npz').is_file()
+        assert [v['update'] for v in result['arms'][arm]['validation']] == [0, 1, 2]
+        for update in (0, 1, 2):
+            assert (output / arm / 'predictions' / f'update-{update:05d}' / 'val-00000.npz').is_file()
+        assert val['by_visible_cameras']['mean']['0']['rmse_m_overall']['count'] == 4
+        assert val['by_visible_cameras']['mean']['3']['rmse_m_overall']['count'] == 4
         assert (output / arm / 'curves.png').stat().st_size > 1000
     assert orders[0] == orders[1]
+    assert result['baselines']['methods']['mixture_mean']['metrics']['rmse_m_overall']['value'] < 1e-6
+    assert result['baselines']['frames'] == 8
     with pytest.raises(FileExistsError):
         dev_training.run_dev_training(dataset, config, output, device='cpu')
 
@@ -113,7 +119,7 @@ def test_nonfinite_loss_records_failure_without_regression_retry(tmp_path: Path,
     assert not (output / 'regression').exists()
 
 
-@pytest.mark.parametrize('key,value', [('maximum_seconds', 3301), ('maximum_device_bytes', 10_000_000_001), ('allocator_limit_gib', 7.)])
+@pytest.mark.parametrize('key,value', [('maximum_seconds', 5101), ('maximum_device_bytes', 10_000_000_001), ('allocator_limit_gib', 7.), ('updates', 20001)])
 def test_excess_budget_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, key: str, value: float) -> None:
     _, path, _ = setup_run(tmp_path, monkeypatch)
     raw = yaml.safe_load(path.read_text())
@@ -121,3 +127,23 @@ def test_excess_budget_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     path.write_text(yaml.safe_dump(raw))
     with pytest.raises(ValueError):
         load_config(path)
+
+
+@pytest.mark.parametrize('schedule', [[1, 2], [0, 1], [0, 2, 1, 2], [0, True, 2], [0, 1, 1, 2]])
+def test_invalid_evaluation_schedule_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, schedule: list[int]) -> None:
+    _, path, _ = setup_run(tmp_path, monkeypatch)
+    raw = yaml.safe_load(path.read_text())
+    raw['evaluate_updates'] = schedule
+    path.write_text(yaml.safe_dump(raw))
+    with pytest.raises(ValueError):
+        load_config(path)
+
+
+def test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget() -> None:
+    short = load_config(PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/training_dev.yaml')
+    long = load_config(PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/training_dev_long.yaml')
+    from dataclasses import asdict
+    differences = {key for key, value in asdict(short).items() if asdict(long)[key] != value}
+    assert differences == {'updates', 'evaluate_updates', 'maximum_seconds'}
+    assert long.updates == 20000
+    assert long.evaluate_updates == (0, 2000, 5000, 10000, 15000, 20000)

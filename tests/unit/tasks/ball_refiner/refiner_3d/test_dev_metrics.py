@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 
 from src.tasks.ball_refiner.refiner_3d.diffusion.data import window_starts
 from src.tasks.ball_refiner.refiner_3d.diffusion.metrics import (
+    TrajectoryMetrics,
     metric_values,
     summarize_metrics,
 )
@@ -68,6 +69,34 @@ def test_nonuniform_timestamps_are_rejected() -> None:
     arrays['timestamps_seconds'][4] += .001
     with pytest.raises(ValueError, match='uniformly'):
         metric_values(arrays['positions_3d_m'][None], arrays)
+
+
+def test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames() -> None:
+    arrays = trajectory()
+    # Alternate 0/1/2/3 cameras; separated frames must not be joined to take a
+    # difference. Each derivative stencil is assigned by its central frame.
+    visible: NDArray[np.int64] = np.arange(20) % 4
+    arrays['occlusion_mask'] = np.arange(3)[:, None] >= visible[None]
+    metric = TrajectoryMetrics()
+    metric.add(arrays['positions_3d_m'][None], arrays)
+    summary = metric.summarize()
+    for key in ('rmse_m_overall', 'acceleration_all', 'jerk_all', 'acceleration_free_flight', 'reprojection_px_all', 'behind_all'):
+        assert sum(s[key]['count'] for s in summary['by_visible_cameras'].values()) == summary['metrics'][key]['count']
+    for stratum in summary['by_visible_cameras'].values():
+        assert stratum['rmse_m_overall']['count'] == 5
+        assert stratum['acceleration_all']['p95'] == pytest.approx(np.hypot(.4, 9.81))
+        assert stratum['jerk_all']['p95'] < 1e-7
+
+
+def test_camera_strata_use_visibility_including_out_of_frame_not_presence() -> None:
+    arrays = trajectory()
+    arrays['occlusion_mask'][:] = False
+    arrays['out_of_frame_mask'][1:] = True
+    metric = TrajectoryMetrics()
+    metric.add(arrays['positions_3d_m'][None], arrays)
+    summary = metric.summarize()['by_visible_cameras']
+    assert summary['1']['rmse_m_overall']['count'] == 20
+    assert summary['3']['rmse_m_overall'] == {'count': 0, 'value': None}
 
 
 @pytest.mark.parametrize('length', [4, 127, 128, 129, 130, 255, 512])

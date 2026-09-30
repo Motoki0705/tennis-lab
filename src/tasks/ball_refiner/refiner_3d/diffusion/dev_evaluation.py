@@ -16,7 +16,7 @@ from src.utils.schema.court_normalization import denormalize_court_position
 from .data import rally_window
 from .dev_config import DevConfig
 from .flow import sample_trajectories, training_objective
-from .metrics import Array, metric_values, summarize_metrics
+from .metrics import Array, TrajectoryMetrics
 from .model import TrajectoryDenoiser
 
 
@@ -34,7 +34,7 @@ def evaluate_dev(
     if not rallies or any(r.record['split'] != 'val' for r in rallies):
         raise ValueError('Evaluation is restricted to the complete validation split')
     started = time.perf_counter()
-    collected: dict[str, dict[str, list[Array]]] = {name: defaultdict(list) for name in ('mean', 'samples', 'truth')}
+    collected = {name: TrajectoryMetrics() for name in ('mean', 'samples', 'truth')}
     loss_sums: dict[str, float] = defaultdict(float)
     total_frames = 0
     uncertainty = []
@@ -65,8 +65,7 @@ def evaluate_dev(
                     covariance = np.zeros((record['frames'], 3, 3), dtype=np.float32)
                 mean = trajectories.mean(0)
                 for kind, value in (('mean', mean[None]), ('samples', trajectories), ('truth', arrays['positions_3d_m'][None])):
-                    for key, numbers in metric_values(value, arrays).items():
-                        collected[kind][key].append(numbers)
+                    collected[kind].add(value, arrays)
                 uncertainty.append(np.sqrt(np.trace(covariance, axis1=-2, axis2=-1)))
                 if predictions is not None:
                     fields = ('positions_3d_m', 'timestamps_seconds', 'occlusion_mask', 'out_of_frame_mask',
@@ -79,11 +78,13 @@ def evaluate_dev(
     finally:
         model.train(was_training)
     elapsed = time.perf_counter() - started
+    summaries = {kind: values.summarize() for kind, values in collected.items()}
     return {'rallies': len(rallies), 'frames': total_frames, 'seconds': elapsed,
             'frames_per_second': total_frames / elapsed,
             'loss': {key: value / total_frames for key, value in loss_sums.items()},
-            'metrics': {kind: summarize_metrics(values) for kind, values in collected.items()},
+            'metrics': {kind: values['metrics'] for kind, values in summaries.items()},
+            'by_visible_cameras': {kind: values['by_visible_cameras'] for kind, values in summaries.items()},
             'uncertainty_rms_radius_m': float(np.concatenate(uncertainty).mean()),
             'inference': 'whole rally, no stitching; fixed noise per rally/update; mean and all samples reported',
             'reprojection': 'source pixels vs synthetic truth on in-image GT; front-only errors plus explicit invalid-depth counts',
-            'derivatives': 'm/s^2 and m/s^3; finite differences at 60000/1001 Hz, full free-flight stencils'}
+            'derivatives': 'm/s^2 and m/s^3; original timeline, full free-flight stencils; strata use acceleration center / jerk left center'}
