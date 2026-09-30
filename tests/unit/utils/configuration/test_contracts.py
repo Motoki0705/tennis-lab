@@ -152,6 +152,18 @@ def test_hybrid_audit_declares_input_output_and_optional_scene_paths() -> None:
     assert "path-direction:output" in fields["output_dir"].value_constraints
 
 
+def test_ball_refiner_experiment_requires_an_existing_project_plan() -> None:
+    boundary = next(item for item in BOUNDARY_CONTRACTS
+                    if item.boundary_id == "src.tasks.ball_refiner.scripts.experiment_dev_3d:main")
+    assert boundary.validator_callable == "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    contract = next(item for item in ADAPTER_CONTRACTS
+                    if item.adapter_symbol == "src.tasks.ball_refiner.scripts.experiment_dev_3d.PATH_BOUNDARY")
+    assert len(contract.fields) == 1
+    field = contract.fields[0]
+    assert field.path.endswith(".plan") and field.required
+    assert {"path-role:project", "path-direction:input", "must-exist-before-side-effects"} <= set(field.value_constraints)
+
+
 def test_gvhmr_extraction_boundary_declares_every_storage_and_model_path() -> None:
     boundary = next(
         contract

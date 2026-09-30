@@ -1,0 +1,51 @@
+{
+  "original_head": "021426901f945513bd320be02360b03dfce44b67",
+  "python_ci": {
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/36744179273",
+    "status": "failure",
+    "passed": 6636,
+    "failed": 2,
+    "skipped": 133,
+    "seconds": 517.07,
+    "failed_tests": [
+      "test_repository_source_satisfies_current_audit",
+      "test_all_inventoried_runtime_boundaries_expose_truthful_authorities"
+    ],
+    "cause": "experiment_dev_3d CLI was omitted from configuration boundary inventory"
+  },
+  "knowledge_ci": {
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/36744178874",
+    "library": "success",
+    "webui": "cancelled",
+    "webui_lint": "passed",
+    "webui_unit_tests_passed": 5,
+    "webui_build": "passed",
+    "webui_e2e": "not_started",
+    "annotation": "The job has exceeded the maximum execution time of 10m0s",
+    "last_operation": "Playwright system dependencies downloaded from azure.archive.ubuntu.com",
+    "job_reruns_requested": 0
+  },
+  "fix_files": [
+    "src/utils/configuration/inventory.py",
+    "tests/unit/utils/configuration/test_contracts.py"
+  ],
+  "local_verification": {
+    "tests": 53,
+    "seconds": 148.66,
+    "workers": 1,
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "queue_pins_after_registration_fix": {
+    "pilot512": {
+      "pinned_count": 64,
+      "mismatches": []
+    },
+    "physics10": {
+      "pinned_count": 64,
+      "mismatches": []
+    }
+  },
+  "gpu_jobs_added": 2,
+  "gpu_jobs_retried": 0
+}
