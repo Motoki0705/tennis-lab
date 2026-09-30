@@ -64,6 +64,8 @@ generatorの`--calibration-report <絶対project-path>/calibration.json`で、�
 frame/成分別の収束flag・達成差分・使用予算・全履歴を保存する。上限で未収束のframeも
 最後の全分布を保持し、収束済みへ読み替えたり学習loaderで黙って除外したりしない。
 数値失敗は別の明示的errorである。v1の仮定劣化/K=3からのデータ移行は再生成で行う。
+適応rayの補助誤差とchart選択もNPZへ保存する。`integration_component_metric_codes`は
+0=適応chart対象外、1=局所Hessian、2=白色化画素/log-depth単位軸。readerは方式codeとの一致を検証する。
 過去のv1はschemaを指定した読込だけを維持し、新しい生成には使用しない。
 
 BLCSが既知prefixで棄却した物理提案だけを設定の有限予算で再標本化し、

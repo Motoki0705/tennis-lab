@@ -1,0 +1,53 @@
+{
+  "methods": {
+    "prior": 311,
+    "ray:boundary_laplace_tail": 3732,
+    "laplace": 26072,
+    "adaptive_ray:boundary_laplace_tail": 6355,
+    "adaptive_ray:camera_boundary": 2330,
+    "adaptive_ray:iteration_budget": 75
+  },
+  "unresolved_components_by_active_views": {
+    "2": 187,
+    "3": 9
+  },
+  "nonconverged_frames_with_NLL_passing": 75,
+  "nonconverged_frames": 91,
+  "nonconverged_component_mass": {
+    "min": 5.960069105550338e-19,
+    "p50": 0.00011127975805068292,
+    "p95": 0.015995843771657574,
+    "max": 0.11456030151831113
+  },
+  "float32_covariance_failures": [],
+  "float32_zero_weight_components_retained": 500,
+  "mixture_mean_change_vs_baseline_m": {
+    "min": 0.0,
+    "p50": 9.089609545831968e-06,
+    "p95": 0.0017865933873459274,
+    "max": 0.03471855832388245
+  },
+  "matched_baseline_frames": 308,
+  "embedded_error": {
+    "min": 7.43775414629414e-05,
+    "p50": 0.0007345091273318735,
+    "p95": 0.003732680354409148,
+    "max": 1.1290873159247314
+  },
+  "embedded_target_not_met_components": 877,
+  "chart_metrics": {
+    "local_hessian": 8757,
+    "unit_ray_axes": 3
+  },
+  "outer_passed_frames_with_embedded_target_unmet": 139,
+  "embedded_note": "Embedded error is supplementary; acceptance still uses the preregistered four outer differences. It is not a rigorous bound.",
+  "source_files": {
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-before/results.json": "40fdd1ad92ba5ed93583a8d77b5b62bd2a1271d524e2a918c047d5f077cb688f",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-after/results.json": "4fcec978be29fc90f8924673be968bffe6b6233b2d777ffef8275ef3786b4f2f"
+  },
+  "bytes": {
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-before": 6899475,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-k4-r7-after": 11888106,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-k4-audit-r7-s93607": 3978776
+  }
+}

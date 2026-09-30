@@ -1,5 +1,6 @@
 """Adaptive cubature checks against an independent analytic radial reference."""
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -69,9 +70,28 @@ def test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule
     rule = dict(method='adaptive_ray', orders=[12, 20, 32], nll_tolerance_nat=.05, log_evidence_tolerance_nat=.05, mean_tolerance=.02, covariance_relative_tolerance=.05,
                 relative_errors=[.01, .003, .001], max_cells=[8, 16, 24])
     arrays = dict(integration_component_changes=np.zeros((1, 1, 3)), integration_component_converged=np.ones((1, 1), bool),
-                  integration_nll_delta_nat=np.zeros(1), integration_converged=np.ones(1, bool), integration_rounds=np.array([3]), integration_component_embedded_error=np.array([[.1]]))
+                  integration_nll_delta_nat=np.zeros(1), integration_converged=np.ones(1, bool), integration_rounds=np.array([3]), integration_component_embedded_error=np.array([[.1]]), integration_component_metric_codes=np.array([[2]],dtype=np.uint8))
     record = dict(frames=1, integration=dict(rule=rule, converged_frames=1, nonconverged_frames=0))
     _validate_integration(arrays, record, dict(degradation=dict(boundary_convergence=rule)), 1)
+    arrays['integration_component_metric_codes'][:] = 3
+    with pytest.raises(ValueError, match='chart'):
+        _validate_integration(arrays, record, dict(degradation=dict(boundary_convergence=rule)), 1)
+    arrays['integration_component_metric_codes'][:] = 2
     arrays['integration_component_embedded_error'][:] = float('nan')
     with pytest.raises(ValueError, match='embedded'):
         _validate_integration(arrays, record, dict(degradation=dict(boundary_convergence=rule)), 1)
+
+
+def test_saddle_chart_is_explicit_and_does_not_repair_covariance():
+    # Pre-registered dev-r5 train-00003/frame257/component123 (combination 3,3,2).
+    # The baseline failed at the full-Hessian factorization; no GT is included.
+    with np.load(Path(__file__).parent / 'fixtures/adaptive_ray_saddle.npz') as data:
+        cameras = tuple(PinholeCamera(str(i), data['K'][i], data['R'][i], data['t'][i]) for i in range(3))
+        ray = RayProposal(cameras, data['means'], data['covariance'], GaussianPrior3D(np.array([0., 0., 2.]), np.diag([36., 144., 9.])), adaptive_metric=True)
+    assert not ray.metric_is_local_hessian
+    proposal = AdaptiveRayProposal(ray)
+    mean, covariance, evidence = proposal.integrate(AdaptiveRayConfig(32, .003, 256))
+    np.linalg.cholesky(covariance)
+    assert np.isfinite(evidence)
+    assert all((camera.rotation @ mean + camera.translation)[2] > 0 for camera in cameras)
+    assert not proposal.diagnostic['metric_is_local_hessian']
