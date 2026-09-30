@@ -20,7 +20,7 @@ class DevConfig:
     stride: int
     learning_rate: float
     weight_decay: float
-    evaluate_every: int
+    evaluate_updates: tuple[int, ...]
     samples: int
     steps: int
     maximum_seconds: int
@@ -31,12 +31,15 @@ class DevConfig:
     loss: LossConfig
 
     def __post_init__(self) -> None:
-        integers = ('seed', 'updates', 'batch_size', 'frames', 'stride', 'evaluate_every', 'samples', 'steps', 'maximum_seconds', 'maximum_device_bytes')
+        integers = ('seed', 'updates', 'batch_size', 'frames', 'stride', 'samples', 'steps', 'maximum_seconds', 'maximum_device_bytes')
         if any(type(getattr(self, key)) is not int or getattr(self, key) < 1 for key in integers):
             raise ValueError('Dev dimensions/budgets must be positive integers')
         if self.frames < 4 or not 1 <= self.stride <= self.frames or self.samples < 2:
             raise ValueError('Invalid dev windows/sampling')
-        if self.updates % self.evaluate_every or self.updates > 10000 or self.maximum_seconds > 3300:
+        if (not self.evaluate_updates or any(type(n) is not int for n in self.evaluate_updates)
+                or tuple(sorted(set(self.evaluate_updates))) != self.evaluate_updates
+                or self.evaluate_updates[0] != 0 or self.evaluate_updates[-1] != self.updates
+                or self.updates > 20000 or self.maximum_seconds > 5100):
             raise ValueError('Need bounded updates and a final scheduled validation')
         if not 0 < self.allocator_limit_gib <= 6 or not 0 < self.maximum_device_bytes <= 10_000_000_000:
             raise ValueError('Dev run exceeds the GPU grant')
@@ -52,4 +55,7 @@ def load_config(path: Path) -> DevConfig:
         raise ValueError('Need complete dev configuration without extra fields')
     raw['model'] = ModelConfig(**raw['model'])
     raw['loss'] = LossConfig(**raw['loss'])
+    if not isinstance(raw['evaluate_updates'], list):
+        raise ValueError('Need explicit validation updates')
+    raw['evaluate_updates'] = tuple(raw['evaluate_updates'])
     return DevConfig(**raw)
