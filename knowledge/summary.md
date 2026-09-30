@@ -1,4 +1,4 @@
-<!-- knowledge-review: 38fe4bbafc6c510ecf89a2c02c34a97fa2a8810cf2bed15f7126641ea6dafa10 on 2026-09-30 -->
+<!-- knowledge-review: 8ba9bc991978d8457bd6f1e1124a91e4e64b6388ba81d2d218698ab84cef0a68 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -226,7 +226,7 @@ calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
 配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
 bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
 [seed44再試行](nodes/ball_refiner/000021-run-i935-seed44-retry-r24-20260930.md)は資源上限内で完了したが、[事前10比較](nodes/ball_refiner/000023-run-i935-seed-reproduction-r25-20260930.md)は9/10で不合格。seed44の人工gap NLLだけがabsolute_12kより悪い。位置分位点は両追加seedでe9 top-1を上回るが、これを全条件の再現成功とは扱わない。
-[e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)の元動画checkはcompiler cacheがreportを先に作るsetup bugでGPU前に停止した。[cacheを兄弟directoryへ分離する再投入](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)を準備した。実動画Bゲートは事前の実行・fresh-load・GT精度差で判定し、strict field一致は診断に限定する。seed再現の不合格も残るため、check通過だけでは既定切替しない。次は固定倍率の三seed層別診断と元動画checkを回収し、負の結果を踏まえてBを判断する。
+[e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)の元動画checkはcompiler cacheがreportを先に作るsetup bugでGPU前に停止した。[cacheを兄弟directoryへ分離する再投入](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)を準備した。実動画Bゲートは事前の実行・fresh-load・GT精度差で判定し、strict field一致は診断に限定する。seed再現の不合格も残るため、check通過だけでは既定切替しない。固定倍率の三seed診断ではMeiji observed NLLは改善するがgap NLLは全seedで悪化し、calibration halfのHDR90/95には過信が残る。TrackNet observed NLLも全seedで悪化する。次は元動画checkを回収し、seed不合格を含む負の結果についてBを判断する。
 #964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
 
 ### Court Detection
