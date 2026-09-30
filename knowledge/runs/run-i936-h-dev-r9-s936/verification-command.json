@@ -1,0 +1,22 @@
+{
+  "commit": "87acfa3ceb462ecdacc159aa88261bd751ffb0e6",
+  "command": [
+    ".venv/bin/python",
+    "-u",
+    "-m",
+    "src.tasks.ball_refiner.scripts.verify_synthetic_3d",
+    "--dataset",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/h-dev/r9-s936"
+  ],
+  "threads": 1,
+  "hdr_samples": 2048,
+  "test_scope": "storage only; no test quality metrics",
+  "hashes": {
+    "src/tasks/ball_refiner/scripts/verify_synthetic_3d.py": "0ee58645fe897e02f9a784dbe72e069d3efaa4ae78395deff475d67901d96acc",
+    "src/tasks/ball_refiner/refiner_3d/verification.py": "cd0308a4f8df0669f726865322c863ae9844045708b02edd2c93508836954414",
+    "src/tasks/ball_refiner/evaluation/hdr.py": "dcfca836af1856bc4a2b882ccd89f1d71f40d816f1029e4a7543d2743821f7fd",
+    "src/tasks/ball_refiner/refiner_3d/synthetic/dataset.py": "5f0f6947c96b3cad2430319cc510a790ef6d768211ebe8ae5d94b47d5457c1d7"
+  }
+}
