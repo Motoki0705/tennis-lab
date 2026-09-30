@@ -165,12 +165,36 @@ CUDAは共有queue専用。CPU指定は通常検証用で、自動device切替�
 窓にし、同じ初期重み・窓のshuffle順からflowと1-step回帰を別々に学習する。
 valはラリー全体を一度に推論し、testラリーを開かず、checkpoint選択や調整をしない。
 
-各更新の4損失・速度・メモリをJSONLに即時保存し、定期val・最終予測・曲線PNG・
+各更新の4損失・速度・メモリをJSONLに即時保存し、明示した全評価時点のval予測・曲線PNG・
 開発専用checkpointを残す。RMSEは全体、全camera人工gap、全camera証拠なし、hit/bounce±5。
 加速度/jerkは実秒の2/3階差分で、全区間と全stencilが自由飛行の区間を別集計する。
 再投影は真camera上の画面内合成GTへの画素誤差で、behind-camera件数を別報告する。
 有限な再投影値は正depthに条件付きなので、不正depthが残る結果を改善とは扱わない。
 flowは平均軌道と全サンプルの指標を併記し、平均化だけでjitterを隠さない。
 
-本学習・#929との対照・Meiji LOCOは最終的な#935較正を経て別runで実施する。
+### 同一valの単純ベースラインと更新数延長
+
+`baselines.py`は保存された全3D混合の平均、最大重み成分平均、混合平均への
+#929重力RTSを無学習・無調整で比較する。これは点推定ベースラインであり、
+生成器やモデルへ渡す全成分の条件分布を変更しない。RTSの数値処理・イベント検出は
+`baseline_rts.py`に記載したcommitの抽出で、教師イベントを使わない。
+全frameに分布があるため欠損中も点推定を処理する。#929 pipelineのbounds/速度gateは
+ここでは件数を記録する診断とし、ラリーを除外せず採点する。数値失敗は停止する。
+
+`python -m src.tasks.ball_refiner.scripts.compare_dev_baselines_3d`はCPU専用で、
+絶対pathの`--dataset`、旧2k runの`--training-output`、新規`--output`を受け取る。
+dataset/valラリーのhashと予測に保存したGT・mask・cameraを照合し、
+旧指標の再計算一致を要求する。train/test NPZは開かない。
+比較表・全指標JSON・baseline予測を保存する。
+
+学習runnerも同じベースラインを初めに保存する。`evaluate_updates`は初期0から
+最終更新までの明示的な昇順リストで、各時点の予測は
+`<arm>/predictions/update-<番号>/`に保存する。
+[training_dev_long.yaml](training_dev_long.yaml)は更新数、評価時点、時間予算だけを
+短時間設定から変えたdev実験で、初期化・窓順・モデル・loss・較正は同じ。
+可視camera数（occlusion/out_of_frameのどちらもない台数）で全指標も層別する。
+差分は元時系列で計算し、加速度は中央frame、jerkは左中央frameの層へ割り当てる。
+層ごとに離れたframeを連結して差分を取らない。
+
+本学習・#929との最終対照・Meiji LOCOは最終的な#935較正を経て別runで実施する。
 開発用の短時間比較を、最終精度・パレート優位・本番採用の証拠にはしない。
