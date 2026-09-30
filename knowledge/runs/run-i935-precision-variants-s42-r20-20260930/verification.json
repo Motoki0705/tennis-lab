@@ -1,0 +1,13 @@
+{
+  "cpu_diagnosis_tests": 3,
+  "model_anchor_tests": 26,
+  "training_cached_comparison_tests": 15,
+  "pytest_workers": 4,
+  "ruff": "passed",
+  "mypy": "passed",
+  "preflight": "passed",
+  "table_renderer": "r19 recorded metrics used as fixture only; all required tables rendered",
+  "gpu": "not yet run",
+  "ci": "pending",
+  "cpu_fullgraph_capture": "passed; backend=eager; CUDA Inductor not yet run"
+}
