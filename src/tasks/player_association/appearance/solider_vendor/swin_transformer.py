@@ -535,13 +535,8 @@ class PatchMerging(BaseModule):
                     (Merged_H, Merged_W).
         """
         B, L, C = x.shape
-        assert isinstance(input_size, Sequence), f'Expect ' \
-                                                 f'input_size is ' \
-                                                 f'`Sequence` ' \
-                                                 f'but get {input_size}'
 
         H, W = input_size
-        assert L == H * W, 'input feature has wrong size'
 
         x = x.view(B, H, W, C).permute([0, 3, 1, 2])  # B, C, H, W
         # Use nn.Unfold to merge patch. About 25% faster than original method,
@@ -725,7 +720,6 @@ class ShiftWindowMSA(BaseModule):
     def forward(self, query, hw_shape):
         B, L, C = query.shape
         H, W = hw_shape
-        assert L == H * W, 'input feature has wrong size'
         query = query.view(B, H, W, C)
 
         # pad feature maps to multiples of window size
@@ -1175,11 +1169,13 @@ class SwinTransformer(BaseModule):
                 in_channels = downsample.out_channels
 
         self.num_features = [int(embed_dims * 2**i) for i in range(num_layers)]
-        # Add a norm layer for each output
+        # Bind registered output norms during construction, not in forward.
+        self.output_norms = {}
         for i in out_indices:
             layer = build_norm_layer(norm_cfg, self.num_features[i])[1]
             layer_name = f'norm{i}'
             self.add_module(layer_name, layer)
+            self.output_norms[i] = layer
 
         self.avgpool = nn.AdaptiveAvgPool2d((1,1))
 
@@ -1226,7 +1222,7 @@ class SwinTransformer(BaseModule):
                 sb = self.semantic_embed_b[i](semantic_weight).unsqueeze(1)
                 x = x * self.softplus(sw) + sb
             if i in self.out_indices:
-                norm_layer = getattr(self, f'norm{i}')
+                norm_layer = self.output_norms[i]
                 out = norm_layer(out)
                 out = out.view(-1, *out_hw_shape,
                                self.num_features[i]).permute(0, 3, 1,

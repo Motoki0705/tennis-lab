@@ -39,5 +39,6 @@
     1.0,
     1.0
   ],
-  "scope": "two dev crops; official forward with explicit semantic condition vs port; MMCV loading-only import removed; no CUDA/no tracking metrics"
+  "scope": "two dev crops; official forward with explicit semantic condition vs port; MMCV loading-only import removed; no CUDA/no tracking metrics",
+  "boundary_adaptation_rechecked": true
 }

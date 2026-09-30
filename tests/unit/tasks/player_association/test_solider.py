@@ -40,3 +40,12 @@ def test_inference_semantic_conditioning_uses_input_device_and_weights() -> None
         explicit, _ = model(image, semantic_weight=torch.tensor([[.2, .8]]))
     assert implicit.device.type == 'cpu' and implicit.shape == (1, 64)
     torch.testing.assert_close(implicit, explicit, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize('crops', [torch.zeros(1, 3, 32, 16), torch.full((1, 3, 384, 128), float('nan')), torch.full((1, 3, 384, 128), 2.)])
+def test_input_validation_precedes_the_computation_only_graph(crops: torch.Tensor) -> None:
+    from src.tasks.player_association.appearance.solider import SoliderEncoder
+    encoder = object.__new__(SoliderEncoder)  # No model is needed for invalid input.
+    encoder.input_size = (384, 128)
+    with pytest.raises(ValueError, match='finite RGB'):
+        encoder.embed(crops)
