@@ -4,5 +4,13 @@
     "means": 0.0,
     "covariance": 0.0,
     "weights": 0.0
+  },
+  "adaptive_ray": {
+    "frames": 311,
+    "maximum_absolute_differences_from_r7": {
+      "means": 0.0,
+      "covariance": 0.0,
+      "weights": 0.0
+    }
   }
 }
