@@ -1,0 +1,417 @@
+{
+  "status": "complete",
+  "mode": "resize_only",
+  "camera": "cam2",
+  "frames": 270,
+  "seconds": 212.66571186296642,
+  "peak_rss_bytes": 3324506112,
+  "minimum_host_available_bytes": 16713670656,
+  "cuda_initialized": false,
+  "normalization": {
+    "enabled": true,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "checkpoint_model": {
+    "name": "conv_next_unet",
+    "input_mode": "mdd",
+    "in_channels": 2,
+    "num_classes": 1,
+    "num_frames": 8,
+    "input_layout": "bcthw",
+    "dims": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "depth": 2,
+    "drop_path_prob": 0.0,
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "comparison": {
+    "source_cuda": {
+      "all_rank_native_cells_equal_frames": 0,
+      "same_rank_native_cells": 291,
+      "score_max_abs": 0.45381349325180054,
+      "same_rank_position_max_abs_px": 1919.0
+    },
+    "cache_cuda": {
+      "all_rank_native_cells_equal_frames": 0,
+      "same_rank_native_cells": 380,
+      "score_max_abs": 0.309440940618515,
+      "same_rank_position_max_abs_px": 1918.4998779296875
+    }
+  },
+  "store_coordinate_factor": [
+    0.999739408493042,
+    0.9995365738868713
+  ],
+  "batches": [
+    {
+      "window_starts": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "8392c1b8b66ea50b255d0ac09c6f9c10b33afee0b7081c63783ad5dfb7a69260",
+      "cache_rgb_sha256": "de41867df7a06de64d301469000783bb9463ba59f977a899bd7175d09e7c8d46",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0033721893560141325,
+      "model_input_max_delta_cache": 0.9368453025817871
+    },
+    {
+      "window_starts": [
+        16,
+        20,
+        24,
+        28
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "5826624d9be0d0af3269968d52036dfdd95ae8d154d637e68c105e732f746de4",
+      "cache_rgb_sha256": "d244952c5d3a24f9f73ec4b80f40375541e5fa016854b05572a90071beeaa8f5",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0037953678984194994,
+      "model_input_max_delta_cache": 0.9733644127845764
+    },
+    {
+      "window_starts": [
+        32,
+        36,
+        40,
+        44
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "896a27049c5e12ad58717c6d1e9de373143a94929efc6cf342927c36b20c1444",
+      "cache_rgb_sha256": "fb5133267a2b1c2f61bf078b2b10d66fbc4943c48d0b3c8572c49210e4b4487c",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.003697511972859502,
+      "model_input_max_delta_cache": 0.9828425049781799
+    },
+    {
+      "window_starts": [
+        48,
+        52,
+        56,
+        60
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "97e57255b3b81a1e326f299dc19f305fa299789ed35bd432c3151dfa6f3b1627",
+      "cache_rgb_sha256": "6512ead66aa2803e12b81988f11065dab27dd34a1809092f6ddb39690800d50e",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.003463274799287319,
+      "model_input_max_delta_cache": 0.9661159515380859
+    },
+    {
+      "window_starts": [
+        64,
+        68,
+        72,
+        76
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "ec41608ffa0cd6af9bc8ec5b31be48e8de2a949a916f5d68266808725e0740d8",
+      "cache_rgb_sha256": "0ae65ece927e8a5db33692d10688664f5faa449e8eb673320de096867dc70158",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0038271008525043726,
+      "model_input_max_delta_cache": 0.9567239880561829
+    },
+    {
+      "window_starts": [
+        80,
+        84,
+        88,
+        92
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "ecf7244819ee68861dcaf00fd30f642111c460ebee8a3b2679fc07fe32cff755",
+      "cache_rgb_sha256": "abf12f830f60e74da7bb0482d006f4aab256034c5df9502f45bc6491fca5f6a3",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.003788517089560628,
+      "model_input_max_delta_cache": 0.9597411751747131
+    },
+    {
+      "window_starts": [
+        96,
+        100,
+        104,
+        108
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "40080d31a254f3eed29eb4027280424486664907788f2f799990f56134438fac",
+      "cache_rgb_sha256": "7bd8e3119f333eff32d3f0ef15458697ffbebbe8a2a9827362a9b5ac58b2821d",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.004117411095649004,
+      "model_input_max_delta_cache": 0.9604466557502747
+    },
+    {
+      "window_starts": [
+        112,
+        116,
+        120,
+        124
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "274e70c29e4bddb69780ac516186a4c2a9f06fa1a3774849fa4326200e1f9f2f",
+      "cache_rgb_sha256": "7ec44974889480fd34eab01ffb3f8b73dc5bf10828319ada56687f3ecb687cde",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0037646000273525715,
+      "model_input_max_delta_cache": 0.9168831706047058
+    },
+    {
+      "window_starts": [
+        128,
+        132,
+        136,
+        140
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "7725685ebe2269fd4cdd5e4404928ca9e71cdec826059ab6b668a8737b33433e",
+      "cache_rgb_sha256": "39ea3c56d57db16c58687c14f863f599f795f350974b2443863661550d5a631d",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.004082200583070517,
+      "model_input_max_delta_cache": 0.9690518975257874
+    },
+    {
+      "window_starts": [
+        144,
+        148,
+        152,
+        156
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "218265b415fa99692549cfa4323331ca60629351228826e78b43fffc499c2dbe",
+      "cache_rgb_sha256": "49a8bd19aa296bc4ee37c53fcc4f2ccf14aad7b2edd390bd650b70e5b90c5afd",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0040431758388876915,
+      "model_input_max_delta_cache": 0.9757810831069946
+    },
+    {
+      "window_starts": [
+        160,
+        164,
+        168,
+        172
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "3d11371a5ec9bfeaae2e89ca81e8d68ee954104cfbcf1601e35317d65a78b55e",
+      "cache_rgb_sha256": "907a2f8479ebb6db86d4191b7ebf2f1dc832c0a12b5610bbf37ae4709d07bcb6",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.004092897288501263,
+      "model_input_max_delta_cache": 0.9799430966377258
+    },
+    {
+      "window_starts": [
+        176,
+        180,
+        184,
+        188
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "bef3c96692fafc4c99e5c99c2e048707625e8ff8dc50b797ec1b0f8b08fd161b",
+      "cache_rgb_sha256": "4debca4143fbfbf77876bc135a1752a0559c3d2b8935b7c16ce9b0ee7f3e14f6",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.00383863877505064,
+      "model_input_max_delta_cache": 0.9339457750320435
+    },
+    {
+      "window_starts": [
+        192,
+        196,
+        200,
+        204
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "6a8a6f1d99795b8c275da74f65dc092ec27ffa20a26bb79715df78de6b824664",
+      "cache_rgb_sha256": "466bb628a7b195aa5d601c38a1856e5ded6ac2020ad9ef58e8bed1513bb9d261",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0039527141489088535,
+      "model_input_max_delta_cache": 0.936223030090332
+    },
+    {
+      "window_starts": [
+        208,
+        212,
+        216,
+        220
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "f86127c1808dc90c1631df71aba896a3af27860c3ccf5d80bf793091756ea859",
+      "cache_rgb_sha256": "d47dc4b0bef38c22901f4d13291578ac25d7617e266b2ea3870ce1dc44581bc7",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.004268955439329147,
+      "model_input_max_delta_cache": 0.9639089703559875
+    },
+    {
+      "window_starts": [
+        224,
+        228,
+        232,
+        236
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "0f9487b4d350d997f036d96e2995f55cdfaf86eb1022c2ec4882c82efb5d81dd",
+      "cache_rgb_sha256": "0842c2d56286a8cea89415c3d1d712c90a7011dcbe5d50d17156cd0168719e8c",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.004089679103344679,
+      "model_input_max_delta_cache": 0.9584365487098694
+    },
+    {
+      "window_starts": [
+        240,
+        244,
+        248,
+        252
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "8e9f1fee62be7028842fd7bcbbfb3a46f03feb1ea0af1f02128368694df3f22d",
+      "cache_rgb_sha256": "25d9de9cfff7045dbc13b53711739d506f6613c320953bb420a3366a325cc5b7",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.004243829287588596,
+      "model_input_max_delta_cache": 0.9558619856834412
+    },
+    {
+      "window_starts": [
+        256,
+        260,
+        262
+      ],
+      "rgb_batch_equal_cache": false,
+      "rgb_sha256": "fbdc9a355bd23031f9b9c112c2005d30678adb6888847a9107ddfe307da5dd16",
+      "cache_rgb_sha256": "2734bc597eb79e93590c1a0ccba033a88314800e43a16228c956242234b040ba",
+      "model_input_shape": [
+        3,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0037308887112885714,
+      "model_input_max_delta_cache": 0.9361735582351685
+    }
+  ]
+}
