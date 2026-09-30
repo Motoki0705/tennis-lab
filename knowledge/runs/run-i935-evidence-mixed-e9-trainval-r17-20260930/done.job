@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i935-evidence-mixed-e9-trainval-r17-20260930
+# added: 2026-09-30T08:45:12+09:00
+# provider: codex
+# session: 01a0ef7d-1eb8-7973-b7c6-8b0604efd8ef
+# issue: 935
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection
+export TENNIS_RUN_ID=1790725512433633211_3869834_i935-evidence-mixed-e9-trainval-r17-20260930
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790725512433633211_3869834_i935-evidence-mixed-e9-trainval-r17-20260930
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790725512433633211_3869834_i935-evidence-mixed-e9-trainval-r17-20260930 --name i935-evidence-mixed-e9-trainval-r17-20260930 --provider codex --session 01a0ef7d-1eb8-7973-b7c6-8b0604efd8ef --issue 935 --cmd timeout\ --signal=TERM\ --kill-after=15s\ 5385s\ env\ PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection\ OMP_NUM_THREADS=4\ MKL_NUM_THREADS=4\ OPENBLAS_NUM_THREADS=4\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/bin/python\ -u\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/knowledge/runs/run-i935-mixed-ft-val-recall-s42-r16-20260929/rebuild_cache.py\ --plan\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/knowledge/runs/run-i935-mixed-ft-val-recall-s42-r16-20260929/cache_plan.json
+timeout --signal=TERM --kill-after=15s 5385s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/knowledge/runs/run-i935-mixed-ft-val-recall-s42-r16-20260929/rebuild_cache.py --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/knowledge/runs/run-i935-mixed-ft-val-recall-s42-r16-20260929/cache_plan.json
