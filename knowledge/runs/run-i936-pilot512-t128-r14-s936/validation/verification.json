@@ -34,13 +34,22 @@
       "passed": 6,
       "seconds": 8.18,
       "repeated_cases": 4
+    },
+    {
+      "files": [
+        "tests/unit/utils/configuration/test_audit.py",
+        "tests/unit/utils/configuration/test_contracts.py"
+      ],
+      "passed": 53,
+      "seconds": 148.66
     }
   ],
-  "unique_cases": 58,
+  "unique_cases": 111,
   "ruff": "passed",
   "mypy": "passed, follow-imports=skip, 12 distinct files across collection/diagnosis/runner/rendering checks",
   "knowledge": "0 errors",
   "repro": "0 missing / 0 unverifiable",
   "queue_jobs_added_this_run": 2,
-  "training_not_awaited": true
+  "training_not_awaited": true,
+  "later_registration_fix": "ci-registration-fix.json"
 }
