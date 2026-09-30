@@ -26,6 +26,10 @@ def assert_single_factor(candidate: dict[str, Any], control: dict[str, Any], fac
         if candidate['loss']['physics'] != 10 * control['loss']['physics']:
             raise ValueError('Declared physics trial must change only the weight by 10x')
         normalized['loss']['physics'] = control['loss']['physics']
+    elif factor == 'reprojection_weight':
+        if candidate['loss']['reprojection'] != 3 * control['loss']['reprojection']:
+            raise ValueError('Declared reprojection trial must change only the weight by 3x')
+        normalized['loss']['reprojection'] = control['loss']['reprojection']
     else:
         raise ValueError('Unknown declared single factor')
     if normalized != control:
@@ -76,8 +80,8 @@ def preflight(plan: dict[str, Any]) -> dict[str, Any]:
     for row in reference['read_rallies']:
         if row['rally_id'].startswith('test-') or records.get(row['rally_id'], {}).get('npz_sha256') != row['npz_sha256']:
             raise ValueError('Control train/val rally was changed or removed')
-    if plan['factor'] == 'physics_weight' and audit['manifest_sha256'] != reference['source_manifest_sha256']:
-        raise ValueError('Physics trial must use the identical dataset')
+    if plan['factor'] in ('physics_weight', 'reprojection_weight') and audit['manifest_sha256'] != reference['source_manifest_sha256']:
+        raise ValueError('Loss-weight trial must use the identical dataset')
     return {'status': 'complete', 'factor': plan['factor'], 'config': config, 'dataset_audit': audit,
             'control_manifest_sha256': sha256(reference_path), 'primary_val_rallies': sorted(ids),
             'primary_val_frames': sum(records[key]['frames'] for key in ids),

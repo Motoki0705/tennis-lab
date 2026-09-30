@@ -90,3 +90,52 @@ def test_combined_candidate_is_explicit_and_rejects_any_extra_factor() -> None:
         changed['expected_counts'][key] += 1
         with pytest.raises(ValueError, match='counts'):
             assert_combined_candidate(changed, control)
+
+
+def test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors() -> None:
+    directory = PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d'
+    control = yaml.safe_load((directory / 'training_pilot512_physics10_t128.yaml').read_text())
+    candidate = yaml.safe_load((directory / 'training_pilot512_physics10_repro3_t128.yaml').read_text())
+    assert_single_factor(candidate, control, 'reprojection_weight')
+    for field, value in (('physics', 0.0001), ('event', 0.2)):
+        changed = deepcopy(candidate)
+        changed['loss'][field] = value
+        with pytest.raises(ValueError, match='beyond'):
+            assert_single_factor(changed, control, 'reprojection_weight')
+    for option, setting in (('validation_frames', None), ('steps', 16), ('seed', 937)):
+        changed = deepcopy(candidate)
+        changed[option] = setting
+        with pytest.raises(ValueError, match='beyond'):
+            assert_single_factor(changed, control, 'reprojection_weight')
+    for weight in (0.01, 0.02, 0.1):
+        changed = deepcopy(candidate)
+        changed['loss']['reprojection'] = weight
+        with pytest.raises(ValueError, match='3x'):
+            assert_single_factor(changed, control, 'reprojection_weight')
+
+
+def test_chained_validation_requires_complete_explicit_subset_partition() -> None:
+    records = [{'rally_id': f'val-{i:05d}', 'split': 'val', 'npz_sha256': str(i)} for i in range(3)]
+    reference: dict[str, Any] = {
+        'status': 'complete', 'config': {'expected_counts': {'val': 3}},
+        'read_rallies': [records[0]],
+        'validation_reference': {'rallies': ['val-00000'], 'unused_val_rallies': ['val-00001', 'val-00002']}}
+    assert reference_validation(records, reference) == {'val-00000'}
+    for key, value in (
+        ('rallies', ['val-00001']), ('rallies', ['val-00000', 'val-00000']),
+        ('unused_val_rallies', ['val-00001']), ('unused_val_rallies', ['val-00000', 'val-00002']),
+        ('unused_val_rallies', ['val-00001', 'val-00001']),
+        ('unused_val_rallies', ['val-00001', 'val-99999']), ('unused_val_rallies', None),
+    ):
+        broken = deepcopy(reference)
+        broken['validation_reference'][key] = value
+        with pytest.raises(ValueError, match='subset'):
+            reference_validation(records, broken)
+    broken = deepcopy(reference)
+    del broken['validation_reference']
+    with pytest.raises(ValueError, match='incomplete'):
+        reference_validation(records, broken)
+    changed = deepcopy(records)
+    changed[0]['npz_sha256'] = 'changed'
+    with pytest.raises(ValueError, match='mismatch'):
+        reference_validation(changed, reference)
