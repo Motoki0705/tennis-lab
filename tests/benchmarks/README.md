@@ -289,8 +289,12 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 予約映像を開かず人物設定・全資産hashを固定する。manifestをcommit/pushした後だけ、
 `person_unseen.py --phase plan --freeze <freeze.json> --freeze-commit <commit> --report <出力先>` が
 指定3clipのmetadata/media hash・devと同じ注釈ball由来side・9 court/person nodeを検証する。
-`timeout -k 10s 7190s bash tests/benchmarks/person_unseen.sh <main root> <出力先>` を
-共有queueのresource=allの1jobとして登録する。失敗・途中出力を再利用して再試行しない。
+run17では[execution addendum](../../knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json)を
+push後、planへ `--addendum <JSON> --addendum-commit <commit>` を付けて準備を明示的に再開する。
+元freeze/opening/停止receiptのhash、未推論、未採点、既存出力がopeningだけであることを検証する。
+予算とside欠測の扱いはaddendumを正本とし、freezeを書き換えない。
+`timeout -k 10s 10790s bash tests/benchmarks/person_unseen.sh <main root> <出力先>` を
+共有queueのresource=allの1jobとして登録する。推論失敗・途中出力を再利用して再試行しない。
 GPU側は人物ラベルを読まず、元row/pose/CLIP/GSIをcomponent storeへ保存し、devと同じ
 raw外観→選別/linked group→候補Aの対応、全長3camera動画を出す。
 各clipの全cameraの人物処理を保存してから、cameraごとに既存court検出/局所校正を行う。
