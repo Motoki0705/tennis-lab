@@ -149,5 +149,28 @@ NaN/Inf、予算超過、CUDAなしをerrorにする。別deviceや小batchへ�
 peak allocated/reserved bytes・checkpoint SHAを記録する。
 GPUのcontext/library分はPyTorch allocator測定に含まれない。
 
-本学習・同backbone回帰・合成評価・Meiji LOCOは、開発datasetと最終的な#935の
-劣化較正を経て別runで実施する。現在の方式比較とmemory smokeを性能の採否に使わない。
+## H dev setの検証と短時間学習
+
+`python -m src.tasks.ball_refiner.scripts.verify_synthetic_3d` は、絶対pathの
+`--dataset` と新しい `--output` を受け取る。96件をreaderへ戻し、保存dtype/SPD、
+125成分、presence質量、seed/geometry/split/入力hash、イベント・欠損・収束診断を検証する。
+train/valの全画面内camera-frameだけを#935共通の全混合HDRで採点し、
+observed/人工gap別の50/90/95%被覆と分母を保存する。testは保存契約の検証だけに使う。
+
+設定の正本は [training_dev.yaml](training_dev.yaml)。
+`python -m src.tasks.ball_refiner.scripts.training_dev_3d` に絶対pathの
+`--dataset`、`--config`、新しい`--output` と、明示的な `--device cuda` を渡す。
+CUDAは共有queue専用。CPU指定は通常検証用で、自動device切替はしない。
+固定Hの全入力を保持し、未評価/未収束flagは診断として数える。trainの全ラリーを
+窓にし、同じ初期重み・窓のshuffle順からflowと1-step回帰を別々に学習する。
+valはラリー全体を一度に推論し、testラリーを開かず、checkpoint選択や調整をしない。
+
+各更新の4損失・速度・メモリをJSONLに即時保存し、定期val・最終予測・曲線PNG・
+開発専用checkpointを残す。RMSEは全体、全camera人工gap、全camera証拠なし、hit/bounce±5。
+加速度/jerkは実秒の2/3階差分で、全区間と全stencilが自由飛行の区間を別集計する。
+再投影は真camera上の画面内合成GTへの画素誤差で、behind-camera件数を別報告する。
+有限な再投影値は正depthに条件付きなので、不正depthが残る結果を改善とは扱わない。
+flowは平均軌道と全サンプルの指標を併記し、平均化だけでjitterを隠さない。
+
+本学習・#929との対照・Meiji LOCOは最終的な#935較正を経て別runで実施する。
+開発用の短時間比較を、最終精度・パレート優位・本番採用の証拠にはしない。
