@@ -255,3 +255,12 @@ def test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val(tmp
     assert result['validation_reference']['unused_val_rallies'] == ['val-00001']
     assert result['baselines']['rallies'] == ['val-00000']
     assert all(row['rallies'] == 1 and row['frames'] == 8 for arm in result['arms'].values() for row in arm['validation'])
+    # A completed subset run must itself be reusable as the next control.
+    # Its dataset declares two validation rallies, but only the pinned one was read.
+    loaded.clear()
+    chained = dev_training.run_dev_training(dataset, config, tmp_path / 'chained', device='cpu',
+                                            validation_reference=output / 'manifest.json')
+    assert loaded == ['train-00000', 'train-00001', 'val-00000']
+    assert chained['validation_reference']['rallies'] == ['val-00000']
+    assert chained['validation_reference']['unused_val_rallies'] == ['val-00001']
+    assert chained['baselines']['methods'] == result['baselines']['methods']
