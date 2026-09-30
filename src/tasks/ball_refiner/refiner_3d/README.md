@@ -96,7 +96,26 @@ t=1で速度を評価しない。x0 MSEは一様tで学習し、velocity MSEで�
 hit/bounce BCEを実装する。再投影はbehind predictionを捨てずdepth penaltyを付ける。
 重力項はdrag/Magnus/windを再現しない**弱いprior**であり、BLCSの完全な物理残差ではない。
 イベント前後のmaskと差分stencilの全3frameが有効な箇所だけに適用する。
-現段階では実datasetの学習loader、品質評価、deploymentを提供しない。
+品質対照・実Meiji評価・deploymentは未実装。
+
+## 保存済みsmokeでのCPU学習loop
+
+`diffusion/data.py`は検証済みラリーから全3D/2D成分を保持したwindowを作り、
+#935の`pixel_moments()`でsource画素へ変換する。右padding、実frameの欠損、
+積分の未収束を区別する。未収束frameを省略せず、収束flagのない歴史的datasetは
+先に再積分を要求する。flag付きdataを使うplumbingは設定で明示的に許可する。
+
+設定の正本は[training_smoke.yaml](training_smoke.yaml)。
+`python -m src.tasks.ball_refiner.scripts.training_smoke_3d`に
+`--dataset`、`--config`、新しい`--output`を絶対pathで渡す。
+CPU/native thread1のみ。12ラリーの全windowでforward/lossを確認し、
+ソート順で最初の2つのtrainラリーのprefixだけをtiny overfitする。
+val/testはplumbing確認だけで、更新・checkpoint選択・品質の結論に使わない。
+
+毎updateで新しいflow time/noiseを使い、x0/robust再投影/イベントmask付き弱い重力残差/
+イベント分類を同時に学習する。固定noise/timeのloss probeと、固定noiseからの8-step生成を
+前後で測定する。全loss曲線、入力SHA/window identity、未収束数、形状、checkpointを保存。
+checkpointは`diagnostic_only`であり、本学習・汎化性能・diffusionの対照に対する優位の証拠ではない。
 
 ## CPU/GPU memory diagnostic
 
