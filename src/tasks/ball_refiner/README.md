@@ -109,6 +109,25 @@ HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き
 pipelineの既定値は、較正・追加seed確認・元動画3cameraのexecute/load検証が揃ってから
 変更する。それまでは既存YAML・asset参照を維持する。#964完了前にperson/pose/court文脈を追加しない。
 
+`refiner_2d/calibration.py`はcheckpoint SHA256とartifact SHA256を必須とする明示的な読込API。
+`CovarianceCalibration.apply()`はΣをs倍（Choleskyを√s倍）し、全成分の平均とlogitを保持する。
+artifactの自動探索・倍率1への省略補完はしない。現在のpipeline/bundleはこのAPIをまだ呼ばない。
+`evaluation/calibration_fit.py`が位置NLLのfit、`evaluation/covariance_calibration.py`が
+保存済みval出力のhash/教師/PTS照合・clip交差検証・層別比較を担当する。
+calibration halfでは全cameraをまとめたleave-one-clip-out、その他のvalでは
+calibration half全体でfitした倍率を使う。checkpoint選択済みhalfを独立評価と呼ばない。
+出力の`bank_input/`は配布用倍率をfitしたframeにも適用する明示的なin-sample bank材料で、
+OOF評価NPZとは別に保存する。実測と採用判断はknowledgeに記録する。
+
+```bash
+# CPU専用。inputはrun_cached_comparisonのcomplete出力。
+# bounds/gridは実験前に宣言し、artifactは元のcheckpointと同じdirectoryへ新規保存する。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.calibrate_covariance \
+  --predictions <絶対保存済みval-directory> --output <絶対新規output-directory> \
+  --calibration-artifact <絶対checkpoint-directory>/covariance-calibration.json \
+  --bounds 0.25 64 --grid-points 129 --cpu-threads 2
+```
+
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
 `position_nll_sum / position_weight`を使い、位置教師0件ならN/Aとする。
