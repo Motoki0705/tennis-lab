@@ -1,0 +1,1263 @@
+{
+  "objective": "flow",
+  "status": "complete",
+  "parameters": 817285,
+  "initial_state_sha256": "c1b9d479a92530eac9542e74110a4c413ab3525c97e04af9ce3d06f1696ee1ed",
+  "validation": [
+    {
+      "update": 0,
+      "rallies": 16,
+      "frames": 6383,
+      "seconds": 3.5135498119634576,
+      "frames_per_second": 1816.6812316894473,
+      "loss": {
+        "loss": 1.1096368696124468,
+        "x0": 0.7070522029749488,
+        "reprojection": 19.39370678981307,
+        "physics": 967.243550153132,
+        "event": 1.1192325706133064
+      },
+      "metrics": {
+        "mean": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 14.050389875337409
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 13.393604914145556
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 13.588380090132345
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 14.132625136773443
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 22577.021285750627,
+            "p50": 23182.370996246784,
+            "p95": 32888.99921403501
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 22733.063304454565,
+            "p50": 23318.159549216678,
+            "p95": 33054.546159226345
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 2402272.360714087,
+            "p50": 2472660.811163716,
+            "p95": 3476561.682950615
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 2418041.8984557483,
+            "p50": 2480374.2785206074,
+            "p95": 3501491.472013307
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 368.4156979973233,
+            "p50": 327.4640178622733,
+            "p95": 800.1234146785592
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 364.34027797347557,
+            "p50": 323.76998442250454,
+            "p95": 790.615611572677
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 416.7112179866751,
+            "p50": 393.4462018475223,
+            "p95": 870.0395494002167
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "samples": {
+          "rmse_m_overall": {
+            "count": 25532,
+            "value": 14.05128239539904
+          },
+          "rmse_m_gap": {
+            "count": 1920,
+            "value": 13.394393306302153
+          },
+          "rmse_m_no_evidence": {
+            "count": 1932,
+            "value": 13.58915598223637
+          },
+          "rmse_m_event_pm5": {
+            "count": 4412,
+            "value": 14.13351140934306
+          },
+          "acceleration_all": {
+            "count": 25404,
+            "mean": 22602.602675921502,
+            "p50": 23175.67818597237,
+            "p95": 32914.700484038534
+          },
+          "acceleration_free_flight": {
+            "count": 14644,
+            "mean": 22758.918478580283,
+            "p50": 23326.2179831548,
+            "p95": 33040.20924681286
+          },
+          "jerk_all": {
+            "count": 25340,
+            "mean": 2405186.674814151,
+            "p50": 2472662.426469226,
+            "p95": 3498973.214279986
+          },
+          "jerk_free_flight": {
+            "count": 14136,
+            "mean": 2421006.1031479915,
+            "p50": 2484851.9726920226,
+            "p95": 3519366.4119247524
+          },
+          "reprojection_px_all": {
+            "count": 70112,
+            "mean": 368.463654136717,
+            "p50": 327.5129555960797,
+            "p95": 800.5629348132667
+          },
+          "behind_all": {
+            "count": 70112,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 64656,
+            "mean": 364.38967966299975,
+            "p50": 323.50972198782165,
+            "p95": 790.9646725976886
+          },
+          "behind_observed": {
+            "count": 64656,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 5456,
+            "mean": 416.74204372114957,
+            "p50": 394.4598064781486,
+            "p95": 869.2192422818844
+          },
+          "behind_gap": {
+            "count": 5456,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "truth": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 0.0
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 0.0
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 0.0
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 0.0
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 24.531230315809196,
+            "p50": 9.831654506391116,
+            "p95": 14.481804811027027
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 10.002524952633598,
+            "p50": 9.731014064360947,
+            "p95": 12.966459798047191
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 1316.610031592274,
+            "p50": 2.0616161463855365,
+            "p95": 11.762676460557923
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 2.2746306229432416,
+            "p50": 2.0101444664983275,
+            "p95": 4.23922238745409
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        }
+      },
+      "uncertainty_rms_radius_m": 0.17089633643627167,
+      "inference": "whole rally, no stitching; fixed noise per rally/update; mean and all samples reported",
+      "reprojection": "source pixels vs synthetic truth on in-image GT; front-only errors plus explicit invalid-depth counts",
+      "derivatives": "m/s^2 and m/s^3; finite differences at 60000/1001 Hz, full free-flight stencils"
+    },
+    {
+      "update": 500,
+      "rallies": 16,
+      "frames": 6383,
+      "seconds": 2.362834230007138,
+      "frames_per_second": 2701.4167642140164,
+      "loss": {
+        "loss": 0.32976081446291755,
+        "x0": 0.16836509058351484,
+        "reprojection": 14.435497985856577,
+        "physics": 120.86576074943561,
+        "event": 0.049541762283387906
+      },
+      "metrics": {
+        "mean": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 9.168941794894076
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 6.711607145298216
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 6.845210911975549
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 9.293732410249241
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 2092.0783315847334,
+            "p50": 1268.0145994324766,
+            "p95": 6775.672677821865
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 2108.616185563707,
+            "p50": 1288.9817621478867,
+            "p95": 6976.910674867316
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 222965.40472977186,
+            "p50": 138656.0621179072,
+            "p95": 694892.1775220591
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 225273.5996355232,
+            "p50": 141311.71523781086,
+            "p95": 705105.343142351
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 197.05295729883022,
+            "p50": 159.0372909977642,
+            "p95": 502.6542434265302
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 197.56588181742592,
+            "p50": 159.98572359168435,
+            "p95": 506.0803976973676
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 190.97457612685017,
+            "p50": 150.55158472879566,
+            "p95": 481.71169896612383
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "samples": {
+          "rmse_m_overall": {
+            "count": 25532,
+            "value": 9.17611436989349
+          },
+          "rmse_m_gap": {
+            "count": 1920,
+            "value": 6.72342116466154
+          },
+          "rmse_m_no_evidence": {
+            "count": 1932,
+            "value": 6.85680445692364
+          },
+          "rmse_m_event_pm5": {
+            "count": 4412,
+            "value": 9.300847543231662
+          },
+          "acceleration_all": {
+            "count": 25404,
+            "mean": 2179.8318721020205,
+            "p50": 1373.7361608295853,
+            "p95": 6833.396140831998
+          },
+          "acceleration_free_flight": {
+            "count": 14644,
+            "mean": 2197.1182730457977,
+            "p50": 1380.6436964787033,
+            "p95": 7078.7880112261755
+          },
+          "jerk_all": {
+            "count": 25340,
+            "mean": 232607.0505136013,
+            "p50": 150687.51115107205,
+            "p95": 702351.3856111085
+          },
+          "jerk_free_flight": {
+            "count": 14136,
+            "mean": 234978.26650377872,
+            "p50": 152345.3361209178,
+            "p95": 718366.5526106297
+          },
+          "reprojection_px_all": {
+            "count": 70112,
+            "mean": 197.29748141068697,
+            "p50": 158.8537084211423,
+            "p95": 503.0396977749635
+          },
+          "behind_all": {
+            "count": 70112,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 64656,
+            "mean": 197.7928629431949,
+            "p50": 159.58504528480256,
+            "p95": 505.72548987416076
+          },
+          "behind_observed": {
+            "count": 64656,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 5456,
+            "mean": 191.42699234070284,
+            "p50": 150.687034369032,
+            "p95": 478.18575679446525
+          },
+          "behind_gap": {
+            "count": 5456,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "truth": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 0.0
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 0.0
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 0.0
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 0.0
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 24.531230315809196,
+            "p50": 9.831654506391116,
+            "p95": 14.481804811027027
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 10.002524952633598,
+            "p50": 9.731014064360947,
+            "p95": 12.966459798047191
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 1316.610031592274,
+            "p50": 2.0616161463855365,
+            "p95": 11.762676460557923
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 2.2746306229432416,
+            "p50": 2.0101444664983275,
+            "p95": 4.23922238745409
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        }
+      },
+      "uncertainty_rms_radius_m": 0.40060698986053467,
+      "inference": "whole rally, no stitching; fixed noise per rally/update; mean and all samples reported",
+      "reprojection": "source pixels vs synthetic truth on in-image GT; front-only errors plus explicit invalid-depth counts",
+      "derivatives": "m/s^2 and m/s^3; finite differences at 60000/1001 Hz, full free-flight stencils"
+    },
+    {
+      "update": 1000,
+      "rallies": 16,
+      "frames": 6383,
+      "seconds": 2.1085565430112183,
+      "frames_per_second": 3027.1893922675995,
+      "loss": {
+        "loss": 0.27317550604001267,
+        "x0": 0.11311657784427014,
+        "reprojection": 14.186617793585652,
+        "physics": 133.74901700576382,
+        "event": 0.0481785052499296
+      },
+      "metrics": {
+        "mean": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 7.790336571531716
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 5.159460132373217
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 5.291160498309938
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 8.063353883554445
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 2492.9370742938863,
+            "p50": 1547.3292760939305,
+            "p95": 8138.689018704143
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 2471.016719179621,
+            "p50": 1542.8559655551362,
+            "p95": 8322.577461988807
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 265708.09824043064,
+            "p50": 170066.82343634008,
+            "p95": 835407.5677119066
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 264057.070400798,
+            "p50": 168671.22437282713,
+            "p95": 835486.6832861905
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 176.07531768859448,
+            "p50": 142.21555544505014,
+            "p95": 450.5289942652238
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 177.70276419121274,
+            "p50": 143.94665257484397,
+            "p95": 455.4752984600336
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 156.78936074700968,
+            "p50": 119.82163319751321,
+            "p95": 391.1982310620425
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "samples": {
+          "rmse_m_overall": {
+            "count": 25532,
+            "value": 7.796297758271553
+          },
+          "rmse_m_gap": {
+            "count": 1920,
+            "value": 5.169513451135047
+          },
+          "rmse_m_no_evidence": {
+            "count": 1932,
+            "value": 5.300972160944349
+          },
+          "rmse_m_event_pm5": {
+            "count": 4412,
+            "value": 8.069086590151286
+          },
+          "acceleration_all": {
+            "count": 25404,
+            "mean": 2605.340443216477,
+            "p50": 1680.6539558958289,
+            "p95": 8165.974684262703
+          },
+          "acceleration_free_flight": {
+            "count": 14644,
+            "mean": 2584.36907897068,
+            "p50": 1668.6024586755475,
+            "p95": 8228.13870126476
+          },
+          "jerk_all": {
+            "count": 25340,
+            "mean": 278214.19304908975,
+            "p50": 184645.1619857865,
+            "p95": 837389.436149279
+          },
+          "jerk_free_flight": {
+            "count": 14136,
+            "mean": 276741.2007004925,
+            "p50": 184073.98603968672,
+            "p95": 831025.7539564874
+          },
+          "reprojection_px_all": {
+            "count": 70112,
+            "mean": 176.245923485685,
+            "p50": 142.42034329230708,
+            "p95": 451.6934983368582
+          },
+          "behind_all": {
+            "count": 70112,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 64656,
+            "mean": 177.84590923522566,
+            "p50": 144.103973038129,
+            "p95": 456.42768127399194
+          },
+          "behind_observed": {
+            "count": 64656,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 5456,
+            "mean": 157.28538854758074,
+            "p50": 119.27572109398915,
+            "p95": 389.64020304398434
+          },
+          "behind_gap": {
+            "count": 5456,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "truth": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 0.0
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 0.0
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 0.0
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 0.0
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 24.531230315809196,
+            "p50": 9.831654506391116,
+            "p95": 14.481804811027027
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 10.002524952633598,
+            "p50": 9.731014064360947,
+            "p95": 12.966459798047191
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 1316.610031592274,
+            "p50": 2.0616161463855365,
+            "p95": 11.762676460557923
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 2.2746306229432416,
+            "p50": 2.0101444664983275,
+            "p95": 4.23922238745409
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        }
+      },
+      "uncertainty_rms_radius_m": 0.33122044801712036,
+      "inference": "whole rally, no stitching; fixed noise per rally/update; mean and all samples reported",
+      "reprojection": "source pixels vs synthetic truth on in-image GT; front-only errors plus explicit invalid-depth counts",
+      "derivatives": "m/s^2 and m/s^3; finite differences at 60000/1001 Hz, full free-flight stencils"
+    },
+    {
+      "update": 1500,
+      "rallies": 16,
+      "frames": 6383,
+      "seconds": 2.192267753998749,
+      "frames_per_second": 2911.596901590718,
+      "loss": {
+        "loss": 0.2673744944248307,
+        "x0": 0.11547608119185378,
+        "reprojection": 13.759202036199461,
+        "physics": 94.87003376617264,
+        "event": 0.04819385941412761
+      },
+      "metrics": {
+        "mean": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 7.9890966020309095
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 5.163874789553904
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 5.290132827592814
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 8.093518368835072
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 1555.531123708435,
+            "p50": 1106.0264740217037,
+            "p95": 4385.000779183136
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 1497.5559953098866,
+            "p50": 1081.673819363945,
+            "p95": 4169.069283056818
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 164999.41348711,
+            "p50": 120072.63998710972,
+            "p95": 444072.6757273792
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 159135.01782011072,
+            "p50": 117927.41324196442,
+            "p95": 423197.49352569686
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 157.63128589221796,
+            "p50": 123.010053927095,
+            "p95": 408.65220482145554
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 158.49901971682513,
+            "p50": 123.7915897018332,
+            "p95": 414.3610108156445
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 147.3482583695272,
+            "p50": 113.50731134812972,
+            "p95": 375.7986965359708
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "samples": {
+          "rmse_m_overall": {
+            "count": 25532,
+            "value": 7.996133301966701
+          },
+          "rmse_m_gap": {
+            "count": 1920,
+            "value": 5.1756937276252115
+          },
+          "rmse_m_no_evidence": {
+            "count": 1932,
+            "value": 5.301672792085725
+          },
+          "rmse_m_event_pm5": {
+            "count": 4412,
+            "value": 8.100282028618633
+          },
+          "acceleration_all": {
+            "count": 25404,
+            "mean": 1615.3150025321288,
+            "p50": 1167.510658015525,
+            "p95": 4459.827429132146
+          },
+          "acceleration_free_flight": {
+            "count": 14644,
+            "mean": 1556.6125277534436,
+            "p50": 1142.395684376685,
+            "p95": 4219.418804861386
+          },
+          "jerk_all": {
+            "count": 25340,
+            "mean": 171525.06760373866,
+            "p50": 126925.49320725218,
+            "p95": 453090.7009099246
+          },
+          "jerk_free_flight": {
+            "count": 14136,
+            "mean": 165559.9976481954,
+            "p50": 124472.1659090335,
+            "p95": 433680.52681706817
+          },
+          "reprojection_px_all": {
+            "count": 70112,
+            "mean": 157.82038971931692,
+            "p50": 123.36864512663101,
+            "p95": 409.16918404947825
+          },
+          "behind_all": {
+            "count": 70112,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 64656,
+            "mean": 158.65093938527068,
+            "p50": 124.28338944327626,
+            "p95": 415.1860137931178
+          },
+          "behind_observed": {
+            "count": 64656,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 5456,
+            "mean": 147.97801083333715,
+            "p50": 114.15806304209045,
+            "p95": 373.79333562745956
+          },
+          "behind_gap": {
+            "count": 5456,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "truth": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 0.0
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 0.0
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 0.0
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 0.0
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 24.531230315809196,
+            "p50": 9.831654506391116,
+            "p95": 14.481804811027027
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 10.002524952633598,
+            "p50": 9.731014064360947,
+            "p95": 12.966459798047191
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 1316.610031592274,
+            "p50": 2.0616161463855365,
+            "p95": 11.762676460557923
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 2.2746306229432416,
+            "p50": 2.0101444664983275,
+            "p95": 4.23922238745409
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        }
+      },
+      "uncertainty_rms_radius_m": 0.3571334779262543,
+      "inference": "whole rally, no stitching; fixed noise per rally/update; mean and all samples reported",
+      "reprojection": "source pixels vs synthetic truth on in-image GT; front-only errors plus explicit invalid-depth counts",
+      "derivatives": "m/s^2 and m/s^3; finite differences at 60000/1001 Hz, full free-flight stencils"
+    },
+    {
+      "update": 2000,
+      "rallies": 16,
+      "frames": 6383,
+      "seconds": 2.169840031012427,
+      "frames_per_second": 2941.6915112501415,
+      "loss": {
+        "loss": 0.26572789836365024,
+        "x0": 0.11823963288689937,
+        "reprojection": 13.5305403624697,
+        "physics": 73.63352848275896,
+        "event": 0.04819510894641222
+      },
+      "metrics": {
+        "mean": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 8.011800133136243
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 5.33229846687373
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 5.435105558650862
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 8.156155651396896
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 1177.3399304909617,
+            "p50": 892.4546540963394,
+            "p95": 2939.836601411649
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 1108.5984107362299,
+            "p50": 853.8037510232515,
+            "p95": 2767.008767823539
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 124601.95197074056,
+            "p50": 96496.41124453161,
+            "p95": 306963.58150165377
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 117480.21432022352,
+            "p50": 92693.3750201657,
+            "p95": 287960.29589175613
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 150.1661057827094,
+            "p50": 110.38947948091746,
+            "p95": 420.76845059477216
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 151.32370308017778,
+            "p50": 111.05659537526202,
+            "p95": 429.0990955568348
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 136.44806860068704,
+            "p50": 105.01123058599225,
+            "p95": 352.9861229952513
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "samples": {
+          "rmse_m_overall": {
+            "count": 25532,
+            "value": 8.017656194943454
+          },
+          "rmse_m_gap": {
+            "count": 1920,
+            "value": 5.34361354655549
+          },
+          "rmse_m_no_evidence": {
+            "count": 1932,
+            "value": 5.446218446065213
+          },
+          "rmse_m_event_pm5": {
+            "count": 4412,
+            "value": 8.161609552443615
+          },
+          "acceleration_all": {
+            "count": 25404,
+            "mean": 1199.9610428189683,
+            "p50": 910.3333819042539,
+            "p95": 2980.5451107041804
+          },
+          "acceleration_free_flight": {
+            "count": 14644,
+            "mean": 1128.679775204631,
+            "p50": 871.5343163633779,
+            "p95": 2801.536726918138
+          },
+          "jerk_all": {
+            "count": 25340,
+            "mean": 127120.47181762452,
+            "p50": 98296.86715009698,
+            "p95": 315868.29343387746
+          },
+          "jerk_free_flight": {
+            "count": 14136,
+            "mean": 119719.66350461952,
+            "p50": 94650.13666486987,
+            "p95": 294254.041679541
+          },
+          "reprojection_px_all": {
+            "count": 70112,
+            "mean": 150.31936966802692,
+            "p50": 110.58968378630559,
+            "p95": 420.71497840354084
+          },
+          "behind_all": {
+            "count": 70112,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 64656,
+            "mean": 151.41717428921586,
+            "p50": 111.31536310596016,
+            "p95": 429.9454740411615
+          },
+          "behind_observed": {
+            "count": 64656,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 5456,
+            "mean": 137.30990200167986,
+            "p50": 104.81650677272447,
+            "p95": 353.8026706065186
+          },
+          "behind_gap": {
+            "count": 5456,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        },
+        "truth": {
+          "rmse_m_overall": {
+            "count": 6383,
+            "value": 0.0
+          },
+          "rmse_m_gap": {
+            "count": 480,
+            "value": 0.0
+          },
+          "rmse_m_no_evidence": {
+            "count": 483,
+            "value": 0.0
+          },
+          "rmse_m_event_pm5": {
+            "count": 1103,
+            "value": 0.0
+          },
+          "acceleration_all": {
+            "count": 6351,
+            "mean": 24.531230315809196,
+            "p50": 9.831654506391116,
+            "p95": 14.481804811027027
+          },
+          "acceleration_free_flight": {
+            "count": 3661,
+            "mean": 10.002524952633598,
+            "p50": 9.731014064360947,
+            "p95": 12.966459798047191
+          },
+          "jerk_all": {
+            "count": 6335,
+            "mean": 1316.610031592274,
+            "p50": 2.0616161463855365,
+            "p95": 11.762676460557923
+          },
+          "jerk_free_flight": {
+            "count": 3534,
+            "mean": 2.2746306229432416,
+            "p50": 2.0101444664983275,
+            "p95": 4.23922238745409
+          },
+          "reprojection_px_all": {
+            "count": 17528,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_all": {
+            "count": 17528,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_observed": {
+            "count": 16164,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_observed": {
+            "count": 16164,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_px_gap": {
+            "count": 1364,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "behind_gap": {
+            "count": 1364,
+            "invalid_count": 0,
+            "fraction": 0.0
+          },
+          "reprojection_all_defined": true
+        }
+      },
+      "uncertainty_rms_radius_m": 0.3215896487236023,
+      "inference": "whole rally, no stitching; fixed noise per rally/update; mean and all samples reported",
+      "reprojection": "source pixels vs synthetic truth on in-image GT; front-only errors plus explicit invalid-depth counts",
+      "derivatives": "m/s^2 and m/s^3; finite differences at 60000/1001 Hz, full free-flight stencils"
+    }
+  ],
+  "updates": 2000,
+  "training_seconds": 154.5318119802978,
+  "training_frames": 1933660,
+  "training_frames_per_second": 12513.022239372525,
+  "updates_per_second": 12.942318959250878,
+  "checkpoint_sha256": "05a80c4a2819f17c4d0b2445531fcd1402b177c56cab40160382501277bbce58",
+  "checkpoint_bytes": 3292399,
+  "resources": {
+    "elapsed_seconds": 177.03588138200575,
+    "peak_allocated_bytes": 424876032,
+    "peak_reserved_bytes": 450887680,
+    "peak_device_used_bytes": 1751711744,
+    "minimum_available_host_bytes": 20668559360,
+    "driver_measurement": "total-minus-free sampled each update and val rally; includes other usage; not a continuous driver peak"
+  }
+}
