@@ -1,0 +1,250 @@
+[
+  {
+    "rally_id": "test-00003",
+    "frame": 0,
+    "seconds": 13.957434317970183,
+    "converged": false,
+    "components": 125,
+    "rounds": 5,
+    "history": [
+      {
+        "round": 2,
+        "quadrature_order": 20,
+        "nll_delta_nat": 0.1032499114049461,
+        "max_log_evidence_delta_nat": 0.10945759404405564,
+        "max_mean_delta": 2.065865442569935,
+        "max_covariance_relative_delta": 0.9942447663709167,
+        "nonconverged_components": 10,
+        "converged": false
+      },
+      {
+        "round": 3,
+        "quadrature_order": 32,
+        "nll_delta_nat": 0.15723729966648214,
+        "max_log_evidence_delta_nat": 1.5389288971698534,
+        "max_mean_delta": 25.401613730788586,
+        "max_covariance_relative_delta": 0.6648742121162958,
+        "nonconverged_components": 8,
+        "converged": false
+      },
+      {
+        "round": 4,
+        "quadrature_order": 48,
+        "nll_delta_nat": 0.10186824346485501,
+        "max_log_evidence_delta_nat": 0.9617185516506623,
+        "max_mean_delta": 11.509575374931584,
+        "max_covariance_relative_delta": 0.9289250384329629,
+        "nonconverged_components": 6,
+        "converged": false
+      },
+      {
+        "round": 5,
+        "quadrature_order": 64,
+        "nll_delta_nat": 0.08440128986847917,
+        "max_log_evidence_delta_nat": 0.45411225203241656,
+        "max_mean_delta": 6.777452383088156,
+        "max_covariance_relative_delta": 0.21560867553482618,
+        "nonconverged_components": 5,
+        "converged": false
+      }
+    ],
+    "source_npz_sha256": "50879142b717b22082d00bcfed807ecc82d87db86aa998450021cfa688fbbca8",
+    "single_order_multiplier": 1,
+    "nonconverged_components": [
+      {
+        "index": 14,
+        "active": [
+          false,
+          true,
+          true
+        ],
+        "weight": 3.8223605133112675e-25,
+        "changes": [
+          0.006477601897586283,
+          0.2144336529689476,
+          0.21560867553482618
+        ]
+      },
+      {
+        "index": 19,
+        "active": [
+          false,
+          true,
+          true
+        ],
+        "weight": 1.307209477225878e-05,
+        "changes": [
+          0.0040110002651232435,
+          0.0816096033223067,
+          0.028524133781692242
+        ]
+      },
+      {
+        "index": 20,
+        "active": [
+          false,
+          true,
+          true
+        ],
+        "weight": 0.0011266554529963731,
+        "changes": [
+          0.0026467951781086185,
+          0.06242289964458673,
+          0.02029113914791184
+        ]
+      },
+      {
+        "index": 114,
+        "active": [
+          true,
+          true,
+          true
+        ],
+        "weight": 3.548902795374955e-26,
+        "changes": [
+          0.45411225203241656,
+          6.777452383088156,
+          0.08447224492947483
+        ]
+      },
+      {
+        "index": 119,
+        "active": [
+          true,
+          true,
+          true
+        ],
+        "weight": 2.0503954908388402e-05,
+        "changes": [
+          0.028518947305045117,
+          0.48467801895389645,
+          0.08600401860196888
+        ]
+      }
+    ]
+  },
+  {
+    "rally_id": "test-00003",
+    "frame": 0,
+    "seconds": 13.69326751504559,
+    "converged": false,
+    "components": 125,
+    "rounds": 5,
+    "history": [
+      {
+        "round": 2,
+        "quadrature_order": 20,
+        "nll_delta_nat": 0.10332985201488931,
+        "max_log_evidence_delta_nat": 0.10945759404405564,
+        "max_mean_delta": 2.065865442569935,
+        "max_covariance_relative_delta": 0.9942447663709167,
+        "nonconverged_components": 9,
+        "converged": false
+      },
+      {
+        "round": 3,
+        "quadrature_order": 32,
+        "nll_delta_nat": 0.1572435033401156,
+        "max_log_evidence_delta_nat": 1.5389288971698534,
+        "max_mean_delta": 25.401613730788586,
+        "max_covariance_relative_delta": 0.6648742121162958,
+        "nonconverged_components": 8,
+        "converged": false
+      },
+      {
+        "round": 4,
+        "quadrature_order": 48,
+        "nll_delta_nat": 0.10186318247630055,
+        "max_log_evidence_delta_nat": 0.9617185516506623,
+        "max_mean_delta": 11.509575374931584,
+        "max_covariance_relative_delta": 0.9289250384329629,
+        "nonconverged_components": 6,
+        "converged": false
+      },
+      {
+        "round": 5,
+        "quadrature_order": 64,
+        "nll_delta_nat": 0.08439975351311091,
+        "max_log_evidence_delta_nat": 0.45411225203241656,
+        "max_mean_delta": 6.777452383088156,
+        "max_covariance_relative_delta": 0.21560867553482618,
+        "nonconverged_components": 5,
+        "converged": false
+      }
+    ],
+    "source_npz_sha256": "50879142b717b22082d00bcfed807ecc82d87db86aa998450021cfa688fbbca8",
+    "single_order_multiplier": 4,
+    "nonconverged_components": [
+      {
+        "index": 14,
+        "active": [
+          false,
+          true,
+          true
+        ],
+        "weight": 3.822360513311268e-25,
+        "changes": [
+          0.006477601897586283,
+          0.2144336529689476,
+          0.21560867553482618
+        ]
+      },
+      {
+        "index": 19,
+        "active": [
+          false,
+          true,
+          true
+        ],
+        "weight": 1.3072094772258781e-05,
+        "changes": [
+          0.0040110002651232435,
+          0.0816096033223067,
+          0.028524133781692242
+        ]
+      },
+      {
+        "index": 20,
+        "active": [
+          false,
+          true,
+          true
+        ],
+        "weight": 0.0011266554529963731,
+        "changes": [
+          0.0026467951781086185,
+          0.06242289964458673,
+          0.02029113914791184
+        ]
+      },
+      {
+        "index": 114,
+        "active": [
+          true,
+          true,
+          true
+        ],
+        "weight": 3.5489027953749555e-26,
+        "changes": [
+          0.45411225203241656,
+          6.777452383088156,
+          0.08447224492947483
+        ]
+      },
+      {
+        "index": 119,
+        "active": [
+          true,
+          true,
+          true
+        ],
+        "weight": 2.0503954908388402e-05,
+        "changes": [
+          0.028518947305045117,
+          0.48467801895389645,
+          0.08600401860196888
+        ]
+      }
+    ]
+  }
+]

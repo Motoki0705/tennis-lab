@@ -1,4 +1,4 @@
-<!-- knowledge-review: 1e0d293abb6521363cba1c6c0d07b4c967cd51df08c8d6c906d4084ecc1054aa on 2026-09-30 -->
+<!-- knowledge-review: e6527f29ddc6174d1144de17b03057ef44e24e7149cef9f79d1311ac89db04ff on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -197,42 +197,34 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 
 ### 3D Ball Refiner
 
-[全4,809frameの収束監査](nodes/ball_refiner_3d/000009-run-i936-integration-convergence-r5-s936.md)は処理失敗0だが、
-全成分を含む厳格基準で100%が3段階capに達し未収束。混合NLL probeの未達も91.2%だった。
-未収束成分の質量は中央値では小さいが、279frameで0.5を超え、微小成分だけの問題とは言えない。
-全frameと達成差分を保持して開発生成へ渡し、収束済み・品質保証とは扱わない。
-全量前には#935の最終較正に加え、積分方式/予算と大きくなった費用の再判断が必要である。
+[光線座標での再監査](nodes/ball_refiner_3d/000010-run-i936-ray-convergence-r6-s936.md)により、
+固定12ラリーの収束は0/4,809から4,225/4,809（87.86%）へ改善した。全成分・閾値を維持し、処理失敗0。
+単眼の細長いposteriorと中間voxelに残る質量が旧法のmoment不安定性に関係していた。
+単眼のdepth解析積分、非正則な複数視点のmode中心積分、camera変更時のmode移送を採用した。
+隣接次数の差は経験的誤差推定で、Laplace近似や共通して見落とすmodeの保証ではない。
 
-[保存済みpilotからの暫定劣化](nodes/ball_refiner_3d/000008-run-i936-provisional-degradation-r5-s936.md)を96ラリー開発用に導入した。
-全K=4の誤差・共分散・重み・存在をcamera/条件別に保持し、3Dは全125成分とする。
-負例、長いgap、camera間相関、新detector/person contextは未較正で、full生成の承認とは区別する。
-全125成分の3つの短いprefixは保存/再読込に成功したが、全216frameが規定capで未収束だった。
-追加積分の費用も大きく、96ラリーの外挿は理想4 processで約12.8時間。旧1.7時間の見込みを更新する。
+全camera欠損の収束は162/360（45%）で、別K=4の固定9frameも2件しか収束しなかった。
+全体率を欠損区間や最終#935条件へ一般化しない。未収束frame/成分を保持し、広い複数視点productの
+適応積分または複数modeのimportance積分を次に検証する。旧96件jobは3D条件の変化を受け停止し、
+9件のplumbing出力を保持した。約30時間というK=4再生成費用の提案はあるが、再開しない。
+640件は収束法と最終#935較正を待つ。
 
-[確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
-Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
-小さい計算時間で得たため、次の合成生成用の暫定実装に選ぶ。2D標本化→三角測量→KDEのCは
-多峰条件でNLLが悪く、粒子増量だけでは解消しなかった。presenceの周辺化はcamera間独立と
-不在cameraの幾何を捨てる近似で、low presenceの100% coverageを較正改善とは呼ばない。
-狭い既知prior・小Kの結果であり、実Meiji精度や3D diffusionの優位は未検証。
-[12-rally smoke v1](nodes/ball_refiner_3d/000002-run-i936-synthetic-smoke-v1-s936.md)と
-[再試行v2](nodes/ball_refiner_3d/000003-run-i936-synthetic-smoke-v2-s936.md)は失敗した。
-float32画素変換の共分散丸めを修正しても、広いprior/K=3のcamera間成分組合せで
-背後MAPや最適化の未収束が残った。v2は要求12件のうち1件だけ完了し、
-学習datasetとしては未成立。平均誤差を小さくするだけでは解消しない。
-[広いpriorの再比較](nodes/ball_refiner_3d/000006-run-i936-triangulation-wide-s936.md)で、
-背後MAPと未収束がcamera plane越えに由来することを固定frameで確認した。
-正depthを保つAと非正則成分の体積積分を明示的に併用するHは108予定frame+10失敗frameを全て処理した。
-全64成分を保つsmoke用にHへ変更する。ただし境界近くの1frameはvoxel予算でNLLが約1 nat動き、
-光線座標の積分試行も不安定で却下した。Hの全件成功を積分精度の収束や本学習の承認と読み替えない。
-[固定12ラリーsmoke](nodes/ball_refiner_3d/000007-run-i936-synthetic-smoke-r3-s936.md)は全件成功し、
-4,809frame・全64成分・各splitの64frame共有gapを保存/再読込した。比較118frameとの入力一致も確認済み。
-旧K=3/固定予算での640ラリー外挿は約11.03時間/NPZ0.743GBだった。新K=4/収束判定には流用せず、全量は未実行。
-[絶対x0 flow matchingのCPU 100-update診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)
-は解析的fixtureで計算graphを確認した段階。12-rallyの成功・学習精度・GPU性能の証拠ではなく、
-本学習/実LOCO/pipelineの前には#935の最終較正と、未収束入力の扱いの判断が必要。
-[GPU診断](nodes/ball_refiner_3d/000005-run-i936-x0-memory-r2-20260929.md)も100 updatesを完了し、
-allocated/reserved/driver使用量は許可範囲内だった。解析的fixtureでの資源測定に限る。
+[保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
+全40windowの形状/4損失を検証し、2つのtrain prefixで400 updatesを完了した。
+固定probeのx0・robust再投影・masked重力残差・イベントBCEが低下した。未収束入力も明示的に保持した
+plumbing/tiny overfitであり、訓練prefixの生成RMSE0.93mを性能採用の根拠にしない。
+本学習、#929/同backbone回帰の対照、実Meiji LOCO、pipeline統合は未完了。
+
+[暫定K=4劣化](nodes/ball_refiner_3d/000008-run-i936-provisional-degradation-r5-s936.md)は
+文脈なし旧detector pilotの全成分・存在を利用する。負例、長いgap、camera間相関、新detector/person contextは未較正。
+[A/B/C比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)と
+[広いpriorの失敗・A/B併用](nodes/ball_refiner_3d/000006-run-i936-triangulation-wide-s936.md)、
+[旧全frame未収束](nodes/ball_refiner_3d/000009-run-i936-integration-convergence-r5-s936.md)は方式変更の根拠として残す。
+[旧smoke v1](nodes/ball_refiner_3d/000002-run-i936-synthetic-smoke-v1-s936.md)と
+[v2失敗](nodes/ball_refiner_3d/000003-run-i936-synthetic-smoke-v2-s936.md)を除外せず、
+[固定smoke](nodes/ball_refiner_3d/000007-run-i936-synthetic-smoke-r3-s936.md)の入力を無選別で再利用した。
+[解析的CPU診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)と
+[GPU memory診断](nodes/ball_refiner_3d/000005-run-i936-x0-memory-r2-20260929.md)は資源・graph確認だけで、実datasetの性能とは区別する。
 
 ### Court Detection
 

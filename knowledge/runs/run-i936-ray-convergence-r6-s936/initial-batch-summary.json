@@ -1,0 +1,36 @@
+{
+  "status": "failed",
+  "batch": 0,
+  "batch_size": 500,
+  "workers": 4,
+  "source_manifest_sha256": "319ef8e5b492d4cfa8c34ea43ce4267613568a5fe12e2994236d87002561d500",
+  "plan_sha256": "a3e47af1446e539020716b655c82957f71b885c37618e35680fe0818908f28ae",
+  "settings": {
+    "method": "ray",
+    "orders": [
+      12,
+      20,
+      32,
+      48,
+      64
+    ],
+    "nll_tolerance_nat": 0.05,
+    "log_evidence_tolerance_nat": 0.05,
+    "mean_tolerance": 0.02,
+    "covariance_relative_tolerance": 0.05
+  },
+  "completed_frames": 468,
+  "nonconverged_frames": 59,
+  "failures": [
+    {
+      "chunk": [
+        "test-00000",
+        224,
+        256
+      ],
+      "error": "LinAlgError('Matrix is not positive definite')"
+    }
+  ],
+  "elapsed_seconds": 217.4816009659553,
+  "full_records_archive": "initial-batch-failure.json.gz"
+}
