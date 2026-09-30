@@ -23,7 +23,7 @@ from src.utils.geometry.probabilistic_triangulation.convergence import (
     convergence_config,
 )
 
-from .calibration import CalibrationBank, load_calibration
+from .calibration import CalibrationBank, load_calibration, with_calibration_report
 
 SOURCE_BOUNDARY = NonHydraPathBoundary(
     name="ball_refiner.synthetic_sources",
@@ -61,7 +61,7 @@ class GenerationPlan:
                 raise ValueError(f"Generation input changed: {path}")
 
 
-def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
+def load_plan(path: Path, resolver: PathResolver, *, calibration_report: Path | None = None) -> GenerationPlan:
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict) or set(raw) != {
         "schema_version", "status", "purpose", "seed", "simulation", "sampling",
@@ -70,6 +70,10 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
         raise ValueError("Unknown or incomplete generation plan")
     if raw["schema_version"] != 2 or raw["status"] != "cpu_generator_v2":
         raise ValueError("Plan is not an executable CPU v2 recipe")
+    if calibration_report is not None:
+        declared = CALIBRATION_BOUNDARY.validate({"report": calibration_report, "bank": calibration_report.parent / "bank.npz"}, resolver=resolver)
+        report_path = declared.declared("report").path
+        raw["degradation"] = with_calibration_report(raw["degradation"], report_path)
     simulation, sampling, degradation = raw["simulation"], raw["sampling"], raw["degradation"]
     if simulation["device"] != "cpu" or simulation["workers"] not in range(1, 5):
         raise ValueError("CPU generation requires 1..4 workers")
@@ -88,7 +92,7 @@ def load_plan(path: Path, resolver: PathResolver) -> GenerationPlan:
     convergence_config(degradation["boundary_convergence"])
     calibration = degradation["calibration"]
     paths = CALIBRATION_BOUNDARY.validate(
-        {key: resolver.resolve(PathRole.PROJECT, calibration[key]) for key in ("bank", "report")}, resolver=resolver,
+        {key: Path(calibration[key]) if Path(calibration[key]).is_absolute() else resolver.resolve(PathRole.PROJECT, calibration[key]) for key in ("bank", "report")}, resolver=resolver,
     )
     bank_path, report_path = (paths.declared(key).path for key in ("bank", "report"))
     bank = load_calibration(bank_path, calibration["bank_sha256"])

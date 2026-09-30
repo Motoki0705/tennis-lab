@@ -121,6 +121,7 @@ def generate_rally(plan: GenerationPlan, split_index: int, index: int, output: P
         "integration_component_converged": np.stack([item.component_converged for item in checks]),
         "integration_component_changes": np.stack([item.component_changes for item in checks]),
         "integration_nll_delta_nat": np.asarray([item.nll_delta_nat for item in checks]),
+        "integration_component_embedded_error": np.asarray([[d.get("embedded_relative_error", 0.) for d in p.component_integration_diagnostics] for p in posteriors]),
         "prior_only_probability": np.asarray([p.prior_only_probability for p in posteriors], dtype=np.float32),
     }
     for label, selected in (("base", base_cameras), ("true", cameras), ("estimated", cameras)):

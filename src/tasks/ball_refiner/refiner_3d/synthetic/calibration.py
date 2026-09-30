@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeAlias
@@ -91,6 +92,25 @@ def load_calibration(path: Path, expected_sha256: str) -> CalibrationBank:
         raise ValueError("Calibration bank SHA mismatch")
     with np.load(path, allow_pickle=False) as stored:
         return CalibrationBank({key: stored[key] for key in stored.files})
+
+
+def with_calibration_report(settings: dict[str, Any], report_path: Path) -> dict[str, Any]:
+    """Replace one calibration bundle, pinning report and sibling bank identities.
+
+    The caller declares the project input boundary. Temporal bootstrap length and
+    the explicit out-of-frame hypothesis remain parameters of the generation plan.
+    """
+    report = json.loads(report_path.read_text())
+    if report.get("schema") != "ball_refiner_3d.degradation_calibration.v1":
+        raise ValueError("Unknown calibration report schema")
+    bank_path = report_path.parent / "bank.npz"
+    bank = load_calibration(bank_path, report["bank_sha256"])
+    if bank.components != report["components"] or not isinstance(report["status"], str) or not report["status"]:
+        raise ValueError("Calibration report identity mismatch")
+    result = deepcopy(settings)
+    result.update(status=report["status"], components_per_camera=bank.components, max_components=(bank.components + 1) ** 3)
+    result["calibration"].update(bank=str(bank_path), bank_sha256=report["bank_sha256"], report=str(report_path), report_sha256=_sha(report_path))
+    return result
 
 
 def _statistics(parts: list[dict[str, Array]]) -> dict[str, Any]:

@@ -46,6 +46,13 @@ checkpoint・manifest・全NPZのSHAと誤差/共分散比・重み・正例の�
 GPU再推論や実3D軌道評価は行わない。これは**文脈なし旧detector pilotからの暫定劣化**であり、
 新detector/person contextの最終較正ではない。
 
+generatorの`--calibration-report <絶対project-path>/calibration.json`で、同じdirectoryの
+`bank.npz`とreportを1入力として交換できる。bankのSHA、成分数、schemaを検証し、
+展開済み設定・report SHAをmanifestへ固定する。未指定時はplanの明示したbundleを使う。
+監査の再現CLIも同じ引数と`calibrated_distribution()`を使う。将来の較正比較では
+固定rally/frame/maskとrally seedを使ってbootstrapし直すため、比較する両方のreportを
+明示する。元の保存済み2D入力を再積分する監査とは別条件として記録する。
+
 `observations.py`はcameraごとに連続する採点frameを最大16frameのblockで再標本化し、
 全成分のuv残差を合成投影へ移す。欠損中もamodal存在logitを保持し、visibilityから
 不在を作らない。frame間の相関はblock内だけ、camera間は独立という暫定近似。
