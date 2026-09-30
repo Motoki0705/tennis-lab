@@ -1,0 +1,25 @@
+{
+  "status": "complete",
+  "verified_npz_files": {
+    "control": 96,
+    "anchored": 96
+  },
+  "quality_frame_count": 34059,
+  "paired_metadata_rallies": 96,
+  "paired_quality_rallies": 80,
+  "resources": {
+    "control": {
+      "seconds": 510.39100681303535,
+      "peak_rss_bytes": 951717888,
+      "minimum_available_host_bytes": 11720974336,
+      "gpu_jobs": 0
+    },
+    "anchored": {
+      "seconds": 495.3093514390057,
+      "peak_rss_bytes": 950513664,
+      "minimum_available_host_bytes": 15185326080,
+      "gpu_jobs": 0
+    }
+  },
+  "artifact_bytes": 11299093
+}

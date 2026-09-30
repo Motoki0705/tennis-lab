@@ -1,0 +1,14 @@
+{
+  "pid": 2360417,
+  "commit": "2ff58ce7b3744a3084b07637f87aaea18415ec9d",
+  "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.generate_synthetic_3d --project-root /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation --data-root /home/kamimura/projects/tennis-lab/data --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml --mode dev --calibration-report /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/calibration.json --output /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "output": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936",
+  "log": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-generation.log",
+  "started_at_utc": "2026-09-30T10:02:13.116083+00:00",
+  "available_host_bytes_at_launch": 21188030464,
+  "gpu_jobs": 0,
+  "workers": 4,
+  "retry": false,
+  "input_preflight": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/outputs/c936-r11-anchored-bank/consumer-preflight.json"
+}
