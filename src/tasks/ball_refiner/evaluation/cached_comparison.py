@@ -66,10 +66,12 @@ def run_cached_comparison(
     if partition != manifest['recipe']['partition'] or str(config.store) != manifest['recipe']['store']:
         raise ValueError('Reference store or partition differs')
     recipe = manifest['recipe']
-    if (config.seed != recipe['seed'] or config.window_length != recipe['window'] or config.stride != recipe['stride']
+    # Training seeds may differ: pairing is defined by partition/gap seeds,
+    # exact target arrays and evidence hashes, not model initialization.
+    if (config.window_length != recipe['window'] or config.stride != recipe['stride']
             or list(config.training.gap_lengths) != recipe['training']['gap_lengths']
             or hashes[str(config.evidence / 'manifest.json')] != manifest['input_sha256'].get(str(config.evidence / 'manifest.json'))):
-        raise ValueError('Reference seed/window/gaps/evidence differs')
+        raise ValueError('Reference window/gaps/evidence differs')
     hashes.update({str(config.store / name): digest for name, digest in cache.manifest['store']['sha256'].items()})
     entries = {(x['clip_id'], x['method'], x['condition']): x for x in manifest['artifacts']}
     rows: dict[str, list[dict[str, Array]]] = defaultdict(list)
@@ -129,6 +131,8 @@ def run_cached_comparison(
     write_json_atomic(output / 'manifest.json', {'schema': 'ball_refiner_cached_comparison.v1', 'settings': asdict(settings),
                                                'input_sha256': hashes, 'training_run': str(training_run), 'reference': str(reference),
                                                'artifacts': artifacts, 'partition': partition,
+                                               'training_seed': config.seed, 'reference_training_seed': recipe['seed'],
+                                               'partition_seed': config.partition_seed,
                                                'scope': 'Same val frames and gap masks; no detector replay, test or context; uncalibrated GMM HDR on R2'})
     write_json_atomic(output / 'run_state.json', {'status': 'complete', 'clips': len(records), 'files': len(artifacts)})
     return output
