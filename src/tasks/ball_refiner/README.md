@@ -107,7 +107,10 @@ seed42に加えて43・44で再現性を確認し、再現しない条件も報�
 HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き較正artifactを保存する。
 #936へは補正後の全GMM残差bankを渡し、旧bank/合成dataは対照として保持する。
 pipelineの既定値は[専用recipeのB判定](../../tennis_scene/pipeline/README.md#e9anchored-seed42共分散補正の明示option)に従う。
-元動画check回収後も既存YAML・asset参照を維持している。#964完了前にperson/pose/court文脈を追加しない。
+[2026-10-01の判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で
+e9の既定化とrefiner後のconfidence選別を採用する方針へ更新した（実装は後続）。
+#964完了前に文脈生成へ進める。現在の生成予算・未完事項は
+[knowledge 000027](../../../knowledge/nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)を参照。
 
 `refiner_2d/calibration.py`はcheckpoint SHA256とartifact SHA256を必須とする明示的な読込API。
 `CovarianceCalibration.apply()`はΣをs倍（Choleskyを√s倍）し、全成分の平均とlogitを保持する。

@@ -1,0 +1,610 @@
+ 1:  892ba387 =  1:  9070d4b0 docs(ball_refiner): define provisional training and evaluation strategy
+ 2:  a948009d =  2:  c99c14a8 feat(ball_refiner): add gated monocular GMM model and masked NLL
+ 3:  ec05fe03 =  3:  5f18ac36 fix(ball_refiner): make model defaults composition-owned
+ 4:  1e332765 =  4:  e0f7512a feat(ball_refiner): audit amodal targets and verified camera context
+ 5:  e4f7a1ea !  5:  e85bed4d docs(ball_refiner): record complete label and context coverage audit
+    @@ knowledge/runs/run-i935-data-audit-r2/audit.json (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 419ae89d3642e6e703f07074f023e9c7178451f17b780aeb937555db6e806d57 on 2026-09-28 -->
+    -+<!-- knowledge-review: b243120e6cfb4b664f73e4cf4210b0d60e8c7854f89d97a5a8330180cd3e5cb3 on 2026-09-28 -->
+    +-<!-- knowledge-review: 667d538016b351a8087a4278f022b577250b97face50344031599a5ca0e5ba45 on 2026-10-01 -->
+    ++<!-- knowledge-review: 11dbbf000adb0b5e26a45fb506569bd3d3a136cd6520687efe525ade4044ba8c on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      
+      [修正版の単発scene](nodes/tennis_scene/000010-run-tennis-scene-meiji-corrected-pipeline-20260923.md)と[独立dataset生成](nodes/tennis_scene/000011-run-tennis-scene-meiji-corrected-dataset-20260923.md)は完了し、両sceneの構造と全14動画の全frame decode、既存SLCS reader受理を確認した。Courtは全区間で成立したが、Ball欠損は62.5/33.9/34.0%、3D ballの負高さ50frame・最大412m/s、PLCS/GVHMR整合残差が残る。窓境界不整合の証拠はなく、2D観測/pose mask急変が異常と同時にある。scene公開の成立を高品質教師や3D精度保証とみなさず、次は観測の同一性・可視性の安定性と独立3D評価を分けて検証する。
+ 6:  d53db5e9 =  6:  72996785 fix(ball_refiner): preserve the denominator of pose score saturation
+ 7:  a58285a6 !  7:  35cde815 docs(ball_refiner): pin pose score audit denominator and source revision
+    @@ knowledge/runs/run-i935-data-audit-r2/audit.json
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: b243120e6cfb4b664f73e4cf4210b0d60e8c7854f89d97a5a8330180cd3e5cb3 on 2026-09-28 -->
+    -+<!-- knowledge-review: 5480b41d4fdd7be731b700c026f0adb2a298451915ee8a0f39cc95e491dbcb7b on 2026-09-28 -->
+    +-<!-- knowledge-review: 11dbbf000adb0b5e26a45fb506569bd3d3a136cd6520687efe525ade4044ba8c on 2026-10-01 -->
+    ++<!-- knowledge-review: c0596873ef9518dedefc1d092fadfca48a75070c8807b40204ef89bd96ca562b on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+ 8:  e2efdd47 =  8:  0aec4fe8 fix(ball_refiner): register and validate the data audit CLI
+ 9:  6d83aa8f =  9:  2b986ba0 feat(ball_refiner): retain complete local detector evidence per source frame
+10:  c873f0b8 = 10:  d1b3b5bf feat(ball_refiner): publish verified detector caches for fixed source splits
+11:  a861ea87 ! 11:  6b01e1f3 docs(ball_refiner): record verified train and validation evidence cache
+    @@ knowledge/runs/run-i935-evidence-ft-e13-trainval-r3-20260928/verify_cache.py (ne
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 5480b41d4fdd7be731b700c026f0adb2a298451915ee8a0f39cc95e491dbcb7b on 2026-09-28 -->
+    -+<!-- knowledge-review: a703470bc866656dc30dad72af4f256c406416986bfe426c083338b4e3a5e7fd on 2026-09-28 -->
+    +-<!-- knowledge-review: c0596873ef9518dedefc1d092fadfca48a75070c8807b40204ef89bd96ca562b on 2026-10-01 -->
+    ++<!-- knowledge-review: 63124775d42e5be3f07d4e99a7c00b1f7d78df60db3c0686d61bdeca92fe0420 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      空frameと推定・unknownはamodal負例にしない。確定負例はchatに偏り、Meijiだけでは存在較正を判断できない。
+      既存Meiji pose/courtは一部しか揃っていないため、文脈なしpilotを先に準備し、full比較前に生成を完了させる。
+12:  afc2c0fd = 12:  2609b6c2 feat(ball_refiner): train detector-only MDN with fixed validation and gap controls
+13:  02fda8e6 ! 13:  3f87acba docs(ball_refiner): verify pilot training and record validation trade-offs
+    @@ knowledge/runs/run-i935-detector-only-ft-e13-s42-r4-20260928/worker_timing.json
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: a703470bc866656dc30dad72af4f256c406416986bfe426c083338b4e3a5e7fd on 2026-09-28 -->
+    -+<!-- knowledge-review: b4d8c630098ff23595d03fc43e778320ba3ab01a0e0c3038ad758ab367807d87 on 2026-09-28 -->
+    +-<!-- knowledge-review: 63124775d42e5be3f07d4e99a7c00b1f7d78df60db3c0686d61bdeca92fe0420 on 2026-10-01 -->
+    ++<!-- knowledge-review: c4bffbe319217cd0b47262204a920a9dbfa3d3ed3c8a0f80198e198b0767f21c on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      既存Meiji pose/courtは一部しか揃っていないため、文脈なしpilotを先に準備し、full比較前に生成を完了させる。
+      未生成をmask欠損へ置き換えず、camera-local KP14と明示的なViTPose score変換を使う。
+14:  277e84ad = 14:  b0383420 fix(ball_refiner): compose pilot output identity without local data
+15:  7195911b = 15:  7fed25cb feat(ball_refiner): diagnose fixed validation GMM coverage and uncertainty
+16:  2020d0e1 ! 16:  9a2dcd45 docs(ball_refiner): audit uncalibrated validation distributions
+    @@ knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928/verify_evaluation.py
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: b4d8c630098ff23595d03fc43e778320ba3ab01a0e0c3038ad758ab367807d87 on 2026-09-28 -->
+    -+<!-- knowledge-review: a94ff96bf885dc9e225df2f869a9961b4f61ac4dff8de3b0ea4944e0f1ef5213 on 2026-09-28 -->
+    +-<!-- knowledge-review: c4bffbe319217cd0b47262204a920a9dbfa3d3ed3c8a0f80198e198b0767f21c on 2026-10-01 -->
+    ++<!-- knowledge-review: a80a3fba1abea3fdb380371cf1cd00f174ba307b6c8afa22bac4e3eaa7394b10 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      [文脈なし時間MDN pilot](nodes/ball_refiner/000003-run-i935-detector-only-ft-e13-s42-r4-20260928.md)は12 epoch・3,000更新を完走した。
+      同じ選択用validationの観測frameでは、detector argmaxより平均・p95誤差が減る一方、中央値・20px recallが悪化した。
+17:  efcc8258 = 17:  76c60b4c refactor(ball_refiner): share annotation-free sequence inference
+18:  5018af44 = 18:  e23ebde4 feat(pipeline): align detector window selection with refiner evidence
+19:  5f839cc4 = 19:  e3fd7da0 feat(ball_refiner): persist camera-local GMMs with portable pilot bundles
+20:  bf94eff3 ! 20:  14a88c0d docs(ball_refiner): verify real-video GMM persistence and load-only recovery
+    @@ knowledge/runs/run-i935-pipeline-ft-e13-r7-20260928/verify_pipeline.py (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: a94ff96bf885dc9e225df2f869a9961b4f61ac4dff8de3b0ea4944e0f1ef5213 on 2026-09-28 -->
+    -+<!-- knowledge-review: ce0c522250c8bd8e6c96d04440274bb9511671c4b09683769225d826d74d29bb on 2026-09-28 -->
+    +-<!-- knowledge-review: a80a3fba1abea3fdb380371cf1cd00f174ba307b6c8afa22bac4e3eaa7394b10 on 2026-10-01 -->
+    ++<!-- knowledge-review: 86a6c8f59c93993ca18134abe0e9fe74434e33f8130ca97d7ff826cf12caf5a5 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      人工証拠欠損で領域は広がるが、90/95% HDRのcoverageは約81/86%に留まり、分布の裾の過信が残る。
+      この6群のbootstrapは探索的で、実RGB遮蔽や独立testへの一般化の証拠ではない。
+21:  653d04c5 <  -:  -------- feat(vitpose): accept indexed frame streams without video re-encoding
+ -:  -------- > 21:  26b58356 feat(vitpose): accept indexed frame streams without video re-encoding
+22:  f65c91f5 = 22:  dcb8ca5b feat(ball_refiner): generate strict JPEG-aligned pose and court caches
+23:  c90b6153 ! 23:  8d881968 fix(ball_refiner): reject stale DINO ops before context generation
+    @@ knowledge/runs/run-i935-context-fullframe-pilot-r9-20260928/uncommitted.patch (n
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: ce0c522250c8bd8e6c96d04440274bb9511671c4b09683769225d826d74d29bb on 2026-09-28 -->
+    -+<!-- knowledge-review: 5300ba461e8d968c7bfab7dfd8518bfa827661eda70305bb32bee039be4df5c9 on 2026-09-28 -->
+    +-<!-- knowledge-review: 86a6c8f59c93993ca18134abe0e9fe74434e33f8130ca97d7ff826cf12caf5a5 on 2026-10-01 -->
+    ++<!-- knowledge-review: dc40a8471d3ac9dbe4521be5071ecc7bc470bcc0a57e27978d6c1d686d4a9b90 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      270 frameの全GMM保存と別プロセスのload-onlyが成立し、同じ検出証拠からのCPU再計算も小さな数値差で一致した。
+      専用recipeの接続証拠であり、未較正pilotのdeploy採用や、JPEG学習cacheとの精度同等性を示さない。
+    @@ src/tasks/ball_refiner/data/context_inference.py: class StoredJPEGContextProduce
+     
+      ## tests/benchmarks/README.md ##
+     @@ tests/benchmarks/README.md: PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
+    - 
+    - ## Pipeline診断
+    +   `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
+    +   未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
+      
+     +- `ball_refiner_context_pilot.sh`: #935の固定3source文脈生成pilot。引数は絶対pathの
+     +  `<asset_root> <detector_cache> <new_context_cache> <new_report>`。trainのTrackNet 35・Meiji 151・chat 375frameを
+24:  f4083d24 = 24:  22b619e2 test(submodules): include DINO extension preflight in public API contract
+25:  b5ca59ff ! 25:  79ad56e8 docs(ball_refiner): record successful context pilot and image quality audit
+    @@ knowledge/runs/run-i935-context-fullframe-pilot-r10-20260928/uncommitted.patch (
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 5300ba461e8d968c7bfab7dfd8518bfa827661eda70305bb32bee039be4df5c9 on 2026-09-28 -->
+    -+<!-- knowledge-review: 7930b7c94f57bc67349a938e6a8de3ebde4dcbf35e77212dc6ef57a3120f23ee on 2026-09-28 -->
+    +-<!-- knowledge-review: dc40a8471d3ac9dbe4521be5071ecc7bc470bcc0a57e27978d6c1d686d4a9b90 on 2026-10-01 -->
+    ++<!-- knowledge-review: c7b2bd61cd15e139c0c9f857bde8f052c5225bd2b028162f2f166dec7060062a on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: AI補助注釈・単一video/seed、手首距離既知36.90%という制約が
+      最終test・RGB遮蔽対照・full文脈/ablation・標準sceneの3D入力切替は未検証。存在較正はMeijiの正例だけから結論しない。
+      [3sourceの文脈pilot](nodes/ball_refiner/000006-run-i935-context-fullframe-pilot-r9-20260928.md)は、
+26:  db28d14d ! 26:  82f2c4df feat(ball_refiner): pin whole-clip context shards and verify complete assembly
+    @@ src/utils/configuration/inventory.py: _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary
+     
+      ## tests/benchmarks/README.md ##
+     @@ tests/benchmarks/README.md: PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
+    - 
+    - ## Pipeline診断
+    +   `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
+    +   未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
+      
+     +- `ball_refiner_context_shard.sh`: [固定計画によるclip分割](../../src/tasks/ball_refiner/README.md#clip単位の分割生成と統合)の
+     +  queue入口。引数は `<asset_root> <detector_cache> <plan.json> <scene.yaml> <extension_dir> <shard_index> <new_context> <new_report>`。
+27:  74ac16d6 ! 27:  03a50df6 docs(ball_refiner): record longest context shard probes
+    @@ knowledge/runs/run-i935-context-shard-00201-chat-r12-20260928/uncommitted.patch
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 7930b7c94f57bc67349a938e6a8de3ebde4dcbf35e77212dc6ef57a3120f23ee on 2026-09-28 -->
+    -+<!-- knowledge-review: 925528383d4a81e99fad0fb6ba07e44e292a21e542e26c4fe3da5e2809a81529 on 2026-09-29 -->
+    +-<!-- knowledge-review: c7b2bd61cd15e139c0c9f857bde8f052c5225bd2b028162f2f166dec7060062a on 2026-10-01 -->
+    ++<!-- knowledge-review: 37ff8a617d67ef80efa55716df7fe43c50880862c830f9fb09b2d0b1fd091dc7 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0
+      3source・561frameのCUDA生成と別プロセス読込が成功した。
+      画像監査で観客・隣接court人物の混入とchatの視点変化・累計60trackを確認し、chatのcourtは実行済み欠損だった。
+28:  c93d37f4 = 28:  318a860f feat(ball_refiner): compare validation detector candidate recall
+29:  fbe33b13 ! 29:  e86c321e fix(ball_refiner): bind CUDA memory budget to an indexed device
+    @@ knowledge/runs/run-i935-val-candidate-recall-r14-20260929/uncommitted.patch (new
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 925528383d4a81e99fad0fb6ba07e44e292a21e542e26c4fe3da5e2809a81529 on 2026-09-29 -->
+    -+<!-- knowledge-review: 1ff9abcaa05c2e8fd862fbaeadc758e6c3bc18b43c202e2e7f162e6d017db65b on 2026-09-29 -->
+    +-<!-- knowledge-review: 37ff8a617d67ef80efa55716df7fe43c50880862c830f9fb09b2d0b1fd091dc7 on 2026-10-01 -->
+    ++<!-- knowledge-review: 9974d16fa57f6428c7b9ffb60cbf7b36c2b616bbd1181f1d808613ba19b486ac on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0
+      有効poseの存在をプレー中の人物のrecallや文脈の有効性と同一視しない。
+      [最長3sourceの分割probe](nodes/ball_refiner/000011-group-i935-context-shards-r12-probe.md)も全frameの生成・読込が成功し、18分以内で完走した。
+30:  c77401d0 = 30:  9551f5b1 feat(ball_detection): log validation candidate recall and retain every epoch
+31:  5e7d4d2a ! 31:  fa59732f docs(ball_refiner): record validation selection and retrain preflight
+    @@ knowledge/runs/run-i935-val-candidate-recall-r15-20260929/uncommitted.patch (new
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 1ff9abcaa05c2e8fd862fbaeadc758e6c3bc18b43c202e2e7f162e6d017db65b on 2026-09-29 -->
+    -+<!-- knowledge-review: d5bfa3fe0a39fd272fc156fa1f01da770ffb51fa18a165498697cf39bb348bc3 on 2026-09-29 -->
+    +-<!-- knowledge-review: 9974d16fa57f6428c7b9ffb60cbf7b36c2b616bbd1181f1d808613ba19b486ac on 2026-10-01 -->
+    ++<!-- knowledge-review: 566dfbc89cca9afd27ffa1bd67163df6b07e8ebb08c867be87b8fd1094edf0cb on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: observed 28,806 frameのrecallが44.49%から68.00%へ、閾値なしtop-K recal
+      一方、採用検出のp95は346.08から386.30 source pxへ悪化し、cam2では低scoreも含むraw p95も悪化した。
+      欠損低減と誤検出抑制は両立しておらず、2026-09-28時点のdeployはft-e13を維持する。
+32:  9f225637 ! 32:  66cd0936 docs(ball_refiner): select mixed epoch 9 and prepare evidence rebuild
+    @@ knowledge/runs/run-i935-mixed-ft-val-recall-s42-r16-20260929/verification.json (
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: d5bfa3fe0a39fd272fc156fa1f01da770ffb51fa18a165498697cf39bb348bc3 on 2026-09-29 -->
+    -+<!-- knowledge-review: 572e3d3cd30d58b078e76c8bf60604863aad62648a9729441d44b25e6132f383 on 2026-09-30 -->
+    +-<!-- knowledge-review: 566dfbc89cca9afd27ffa1bd67163df6b07e8ebb08c867be87b8fd1094edf0cb on 2026-10-01 -->
+    ++<!-- knowledge-review: 8ddbad5f244842051e890bf6597b57ccf8d7c3a5a844d6a649ec2b0a24146bc2 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ
+      [修正版の3checkpoint比較](nodes/ball_refiner/000013-run-i935-val-candidate-recall-r15-20260929.md)は完了した。
+      Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6のepoch 0選択とは逆転した。
+33:  f4de69d9 ! 33:  cbb63a5a docs(ball_refiner): collect epoch 9 evidence and validate cache recall
+    @@ knowledge/runs/run-i935-evidence-mixed-e9-trainval-r17-20260930/uncommitted.patc
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 572e3d3cd30d58b078e76c8bf60604863aad62648a9729441d44b25e6132f383 on 2026-09-30 -->
+    -+<!-- knowledge-review: 9374a7259ad70dda03304f8dc874f925319ab5f2eb86fabd7c52a39439f9d655 on 2026-09-30 -->
+    +-<!-- knowledge-review: 8ddbad5f244842051e890bf6597b57ccf8d7c3a5a844d6a649ec2b0a24146bc2 on 2026-10-01 -->
+    ++<!-- knowledge-review: ca5a963655277d24c349ffbdf320db9b36fa358ac6659b9645e7b192cfea7a98 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6
+      保存済みepoch 0–9のMeiji val recall@8を照合し、2026-09-29のユーザー判断どおり単独最大のepoch 9を選択した。
+      peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
+34:  06b8fae7 ! 34:  c5f66eb1 feat(ball_refiner): compare context-free pilots on matched validation frames
+    @@ knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/verification.jso
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 9374a7259ad70dda03304f8dc874f925319ab5f2eb86fabd7c52a39439f9d655 on 2026-09-30 -->
+    -+<!-- knowledge-review: 9bf56a4f6d804b8c090c233e0f149952cadefcb5e721d6bde75d01153149be84 on 2026-09-30 -->
+    +-<!-- knowledge-review: ca5a963655277d24c349ffbdf320db9b36fa358ac6659b9645e7b192cfea7a98 on 2026-10-01 -->
+    ++<!-- knowledge-review: a39c10af54e86be96ac62f7be38cd139b94c9226b764eba30ae676797a5ea03c on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害
+      候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
+      [epoch 9の新cache回収](nodes/ball_refiner/000015-run-i935-evidence-mixed-e9-trainval-r17-20260930.md)で全329 clip / 145,767 frameのhash・読込が一致し、Meiji候補recallはbf16 validationとcamera別でも0.13 pp未満の差だった。
+35:  89cf0737 ! 35:  3ea3f0d5 docs(ball-refiner): collect paired epoch-9 pilot evidence
+    @@ knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/worker_excerpt.l
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 9bf56a4f6d804b8c090c233e0f149952cadefcb5e721d6bde75d01153149be84 on 2026-09-30 -->
+    -+<!-- knowledge-review: e08d9405079228317e02b982020bb1bf013ba50f5e8d11c5234213817b483e2b on 2026-09-30 -->
+    +-<!-- knowledge-review: a39c10af54e86be96ac62f7be38cd139b94c9226b764eba30ae676797a5ea03c on 2026-10-01 -->
+    ++<!-- knowledge-review: d3567b9e8c4a4608ba4b9aac7bf45ac0d8d22ad8455d20d1ecec95c93650df28 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6
+      peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
+      候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
+36:  05ef46ab ! 36:  0235a32a feat(ball-refiner): render paired val mixtures and cost next steps
+    @@ knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/verification-r19
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: e08d9405079228317e02b982020bb1bf013ba50f5e8d11c5234213817b483e2b on 2026-09-30 -->
+    -+<!-- knowledge-review: daf3c88fc756a28a4a9377a3b1e5cbc40428f47f6b00bc09e19587a3ef42572a on 2026-09-30 -->
+    +-<!-- knowledge-review: d3567b9e8c4a4608ba4b9aac7bf45ac0d8d22ad8455d20d1ecec95c93650df28 on 2026-10-01 -->
+    ++<!-- knowledge-review: 8f2f54909ce4b71d47bff94b5f24c412314f39689533a22da30e04ca2d794e76 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     
+      ## src/tasks/ball_refiner/README.md ##
+     @@ src/tasks/ball_refiner/README.md: HDRは同密度cellを全て含むので平坦分布のcoverageは保守的に10
+37:  903825ac ! 37:  37a72f51 docs(ball_refiner): diagnose loss of observed candidate precision
+    @@ knowledge/runs/run-i935-precision-variants-s42-r20-20260930/learning-curves.png
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: daf3c88fc756a28a4a9377a3b1e5cbc40428f47f6b00bc09e19587a3ef42572a on 2026-09-30 -->
+    -+<!-- knowledge-review: f7117a8f93f701ed2e63e24fb6f40b78c7aa2106a18a37571aabefbda61fec7d on 2026-09-30 -->
+    +-<!-- knowledge-review: 8f2f54909ce4b71d47bff94b5f24c412314f39689533a22da30e04ca2d794e76 on 2026-10-01 -->
+    ++<!-- knowledge-review: 76d9517c08ced8e9614a23b145d2194dcb940ad2d20cf6593f7269b1fa0716d2 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害
+      新pilotはMeiji全cameraで旧pilotよりobservedの裾誤差を抑え、新detector単体に対してもp95を改善するが、中央値の精密定位は劣る。
+      TrackNetの観測位置は退行し、chatは中央値が悪化して裾だけ改善。Meiji較正側のgap HDR95 coverageも約86%に留まり、較正済みとは扱わない。
+38:  0d3fd3f8 ! 38:  693e320f feat(ball_refiner): predeclare bounded candidate-precision variants
+    @@ knowledge/runs/run-i935-precision-variants-s42-r20-20260930/verification.json (n
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: f7117a8f93f701ed2e63e24fb6f40b78c7aa2106a18a37571aabefbda61fec7d on 2026-09-30 -->
+    -+<!-- knowledge-review: afefab2e87438143464d7f54081fba91ac38cb4e0c5e9179786965015fe3b894 on 2026-09-30 -->
+    +-<!-- knowledge-review: 76d9517c08ced8e9614a23b145d2194dcb940ad2d20cf6593f7269b1fa0716d2 on 2026-10-01 -->
+    ++<!-- knowledge-review: a88762c4d2b0e75ad304e7bab7fce2072ca35a28673f04120b81e7385bef97c6 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     
+      ## src/tasks/ball_refiner/README.md ##
+     @@ src/tasks/ball_refiner/README.md: modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送
+39:  1cce88fb ! 39:  04fd887a fix(ball_refiner): tolerate disappearing output directories in retry watchdog
+    @@ knowledge/runs/run-i935-precision-variants-s42-r21-20260930/verification.json (n
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: afefab2e87438143464d7f54081fba91ac38cb4e0c5e9179786965015fe3b894 on 2026-09-30 -->
+    -+<!-- knowledge-review: 0e50b27fc720ebeba888c70f70c1c6303bd7fcc57abbee4965ae0db60357f979 on 2026-09-30 -->
+    +-<!-- knowledge-review: a88762c4d2b0e75ad304e7bab7fce2072ca35a28673f04120b81e7385bef97c6 on 2026-10-01 -->
+    ++<!-- knowledge-review: 988b07fdfd44f75ab5ef4dcf30df0065f28dfc7818925e658e679f59ce5313ce on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: detectorの一様gap密度によるcoverage=1は全画面領域の自明な結
+      絶対座標headの平均はほぼ候補peak上になく、epochで偏りの向きが反転するため、
+      格子解像度やsigma床だけよりも平均parameterizationと未収束/揺れる最適化が主要な候補となる。
+40:  8b71ac6f ! 40:  64d66019 fix(ball_refiner): bind head schema before forward and collect precision retry
+    @@ knowledge/runs/run-i935-precision-variants-s42-r21-20260930/worker_excerpt.log (
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 0e50b27fc720ebeba888c70f70c1c6303bd7fcc57abbee4965ae0db60357f979 on 2026-09-30 -->
+    -+<!-- knowledge-review: ba58a86c2a1b07c9e7d9692a39c87a3144b33a3830479e2b25f4c54a28c5ca23 on 2026-09-30 -->
+    +-<!-- knowledge-review: 988b07fdfd44f75ab5ef4dcf30df0065f28dfc7818925e658e679f59ce5313ce on 2026-10-01 -->
+    ++<!-- knowledge-review: 6165f97bd189b8297f775a2bdfbe94f83ffbfbad5c0112f4afc36b814859a978 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: detectorの一様gap密度によるcoverage=1は全画面領域の自明な結
+      run20 directiveに従いcourt-only先行案を保留し、同一recipeの長期化と候補を保持する平均の比較を先に行う。
+      run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、checkpoint/val結果は得られなかった。
+41:  93dcc506 ! 41:  e73f5e7e docs(ball_refiner): compare anchored val overlays and propose design choices
+    @@ knowledge/runs/run-i935-precision-variants-s42-r21-20260930/verification-r22.jso
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: ba58a86c2a1b07c9e7d9692a39c87a3144b33a3830479e2b25f4c54a28c5ca23 on 2026-09-30 -->
+    -+<!-- knowledge-review: cc6509dd0f54a9a7a9a8fbb5eb9912699de6ec83f3510cc061462913a583f6f1 on 2026-09-30 -->
+    +-<!-- knowledge-review: 6165f97bd189b8297f775a2bdfbe94f83ffbfbad5c0112f4afc36b814859a978 on 2026-10-01 -->
+    ++<!-- knowledge-review: 329635680fab460f88c73c975bb5b778f2c79cfc280d64ac878d2d3bf05e5ed5 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、
+      モデル精度による棄却とは扱わず、[消失競合を修正した同条件retry](nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)で
+      事前宣言した3案を比較し、全108checkpointと420val NPZを回収した。
+42:  a061a94f = 42:  f1c4e19e docs(ball_refiner): adopt anchored design and enable paired seed confirmation
+43:  a0fbae72 = 43:  a9692d43 feat(ball_refiner): calibrate a checkpoint-bound covariance scale with clip cross-validation
+44:  743527f5 = 44:  1c3915d9 fix(ball_refiner): declare calibration CLI path contracts in the shared inventory
+45:  d40173f1 ! 45:  0e4bf23b docs(ball_refiner): record covariance cross-validation bank and fixed seed confirmation plan
+    @@ knowledge/runs/run-i935-covariance-loco-s42-r23-20260930/verify_outputs.py (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: cc6509dd0f54a9a7a9a8fbb5eb9912699de6ec83f3510cc061462913a583f6f1 on 2026-09-30 -->
+    -+<!-- knowledge-review: 43645433e34747e4fe7f9dba8ce64f0d4d7b1457b5d3b7f654b35342b2d88494 on 2026-09-30 -->
+    +-<!-- knowledge-review: 329635680fab460f88c73c975bb5b778f2c79cfc280d64ac878d2d3bf05e5ed5 on 2026-10-01 -->
+    ++<!-- knowledge-review: 43f00fe8d52f8af01543d9b4b11d8a5bab5afb269db010ec72e55ee161710721 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、
+      候補残差12kはdetectorより各source/camera/halfの位置誤差を改善し、長期化だけより典型精度がよい。
+      一方、detector誤り件数で選んだ厳しい270frameでは20px成功率が退行し、個別の失敗は残る。
+46:  0e942f0e ! 46:  b55cb2ca docs(ball_refiner): hand off the bounded two-seed queue job
+    @@ knowledge/runs/run-i935-anchored-seeds-r23-20260930/queue.job (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 43645433e34747e4fe7f9dba8ce64f0d4d7b1457b5d3b7f654b35342b2d88494 on 2026-09-30 -->
+    -+<!-- knowledge-review: 9f71f932600bd8afdb163ecbf116bc45f62c9b7da537764581e81cd8cedd3fb4 on 2026-09-30 -->
+    +-<!-- knowledge-review: 43f00fe8d52f8af01543d9b4b11d8a5bab5afb269db010ec72e55ee161710721 on 2026-10-01 -->
+    ++<!-- knowledge-review: f4a8d273535c6f663958069f43c684612fe5e6119ac575bdb256997848eaa434 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      ただし面積は約1.8倍、HDR50は過大被覆、人工gap/他sourceのNLLは悪化し、裾の過信も残る。
+      配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+47:  283515ad = 47:  9720853a docs(ball_refiner): declare seed reproduction gate before inspecting seed 43
+48:  4823af6d = 48:  f30d52ae fix(experiments): tolerate transient host RAM dips and record memory timeline
+49:  e8822fa0 = 49:  88d5fd17 feat(ball_refiner): add pinned e9 anchored covariance pipeline option
+50:  28bdcd3f ! 50:  43e2a6a7 test(ball_refiner): freeze seed44 retry and three-camera source parity jobs
+    @@ knowledge/runs/run-i935-seed44-retry-r24-20260930/preflight.log (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 9f71f932600bd8afdb163ecbf116bc45f62c9b7da537764581e81cd8cedd3fb4 on 2026-09-30 -->
+    -+<!-- knowledge-review: f919f1bd793c3f20b5afe98ab5eb2b4e0fcc9604cceced587917f6e293354a33 on 2026-09-30 -->
+    +-<!-- knowledge-review: f4a8d273535c6f663958069f43c684612fe5e6119ac575bdb256997848eaa434 on 2026-10-01 -->
+    ++<!-- knowledge-review: 172c6746acb40dc3dd148acf6914e49da021f2ecbb65eb4ec9aaae60ae33a685 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      ただし面積は約1.8倍、HDR50は過大被覆、人工gap/他sourceのNLLは悪化し、裾の過信も残る。
+      配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+51:  521eea03 ! 51:  f1a72e9b docs(ball_refiner): hand off ordered seed44 and source-video queue jobs
+    @@ knowledge/runs/run-i935-seed44-retry-r24-20260930/queue.job (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: f919f1bd793c3f20b5afe98ab5eb2b4e0fcc9604cceced587917f6e293354a33 on 2026-09-30 -->
+    -+<!-- knowledge-review: 7260e40288ed3feff3a88576c5a8d1a9c8b92252ba31cf202adcc6c70d100cea on 2026-09-30 -->
+    +-<!-- knowledge-review: 172c6746acb40dc3dd148acf6914e49da021f2ecbb65eb4ec9aaae60ae33a685 on 2026-10-01 -->
+    ++<!-- knowledge-review: d25d03e2abd4de51e463b1b934ca2634b8b6b4832b8a15aa0f2202b6d18a2ee2 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+52:  9197995b ! 52:  46113dee fix(ball_refiner): isolate source-check compiler cache and record seed gate failure
+    @@ knowledge/runs/run-i935-source-check-retry-r25-20260930/setup-change.json (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 7260e40288ed3feff3a88576c5a8d1a9c8b92252ba31cf202adcc6c70d100cea on 2026-09-30 -->
+    -+<!-- knowledge-review: 38fe4bbafc6c510ecf89a2c02c34a97fa2a8810cf2bed15f7126641ea6dafa10 on 2026-09-30 -->
+    +-<!-- knowledge-review: d25d03e2abd4de51e463b1b934ca2634b8b6b4832b8a15aa0f2202b6d18a2ee2 on 2026-10-01 -->
+    ++<!-- knowledge-review: 80d97d46c8257d099668cb40a2eb2ae2546f2228b1b2e94a31decde168161140 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      ただし面積は約1.8倍、HDR50は過大被覆、人工gap/他sourceのNLLは悪化し、裾の過信も残る。
+      配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+53:  ff0c1a5b ! 53:  74674776 docs(ball_refiner): report failed seed reproduction and fixed-scale three-seed spread
+    @@ knowledge/runs/run-i935-source-check-retry-r25-20260930/queue-command.txt (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 38fe4bbafc6c510ecf89a2c02c34a97fa2a8810cf2bed15f7126641ea6dafa10 on 2026-09-30 -->
+    -+<!-- knowledge-review: 8ba9bc991978d8457bd6f1e1124a91e4e64b6388ba81d2d218698ab84cef0a68 on 2026-09-30 -->
+    +-<!-- knowledge-review: 80d97d46c8257d099668cb40a2eb2ae2546f2228b1b2e94a31decde168161140 on 2026-10-01 -->
+    ++<!-- knowledge-review: 8d94c0977b9605f1283b3b50323c517563ab5515c29f505c59520f0e1c018a37 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+      bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+54:  f7930387 ! 54:  46f48458 docs(ball_refiner): hand off bounded source-video retry after seed failure
+    @@ knowledge/runs/run-i935-source-check-retry-r25-20260930/queue-registration.json
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 8ba9bc991978d8457bd6f1e1124a91e4e64b6388ba81d2d218698ab84cef0a68 on 2026-09-30 -->
+    -+<!-- knowledge-review: e974f04d9f183550f015f72da4f0542ed0b34bbf211ab71576abc1c865ce6cc5 on 2026-09-30 -->
+    +-<!-- knowledge-review: 8d94c0977b9605f1283b3b50323c517563ab5515c29f505c59520f0e1c018a37 on 2026-10-01 -->
+    ++<!-- knowledge-review: 105d4c067772bb8a8bfc1199cd2b6a44f85d92a41b326ee1719514f73484dd5e on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+55:  35d01da7 ! 55:  92b214d4 docs(ball_refiner): collect three-camera source check phases and hashes
+    @@ knowledge/runs/run-i935-source-check-retry-r25-20260930/collected-r26/worker_exc
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: e974f04d9f183550f015f72da4f0542ed0b34bbf211ab71576abc1c865ce6cc5 on 2026-09-30 -->
+    -+<!-- knowledge-review: 6beb761286056675498fae29135d962a20e2058cd1ecda79be810e43f0ae548f on 2026-10-01 -->
+    +-<!-- knowledge-review: 105d4c067772bb8a8bfc1199cd2b6a44f85d92a41b326ee1719514f73484dd5e on 2026-10-01 -->
+    ++<!-- knowledge-review: 3a3606b80fb50c4e3b4f37f92fe8637697e47545795da5dc3bc9c5f0699d218b on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+      bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+56:  e7e2afd8 ! 56:  6448711c test(ball_refiner): apply fixed source-video gate and retain current default
+    @@ knowledge/runs/run-i935-source-b-gate-r26-20261001/results/observed-frames.csv (
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 6beb761286056675498fae29135d962a20e2058cd1ecda79be810e43f0ae548f on 2026-10-01 -->
+    -+<!-- knowledge-review: 8f3569e28e0f9285eff1c6dc2112167bcea71502e82738b6faa443af59930bac on 2026-10-01 -->
+    +-<!-- knowledge-review: 3a3606b80fb50c4e3b4f37f92fe8637697e47545795da5dc3bc9c5f0699d218b on 2026-10-01 -->
+    ++<!-- knowledge-review: 9fab5c13c62af9cad3dfedf5849d0bc0615653f3266f1b60464b4e72f10980af on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+      bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+57:  f92abc03 ! 57:  365c3246 docs(ball_refiner): render source-video labels and calibrated GMM at quarter speed
+    @@ knowledge/runs/run-i935-source-b-gate-r26-20261001/video/video.json (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 8f3569e28e0f9285eff1c6dc2112167bcea71502e82738b6faa443af59930bac on 2026-10-01 -->
+    -+<!-- knowledge-review: af2634dc2f173ca6680d76a68f5a1328dc79fe0817c643735f4110788cb9140d on 2026-10-01 -->
+    +-<!-- knowledge-review: 9fab5c13c62af9cad3dfedf5849d0bc0615653f3266f1b60464b4e72f10980af on 2026-10-01 -->
+    ++<!-- knowledge-review: 3fd67129f255c5f5cc263c5f863cb4a635e82b3fcd92c3fc5d78302b574fbc61 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     
+      ## tests/unit/tasks/ball_refiner/test_source_video_overlay.py (new) ##
+     @@
+58:  22989f50 ! 58:  d43ccb5f research(ball_refiner): audit source/cache candidates on all 810 frames
+    @@ knowledge/runs/run-i935-source-tail-audit-r27-20261001/frames/summary.json (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: af2634dc2f173ca6680d76a68f5a1328dc79fe0817c643735f4110788cb9140d on 2026-10-01 -->
+    -+<!-- knowledge-review: 7daae719a74de7e933d5032b2afd28a343454e443e13ddc2b714736b773b9a0a on 2026-10-01 -->
+    +-<!-- knowledge-review: 3fd67129f255c5f5cc263c5f863cb4a635e82b3fcd92c3fc5d78302b574fbc61 on 2026-10-01 -->
+    ++<!-- knowledge-review: 3f539284bfed44729024610fe8ad5d760155d43da64427facd2c1e76d76243cd on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+      [seed44再試行](nodes/ball_refiner/000021-run-i935-seed44-retry-r24-20260930.md)は資源上限内で完了したが、[事前10比較](nodes/ball_refiner/000023-run-i935-seed-reproduction-r25-20260930.md)は9/10で不合格。seed44の人工gap NLLだけがabsolute_12kより悪い。位置分位点は両追加seedでe9 top-1を上回るが、これを全条件の再現成功とは扱わない。
+59:  f7d636c9 ! 59:  5c83f0c5 research(ball_refiner): reproduce all source frames as the store JPEG bytes
+    @@ knowledge/runs/run-i935-source-tail-audit-r27-20261001/pixels/summary.json (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 7daae719a74de7e933d5032b2afd28a343454e443e13ddc2b714736b773b9a0a on 2026-10-01 -->
+    -+<!-- knowledge-review: b1c9ce1676ec234810a8f8425cfbd54eca2a964873a5414b8fec6f7b2d4c989f on 2026-10-01 -->
+    +-<!-- knowledge-review: 3f539284bfed44729024610fe8ad5d760155d43da64427facd2c1e76d76243cd on 2026-10-01 -->
+    ++<!-- knowledge-review: d392a89d135bb350995624bed5804c8ab57daae7d97acc3cf4392880bd330c17 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+60:  16356744 ! 60:  be814769 research(ball_refiner): isolate the cam2 media path with CPU JPEG replay
+    @@ knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/setup-failures.
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: b1c9ce1676ec234810a8f8425cfbd54eca2a964873a5414b8fec6f7b2d4c989f on 2026-10-01 -->
+    -+<!-- knowledge-review: 8937212cc94b35069d8a8dbab54c4b4b911023775a10d5e279080f93f79620a9 on 2026-10-01 -->
+    +-<!-- knowledge-review: d392a89d135bb350995624bed5804c8ab57daae7d97acc3cf4392880bd330c17 on 2026-10-01 -->
+    ++<!-- knowledge-review: 17218f5c0b97339329fa16b7402b983756a86b2dc9a64cc04cacdf6996dca608 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+61:  3271a5de ! 61:  9b4ade9b research(ball_refiner): quantify paired block uncertainty and cam2 tail contribution
+    @@ knowledge/runs/run-i935-source-tail-audit-r27-20261001/noise/summary.json (new)
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 8937212cc94b35069d8a8dbab54c4b4b911023775a10d5e279080f93f79620a9 on 2026-10-01 -->
+    -+<!-- knowledge-review: 8832389161d61dc22297985999211ad13eeb9cd648d5dcbe0ec525c21bd5e5f8 on 2026-10-01 -->
+    +-<!-- knowledge-review: 17218f5c0b97339329fa16b7402b983756a86b2dc9a64cc04cacdf6996dca608 on 2026-10-01 -->
+    ++<!-- knowledge-review: b19fea852e6eec4b894cdf89aac257c826fda9ec0c8bb9ac3ce75d15f28ed7e3 on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     
+      ## tests/unit/tasks/ball_refiner/evaluation/test_source_tail_audit.py ##
+     @@ tests/unit/tasks/ball_refiner/evaluation/test_source_tail_audit.py: def test_anchor_assignment_matches_model_score_and_coordinate_ties(audit):
+62:  aca36c8c ! 62:  2955b969 research(ball_refiner): conclude source tail shift is driven by resize and JPEG inputs
+    @@ knowledge/runs/run-i935-source-tail-audit-r27-20261001/summarize_isolation.py (n
+     
+      ## knowledge/summary.md ##
+     @@
+    --<!-- knowledge-review: 8832389161d61dc22297985999211ad13eeb9cd648d5dcbe0ec525c21bd5e5f8 on 2026-10-01 -->
+    -+<!-- knowledge-review: 2ac958157649a7154be8584b83ab7696f25188b2fdf9cba1dc6e1fb956751dfe on 2026-10-01 -->
+    +-<!-- knowledge-review: b19fea852e6eec4b894cdf89aac257c826fda9ec0c8bb9ac3ce75d15f28ed7e3 on 2026-10-01 -->
+    ++<!-- knowledge-review: c53e3635dda70b982d806295da2955485869d95afa18afba04bb88429651d0df on 2026-10-01 -->
+      # Tennis Lab Knowledge Summary
+      
+    - 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+    + 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
+     @@ knowledge/summary.md: calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しN
+      bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+      [seed44再試行](nodes/ball_refiner/000021-run-i935-seed44-retry-r24-20260930.md)は資源上限内で完了したが、[事前10比較](nodes/ball_refiner/000023-run-i935-seed-reproduction-r25-20260930.md)は9/10で不合格。seed44の人工gap NLLだけがabsolute_12kより悪い。位置分位点は両追加seedでe9 top-1を上回るが、これを全条件の再現成功とは扱わない。
