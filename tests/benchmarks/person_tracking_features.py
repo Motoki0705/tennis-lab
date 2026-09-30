@@ -118,7 +118,7 @@ def extract(args: argparse.Namespace) -> None:
     write_json_atomic(report / 'features.json', manifest)
 
 
-def track_baseline(frames: list[DetectionFeatures], provenance: dict[str, Any], max_tracks: int) -> dict[str, Any]:
+def track_baseline(frames: list[DetectionFeatures], provenance: dict[str, Any], max_tracks: int | None) -> dict[str, Any]:
     """Actual old Ultralytics path, including image-based sparse optical flow.
 
     Replay exactly the same #937 detections as the derivative. This smoke
@@ -135,7 +135,7 @@ def track_baseline(frames: list[DetectionFeatures], provenance: dict[str, Any], 
         feature = frames[packet.index]
         tracks = tracker.update(PersonDetectionResult(feature.boxes, feature.scores), packet.frame)
         seen.update(track['id'] for track in tracks)
-        if len(seen) > max_tracks:
+        if max_tracks is not None and len(seen) > max_tracks:
             raise TrackCapacityExceeded(f'Ultralytics baseline exceeds cumulative camera cap {max_tracks}')
         observed.append({'frame': packet.index, 'tracks': json_value(tracks)})
     if len(observed) != len(frames):

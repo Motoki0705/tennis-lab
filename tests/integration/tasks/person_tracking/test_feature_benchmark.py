@@ -44,14 +44,17 @@ def test_cpu_benchmark_replays_shared_features_and_rejects_changed_archive(tmp_p
         track(args)
 
 
-def test_real_ultralytics_baseline_consumes_the_same_detection_archive(tmp_path: Path) -> None:
+@pytest.mark.parametrize('people', [1, 8])
+def test_real_ultralytics_baseline_consumes_the_same_detection_archive(tmp_path: Path, people: int) -> None:
     video = tmp_path / 'source.mp4'
     writer = cv2.VideoWriter(str(video), cv2.VideoWriter.fourcc(*'mp4v'), 30., (128, 128))
     assert writer.isOpened()
     writer.write(np.zeros((128, 128, 3), np.uint8))
     writer.release()
-    feature = DetectionFeatures(0, np.array([23], np.int64), np.array([[10, 10, 30, 50]], np.float32),
-        np.ones(1, np.float32), np.zeros((1, 17, 3), np.float32), np.array([[1, 0]], np.float32), np.ones(1, bool))
+    feature = DetectionFeatures(0, np.arange(23, 23 + people, dtype=np.int64),
+        np.array([[10 + i * 12, 10, 20 + i * 12, 50] for i in range(people)], np.float32),
+        np.ones(people, np.float32), np.zeros((people, 17, 3), np.float32),
+        np.tile(np.array([[1, 0]], np.float32), (people, 1)), np.ones(people, bool))
     path = tmp_path / 'cam0.features.npz'
     save_features(path, [feature], {'source': {'path': str(video), 'sha256': dual_sha256(video), 'fps': 30}})
     manifest = {'status': 'ok', 'scope': 'prefix_smoke', 'cameras': {'cam0': {'path': str(path), 'sha256': dual_sha256(path)}}}
@@ -61,6 +64,6 @@ def test_real_ultralytics_baseline_consumes_the_same_detection_archive(tmp_path:
     baseline = json.loads((tmp_path / 'tracking.ultralytics_botsort.json').read_text())
     derivative = json.loads((tmp_path / 'tracking.botsort_pose.json').read_text())
     assert baseline['features_sha256'] == derivative['features_sha256']
-    assert baseline['cameras']['cam0']['track_ids'] == [1]
-    assert baseline['cameras']['cam0']['observed_detections'] == 1
+    assert baseline['cameras']['cam0']['track_ids'] == list(range(1, people + 1))
+    assert baseline['cameras']['cam0']['observed_detections'] == people
     assert baseline['config']['gmc_method'] == 'sparseOptFlow' and baseline['config']['with_reid'] is False
