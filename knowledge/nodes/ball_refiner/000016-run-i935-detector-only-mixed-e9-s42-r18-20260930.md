@@ -163,8 +163,47 @@ detector交換と重み更新の寄与を個別に同定していない。seed�
 Meijiの存在正例だけでは不存在の較正を検証できない。pilotは未較正のまま、default変更の根拠は限定的。
 Meiji test video_001、pose/personは使用せず、#964の変更を取り込んでいない。
 
-## 次の作業
+## Val overlay（run 19、CPU）
 
-run 19ではこの回収を先に確定した。続いて固定のMeiji val video_000/clip_010（較正側270frame）の3camera overlayを作り、
-**各GMM成分の2σ楕円**と混合平均を表示する（95% HDRとは呼ばない）。
-court-onlyの「poseなし」ablationと既存componentのcheckpoint切替は費用付き提案だけに留める。
+出力MP4: `/home/kamimura/projects/tennis-lab/outputs/ball_refiner/visualize/paired/i935-clip010-r19-20260930/meiji-val-clip010-three-cameras-paired.mp4`。
+SHA-256 `8da2dbdc0455cab3306704a6ca3e91d1e6940a2b10d9a4e8bebe5734896a8c01`、4,552,677 bytes、
+**2880×1374、270frame、2997003/50000 fps（約4.505秒）**。
+生成30.43秒、CPUのみ、encoder2 thread・OpenCV1 thread。全frameを再decodeして数・PTS単調性を確認した。
+cameraごとの元frame/PTSは完全一致（frame0–269 / PTS0–13,450,000、time base1/2,997,003）。
+[再現command](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-command.txt)と
+[全hash・仕様・母数](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay.json)を登録。
+GPU推論をやり直さず、**paired評価と同じJPEG**へ保存済み分布を描いた。元動画pipelineの新checkpoint検証ではない。
+
+上段は通常証拠、下段は固定人工gapを含む予測。列はcam0/1/2。
+緑四角がobserved教師、橙四角が推定/補間教師、赤菱形がepoch9 detectorのcandidate top-1（保存decoder順）、
+水色＋が新pilotの混合平均、紫×が旧pilotの混合平均。
+**各GMM成分の2σ楕円**はfull covarianceから計算し、alphaをその成分weightにした。
+GMMの95% HDRではない。点指標の最大weight成分平均と、描画の混合平均も区別する。
+人工gap中は赤菱形を出さず橙枠、推定遮蔽とunknownはcaptionで区別。
+各cameraのobservedは200/237/217、推定遮蔽6/1/8、補間2/0/5、unknown62/32/40。
+人工gapは各58frame（教師状態とは別軸）で、unknownを球の不在へ読み替えない。
+
+目視したframe0/40/80/120/160/164/240からの読み:
+
+- [frame80](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-frame-080.jpg)のcam2は人工gapで楕円が広がる。
+  一方cam0はframe40–80で新pilotもdetectorの誤った位置側へ寄り、旧平均の方が教師に近い。
+- [frame164（MP4からdecode）](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-decoded-frame-164.jpg)ではcam0の推定遮蔽を橙で示す。
+  新平均と教師が近いことは見えるが、推定教師なので実遮蔽精度の確証にはしない。
+- [frame240](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-frame-240.jpg)のcam2は複数成分が広がり、
+  新混合平均が教師から外れる。cam1でも小さい楕円が誤位置にあり、全frameを適切に較正できたとは読めない。
+  frame0は3cameraともunknown表示で位置採点しない。動画は1clipの可視化で、採否は全val表から判断する。
+
+## 次のlane-A（提案だけ）
+
+[費用・実装境界・根拠](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/next_lane_a.md)に
+(a) court-onlyの「poseなし」armと(b)既存componentのasset切替案をまとめた。
+(a)は329clipのcourt-only cache **2–4時間 / VRAM2–4 GB / 100 MB以内**、
+同recipe pilot＋評価 **10–20分 / 2–4 GB / 200 MB以内**。court単独VRAMは未実測なので先頭3clipで確認する案。
+(b)は新bundle CPU export後、同じval3cameraのexecute/load-only **5–10分 / 2–4 GB / 150 MB以内**。
+原動画RGB差・他source退行・較正不足を残したままdefault採用としない。orchestratorが動画と比較をユーザーへ提示してから判断する。
+今回はGPU job **0**、pipeline default変更 **0**、旧cache/checkpointの削除 **0**。
+
+[通常検証](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/verification-r19.json)は
+評価34件＋楕円幾何4件（いずれもpytest -n4）成功、回収/描画コードruff/mypy成功。
+異方的画素変換・相関共分散・成分weight・不正Cholesky拒否をテストした。
+実RGB遮蔽、独立test、full文脈ablation、3D品質は未検証で、#935全体の完了とはしない。
