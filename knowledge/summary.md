@@ -1,4 +1,4 @@
-<!-- knowledge-review: daf3c88fc756a28a4a9377a3b1e5cbc40428f47f6b00bc09e19587a3ef42572a on 2026-09-30 -->
+<!-- knowledge-review: f7117a8f93f701ed2e63e24fb6f40b78c7aa2106a18a37571aabefbda61fec7d on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -207,8 +207,13 @@ peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害�
 新pilotはMeiji全cameraで旧pilotよりobservedの裾誤差を抑え、新detector単体に対してもp95を改善するが、中央値の精密定位は劣る。
 TrackNetの観測位置は退行し、chatは中央値が悪化して裾だけ改善。Meiji較正側のgap HDR95 coverageも約86%に留まり、較正済みとは扱わない。
 detectorの一様gap密度によるcoverage=1は全画面領域の自明な結果なので、coverageと面積を併記し、位置誤差を公平な比較とする。
-存在/位置の教師がない層はN/A。次はcourt-onlyのposeなしablationと元動画componentへの切替を費用付きで提案する。
-#964完了までperson/poseを使用せず、ユーザーへの提示前にpipeline defaultを変更しない。testは引き続き未使用。
+存在/位置の教師がない層はN/A。
+[典型frameの精度診断](nodes/ball_refiner/000017-run-i935-precision-variants-s42-r20-20260930.md)では、
+正しいdetector候補からrefiner平均が系統的に右へずれ、同じ偏りが他sourceの中央値退行にも現れた。
+絶対座標headの平均はほぼ候補peak上になく、epochで偏りの向きが反転するため、
+格子解像度やsigma床だけよりも平均parameterizationと未収束/揺れる最適化が主要な候補となる。
+run20 directiveに従いcourt-only先行案を保留し、同一recipeの長期化と候補を保持する平均の比較を先に行う。
+GPU結果は未測定。#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
 
 ### Court Detection
 
