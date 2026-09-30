@@ -1,4 +1,4 @@
-<!-- knowledge-review: f7e640d53ee6181e54c6326f511bb66f1fda57b442e0d09c251df288cdaa2b83 on 2026-09-30 -->
+<!-- knowledge-review: a1a0c8db0cb81337d3733a407948d71d92c885ba167e919d1b8305e839a5e147 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -80,6 +80,9 @@ GSI syntheticは別maskのままで評価の実観測へ入れていない。費
 新既定StrongSORT++＋pose/CLIP、ユーザー確定のmerge offを固定し、無ラベル6clipで
 尺度/判定しきい値を較正してからdevを一度採点する計画。まだfit・dev再採点はしておらず、
 旧#933の結論は旧trackに限定したまま維持する。
+[run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
+特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
+旧見積りは不足していた。残り9cameraを検証済み再開で生成してからfitする。
 準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
 既定は維持し、明示mask投影と2cameraのCPU再追跡で入力をそろえる。
 run 11は保存特徴からの再現として有効だが、画像入口との完全同一性の証明とはしない。
