@@ -1,0 +1,11 @@
+{
+  "job_id": "1790800194473949395_4059977_i936-combined512-physics10-r16-s936-20261001",
+  "registered_at": "2026-10-01T05:29:54.484244+09:00",
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/plan.json --device cuda",
+  "resource": "all",
+  "queue_dir": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "plan_sha256": "e8ca185a9f9cfbe05514653001129181d86b2185ddf12acbbd0650f0e2c8b19a",
+  "enqueue_commit": "a7ba039b1ddd9df80c3b76a9c8a7da3eec7d7b71",
+  "pinned_files_verified": 66,
+  "worker_start_pending": true
+}
