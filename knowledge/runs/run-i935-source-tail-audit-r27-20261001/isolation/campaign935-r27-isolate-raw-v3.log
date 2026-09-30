@@ -1,0 +1,18 @@
+{"mode": "raw", "windows": 4, "total_windows": 67, "seconds": 17.341039734019432, "available_ram": 15794765824}
+{"mode": "raw", "windows": 8, "total_windows": 67, "seconds": 31.13062652904773, "available_ram": 15794765824}
+{"mode": "raw", "windows": 12, "total_windows": 67, "seconds": 44.195764150004834, "available_ram": 15794765824}
+{"mode": "raw", "windows": 16, "total_windows": 67, "seconds": 57.04108062002342, "available_ram": 15794765824}
+{"mode": "raw", "windows": 20, "total_windows": 67, "seconds": 67.93214720400283, "available_ram": 15794765824}
+{"mode": "raw", "windows": 24, "total_windows": 67, "seconds": 81.17197851801757, "available_ram": 15794765824}
+{"mode": "raw", "windows": 28, "total_windows": 67, "seconds": 94.33042213402223, "available_ram": 15794765824}
+{"mode": "raw", "windows": 32, "total_windows": 67, "seconds": 107.68596346402774, "available_ram": 15794765824}
+{"mode": "raw", "windows": 36, "total_windows": 67, "seconds": 121.6622333819978, "available_ram": 15794765824}
+{"mode": "raw", "windows": 40, "total_windows": 67, "seconds": 135.89252245303942, "available_ram": 15794765824}
+{"mode": "raw", "windows": 44, "total_windows": 67, "seconds": 149.42275038704975, "available_ram": 15794765824}
+{"mode": "raw", "windows": 48, "total_windows": 67, "seconds": 162.93275894405087, "available_ram": 15794765824}
+{"mode": "raw", "windows": 52, "total_windows": 67, "seconds": 176.4184048990137, "available_ram": 15794765824}
+{"mode": "raw", "windows": 56, "total_windows": 67, "seconds": 189.5013797080028, "available_ram": 15794765824}
+{"mode": "raw", "windows": 60, "total_windows": 67, "seconds": 202.6874466400477, "available_ram": 15794765824}
+{"mode": "raw", "windows": 64, "total_windows": 67, "seconds": 230.00988398405025, "available_ram": 15794765824}
+{"mode": "raw", "windows": 67, "total_windows": 67, "seconds": 249.64361958601512, "available_ram": 13418795008}
+{"complete": "raw", "comparison": {"source_cuda": {"all_rank_native_cells_equal_frames": 263, "same_rank_native_cells": 2149, "score_max_abs": 0.0004992485046386719, "same_rank_position_max_abs_px": 665.728515625}, "cache_cuda": {"all_rank_native_cells_equal_frames": 0, "same_rank_native_cells": 294, "score_max_abs": 0.5122061967849731, "same_rank_position_max_abs_px": 1918.4998779296875}}, "seconds": 257.0960195950465}
