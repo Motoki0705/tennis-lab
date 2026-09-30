@@ -1,0 +1,32 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 92 items
+
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py ...           [  3%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py .........   [ 13%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py ...          [ 16%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py ....... [ 23%]
+..                                                                       [ 26%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py ..    [ 28%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py .... [ 32%]
+..                                                                       [ 34%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py ..        [ 36%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py ........... [ 48%]
+..                                                                       [ 51%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py ...    [ 54%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py ...    [ 57%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py ..              [ 59%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py .........     [ 69%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py ..        [ 71%]
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py ..        [ 73%]
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py ...... [ 80%]
+....                                                                     [ 84%]
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py ........... [ 96%]
+.                                                                        [ 97%]
+tests/integration/tasks/ball_refiner/test_context_probe.py .             [ 98%]
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py .        [100%]
+
+============================= 92 passed in 13.06s ==============================
