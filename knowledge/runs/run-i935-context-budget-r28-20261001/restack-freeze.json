@@ -1,0 +1,90 @@
+{
+  "base_old": "601754149b3ab712be7e50870d1f05e76d0b58cb",
+  "base_new": "3c31e3bd5f0deb08c72acd481b74cd923a52d3da",
+  "branches": [
+    {
+      "branch": "campaign930/i935-1-model-contract",
+      "old": "5f18ac3679a9cc94b05c7c9c694885511389aa74",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-1-model-contract",
+      "new": "6eb80f3c25428c944da3d42fb276309d63e12b3d"
+    },
+    {
+      "branch": "campaign930/i935-2-data-training",
+      "old": "0aec4fe8e4f01c4ffb74ad740a7c892cc47ec5e5",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-2-data-training",
+      "new": "622b5625b459c24c55249b842c0e74a330b5b835"
+    },
+    {
+      "branch": "campaign930/i935-3-cache-training",
+      "old": "6b01e1f3ab84b2f2afe78cc0a0bc7645e448525d",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training",
+      "new": "1325a00c0c64b0e932edd261d4bfd2e0fa404db3"
+    },
+    {
+      "branch": "campaign930/i935-4-training",
+      "old": "b0383420a30fe52eedd540f0513406275fde594a",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training",
+      "new": "9ea11bc2eb624c6eb84c71433868140050093a3e"
+    },
+    {
+      "branch": "campaign930/i935-5-evaluation",
+      "old": "9a2dcd45385acc0a4d5a294b024948219deb78a5",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-5-evaluation",
+      "new": "5c84775d5998150811a0796bb79d3325cbcf404b"
+    },
+    {
+      "branch": "campaign930/i935-6-inference",
+      "old": "76c60b4c4057f15ed9661e15fc657f6215b3c34e",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-6-inference",
+      "new": "36759e96174093c6fe007f668806a707300bacac"
+    },
+    {
+      "branch": "campaign930/i935-7-pipeline",
+      "old": "14a88c0dc015c11990f4b5759f657c1484f14129",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-7-pipeline",
+      "new": "0b58995afbbfb3bc58fc9fe57984270de0d290a1"
+    },
+    {
+      "branch": "campaign930/i935-8-context-cache",
+      "old": "79ad56e8f59cd5e73cfb015a228e1c86f085d4f8",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache",
+      "new": "47b33aa1c06de729dceaab78b931e5f9751d86e7"
+    },
+    {
+      "branch": "campaign930/i935-9-context-shards",
+      "old": "03a50df6feb843120f96c0148d598b13f87cf6b3",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards",
+      "new": "de0906e6cf15acec614e3a94455911df221128b2"
+    },
+    {
+      "branch": "campaign930/i935-10-detector-selection",
+      "old": "cbb63a5a351e389c29c79e02c592f9a0cc896be1",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection",
+      "new": "f5a98c9f1d1f8446a9d6867535abae66d2547316"
+    },
+    {
+      "branch": "campaign930/i935-11-pilot-retrain",
+      "old": "0235a32a786d6a3513a1d53e69e355905661e0ce",
+      "worktree": null,
+      "new": "b8e2dbbb6ae35a2f5c620e15bc5e7f95b071b58f"
+    },
+    {
+      "branch": "campaign930/i935-12-precision-diagnosis",
+      "old": "e73f5e7ea43e52f5049a70fab5640b5b4dedb095",
+      "worktree": null,
+      "new": "b40bde5961ecb16fb374842de31c2ba563c6071a"
+    },
+    {
+      "branch": "campaign930/i935-13-covariance-calibration",
+      "old": "b55cb2ca395aa28df3b66b707e014e9b05640653",
+      "worktree": null,
+      "new": "2157255a8eff6f79633b9ee39d03e2818fe2ced2"
+    },
+    {
+      "branch": "campaign930/i935-14-pipeline-candidate",
+      "old": "689a8acd9b7514092c45a265707ee954e5a41e76",
+      "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+      "new": "e7627c25c9bcfad351bea75f3ae649e9084e8e17"
+    }
+  ]
+}
