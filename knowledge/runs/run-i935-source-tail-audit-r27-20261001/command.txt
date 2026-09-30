@@ -1,0 +1,2 @@
+PYTHONPATH=<checkout> <checkout>/.venv/bin/python <checkout>/knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_frames.py
+入力pathは前runのplan.jsonとaudit_frames.pyで固定。frames/は新規directoryを要求する。再実行時は既存証跡を削除せず、別checkoutで行う。
