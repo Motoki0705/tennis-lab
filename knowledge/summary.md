@@ -1,4 +1,4 @@
-<!-- knowledge-review: 0cec74116bb15af1b648329af107a24851af2ba43c2f0e80de18f8420d2c3bc3 on 2026-09-30 -->
+<!-- knowledge-review: b6390fa3b9929e593a385052d81c38d63a06b4599e7e0d701cf7f8890c6d5317 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）

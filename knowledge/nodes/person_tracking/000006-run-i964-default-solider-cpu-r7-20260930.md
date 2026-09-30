@@ -49,6 +49,9 @@ classifier/BN以外は全tensorをstrictに読み込み、別重みの推定や�
 上流forward（semantic conditionをCPU tensorで明示、未使用MMCV load importだけ除外）とportの特徴は最大絶対差0、norm=1だった。
 [入力box・動画hash・結果](../../runs/run-i964-default-solider-cpu-r7-20260930/solider_cpu_parity.json)、
 [code hash](../../runs/run-i964-default-solider-cpu-r7-20260930/code_hashes.json)に実測の範囲を固定。
+全体CIで上流forward内のassert/type確認/getattrがrepoのcomputation-only規則に抵触したため、
+固定入力の検査をtyped wrapperに集約し、norm参照をconstructorで束縛した。検査の除外範囲や許可リストは変更していない。
+修正後も同じ2 cropを再実行し、上流とcheckpoint key集合が一致、特徴の最大絶対差0を確認した。
 これは2 cropの推論整合だけで、追跡精度、encoder採用、GPU性能の証拠ではない。学習曲線は無い。
 
 ## 次の実行
