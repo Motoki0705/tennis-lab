@@ -84,6 +84,19 @@ def test_no_score_selection_and_every_field_comes_from_same_window(tmp_path):
     np.testing.assert_array_equal(evidence.candidates.cells[0, 0], [[5, 4], [0, 0], [0, 0]])
 
 
+def test_heatmap_sink_uses_the_identical_overlap_and_tail_choice(tmp_path):
+    store = make_store(tmp_path)
+    maps: dict[int, torch.Tensor] = {}
+    evidence = infer_clip_evidence(
+        store, store.clips[0], PatternPredictor(), image_size_hw=(24, 32), stride=2, batch_size=2,
+        config=BallCandidateConfig(max_candidates=3, nms_kernel=3, patch_size=3),
+        heatmap_sink=lambda frame, heatmap: maps.__setitem__(frame, heatmap.clone()),
+    )
+    assert sorted(maps) == list(range(11))
+    np.testing.assert_allclose([maps[i].max() for i in range(11)], evidence.argmax_score)
+    assert maps[8][4, 5].item() == pytest.approx(.232)
+
+
 @pytest.mark.parametrize("n", [4, 5, 8, 11])
 def test_backfilled_tail_is_unique_and_batch_partition_does_not_change_evidence(tmp_path, n):
     store = make_store(tmp_path, n)
