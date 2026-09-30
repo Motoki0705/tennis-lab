@@ -109,7 +109,7 @@ t=1で速度を評価しない。x0 MSEは一様tで学習し、velocity MSEで�
 hit/bounce BCEを実装する。再投影はbehind predictionを捨てずdepth penaltyを付ける。
 重力項はdrag/Magnus/windを再現しない**弱いprior**であり、BLCSの完全な物理残差ではない。
 イベント前後のmaskと差分stencilの全3frameが有効な箇所だけに適用する。
-品質対照・実Meiji評価・deploymentは未実装。
+最終的な対照評価・実Meiji評価・deploymentは未完了。
 
 ## 保存済みsmokeでのCPU学習loop
 
