@@ -1,0 +1,33 @@
+{
+  "status": "preregistered_not_enqueued",
+  "recorded_at": "2026-10-01T03:37:46.065980+09:00",
+  "authorization": "campaign-930 issue936 run15 directive: requeue (a) unchanged, once",
+  "original_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-pilot512-t128-r14-s936/plan.json",
+  "original_plan_sha256": "fa6fe42875a3a11283b0581f8ead0d6b64318b94f8b14230543f47123a9de334",
+  "original_failed_job": "1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001",
+  "original_command_byte_identical": true,
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-pilot512-t128-r14-s936/plan.json --device cuda",
+  "queue_name": "i936-pilot512-t128-r15-s936-20261001",
+  "provider": "codex",
+  "session": "01a0f38d-c714-7802-9bfb-9869fa5e2be4",
+  "issue": 936,
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "resource": "all",
+  "estimated_minutes": [
+    70,
+    85
+  ],
+  "estimated_peak_vram_bytes": [
+    2000000000,
+    3000000000
+  ],
+  "reserved_disk_bytes": 150000000,
+  "maximum_wall_seconds_including_kill": 5355,
+  "maximum_device_bytes": 10000000000,
+  "minimum_available_host_bytes": 6442450944,
+  "diagnostic_rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5915164321",
+  "formal_dominance_rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5911005227",
+  "primary_update": 20000,
+  "optional_followup_c": null,
+  "followup_reason": "physics trial failed accuracy/behind noninferiority; collect unchanged data-size factor before choosing next candidate"
+}
