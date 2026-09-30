@@ -118,7 +118,7 @@ ray積分は全targetを評価してevidence/momentsを返す。全組合せを�
 rayの座標を1frame内でcacheする。`RayConvergenceConfig.orders`は角度/変換depthの
 Gauss–Hermite次数で、最低3段階を検査する。旧`ConvergenceConfig`はvoxel再現用。
 設定読込の`convergence_config`はmethodを検証し、未指定の歴史的schemaだけvoxelと解釈する。
-新生成設定は`method: ray`を明記する。
+方式と予算は呼び出し側で明記する。
 
 各隣接段階で全成分のlog evidence絶対差、平均L2差、共分散相対Frobenius差
 （分母は前後normの大きい方）を検査する。重み0へunderflowした成分も対象。
@@ -129,6 +129,20 @@ GTを停止条件や積分座標の決定に使わない。閾値と上限の正
 隣接次数の差は**経験的な数値誤差推定**であり、連続積分の誤差上界ではない。
 共通して見落とす離れたmode、AのLaplace近似、Gaussian moment近似は保証しない。
 NLL probe集合以外の密度誤差も保証しない。cap到達を収束と記録しない。
+
+## 固定予算のconditioning
+
+`conditioning.triangulate_conditioning`は生成と推論で共有できる入口。
+`conditioning_config`で`method: fixed_hybrid`を指定すると、正則Aと
+固定予算voxelの明示的なHを1回だけ実行する。全productのevidence/momentsを残し、
+方式はframe/成分ごとに決定論的で、失敗を別seedやpriorで埋めない。
+この予算の較正・費用による選定根拠は
+[K=4方式比較](../../../../knowledge/nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md)を参照。
+
+固定予算では積分収束を測らない。返り値の`convergence_assessed=false`と
+`converged=false`を組み合わせて**未評価**を表す。deltaの0は未計測のplaceholderであり、
+収束の証拠に使わない。従来のray/voxel/adaptive予算では`convergence_assessed=true`を返し、
+全flag・達成差分を保持する。数値収束は診断で、方式選定や生成のgateではない。
 
 ## 検証と比較
 

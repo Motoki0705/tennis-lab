@@ -9,6 +9,8 @@ CPUでの入力分布・合成系列生成と、絶対x0を予測するdiffusion
 
 A（成分組合せのMahalanobis最適化＋Laplace）、B（適応voxel積分）、
 C（2D分布の標本化＋三角測量）を同じ合成入力で比較する。
+K=4の固定標本ではH（固定voxel予算のhybrid）、ray、adaptive ray、固定20次rayも比較し、
+既定のHを選んだ根拠を[knowledge](../../../../knowledge/nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md)へ記録する。
 3D密度の単位は m⁻³、NLLは自然対数、coverageは混合全体のHDRで測る。
 点推定の平均誤差だけで方式を選ばない。raw detectorは入力にしない。
 
@@ -28,7 +30,7 @@ video_002/clip_010、cam0/1/2（1920×1080）。
 
 設定の正本は [dataset_plan.yaml](dataset_plan.yaml)。
 `synthetic/` はBLCSの240Hz原系列を正確な60000/1001Hzへ線形補間し、
-合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 正則A/非正則ray積分の順で生成する。
+合成3D → source画素 → `BallGMM2D` → `pixel_moments()` → 共通conditioning APIの順で生成する。
 全camera集合と全共分散を保存する。v2は保存済み#935 pilotのK=4を保ち、
 全125成分を列挙する。点推定への置換はしない。
 
@@ -60,9 +62,11 @@ generatorの`--calibration-report <絶対project-path>/calibration.json`で、�
 負例不足のため設定で明示した仮定。平均は#935 headと同じ[0,1]へclipし件数を保存する。
 再標本化元の全row indexとbank hashを各ラリーに保存し、readerで全重み・共分散・存在を照合する。
 
-積分は[共通の収束判定](../../../utils/geometry/probabilistic_triangulation/README.md#積分の収束判定)を使う。
-frame/成分別の収束flag・達成差分・使用予算・全履歴を保存する。上限で未収束のframeも
-最後の全分布を保持し、収束済みへ読み替えたり学習loaderで黙って除外したりしない。
+既定は[固定予算H](../../../utils/geometry/probabilistic_triangulation/README.md#固定予算のconditioning)。
+設定キー`boundary_convergence`は既存schemaを維持し、方式と固定予算を格納する。
+`integration_convergence_assessed`を保存し、readerは未評価を収束済みとする改変を拒否する。
+収束を測る方式を明示した場合はframe/成分別のflag・達成差分・使用予算・全履歴も保存する。
+未評価/未収束でも最後の全分布を保持し、学習loaderで黙って除外しない。
 数値失敗は別の明示的errorである。v1の仮定劣化/K=3からのデータ移行は再生成で行う。
 適応rayの補助誤差とchart選択もNPZへ保存する。`integration_component_metric_codes`は
 0=適応chart対象外、1=局所Hessian、2=白色化画素/log-depth単位軸。readerは方式codeとの一致を検証する。

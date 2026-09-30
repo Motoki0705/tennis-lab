@@ -1,0 +1,1447 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [717 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/geometry/test_adaptive_ray.py::test_adaptive_positive_depth_moments_and_evidence 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-30.0] 
+tests/unit/utils/geometry/test_planar_camera.py::test_out_of_image_outliers_cannot_supply_calibration_support 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_axis_angle_quaternion_roundtrip 
+[gw3] [  0%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_axis_angle_quaternion_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_small_angle_stability 
+[gw2] [  0%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_out_of_image_outliers_cannot_supply_calibration_support 
+tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[world] 
+[gw3] [  0%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_small_angle_stability 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_rotation_6d_produces_valid_rotations 
+[gw1] [  0%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-30.0] 
+[gw2] [  0%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[world] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-1.0] 
+tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[image] 
+[gw2] [  0%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[image] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[nan] 
+[gw1] [  0%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-1.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-30.0] 
+[gw3] [  1%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_rotation_6d_produces_valid_rotations 
+[gw2] [  1%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[nan] 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_standardize_quaternion_nonnegative_real 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[score] 
+[gw2] [  1%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[score] 
+[gw3] [  1%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_standardize_quaternion_nonnegative_real 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_matrix_to_quaternion_unit_norm 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[plane] 
+[gw1] [  1%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-30.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_invalid_margins_are_rejected 
+[gw2] [  1%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[plane] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[size] 
+[gw1] [  1%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_invalid_margins_are_rejected 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[1] 
+[gw2] [  2%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[size] 
+tests/unit/utils/geometry/test_planar_camera.py::test_camera_below_known_plane_is_rejected 
+[gw3] [  2%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_matrix_to_quaternion_unit_norm 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_matrix_shape_raises 
+[gw3] [  2%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_matrix_shape_raises 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_euler_convention_raises 
+[gw3] [  2%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_euler_convention_raises 
+tests/unit/utils/geometry/test_triangulation.py::test_recovers_world_coordinates_with_missing_and_corrupt_view 
+[gw2] [  2%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_camera_below_known_plane_is_rejected 
+tests/unit/utils/geometry/test_planar_camera.py::test_focal_optimization_cannot_silently_saturate_bounds 
+[gw3] [  2%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_recovers_world_coordinates_with_missing_and_corrupt_view 
+tests/unit/utils/geometry/test_triangulation.py::test_refinement_reduces_weighted_pixel_error 
+[gw2] [  2%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_focal_optimization_cannot_silently_saturate_bounds 
+tests/unit/utils/geometry/test_planar_camera.py::test_negative_depth_planar_solution_is_rejected 
+[gw3] [  3%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_refinement_reduces_weighted_pixel_error 
+tests/unit/utils/geometry/test_triangulation.py::test_rejects_missing_degenerate_and_behind_camera 
+[gw2] [  3%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_negative_depth_planar_solution_is_rejected 
+tests/unit/utils/geometry/test_planar_camera.py::test_exact_out_of_image_extrapolations_can_be_kept_explicitly 
+[gw3] [  3%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_rejects_missing_degenerate_and_behind_camera 
+tests/unit/utils/geometry/test_triangulation.py::test_missing_camera_on_projection_plane_does_not_poison_visible_pair 
+[gw2] [  3%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_exact_out_of_image_extrapolations_can_be_kept_explicitly 
+tests/unit/utils/geometry/test_point_triangulation.py::test_recovers_known_points_and_rejects_missing_support 
+[gw3] [  3%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_missing_camera_on_projection_plane_does_not_poison_visible_pair 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+[gw2] [  3%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_recovers_known_points_and_rejects_missing_support 
+tests/unit/utils/geometry/test_point_triangulation.py::test_pair_consensus_ignores_one_bad_camera 
+[gw2] [  3%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_pair_consensus_ignores_one_bad_camera 
+tests/unit/utils/geometry/test_point_triangulation.py::test_points_outside_the_height_bounds_are_rejected 
+[gw2] [  4%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_points_outside_the_height_bounds_are_rejected 
+tests/unit/utils/geometry/test_point_triangulation.py::test_half_turn_is_a_gauge_change_of_the_court_frame 
+[gw2] [  4%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_half_turn_is_a_gauge_change_of_the_court_frame 
+tests/unit/utils/geometry/test_point_triangulation.py::test_speed_gate_rejects_both_endpoints_without_bridging_gaps 
+[gw1] [  4%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[1] 
+[gw2] [  4%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_speed_gate_rejects_both_endpoints_without_bridging_gaps 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[100] 
+tests/unit/utils/geometry/test_point_triangulation.py::test_rejects_invalid_confidence 
+[gw2] [  4%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_rejects_invalid_confidence 
+tests/unit/utils/geometry/test_point_triangulation.py::test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera 
+[gw2] [  4%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[False] 
+[gw2] [  4%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[False] 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[True] 
+[gw3] [  5%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[True] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+[gw3] [  5%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+[gw3] [  5%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+[gw3] [  5%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+[gw3] [  6%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+[gw2] [  6%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+[gw3] [  6%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+[gw2] [  6%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+[gw2] [  6%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+[gw2] [  6%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+[gw2] [  6%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.01] 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.01] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.3] 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.3] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_multiview_ray_integrates_product_and_cheirality 
+[gw3] [  7%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+[gw1] [  7%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[100] 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_diagnostic_policy_still_rejects_impossible_camera_intersection 
+[gw1] [  7%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_diagnostic_policy_still_rejects_impossible_camera_intersection 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_inside_range_is_unchanged 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_inside_range_is_unchanged 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_negative_value_clamped_to_zero 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_negative_value_clamped_to_zero 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_above_max_clamped_to_axis_size_minus_one 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_above_max_clamped_to_axis_size_minus_one 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_zero_axis_size_clamps_to_zero 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_zero_axis_size_clamps_to_zero 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_returns_float 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_returns_float 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_scales_by_width_and_height 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_scales_by_width_and_height 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_does_not_mutate_input 
+[gw1] [  8%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_does_not_mutate_input 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_supports_leading_dims 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_supports_leading_dims 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_scales_back_to_pixels 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_scales_back_to_pixels 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_round_trip_recovers_original 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_round_trip_recovers_original 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_does_not_mutate_input 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_does_not_mutate_input 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_last_pixel_centre_maps_to_one 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_last_pixel_centre_maps_to_one 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_round_trip_and_float32 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_round_trip_and_float32 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_differs_from_size_normalization 
+[gw1] [  9%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_differs_from_size_normalization 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_rejects_empty_image 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_rejects_empty_image 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_zero_yaw_is_identity 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_zero_yaw_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_is_a_proper_rotation 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_is_a_proper_rotation 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_rotates_x_into_minus_z_for_quarter_turn 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_rotates_x_into_minus_z_for_quarter_turn 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_returns_float32 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_returns_float32 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_batched_shape 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_batched_shape 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_zero_yaw_is_identity 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_zero_yaw_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_each_matrix_is_a_proper_rotation 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_each_matrix_is_a_proper_rotation 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_zero_rotation_is_identity 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_zero_rotation_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_matches_rotation_matrix_z_for_z_axis 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_matches_rotation_matrix_z_for_z_axis 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_batched_proper_rotations 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_batched_proper_rotations 
+tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_maps_smpl_up_axis_to_court_up_axis 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_maps_smpl_up_axis_to_court_up_axis 
+tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_rejects_non_xyz_points 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_rejects_non_xyz_points 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_zero_yaw_converts_smpl_y_up_to_court_z_up 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_zero_yaw_converts_smpl_y_up_to_court_z_up 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_translation_only 
+[gw1] [ 11%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_translation_only 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_batch_matches_per_frame 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_batch_matches_per_frame 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_yaw_rotates_around_court_z_axis 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_yaw_rotates_around_court_z_axis 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_exact_observations_are_consistent_and_a_missing_view_is_ignored 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_exact_observations_are_consistent_and_a_missing_view_is_ignored 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_wrong_camera_pose_and_implausible_points_cost_one 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_wrong_camera_pose_and_implausible_points_cost_one 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_contract_violations_are_errors 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_contract_violations_are_errors 
+tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[-1] 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[-1] 
+tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[1] 
+[gw3] [ 12%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_calibration_report_is_one_explicit_verified_input 
+[gw1] [ 13%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[1] 
+tests/unit/utils/geometry/test_planar_camera.py::test_missing_points_and_low_score_outliers_do_not_bias_fit 
+[gw1] [ 13%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_missing_points_and_low_score_outliers_do_not_bias_fit 
+tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[2] 
+[gw1] [ 13%] PASSED tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[2] 
+tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[ 0] 
+[gw1] [ 13%] PASSED tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[ 0] 
+tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_TYPO] 
+[gw1] [ 13%] PASSED tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_TYPO] 
+tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_MOE_REFERENCE] 
+[gw1] [ 13%] PASSED tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_MOE_REFERENCE] 
+tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE] 
+[gw1] [ 13%] PASSED tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE] 
+tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_USE_TIME_LOCAL_CUDA] 
+[gw1] [ 14%] PASSED tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_USE_TIME_LOCAL_CUDA] 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[None-False] 
+[gw1] [ 14%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[None-False] 
+[gw3] [ 14%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_calibration_report_is_one_explicit_verified_input 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[0-False] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw1] [ 14%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[0-False] 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[1-True] 
+[gw1] [ 14%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[1-True] 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[None-all] 
+[gw1] [ 14%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[None-all] 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[all-all] 
+[gw1] [ 14%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[all-all] 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[compressed_time_local-compressed_time_local] 
+[gw1] [ 15%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[compressed_time_local-compressed_time_local] 
+tests/unit/utils/configuration/test_operations.py::test_runtime_environment_rejects_unknown_build_target 
+[gw1] [ 15%] PASSED tests/unit/utils/configuration/test_operations.py::test_runtime_environment_rejects_unknown_build_target 
+tests/unit/utils/configuration/test_operations.py::test_enabled_build_requires_strict_json_contract 
+[gw2] [ 15%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_multiview_ray_integrates_product_and_cheirality 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_ray_checks_keep_tiny_components_and_cap 
+[gw1] [ 15%] PASSED tests/unit/utils/configuration/test_operations.py::test_enabled_build_requires_strict_json_contract 
+tests/unit/utils/configuration/test_operations.py::test_enabled_build_uses_serialized_absolute_project_root 
+[gw1] [ 15%] PASSED tests/unit/utils/configuration/test_operations.py::test_enabled_build_uses_serialized_absolute_project_root 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_resolves_all_roles 
+[gw1] [ 15%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_resolves_all_roles 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[.-explicit absolute] 
+[gw2] [ 15%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_ray_checks_keep_tiny_components_and_cap 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_unknown_integrator_and_bad_orders_are_explicit_errors 
+[gw1] [ 16%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[.-explicit absolute] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{other}-exactly match] 
+[gw2] [ 16%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_unknown_integrator_and_bad_orders_are_explicit_errors 
+[gw3] [ 16%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_bounded_depth_gradient_matches_independent_finite_difference 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+[gw1] [ 16%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{other}-exactly match] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{unresolved}-resolved absolute] 
+[gw1] [ 16%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{unresolved}-resolved absolute] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation0-Unknown] 
+[gw1] [ 16%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation0-Unknown] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation1-source_role] 
+[gw1] [ 16%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation1-source_role] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation2-destination_role] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation2-destination_role] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation3-relative] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation3-relative] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation4-escapes] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation4-escapes] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation5-expected str] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation5-expected str] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation6-Unknown] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation6-Unknown] 
+tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation7-Unknown] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation7-Unknown] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root- ] 
+[gw1] [ 17%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root- ] 
+[gw0] [ 18%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_adaptive_positive_depth_moments_and_evidence 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-\t] 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_cap_and_tiny_components_remain_flagged 
+[gw1] [ 18%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-\t] 
+[gw2] [ 18%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_bounded_depth_gradient_matches_independent_finite_difference 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_camera_chart_change_transports_the_pilot_mode 
+[gw1] [ 18%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root- ] 
+[gw1] [ 18%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root- ] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-\t] 
+[gw1] [ 18%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-\t] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-] 
+[gw1] [ 18%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root- ] 
+[gw1] [ 19%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root- ] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-\t] 
+[gw1] [ 19%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-\t] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-] 
+[gw1] [ 19%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root- ] 
+[gw1] [ 19%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root- ] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-\t] 
+[gw0] [ 19%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_cap_and_tiny_components_remain_flagged 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule 
+[gw1] [ 19%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-\t] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-] 
+[gw0] [ 19%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_saddle_chart_is_explicit_and_does_not_repair_covariance 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root- ] 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root- ] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-\t] 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-\t] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-] 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root- ] 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root- ] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-\t] 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-\t] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-] 
+[gw1] [ 20%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root- ] 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root- ] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-\t] 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-\t] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_unresolved_absolute_values 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_unresolved_absolute_values 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[project_root] 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[project_root] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[data_root] 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[data_root] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[checkpoint_root] 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[checkpoint_root] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[artifact_root] 
+[gw1] [ 21%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[artifact_root] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[output_root] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[output_root] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[cache_root] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[cache_root] 
+tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[external_asset_root] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[external_asset_root] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-project] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-data] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-checkpoint] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-artifact] 
+[gw1] [ 22%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-output] 
+[gw1] [ 23%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-cache] 
+[gw1] [ 23%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-external_asset] 
+[gw1] [ 23%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-project] 
+[gw1] [ 23%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-data] 
+[gw0] [ 23%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_saddle_chart_is_explicit_and_does_not_repair_covariance 
+tests/unit/utils/geometry/test_affine.py::test_centered_affine_matches_torchvision_single_shear_forward_matrix 
+[gw0] [ 23%] PASSED tests/unit/utils/geometry/test_affine.py::test_centered_affine_matches_torchvision_single_shear_forward_matrix 
+[gw1] [ 23%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-data] 
+tests/unit/utils/geometry/test_affine.py::test_transform_points_accepts_homogeneous_and_cv2_affine_matrices 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-checkpoint] 
+[gw0] [ 23%] PASSED tests/unit/utils/geometry/test_affine.py::test_transform_points_accepts_homogeneous_and_cv2_affine_matrices 
+tests/unit/utils/geometry/test_affine.py::test_invert_homogeneous_matrix_round_trips_affine_matrix 
+[gw0] [ 24%] PASSED tests/unit/utils/geometry/test_affine.py::test_invert_homogeneous_matrix_round_trips_affine_matrix 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_unit_norm_result 
+[gw1] [ 24%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-artifact] 
+[gw0] [ 24%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_unit_norm_result 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_preserves_direction_batched 
+[gw0] [ 24%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_preserves_direction_batched 
+[gw1] [ 24%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-artifact] 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_zero_vector_is_safe 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-output] 
+[gw0] [ 24%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_zero_vector_is_safe 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_zero_difference 
+[gw0] [ 24%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_zero_difference 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_result_wrapped_into_pi_range 
+[gw1] [ 25%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-cache] 
+[gw0] [ 25%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_result_wrapped_into_pi_range 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_sign_is_preserved 
+[gw0] [ 25%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_sign_is_preserved 
+[gw1] [ 25%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-external_asset] 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_orthogonal_cos_sin_pairs 
+[gw0] [ 25%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_orthogonal_cos_sin_pairs 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_error_is_non_negative_and_wrapped 
+[gw1] [ 25%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-external_asset] 
+[gw0] [ 25%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_error_is_non_negative_and_wrapped 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_batched_shape 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-project] 
+[gw0] [ 26%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_batched_shape 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_quarter_turn_around_z 
+[gw1] [ 26%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-data] 
+[gw0] [ 26%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_quarter_turn_around_z 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_sign_flips_with_direction 
+[gw1] [ 26%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-checkpoint] 
+[gw0] [ 26%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_sign_flips_with_direction 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_component_along_axis_is_ignored 
+[gw0] [ 26%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_component_along_axis_is_ignored 
+[gw1] [ 26%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-checkpoint] 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_picks_the_more_dominant_side 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-artifact] 
+[gw0] [ 27%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_picks_the_more_dominant_side 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_height_can_be_the_dominant_side 
+[gw0] [ 27%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_height_can_be_the_dominant_side 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_normalized_boxes_use_unit_image_size 
+[gw1] [ 27%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-output] 
+[gw0] [ 27%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_normalized_boxes_use_unit_image_size 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_full_frame_box_is_one 
+[gw0] [ 27%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_full_frame_box_is_one 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_non_positive_image_size_raises 
+[gw1] [ 27%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-cache] 
+[gw0] [ 27%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_non_positive_image_size_raises 
+tests/unit/utils/geometry/test_bbox.py::test_pairwise_iou_known_values_and_empty_boxes 
+[gw0] [ 28%] PASSED tests/unit/utils/geometry/test_bbox.py::test_pairwise_iou_known_values_and_empty_boxes 
+[gw1] [ 28%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-cache] 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_frozen_behind_camera_case_uses_volume_and_keeps_its_mass 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-external_asset] 
+[gw1] [ 28%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-project] 
+[gw1] [ 28%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-data] 
+[gw1] [ 28%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-checkpoint] 
+[gw1] [ 28%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-artifact] 
+[gw1] [ 28%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-output] 
+[gw1] [ 29%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-cache] 
+[gw1] [ 29%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-external_asset] 
+[gw3] [ 29%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+[gw1] [ 29%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-project] 
+[gw1] [ 29%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-data] 
+[gw1] [ 29%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-checkpoint] 
+[gw0] [ 29%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_frozen_behind_camera_case_uses_volume_and_keeps_its_mass 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_boundary_volume_evidence_and_moments_match_refined_integral 
+[gw1] [ 29%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-artifact] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-output] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-cache] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-external_asset] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-project] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-data] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-checkpoint] 
+[gw1] [ 30%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-artifact] 
+[gw1] [ 31%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-output] 
+[gw0] [ 31%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_boundary_volume_evidence_and_moments_match_refined_integral 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_impossible_positive_region_fails_without_component_removal 
+[gw1] [ 31%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-cache] 
+[gw1] [ 31%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-cache] 
+[gw3] [ 31%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-external_asset] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+[gw1] [ 31%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-project] 
+[gw1] [ 31%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-project] 
+[gw3] [ 32%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-data] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+[gw1] [ 32%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-checkpoint] 
+[gw0] [ 32%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_impossible_positive_region_fails_without_component_removal 
+[gw1] [ 32%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-checkpoint] 
+tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-artifact] 
+[gw1] [ 32%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-output] 
+[gw1] [ 32%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-cache] 
+[gw1] [ 32%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-external_asset] 
+[gw1] [ 33%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-project] 
+[gw1] [ 33%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-data] 
+[gw0] [ 33%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products 
+tests/unit/utils/geometry/test_conditioning.py::test_unknown_conditioning_method_is_an_error 
+[gw1] [ 33%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-checkpoint] 
+[gw0] [ 33%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_unknown_conditioning_method_is_an_error 
+tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_retains_known_linear_gaussian_moments 
+[gw1] [ 33%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-artifact] 
+[gw0] [ 33%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_retains_known_linear_gaussian_moments 
+tests/unit/utils/geometry/test_convergence.py::test_checked_boundary_matches_independent_last_grid_and_reuses_laplace 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-output] 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-cache] 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-external_asset] 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-artifact] 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-output] 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-cache] 
+[gw1] [ 34%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-external_asset] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-project] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-data] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-checkpoint] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-artifact] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-output] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-cache] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-external_asset] 
+[gw1] [ 35%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-project] 
+[gw1] [ 36%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-data] 
+[gw1] [ 36%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-checkpoint] 
+[gw1] [ 36%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-checkpoint] 
+[gw0] [ 36%] PASSED tests/unit/utils/geometry/test_convergence.py::test_checked_boundary_matches_independent_last_grid_and_reuses_laplace 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-artifact] 
+tests/unit/utils/geometry/test_convergence.py::test_cap_retains_nonconverged_tiny_mass_component_without_selection 
+[gw1] [ 36%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-output] 
+[gw1] [ 36%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-cache] 
+[gw1] [ 36%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-external_asset] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-project] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-data] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-checkpoint] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-artifact] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-output] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-cache] 
+[gw1] [ 37%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-external_asset] 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+[gw1] [ 38%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-project] 
+[gw1] [ 38%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-data] 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_only_declared_physics_rejections_are_resampled_with_logged_seeds 
+[gw1] [ 38%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-checkpoint] 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_only_declared_physics_rejections_are_resampled_with_logged_seeds 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_unknown_runtime_failure_is_not_resampled 
+[gw1] [ 38%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-artifact] 
+[gw3] [ 39%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_unknown_runtime_failure_is_not_resampled 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_physics_budget_exhaustion_is_a_failure 
+[gw1] [ 39%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-output] 
+[gw3] [ 39%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_physics_budget_exhaustion_is_a_failure 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+[gw1] [ 39%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-cache] 
+[gw1] [ 39%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-external_asset] 
+[gw1] [ 39%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-project] 
+[gw1] [ 39%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-data] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-checkpoint] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-artifact] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-output] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-cache] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-external_asset] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-project] 
+[gw1] [ 40%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-data] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-checkpoint] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-artifact] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-output] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-cache] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-external_asset] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-project] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-data] 
+[gw1] [ 41%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-checkpoint] 
+[gw1] [ 42%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-artifact] 
+[gw1] [ 42%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-output] 
+[gw1] [ 42%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-cache] 
+[gw1] [ 42%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-external_asset] 
+[gw1] [ 42%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-project] 
+[gw1] [ 42%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-data] 
+[gw3] [ 42%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+[gw1] [ 43%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-data] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-checkpoint] 
+[gw1] [ 43%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-artifact] 
+[gw1] [ 43%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-artifact] 
+[gw0] [ 43%] PASSED tests/unit/utils/geometry/test_convergence.py::test_cap_retains_nonconverged_tiny_mass_component_without_selection 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-output] 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change0] 
+[gw0] [ 43%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change0] 
+[gw3] [ 43%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change1] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_rational_resampling_has_no_stride_drift_or_extrapolation 
+[gw1] [ 43%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-output] 
+[gw0] [ 44%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change1] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-cache] 
+[gw3] [ 44%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_rational_resampling_has_no_stride_drift_or_extrapolation 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change2] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_events_filter_discarded_future_bounces_and_preserve_native_seconds 
+[gw0] [ 44%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change2] 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change3] 
+[gw3] [ 44%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_events_filter_discarded_future_bounces_and_preserve_native_seconds 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_event_masks_cover_interpolation_and_acceleration_stencil 
+[gw1] [ 44%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-external_asset] 
+[gw0] [ 44%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change3] 
+tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_scales_each_axis 
+[gw3] [ 44%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_event_masks_cover_interpolation_and_acceleration_stencil 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes 
+[gw0] [ 45%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_scales_each_axis 
+[gw1] [ 45%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-external_asset] 
+tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_zero_position_maps_to_origin 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-project] 
+[gw0] [ 45%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_zero_position_maps_to_origin 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_identity_placement_is_noop 
+[gw1] [ 45%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-data] 
+[gw0] [ 45%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_identity_placement_is_noop 
+[gw1] [ 45%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-data] 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_round_trip_recovers_canonical 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-checkpoint] 
+[gw0] [ 45%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_round_trip_recovers_canonical 
+[gw1] [ 46%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-artifact] 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_z_axis_is_pure_translation 
+[gw0] [ 46%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_z_axis_is_pure_translation 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+[gw1] [ 46%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-output] 
+[gw0] [ 46%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+[gw1] [ 46%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-output] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-1.0] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-cache] 
+[gw1] [ 46%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-external_asset] 
+[gw0] [ 46%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-1.0] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-project] 
+[gw1] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-project] 
+[gw1] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-project] 
+[gw0] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-data] 
+[gw1] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-data] 
+[gw0] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-checkpoint] 
+[gw1] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-artifact] 
+[gw0] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-artifact] 
+[gw1] [ 47%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-output] 
+[gw0] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-output] 
+[gw1] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-cache] 
+[gw0] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-cache] 
+[gw0] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-cache] 
+[gw1] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-external_asset] 
+[gw0] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-project] 
+[gw1] [ 48%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-project] 
+[gw0] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-data] 
+[gw1] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-data] 
+[gw0] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-checkpoint] 
+[gw1] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-data] 
+[gw0] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-artifact] 
+[gw0] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-artifact] 
+[gw1] [ 49%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-artifact] 
+[gw0] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-cache] 
+[gw1] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-output] 
+[gw0] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-external_asset] 
+[gw1] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-cache] 
+[gw0] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-project] 
+[gw0] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-data] 
+[gw1] [ 50%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-external_asset] 
+[gw0] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-checkpoint] 
+[gw1] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-project] 
+[gw0] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-artifact] 
+[gw0] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-output] 
+[gw1] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-data] 
+[gw0] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-cache] 
+[gw1] [ 51%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-checkpoint] 
+[gw0] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-external_asset] 
+[gw1] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-checkpoint] 
+[gw0] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-artifact] 
+[gw0] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-data] 
+[gw1] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-output] 
+[gw0] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-checkpoint] 
+[gw1] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-cache] 
+[gw0] [ 52%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-checkpoint] 
+[gw0] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-artifact] 
+[gw1] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-external_asset] 
+[gw0] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-output] 
+[gw1] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-project] 
+[gw0] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-cache] 
+[gw1] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-data] 
+[gw0] [ 53%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-external_asset] 
+[gw1] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-checkpoint] 
+[gw0] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-project] 
+[gw1] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-artifact] 
+[gw0] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-data] 
+[gw1] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-output] 
+[gw0] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-checkpoint] 
+[gw1] [ 54%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-cache] 
+[gw0] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-artifact] 
+[gw1] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-external_asset] 
+[gw0] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-output] 
+[gw1] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-external_asset] 
+[gw0] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-cache] 
+[gw1] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-data] 
+[gw0] [ 55%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-external_asset] 
+[gw1] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-output] 
+[gw0] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-external_asset] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-project] 
+[gw1] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-output] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-cache] 
+[gw0] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-project] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-data] 
+[gw1] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-cache] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-external_asset] 
+[gw0] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-data] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-checkpoint] 
+[gw1] [ 56%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-external_asset] 
+[gw3] [ 57%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_camera_perturbation_changes_geometry_without_breaking_rotation 
+[gw0] [ 57%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-checkpoint] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-artifact] 
+[gw1] [ 57%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project- ] 
+[gw0] [ 57%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-artifact] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-] 
+[gw1] [ 57%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project- ] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-\t] 
+[gw0] [ 57%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact- ] 
+[gw1] [ 57%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-\t] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-.] 
+[gw0] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact- ] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-\t] 
+[gw3] [ 58%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_camera_perturbation_changes_geometry_without_breaking_rotation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_short_rally_gap_fails_instead_of_shortening_requested_gap 
+[gw1] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-.] 
+[gw0] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-\t] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-.] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-] 
+[gw0] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-.] 
+[gw1] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data- ] 
+[gw1] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data- ] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-\t] 
+[gw0] [ 58%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output- ] 
+[gw1] [ 59%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-\t] 
+[gw0] [ 59%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output- ] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-.] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-\t] 
+[gw1] [ 59%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-.] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-] 
+[gw0] [ 59%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-\t] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-.] 
+[gw1] [ 59%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint- ] 
+[gw0] [ 59%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-.] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-] 
+[gw3] [ 59%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_short_rally_gap_fails_instead_of_shortening_requested_gap 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_reader_rejects_partial_dataset_and_corrupt_rally 
+[gw1] [ 60%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint- ] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-\t] 
+[gw0] [ 60%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache- ] 
+[gw3] [ 60%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_reader_rejects_partial_dataset_and_corrupt_rally 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_generation_records_late_results_after_a_rally_failure 
+[gw1] [ 60%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-\t] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-.] 
+[gw0] [ 60%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache- ] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-\t] 
+[gw1] [ 60%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-.] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-\t] 
+[gw0] [ 60%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-\t] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-.] 
+[gw1] [ 61%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-\t] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-.] 
+[gw3] [ 61%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_generation_records_late_results_after_a_rally_failure 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_fixed_budget_generator_roundtrip_keeps_unassessed_flags 
+[gw0] [ 61%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-.] 
+[gw1] [ 61%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-.] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-] 
+tests/unit/utils/configuration/test_paths.py::test_project_source_child_remains_explicit_and_role_contained 
+[gw1] [ 61%] PASSED tests/unit/utils/configuration/test_paths.py::test_project_source_child_remains_explicit_and_role_contained 
+tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[] 
+[gw0] [ 61%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-] 
+tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset- ] 
+[gw1] [ 61%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[] 
+[gw0] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset- ] 
+tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[ ] 
+tests/unit/utils/configuration/test_paths.py::test_only_optional_boundary_can_return_an_empty_mapping 
+[gw1] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[ ] 
+tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[.] 
+[gw0] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_only_optional_boundary_can_return_an_empty_mapping 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments0] 
+[gw1] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[.] 
+tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[..] 
+[gw0] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments0] 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments1] 
+[gw1] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[..] 
+tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[nested/../..] 
+[gw1] [ 62%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[nested/../..] 
+[gw0] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments1] 
+tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_parent_from_another_role 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-relative/source.json-explicit absolute] 
+[gw1] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_parent_from_another_role 
+tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent 
+[gw0] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-relative/source.json-explicit absolute] 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-invalid1-exactly str or pathlib.Path] 
+[gw1] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent 
+tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_rejects_parent_symlink_escape 
+[gw0] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-invalid1-exactly str or pathlib.Path] 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-invalid2-non-empty sequence] 
+[gw1] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_rejects_parent_symlink_escape 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_returns_typed_role_aware_paths 
+[gw1] [ 63%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_returns_typed_role_aware_paths 
+tests/unit/utils/configuration/test_paths.py::test_optional_boundary_paths_are_omitted_without_synthesizing_values 
+[gw0] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-invalid2-non-empty sequence] 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-one.bin-non-empty sequence] 
+[gw0] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-one.bin-non-empty sequence] 
+[gw1] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_optional_boundary_paths_are_omitted_without_synthesizing_values 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_wrong_role_root_and_duplicate_paths 
+tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[data-input] 
+[gw1] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[data-input] 
+tests/unit/utils/configuration/test_paths.py::test_independent_artifact_input_requires_explicit_role_root_permission 
+[gw1] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_independent_artifact_input_requires_explicit_role_root_permission 
+[gw0] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_wrong_role_root_and_duplicate_paths 
+tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[slcs/precompute/run-basename of the configured output_root] 
+tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_checks_input_existence_and_kind 
+[gw1] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[slcs/precompute/run-basename of the configured output_root] 
+tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[outputs/legacy-a legacy root directory name] 
+[gw0] [ 64%] PASSED tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_checks_input_existence_and_kind 
+tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_are_opt_in_and_keep_output_contained 
+[gw1] [ 65%] PASSED tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[outputs/legacy-a legacy root directory name] 
+tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[external_asset/work-the name of the external_asset path role] 
+[gw1] [ 65%] PASSED tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[external_asset/work-the name of the external_asset path role] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_roundtrip_preserves_raw_peaks_pts_and_source_pixel_mapping 
+[gw0] [ 65%] PASSED tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_are_opt_in_and_keep_output_contained 
+tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[output-output] 
+[gw0] [ 65%] PASSED tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[output-output] 
+tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[artifact-output] 
+[gw0] [ 65%] PASSED tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[artifact-output] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[path] 
+[gw0] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[path] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[shard] 
+[gw0] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[shard] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[pts] 
+[gw3] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_fixed_budget_generator_roundtrip_keeps_unassessed_flags 
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_all_125_components_and_pixel_covariance_survive_padding_and_gaps 
+[gw3] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_all_125_components_and_pixel_covariance_survive_padding_and_gaps 
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_missing_or_nonconverged_flags_require_explicit_action 
+[gw3] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_missing_or_nonconverged_flags_require_explicit_action 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+[gw3] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling 
+[gw3] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs] 
+[gw3] [ 66%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection] 
+[gw3] [ 66%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs] 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs] 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene] 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation] 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules] 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules] 
+tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig] 
+[gw3] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallYoutubePathContract] 
+[gw3] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallYoutubePathContract] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.TrackQueryModelConfig] 
+[gw3] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.TrackQueryModelConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig] 
+[gw0] [ 68%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[pts] 
+[gw3] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[receipt] 
+[gw3] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig] 
+[gw3] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig] 
+[gw3] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration] 
+[gw3] [ 69%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig] 
+[gw3] [ 69%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig] 
+tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0] 
+[gw0] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[receipt] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[checksum] 
+[gw1] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_roundtrip_preserves_raw_peaks_pts_and_source_pixel_mapping 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[building] 
+[gw0] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[checksum] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[keys] 
+[gw1] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[building] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[rgb] 
+[gw0] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[keys] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[negative_peak] 
+[gw1] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[rgb] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[evidence] 
+[gw0] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[negative_peak] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[filled_pose] 
+[gw1] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[evidence] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[store] 
+[gw0] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[filled_pose] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[duplicate_id] 
+[gw1] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[store] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[missing] 
+[gw0] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[duplicate_id] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[no_detection] 
+[gw1] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[missing] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[duplicate] 
+[gw0] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[no_detection] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[outside_court] 
+[gw1] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[duplicate] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[before_rgb] 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_rejects_incomplete_corrupt_or_misaligned_data[outside_court] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[bad_pose] 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[bad_pose] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[court_error] 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[court_error] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[track_capacity] 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[track_capacity] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_producer_requires_explicit_dino_and_matching_devices 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_producer_requires_explicit_dino_and_matching_devices 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_identity_requires_extension_preflight_before_model_load 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_identity_requires_extension_preflight_before_model_load 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_whole_clip_plan_and_order_independent_merge_preserve_every_npz 
+[gw1] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[before_rgb] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[during_rgb] 
+[gw1] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[during_rgb] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[assets] 
+[gw0] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_whole_clip_plan_and_order_independent_merge_preserve_every_npz 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[missing] 
+[gw1] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[assets] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[model_error] 
+[gw1] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_generation_failure_leaves_no_consumable_context[model_error] 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_cli_rejects_relative_inputs_before_model_loading 
+[gw0] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[missing] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[repeated_path] 
+[gw0] [ 72%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[repeated_path] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[duplicate_clip] 
+[gw0] [ 73%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[duplicate_clip] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[incomplete] 
+[gw0] [ 73%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[incomplete] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[model] 
+[gw0] [ 73%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[model] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[code] 
+[gw2] [ 73%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_camera_chart_change_transports_the_pilot_mode 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_identity_axis_angle 
+[gw2] [ 73%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_identity_axis_angle 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_z_rotation_90deg 
+[gw2] [ 73%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_z_rotation_90deg 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_quaternion_identity 
+[gw2] [ 73%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_quaternion_identity 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_euler_z_matches_axis_angle 
+[gw2] [ 74%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_euler_z_matches_axis_angle 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_quaternion_roundtrip 
+[gw2] [ 74%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_quaternion_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_axis_angle_roundtrip 
+[gw2] [ 74%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_axis_angle_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_6d_roundtrip 
+[gw2] [ 74%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_6d_roundtrip 
+tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit 
+[gw0] [ 74%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[code] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[rgb] 
+[gw0] [ 74%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[rgb] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[jpeg_identity] 
+[gw0] [ 74%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[jpeg_identity] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[receipt] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[receipt] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[checksum] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_assembly_rejects_missing_duplicate_incompatible_and_corrupt_shards[checksum] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[omit] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[omit] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[duplicate] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[duplicate] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[frames] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[frames] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[order] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[order] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[code] 
+[gw0] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[code] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[evidence] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[evidence] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[model] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_generation_rejects_changed_plan_or_models_before_producing[model] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[-1] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[-1] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[2] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[2] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[True] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[True] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[0.5] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_index_cannot_select_outside_or_implicitly_convert[0.5] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[jpeg] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[jpeg] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[manifest] 
+[gw0] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[manifest] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[plan] 
+[gw0] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[plan] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[source_npz] 
+[gw0] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[source_npz] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[destination_npz] 
+[gw0] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[destination_npz] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[store] 
+[gw0] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_mutation_during_copy_never_publishes_a_complete_cache[store] 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_merge_cli_reads_in_a_separate_cpu_process 
+[gw1] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_cli_rejects_relative_inputs_before_model_loading 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_verifier_loads_in_a_separate_process 
+[gw0] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_merge_cli_reads_in_a_separate_cpu_process 
+tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_cli_rejects_relative_paths_before_loading_models 
+[gw2] [ 77%] PASSED tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit 
+tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed 
+tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed 
+tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable 
+tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings 
+tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh 
+tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity 
+[gw1] [ 78%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_verifier_loads_in_a_separate_process 
+tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_verifier_rejects_selection_and_changed_jpeg 
+[gw1] [ 78%] PASSED tests/integration/tasks/ball_refiner/test_context_cache.py::test_context_verifier_rejects_selection_and_changed_jpeg 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[normal] 
+[gw1] [ 79%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[normal] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[court_absent] 
+[gw1] [ 79%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[court_absent] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[empty] 
+[gw1] [ 79%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[empty] 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_incomplete_or_corrupted_training_is_rejected_before_output[best.json-checkpoint_sha256-0000000000000000000000000000000000000000000000000000000000000000-checksum] 
+[gw2] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts] 
+[gw2] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts] 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation] 
+[gw2] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation] 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation] 
+[gw2] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation] 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules] 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations] 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations] 
+tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy 
+tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none 
+tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities 
+tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths 
+tests/unit/utils/configuration/test_contracts.py::test_gvhmr_extraction_boundary_declares_every_storage_and_model_path 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_gvhmr_extraction_boundary_declares_every_storage_and_model_path 
+tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema 
+tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root 
+tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries 
+tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.] 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.] 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.] 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.] 
+[gw2] [ 83%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_boundary_catalog_follows_package_reexport_to_actual_adapter 
+[gw2] [ 83%] PASSED tests/unit/utils/configuration/test_contracts.py::test_boundary_catalog_follows_package_reexport_to_actual_adapter 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection] 
+[gw2] [ 83%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[missing] 
+[gw2] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[missing] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[path] 
+[gw1] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_incomplete_or_corrupted_training_is_rejected_before_output[best.json-checkpoint_sha256-0000000000000000000000000000000000000000000000000000000000000000-checksum] 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[partition-test] 
+[gw2] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[path] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[store] 
+[gw1] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[partition-test] 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[samples-2] 
+[gw1] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[samples-2] 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[levels-value2] 
+[gw2] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[store] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[checksum] 
+[gw1] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[levels-value2] 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[bootstrap_repetitions-1] 
+[gw2] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[checksum] 
+[gw1] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[bootstrap_repetitions-1] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[seconds] 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[bootstrap_confidence-nan] 
+[gw1] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_evaluation_configuration_rejects_test_or_invalid_statistics[bootstrap_confidence-nan] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_cache_roundtrip_and_refiner_optimizer_step 
+[gw2] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[seconds] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_mutating_rgb_during_inference_leaves_unusable_partial_cache 
+[gw1] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_cache_roundtrip_and_refiner_optimizer_step 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[partial] 
+[gw2] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_mutating_rgb_during_inference_leaves_unusable_partial_cache 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change4] 
+[gw1] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[partial] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[duplicate] 
+[gw1] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_partial_misaligned_and_corrupt_cache_are_rejected[duplicate] 
+tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_cli_uses_declared_paths_and_selection 
+[gw2] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change4] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change5] 
+[gw2] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change5] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change6] 
+[gw2] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change6] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_refiner_rejects_annotation_import_without_evidence 
+[gw0] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_context_shards.py::test_shard_cli_rejects_relative_paths_before_loading_models 
+tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_covers_unknowns_and_refuses_overwriting_report 
+[gw2] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_refiner_rejects_annotation_import_without_evidence 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[camera] 
+[gw2] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[camera] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[size] 
+[gw2] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[window] 
+[gw2] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[window] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[sha256-0000000000000000000000000000000000000000000000000000000000000000] 
+[gw2] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[sha256-0000000000000000000000000000000000000000000000000000000000000000] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[num_frames-14] 
+[gw2] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[num_frames-14] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[width-66] 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[width-66] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[fps-60.0] 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[fps-60.0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_saved_time_must_match_pts 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_saved_time_must_match_pts 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_array_is_rejected_by_fresh_store 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_array_is_rejected_by_fresh_store 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_changed_bundle_does_not_restore_existing_artifact 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_changed_bundle_does_not_restore_existing_artifact 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_bundle_is_rejected_before_model_load 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_bundle_is_rejected_before_model_load 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_export_rejects_overwrite_and_incomplete_training 
+[gw2] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_export_rejects_overwrite_and_incomplete_training 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[normalization-enabled] 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[normalization-enabled] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[candidates-patch_size] 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[candidates-patch_size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_never_binds_another_camera 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_never_binds_another_camera 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_script_execute_and_load_without_training_store 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_script_execute_and_load_without_training_store 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_yaml_is_the_complete_config_authority 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_yaml_is_the_complete_config_authority 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_zero_gates_equal_detector_temporal_model_and_can_learn_context 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_zero_gates_equal_detector_temporal_model_and_can_learn_context 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_all_missing_evidence_and_zero_people_still_produce_valid_distribution 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_all_missing_evidence_and_zero_people_still_produce_valid_distribution 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_candidate_and_person_permutations_do_not_change_prediction 
+[gw2] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_candidate_and_person_permutations_do_not_change_prediction 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_camera_batch_rows_do_not_exchange_information 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_camera_batch_rows_do_not_exchange_information 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_context_only_has_no_detector_leakage_and_missing_pose_has_no_effect 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_context_only_has_no_detector_leakage_and_missing_pose_has_no_effect 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_pose_dropout_drops_entire_window_and_eval_restores_context 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_pose_dropout_drops_entire_window_and_eval_restores_context 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_real_time_intervals_affect_output_but_absolute_origin_does_not 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_real_time_intervals_affect_output_but_absolute_origin_does_not 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_amp_decoding_keeps_covariance_and_likelihood_float32 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_amp_decoding_keeps_covariance_and_likelihood_float32 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change0] 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change0] 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change1] 
+[gw2] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change1] 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change2] 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change2] 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change3] 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change3] 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change4] 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change4] 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change5] 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_bad_context_or_timeline_fails_at_adapter[change5] 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_corrupt_detector_evidence_is_not_silently_repaired 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_corrupt_detector_evidence_is_not_silently_repaired 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_upstream_detector_contract_covers_weak_boundary_and_empty_peaks 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_upstream_detector_contract_covers_weak_boundary_and_empty_peaks 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_extreme_head_values_remain_positive_definite_and_differentiable 
+[gw2] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_extreme_head_values_remain_positive_definite_and_differentiable 
+tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_state_dict_roundtrip_preserves_distribution 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_2d.py::test_state_dict_roundtrip_preserves_distribution 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_memory_profile_cpu_forward_backward_all_four_losses 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_memory_profile_cpu_forward_backward_all_four_losses 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_full_mixture_permutation_invariance_and_last_component_influence 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_full_mixture_permutation_invariance_and_last_component_influence 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_padding_never_changes_real_frames_or_becomes_a_gap 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_padding_never_changes_real_frames_or_becomes_a_gap 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_sampling_reports_empirical_uncertainty_and_replays_explicit_seed 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_sampling_reports_empirical_uncertainty_and_replays_explicit_seed 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_same_backbone_one_step_regression_ignores_flow_rng 
+[gw2] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_same_backbone_one_step_regression_ignores_flow_rng 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[shape] 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[shape] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[nan] 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[nan] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[time] 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[time] 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_every_gmm_field_comes_from_the_same_real_window_without_labels 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_every_gmm_field_comes_from_the_same_real_window_without_labels 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_batch_partition_preserves_distribution_and_does_not_mutate_input 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_batch_partition_preserves_distribution_and_does_not_mutate_input 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_global_gap_has_identical_mask_in_all_overlapping_windows 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_global_gap_has_identical_mask_in_all_overlapping_windows 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_context_is_used_and_all_missing_frames_are_still_predicted 
+[gw2] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_context_is_used_and_all_missing_frames_are_still_predicted 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[13-3-2] 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[13-3-2] 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[5-6-2] 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[5-6-2] 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[5-3-0] 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[5-3-0] 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[True-1-2] 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[True-1-2] 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[5-3-2.5] 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_invalid_or_padded_window_policy_is_rejected[5-3-2.5] 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_global_timeline_discontinuity_is_not_hidden_between_disjoint_windows 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_global_timeline_discontinuity_is_not_hidden_between_disjoint_windows 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_failed_prediction_restores_caller_model_mode 
+[gw2] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_failed_prediction_restores_caller_model_mode 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_forged_window_provenance_is_rejected 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_forged_window_provenance_is_rejected 
+tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_multiple_cameras_are_not_flattened_into_one_timeline 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_sequence_inference.py::test_multiple_cameras_are_not_flattened_into_one_timeline 
+tests/integration/tasks/ball_refiner/test_training.py::test_real_cache_training_selects_and_restores_checkpoint 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_real_cache_training_selects_and_restores_checkpoint 
+tests/integration/tasks/ball_refiner/test_training.py::test_dry_run_does_not_build_model_and_only_loads_selection 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_dry_run_does_not_build_model_and_only_loads_selection 
+tests/integration/tasks/ball_refiner/test_training.py::test_unique_frame_predictions_and_metric_aggregation_ignore_batch_partition 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_unique_frame_predictions_and_metric_aggregation_ignore_batch_partition 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[model.use_pose-True] 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[model.use_pose-True] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[data.short_clip_policy-pad] 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[data.short_clip_policy-pad] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[training.max_steps-0] 
+[gw2] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[training.max_steps-0] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[training.gap_lengths-value3] 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[training.gap_lengths-value3] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[training.learning_rate-nan] 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[training.learning_rate-nan] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[data.sources-value5] 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[data.sources-value5] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[compile.mode-reduce-overhead] 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[compile.mode-reduce-overhead] 
+tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[run.device-auto] 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_invalid_pilot_configuration_fails_before_output[run.device-auto] 
+tests/integration/tasks/ball_refiner/test_training.py::test_unknown_or_missing_training_key_is_rejected 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_unknown_or_missing_training_key_is_rejected 
+tests/integration/tasks/ball_refiner/test_training.py::test_default_output_identity_composes_without_inputs_and_runtime_rejects_missing_inputs 
+[gw2] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_training.py::test_default_output_identity_composes_without_inputs_and_runtime_rejects_missing_inputs 
+[gw1] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_evidence_cache.py::test_cli_uses_declared_paths_and_selection 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_execute_and_fresh_load_preserve_full_gmm_without_inference 
+[gw1] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_execute_and_fresh_load_preserve_full_gmm_without_inference 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change0] 
+[gw1] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change1] 
+[gw1] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change1] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change2] 
+[gw1] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change2] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change3] 
+[gw1] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change3] 
+[gw0] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_covers_unknowns_and_refuses_overwriting_report 
+tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_rejects_invalid_arguments_before_creating_output[--store-relative/store] 
+[gw3] [ 97%] PASSED tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0] 
+tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1] 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_rejects_invalid_arguments_before_creating_output[--store-relative/store] 
+tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_rejects_invalid_arguments_before_creating_output[--output-relative/output] 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_rejects_invalid_arguments_before_creating_output[--output-relative/output] 
+tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_rejects_invalid_arguments_before_creating_output[--pose-threshold-nan] 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_data_audit.py::test_audit_cli_rejects_invalid_arguments_before_creating_output[--pose-threshold-nan] 
+tests/integration/tasks/ball_refiner/test_data_audit.py::test_group_crossing_splits_fails_before_training 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_data_audit.py::test_group_crossing_splits_fails_before_training 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_completed_checkpoint_evaluates_only_calibration_and_persists_recomputable_predictions 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_completed_checkpoint_evaluates_only_calibration_and_persists_recomputable_predictions 
+tests/integration/tasks/ball_refiner/test_evaluation.py::test_incomplete_or_corrupted_training_is_rejected_before_output[run_state.json-status-training-completed training] 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_evaluation.py::test_incomplete_or_corrupted_training_is_rejected_before_output[run_state.json-status-training-completed training] 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1] 
+tests/unit/utils/configuration/test_discovery.py::test_runtime_boundary_discovery_has_one_canonical_owner 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_discovery.py::test_runtime_boundary_discovery_has_one_canonical_owner 
+tests/unit/utils/configuration/test_discovery.py::test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_discovery.py::test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge 
+tests/unit/utils/configuration/test_discovery.py::test_catalog_does_not_publish_legacy_synthetic_boundaries 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_discovery.py::test_catalog_does_not_publish_legacy_synthetic_boundaries 
+tests/unit/utils/configuration/test_discovery.py::test_catalog_keeps_task_local_generation_boundaries_distinct 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_discovery.py::test_catalog_keeps_task_local_generation_boundaries_distinct 
+tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis 
+tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary 
+[gw3] [ 98%] PASSED tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary 
+tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory 
+tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered 
+tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy 
+tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries 
+tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding 
+tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[] 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[] 
+tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[true] 
+[gw3] [ 99%] PASSED tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[true] 
+tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[yes] 
+[gw3] [100%] PASSED tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[yes] 
+
+======================= 717 passed in 162.90s (0:02:42) ========================
