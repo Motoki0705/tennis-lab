@@ -1,0 +1,7 @@
+{
+  "changed_or_new_tracked_bytes": 18266889,
+  "note": "file content footprint relative to run16 start; original data/checkpoints reused; no data generated",
+  "cpu_d_results_bytes": 1400385,
+  "gpu_c_reserved_bytes": 150000000,
+  "disk_budget_bytes": 5000000000
+}
