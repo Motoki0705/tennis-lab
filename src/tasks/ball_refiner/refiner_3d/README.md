@@ -214,3 +214,13 @@ head係数と予測を保存する。診断基準と解釈は実験knowledgeを�
 良いread-outはtokenに平均位置が残る証拠だが、時間Transformerがそれを利用できる保証ではない。
 悪い線形read-outだけで非線形な情報復元も不可能とは断定しない。
 CPU1 thread専用で、モデル本体・生成器・損失・pipelineは変更しない。
+
+### T128文脈のCPU診断
+
+`python -m src.tasks.ball_refiner.scripts.probe_context_3d`に、上記read-outと同じ
+`--dataset`、`--training-output`、新規`--output`を指定する。
+20kの両armを凍結し、全16 valを全ラリー/T128でCPU推論する。
+全ラリーで生成した初期noise・教師ありprobeのtime/noiseを両文脈で共有する。
+T128/stride128、絶対時刻、右paddingを保ち、重複する短い末尾は先の窓を採用する。
+全frameを一度ずつ採点し、loss/加速度/jerkは継ぎ目を含む元時系列で計算する。
+train/testは開かず、判定基準とGPUとの差の扱いは実験knowledgeに記録する。
