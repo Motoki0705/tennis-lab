@@ -1,4 +1,4 @@
-<!-- knowledge-review: ebc46ae97bf33441ed2c6fde31ce100a3b2186a4557a431cab3f43132e8ad250 on 2026-10-01 -->
+<!-- knowledge-review: 9ccfada7fe1e42ad2b370c4a1dfa8a451ea9f4999ad22b803697fa2dd674ca12 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -311,7 +311,9 @@ detectorの一様gap密度によるcoverage=1は全画面領域の自明な結�
 絶対座標headの平均はほぼ候補peak上になく、epochで偏りの向きが反転するため、
 格子解像度やsigma床だけよりも平均parameterizationと未収束/揺れる最適化が主要な候補となる。
 run20 directiveに従いcourt-only先行案を保留し、同一recipeの長期化と候補を保持する平均の比較を先に行う。
-GPU結果は未測定。#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
+run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、checkpoint/val結果は得られなかった。
+モデル精度による棄却とは扱わず、[消失競合を修正した同条件retry](nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)で
+事前宣言した3案を比較する。結果は未測定。#964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
 
 ### Court Detection
 
