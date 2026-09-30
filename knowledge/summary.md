@@ -1,4 +1,4 @@
-<!-- knowledge-review: 87123d92b39191ff60911857bb0463a3cf9f5470b444afcdae66f553e6089385 on 2026-09-30 -->
+<!-- knowledge-review: 5b52e87777d2423fcb17d3621b3b2e2df1876bc32d2016866e0ab14a4abbb3b7 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）
@@ -47,7 +47,8 @@ unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低
 推薦候補の選手coverageは増えたが、IDF1は微減しcam1遠側とfragmentが悪化したため、既定採用を自動で進めない。
 BoT候補は非選手残存と1clipの対応停止が多い。camera間encoderをSOLIDERへ替えても今回の固定尺度で最終対応は変わらなかった。
 [KPRの実2crop CPU parity](nodes/person_tracking/000009-run-i964-kpr-cpu-parity-r8-20260930.md)はpositive/negative両promptで上流と差0。
-native partsを保持する特徴抽出を準備し、3encoder比較・全pipeline完走・未見一回評価は後続とする。
+KPRの[全12 archive回収](nodes/person_tracking/000010-run-i964-kpr-native-features-r8-20260930.md)では、40,531rowの元検出・pose・出自が一致し、native parts/visibilityのshape・有限値・normを確認した。追跡精度は未評価であり、次はrun 9の事前addendumでoffline linkingとgroup IDF1を追加して比較する。
+3encoder比較・全pipeline完走・未見一回評価は後続とする。
 
 ## 2026-09-27のcamera間人物対応（#933）
 
@@ -298,3 +299,4 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
+
