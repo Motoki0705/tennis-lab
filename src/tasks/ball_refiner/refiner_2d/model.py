@@ -59,6 +59,8 @@ class Refiner2DModel(nn.Module):
         super().__init__()
         d = config.hidden_dim
         self.config = config
+        # Resolve the head schema once; forward only performs tensor computation.
+        self.mean_anchor_config = config if isinstance(config, CandidateAnchoredConfig) else None
         self.candidate_encoder = nn.Sequential(
             nn.Linear(3 + 2 * config.patch_size**2, d),
             nn.GELU(),
@@ -148,9 +150,9 @@ class Refiner2DModel(nn.Module):
         h = self.court_context(h, court, court_mask)
         h = self.temporal_after(h.reshape(b, t, d))
         raw = self.head(self.head_norm(h))
-        if isinstance(self.config, CandidateAnchoredConfig):
+        if self.mean_anchor_config is not None:
             values = raw[..., :-1].reshape(b, t, self.config.components, 6)
             means = candidate_mean_logits(values[..., :2], candidate_features, candidate_valid,
-                                          count=self.config.anchored_components, max_offset_uv=self.config.max_offset_uv)
+                                          count=self.mean_anchor_config.anchored_components, max_offset_uv=self.mean_anchor_config.max_offset_uv)
             return torch.cat((torch.cat((means, values[..., 2:].float()), dim=-1).flatten(-2), raw[..., -1:].float()), dim=-1)
         return raw
