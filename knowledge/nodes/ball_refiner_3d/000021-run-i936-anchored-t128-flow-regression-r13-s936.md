@@ -4,10 +4,10 @@ type: run
 task: ball_refiner_3d
 sequence: 21
 recorded_at: '2026-09-30'
-title: 新bank devのT128学習・検証を揃えた20k比較をqueueへ登録
+title: T128の20k比較はRMSE改善・RTSに対する粗さと再投影の優位未達
 issue: 936
 provider: codex
-status: planned
+status: done
 date: '2026-09-30'
 session: 01a0f22b-2c7e-7f40-b507-54d94792695f
 config:
@@ -15,7 +15,11 @@ config:
   primary_update: 20000
   train_frames: 128
   validation_frames: 128
-metrics: {}
+metrics:
+  flow_rmse_m: 3.651
+  regression_rmse_m: 2.651
+  wall_seconds: 3791.9971940349787
+  peak_device_used_bytes_sampled: 1772683264
 repro:
   commit: 0c98a9cf
   branch: campaign930/i936-2-synthetic-diffusion
@@ -69,3 +73,35 @@ resource=allを1件、最大5,355秒（89分15秒）、allocator6GiB/driver10GB�
 [検証記録](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/verification.json)は
 21:25時点の640生成28件成功/失敗0、空きRAM14.92GB、生成途中出力64.23MBを含む。
 640生成入力36hashは不変で、GPU出力はまだ作られていない。全job完了まで実行sourceを固定する。
+
+
+## Run 14での回収・事前規則の適用
+
+2026-10-01にqueueのdone原本・clean repro（実行commit `98e67e957d1cd039f0734697f78210640d24510e`）を回収した。
+[collection.json](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/collected/collection.json)は
+全成果物・両checkpoint/初期重みのhash、資源、15評価軸ごとの数値と合否を保持する。
+[collect.py](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/collect.py)で全16val×5更新×2armの160保存予測を再計算し、
+GT/mask/camera/分母・平均と全sampleの全体/層別指標・出力Markdownが一致した。
+run12の混合平均/RTS/GTも同じvalから再計算して一致した。test配列は0件。
+
+[全評価時点・全層の表](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/collected/comparison.md)と
+[数値原本](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/collected/comparison.json)が結果の正本。
+主判定は20kで固定し、flow平均・全sample・回帰の**すべてが事前の優位条件を満たさない**。
+flow/回帰のRMSEは3.651/2.651mで混合平均4.994/RTS4.408mより低い。
+しかし自由飛行加速度p95は1,847.887/2,203.622対RTS158.108m/s²（11.7/13.9倍）、
+jerk p95は199,756/241,101対7,133m/s³（28.0/33.8倍）。
+再投影mean/p50は両armでRTSより悪く、behindはflow平均6/17,528、全sample24/70,112、回帰1/17,528でゼロ条件に失敗した。
+flowのcamera1 RMSEは12.667m、camera3は0.880m。良い多数camera層でも粗さが残る。
+flow平均と全sampleの指標は近いが、sample選択による改善とは扱わない。
+
+10k→20kのflow RMSEは3.106→3.651mに悪化、回帰は2.643→2.651mで停滞。
+中間checkpointは診断であり主判定を10kへ差し替えない。diffusion固有の優位も未達。
+合成dev上での失敗を記録し、Hの選定・#959 control・最終test・Meiji/pipelineの判断は変更しない。
+
+実測は3,791.997秒（63.20分）、allocated422,902,272 bytes、reserved471,859,200 bytes、
+GPU driver使用量の最大標本値1,772,683,264 bytes、最小空きRAM18,144,673,792 bytes。
+更新速度flow10.765/回帰11.128 updates/s、20k検証は9.940/1.139秒（全6,383frame、指標と保存を含む）。
+出力実サイズ45,535,686 bytes。driver値は各update/valでの標本で連続peakではない。
+TensorBoardはなく、JSONLと[flow曲線](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/collected/flow/curves.png)・
+[回帰曲線](../../runs/run-i936-anchored-t128-flow-regression-r13-s936/collected/regression/curves.png)を保持する。
+次は保存済み20kをCPUで継ぎ目/窓内・camera数・sample平均との差に分け、損失の重み付き実測から追加一因子試験を決める。
