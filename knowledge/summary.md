@@ -1,4 +1,4 @@
-<!-- knowledge-review: 736f8c005a9a9e0a4eef9081336c5ca05d2a36dd580fbe1ac6f802b0edaaa471 on 2026-10-01 -->
+<!-- knowledge-review: dbc4da4d0eb42a3bc7a32ccc4966b0c1a8f80cb10f713fcae917ed15d80cca75 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -82,12 +82,15 @@ GSI syntheticは別maskのままで評価の実観測へ入れていない。費
 [run14のfit](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)は支持/安定性条件を満たし、
 LOVO正例recall85.93%、全動画の負例誤結合0でAを選択した。A/B同点、Cはrecall不足。
 video_001/clip_020の停止を母数へ含み、同動画recall54.97%という弱点も残る。
-新尺度を名前付きの非既定YAMLとして固定し、devはそのcommit/push後に一度だけ採点する。
+新尺度を名前付きの非既定YAMLとしてcommit/pushした後、devを一度だけ採点した。
+旧/新とも4/4決定、pair F1=.957119、group accuracy=.763256で、全12cameraのID配列が同一。
+旧尺度の再計算もrun11に一致した。今回の再較正でdev低下は改善せず、旧尺度が主因という説明は裏付けられない。
+dev後の再fit/再選択は行わず、名前付き設定でclip_000全pipelineを資格確認する。
 旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
 旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。
-新規9cameraは約76分、peak GPU4.26GBで完了した。実fitは上記run14で完了し、devはまだ開いていない。
+新規9cameraは約76分、peak GPU4.26GBで完了した。実fitと固定後のdev一回は上記run14で完了した。
 準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
 既定を維持して9行を明示mask投影し、2cameraのCPU再追跡と元row/GSI検証を完了した。
 run 11は保存特徴からの再現として有効だが、画像入口との完全同一性の証明とはしない。

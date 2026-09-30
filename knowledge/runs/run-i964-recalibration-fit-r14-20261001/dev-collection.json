@@ -1,0 +1,30 @@
+{
+  "source": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/dev/comparison.json",
+    "sha256": "676f01417da06c868e08c7fc5b5b07d335a306ab16f14e577f1c4277b8d86c85"
+  },
+  "all_old_new_identity_arrays": [
+    {
+      "clip": "video_000/clip_000",
+      "camera_id_arrays_equal": true
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera_id_arrays_equal": true
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera_id_arrays_equal": true
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera_id_arrays_equal": true
+    }
+  ],
+  "dev_scoring_invocations": 1,
+  "config_commit_before_labels": "b03eb152",
+  "execution_code_commit": "937da271",
+  "post_scoring_refit_or_reselection": false,
+  "default_config_sha256": "da0ea67b607001ab6630b642703a6ed0a0414a81ea2f4743d8a2b4320deaf676",
+  "named_config_sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"
+}
