@@ -86,3 +86,21 @@ window構成を変える追加GPU jobは今回は投入しない。正式な比�
 
 通常検証はseam step・定数bias・交互noise・イベント/窓跨ぎを含む7tests成功（-n1）。
 新しい統計は予測の変更やパレート優位を意味しない。元run13の不合格・H/default・#959 controlは維持する。
+
+
+## 事前規則で固定した3D動画
+
+[選択規則の事前投稿](https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5914941598)に従い、
+全16valの辞書順最初`val-00000`を全178frameで描画した。
+[動画MP4](../../runs/run-i936-roughness-r14-s936/val-00000-3d-comparison.mp4)は
+**H.264・1800×1000・15fps・11.866667秒・328,728 bytes**。
+元59.94fpsの約1/4速度で、GT・混合平均・RTS・flow20k平均・回帰20kの上面XY・側面YZ・斜め3Dを共通範囲で表示する。
+全raw trace・直近24frameのtrailと現在位置を示し、位置/時間の平滑化・outlier/frame除外を行わない。
+表示範囲は全手法の全点とコートを含む。frame128の窓切替を明示した。
+
+[poster](../../runs/run-i936-roughness-r14-s936/video-poster.png)、
+[render.py](../../runs/run-i936-roughness-r14-s936/render.py)、
+[入力・動画hash/選択規則](../../runs/run-i936-roughness-r14-s936/video.json)、
+[ffprobeによる178frame確認](../../runs/run-i936-roughness-r14-s936/video-probe.json)を保存した。
+CPUのみ、ffmpeg1thread。posterを目視確認し、全動画をffprobeでデコードしてframe数を照合した。
+これは固定した一例の可視化で、全16valの数値に基づく結論を変更しない。summaryの結論も確認し維持した。
