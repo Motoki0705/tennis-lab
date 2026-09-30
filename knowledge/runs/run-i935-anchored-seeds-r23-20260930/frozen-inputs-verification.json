@@ -1,0 +1,7 @@
+{
+  "status": "verified",
+  "source_commit": "743527f5cea6d5f263c510080f2a16a7a744bbef",
+  "inputs": 687,
+  "plan_sha256": "073f2800e33a6929209485a1a45ec3cfdc776ccb665733b069645a799789b9b1",
+  "scope": "All hashes checked after CLI-only path contract registration; model/training/numerical calibration code unchanged."
+}
