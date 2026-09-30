@@ -1,4 +1,4 @@
-<!-- knowledge-review: ba58a86c2a1b07c9e7d9692a39c87a3144b33a3830479e2b25f4c54a28c5ca23 on 2026-09-30 -->
+<!-- knowledge-review: cc6509dd0f54a9a7a9a8fbb5eb9912699de6ec83f3510cc061462913a583f6f1 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
@@ -217,6 +217,7 @@ run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、
 モデル精度による棄却とは扱わず、[消失競合を修正した同条件retry](nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)で
 事前宣言した3案を比較し、全108checkpointと420val NPZを回収した。
 候補残差12kはdetectorより各source/camera/halfの位置誤差を改善し、長期化だけより典型精度がよい。
+一方、detector誤り件数で選んだ厳しい270frameでは20px成功率が退行し、個別の失敗は残る。
 ただしcalibration halfの観測HDR90/95は0.80/0.85、人工gapでも0.84/0.88で過信が残る。
 全valの集計を独立較正性能とみなさず、設計採用・default切替・裾較正はユーザーへの提案段階とする。
 #964完了までperson/poseを使用せず、pipeline defaultを変更しない。testは引き続き未使用。
