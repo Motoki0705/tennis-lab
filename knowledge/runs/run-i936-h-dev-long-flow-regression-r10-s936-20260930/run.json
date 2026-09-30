@@ -1,0 +1,16 @@
+{
+  "run_id": "1790745177452488394_4095209_i936-h-dev-long-flow-regression-r10-s936-20260930",
+  "name": "i936-h-dev-long-flow-regression-r10-s936-20260930",
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.training_dev_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936 --config /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_dev_long.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r10-s936-20k --device cuda",
+  "provider": "codex",
+  "session": "01a0f09e-033b-7153-90ed-4edba72255e4",
+  "issue": "936",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "91193a990318cadc756e237cb00fc51aab7a87e3",
+  "branch": "campaign930/i936-2-synthetic-diffusion",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "captured_at": "2026-09-30T14:13:11+09:00"
+}
