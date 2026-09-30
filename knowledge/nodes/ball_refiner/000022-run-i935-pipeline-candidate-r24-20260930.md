@@ -4,9 +4,9 @@ type: run
 task: ball_refiner
 sequence: 22
 recorded_at: '2026-09-30'
-title: 'e9 anchored seed42明示option: 元動画3camera execute/load（queue投入済み・結果待ち）'
+title: '元動画3camera check: import時のcache配置によりpreflight失敗'
 provider: codex
-status: planned
+status: failed
 config:
   ball_path: e9_anchored_s42_covariance
   clip_id: meiji/video_000/clip_010
@@ -38,6 +38,14 @@ repro:
     --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/plan.json
   commit: 28bdcd3fcbe774f99f526481b038749bd581a6a1
 ---
+
+## run25での回収
+
+jobはGPU実行前のpreflightで`FileExistsError`。import時に`TORCHINDUCTOR_CACHE_DIR=<report>/compiler`がreportを作り、未作成directoryを要求する検査と衝突した。[queue log](../../runs/run-i935-pipeline-candidate-r24-20260930/failed-queue.log)と[空directory一覧](../../runs/run-i935-pipeline-candidate-r24-20260930/failed-directory.json)を保存し、元のdirectoryは削除しない。パイプライン性能の結果ではない。修正・再投入は[run25](000024-run-i935-source-check-retry-r25-20260930.md)。
+
+Bの判定は結果前に固定された[orchestratorの3条件](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5910704846)が正本。下記のrun24時点のstrict field許容値は診断として保持し、それだけをBの採否に使わない。
+
+## run24投入時の記録
 
 [ユーザー判断B](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5908081470)の既定切替条件に備え、名前付きe9_anchored_s42_covarianceを追加した。既定のft-e13/現refinerは維持。schema v2は補正済み全GMM・存在logit・元frame/PTS/採用窓・倍率・元checkpoint/hashを保存し、fresh loadでは補正を再適用しない。資産が欠落/不一致ならexecute/loadとも停止する。通常検証は[pipeline/configuration 410件](../../runs/run-i935-pipeline-candidate-r24-20260930/pipeline-tests.log)、[全要素比較4件](../../runs/run-i935-pipeline-candidate-r24-20260930/parity-tests.log)が成功。
 
