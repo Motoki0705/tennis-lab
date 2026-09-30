@@ -1,4 +1,4 @@
-<!-- knowledge-review: 90ca1cc64654783e88904bacc3d2ee1b5093e55f45d42591ce530c6e82a58ffe on 2026-10-01 -->
+<!-- knowledge-review: 5ab9e343b9140d67fcf5d9d745f309bdea6ac86ffe26c877e628d46f4e17c712 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -99,7 +99,10 @@ ball labelはclip_000の診断専用で使用し、production import・人物lab
 旧#933の結論は旧trackに限定したまま維持する。2026-10-01のユーザー判断により、
 [run16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)で候補Aを既定にし、
 人物設定と資産hashを未見開封前に凍結する。clip_000完走を最後の未完項目として残し、
-予約3clipを同じ注釈ball由来side規約で一回だけ評価する。ft-e13/court_sideは変更しない。
+予約3clipを同じ注釈ball由来side規約で一回だけ評価する予定だが、事前検査で
+video_001/clip_003のcourt/side参照欠測と、現componentの見積り約157分（2時間grant超過）が判明した。
+run16のGPU投入・人物推論/採点は0。欠測の明示的な停止扱いと3時間枠を次runへ提案し、
+人物freezeとft-e13/court_sideは維持する。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
 旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。

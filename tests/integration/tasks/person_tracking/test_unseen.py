@@ -46,6 +46,9 @@ def test_only_decided_annotation_sides_are_accepted(unseen: Any) -> None:
     document['clips'][0]['annotation']['decided'] = False
     with pytest.raises(ValueError, match='Annotation-ball side'):
         unseen.selected_sides(document)
+    document['clips'][0] = {'clip_id': unseen.CLIPS[0], 'observe_failed': {'status': 'failed'}}
+    with pytest.raises(ValueError, match='court observation failure'):
+        unseen.selected_sides(document)
 
 
 def test_video_contains_all_frames_of_three_cameras_and_no_labels(unseen: Any, tmp_path: Path) -> None:
