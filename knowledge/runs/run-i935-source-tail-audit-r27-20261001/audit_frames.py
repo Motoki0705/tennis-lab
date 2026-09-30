@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 from pathlib import Path
@@ -102,10 +103,12 @@ def source_evidence(plan: dict[str, Any], camera: str, inputs: Inputs) -> tuple[
     return result, doc["identity"]["settings"]
 
 
-def main() -> None:
+def main(output: Path | None = None) -> None:
     torch.set_num_threads(1)
-    out = ROOT / "frames"
-    out.mkdir(exist_ok=False)
+    out = ROOT / "frames" if output is None else output
+    if not out.is_absolute():
+        raise ValueError("Output must be an absolute new directory")
+    out.mkdir(parents=True, exist_ok=False)
     inputs = Inputs()
     plan = read(inputs.pin(PLAN))
     bundle = read(inputs.pin(Path(plan["bundle"]) / "manifest.json"))
@@ -213,4 +216,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path)
+    main(parser.parse_args().output)

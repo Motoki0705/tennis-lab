@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import time
@@ -40,11 +41,13 @@ def difference(a: np.ndarray, b: np.ndarray) -> dict[str, float]:
             "max_abs": float(np.abs(delta).max())}
 
 
-def main() -> None:
+def main(output: Path | None = None) -> None:
     torch.set_num_threads(1)
     cv2.setNumThreads(1)
-    output = ROOT / "pixels"
-    output.mkdir(exist_ok=False)
+    output = ROOT / "pixels" if output is None else output
+    if not output.is_absolute():
+        raise ValueError("Output must be an absolute new directory")
+    output.mkdir(parents=True, exist_ok=False)
     inputs = Inputs()
     plan = read(inputs.pin(PLAN))
     metadata = read(inputs.pin(STORE / "metadata.json"))
@@ -115,4 +118,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path)
+    main(parser.parse_args().output)
