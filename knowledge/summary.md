@@ -1,4 +1,4 @@
-<!-- knowledge-review: 3be667ff913ac2b4bfa9423b49e600536f78b246eaa1e4aa2f073275666ca982 on 2026-09-30 -->
+<!-- knowledge-review: be03bec57b5335351cf44f378fc04e20685813c352193705e2e2ccf6df38c53e on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -75,6 +75,11 @@ GSI syntheticは別maskのままで評価の実観測へ入れていない。費
 設定凍結後の予約未見一回は費用付き計画だけを残し、今回実行していない。
 
 ## 2026-09-27のcamera間人物対応（#933）
+
+[run 12の事前protocol](nodes/player_association/000003-run-i964-recalibration-r12-20260930.md)は、
+新既定StrongSORT++＋pose/CLIP、ユーザー確定のmerge offを固定し、無ラベル6clipで
+尺度/判定しきい値を較正してからdevを一度採点する計画。まだfit・dev再採点はしておらず、
+旧#933の結論は旧trackに限定したまま維持する。
 
 幾何（box下端の足元距離の対数尤度比）とCLIP-ReIDの外観をMILP（`cluster_multiview`）で統合し、コートの各sideで在場の長いidentityを選手に選ぶ対応付けを
 [Meijiの人手ラベル4 clipで評価](nodes/player_association/000002-run-i933-association-meiji.md)した（sideは注釈ballの判定）。
