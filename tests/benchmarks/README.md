@@ -2,6 +2,15 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## 人物追跡方式のCPU比較
+
+`person_tracking_matrix.py` の `--phase track` → `evaluate` → `report` は
+同じ `--repo <main root> --features <run-7 feature root> --report <新規出力先>` を使う。
+単一CPU process・torch4/OpenCV1 thread、入力/出力hashと実行identityを固定しcamera単位で再開できる。
+比較範囲・主副指標・既知の偏り・パラメータ・推薦規則の正本は
+[事前commitしたrun-8プロトコル](../../knowledge/runs/run-i964-tracker-matrix-r8-20260930/protocol.md)。
+baselineのLab連結が停止した場合も停止として保存し、候補追跡で補完しない。
+
 ## Meiji ball holdout
 
 `ball_detection_holdout.py` はball frame storeのMeiji test全体で、ft-e13と
