@@ -111,6 +111,10 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
 ## Pipeline診断
 
+- `court_side_clip000_diagnosis.py --qualification <failed run> --output <new directory>` は
+  clip_000のball gateとcourt_side停止をCPU再現し、観測view別の元cost平均を分解する。
+  production phaseはlabelを開かず、規則・閾値・storeを書き換えない。
+
 - `pipeline_stop_collection.py --report <qualification root> --queue <shared queue> --job <id> --output <new directory>`
   はclip_000のcourt_side停止をCPUで回収する。保存済み全artifactのhash/型/依存と人物元row・box・pose、
   GSI非観測を読み取り専用で照合する。runner再開・label参照・scene完走検証は行わない。

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 94676972416908700973133e28fd971c43459aef9f972d7a62e1258f1071a221 on 2026-10-01 -->
+<!-- knowledge-review: f8a4889143be6e312d66dca2b1a8e790afc3297b15e7c374298f14005eb6904d on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -89,7 +89,9 @@ dev後の再fit/再選択は行わない。
 [clip_000資格確認](nodes/tennis_scene/000026-run-i964-clip000-qualification-r14-20261001.md)は、
 run15に失敗を回収した。19/28nodeと153配列はhash/型/依存・人物元row/box/poseを照合できたが、
 court_sideがcam2反転のmargin .118504 < .15で停止した。scene export・全長動画は未生成。
-資源制限ではなくball根拠の曖昧性であり、閾値/既定は変えずCPU診断で対策候補を整理する。
+資源制限ではなくball根拠の曖昧性。[同じruleのCPU診断](nodes/court_side/000003-run-i964-clip000-side-diagnosis-r15-20261001.md)で
+全score/元point gateの再現を確認した。275frame中89はcam2に情報を持たず、全3viewのsupportは5/52。
+閾値/既定は変えずballの反実仮想と対策候補を整理する。
 旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
