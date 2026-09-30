@@ -97,7 +97,7 @@ class RayProposal:
 
     def __init__(
         self, cameras: tuple[PinholeCamera, ...], means: FloatArray,
-        covariance: FloatArray, prior: GaussianPrior3D, *, anchor_index: int | None = None, _fit_only: bool = False, initial_point: FloatArray | None = None,
+        covariance: FloatArray, prior: GaussianPrior3D, *, anchor_index: int | None = None, _fit_only: bool = False, initial_point: FloatArray | None = None, adaptive_metric: bool = False,
     ) -> None:
         if anchor_index is None:
             # All active cameras supply a deterministic optimization start. The
@@ -107,7 +107,7 @@ class RayProposal:
             pilot = min(pilots, key=lambda p: p.physical_cost(p.log_target(p.mode[None])[1][0]))
             point = pilot.log_target(pilot.mode[None])[1][0]
             nearest = int(np.argmin([np.linalg.norm(point - c.center) for c in cameras]))
-            recentered = RayProposal(cameras, means, covariance, prior, anchor_index=nearest, initial_point=point)
+            recentered = RayProposal(cameras, means, covariance, prior, anchor_index=nearest, initial_point=point, adaptive_metric=adaptive_metric)
             self.__dict__.update(recentered.__dict__)
             return
         anchor = anchor_index
@@ -149,10 +149,11 @@ class RayProposal:
         # A stationary point is not required for a change of integration variable.
         # A finite centre and strictly positive full Hessian are required; no jitter.
         self.mode: FloatArray = np.asarray(fit.x, np.float64)
+        self.metric_is_local_hessian = True
         if not np.isfinite(self.cost(self.mode)):
             raise RuntimeError("Nonfinite ray quadrature centre")
         if not _fit_only:
-            self.set_metric()
+            self.set_metric(adaptive_metric=adaptive_metric)
 
     def physical_cost(self, point: FloatArray) -> float:
         q = self.matrices[:, :, :3] @ point + self.matrices[:, :, 3]
@@ -200,7 +201,7 @@ class RayProposal:
         gradient = point_jacobian.T @ gradient_world - 2 * depth_gradient / depth - log_jacobian_gradient
         return self.cost(coordinates), gradient
 
-    def set_metric(self) -> None:
+    def set_metric(self, *, adaptive_metric: bool = False) -> None:
         # Differentiate the analytic gradient, avoiding subtraction of enormous
         # nearly equal log densities for incompatible products.
         epsilon = 1e-4
@@ -209,7 +210,14 @@ class RayProposal:
         hessian = .5 * (hessian + hessian.T)
         if not np.isfinite(hessian).all():
             raise RuntimeError("Nonfinite ray proposal Hessian")
-        self.proposal_chol = np.linalg.cholesky(np.linalg.inv(hessian))
+        if adaptive_metric and np.linalg.eigvalsh(hessian).min() <= 0:
+            # Explicit adaptive-chart policy: unit whitened-pixel/log-depth axes
+            # are a valid integration variable even at a saddle. This is NOT a
+            # posterior covariance repair. Expose the selected metric in records.
+            self.proposal_chol = np.eye(3)
+            self.metric_is_local_hessian = False
+        else:
+            self.proposal_chol = np.linalg.cholesky(np.linalg.inv(hessian))
         self.log_det = float(np.linalg.slogdet(self.proposal_chol)[1])
 
     def bounds(self, rays: FloatArray) -> tuple[FloatArray, FloatArray]:
