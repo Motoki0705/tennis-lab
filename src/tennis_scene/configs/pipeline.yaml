@@ -1,5 +1,5 @@
-# Declared component pipeline (see src/tennis_scene/pipeline/README.md). Defaults are the
-# person source/selection follow the 2026-09-30 decision in #964; full pipeline qualification is pending.
+# Declared component pipeline (see src/tennis_scene/pipeline/README.md).
+# Person source/selection follow the 2026-09-30 decision in #964; full pipeline qualification is pending.
 defaults:
 - paths: default
 - _self_

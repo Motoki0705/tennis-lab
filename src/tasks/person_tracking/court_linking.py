@@ -2,7 +2,8 @@
 
 The calibrated z=0 plane uses the court model's singles width as a dwell
 core, doubles width as a diagnostic corridor and 5 m of baseline
-runoff. Neither region expands laterally past the target court's sidelines.
+runoff: the default core is |x| <= 4.115 m and |y| <= 16.885 m.
+Neither region expands laterally past the target court's sidelines.
 The inner core adds 1.37 m of protection against noisy box-bottom projections
 at the lateral boundary; a track parked only in that border cannot qualify.
 The rule was selected on four singles dev clips, not general venue segmentation.
