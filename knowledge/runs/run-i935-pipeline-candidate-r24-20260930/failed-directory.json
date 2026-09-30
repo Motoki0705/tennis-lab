@@ -1,0 +1,11 @@
+{
+  "path": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r24-20260930",
+  "entries": [
+    {
+      "path": "compiler",
+      "directory": true,
+      "bytes": 4096
+    }
+  ],
+  "no_files": true
+}
