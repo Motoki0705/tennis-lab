@@ -10,7 +10,7 @@ status: done
 issue: 936
 date: '2026-10-01'
 config: {primary_update: 20000, device: cpu, frames: 128, stride: 64, validation_rallies: 16}
-metrics: {flow_overlap_rmse_m: 1.631605, flow_overlap_behind: 0}
+metrics: {flow_overlap_rmse_m: 1.6315870796946426, flow_overlap_behind: 0}
 artifacts:
   run_dir: knowledge/runs/run-i936-combined-overlap-cpu-r17-s936
 parents: [run-i936-combined512-physics10-r16-s936, run-i936-overlap-cpu-r16-s936]

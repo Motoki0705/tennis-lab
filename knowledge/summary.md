@@ -1,4 +1,4 @@
-<!-- knowledge-review: b3ecbaec6d9dc9c71a1e65ad2098b7a831feb5f4892b7248e797666ebb28f4c3 on 2026-10-01 -->
+<!-- knowledge-review: 62380efca5c78ac1dd7b9d43bc624841f52039f12c7bc094d5c7a4c6de9ab4db on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -326,7 +326,7 @@ camera2 RMSEと窓内free粗さの悪化で診断不合格。回帰も再投影m
 presenceの消失ではなく、全GMMの不確実性とGT画素誤差とは異なるStudent-t NLL、出力の観測/物理バランスが仮説。
 再投影はscalar lossの約90%なので係数0.01だけで弱いとはしない。一方、保存出力の重み付き座標勾配p50は
 再投影0.116対physics0.288で、network勾配との違いを明記して再投影重み3倍の単因子比較を次に推奨する。
-512train/physics1e-3を基準に保持し、RMSE/粗さ/behindの悪化を成功にしない。[再投影3倍比較](nodes/ball_refiner_3d/000030-run-i936-repro3-512-physics10-r17-s936.md)を同16val/20k主判定で事前登録し、32testsと実CPU preflightが通過した。診断はp50を20%、meanを10%改善し、他軸105%以下・behind非増加を要求する。
+512train/physics1e-3を基準に保持し、RMSE/粗さ/behindの悪化を成功にしない。[再投影3倍比較](nodes/ball_refiner_3d/000030-run-i936-repro3-512-physics10-r17-s936.md)を同16val/20k主判定で事前登録し、32testsと実CPU preflightが通過した。診断はp50を20%、meanを10%改善し、他軸105%以下・behind非増加を要求する。2026-10-01 08:27にresource=allで1件登録し、結果を待つ。
 
 [#935 anchored bankで同じ96ラリーを再生成・監査](nodes/ball_refiner_3d/000019-run-i936-anchored-dev-comparison-r12-s936.md)し、失敗0、全80train+valの軌道/camera/mask完全一致を確認した。全混合GT NLLは3.678→−2.979nat、HDR95は85.04→92.42%、平均HDR95体積193.0→33.63m³へ改善。HDR50は67.69%の過大被覆、1cameraの大誤差/過小被覆は残る。16valの混合平均/RTS RMSEは4.99/4.41mへ改善したが、RTSのbehind1件を含み最終優位とはしない。旧#959 devは対照として維持。新bankはfit frame由来で独立Meiji/OOF性能ではない。[640件の生成と最終監査](nodes/ball_refiner_3d/000020-run-i936-pilot-h-anchored-r13-s936.md)は512/64/64、272,986frame、失敗0で完了。全NPZ/JSON・run12 plan・36入力hash・元80train+val・旧#959 controlの不変性を検証した。単調時計6.215時間、最大worker単体RSS0.904GB、全dataset1.432GB。総RAM peakは未記録、wall時刻と単調時計の差も残している。元16valを固定した512trainの同一plan preflightは通過。test/追加valの配列・品質は未評価で、最終較正の完了とはしない。
 
