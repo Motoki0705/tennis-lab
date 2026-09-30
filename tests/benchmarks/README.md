@@ -12,6 +12,14 @@
 baselineのLab連結が停止した場合も停止として保存し、候補追跡で補完しない。
 `person_tracking_matrix_video.py --report <同出力先>`は固定した最大差5秒窓を3camera動画にする。
 
+`person_tracking_linking.py --phase base` → `kpr` → `report` は
+[run 9 addendum](../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)の追加比較。
+`--repo`、`--features`、`--kpr`（回収済native特徴root）、`--aflink`（公開重み）、
+`--previous`（run 8 matrix）、`--report`（新規出力先）を明示する。
+既存6条件のraw主指標一致を確認し、downstream group指標を追加する。
+`person_strongsort_parity.py --upstream <別途取得した固定版> --weight <AFLink重み> --report <JSON>`は
+ラベルを使わず合成trackletでAFLinkの前処理・学習済み推論の数値互換を確認する。
+
 `person_kpr_parity.py --upstream <公式repoの固定checkout> --repo <main root> --features <run-7 root> --report <JSON>`
 は同じ実dev cropで上流とportのstate key・prompt・native outputをCPU照合する。
 `person_kpr_features.py --phase plan --repo <main root> --features <run-7 root> --parity <成功JSON> --report <新規出力先>`

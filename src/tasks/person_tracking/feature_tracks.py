@@ -3,6 +3,7 @@
 import numpy as np
 
 from src.tasks.person_tracking.contracts import DetectionFeatures, TrackAssignments
+from src.tasks.player_association.appearance.parts import NativeParts
 from src.tasks.player_association.appearance.sampling import (
     CropSamplingConfig,
     TrackAppearance,
@@ -41,15 +42,23 @@ def sampled_appearance(tracks: CameraTracks, origins: np.ndarray, frames: list[D
     result = []
     for row, sample in enumerate(samples):
         vectors, indices = [], []
+        parts = []
         for f in sample.frames:
             feature = frames[f]
             found = np.flatnonzero(feature.rows == origins[row, f])
             if len(found) != 1 or not np.array_equal(feature.boxes[found[0]], tracks.boxes_xyxy[row, f]):
                 raise ValueError('Sample does not refer to the exact source detection box')
             index = found[0]
-            if feature.appearance_valid[index]:
+            if feature.parts is not None:
+                indices.append(f)
+                parts.append(feature.parts.take(np.asarray([index], np.int64)))
+            elif feature.appearance_valid[index]:
                 indices.append(f)
                 vectors.append(feature.embeddings[index])
+        native = None
+        if frames[0].parts is not None:
+            native = NativeParts(np.concatenate([p.embeddings for p in parts]) if parts else frames[0].parts.embeddings[:0],
+                                 np.concatenate([p.visible for p in parts]) if parts else frames[0].parts.visible[:0])
         result.append(TrackAppearance(np.asarray(indices, np.int64),
-                                     np.stack(vectors) if vectors else np.empty((0, 0), np.float32)))
+                                     np.stack(vectors) if vectors else np.empty((len(indices), 0), np.float32), native))
     return result

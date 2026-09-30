@@ -116,6 +116,8 @@ class BotSortPose:
         return [(tracks[t], int(rows[d])) for t, d in zip(ti, di, strict=True) if cost[t, d] < 1e6]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
+        if features.parts is not None:
+            raise ValueError('BoT-SORT pose has no native part adapter; refusing to discard appearance')
         if features.frame != self.frame + 1:
             raise ValueError("Tracking must receive every frame once, including empty frames, starting at zero")
         if self.dimension is not None and self.dimension != features.embeddings.shape[1]:

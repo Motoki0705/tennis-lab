@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.player_association.appearance.parts import NativeParts
 from src.tasks.player_association.appearance.sampling import TrackAppearance
 from src.tasks.player_association.association.associate import CameraTracks
 
@@ -30,6 +31,7 @@ def linked_timeline(tracks: CameraTracks, diagnostic: dict[str, Any]) -> tuple[C
             origins[index, at] = row
             boxes[index, at] = tracks.boxes_xyxy[row, at]
         feature_frames, feature_rows = [], []
+        part_rows, visibility_rows = [], []
         if tracks.appearance is not None:
             for row in np.unique(origins[index][origins[index] >= 0]):
                 value = tracks.appearance[row]
@@ -37,11 +39,17 @@ def linked_timeline(tracks: CameraTracks, diagnostic: dict[str, Any]) -> tuple[C
                 if keep.any():
                     feature_frames.append(value.frames[keep])
                     feature_rows.append(value.embeddings[keep])
+                    if value.parts is not None:
+                        part_rows.append(value.parts.embeddings[keep])
+                        visibility_rows.append(value.parts.visible[keep])
         if feature_frames:
             fs, es = np.concatenate(feature_frames), np.concatenate(feature_rows)
             order = np.argsort(fs, kind='stable')
-            appearances.append(TrackAppearance(fs[order], es[order]))
+            if part_rows and len(part_rows) != len(feature_rows):
+                raise ValueError('Cannot mix native part and whole-image appearance within a linked group')
+            parts = NativeParts(np.concatenate(part_rows)[order], np.concatenate(visibility_rows)[order]) if part_rows else None
+            appearances.append(TrackAppearance(fs[order], es[order], parts))
         else:
             appearances.append(TrackAppearance(np.empty(0, np.int64), np.empty((0, 0), np.float32)))
     return CameraTracks(tracks.camera, tracks.image_size, np.arange(len(groups), dtype=np.int64),
-        boxes, origins >= 0, appearances), origins
+        boxes, origins >= 0, tuple(appearances)), origins

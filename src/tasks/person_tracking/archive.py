@@ -16,6 +16,8 @@ _SCHEMA = 'person_detection_features_v2'
 
 
 def save_features(path: Path, frames: list[DetectionFeatures], provenance: dict[str, Any]) -> None:
+    if any(f.parts is not None for f in frames):
+        raise ValueError('Use the native part archive; v2 cannot discard part descriptors')
     if not frames or [f.frame for f in frames] != list(range(len(frames))):
         raise ValueError('Feature sequence must cover consecutive frames starting at zero')
     if len({f.embeddings.shape[1] for f in frames}) != 1:
