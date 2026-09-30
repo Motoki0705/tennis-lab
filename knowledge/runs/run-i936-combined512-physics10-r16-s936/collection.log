@@ -1,0 +1,16 @@
+{
+  "state": "done",
+  "resources": {
+    "elapsed_seconds": 3141.438877849956,
+    "peak_allocated_bytes": 422902272,
+    "peak_reserved_bytes": 471859200,
+    "peak_device_used_bytes": 1772683264,
+    "minimum_available_host_bytes": 24100556800,
+    "driver_measurement": "total-minus-free sampled each update and val rally; includes other usage; not a continuous driver peak"
+  },
+  "output_bytes_actual": 46011370,
+  "all_metrics_match": true,
+  "run12_baselines_match": true,
+  "frames": 6383
+}
+{'flow_20000_mean': {'mixture_mean': False, 'mixture_mean_rts': False, 'regression_20000_mean': False}, 'flow_20000_samples': {'mixture_mean': False, 'mixture_mean_rts': False, 'regression_20000_mean': False}, 'regression_20000_mean': {'mixture_mean': False, 'mixture_mean_rts': False}}
