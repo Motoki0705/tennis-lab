@@ -1,0 +1,882 @@
+{
+  "association.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/association.csv",
+    "sha256": "a8a0205ee0bf2ba3b3153adf641028347ebe1202741e6e28b2e9ab755c7568aa",
+    "bytes": 420
+  },
+  "availability.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/availability.csv",
+    "sha256": "0b5e0f4d77be486f0b9f22879ffefe9c42d72c910bd295b0f52fcc98549cb7cb",
+    "bytes": 2452
+  },
+  "comparison.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/comparison.csv",
+    "sha256": "7b5879e685d54e1a738400da24146e2de4b6f62050080659e53554cab3ae4c70",
+    "bytes": 5837
+  },
+  "comparison.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/comparison.json",
+    "sha256": "e069369330391477f10f8a1f8304ac859f4a3fe0f9c80cecd105a9a1a8da3224",
+    "bytes": 210395
+  },
+  "correspondence.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/correspondence.csv",
+    "sha256": "895cbd68902efd182904118c31e8c3bd9099b39b142c05cc930d7234e862b15d",
+    "bytes": 39036
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz",
+    "sha256": "786182ed40005f056273301e4a7d0c54795b6b6aada8eb49d5ea72b3c3b9737e",
+    "bytes": 89999
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz",
+    "sha256": "5c3e3e69bd366b9835a5b9ffea4ed4bf309cd66f77c9f85ab0abf2ac7ebdf752",
+    "bytes": 59111
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz",
+    "sha256": "d0ee017159ea438b32d885bafe6d85eb6e6fa90f07ecd25e52b2f23f359e2d7a",
+    "bytes": 78168
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "3e66f185ea155332fc8628ef52850c8b525c7c41c8b83204fa87d6de3507c111",
+    "bytes": 1012
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz",
+    "sha256": "8d1c6a1d298616b3e43ef02bfeabbf05a7de32c26e050bec562477b672523f52",
+    "bytes": 18511
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/result.json",
+    "sha256": "993c56e2369beb40c6e2c96c8ee5bc770bef43d68e1f7bc529c8c95e9b0d874e",
+    "bytes": 27677
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz",
+    "sha256": "96e65180904205e69e40a8deed59ea8435aa901b39f369c488143f0dfd80ea8d",
+    "bytes": 18535
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz",
+    "sha256": "3d3f6dedb804700faae86305d6b24198d8cd99759d1ffec4b99d65c6c03717fc",
+    "bytes": 61993
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz",
+    "sha256": "12c91dd463e024fc8ebdedb5e5872a24555cb051dd77cad20b3204037129d9d7",
+    "bytes": 37354
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz",
+    "sha256": "e1559a2feede78557486b590133b2e6f70d6b2812ce5ecf703289b67b1fffb48",
+    "bytes": 56327
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "a77d901b1a889b6769fccf246cca75fd155b8c9bb203cc152f9bf52fb8952168",
+    "bytes": 964
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz",
+    "sha256": "42d2a0d2bd64daf8f95deea60ce68fccea888ac28cdc683bb4276df9c89fcba3",
+    "bytes": 13410
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/result.json",
+    "sha256": "caf71b171c3030170435658b0d367f14f1bcc033529f4b1bc0e362c5e97e9057",
+    "bytes": 59568
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz",
+    "sha256": "87ced43c7b9d842578cb162856bc642f804a7cdc4381f3ac36d24e12dfa04d92",
+    "bytes": 13384
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz",
+    "sha256": "794b4aaf732fb3331595b2d49e1f06c8f486dc6896214f3ae2200854e258e731",
+    "bytes": 128437
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz",
+    "sha256": "1bca3bcb7a9c5f2909d096a30b396075395bd201877c89bca9e5feb9284f3035",
+    "bytes": 90896
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz",
+    "sha256": "b26838ca9c9437f440cfe33851142186fdf775b335ce677b13e71aef5be648b6",
+    "bytes": 121008
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "1a8a5acd90a9056653d3cded95ce86a7ff4b9db84a7a03b6404e85767e616769",
+    "bytes": 1366
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz",
+    "sha256": "eee51eb04ee7f2dfef00610404266845bb6c55b570cfffcdfe1b64d9ef1493e4",
+    "bytes": 32172
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/result.json",
+    "sha256": "6b29f8f9d5dd4a74ebc8fe137222ab3b556c616a834494b589feee2e845acee9",
+    "bytes": 64450
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz",
+    "sha256": "eef6c00499e786db59cdb9adf8319ce9168c91179f24f70f56ef49675d6f6a4d",
+    "bytes": 32250
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz",
+    "sha256": "3a73d9768c4e348d70eaa2b82196726aab14f3dbb97b180310ec4b97bd8c5d42",
+    "bytes": 47107
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz",
+    "sha256": "ce9e1263a63b31adafec7dac54c0ab8ae9e6eb0cab31291bf275895f09445181",
+    "bytes": 30408
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz",
+    "sha256": "59f33bb518027f228c459377203da14058c216abf1aa7aec6ba6db9f288f3c45",
+    "bytes": 33612
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "69a57304b439c6d5327dc04e78ff436953cd1cf89ca7f07a9b64e546a6769635",
+    "bytes": 855
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz",
+    "sha256": "1fcfb972494737b760b3407bf5f4945abb7f76fdca3e9b335806ab3fefabdc10",
+    "bytes": 10204
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/result.json",
+    "sha256": "b82626a0f8ebd123f533489a3ae73016b52f613bea7430a733663a38c66da2a6",
+    "bytes": 29255
+  },
+  "evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz",
+    "sha256": "8fc37fd07b62e0835452c576bf87a1917882a401fa7b3bc7e7850b38aeab97a2",
+    "bytes": 10172
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz",
+    "sha256": "786182ed40005f056273301e4a7d0c54795b6b6aada8eb49d5ea72b3c3b9737e",
+    "bytes": 89999
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz",
+    "sha256": "c71891dac6b1c236adc4eb7e995bfadb13cc28bfc7ffd22d90bd1a7cca59c709",
+    "bytes": 59110
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz",
+    "sha256": "77794dfaa53baf7faa1ae94bf9da142a16ed968a6c31569e84132994be3ca096",
+    "bytes": 78167
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "3e66f185ea155332fc8628ef52850c8b525c7c41c8b83204fa87d6de3507c111",
+    "bytes": 1012
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz",
+    "sha256": "a4ee9651bd1546157c4cad0fe2b32879785c27b05e610965db92b9a99af07e91",
+    "bytes": 18511
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/result.json",
+    "sha256": "5bdd7a21e43d64b85996d392a20c85ff4e5097a31bcddc7fcc6699a3b2f6ca2b",
+    "bytes": 27536
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz",
+    "sha256": "7f8817ef538105683a982e7e0ba899b8899b67ee313a7545b8dc06b725982505",
+    "bytes": 18535
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz",
+    "sha256": "0bf66d30f5b03234813f4d43b0f8e193eb9213d63e34be33129d5aba5ac7521b",
+    "bytes": 61891
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz",
+    "sha256": "655937b20f0c3c087f375b82ad8b87618e24ed5f80418fa0ddfe0258282a162b",
+    "bytes": 37358
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz",
+    "sha256": "4dfe5d4fcbcbb4acff911ab9ca4a040f5324e5c1406a849c1b4e37dfc2156cfb",
+    "bytes": 56328
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "dcc454afed3bc80dd44c6698a63de0d7a89b856e7f34b44b8d0cf19adbbbb735",
+    "bytes": 959
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz",
+    "sha256": "1d216619ed56c665183ed3090b91ab6a9ecbfb0ce3fa3ca357d460088748ad6a",
+    "bytes": 13410
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/result.json",
+    "sha256": "dfd853020df9125869fabdcbf939f5589e733ae0cc8e69c266877265fc2d30d1",
+    "bytes": 59523
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz",
+    "sha256": "20ed28c083aa4623c498b0bbb461200f7eb9b08a839f34f52f3d8fe4310ff795",
+    "bytes": 13383
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz",
+    "sha256": "4b66dc5211e7e54f6064740020c4f764eb115aae75a0a8e3455213e06aa44b59",
+    "bytes": 128437
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz",
+    "sha256": "1bca3bcb7a9c5f2909d096a30b396075395bd201877c89bca9e5feb9284f3035",
+    "bytes": 90896
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz",
+    "sha256": "57f802805e953c7b761e5041eac75e30535a3042eaad9f10eda2c2cd21759597",
+    "bytes": 121006
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "1a8a5acd90a9056653d3cded95ce86a7ff4b9db84a7a03b6404e85767e616769",
+    "bytes": 1366
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz",
+    "sha256": "901f1a2e8e97c2e79cd2a40ddc7602b0f2934aeedb145ba0cfb42caf90d36d43",
+    "bytes": 32172
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/result.json",
+    "sha256": "e9cd3c54cf1563208ff50ee8edb500c8cc6f51e4487e098aa533b36fa355ee6f",
+    "bytes": 64317
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz",
+    "sha256": "3b99adbe97df0e923d31be6743ee8aa73595708d2fbc9055418c500f9377dbed",
+    "bytes": 32250
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz",
+    "sha256": "3a73d9768c4e348d70eaa2b82196726aab14f3dbb97b180310ec4b97bd8c5d42",
+    "bytes": 47107
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz",
+    "sha256": "ce9e1263a63b31adafec7dac54c0ab8ae9e6eb0cab31291bf275895f09445181",
+    "bytes": 30408
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz",
+    "sha256": "604d0ae9143d89cf40c4531cea2732abe03613f75a69eceb160f54ed02726d93",
+    "bytes": 33612
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/clipreid_vitb16_market1501.identities.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/clipreid_vitb16_market1501.identities.npz",
+    "sha256": "69a57304b439c6d5327dc04e78ff436953cd1cf89ca7f07a9b64e546a6769635",
+    "bytes": 855
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz",
+    "sha256": "2286866aaa7ae118b53aef56cd3d8184d781a6f8625aea0fe0eded183d4f2d3d",
+    "bytes": 10204
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/result.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/result.json",
+    "sha256": "cadd35997921d18b7225708c1187e8f7fa0b9d83a797d4a21ee8588b6e5dc4a2",
+    "bytes": 29122
+  },
+  "evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/evaluation/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz",
+    "sha256": "dc5435be87e8f0c5dfec47e1a83591224837cd5d6c8576a01a45ebc329ebdfdc",
+    "bytes": 10172
+  },
+  "identity.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/identity.json",
+    "sha256": "241d33a8e0b40f86f4a72232cbf4e301e115429f7bc344f7950275477a5c7dd7",
+    "bytes": 15533
+  },
+  "merge_audit.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_audit.json",
+    "sha256": "194c1a37f16f7bf8476481d9fdc37db75dd4197047b6eb7cc2130e919b9e7ba3",
+    "bytes": 14046
+  },
+  "merge_contacts/page_00.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts/page_00.jpg",
+    "sha256": "eaba943f4f81445920a14a57bcd124128d82bea1af115d9a23486f0a7ec49fef",
+    "bytes": 303192
+  },
+  "merge_contacts/page_01.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts/page_01.jpg",
+    "sha256": "b668e7521ee89b043d252a6777ef833863b4fc54d151b9373828c2fc4d78158f",
+    "bytes": 378512
+  },
+  "merge_contacts/page_02.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts/page_02.jpg",
+    "sha256": "7088dbd03bec338d91472c449deef235c4008fb635aa313b71411e5fd0d0550b",
+    "bytes": 322220
+  },
+  "merge_contacts/page_03.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts/page_03.jpg",
+    "sha256": "060375c62633efd19e09a96d4826257971406fef5ec25b5a8f3aa3835130e29c",
+    "bytes": 266417
+  },
+  "merge_contacts/page_04.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts/page_04.jpg",
+    "sha256": "1c6cf0d7f20277cdd4bd9acccdaffdd5df45bb2ed303a6319d28829107737466",
+    "bytes": 333700
+  },
+  "merge_contacts/page_05.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts/page_05.jpg",
+    "sha256": "348bd1ce85587f1adbb5019af11718fbb7c439fdacd246433a25bb6a0e72845f",
+    "bytes": 92292
+  },
+  "merge_contacts.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_contacts.json",
+    "sha256": "f42ae4032ef66711c4a1bb93cb5f04d47d16013759cb6be40478ef2f5d83dbd5",
+    "bytes": 14795
+  },
+  "merge_counts.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/merge_counts.csv",
+    "sha256": "785f9c244671d2216cab911671eb355f84bc47315fe00cc2a2a8bb2e8b163f38",
+    "bytes": 462
+  },
+  "recommendation.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/recommendation.json",
+    "sha256": "be5e717e7cba8fbd23583f42233d2eb4a98cec5fd365a653b4bb7297b3f65216",
+    "bytes": 1254
+  },
+  "report.md": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/report.md",
+    "sha256": "f38d5f2d0bd04355838b477905f02f9527f108c353c1a40dd644335a12edbe3d",
+    "bytes": 2687
+  },
+  "review-frame-145.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review-frame-145.jpg",
+    "sha256": "d6718d123246ac03a9b40bc1106181fe82bcd74534bac775157f49ac7da58a46",
+    "bytes": 537423
+  },
+  "review-frame-172.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review-frame-172.jpg",
+    "sha256": "83bfc9f61ac9c339b6078c6285dff295bf86dd38719d109b812a13e32530034d",
+    "bytes": 524584
+  },
+  "review-frame-26.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review-frame-26.jpg",
+    "sha256": "df3c6c1a6f2bcaa32b7ff3bcaa7f2e5c5c99332c60ecb5f9461da450a9b52f3c",
+    "bytes": 527064
+  },
+  "review-frame-303.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review-frame-303.jpg",
+    "sha256": "7fe50eec74c8b292f54308fee100d87eb4c850c012932aa23f05d9dbe8b642bb",
+    "bytes": 532338
+  },
+  "review.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review.json",
+    "sha256": "7ef282586b0fb24d0e3a155ebc642965c85c5efbe160dc182248c5ec5878a96b",
+    "bytes": 1969
+  },
+  "review.mp4": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review.mp4",
+    "sha256": "118452c6bb2922e50e5111a1ea20c37390e9693084d83701630fe99decab5a85",
+    "bytes": 3019489
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.gsi.npz",
+    "sha256": "2de9d9aba4c45d1d581bd25a640c996785dfd74656915128dd7caf1cc42529f3",
+    "bytes": 73022
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.json",
+    "sha256": "06c27e9d42a18e8e055191ddd83cdffc41e30e1e5b0da26d8606dcba7634e255",
+    "bytes": 1725
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.merges.json",
+    "sha256": "884692dafe8f2acd8f72368eed399067f59a2c9a57e3a3ddd6db2a328243f0a4",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz",
+    "sha256": "5dd30e5730cec0c74a1807df55846842dd719657f35339de227f63d8a9e3092b",
+    "bytes": 70562
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.gsi.npz",
+    "sha256": "dfd030ffccd24632e476a3808bea33effc74ad7a7b83dec10efbea0a33cdabcb",
+    "bytes": 35762
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.json",
+    "sha256": "25e38752ffdacb312edb0770af67d263154dd3ce8a2b8259bcacfb6010341df1",
+    "bytes": 1455
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.merges.json",
+    "sha256": "91563247625b8a61bc2911a292514cf01013e017cc78c6b77706a5f2f1b8a235",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz",
+    "sha256": "bfbf72def74b0bed747d1bfc1e9a9b289f941b384b377ac33262d0b9d01e4d8b",
+    "bytes": 34906
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.gsi.npz",
+    "sha256": "52baea4d7591aab0cee920862b03ec6f3de0a19cb256cdc0873b6c7ca06fba4b",
+    "bytes": 56072
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.json",
+    "sha256": "9cb2c6c402ecb2e64b3e1ec6c3f142a0d8e7e509104e2f50c05b3d89de474bb7",
+    "bytes": 1708
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.merges.json",
+    "sha256": "d7b71c55430c74d3e70cf3b08afc54e03155981ca4874db4f09a3ac29de948a2",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz",
+    "sha256": "8d235b91bef4ab9480d49fbe6f8597674f27900f5a5fa0d4ec95754dc3dfd786",
+    "bytes": 55538
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.gsi.npz",
+    "sha256": "8e66c32b099258f00e6675b85a9da390f4cb14be116c2af8832ce05919146a22",
+    "bytes": 51382
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.json",
+    "sha256": "3180187c490573a676a8c51f8d458a0ff052b387c45750cbd9c9b196b40822cb",
+    "bytes": 1614
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.merges.json",
+    "sha256": "f42c3c5d24daef448562ae95f573fec3d75e3d215af50bfc7f6ff954134dcf70",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz",
+    "sha256": "b8d1a1e791434cc7cd4c5ffbbe96471af7ab2622d5646f40d03c420b808b5180",
+    "bytes": 49432
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.gsi.npz",
+    "sha256": "1a083c6731b9a98c2b062f38f6985d961a8ca1f287d74cb5ed3d49e4ad3196f0",
+    "bytes": 24239
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.json",
+    "sha256": "971d32aa7ba9e46a5bd3a424862dd5fdb81209977698c812f6334368abf9a3b1",
+    "bytes": 1451
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.merges.json",
+    "sha256": "c40b3bdd84b5d31b49801e74863efcb8e94351c3bcee95fac83639ee711d5448",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz",
+    "sha256": "4e906dedce89f4291778039b2c1932eca6a4bdafd4b417a28f54be0e65134942",
+    "bytes": 23492
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.gsi.npz",
+    "sha256": "4a8ebf0bd522f2f21a2667a03c839865e4097481ce507b8780c0425f72b8243c",
+    "bytes": 45127
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.json",
+    "sha256": "fb1de47d1cef38fb8a7f8729c1aa96f888d7f27cfc7cc278257bb7de77444fb2",
+    "bytes": 1601
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.merges.json",
+    "sha256": "bb0700cfca7836f5c70fb83131d4ebe71e34e9605e2fc9726ad541f6c828e9c3",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz",
+    "sha256": "1315c7a219c92e7de9875a1f9c20181ac27715bb72a22df7d8ea4fb56ad9b758",
+    "bytes": 43690
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.gsi.npz",
+    "sha256": "fdee529027b7d2e7d1d7de156ce55105146a4e38f701c51e65212366b2993212",
+    "bytes": 112912
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.json",
+    "sha256": "843d74048cb81648098b838f719e8792896b8c41f76c40c461861cab89ca862a",
+    "bytes": 1677
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.merges.json",
+    "sha256": "d9a43bde8bace6cb57f0f556c07494f27f018934294342223b8d19a8b1869b3a",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz",
+    "sha256": "87935d3d442737efb0309b7353daa2702bfba40fd789fff401f6f34ca3084a46",
+    "bytes": 106149
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.gsi.npz",
+    "sha256": "5255f4fba867402797bd353cb9dbe441f1b26b3193a46f0a90b46e21b87c6d1e",
+    "bytes": 68283
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.json",
+    "sha256": "9a71c047ac96bfb06a76690530d75ab47c60721ef78a0f126ef9e877633055a1",
+    "bytes": 1711
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.merges.json",
+    "sha256": "8d82cfd2d5c1e5283af63048f6001245e3f9b1d297050c717e48872dedd3e033",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz",
+    "sha256": "7daced3d2b7f66e0b76247e283e443e2b76e4df5019b3c6340232424720973e4",
+    "bytes": 67310
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.gsi.npz",
+    "sha256": "08ba25dfbf6c0447aa38c2c0faa4b6387581ee708fb153a0b8c201b24331dfb3",
+    "bytes": 102087
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.json",
+    "sha256": "9ec4222b2463080117bd854b30bae97e1dd9cae18dd76775e73a9970b7052890",
+    "bytes": 1910
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.merges.json",
+    "sha256": "995d2aef3e9b356a0ba33413f19016baf7e8dd405f2a23d6c48c6ce0e7e1ce7a",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz",
+    "sha256": "ab745d3be25e5a263133b3069bdb8110a20d0c5e4e9fd9d6fe230bab4a0e8423",
+    "bytes": 99832
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.gsi.npz",
+    "sha256": "f162fc21ae157982d4b12f2d1df9e11766124cc223d26687a93b7592acf118fa",
+    "bytes": 36500
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.json",
+    "sha256": "dd6759bff4234f68d8ee2fda12be7fcb1772dd2e752385d20e7b916a760b3ad6",
+    "bytes": 1472
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.merges.json",
+    "sha256": "17902274a2beb30a2ef5defe1106d5c3f1e081ba46d497efe97b281f0ea2f236",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz",
+    "sha256": "ec83cecd95f06355b68c1ebbccbce3ba39ee1b45830be4d140d0f55aa9de4de7",
+    "bytes": 35736
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.gsi.npz",
+    "sha256": "8551dee4aec7ea7c779f41e98e4307323c9d701619484a1ad2cc3e87834343b9",
+    "bytes": 18216
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.json",
+    "sha256": "193762eb2fc41198cf3126cd4b7152082e61b86235a517b988f6431a14c4f592",
+    "bytes": 1443
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.merges.json",
+    "sha256": "5388b54d121172840533407704504a119c99524df62ed848e53b5b2363f30051",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz",
+    "sha256": "27c999aa9cb2e71955739cc156008e0f5d73a7e0a59d617132d74d1131f7140d",
+    "bytes": 17521
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.gsi.npz",
+    "sha256": "3943578fdcad30367a14c86168d8c33163fcdee58292968f41317d8e04990613",
+    "bytes": 21111
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.json",
+    "sha256": "1f1c725795e8cf7fb25cf4682f2ed99efc85d5de750fade4223a3801eb6e18ab",
+    "bytes": 1445
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.merges.json",
+    "sha256": "48fcffd8b85fb17363326190d8cd3116bf837e0c66889a88e90959355a54f75c",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_off__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz",
+    "sha256": "2b9485f92b9baaceaa20b8eee8926419e360c542829c868ca4b9c0a3a6976755",
+    "bytes": 20294
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.gsi.npz",
+    "sha256": "2de9d9aba4c45d1d581bd25a640c996785dfd74656915128dd7caf1cc42529f3",
+    "bytes": 73022
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.json",
+    "sha256": "622eeb2a50bed7dca7aba5c40131066357788b03d3c281ac20604fec46449891",
+    "bytes": 1685
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.merges.json",
+    "sha256": "884692dafe8f2acd8f72368eed399067f59a2c9a57e3a3ddd6db2a328243f0a4",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz",
+    "sha256": "5dd30e5730cec0c74a1807df55846842dd719657f35339de227f63d8a9e3092b",
+    "bytes": 70562
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.gsi.npz",
+    "sha256": "58ddca0028d21e670d47576c9d4f67b292b14de5214246ecc6f72c88458ff4d6",
+    "bytes": 35752
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.json",
+    "sha256": "4793eb73e30f50378bbfc231e6c030ec47ee09804059bb1953d049696b5778c3",
+    "bytes": 1414
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.merges.json",
+    "sha256": "dabd7e21ca0772d4ec3ebde6776533fded135588d3dec57eb776084e6916a4dc",
+    "bytes": 581
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz",
+    "sha256": "3261d1a12a8ba3247d69194d485764eef9d625077110b4c3744e8195b1e74f36",
+    "bytes": 34906
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.gsi.npz",
+    "sha256": "3c123a8e4fbc3d6492255fd4348da54ffd09d3315e867fb05a27faa16006170e",
+    "bytes": 56069
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.json",
+    "sha256": "36ca4957efa8f79a10b42d5e1e5e98b05240e5b55b6099e1affeabec2521c67f",
+    "bytes": 1667
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.merges.json",
+    "sha256": "b9563027fdfa66e0b5b8ac0da903887a9edc5251cb4b199031fa38154a3cd7b0",
+    "bytes": 1032
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz",
+    "sha256": "252691813ba2b9bba110b72ef7406e0ab36c84440f5419ea7019c7988096995a",
+    "bytes": 55532
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.gsi.npz",
+    "sha256": "98ca7ce0813e808d36cf77f7da9ccdc641e633e9509382e46d74a21f1ad849ad",
+    "bytes": 51137
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.json",
+    "sha256": "3c2992eb13c25c66de18ce12b48eec35568da1cebe17c4f03bbb8643ceea2887",
+    "bytes": 1691
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.merges.json",
+    "sha256": "81900c974bdf3d4a292d1e7e1f4ed6b555b6055366a8ad526251d6165977d3f5",
+    "bytes": 276
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz",
+    "sha256": "725f523487f6fb1627e916180e71a422e124bbabe2724b223ddab524908e2ef6",
+    "bytes": 49300
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.gsi.npz",
+    "sha256": "3e98eb582985283997c507ca86453d1f70787dde11685fe5bfaf855af179fa51",
+    "bytes": 24231
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.json",
+    "sha256": "ff3190f70788b25eb11328b2c0b8cb08909d5363ef2ba83a85bf10a47423e5d0",
+    "bytes": 1411
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.merges.json",
+    "sha256": "5d06bcd1c9ad75556c94e016ccdb6b7b49d1360f9d7448658dd90e5f599fd828",
+    "bytes": 274
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz",
+    "sha256": "8812e71d5bf0e84b7519854dd31c66e70f66f22fb64b02ec79240108676af031",
+    "bytes": 23495
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.gsi.npz",
+    "sha256": "a48cf1bb8fb307cec6be51ffb46d494f1206f12045d4f646c60a79ab72bd468e",
+    "bytes": 45130
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.json",
+    "sha256": "450e45e68000926c72dc8e1fa6189f3d1677f83fdc355acbda66f7a4d17e2a4a",
+    "bytes": 1560
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.merges.json",
+    "sha256": "cf52bc11b6a6f7662d36774053e54212942ce2c52717a669a47412823059d7f5",
+    "bytes": 423
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz",
+    "sha256": "b015c968c1302c8f4ea678618f3c1350492b255031e198507d21b0c988799cda",
+    "bytes": 43691
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.gsi.npz",
+    "sha256": "fe623a7c8c962177832b9dd2626d0a774e0dd2ae59582ca0e3dbec02c0471b90",
+    "bytes": 112914
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.json",
+    "sha256": "b9571c0762520ad981a4e23aaa29f3b6b537889a36cf0b2819bc224f4f5de9d9",
+    "bytes": 1635
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.merges.json",
+    "sha256": "a7a1f0e0a53a5aad33610c9a335dfbd5060adad7dece5b9316139033c0dfa20a",
+    "bytes": 737
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz",
+    "sha256": "21e8253e6ee83bc5eec9393ec246d75eba408d9f377dbd117eab450ff8f97950",
+    "bytes": 106147
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.gsi.npz",
+    "sha256": "5255f4fba867402797bd353cb9dbe441f1b26b3193a46f0a90b46e21b87c6d1e",
+    "bytes": 68283
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.json",
+    "sha256": "cf2b1dc616ff64806c08d5c50cf3681aa920c0423dc144f6b7e296aaaaea7096",
+    "bytes": 1670
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.merges.json",
+    "sha256": "8d82cfd2d5c1e5283af63048f6001245e3f9b1d297050c717e48872dedd3e033",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz",
+    "sha256": "7daced3d2b7f66e0b76247e283e443e2b76e4df5019b3c6340232424720973e4",
+    "bytes": 67310
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.gsi.npz",
+    "sha256": "630a9fad052c0c32e46270623718ab29eb4f672560670f6c40b5f04c751b1afa",
+    "bytes": 102084
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.json",
+    "sha256": "0abff43fa8835f7b58002cc811a0ff34e7aade93b60dbee6c7b04a7242b2e88b",
+    "bytes": 1870
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.merges.json",
+    "sha256": "95980b4dd8db56eafbba026e12e59a18d911ff153e777a04a1bd03cc7ec1ae1b",
+    "bytes": 1046
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz",
+    "sha256": "fe21585df6f79bee9863706b8e9076372eaef40062293907ad9110fd0d88f06a",
+    "bytes": 99833
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.gsi.npz",
+    "sha256": "f162fc21ae157982d4b12f2d1df9e11766124cc223d26687a93b7592acf118fa",
+    "bytes": 36500
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.json",
+    "sha256": "29644c37a698f27a4d6cfc44e099e0df77898080c0242e84b1fd96650edb6a42",
+    "bytes": 1432
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.merges.json",
+    "sha256": "17902274a2beb30a2ef5defe1106d5c3f1e081ba46d497efe97b281f0ea2f236",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz",
+    "sha256": "ec83cecd95f06355b68c1ebbccbce3ba39ee1b45830be4d140d0f55aa9de4de7",
+    "bytes": 35736
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.gsi.npz",
+    "sha256": "8551dee4aec7ea7c779f41e98e4307323c9d701619484a1ad2cc3e87834343b9",
+    "bytes": 18216
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.json",
+    "sha256": "58366099ecbcefb893bd4523f60cb1b6a363c1b45a92f461b25455b07af22ec6",
+    "bytes": 1403
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.merges.json",
+    "sha256": "5388b54d121172840533407704504a119c99524df62ed848e53b5b2363f30051",
+    "bytes": 125
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz",
+    "sha256": "27c999aa9cb2e71955739cc156008e0f5d73a7e0a59d617132d74d1131f7140d",
+    "bytes": 17521
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.gsi.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.gsi.npz",
+    "sha256": "8dfb2bc992994fab4428b6147ee08f91e76dcb4411c594da517fa53d380dc827",
+    "bytes": 21120
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.json",
+    "sha256": "34e84aa7fde5bbffbd4c09079cedfb2835727afaabe3a05279c9f5d856c32bfe",
+    "bytes": 1403
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.merges.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.merges.json",
+    "sha256": "5b0cf3fdbcf6fc218ad79ac8c418735e6718541ab427a9014bf0ad8abd0f9134",
+    "bytes": 575
+  },
+  "tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/tracks/strongsort_pp_pose_merge_on__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz",
+    "sha256": "ce87d516a52cd0e24414a37bf239ce5e192d00c519cae2b402ba3dec320e42c6",
+    "bytes": 20293
+  },
+  "verification.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/verification.json",
+    "sha256": "d755728d194b103072577753b2300e2c9bc9fc87f233d35c9cdbecd6e0d6ec18",
+    "bytes": 148
+  }
+}
