@@ -27,6 +27,7 @@ def short(name: str) -> str:
 
 def report(root: Path) -> None:
     comparison = json.loads((root / 'comparison.json').read_text())
+    selected_method = json.loads((root / 'kpr_method.json').read_text())['chosen']
     chosen = recommendation(comparison['table'])
     overall = [row for row in comparison['table'] if row['camera'] == row['near_far'] == 'all']
     pairs: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -78,6 +79,7 @@ def report(root: Path) -> None:
         'association': [r for r in association if r['variant'] == chosen], 'pipeline_default_changed': False,
         'kpr_selected_method': json.loads((root / 'kpr_method.json').read_text())['chosen']})
     lines = ['# Run 9 固定比較', '', f'主指標による候補内推薦: **{short(chosen)}**。pipeline既定は変更しない。', '',
+             f'表のbest_kprは、事前規則で選んだ **{short(selected_method)} のtracker encoderをKPRへ置換**した条件。', '',
              'raw IDF1はrun 8の主指標。group IDF1はrun 8結果後に追加した副指標で、下流のcamera-local連結groupを測る。',
              '全条件とも同じ固定コート選別。GSI補間は実観測へ昇格せず、主表は実観測のみ。',
              '旧6条件のraw指標は12cameraごとに保存済みrun 8と一致を検証した。未見性能/完全GT MOTとは呼ばない。', '',

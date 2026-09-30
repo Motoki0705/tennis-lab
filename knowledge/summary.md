@@ -1,4 +1,4 @@
-<!-- knowledge-review: 5b52e87777d2423fcb17d3621b3b2e2df1876bc32d2016866e0ab14a4abbb3b7 on 2026-09-30 -->
+<!-- knowledge-review: 357d8d8e1b4293da13b44e3c0def2157fade0231933197c599f606172e22dd92 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）
@@ -47,8 +47,14 @@ unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低
 推薦候補の選手coverageは増えたが、IDF1は微減しcam1遠側とfragmentが悪化したため、既定採用を自動で進めない。
 BoT候補は非選手残存と1clipの対応停止が多い。camera間encoderをSOLIDERへ替えても今回の固定尺度で最終対応は変わらなかった。
 [KPRの実2crop CPU parity](nodes/person_tracking/000009-run-i964-kpr-cpu-parity-r8-20260930.md)はpositive/negative両promptで上流と差0。
-KPRの[全12 archive回収](nodes/person_tracking/000010-run-i964-kpr-native-features-r8-20260930.md)では、40,531rowの元検出・pose・出自が一致し、native parts/visibilityのshape・有限値・normを確認した。追跡精度は未評価であり、次はrun 9の事前addendumでoffline linkingとgroup IDF1を追加して比較する。
-3encoder比較・全pipeline完走・未見一回評価は後続とする。
+KPRの[全12 archive回収](nodes/person_tracking/000010-run-i964-kpr-native-features-r8-20260930.md)では、40,531rowの元検出・pose・出自が一致し、native parts/visibilityのshape・有限値・normを確認した。この回収は特徴整合性の確認であり、精度比較は次のrun 9に分けた。
+[run 9のoffline linking・native KPR比較](nodes/person_tracking/000011-run-i964-tracker-linking-r9-20260930.md)では、
+追加したStrongSORT++/CLIPが固定raw-ID主指標の候補内推薦となった。全12camera完走しDeep OC-SORTのcam1遠側/断片化を改善するが、
+追加group IDF1とcamera間pair F1では新検出+旧追跡に届かないため、既定採用の合格とはしない。
+旧Labの候補への適用は3cameraで曖昧停止。KPRはnative距離で評価し、trackerのgroup指標には利点がある一方、
+camera間では固定CLIP尺度の転用が大半で曖昧停止となった。重み条件未確認のAFLinkを含め最終採用はユーザー判断を要する。
+cam1遠側の欠測には全件元検出があり、重複検出由来の競合IDと別人trackへの移行/選別除外が主因だった。
+小cropの外観/pose不良だけでは説明できない。全pipeline完走・調整凍結後の未見一回評価は後続とする。
 
 ## 2026-09-27のcamera間人物対応（#933）
 

@@ -1,0 +1,1111 @@
+{
+  "miss_accounting": {
+    "video_000/clip_000": {
+      "not_emitted": 11,
+      "emitted_unselected": 0,
+      "emitted_selected_other_label": 0,
+      "missing_source_detection": 0
+    },
+    "video_000/clip_007": {
+      "not_emitted": 33,
+      "emitted_unselected": 22,
+      "emitted_selected_other_label": 0,
+      "missing_source_detection": 0
+    },
+    "video_001/clip_001": {
+      "not_emitted": 15,
+      "emitted_unselected": 289,
+      "emitted_selected_other_label": 0,
+      "missing_source_detection": 0
+    },
+    "video_002/clip_013": {
+      "not_emitted": 11,
+      "emitted_unselected": 38,
+      "emitted_selected_other_label": 0,
+      "missing_source_detection": 0
+    }
+  },
+  "examples": {
+    "video_000/clip_000": {
+      "488": {
+        "clip": "video_000/clip_000",
+        "camera": "cam1",
+        "frame": 488,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 4,
+        "state": "wrong_identity",
+        "detection_iou": 0.9595246449489115,
+        "detection_row": 1001,
+        "box": [
+          529.6466064453125,
+          452.7008972167969,
+          571.9816284179688,
+          511.79498291015625
+        ],
+        "height_px": 59.094085693359375,
+        "score": 0.4280249774456024,
+        "pose_joints_ge03": 13,
+        "internal": {
+          "id": 4,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9782078266143799,
+        "previous_reference_pose_distance": 0.13070440292358398,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.09241879284381867,
+            "appearance_similarity": 0.7912648916244507,
+            "appearance_cost": 0.6765167117118835,
+            "similarity": 0.6243435077369213,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1000,
+                "iou": 0.877668851649655,
+                "similarity": 1.8582688995062244
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.9024133536481044,
+            "pose_cost": 0.04526173174381256,
+            "appearance_similarity": 0.962855339050293,
+            "appearance_cost": 0.8114321827888489,
+            "similarity": 1.6941978577040813,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1000,
+                "iou": 0.0,
+                "similarity": 0.5627142518758774
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 3,
+            "iou": 0.0,
+            "pose_cost": 0.0,
+            "appearance_similarity": 0.8591816425323486,
+            "appearance_cost": 0.7411894798278809,
+            "similarity": 0.7802577316761017,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1000,
+                "iou": 0.0,
+                "similarity": 0.5730424076318741
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.9591684679512831,
+            "pose_cost": 0.019605660438537596,
+            "appearance_similarity": 0.93801349401474,
+            "appearance_cost": 0.7930350303649902,
+            "similarity": 1.7721708330337855,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 1000,
+                "iou": 0.0,
+                "similarity": 0.5323520645499229
+              }
+            ]
+          }
+        ]
+      },
+      "494": {
+        "clip": "video_000/clip_000",
+        "camera": "cam1",
+        "frame": 494,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 2,
+        "state": "correct",
+        "detection_iou": 0.9539377737150031,
+        "detection_row": 1013,
+        "box": [
+          527.4215698242188,
+          451.8661193847656,
+          570.1049194335938,
+          513.1727905273438
+        ],
+        "height_px": 61.306671142578125,
+        "score": 0.5558053255081177,
+        "pose_joints_ge03": 14,
+        "internal": {
+          "id": 2,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9824141263961792,
+        "previous_reference_pose_distance": 0.1654057651758194,
+        "emitted_id": 2,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.12998418509960175,
+            "appearance_similarity": 0.8211026787757874,
+            "appearance_cost": 0.6963668465614319,
+            "similarity": 0.6209953352808952,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1012,
+                "iou": 0.9191437673208375,
+                "similarity": 1.8927694103133934
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.934731282056383,
+            "pose_cost": 0.02481086477637291,
+            "appearance_similarity": 0.9639614820480347,
+            "appearance_cost": 0.806272566318512,
+            "similarity": 1.7296054703603305,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 1012,
+                "iou": 0.0,
+                "similarity": 0.5883184410631657
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 3,
+            "iou": 0.0,
+            "pose_cost": 0.0,
+            "appearance_similarity": 0.8215852975845337,
+            "appearance_cost": 0.6896343231201172,
+            "similarity": 0.7403616383671761,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1012,
+                "iou": 0.0,
+                "similarity": 0.566953931003809
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.8686613537330502,
+            "pose_cost": 0.11144691109657287,
+            "appearance_similarity": 0.9305415749549866,
+            "appearance_cost": 0.7764106392860413,
+            "similarity": 1.4874983958859318,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1012,
+                "iou": 0.0,
+                "similarity": 0.7157308325171471
+              }
+            ]
+          }
+        ]
+      },
+      "523": {
+        "clip": "video_000/clip_000",
+        "camera": "cam1",
+        "frame": 523,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 4,
+        "state": "wrong_identity",
+        "detection_iou": 0.9458092659403678,
+        "detection_row": 1072,
+        "box": [
+          519.6727905273438,
+          448.42864990234375,
+          543.6375122070312,
+          514.0707397460938
+        ],
+        "height_px": 65.64208984375,
+        "score": 0.6526037454605103,
+        "pose_joints_ge03": 17,
+        "internal": {
+          "id": 4,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9935430288314819,
+        "previous_reference_pose_distance": 0.0729510709643364,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.15,
+            "appearance_similarity": 0.7772209644317627,
+            "appearance_cost": 0.669676661491394,
+            "similarity": 0.5664188474416733,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1071,
+                "iou": 0.9577516304714355,
+                "similarity": 1.9646103546408686
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.6712813292043623,
+            "pose_cost": 0.04142128676176071,
+            "appearance_similarity": 0.9604273438453674,
+            "appearance_cost": 0.7937473058700562,
+            "similarity": 1.4707762699919162,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 1071,
+                "iou": 0.0,
+                "similarity": 0.647809362411499
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.909176481473059,
+            "pose_cost": 0.01094266064465046,
+            "appearance_similarity": 0.9488635063171387,
+            "appearance_cost": 0.7949301600456238,
+            "similarity": 1.733735741260261,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 1071,
+                "iou": 0.0,
+                "similarity": 0.6414066836237907
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "video_000/clip_007": {
+      "135": {
+        "clip": "video_000/clip_007",
+        "camera": "cam1",
+        "frame": 135,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 4,
+        "state": "correct",
+        "detection_iou": 0.9429965386487701,
+        "detection_row": 275,
+        "box": [
+          381.4544372558594,
+          462.18701171875,
+          426.9450378417969,
+          516.510009765625
+        ],
+        "height_px": 54.322998046875,
+        "score": 0.7093839645385742,
+        "pose_joints_ge03": 17,
+        "internal": {
+          "id": 4,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9819874167442322,
+        "previous_reference_pose_distance": 0.17646299302577972,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.08297831118106842,
+            "appearance_similarity": 0.7954761981964111,
+            "appearance_cost": 0.6756991147994995,
+            "similarity": 0.6592902287840843,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 274,
+                "iou": 0.8846410409914962,
+                "similarity": 1.8630185102480166
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.7247517477707837,
+            "pose_cost": 0.03759586662054062,
+            "appearance_similarity": 0.9503379464149475,
+            "appearance_cost": 0.8142224550247192,
+            "similarity": 1.564874702318189,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 274,
+                "iou": 0.0,
+                "similarity": 0.5591262385249138
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.8181237116797762,
+            "pose_cost": 0.026469448953866957,
+            "appearance_similarity": 0.976530134677887,
+            "appearance_cost": 0.8454545736312866,
+            "similarity": 1.6969025172634917,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 274,
+                "iou": 0.0,
+                "similarity": 0.6901663586497306
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "video_001/clip_001": {
+      "963": {
+        "clip": "video_001/clip_001",
+        "camera": "cam1",
+        "frame": 963,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": null,
+        "state": "miss",
+        "detection_iou": 0.9266998357090829,
+        "detection_row": 3187,
+        "box": [
+          520.2568359375,
+          449.6343078613281,
+          541.9337768554688,
+          507.4051818847656
+        ],
+        "height_px": 57.7708740234375,
+        "score": 0.5856903195381165,
+        "pose_joints_ge03": 17,
+        "internal": {
+          "id": 4,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.991900622844696,
+        "previous_reference_pose_distance": 0.04885423555970192,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.14386231005191802,
+            "appearance_similarity": 0.7486836910247803,
+            "appearance_cost": 0.7103347182273865,
+            "similarity": 0.6074436756369365,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3185,
+                "iou": 0.9324555923214453,
+                "similarity": 1.969747116007013
+              },
+              {
+                "row": 3186,
+                "iou": 0.0,
+                "similarity": 0.5646831627832267
+              },
+              {
+                "row": 3188,
+                "iou": 0.0,
+                "similarity": 0.5993706259596181
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.6275994644573923,
+            "pose_cost": 0.11673487722873688,
+            "appearance_similarity": 0.975974440574646,
+            "appearance_cost": 0.8169242739677429,
+            "similarity": 1.2882854289840904,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3185,
+                "iou": 0.0,
+                "similarity": 0.4532132947226586
+              },
+              {
+                "row": 3186,
+                "iou": 0.0,
+                "similarity": 0.5718320050481999
+              },
+              {
+                "row": 3188,
+                "iou": 0.8629323540457848,
+                "similarity": 1.7025237936304571
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.8656649283660208,
+            "pose_cost": 0.007328135333955287,
+            "appearance_similarity": 0.731042742729187,
+            "appearance_cost": 0.624062180519104,
+            "similarity": 1.5242857415076885,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 3185,
+                "iou": 0.0,
+                "similarity": 0.4332578444836763
+              },
+              {
+                "row": 3186,
+                "iou": 0.0,
+                "similarity": 0.5201118105842031
+              },
+              {
+                "row": 3188,
+                "iou": 0.5052869028034119,
+                "similarity": 1.064754456486909
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 7,
+            "iou": 0.0,
+            "pose_cost": 0.0812911033630371,
+            "appearance_similarity": 0.8034957051277161,
+            "appearance_cost": 0.7359760403633118,
+            "similarity": 0.7113848621545981,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3185,
+                "iou": 0.0,
+                "similarity": 0.6023024709345511
+              },
+              {
+                "row": 3186,
+                "iou": 0.8565240315445664,
+                "similarity": 1.7719449629827126
+              },
+              {
+                "row": 3188,
+                "iou": 0.0,
+                "similarity": 0.6393666614714707
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 8,
+            "iou": 0.23302049669241817,
+            "pose_cost": 0.07349632233381272,
+            "appearance_similarity": 0.7854253053665161,
+            "appearance_cost": 0.6717157363891602,
+            "similarity": 0.8312399107477656,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3185,
+                "iou": 0.0,
+                "similarity": 0.5436614513397217
+              },
+              {
+                "row": 3186,
+                "iou": 0.0,
+                "similarity": 0.5270357400178909
+              },
+              {
+                "row": 3188,
+                "iou": 0.5690845450832918,
+                "similarity": 1.1157363018467499
+              }
+            ]
+          }
+        ]
+      },
+      "966": {
+        "clip": "video_001/clip_001",
+        "camera": "cam1",
+        "frame": 966,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": null,
+        "state": "miss",
+        "detection_iou": 0.9371655518686521,
+        "detection_row": 3199,
+        "box": [
+          522.7216796875,
+          449.4810791015625,
+          544.2974853515625,
+          507.7755432128906
+        ],
+        "height_px": 58.294464111328125,
+        "score": 0.7492199540138245,
+        "pose_joints_ge03": 17,
+        "internal": {
+          "id": 4,
+          "hit_streak": 6,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9834416508674622,
+        "previous_reference_pose_distance": 0.07994350045919418,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.13138139247894287,
+            "appearance_similarity": 0.758651852607727,
+            "appearance_cost": 0.7151973843574524,
+            "similarity": 0.634360116396069,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3197,
+                "iou": 0.9356658799103886,
+                "similarity": 1.9709506999105
+              },
+              {
+                "row": 3198,
+                "iou": 0.0,
+                "similarity": 0.5550145247302322
+              },
+              {
+                "row": 3200,
+                "iou": 0.0,
+                "similarity": 0.5342224371074997
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.4956254454210604,
+            "pose_cost": 0.14358514845371245,
+            "appearance_similarity": 0.9727277755737305,
+            "appearance_cost": 0.881385087966919,
+            "similarity": 1.2486224319660115,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3197,
+                "iou": 0.0,
+                "similarity": 0.5988220952573196
+              },
+              {
+                "row": 3198,
+                "iou": 0.0,
+                "similarity": 0.5403086564006754
+              },
+              {
+                "row": 3200,
+                "iou": 0.5722112789429121,
+                "similarity": 1.1205161024752186
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.8813369430105196,
+            "pose_cost": 0.011991525068879128,
+            "appearance_similarity": 0.7521321773529053,
+            "appearance_cost": 0.6954967379570007,
+            "similarity": 1.6126345668738011,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 3197,
+                "iou": 0.0,
+                "similarity": 0.6103049804381411
+              },
+              {
+                "row": 3198,
+                "iou": 0.0,
+                "similarity": 0.49217480808682473
+              },
+              {
+                "row": 3200,
+                "iou": 0.23958911368609978,
+                "similarity": 1.0058972237292472
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 7,
+            "iou": 0.0,
+            "pose_cost": 0.07384339570999145,
+            "appearance_similarity": 0.8157927989959717,
+            "appearance_cost": 0.7418273091316223,
+            "similarity": 0.7274548354175048,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3197,
+                "iou": 0.0,
+                "similarity": 0.5964583337038851
+              },
+              {
+                "row": 3198,
+                "iou": 0.8548799232735999,
+                "similarity": 1.7798861554028926
+              },
+              {
+                "row": 3200,
+                "iou": 0.0,
+                "similarity": 0.5943929557395438
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 8,
+            "iou": 0.15826396195128045,
+            "pose_cost": 0.0744493693113327,
+            "appearance_similarity": 0.7945437431335449,
+            "appearance_cost": 0.728981614112854,
+            "similarity": 0.8127962067528017,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 3197,
+                "iou": 0.0,
+                "similarity": 0.5911599963903427
+              },
+              {
+                "row": 3198,
+                "iou": 0.0,
+                "similarity": 0.5635326713323593
+              },
+              {
+                "row": 3200,
+                "iou": 0.8860122342402497,
+                "similarity": 1.6314330478007355
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "video_002/clip_013": {
+      "184": {
+        "clip": "video_002/clip_013",
+        "camera": "cam1",
+        "frame": 184,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 4,
+        "state": "correct",
+        "detection_iou": 0.9082694004708104,
+        "detection_row": 372,
+        "box": [
+          582.3696899414062,
+          455.7271728515625,
+          608.931884765625,
+          506.80572509765625
+        ],
+        "height_px": 51.07855224609375,
+        "score": 0.33824044466018677,
+        "pose_joints_ge03": 15,
+        "internal": {
+          "id": 4,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9412685632705688,
+        "previous_reference_pose_distance": 0.308391273021698,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.15,
+            "appearance_similarity": 0.7576574087142944,
+            "appearance_cost": 0.6563905477523804,
+            "similarity": 0.48801234588027,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 370,
+                "iou": 0.8922947048397769,
+                "similarity": 1.8840333081038703
+              },
+              {
+                "row": 371,
+                "iou": 0.0,
+                "similarity": 0.4880489245057106
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.5059622078587604,
+            "pose_cost": 0.07619212567806244,
+            "appearance_similarity": 0.9504255056381226,
+            "appearance_cost": 0.7241254448890686,
+            "similarity": 1.1845897547354294,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 370,
+                "iou": 0.0,
+                "similarity": 0.39837960004806516
+              },
+              {
+                "row": 371,
+                "iou": 0.8463787124244911,
+                "similarity": 1.6037193552343592
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.791587401027102,
+            "pose_cost": 0.046258690953254696,
+            "appearance_similarity": 0.9323021173477173,
+            "appearance_cost": 0.71901935338974,
+            "similarity": 1.4853414153999276,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 370,
+                "iou": 0.0,
+                "similarity": 0.46295231617987154
+              },
+              {
+                "row": 371,
+                "iou": 0.515147986998724,
+                "similarity": 1.1222844633180071
+              }
+            ]
+          }
+        ]
+      },
+      "186": {
+        "clip": "video_002/clip_013",
+        "camera": "cam1",
+        "frame": 186,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 2,
+        "state": "wrong_identity",
+        "detection_iou": 0.9343488244657404,
+        "detection_row": 377,
+        "box": [
+          578.3768920898438,
+          456.70037841796875,
+          618.5702514648438,
+          509.7239990234375
+        ],
+        "height_px": 53.02362060546875,
+        "score": 0.42594558000564575,
+        "pose_joints_ge03": 16,
+        "internal": {
+          "id": 2,
+          "hit_streak": 3,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9876309037208557,
+        "previous_reference_pose_distance": 0.08205727487802505,
+        "emitted_id": 2,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.15,
+            "appearance_similarity": 0.7520580291748047,
+            "appearance_cost": 0.6600024104118347,
+            "similarity": 0.4708243928849697,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 376,
+                "iou": 0.8927292631457437,
+                "similarity": 1.915372334931313
+              },
+              {
+                "row": 378,
+                "iou": 0.0,
+                "similarity": 0.4804451338946819
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.8744891666427952,
+            "pose_cost": 0.012308591231703758,
+            "appearance_similarity": 0.9556694626808167,
+            "appearance_cost": 0.7496428489685059,
+            "similarity": 1.6532530669674974,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 376,
+                "iou": 0.0,
+                "similarity": 0.43302558213472364
+              },
+              {
+                "row": 378,
+                "iou": 0.5420836459852274,
+                "similarity": 1.1937614433474357
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.6479767691343361,
+            "pose_cost": 0.07422645986080169,
+            "appearance_similarity": 0.90395188331604,
+            "appearance_cost": 0.7226184606552124,
+            "similarity": 1.308638869412177,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 376,
+                "iou": 0.0,
+                "similarity": 0.4788224784657359
+              },
+              {
+                "row": 378,
+                "iou": 0.88853466703375,
+                "similarity": 1.6319998320825877
+              }
+            ]
+          }
+        ]
+      },
+      "187": {
+        "clip": "video_002/clip_013",
+        "camera": "cam1",
+        "frame": 187,
+        "person": "B",
+        "role": "player",
+        "near_far": "far",
+        "track_id": 4,
+        "state": "correct",
+        "detection_iou": 0.8427963020012921,
+        "detection_row": 380,
+        "box": [
+          576.6094970703125,
+          457.306396484375,
+          603.2069091796875,
+          499.7933654785156
+        ],
+        "height_px": 42.486968994140625,
+        "score": 0.61090087890625,
+        "pose_joints_ge03": 15,
+        "internal": {
+          "id": 4,
+          "hit_streak": 6,
+          "time_since_update": 0
+        },
+        "previous_reference_cosine": 0.9220668077468872,
+        "previous_reference_pose_distance": 0.8541455268859863,
+        "emitted_id": 4,
+        "matching": [
+          {
+            "stage": "first",
+            "track_id": 1,
+            "iou": 0.0,
+            "pose_cost": 0.15,
+            "appearance_similarity": 0.7598037719726562,
+            "appearance_cost": 0.6691058278083801,
+            "similarity": 0.4642579838633537,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 379,
+                "iou": 0.8945986131027465,
+                "similarity": 1.8963578773483758
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 2,
+            "iou": 0.454541416208531,
+            "pose_cost": 0.12812182903289795,
+            "appearance_similarity": 0.9217875599861145,
+            "appearance_cost": 0.7966103553771973,
+            "similarity": 1.1662347977266565,
+            "proposed": false,
+            "accepted": false,
+            "competing_detections": [
+              {
+                "row": 379,
+                "iou": 0.0,
+                "similarity": 0.5014870189130306
+              }
+            ]
+          },
+          {
+            "stage": "first",
+            "track_id": 4,
+            "iou": 0.7282473437046548,
+            "pose_cost": 0.06969159990549087,
+            "appearance_similarity": 0.9643463492393494,
+            "appearance_cost": 0.858636200428009,
+            "similarity": 1.54005818772371,
+            "proposed": true,
+            "accepted": true,
+            "competing_detections": [
+              {
+                "row": 379,
+                "iou": 0.0,
+                "similarity": 0.5332799911499023
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "duplicate_detections": {
+    "video_000/clip_000": {
+      "frame": 476,
+      "rows": [
+        974,
+        975,
+        976
+      ],
+      "boxes": [
+        [
+          1364.6744384765625,
+          539.8668823242188,
+          1468.598876953125,
+          743.3756103515625
+        ],
+        [
+          546.5491943359375,
+          448.1631774902344,
+          576.8946533203125,
+          510.8996276855469
+        ],
+        [
+          540.5125732421875,
+          447.97845458984375,
+          576.6722412109375,
+          511.1353454589844
+        ]
+      ],
+      "scores": [
+        0.8693535327911377,
+        0.4315466284751892,
+        0.39579272270202637
+      ],
+      "far_pair_iou": 0.8224854469299316
+    },
+    "video_002/clip_013": {
+      "frame": 176,
+      "rows": [
+        353,
+        354,
+        355
+      ],
+      "boxes": [
+        [
+          979.7548828125,
+          532.1616821289062,
+          1050.404296875,
+          749.5064697265625
+        ],
+        [
+          589.1735229492188,
+          457.939697265625,
+          612.9796752929688,
+          498.0899658203125
+        ],
+        [
+          588.0923461914062,
+          457.7236328125,
+          622.9465942382812,
+          509.6323547363281
+        ]
+      ],
+      "scores": [
+        0.904477059841156,
+        0.4151929020881653,
+        0.31096288561820984
+      ],
+      "far_pair_iou": 0.5283012390136719
+    }
+  }
+}

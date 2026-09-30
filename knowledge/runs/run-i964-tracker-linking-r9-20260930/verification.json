@@ -1,0 +1,35 @@
+{
+  "status": "ok",
+  "camera_conditions_verified": 108,
+  "new_online_repeats_equal": 24,
+  "historical_strata_equal": 96,
+  "aflink_merges": {
+    "strongsort_pp__clipreid_vitb16_market1501": 2,
+    "best_kpr__kpr_market_solider_parts": 28
+  },
+  "gsi_synthetic_counts": {
+    "strongsort_pp__clipreid_vitb16_market1501": {
+      "all": 1312,
+      "selected_tracks": 247
+    },
+    "best_kpr__kpr_market_solider_parts": {
+      "all": 824,
+      "selected_tracks": 114
+    }
+  },
+  "videos": {
+    "review.mp4": {
+      "sha256": "dafc084c700c62715767a5b24d0e6f896f327dd2d116f829853442e6e46cd5e4",
+      "bytes": 3031546,
+      "frames": 300
+    },
+    "cam1-diagnosis.mp4": {
+      "sha256": "336030b9b6ccd9f54d08737bda7e6ce11a321c6c6b444ba79646ad63dfab31ac",
+      "bytes": 2551881,
+      "frames": 225
+    }
+  },
+  "run_bytes": 21758035,
+  "execution_code_files_verified_against_commit": 52,
+  "execution_commit": "ebaaa0f13852d10ce7232ef54b306d377fd5fdbd"
+}

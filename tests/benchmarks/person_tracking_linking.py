@@ -343,10 +343,13 @@ def main() -> None:
             assess_variant(args, variant)
         table = summarize(args, (*VARIANTS, LAB, STRONG))
         chosen = recommendation([r for r in table if r['variant'] in (DEEP, LAB, STRONG)])
-        write_json_atomic(args.report / 'kpr_method.json', {'chosen': chosen, 'comparison': record_file(args.report / 'comparison.json'),
+        frozen = args.report / 'base-comparison.json'
+        frozen.write_bytes((args.report / 'comparison.json').read_bytes())
+        write_json_atomic(args.report / 'kpr_method.json', {'chosen': chosen, 'comparison': record_file(frozen),
                                                           'rule': 'precommitted raw IDF1, switches, fragments, name'})
     elif args.phase == 'kpr':
         choice = json.loads((args.report / 'kpr_method.json').read_text())
+        checked(choice['comparison'])
         track_variant(args, NATIVE, choice['chosen'], KPR)
         assess_variant(args, NATIVE)
         summarize(args, (*VARIANTS, LAB, STRONG, NATIVE))

@@ -86,7 +86,11 @@ def render(report: Path) -> None:
                 cams = []
                 for record in records:
                     with np.load(checked(result['cameras'][record['camera']]['arrays']), allow_pickle=False) as a:
-                        cams.append(dict(a))
+                        archive = dict(a)
+                    if 'gsi' in result['cameras'][record['camera']]['tracking']:
+                        with np.load(checked(result['cameras'][record['camera']]['tracking']['gsi']), allow_pickle=False) as gsi:
+                            archive.update(gsi_boxes=gsi['boxes'], gsi_interpolated=gsi['interpolated'])
+                    cams.append(archive)
                 arrays.append(cams)
             labels = ClipLabels.load(Path(records[0]['label_path']))
             captures = [cv2.VideoCapture(str(checked(r['video']))) for r in records]
@@ -118,6 +122,9 @@ def render(report: Path) -> None:
                                 tid = int(archive['track_ids'][row])
                                 unit = local.get(tid)
                                 caption, color = f'ID {tid}', (255, 220, 0)
+                                linked = np.flatnonzero(archive['group_origins'][:, frame] == row)
+                                if len(linked):
+                                    caption += f' G{linked[0]}'
                                 if unit is not None:
                                     caption += f' {unit["person"]}'
                                     color = (0, 210, 0) if status.get((cam, frame, unit['person'])) == 'correct' else (230, 30, 230)
@@ -128,6 +135,10 @@ def render(report: Path) -> None:
                                                for e in result['metrics'][field]):
                                             caption += f' {tag}'
                                 draw(tile, archive['boxes'][row, frame], caption, color)
+                            if 'gsi_boxes' in archive:
+                                synthetic = archive['gsi_interpolated'][:, frame] & archive['selected'].any(1)
+                                for row in np.flatnonzero(synthetic):
+                                    draw(tile, archive['gsi_boxes'][row, frame], f'GSI ID {archive["track_ids"][row]} synthetic', (180, 130, 30))
                             for unit in (u for u in units if u['camera'] == cam and u['frame'] == frame and u['role'] == 'player' and u['track_id'] is None):
                                 refs = labels.cameras[cam]
                                 at = refs.at(frame)
@@ -137,9 +148,11 @@ def render(report: Path) -> None:
                                 draw(tile, box, f'MISS {unit["person"]}', (230, 30, 230))
                             cv2.putText(tile, cam, (8, 25), cv2.FONT_HERSHEY_SIMPLEX, .7, (255, 255, 255), 2)
                             metrics = result['cameras'][cam]['metrics']
-                            cv2.rectangle(tile, (0, 338), (470, 360), (0, 0, 0), -1)
-                            cv2.putText(tile, f'clip IDF1 {metrics["idf1"]:.3f}  switches {metrics["id_switches"]}  fragments {metrics["fragments"]}',
-                                        (8, 354), cv2.FONT_HERSHEY_SIMPLEX, .48, (255, 255, 255), 1, cv2.LINE_AA)
+                            group_metrics = result['cameras'][cam].get('group_metrics')
+                            group_caption = '' if group_metrics is None else f' group {group_metrics["idf1"]:.3f}'
+                            cv2.rectangle(tile, (0, 338), (640, 360), (0, 0, 0), -1)
+                            cv2.putText(tile, f'IDF1 raw {metrics["idf1"]:.3f}{group_caption}  switch {metrics["id_switches"]}  frag {metrics["fragments"]}',
+                                        (8, 354), cv2.FONT_HERSHEY_SIMPLEX, .46, (255, 255, 255), 1, cv2.LINE_AA)
                             if result['cameras'][cam]['tracking']['status'] != 'ok':
                                 cv2.putText(tile, 'TRACKER STOPPED', (120, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 0, 255), 2)
                             canvas[y + 40:y + 400, view * 640:(view + 1) * 640] = tile
