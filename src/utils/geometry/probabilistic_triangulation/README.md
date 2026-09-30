@@ -90,6 +90,21 @@ Hessian・積分共分散が非SPDならerrorとし、jitterや別方式への�
 ray積分は全targetを評価してevidence/momentsを返す。全組合せを保持したまま、
 各productを1つのGaussianへ要約する近似も従来どおり残る。
 
+`method: adaptive_ray`は研究用の明示的な選択肢。複数視点の光線座標を
+`mode + L tan(πu/2)`で有限cubeへ写し、正の重みを持つ5/7点Gauss–Legendre則で
+質量・priorで白色化したworldの1次/2次momentを同時に積分する。
+埋め込み則の差が大きいcellを8分割し、全cellの積分を保持する。world箱の切断はない。
+単眼は解析depth＋Hermite角度則を維持する。Hessianが非正定値なら、明示した
+適応chart方針により白色化画素/log-depthの単位軸を使用し、
+`metric_is_local_hessian=false`を記録する。返却共分散のjitter修復は行わない。
+
+成分ごとの方式は`adaptive_ray:<reason>`、埋め込み差の合計/質量、cell数、
+評価点数、内側目標の達成を`component_integration_diagnostics`へ返す。
+この差は厳密な上界ではなく、領域選択の補助推定。外側の収束定義は下記の4差分のまま。
+内側capの到達だけでは収束にせず、各外側段階では実際に追加細分化して差を検査する。
+積分予算の`relative_errors`は段階ごとに減少、`max_cells`は増加を要求する。
+離れたmodeの共通見落としは依然保証しない。通常生成の既定方式は監査結果を確認して決める。
+
 ## 積分の収束判定
 
 `convergence.triangulate_converged`は明示した積分予算を増やし、正則Aの結果と

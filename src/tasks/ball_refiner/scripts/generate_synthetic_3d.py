@@ -22,6 +22,7 @@ PATH_BOUNDARY = NonHydraPathBoundary(
     fields=(
         BoundaryPathField("plan", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
         BoundaryPathField("output", PathRole.DATA, PathDirection.OUTPUT, PathKind.DIRECTORY),
+        BoundaryPathField("calibration_report", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, required=False, must_exist=True),
     ),
 )
 
@@ -31,6 +32,7 @@ def main() -> None:
     for name in ("plan", "output", "project-root", "data-root"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--mode", choices=("smoke", "dev", "pilot"), required=True)
+    parser.add_argument("--calibration-report", type=Path)
     args = parser.parse_args()
     if not all(p.is_absolute() for p in (args.plan, args.output, args.project_root, args.data_root)):
         parser.error("All paths must be absolute")
@@ -41,8 +43,12 @@ def main() -> None:
         external_asset_root=args.output.parent,
     )
     resolver = PathResolver(roots)
-    paths = PATH_BOUNDARY.validate({"plan": args.plan, "output": args.output}, resolver=resolver)
-    plan = load_plan(paths.declared("plan").path, resolver)
+    arguments = {"plan": args.plan, "output": args.output}
+    if args.calibration_report is not None:
+        arguments["calibration_report"] = args.calibration_report
+    paths = PATH_BOUNDARY.validate(arguments, resolver=resolver)
+    report = paths.declared("calibration_report") if "calibration_report" in paths else None
+    plan = load_plan(paths.declared("plan").path, resolver, calibration_report=report.path if report is not None else None)
     generate_dataset(plan, paths.declared("output").path, mode=args.mode)
 
 
