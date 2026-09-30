@@ -1,0 +1,2 @@
+[worker] 2026-10-01T05:31:02+09:00 running: 1790800194473949395_4059977_i936-combined512-physics10-r16-s936-20261001.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790800194473949395_4059977_i936-combined512-physics10-r16-s936-20261001.log)
+[worker] 2026-10-01T06:20:35+09:00 done: 1790800194473949395_4059977_i936-combined512-physics10-r16-s936-20261001.job resource=all slot=all
