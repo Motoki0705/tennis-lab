@@ -106,8 +106,8 @@ seed42に加えて43・44で再現性を確認し、再現しない条件も報�
 共分散だけを倍率で補正し、平均・混合重み・存在確率は固定する。clip単位の交差検証で
 HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き較正artifactを保存する。
 #936へは補正後の全GMM残差bankを渡し、旧bank/合成dataは対照として保持する。
-pipelineの既定値は、較正・追加seed確認・元動画3cameraのexecute/load検証が揃ってから
-変更する。それまでは既存YAML・asset参照を維持する。#964完了前にperson/pose/court文脈を追加しない。
+pipelineの既定値は[専用recipeのB判定](../../tennis_scene/pipeline/README.md#e9anchored-seed42共分散補正の明示option)に従う。
+元動画check回収後も既存YAML・asset参照を維持している。#964完了前にperson/pose/court文脈を追加しない。
 
 `refiner_2d/calibration.py`はcheckpoint SHA256とartifact SHA256を必須とする明示的な読込API。
 `CovarianceCalibration.apply()`はΣをs倍（Choleskyを√s倍）し、全成分の平均とlogitを保持する。
