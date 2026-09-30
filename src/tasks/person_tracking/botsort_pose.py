@@ -20,6 +20,7 @@ from src.tasks.person_tracking.contracts import (
     TrackAssignments,
     TrackCapacityExceeded,
 )
+from src.tasks.person_tracking.pose_distance import local_pose, pose_distance
 from src.utils.geometry.bbox import pairwise_iou
 
 
@@ -36,7 +37,7 @@ class BotSortPoseConfig:
     pose_weight: float = .15
     ema: float = .9
     max_gap_s: float = 1.
-    max_tracks: int = 6
+    max_tracks: int | None = None  # raw people are uncapped; selection owns the player cap
 
     def __post_init__(self) -> None:
         probabilities = (self.low_score, self.high_score, self.min_iou, self.max_cosine_distance,
@@ -44,7 +45,8 @@ class BotSortPoseConfig:
         if not np.isfinite([*probabilities, self.pose_scale, self.max_gap_s]).all() \
                 or not all(0 <= v <= 1 for v in probabilities) or not self.low_score < self.high_score \
                 or self.appearance_weight + self.pose_weight >= 1 or self.pose_scale <= 0 \
-                or self.max_gap_s <= 0 or not 1 <= self.min_pose_joints <= 17 or self.max_tracks < 1:
+                or self.max_gap_s <= 0 or not 1 <= self.min_pose_joints <= 17 \
+                or (self.max_tracks is not None and self.max_tracks < 1):
             raise ValueError("Invalid BoT-SORT appearance/pose configuration")
 
 
@@ -65,12 +67,6 @@ class _Track:
 
 def _xywh(box: NDArray[np.float32]) -> NDArray[np.float64]:
     return np.concatenate(((box[:2] + box[2:]) / 2, box[2:] - box[:2])).astype(np.float64)
-
-
-def _local_pose(box: NDArray[np.float32], pose: NDArray[np.float32]) -> NDArray[np.float32]:
-    normalized = pose.copy()
-    normalized[:, :2] = (pose[:, :2] - box[:2]) / (box[2:] - box[:2])
-    return normalized
 
 
 DEFAULT_CONFIG = BotSortPoseConfig()
@@ -104,12 +100,10 @@ class BotSortPose:
                         continue  # high IoU cannot erase reliable contradictory appearance
                     total += cfg.appearance_weight * appearance
                     weight += cfg.appearance_weight
-                pose = _local_pose(features.boxes[row], features.poses[row])
-                confident = (track.pose[:, 2] >= cfg.pose_confidence) & (pose[:, 2] >= cfg.pose_confidence)
-                if int(confident.sum()) >= cfg.min_pose_joints:
-                    joint_weights = np.minimum(track.pose[confident, 2], pose[confident, 2])
-                    distance = np.linalg.norm(track.pose[confident, :2] - pose[confident, :2], axis=1)
-                    total += cfg.pose_weight * min(1., float(np.average(distance, weights=joint_weights)) / cfg.pose_scale)
+                distance = pose_distance(track.pose, local_pose(features.boxes[row], features.poses[row]),
+                                         confidence=cfg.pose_confidence, min_joints=cfg.min_pose_joints, scale=cfg.pose_scale)
+                if distance is not None:
+                    total += cfg.pose_weight * distance
                     weight += cfg.pose_weight
                 cost[i, j] = total / weight
         return cost
@@ -145,12 +139,12 @@ class BotSortPose:
         matches.extend(self._match(remaining_active, features, low))
         assigned = {row for _, row in matches}
         births = [int(row) for row in high if row not in assigned]
-        if self.next_id - 1 + len(births) > cfg.max_tracks:
+        if cfg.max_tracks is not None and self.next_id - 1 + len(births) > cfg.max_tracks:
             raise TrackCapacityExceeded(f"Cumulative camera IDs would exceed {cfg.max_tracks} at frame {self.frame}; no IDs recycled")
         for track, row in matches:
             track.mean, track.covariance = self.filter.update(track.mean, track.covariance, _xywh(features.boxes[row]))
             track.last_frame = self.frame
-            track.pose = _local_pose(features.boxes[row], features.poses[row])
+            track.pose = local_pose(features.boxes[row], features.poses[row])
             # Low-confidence observations can keep a track but do not contaminate its appearance EMA.
             if features.scores[row] >= cfg.high_score and features.appearance_valid[row]:
                 embedded = features.embeddings[row]
@@ -162,7 +156,7 @@ class BotSortPose:
         for row in births:
             mean, covariance = self.filter.initiate(_xywh(features.boxes[row]))
             created = _Track(self.next_id, mean, covariance, self.frame,
-                             _local_pose(features.boxes[row], features.poses[row]),
+                             local_pose(features.boxes[row], features.poses[row]),
                              features.embeddings[row].copy() if features.appearance_valid[row] else None)
             self.next_id += 1
             self.tracks.append(created)

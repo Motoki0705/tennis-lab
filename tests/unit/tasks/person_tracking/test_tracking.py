@@ -5,6 +5,10 @@ import pytest
 
 from src.tasks.person_tracking.botsort_pose import BotSortPose, BotSortPoseConfig
 from src.tasks.person_tracking.contracts import DetectionFeatures, TrackCapacityExceeded
+from src.tasks.person_tracking.deep_ocsort_pose import (
+    DeepOCSortPose,
+    DeepOCSortPoseConfig,
+)
 from src.tasks.person_tracking.methods import build_tracker
 
 
@@ -15,8 +19,9 @@ def features(frame: int, boxes: list[list[float]], embeddings: list[list[float]]
                              np.zeros((n, 17, 3), np.float32), np.asarray(embeddings, np.float32).reshape(n, 2), np.ones(n, bool))
 
 
-def test_appearance_keeps_id_when_detection_order_changes_at_crossing() -> None:
-    tracker = BotSortPose(30.)
+@pytest.mark.parametrize('method', ['botsort_pose', 'deep_ocsort_pose'])
+def test_appearance_keeps_id_when_detection_order_changes_at_crossing(method: str) -> None:
+    tracker = build_tracker(method, fps=30.)
     first = features(0, [[0, 0, 20, 40], [10, 0, 30, 40]], [[1, 0], [0, 1]])
     assert tracker.update(first).track_ids.tolist() == [1, 2]
     crossing = features(1, [[5, 0, 25, 40], [5, 0, 25, 40]], [[0, 1], [1, 0]])
@@ -43,8 +48,9 @@ def test_gap_recovery_emits_only_observations_and_expires_after_elapsed_time() -
     assert tracker.update(features(6, [[0, 0, 20, 40]], [[1, 0]])).track_ids.tolist() == [2]
 
 
-def test_pose_breaks_equal_appearance_and_iou_tie_and_low_confidence_is_masked() -> None:
-    tracker = BotSortPose(30.)
+@pytest.mark.parametrize('method', ['botsort_pose', 'deep_ocsort_pose'])
+def test_pose_breaks_equal_appearance_and_iou_tie_and_low_confidence_is_masked(method: str) -> None:
+    tracker = build_tracker(method, fps=30.)
     first = features(0, [[0, 0, 20, 40], [0, 0, 20, 40]], [[1, 0], [1, 0]])
     first.poses[0, :, :] = [2, 4, 1]
     first.poses[1, :, :] = [18, 36, 1]
@@ -86,3 +92,34 @@ def test_masked_appearance_is_explicit_and_malformed_features_fail() -> None:
     assert tracker.update(masked).track_ids.tolist() == [1]
     with pytest.raises(ValueError, match='unit norm'):
         replace(first, embeddings=np.full((1, 2), .2, np.float32))
+
+
+@pytest.mark.parametrize('method', ['botsort_pose', 'deep_ocsort_pose'])
+def test_raw_people_have_no_six_person_cap_and_instances_have_local_ids(method: str) -> None:
+    a, b = build_tracker(method, fps=30.), build_tracker(method, fps=30.)
+    frame = features(0, [[float(i * 100), 0, float(i * 100 + 20), 40] for i in range(8)], [[1, 0]] * 8)
+    assert a.update(frame).track_ids.tolist() == list(range(1, 9))
+    assert b.update(frame).track_ids.tolist() == list(range(1, 9))
+
+
+def test_deep_ocsort_reupdates_after_gap_without_emitting_virtual_rows() -> None:
+    tracker = DeepOCSortPose(30., DeepOCSortPoseConfig(min_hits=1))
+    for f in range(3):
+        assert tracker.update(features(f, [[float(f), 0, float(f + 20), 40]], [[1, 0]])).track_ids.tolist() == [1]
+    for f in (3, 4):
+        assert tracker.update(features(f, [], [])).detection_rows.size == 0
+    result = tracker.update(features(5, [[5, 0, 25, 40]], [[1, 0]]))
+    assert result.track_ids.tolist() == [1]
+    assert result.detection_rows.tolist() == [50]
+    assert np.isfinite(tracker.tracks[0].state.kf.P).all()
+    with pytest.raises(ValueError, match='every frame'):
+        tracker.update(features(7, [], []))
+
+
+def test_deep_ocsort_missing_appearance_recovers_explicitly() -> None:
+    tracker = DeepOCSortPose(30.)
+    first = features(0, [[0, 0, 20, 40]], [[1, 0]])
+    tracker.update(replace(first, embeddings=np.zeros((1, 2), np.float32), appearance_valid=np.zeros(1, bool)))
+    assert not tracker.tracks[0].has_appearance
+    assert tracker.update(features(1, [[0, 0, 20, 40]], [[1, 0]])).track_ids.tolist() == [1]
+    assert tracker.tracks[0].has_appearance
