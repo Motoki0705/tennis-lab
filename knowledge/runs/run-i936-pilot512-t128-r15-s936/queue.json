@@ -1,0 +1,20 @@
+{
+  "queued_at": "2026-10-01T03:39:48.902357+09:00",
+  "job_id": "1790793588875019144_2458716_i936-pilot512-t128-r15-s936-20261001",
+  "state_observed": "jobs",
+  "resource": "all",
+  "head_at_enqueue": "aab2932c6fb22675e13a8db5580c792402778715",
+  "plan_sha256": "fa6fe42875a3a11283b0581f8ead0d6b64318b94f8b14230543f47123a9de334",
+  "pinned_files_verified": 64,
+  "command_byte_identical": true,
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-pilot512-t128-r14-s936/plan.json --device cuda",
+  "prequeue_issue_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5917428900",
+  "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1790793588875019144_2458716_i936-pilot512-t128-r15-s936-20261001.log",
+  "repro": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1790793588875019144_2458716_i936-pilot512-t128-r15-s936-20261001",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r14-pilot512-s936-t128-20k",
+  "preflight_output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r14-pilot512-s936-t128-20k-preflight.json",
+  "worker_pid": 3216003,
+  "after_running_job": "1790790062674261667_32446_i964-clip000-qualification-r14-20261001",
+  "available_host_bytes_at_enqueue": 13585059840,
+  "optional_followup_c": null
+}
