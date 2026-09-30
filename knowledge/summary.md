@@ -1,4 +1,4 @@
-<!-- knowledge-review: 8f3569e28e0f9285eff1c6dc2112167bcea71502e82738b6faa443af59930bac on 2026-10-01 -->
+<!-- knowledge-review: af2634dc2f173ca6680d76a68f5a1328dc79fe0817c643735f4110788cb9140d on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
