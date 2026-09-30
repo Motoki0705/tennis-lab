@@ -1,0 +1,18 @@
+{
+  "queued_at": "2026-10-01T01:23:41.384595+09:00",
+  "job_id": "1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001",
+  "state_observed": "jobs",
+  "resource": "all",
+  "head_at_enqueue": "53da4ff14b9a8f3212829292318cfd6901448b7a",
+  "plan_sha256": "fa6fe42875a3a11283b0581f8ead0d6b64318b94f8b14230543f47123a9de334",
+  "rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5915164321",
+  "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001.log",
+  "repro": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001",
+  "output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r14-pilot512-s936-t128-20k",
+  "preflight_output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r14-pilot512-s936-t128-20k-preflight.json",
+  "existing_worker_pid": 3216003,
+  "after_existing_job": "1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001",
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-pilot512-t128-r14-s936/plan.json --device cuda",
+  "add_stdout": "queued: 1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001.job\n",
+  "add_stderr": ""
+}
