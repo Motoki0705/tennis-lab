@@ -80,3 +80,49 @@ run20 directiveがrun19のcourt-only先行提案を上書きする。
 長期化と候補を保持する平均parameterizationの最大3案を事前固定して比較する。
 plannedはGPU実験の状態。ここまでのCPU診断は完了している。
 pipeline default、BallGMM2D契約、NLL目的を変更せず、court/person/poseとtestを使わない。
+
+## GPU投入前の3案固定
+
+正本は[plan.json](../../runs/run-i935-precision-variants-s42-r20-20260930/plan.json)、
+[実行command](../../runs/run-i935-precision-variants-s42-r20-20260930/command.txt)、
+[CPU preflight](../../runs/run-i935-precision-variants-s42-r20-20260930/preflight.json)。
+全678入力のhashを固定し、実行前後に照合する。全案がr18と同じdata manifestを生成し、
+4,910窓・source内訳・18選択clip・gap・教師が完全一致した。r18実checkpointの310frameをCPU再推論し、
+保存分布との既定許容差内の一致も確認した。出力root以外の変更因子は以下だけ。
+
+| 案 | r18からの因子 | 期待と反証 |
+|---|---|---|
+| absolute_12k | 12→48epoch、3,000→12,000step（同じ250step/epoch） | 平均の学習不足なら偏り/中央値が減る。一定LRの揺れなら延長だけでは解消しない可能性。 |
+| anchored_3k | 候補残差平均parameterizationのみ、3,000step | 3成分がscore上位候補を基準に±0.02uvの学習offsetを持ち、1成分は自由な平均。典型frameの候補精度を保つ。裾/欠損が退行する可能性も表で確認。 |
+| anchored_12k | 上記parameterization＋12,000step | absolute_12kとは方式だけ、anchored_3kとは長さだけの比較。両因子の併用で典型位置とgap NLLを両立できるか確認。 |
+
+全案はscratchからseed42、AdamW lr3e-4/weight_decay.01、batch32、source等比率、
+33frame/stride16、gap確率.5/長さ1,4,8,16、compile inductor/defaultを維持。
+同じMeiji選択側18clipのobserved/gap位置NLLの等重みでbestを選び、厳密改善時だけ更新するため同率は早いepoch。
+test・較正側・TrackNet/chatをcheckpoint選択へ使わない。
+anchored headの数学・完全な設定schema・無効候補時の自由平均・端点処理は
+[README](../../../src/tasks/ball_refiner/README.md#候補残差平均の明示的な実験設定)を正本とする。
+既存checkpointを変換したり、設定省略時に新方式を選んだりしない。
+新e9のrecall@3/@8はMeiji87.72/90.85%、TrackNet98.76/99.02%、chat87.45/89.04%。
+上位3候補外も含めて扱うため自由成分を残すが、この選択が最良とは未検証。
+
+評価は70val clip×2条件×3案の420 NPZ。r19と同じ2,048サンプル・seed1729・HDR50/90/95%、
+observed/source/camera/Meiji halfごとのp50/p90/p95、位置NLL・HDR coverageと面積、存在NLLを保存する。
+候補と教師はcache/storeから読み、r18 pilotとe9 detectorの**保存済み**同一frame指標を参照列にする。
+detector再推論はない。unknownはN/A、不在は存在NLLだけ、推定位置はobservedから分離。
+比較表は各案の評価JSONを検査してから生成し、途中状態を完了として公開しない。
+
+1queue job/resource=allの見積もりは**25–45分・peak VRAM2–4 GB・新規出力2 GB以内**。
+r18実測132.97秒/3,000stepから27,000stepの学習を約1,197秒と見積もり、
+cache/HDR評価・新compile cache・共有CPUの余裕を加えた。これは実測前の推定。
+wall時間はtimeout3585秒＋TERM後15秒KILLで最大1時間、PyTorch allocator6GiB capと
+device全体7.5GB停止監視（1秒poll）でgrant8GBへ余裕を持たせる。
+poll間の瞬間peakを完全保証する測定ではない。RAM8GiB以上で起動し、6GiB未満で停止。
+CPU数はtorch/OMP/MKL/OpenBLAS2、compile subprocess2、data loader0。
+新規出力は専用compiler cacheも含め4.5GBで停止監視し、worktree追加なしで全5GB予算内に収める。
+失敗・OOM・timeout時も再投入/精度変更/CPU fallback/学習延長を行わない。旧資産は全て保持する。
+
+通常検証はCPU計44件成功（診断3、モデル/anchor26、学習/参照比較15、全てpytest -n4）。
+CPU fullgraph capture、新anchorの勾配・初期peak保持・全gap・AMP・同score集合順序・設定欠落拒否・保存復元、
+実tiny cacheの学習→best復元→比較→bundle exportを検査した。ruff/mypyも成功。
+GPU実行・比較結果・実runtime/VRAM・最終CIはqueue回収後に追記する。これらを実施済みとは扱わない。
