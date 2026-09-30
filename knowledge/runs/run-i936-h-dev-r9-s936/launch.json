@@ -1,0 +1,28 @@
+{
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python",
+    "-u",
+    "-m",
+    "src.tasks.ball_refiner.scripts.generate_synthetic_3d",
+    "--project-root",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+    "--data-root",
+    "/home/kamimura/projects/tennis-lab/data",
+    "--plan",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+    "--mode",
+    "dev",
+    "--calibration-report",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-provisional-degradation-r5-s936/calibration.json"
+  ],
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "output": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+  "commit": "470de1a4d8fa29485c5385f80ab511b56fbd5946",
+  "started_unix": 1790738312.6762385,
+  "maximum_seconds": 5400,
+  "maximum_bytes": 750000000,
+  "minimum_available_bytes": 6442450944,
+  "status": "running"
+}
