@@ -1,0 +1,2998 @@
+{
+  "status": "complete",
+  "dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+  "manifest_sha256": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+  "rallies": [
+    {
+      "rally_id": "test-00000",
+      "seed": 3741586814,
+      "frames": 343,
+      "npz_sha256": "f21a07a43c3ca24d847e8e3a25a15554ecf19237acb26ba423c00245ea01ac0d",
+      "npz_bytes": 1808742,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 343,
+      "converged_frames": 0,
+      "zero_weight_components": 3712,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 263,
+      "presence_mass_max_error": 4.141952791858472e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00001",
+      "seed": 1606478505,
+      "frames": 266,
+      "npz_sha256": "822f645bc6c72b3c4d3c5d47f8865028dde9cec42ecbcec405d64a13d8ade93e",
+      "npz_bytes": 1433194,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 266,
+      "converged_frames": 0,
+      "zero_weight_components": 208,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 85,
+      "presence_mass_max_error": 3.3774786634133136e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00002",
+      "seed": 883072688,
+      "frames": 512,
+      "npz_sha256": "5658521817f4cde0a904e9c9ed1d8faacdf5a0a6387ca44add2ddf3337da0167",
+      "npz_bytes": 2784077,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 253,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.422895938382965e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00003",
+      "seed": 2488589600,
+      "frames": 512,
+      "npz_sha256": "ad929c02ca77bde547c9fe233aa2ac0ae8a2b25cdc05286a3b7622bbcbdfff3a",
+      "npz_bytes": 2784181,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 440,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 34,
+      "presence_mass_max_error": 3.73605322234738e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00004",
+      "seed": 3729168316,
+      "frames": 512,
+      "npz_sha256": "1df1314477248c5d949d98f115a6dcab7ba7dbc0a54d222d894908d9f0711f68",
+      "npz_bytes": 2783600,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 261,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.205033199422559e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00005",
+      "seed": 3420849238,
+      "frames": 203,
+      "npz_sha256": "bad160ee97421fc310f6ef10647d5312a0af87cd59ac81b9c2f2cb67ce9db079",
+      "npz_bytes": 1082218,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 203,
+      "converged_frames": 0,
+      "zero_weight_components": 2842,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 185,
+      "presence_mass_max_error": 4.229836936264775e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00006",
+      "seed": 4088167401,
+      "frames": 410,
+      "npz_sha256": "f1fe06e23a3a187c87126b334080c944f688caada7f0c6fbeb9e657e815ab517",
+      "npz_bytes": 2203356,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 410,
+      "converged_frames": 0,
+      "zero_weight_components": 406,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 65,
+      "presence_mass_max_error": 4.2650961651347075e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00007",
+      "seed": 551882747,
+      "frames": 434,
+      "npz_sha256": "27f701253f73f768e6334382b1f5e9e98304504f675c1372461295ea34c83bc3",
+      "npz_bytes": 2319930,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 434,
+      "converged_frames": 0,
+      "zero_weight_components": 2090,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 178,
+      "presence_mass_max_error": 4.034819489628916e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00008",
+      "seed": 2308863195,
+      "frames": 268,
+      "npz_sha256": "11b1654103c47afd8857088b44f8e0eedd46f0146dbddef8bd6deab7fa464692",
+      "npz_bytes": 1437830,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 268,
+      "converged_frames": 0,
+      "zero_weight_components": 1120,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 126,
+      "presence_mass_max_error": 3.644533896896007e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00009",
+      "seed": 2742035468,
+      "frames": 500,
+      "npz_sha256": "16e0d00cdce486cc7ba56904354a31b79bfb4621da0f04f7a4fc940c529b7e84",
+      "npz_bytes": 2681652,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 500,
+      "converged_frames": 0,
+      "zero_weight_components": 593,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 135,
+      "presence_mass_max_error": 3.5443102341936594e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00010",
+      "seed": 2176002176,
+      "frames": 512,
+      "npz_sha256": "4f27a6e71e09e7ee68c52c4a4e30ea33ecf9ae15dc17e847d5aa4e040d4f54cd",
+      "npz_bytes": 2752195,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 438,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.0942997325821295e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00011",
+      "seed": 3673408185,
+      "frames": 512,
+      "npz_sha256": "a069ebdd98aa236f8c40f54dff7dc950d4deb2095083942c84ed1f5f794f8908",
+      "npz_bytes": 2761171,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 195,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.3002419352889945e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00012",
+      "seed": 1141356833,
+      "frames": 512,
+      "npz_sha256": "c870123b5874c8aa520910741fe056b61e1ddec4302fe7842b1adcc9e3c57a7f",
+      "npz_bytes": 2775302,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 95,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.6675326220425575e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00013",
+      "seed": 2884384590,
+      "frames": 512,
+      "npz_sha256": "e6771bee03e17273cc42b6df6283ec678edfd9469cc27eafd555de9d32761966",
+      "npz_bytes": 2768867,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 229,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 148,
+      "presence_mass_max_error": 4.164964084729661e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00014",
+      "seed": 2738412061,
+      "frames": 512,
+      "npz_sha256": "9b523990347df590a68ecbf5dbc9cc49ba3fb01ba2f1e2ed68c7797315597020",
+      "npz_bytes": 2784815,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 430,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 33,
+      "presence_mass_max_error": 3.852250940461488e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "test-00015",
+      "seed": 3802854261,
+      "frames": 195,
+      "npz_sha256": "29a097111d415182415a1e78b27d92127908ab20c5d25adbab41556e370ccff3",
+      "npz_bytes": 1034120,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 195,
+      "converged_frames": 0,
+      "zero_weight_components": 2255,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 180,
+      "presence_mass_max_error": 3.708692930537438e-08,
+      "hdr": {}
+    },
+    {
+      "rally_id": "train-00000",
+      "seed": 3349379694,
+      "frames": 254,
+      "npz_sha256": "8261a04fa95d0cc62a792b3e3481261e4ef4ab1f699b2be074c4d8c985f14cbf",
+      "npz_bytes": 1367761,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 254,
+      "converged_frames": 0,
+      "zero_weight_components": 212,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 131,
+      "presence_mass_max_error": 3.635341871977005e-08,
+      "hdr": {
+        "observed": {
+          "count": 610,
+          "covered": [
+            353,
+            526,
+            541
+          ]
+        },
+        "gap": {
+          "count": 21,
+          "covered": [
+            11,
+            21,
+            21
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00001",
+      "seed": 3716130156,
+      "frames": 497,
+      "npz_sha256": "8b1cb49f86d4f29c16d9a5d0484380394a87878cee91aa57c7b0ab4e21e22b37",
+      "npz_bytes": 2667543,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 497,
+      "converged_frames": 0,
+      "zero_weight_components": 338,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 48,
+      "presence_mass_max_error": 3.641707480017686e-08,
+      "hdr": {
+        "observed": {
+          "count": 1389,
+          "covered": [
+            762,
+            1124,
+            1191
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            24,
+            47,
+            51
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00002",
+      "seed": 669701129,
+      "frames": 512,
+      "npz_sha256": "cc15b58c19f3221919000203adb94780467b9c9d144ff687c091c0408be13a4a",
+      "npz_bytes": 2751430,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 45,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 13,
+      "presence_mass_max_error": 3.9580502431135756e-08,
+      "hdr": {
+        "observed": {
+          "count": 1421,
+          "covered": [
+            723,
+            1216,
+            1264
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            53,
+            77,
+            93
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00003",
+      "seed": 1189098374,
+      "frames": 512,
+      "npz_sha256": "0c3c1471fd5daf65f4dee9b1aaca5f55a14416420d919783f54e5b23efcc69ad",
+      "npz_bytes": 2764860,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 589,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.1843886244841144e-08,
+      "hdr": {
+        "observed": {
+          "count": 1338,
+          "covered": [
+            673,
+            1136,
+            1185
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            101,
+            165,
+            171
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00004",
+      "seed": 3599952689,
+      "frames": 351,
+      "npz_sha256": "cce29f93ea2a35089afe0d71ad1a8136297de5691e74a56f0c8e21f6da163452",
+      "npz_bytes": 1855384,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 351,
+      "converged_frames": 0,
+      "zero_weight_components": 2620,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 274,
+      "presence_mass_max_error": 4.3008694272650416e-08,
+      "hdr": {
+        "observed": {
+          "count": 758,
+          "covered": [
+            358,
+            597,
+            632
+          ]
+        },
+        "gap": {
+          "count": 21,
+          "covered": [
+            7,
+            12,
+            12
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00005",
+      "seed": 1467491668,
+      "frames": 512,
+      "npz_sha256": "058940fbf846de6d4434190f9a0d8736898f21a4e26487927fb0f3cb912cec7a",
+      "npz_bytes": 2780012,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 380,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 57,
+      "presence_mass_max_error": 4.15724100699677e-08,
+      "hdr": {
+        "observed": {
+          "count": 1425,
+          "covered": [
+            684,
+            1141,
+            1219
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            7,
+            42,
+            48
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00006",
+      "seed": 714445117,
+      "frames": 333,
+      "npz_sha256": "48255cf1ed5e96628885ec180036dd3ae3a07f28beda4d88600a843b7b2fea69",
+      "npz_bytes": 1784179,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 333,
+      "converged_frames": 0,
+      "zero_weight_components": 82,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 141,
+      "presence_mass_max_error": 4.3811102856672335e-08,
+      "hdr": {
+        "observed": {
+          "count": 757,
+          "covered": [
+            348,
+            616,
+            644
+          ]
+        },
+        "gap": {
+          "count": 101,
+          "covered": [
+            63,
+            90,
+            97
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00007",
+      "seed": 2635150807,
+      "frames": 512,
+      "npz_sha256": "ad1d3d7a76cc104fb43f6a8f141a0d5fa18d495c2904709ed9862b78d032b716",
+      "npz_bytes": 2790563,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 338,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 88,
+      "presence_mass_max_error": 3.9250280692293416e-08,
+      "hdr": {
+        "observed": {
+          "count": 1283,
+          "covered": [
+            497,
+            968,
+            1016
+          ]
+        },
+        "gap": {
+          "count": 165,
+          "covered": [
+            78,
+            129,
+            136
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00008",
+      "seed": 2662639986,
+      "frames": 512,
+      "npz_sha256": "b932d02a811576ec040e7bf314997d1abc31cef72351fa5d194e54a5e78e49c0",
+      "npz_bytes": 2776531,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 83,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 64,
+      "presence_mass_max_error": 3.959357486316151e-08,
+      "hdr": {
+        "observed": {
+          "count": 1442,
+          "covered": [
+            744,
+            1167,
+            1216
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            23,
+            29,
+            29
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00009",
+      "seed": 1929205839,
+      "frames": 512,
+      "npz_sha256": "4c34b8b1c097d013cb2bb4f7efd619fed996e80286f297244a2a3608d36b7388",
+      "npz_bytes": 2748558,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 80,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 46,
+      "presence_mass_max_error": 3.952954352737237e-08,
+      "hdr": {
+        "observed": {
+          "count": 1437,
+          "covered": [
+            722,
+            1184,
+            1230
+          ]
+        },
+        "gap": {
+          "count": 53,
+          "covered": [
+            34,
+            49,
+            53
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00010",
+      "seed": 3285242205,
+      "frames": 512,
+      "npz_sha256": "fff39fa78b67c47bed0031c15c7a525e4205e5e3b3f8b629ec9e16c8c3b8e0ca",
+      "npz_bytes": 2779995,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 276,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 38,
+      "presence_mass_max_error": 4.121147645363976e-08,
+      "hdr": {
+        "observed": {
+          "count": 1408,
+          "covered": [
+            686,
+            1171,
+            1250
+          ]
+        },
+        "gap": {
+          "count": 90,
+          "covered": [
+            44,
+            77,
+            84
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00011",
+      "seed": 1538475533,
+      "frames": 512,
+      "npz_sha256": "c188864db939c96fe8aaae720b68e18353a53fcf478f12ec816bb1a7d944a708",
+      "npz_bytes": 2781608,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 294,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 35,
+      "presence_mass_max_error": 3.382086766201553e-08,
+      "hdr": {
+        "observed": {
+          "count": 1304,
+          "covered": [
+            697,
+            1078,
+            1158
+          ]
+        },
+        "gap": {
+          "count": 197,
+          "covered": [
+            91,
+            170,
+            178
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00012",
+      "seed": 2568668816,
+      "frames": 429,
+      "npz_sha256": "91b4e9612dd85991bd4c811109370c1e0ef1f802cff4747c52328d9e8f2c0144",
+      "npz_bytes": 2282186,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 429,
+      "converged_frames": 0,
+      "zero_weight_components": 3179,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 247,
+      "presence_mass_max_error": 4.02377747787952e-08,
+      "hdr": {
+        "observed": {
+          "count": 1018,
+          "covered": [
+            514,
+            803,
+            856
+          ]
+        },
+        "gap": {
+          "count": 22,
+          "covered": [
+            18,
+            21,
+            21
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00013",
+      "seed": 1753741017,
+      "frames": 512,
+      "npz_sha256": "c5605dedec3893c0282da40aa4b57192f104e198c1591f3f551c8943041e19ac",
+      "npz_bytes": 2763388,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 701,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 101,
+      "presence_mass_max_error": 3.870633136227042e-08,
+      "hdr": {
+        "observed": {
+          "count": 1381,
+          "covered": [
+            730,
+            1140,
+            1181
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            20,
+            39,
+            41
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00014",
+      "seed": 1029850808,
+      "frames": 350,
+      "npz_sha256": "67565b4670645183a76e4414d1e8109922abbd30c01486ad01b93e7afe3eb2c0",
+      "npz_bytes": 1881347,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 350,
+      "converged_frames": 0,
+      "zero_weight_components": 62,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 93,
+      "presence_mass_max_error": 3.4852463470791406e-08,
+      "hdr": {
+        "observed": {
+          "count": 855,
+          "covered": [
+            392,
+            713,
+            746
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            39,
+            76,
+            76
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00015",
+      "seed": 1086264494,
+      "frames": 337,
+      "npz_sha256": "86d05e97494a1b568b145c0c46f7ea1201b85dddab281079acb8502f1c0ed61f",
+      "npz_bytes": 1777185,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 337,
+      "converged_frames": 0,
+      "zero_weight_components": 3537,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 418,
+      "presence_mass_max_error": 4.034751543979809e-08,
+      "hdr": {
+        "observed": {
+          "count": 520,
+          "covered": [
+            309,
+            467,
+            480
+          ]
+        },
+        "gap": {
+          "count": 73,
+          "covered": [
+            33,
+            67,
+            73
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00016",
+      "seed": 1471592390,
+      "frames": 302,
+      "npz_sha256": "d6ca36c77567748ff846fdf370a320a259524c14e4e43011e5525aba5e56d626",
+      "npz_bytes": 1601862,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 302,
+      "converged_frames": 0,
+      "zero_weight_components": 1892,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 206,
+      "presence_mass_max_error": 3.548180582679805e-08,
+      "hdr": {
+        "observed": {
+          "count": 678,
+          "covered": [
+            337,
+            566,
+            588
+          ]
+        },
+        "gap": {
+          "count": 22,
+          "covered": [
+            13,
+            21,
+            22
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00017",
+      "seed": 2634188147,
+      "frames": 465,
+      "npz_sha256": "a923329a67b3456cc4e5e4fb91321322d424af2c7b886558eb3868f2341fafc0",
+      "npz_bytes": 2487504,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 465,
+      "converged_frames": 0,
+      "zero_weight_components": 1222,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 163,
+      "presence_mass_max_error": 3.506466039748801e-08,
+      "hdr": {
+        "observed": {
+          "count": 1194,
+          "covered": [
+            612,
+            982,
+            1063
+          ]
+        },
+        "gap": {
+          "count": 38,
+          "covered": [
+            19,
+            23,
+            25
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00018",
+      "seed": 1429845402,
+      "frames": 149,
+      "npz_sha256": "dabe8bae2b52b78413db29975df600ca811ef790e59e4ab27ca2325943ca919a",
+      "npz_bytes": 808369,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 149,
+      "converged_frames": 0,
+      "zero_weight_components": 16,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 61,
+      "presence_mass_max_error": 3.5899761163804556e-08,
+      "hdr": {
+        "observed": {
+          "count": 287,
+          "covered": [
+            155,
+            243,
+            258
+          ]
+        },
+        "gap": {
+          "count": 99,
+          "covered": [
+            58,
+            93,
+            95
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00019",
+      "seed": 1551671366,
+      "frames": 305,
+      "npz_sha256": "29dadc304c177a9d23ac229a0abadd69f582c8c7e03fd6047321f071b0a308d8",
+      "npz_bytes": 1633023,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 305,
+      "converged_frames": 0,
+      "zero_weight_components": 753,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 116,
+      "presence_mass_max_error": 3.567780981761359e-08,
+      "hdr": {
+        "observed": {
+          "count": 602,
+          "covered": [
+            310,
+            450,
+            491
+          ]
+        },
+        "gap": {
+          "count": 197,
+          "covered": [
+            100,
+            145,
+            146
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00020",
+      "seed": 636441103,
+      "frames": 512,
+      "npz_sha256": "6dd2b2429978bea9e90c70b20139a0dfefbdc36a8d03800c03fc174c9b2f3872",
+      "npz_bytes": 2739274,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 119,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 136,
+      "presence_mass_max_error": 3.616713284415596e-08,
+      "hdr": {
+        "observed": {
+          "count": 1373,
+          "covered": [
+            602,
+            1033,
+            1125
+          ]
+        },
+        "gap": {
+          "count": 27,
+          "covered": [
+            5,
+            27,
+            27
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00021",
+      "seed": 3095441517,
+      "frames": 512,
+      "npz_sha256": "fefd66ffd094048c9cbbb32d192720e1359930b4562bdca529d3149d0a2f4de8",
+      "npz_bytes": 2767094,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 459,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 16,
+      "presence_mass_max_error": 4.1246605353428833e-08,
+      "hdr": {
+        "observed": {
+          "count": 1466,
+          "covered": [
+            710,
+            1172,
+            1241
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            24,
+            50,
+            52
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00022",
+      "seed": 3580163833,
+      "frames": 512,
+      "npz_sha256": "8dcb9f92ee5b043f95d0ef879cff37decbc7cc67a59de6e1591034695ba69284",
+      "npz_bytes": 2776631,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 408,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 99,
+      "presence_mass_max_error": 4.421439214752354e-08,
+      "hdr": {
+        "observed": {
+          "count": 1335,
+          "covered": [
+            681,
+            1122,
+            1166
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            46,
+            93,
+            96
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00023",
+      "seed": 2869026632,
+      "frames": 512,
+      "npz_sha256": "a3b0b90da544cd036aec032e91fde6b5c702d5982529584d61b5a37b35970557",
+      "npz_bytes": 2764965,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 114,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.140625253779007e-08,
+      "hdr": {
+        "observed": {
+          "count": 1342,
+          "covered": [
+            674,
+            1158,
+            1219
+          ]
+        },
+        "gap": {
+          "count": 194,
+          "covered": [
+            89,
+            181,
+            183
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00024",
+      "seed": 3102712366,
+      "frames": 512,
+      "npz_sha256": "ef392dc161848e8593a34b03a837cd5bbbb6c34d0139cf37610c5b24855b99dd",
+      "npz_bytes": 2788376,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 188,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.951722515882494e-08,
+      "hdr": {
+        "observed": {
+          "count": 1506,
+          "covered": [
+            741,
+            1298,
+            1347
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            19,
+            24,
+            24
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00025",
+      "seed": 79133017,
+      "frames": 512,
+      "npz_sha256": "1630670faed30dac3f3b5fd3f50c0cca1dc4a5a0d2020c66554015ea6b960d73",
+      "npz_bytes": 2775063,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 145,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 18,
+      "presence_mass_max_error": 3.638872114741787e-08,
+      "hdr": {
+        "observed": {
+          "count": 1464,
+          "covered": [
+            748,
+            1205,
+            1260
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            20,
+            53,
+            54
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00026",
+      "seed": 1985516592,
+      "frames": 512,
+      "npz_sha256": "3b2a1e17f18bf8e03d385f8d11824107be299ab7f20c98e0f69cfad8cc327be0",
+      "npz_bytes": 2771632,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 36,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 24,
+      "presence_mass_max_error": 3.811237647699528e-08,
+      "hdr": {
+        "observed": {
+          "count": 1411,
+          "covered": [
+            657,
+            1112,
+            1190
+          ]
+        },
+        "gap": {
+          "count": 101,
+          "covered": [
+            45,
+            91,
+            93
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00027",
+      "seed": 989607870,
+      "frames": 315,
+      "npz_sha256": "48eb92ebe1af7a2e1c0b42a84a959a3d0e6914473d14734f66187cd9683cf74c",
+      "npz_bytes": 1686005,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 315,
+      "converged_frames": 0,
+      "zero_weight_components": 1540,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 138,
+      "presence_mass_max_error": 3.5417170862750424e-08,
+      "hdr": {
+        "observed": {
+          "count": 610,
+          "covered": [
+            304,
+            528,
+            548
+          ]
+        },
+        "gap": {
+          "count": 197,
+          "covered": [
+            109,
+            173,
+            185
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00028",
+      "seed": 2146712160,
+      "frames": 303,
+      "npz_sha256": "3bbb2d2c04c9abd7b7a961bcd992cf73d70e7f3a7ee76adeccedbc7196442182",
+      "npz_bytes": 1615076,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 303,
+      "converged_frames": 0,
+      "zero_weight_components": 2653,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 129,
+      "presence_mass_max_error": 3.768501932732704e-08,
+      "hdr": {
+        "observed": {
+          "count": 750,
+          "covered": [
+            403,
+            668,
+            692
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            16,
+            22,
+            22
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00029",
+      "seed": 2089728035,
+      "frames": 512,
+      "npz_sha256": "0ed6255cfaaa61ea6b4e773efe1645f7228b59e608d6b7af936b386d40868209",
+      "npz_bytes": 2773648,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 150,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.844231055705194e-08,
+      "hdr": {
+        "observed": {
+          "count": 1483,
+          "covered": [
+            752,
+            1217,
+            1301
+          ]
+        },
+        "gap": {
+          "count": 53,
+          "covered": [
+            12,
+            27,
+            28
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00030",
+      "seed": 1893081377,
+      "frames": 182,
+      "npz_sha256": "44cd3bb62bcf5d044bb3c61e786226142313ff6149e86e0f588e8472df38479e",
+      "npz_bytes": 985350,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 182,
+      "converged_frames": 0,
+      "zero_weight_components": 38,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 74,
+      "presence_mass_max_error": 3.798153924705616e-08,
+      "hdr": {
+        "observed": {
+          "count": 371,
+          "covered": [
+            171,
+            308,
+            312
+          ]
+        },
+        "gap": {
+          "count": 101,
+          "covered": [
+            59,
+            88,
+            94
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00031",
+      "seed": 4119911637,
+      "frames": 512,
+      "npz_sha256": "05e2a78edecdb06d9a955b8acdd822262f02e7e86c34ba2d2c966861bee8de2f",
+      "npz_bytes": 2764782,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 166,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 17,
+      "presence_mass_max_error": 3.872145881711475e-08,
+      "hdr": {
+        "observed": {
+          "count": 1323,
+          "covered": [
+            732,
+            1111,
+            1186
+          ]
+        },
+        "gap": {
+          "count": 196,
+          "covered": [
+            120,
+            184,
+            191
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00032",
+      "seed": 1349963969,
+      "frames": 512,
+      "npz_sha256": "00bb9078c523f4eb399db53c3c9527048888573da756d0a553945b8839075d32",
+      "npz_bytes": 2751611,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 265,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 56,
+      "presence_mass_max_error": 4.3222539103382474e-08,
+      "hdr": {
+        "observed": {
+          "count": 1450,
+          "covered": [
+            709,
+            1174,
+            1243
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            9,
+            27,
+            29
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00033",
+      "seed": 561915161,
+      "frames": 288,
+      "npz_sha256": "a57112cc3e6f01b24c4cd45451ba9c5c632bf4c6cd173efbd7920fe68e50f65c",
+      "npz_bytes": 1545347,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 288,
+      "converged_frames": 0,
+      "zero_weight_components": 878,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 106,
+      "presence_mass_max_error": 3.524322711445649e-08,
+      "hdr": {
+        "observed": {
+          "count": 704,
+          "covered": [
+            321,
+            558,
+            582
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            27,
+            38,
+            40
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00034",
+      "seed": 2926062905,
+      "frames": 512,
+      "npz_sha256": "6ff9a251ff297231aad2d013c98282a058d436c887df890e1832f2cb1280b4bc",
+      "npz_bytes": 2779173,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 227,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 85,
+      "presence_mass_max_error": 4.362836714122409e-08,
+      "hdr": {
+        "observed": {
+          "count": 1350,
+          "covered": [
+            735,
+            1188,
+            1249
+          ]
+        },
+        "gap": {
+          "count": 101,
+          "covered": [
+            31,
+            63,
+            67
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00035",
+      "seed": 1055427284,
+      "frames": 413,
+      "npz_sha256": "83b6fd3ae8504cda03eb72e0d8164ec37f37098acc58f5d32a8b6484d596ce43",
+      "npz_bytes": 2212760,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 413,
+      "converged_frames": 0,
+      "zero_weight_components": 190,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 128,
+      "presence_mass_max_error": 3.990310892820759e-08,
+      "hdr": {
+        "observed": {
+          "count": 913,
+          "covered": [
+            524,
+            766,
+            796
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            81,
+            156,
+            168
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00036",
+      "seed": 1762260942,
+      "frames": 512,
+      "npz_sha256": "f77b4a94ea94bd11950c4875c2ed6869f77c581a63bda94e6e901d511598647c",
+      "npz_bytes": 2754050,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 103,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 60,
+      "presence_mass_max_error": 4.161175659600502e-08,
+      "hdr": {
+        "observed": {
+          "count": 1447,
+          "covered": [
+            798,
+            1266,
+            1306
+          ]
+        },
+        "gap": {
+          "count": 29,
+          "covered": [
+            3,
+            24,
+            24
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00037",
+      "seed": 2449351079,
+      "frames": 512,
+      "npz_sha256": "f8cf641cb5c96c0e96cc530e49a8162a43ef30ea1bf647c2a9c00e60a197f5e8",
+      "npz_bytes": 2784004,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 142,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 23,
+      "presence_mass_max_error": 3.747333854331458e-08,
+      "hdr": {
+        "observed": {
+          "count": 1459,
+          "covered": [
+            751,
+            1194,
+            1250
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            20,
+            44,
+            51
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00038",
+      "seed": 1114652107,
+      "frames": 512,
+      "npz_sha256": "aa55a2c30c41156c23929a3fe54413334f76148dcafc2c976129e05ac2265149",
+      "npz_bytes": 2780177,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 174,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.688244532007445e-08,
+      "hdr": {
+        "observed": {
+          "count": 1434,
+          "covered": [
+            683,
+            1101,
+            1166
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            40,
+            74,
+            82
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00039",
+      "seed": 3258168823,
+      "frames": 512,
+      "npz_sha256": "4e969c2470c83c20a373a535e02116f9401229161fd7d9355f0dc30b4fe3afd1",
+      "npz_bytes": 2749954,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 605,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 29,
+      "presence_mass_max_error": 4.4776831131798644e-08,
+      "hdr": {
+        "observed": {
+          "count": 1309,
+          "covered": [
+            599,
+            998,
+            1077
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            84,
+            171,
+            175
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00040",
+      "seed": 4120683526,
+      "frames": 512,
+      "npz_sha256": "192bffde080944ba6e2af86df68ca8c3caf6709cf31d122e32471a7235beee76",
+      "npz_bytes": 2787916,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 398,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 47,
+      "presence_mass_max_error": 3.7595155322200924e-08,
+      "hdr": {
+        "observed": {
+          "count": 1459,
+          "covered": [
+            768,
+            1203,
+            1249
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            23,
+            30,
+            30
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00041",
+      "seed": 3321516940,
+      "frames": 512,
+      "npz_sha256": "5d1882b99f20231bae7d700780fc24af1de776105bdd9d8b7a805ac26dcb4f5f",
+      "npz_bytes": 2753501,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 131,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.837627782221631e-08,
+      "hdr": {
+        "observed": {
+          "count": 1482,
+          "covered": [
+            657,
+            1218,
+            1346
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            24,
+            48,
+            51
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00042",
+      "seed": 3121833876,
+      "frames": 469,
+      "npz_sha256": "d1519be7e81ea1ff94c494212d635dd7600fbeef991c8b9c34b1dd44851ebd9d",
+      "npz_bytes": 2496784,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 469,
+      "converged_frames": 0,
+      "zero_weight_components": 1666,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 156,
+      "presence_mass_max_error": 3.897031441990606e-08,
+      "hdr": {
+        "observed": {
+          "count": 1152,
+          "covered": [
+            616,
+            939,
+            1002
+          ]
+        },
+        "gap": {
+          "count": 99,
+          "covered": [
+            56,
+            87,
+            94
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00043",
+      "seed": 328912796,
+      "frames": 330,
+      "npz_sha256": "12f7a3594c0cbb22074aef780922c9781d04388e667fd177b68af78d6710e51f",
+      "npz_bytes": 1769460,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 330,
+      "converged_frames": 0,
+      "zero_weight_components": 941,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 132,
+      "presence_mass_max_error": 3.599842779422602e-08,
+      "hdr": {
+        "observed": {
+          "count": 660,
+          "covered": [
+            340,
+            549,
+            575
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            100,
+            153,
+            162
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00044",
+      "seed": 3905912832,
+      "frames": 512,
+      "npz_sha256": "ccaea7176b8280ee433ba162fe93ef6813eca78b545280d29303b23ed6158b5c",
+      "npz_bytes": 2771734,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 274,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.317612134485671e-08,
+      "hdr": {
+        "observed": {
+          "count": 1506,
+          "covered": [
+            805,
+            1214,
+            1265
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            18,
+            22,
+            22
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00045",
+      "seed": 1157269224,
+      "frames": 198,
+      "npz_sha256": "b55ade081546af955cb1bcc997731a160e749de1c155632eca27238fa8800848",
+      "npz_bytes": 1070380,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 198,
+      "converged_frames": 0,
+      "zero_weight_components": 70,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 89,
+      "presence_mass_max_error": 3.3007982458421736e-08,
+      "hdr": {
+        "observed": {
+          "count": 455,
+          "covered": [
+            275,
+            395,
+            414
+          ]
+        },
+        "gap": {
+          "count": 50,
+          "covered": [
+            15,
+            50,
+            50
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00046",
+      "seed": 3534637671,
+      "frames": 512,
+      "npz_sha256": "20d47472107ab20244e5d3e9c99c1c7d1dd51234f1842176752d57d2a2bacf2c",
+      "npz_bytes": 2761025,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 238,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.9362465398262714e-08,
+      "hdr": {
+        "observed": {
+          "count": 1435,
+          "covered": [
+            681,
+            1101,
+            1204
+          ]
+        },
+        "gap": {
+          "count": 101,
+          "covered": [
+            64,
+            85,
+            91
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00047",
+      "seed": 3274153643,
+      "frames": 512,
+      "npz_sha256": "03d447718d5bb4ff01d35611bc3c6c8a3fca75e4c9929f92015ab0c7431bc7ae",
+      "npz_bytes": 2773101,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 248,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 37,
+      "presence_mass_max_error": 3.862122743836238e-08,
+      "hdr": {
+        "observed": {
+          "count": 1301,
+          "covered": [
+            701,
+            1129,
+            1174
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            84,
+            153,
+            162
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00048",
+      "seed": 1036529133,
+      "frames": 512,
+      "npz_sha256": "5ee0e9908f39e91958470d8520bd38f0989d08a744599ee5c6f74f25bd72886f",
+      "npz_bytes": 2762278,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 144,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 11,
+      "presence_mass_max_error": 3.8421313020009507e-08,
+      "hdr": {
+        "observed": {
+          "count": 1495,
+          "covered": [
+            736,
+            1191,
+            1262
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            2,
+            24,
+            24
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00049",
+      "seed": 4046252818,
+      "frames": 477,
+      "npz_sha256": "b75a7637ef22dc4ae406e12cc2a0daeec76a5ce65327ef52c78be95e25a65fca",
+      "npz_bytes": 2552692,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 477,
+      "converged_frames": 0,
+      "zero_weight_components": 1482,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 144,
+      "presence_mass_max_error": 4.193327218793286e-08,
+      "hdr": {
+        "observed": {
+          "count": 1233,
+          "covered": [
+            589,
+            1021,
+            1070
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            26,
+            38,
+            39
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00050",
+      "seed": 4020957110,
+      "frames": 512,
+      "npz_sha256": "01e39d04b35e8d876d3055996bf14a28926d064754d940e514bd2e6b2f03381d",
+      "npz_bytes": 2789809,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 164,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 21,
+      "presence_mass_max_error": 3.872659259940292e-08,
+      "hdr": {
+        "observed": {
+          "count": 1413,
+          "covered": [
+            684,
+            1126,
+            1185
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            41,
+            85,
+            98
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00051",
+      "seed": 451684001,
+      "frames": 512,
+      "npz_sha256": "2920990dba413eb80a2792c90c0ef420a12cdff589e82d6fc3247e6c84c56242",
+      "npz_bytes": 2773616,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 135,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 3.7904464900151424e-08,
+      "hdr": {
+        "observed": {
+          "count": 1338,
+          "covered": [
+            654,
+            1074,
+            1129
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            91,
+            171,
+            181
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00052",
+      "seed": 167792054,
+      "frames": 324,
+      "npz_sha256": "557b21cf0cad1c4e4c095da4cba8b0354757fc6e9409d14788f9fcd61e817f56",
+      "npz_bytes": 1734190,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 324,
+      "converged_frames": 0,
+      "zero_weight_components": 1096,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 97,
+      "presence_mass_max_error": 4.299175437871838e-08,
+      "hdr": {
+        "observed": {
+          "count": 846,
+          "covered": [
+            472,
+            697,
+            728
+          ]
+        },
+        "gap": {
+          "count": 29,
+          "covered": [
+            15,
+            29,
+            29
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00053",
+      "seed": 3716373692,
+      "frames": 190,
+      "npz_sha256": "c0f6fd53e3d9c201692eb74a7753f269f2225ef23f14bbbe737a4cf45e5a7018",
+      "npz_bytes": 1027882,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 190,
+      "converged_frames": 0,
+      "zero_weight_components": 48,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 45,
+      "presence_mass_max_error": 3.664115666435208e-08,
+      "hdr": {
+        "observed": {
+          "count": 475,
+          "covered": [
+            229,
+            354,
+            386
+          ]
+        },
+        "gap": {
+          "count": 50,
+          "covered": [
+            32,
+            45,
+            46
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00054",
+      "seed": 1912615408,
+      "frames": 375,
+      "npz_sha256": "c0cee7a0c776f75060f13c04d0145658dfc6115ee9421ec503d8d098d3caa846",
+      "npz_bytes": 2013909,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 375,
+      "converged_frames": 0,
+      "zero_weight_components": 14,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 95,
+      "presence_mass_max_error": 3.810784532376488e-08,
+      "hdr": {
+        "observed": {
+          "count": 928,
+          "covered": [
+            497,
+            718,
+            767
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            76,
+            94,
+            94
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00055",
+      "seed": 3133287728,
+      "frames": 493,
+      "npz_sha256": "5e3fda694cac232fc48b232188139e7fc0d91e231cc26cd8093f65990799b87e",
+      "npz_bytes": 2643217,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 493,
+      "converged_frames": 0,
+      "zero_weight_components": 1236,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 186,
+      "presence_mass_max_error": 3.721339825180081e-08,
+      "hdr": {
+        "observed": {
+          "count": 1095,
+          "covered": [
+            496,
+            866,
+            918
+          ]
+        },
+        "gap": {
+          "count": 198,
+          "covered": [
+            94,
+            158,
+            159
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00056",
+      "seed": 2760381184,
+      "frames": 285,
+      "npz_sha256": "403572c839da83fd243ff8ba21c8bab993417e4dbafac9426a0d5f5af0f50a49",
+      "npz_bytes": 1536072,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 285,
+      "converged_frames": 0,
+      "zero_weight_components": 278,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 26,
+      "presence_mass_max_error": 3.749387200713272e-08,
+      "hdr": {
+        "observed": {
+          "count": 803,
+          "covered": [
+            382,
+            636,
+            688
+          ]
+        },
+        "gap": {
+          "count": 26,
+          "covered": [
+            10,
+            24,
+            26
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00057",
+      "seed": 3154687391,
+      "frames": 187,
+      "npz_sha256": "9ad41d8a7e1fae2c6d8c275d60ca7bd6764d93aaddfac99c69cceb72e616ed1b",
+      "npz_bytes": 1011658,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 187,
+      "converged_frames": 0,
+      "zero_weight_components": 84,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 68,
+      "presence_mass_max_error": 3.868652753702406e-08,
+      "hdr": {
+        "observed": {
+          "count": 439,
+          "covered": [
+            169,
+            331,
+            346
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            36,
+            47,
+            47
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00058",
+      "seed": 1664828390,
+      "frames": 512,
+      "npz_sha256": "6e1358e6ef4b240e7f23769e0e02bcb02ce69c03e67602752d7f40406aea0872",
+      "npz_bytes": 2778741,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 265,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 53,
+      "presence_mass_max_error": 4.359736405223913e-08,
+      "hdr": {
+        "observed": {
+          "count": 1381,
+          "covered": [
+            714,
+            1191,
+            1231
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            58,
+            90,
+            94
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00059",
+      "seed": 1118314961,
+      "frames": 512,
+      "npz_sha256": "6753acb0dbdabfd1e93b5136b3f3f53749dd45a1c5351cdf69a063ab61feff90",
+      "npz_bytes": 2760179,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 104,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 55,
+      "presence_mass_max_error": 3.630022771261565e-08,
+      "hdr": {
+        "observed": {
+          "count": 1287,
+          "covered": [
+            655,
+            1081,
+            1131
+          ]
+        },
+        "gap": {
+          "count": 194,
+          "covered": [
+            123,
+            192,
+            193
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00060",
+      "seed": 990878366,
+      "frames": 512,
+      "npz_sha256": "c7d24ba9704a33ba090429794cf3d981323c8b80fd103234e07afc5abd5ec42d",
+      "npz_bytes": 2761371,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 120,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 4,
+      "presence_mass_max_error": 4.371072825914979e-08,
+      "hdr": {
+        "observed": {
+          "count": 1502,
+          "covered": [
+            731,
+            1242,
+            1299
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            3,
+            25,
+            29
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00061",
+      "seed": 2225286271,
+      "frames": 312,
+      "npz_sha256": "1a95ec1e9885833c33ba260385042b3e5e84326ec207297078da13ce55e92abf",
+      "npz_bytes": 1674350,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 312,
+      "converged_frames": 0,
+      "zero_weight_components": 737,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 107,
+      "presence_mass_max_error": 4.0265147882578844e-08,
+      "hdr": {
+        "observed": {
+          "count": 775,
+          "covered": [
+            445,
+            642,
+            682
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            29,
+            43,
+            45
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00062",
+      "seed": 1815524553,
+      "frames": 506,
+      "npz_sha256": "8d7d3fc349f19fb0073652e809a9a99b732971cd710bb39d06a8ac2879eac945",
+      "npz_bytes": 2717885,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 506,
+      "converged_frames": 0,
+      "zero_weight_components": 482,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 105,
+      "presence_mass_max_error": 4.3266514926365574e-08,
+      "hdr": {
+        "observed": {
+          "count": 1311,
+          "covered": [
+            622,
+            1076,
+            1133
+          ]
+        },
+        "gap": {
+          "count": 102,
+          "covered": [
+            58,
+            86,
+            92
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "train-00063",
+      "seed": 3092092487,
+      "frames": 337,
+      "npz_sha256": "9ba661b74c8d5cce34aec4369c0ea6c6fa9c9113f9f532d6836a04b112abcc76",
+      "npz_bytes": 1811771,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 337,
+      "converged_frames": 0,
+      "zero_weight_components": 344,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 129,
+      "presence_mass_max_error": 3.96612153119591e-08,
+      "hdr": {
+        "observed": {
+          "count": 685,
+          "covered": [
+            366,
+            589,
+            621
+          ]
+        },
+        "gap": {
+          "count": 197,
+          "covered": [
+            105,
+            175,
+            178
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00000",
+      "seed": 724086207,
+      "frames": 178,
+      "npz_sha256": "7e116e2f44266e3e256bac14dad66e827a466d9e8885e55c0142b878ad2c9097",
+      "npz_bytes": 956637,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 178,
+      "converged_frames": 0,
+      "zero_weight_components": 1300,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 108,
+      "presence_mass_max_error": 3.744387777615543e-08,
+      "hdr": {
+        "observed": {
+          "count": 397,
+          "covered": [
+            215,
+            321,
+            348
+          ]
+        },
+        "gap": {
+          "count": 29,
+          "covered": [
+            16,
+            27,
+            27
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00001",
+      "seed": 1583466478,
+      "frames": 512,
+      "npz_sha256": "c5e1b4d55ceb9712012016da29da015bb57fba3c99f66c25e1f8843d4e1c09e8",
+      "npz_bytes": 2776126,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 38,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.0085957997426647e-08,
+      "hdr": {
+        "observed": {
+          "count": 1482,
+          "covered": [
+            812,
+            1179,
+            1252
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            27,
+            45,
+            45
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00002",
+      "seed": 1338722038,
+      "frames": 512,
+      "npz_sha256": "488018060f69f1470abf33d241d65bbc00f9fc889c6acaf5a91a138f913b7dcb",
+      "npz_bytes": 2782335,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 196,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 143,
+      "presence_mass_max_error": 4.3577309649656115e-08,
+      "hdr": {
+        "observed": {
+          "count": 1318,
+          "covered": [
+            528,
+            971,
+            1071
+          ]
+        },
+        "gap": {
+          "count": 75,
+          "covered": [
+            37,
+            61,
+            69
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00003",
+      "seed": 535296226,
+      "frames": 199,
+      "npz_sha256": "24ae97a4b3c6d622609f7b7755a89ab93d2dd8e3f62434c04b9994786ca6598d",
+      "npz_bytes": 1062684,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 199,
+      "converged_frames": 0,
+      "zero_weight_components": 2232,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 154,
+      "presence_mass_max_error": 3.4823187555765855e-08,
+      "hdr": {
+        "observed": {
+          "count": 269,
+          "covered": [
+            140,
+            226,
+            236
+          ]
+        },
+        "gap": {
+          "count": 174,
+          "covered": [
+            56,
+            147,
+            150
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00004",
+      "seed": 2464065361,
+      "frames": 416,
+      "npz_sha256": "66441c9e9160de4dd43c73593e8022423478abf7143cddd8399b716cedb0f9cc",
+      "npz_bytes": 2228868,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 416,
+      "converged_frames": 0,
+      "zero_weight_components": 8,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 61,
+      "presence_mass_max_error": 4.058265856698995e-08,
+      "hdr": {
+        "observed": {
+          "count": 1157,
+          "covered": [
+            553,
+            931,
+            985
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            19,
+            22,
+            25
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00005",
+      "seed": 3080056594,
+      "frames": 512,
+      "npz_sha256": "cca22e1d9abd3429b457c097468edd802f050a7735b0d3ab1af762ad3cb250ee",
+      "npz_bytes": 2750345,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 515,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 16,
+      "presence_mass_max_error": 4.164848899090856e-08,
+      "hdr": {
+        "observed": {
+          "count": 1466,
+          "covered": [
+            694,
+            1148,
+            1229
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            11,
+            42,
+            43
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00006",
+      "seed": 1505388688,
+      "frames": 425,
+      "npz_sha256": "9623e57ddf22de2a1c209c7ab0ed2b3ba6a35cc729c211feb1dc0b8fd37a6909",
+      "npz_bytes": 2276861,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 425,
+      "converged_frames": 0,
+      "zero_weight_components": 347,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 128,
+      "presence_mass_max_error": 4.353794491596119e-08,
+      "hdr": {
+        "observed": {
+          "count": 1050,
+          "covered": [
+            555,
+            855,
+            896
+          ]
+        },
+        "gap": {
+          "count": 97,
+          "covered": [
+            50,
+            83,
+            83
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00007",
+      "seed": 698992493,
+      "frames": 286,
+      "npz_sha256": "acf42babd18a50767d35d59a9d288c4037d0d1d3d2b7d870de5bdbf896506304",
+      "npz_bytes": 1518847,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 286,
+      "converged_frames": 0,
+      "zero_weight_components": 1584,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 182,
+      "presence_mass_max_error": 3.9026015752341436e-08,
+      "hdr": {
+        "observed": {
+          "count": 496,
+          "covered": [
+            228,
+            441,
+            458
+          ]
+        },
+        "gap": {
+          "count": 180,
+          "covered": [
+            105,
+            175,
+            175
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00008",
+      "seed": 2105287602,
+      "frames": 512,
+      "npz_sha256": "f3afc7afb122167c4e953326edd7a67a6f49e208a52858c5b9c76f8cec65a58c",
+      "npz_bytes": 2772855,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 546,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 17,
+      "presence_mass_max_error": 4.227533012546303e-08,
+      "hdr": {
+        "observed": {
+          "count": 1489,
+          "covered": [
+            766,
+            1159,
+            1199
+          ]
+        },
+        "gap": {
+          "count": 30,
+          "covered": [
+            11,
+            20,
+            25
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00009",
+      "seed": 3978864984,
+      "frames": 512,
+      "npz_sha256": "a198de049d1e372b22ef9f740649a539afa6305e9ea91605c961f81df622b8f5",
+      "npz_bytes": 2781325,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 103,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 6,
+      "presence_mass_max_error": 4.012239129824735e-08,
+      "hdr": {
+        "observed": {
+          "count": 1476,
+          "covered": [
+            731,
+            1190,
+            1253
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            29,
+            44,
+            53
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00010",
+      "seed": 2367410862,
+      "frames": 411,
+      "npz_sha256": "3e298cc713ce8a4e88d28f17432f2ca0e0a56c4cb689d0ffc2489113c1f20630",
+      "npz_bytes": 2203491,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 411,
+      "converged_frames": 0,
+      "zero_weight_components": 148,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 158,
+      "presence_mass_max_error": 4.0960691838343166e-08,
+      "hdr": {
+        "observed": {
+          "count": 978,
+          "covered": [
+            449,
+            723,
+            774
+          ]
+        },
+        "gap": {
+          "count": 97,
+          "covered": [
+            47,
+            79,
+            89
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00011",
+      "seed": 3554723671,
+      "frames": 512,
+      "npz_sha256": "215b5ff0173f9e07dd2080e7bdfe47bd547c629055bae397b0a4240babe9205a",
+      "npz_bytes": 2774413,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 512,
+      "converged_frames": 0,
+      "zero_weight_components": 211,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 0,
+      "presence_mass_max_error": 4.32385994786344e-08,
+      "hdr": {
+        "observed": {
+          "count": 1339,
+          "covered": [
+            661,
+            1104,
+            1159
+          ]
+        },
+        "gap": {
+          "count": 197,
+          "covered": [
+            111,
+            160,
+            173
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00012",
+      "seed": 3776526123,
+      "frames": 452,
+      "npz_sha256": "d27946028143bb2509d704cad65fc8d685febb598c383f2d1dd7e58835cdc9b1",
+      "npz_bytes": 2421934,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 452,
+      "converged_frames": 0,
+      "zero_weight_components": 836,
+      "all_camera_gap_frames": 8,
+      "out_of_frame_camera_frames": 146,
+      "presence_mass_max_error": 4.108757234444482e-08,
+      "hdr": {
+        "observed": {
+          "count": 1181,
+          "covered": [
+            585,
+            995,
+            1053
+          ]
+        },
+        "gap": {
+          "count": 29,
+          "covered": [
+            19,
+            28,
+            28
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00013",
+      "seed": 585699447,
+      "frames": 290,
+      "npz_sha256": "188b11e5b53161836f428ef94340718ec3ad90e18c404620ef4e5726f5bfab82",
+      "npz_bytes": 1566576,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 290,
+      "converged_frames": 0,
+      "zero_weight_components": 117,
+      "all_camera_gap_frames": 16,
+      "out_of_frame_camera_frames": 27,
+      "presence_mass_max_error": 3.737018006155779e-08,
+      "hdr": {
+        "observed": {
+          "count": 789,
+          "covered": [
+            441,
+            645,
+            675
+          ]
+        },
+        "gap": {
+          "count": 54,
+          "covered": [
+            18,
+            39,
+            40
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00014",
+      "seed": 3486808889,
+      "frames": 450,
+      "npz_sha256": "1693ef4cd30a02aeba6d62e3a00b4ae89ec2f77985be8afe07236fd392852b49",
+      "npz_bytes": 2394255,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 450,
+      "converged_frames": 0,
+      "zero_weight_components": 3386,
+      "all_camera_gap_frames": 32,
+      "out_of_frame_camera_frames": 255,
+      "presence_mass_max_error": 4.155891974999548e-08,
+      "hdr": {
+        "observed": {
+          "count": 998,
+          "covered": [
+            545,
+            861,
+            909
+          ]
+        },
+        "gap": {
+          "count": 97,
+          "covered": [
+            61,
+            94,
+            97
+          ]
+        }
+      }
+    },
+    {
+      "rally_id": "val-00015",
+      "seed": 3829525817,
+      "frames": 204,
+      "npz_sha256": "81926f7f29c879de22042534f6c3d64290ee9d2e3fe02f4503bf36958e9142af",
+      "npz_bytes": 1090142,
+      "components": 125,
+      "float32_spd": true,
+      "unassessed_frames": 204,
+      "converged_frames": 0,
+      "zero_weight_components": 1213,
+      "all_camera_gap_frames": 64,
+      "out_of_frame_camera_frames": 220,
+      "presence_mass_max_error": 4.026801514456224e-08,
+      "hdr": {
+        "observed": {
+          "count": 279,
+          "covered": [
+            175,
+            242,
+            253
+          ]
+        },
+        "gap": {
+          "count": 113,
+          "covered": [
+            69,
+            90,
+            98
+          ]
+        }
+      }
+    }
+  ],
+  "samples": 2048,
+  "levels": [
+    0.5,
+    0.9,
+    0.95
+  ],
+  "coverage_scope": "all in-image camera-frames in train/val; observed vs artificial gap; test structural validation only",
+  "hdr_method": "shared #935 highest_density_regions, full R2 Gaussian mixture, float64 Monte Carlo; conditional on existence",
+  "presence_mass_max_error": 4.4776831131798644e-08,
+  "weight_sum_max_error": 4.439372602860203e-08,
+  "coverage": {
+    "train/observed": {
+      "count": 72063,
+      "covered": [
+        36185,
+        59048,
+        62270
+      ],
+      "hdr50_90_95": [
+        0.5021300806238985,
+        0.8193941412375283,
+        0.8641050192192943
+      ]
+    },
+    "train_val/observed": {
+      "count": 88227,
+      "covered": [
+        44263,
+        72039,
+        76020
+      ],
+      "hdr50_90_95": [
+        0.5016944926156393,
+        0.8165187527627596,
+        0.8616409942534599
+      ]
+    },
+    "train/gap": {
+      "count": 5880,
+      "covered": [
+        2878,
+        4957,
+        5193
+      ],
+      "hdr50_90_95": [
+        0.4894557823129252,
+        0.8430272108843537,
+        0.8831632653061224
+      ]
+    },
+    "train_val/gap": {
+      "count": 7244,
+      "covered": [
+        3564,
+        6113,
+        6413
+      ],
+      "hdr50_90_95": [
+        0.4919933738266151,
+        0.843870789618995,
+        0.885284373274434
+      ]
+    },
+    "val/observed": {
+      "count": 16164,
+      "covered": [
+        8078,
+        12991,
+        13750
+      ],
+      "hdr50_90_95": [
+        0.4997525365008661,
+        0.8036995793120515,
+        0.8506557782727048
+      ]
+    },
+    "val/gap": {
+      "count": 1364,
+      "covered": [
+        686,
+        1156,
+        1220
+      ],
+      "hdr50_90_95": [
+        0.5029325513196481,
+        0.8475073313782991,
+        0.8944281524926686
+      ]
+    }
+  },
+  "frames": 40774,
+  "components": 5096750,
+  "npz_bytes": 219734725,
+  "dataset_bytes": 221776838,
+  "elapsed_seconds": 303.3194548469619
+}

@@ -1,0 +1,96 @@
+{"verified": "test-00000", "frames": 343, "hdr": {}}
+{"verified": "test-00001", "frames": 266, "hdr": {}}
+{"verified": "test-00002", "frames": 512, "hdr": {}}
+{"verified": "test-00003", "frames": 512, "hdr": {}}
+{"verified": "test-00004", "frames": 512, "hdr": {}}
+{"verified": "test-00005", "frames": 203, "hdr": {}}
+{"verified": "test-00006", "frames": 410, "hdr": {}}
+{"verified": "test-00007", "frames": 434, "hdr": {}}
+{"verified": "test-00008", "frames": 268, "hdr": {}}
+{"verified": "test-00009", "frames": 500, "hdr": {}}
+{"verified": "test-00010", "frames": 512, "hdr": {}}
+{"verified": "test-00011", "frames": 512, "hdr": {}}
+{"verified": "test-00012", "frames": 512, "hdr": {}}
+{"verified": "test-00013", "frames": 512, "hdr": {}}
+{"verified": "test-00014", "frames": 512, "hdr": {}}
+{"verified": "test-00015", "frames": 195, "hdr": {}}
+{"verified": "train-00000", "frames": 254, "hdr": {"observed": {"count": 610, "covered": [353, 526, 541]}, "gap": {"count": 21, "covered": [11, 21, 21]}}}
+{"verified": "train-00001", "frames": 497, "hdr": {"observed": {"count": 1389, "covered": [762, 1124, 1191]}, "gap": {"count": 54, "covered": [24, 47, 51]}}}
+{"verified": "train-00002", "frames": 512, "hdr": {"observed": {"count": 1421, "covered": [723, 1216, 1264]}, "gap": {"count": 102, "covered": [53, 77, 93]}}}
+{"verified": "train-00003", "frames": 512, "hdr": {"observed": {"count": 1338, "covered": [673, 1136, 1185]}, "gap": {"count": 198, "covered": [101, 165, 171]}}}
+{"verified": "train-00004", "frames": 351, "hdr": {"observed": {"count": 758, "covered": [358, 597, 632]}, "gap": {"count": 21, "covered": [7, 12, 12]}}}
+{"verified": "train-00005", "frames": 512, "hdr": {"observed": {"count": 1425, "covered": [684, 1141, 1219]}, "gap": {"count": 54, "covered": [7, 42, 48]}}}
+{"verified": "train-00006", "frames": 333, "hdr": {"observed": {"count": 757, "covered": [348, 616, 644]}, "gap": {"count": 101, "covered": [63, 90, 97]}}}
+{"verified": "train-00007", "frames": 512, "hdr": {"observed": {"count": 1283, "covered": [497, 968, 1016]}, "gap": {"count": 165, "covered": [78, 129, 136]}}}
+{"verified": "train-00008", "frames": 512, "hdr": {"observed": {"count": 1442, "covered": [744, 1167, 1216]}, "gap": {"count": 30, "covered": [23, 29, 29]}}}
+{"verified": "train-00009", "frames": 512, "hdr": {"observed": {"count": 1437, "covered": [722, 1184, 1230]}, "gap": {"count": 53, "covered": [34, 49, 53]}}}
+{"verified": "train-00010", "frames": 512, "hdr": {"observed": {"count": 1408, "covered": [686, 1171, 1250]}, "gap": {"count": 90, "covered": [44, 77, 84]}}}
+{"verified": "train-00011", "frames": 512, "hdr": {"observed": {"count": 1304, "covered": [697, 1078, 1158]}, "gap": {"count": 197, "covered": [91, 170, 178]}}}
+{"verified": "train-00012", "frames": 429, "hdr": {"observed": {"count": 1018, "covered": [514, 803, 856]}, "gap": {"count": 22, "covered": [18, 21, 21]}}}
+{"verified": "train-00013", "frames": 512, "hdr": {"observed": {"count": 1381, "covered": [730, 1140, 1181]}, "gap": {"count": 54, "covered": [20, 39, 41]}}}
+{"verified": "train-00014", "frames": 350, "hdr": {"observed": {"count": 855, "covered": [392, 713, 746]}, "gap": {"count": 102, "covered": [39, 76, 76]}}}
+{"verified": "train-00015", "frames": 337, "hdr": {"observed": {"count": 520, "covered": [309, 467, 480]}, "gap": {"count": 73, "covered": [33, 67, 73]}}}
+{"verified": "train-00016", "frames": 302, "hdr": {"observed": {"count": 678, "covered": [337, 566, 588]}, "gap": {"count": 22, "covered": [13, 21, 22]}}}
+{"verified": "train-00017", "frames": 465, "hdr": {"observed": {"count": 1194, "covered": [612, 982, 1063]}, "gap": {"count": 38, "covered": [19, 23, 25]}}}
+{"verified": "train-00018", "frames": 149, "hdr": {"observed": {"count": 287, "covered": [155, 243, 258]}, "gap": {"count": 99, "covered": [58, 93, 95]}}}
+{"verified": "train-00019", "frames": 305, "hdr": {"observed": {"count": 602, "covered": [310, 450, 491]}, "gap": {"count": 197, "covered": [100, 145, 146]}}}
+{"verified": "train-00020", "frames": 512, "hdr": {"observed": {"count": 1373, "covered": [602, 1033, 1125]}, "gap": {"count": 27, "covered": [5, 27, 27]}}}
+{"verified": "train-00021", "frames": 512, "hdr": {"observed": {"count": 1466, "covered": [710, 1172, 1241]}, "gap": {"count": 54, "covered": [24, 50, 52]}}}
+{"verified": "train-00022", "frames": 512, "hdr": {"observed": {"count": 1335, "covered": [681, 1122, 1166]}, "gap": {"count": 102, "covered": [46, 93, 96]}}}
+{"verified": "train-00023", "frames": 512, "hdr": {"observed": {"count": 1342, "covered": [674, 1158, 1219]}, "gap": {"count": 194, "covered": [89, 181, 183]}}}
+{"verified": "train-00024", "frames": 512, "hdr": {"observed": {"count": 1506, "covered": [741, 1298, 1347]}, "gap": {"count": 30, "covered": [19, 24, 24]}}}
+{"verified": "train-00025", "frames": 512, "hdr": {"observed": {"count": 1464, "covered": [748, 1205, 1260]}, "gap": {"count": 54, "covered": [20, 53, 54]}}}
+{"verified": "train-00026", "frames": 512, "hdr": {"observed": {"count": 1411, "covered": [657, 1112, 1190]}, "gap": {"count": 101, "covered": [45, 91, 93]}}}
+{"verified": "train-00027", "frames": 315, "hdr": {"observed": {"count": 610, "covered": [304, 528, 548]}, "gap": {"count": 197, "covered": [109, 173, 185]}}}
+{"verified": "train-00028", "frames": 303, "hdr": {"observed": {"count": 750, "covered": [403, 668, 692]}, "gap": {"count": 30, "covered": [16, 22, 22]}}}
+{"verified": "train-00029", "frames": 512, "hdr": {"observed": {"count": 1483, "covered": [752, 1217, 1301]}, "gap": {"count": 53, "covered": [12, 27, 28]}}}
+{"verified": "train-00030", "frames": 182, "hdr": {"observed": {"count": 371, "covered": [171, 308, 312]}, "gap": {"count": 101, "covered": [59, 88, 94]}}}
+{"verified": "train-00031", "frames": 512, "hdr": {"observed": {"count": 1323, "covered": [732, 1111, 1186]}, "gap": {"count": 196, "covered": [120, 184, 191]}}}
+{"verified": "train-00032", "frames": 512, "hdr": {"observed": {"count": 1450, "covered": [709, 1174, 1243]}, "gap": {"count": 30, "covered": [9, 27, 29]}}}
+{"verified": "train-00033", "frames": 288, "hdr": {"observed": {"count": 704, "covered": [321, 558, 582]}, "gap": {"count": 54, "covered": [27, 38, 40]}}}
+{"verified": "train-00034", "frames": 512, "hdr": {"observed": {"count": 1350, "covered": [735, 1188, 1249]}, "gap": {"count": 101, "covered": [31, 63, 67]}}}
+{"verified": "train-00035", "frames": 413, "hdr": {"observed": {"count": 913, "covered": [524, 766, 796]}, "gap": {"count": 198, "covered": [81, 156, 168]}}}
+{"verified": "train-00036", "frames": 512, "hdr": {"observed": {"count": 1447, "covered": [798, 1266, 1306]}, "gap": {"count": 29, "covered": [3, 24, 24]}}}
+{"verified": "train-00037", "frames": 512, "hdr": {"observed": {"count": 1459, "covered": [751, 1194, 1250]}, "gap": {"count": 54, "covered": [20, 44, 51]}}}
+{"verified": "train-00038", "frames": 512, "hdr": {"observed": {"count": 1434, "covered": [683, 1101, 1166]}, "gap": {"count": 102, "covered": [40, 74, 82]}}}
+{"verified": "train-00039", "frames": 512, "hdr": {"observed": {"count": 1309, "covered": [599, 998, 1077]}, "gap": {"count": 198, "covered": [84, 171, 175]}}}
+{"verified": "train-00040", "frames": 512, "hdr": {"observed": {"count": 1459, "covered": [768, 1203, 1249]}, "gap": {"count": 30, "covered": [23, 30, 30]}}}
+{"verified": "train-00041", "frames": 512, "hdr": {"observed": {"count": 1482, "covered": [657, 1218, 1346]}, "gap": {"count": 54, "covered": [24, 48, 51]}}}
+{"verified": "train-00042", "frames": 469, "hdr": {"observed": {"count": 1152, "covered": [616, 939, 1002]}, "gap": {"count": 99, "covered": [56, 87, 94]}}}
+{"verified": "train-00043", "frames": 330, "hdr": {"observed": {"count": 660, "covered": [340, 549, 575]}, "gap": {"count": 198, "covered": [100, 153, 162]}}}
+{"verified": "train-00044", "frames": 512, "hdr": {"observed": {"count": 1506, "covered": [805, 1214, 1265]}, "gap": {"count": 30, "covered": [18, 22, 22]}}}
+{"verified": "train-00045", "frames": 198, "hdr": {"observed": {"count": 455, "covered": [275, 395, 414]}, "gap": {"count": 50, "covered": [15, 50, 50]}}}
+{"verified": "train-00046", "frames": 512, "hdr": {"observed": {"count": 1435, "covered": [681, 1101, 1204]}, "gap": {"count": 101, "covered": [64, 85, 91]}}}
+{"verified": "train-00047", "frames": 512, "hdr": {"observed": {"count": 1301, "covered": [701, 1129, 1174]}, "gap": {"count": 198, "covered": [84, 153, 162]}}}
+{"verified": "train-00048", "frames": 512, "hdr": {"observed": {"count": 1495, "covered": [736, 1191, 1262]}, "gap": {"count": 30, "covered": [2, 24, 24]}}}
+{"verified": "train-00049", "frames": 477, "hdr": {"observed": {"count": 1233, "covered": [589, 1021, 1070]}, "gap": {"count": 54, "covered": [26, 38, 39]}}}
+{"verified": "train-00050", "frames": 512, "hdr": {"observed": {"count": 1413, "covered": [684, 1126, 1185]}, "gap": {"count": 102, "covered": [41, 85, 98]}}}
+{"verified": "train-00051", "frames": 512, "hdr": {"observed": {"count": 1338, "covered": [654, 1074, 1129]}, "gap": {"count": 198, "covered": [91, 171, 181]}}}
+{"verified": "train-00052", "frames": 324, "hdr": {"observed": {"count": 846, "covered": [472, 697, 728]}, "gap": {"count": 29, "covered": [15, 29, 29]}}}
+{"verified": "train-00053", "frames": 190, "hdr": {"observed": {"count": 475, "covered": [229, 354, 386]}, "gap": {"count": 50, "covered": [32, 45, 46]}}}
+{"verified": "train-00054", "frames": 375, "hdr": {"observed": {"count": 928, "covered": [497, 718, 767]}, "gap": {"count": 102, "covered": [76, 94, 94]}}}
+{"verified": "train-00055", "frames": 493, "hdr": {"observed": {"count": 1095, "covered": [496, 866, 918]}, "gap": {"count": 198, "covered": [94, 158, 159]}}}
+{"verified": "train-00056", "frames": 285, "hdr": {"observed": {"count": 803, "covered": [382, 636, 688]}, "gap": {"count": 26, "covered": [10, 24, 26]}}}
+{"verified": "train-00057", "frames": 187, "hdr": {"observed": {"count": 439, "covered": [169, 331, 346]}, "gap": {"count": 54, "covered": [36, 47, 47]}}}
+{"verified": "train-00058", "frames": 512, "hdr": {"observed": {"count": 1381, "covered": [714, 1191, 1231]}, "gap": {"count": 102, "covered": [58, 90, 94]}}}
+{"verified": "train-00059", "frames": 512, "hdr": {"observed": {"count": 1287, "covered": [655, 1081, 1131]}, "gap": {"count": 194, "covered": [123, 192, 193]}}}
+{"verified": "train-00060", "frames": 512, "hdr": {"observed": {"count": 1502, "covered": [731, 1242, 1299]}, "gap": {"count": 30, "covered": [3, 25, 29]}}}
+{"verified": "train-00061", "frames": 312, "hdr": {"observed": {"count": 775, "covered": [445, 642, 682]}, "gap": {"count": 54, "covered": [29, 43, 45]}}}
+{"verified": "train-00062", "frames": 506, "hdr": {"observed": {"count": 1311, "covered": [622, 1076, 1133]}, "gap": {"count": 102, "covered": [58, 86, 92]}}}
+{"verified": "train-00063", "frames": 337, "hdr": {"observed": {"count": 685, "covered": [366, 589, 621]}, "gap": {"count": 197, "covered": [105, 175, 178]}}}
+{"verified": "val-00000", "frames": 178, "hdr": {"observed": {"count": 397, "covered": [215, 321, 348]}, "gap": {"count": 29, "covered": [16, 27, 27]}}}
+{"verified": "val-00001", "frames": 512, "hdr": {"observed": {"count": 1482, "covered": [812, 1179, 1252]}, "gap": {"count": 54, "covered": [27, 45, 45]}}}
+{"verified": "val-00002", "frames": 512, "hdr": {"observed": {"count": 1318, "covered": [528, 971, 1071]}, "gap": {"count": 75, "covered": [37, 61, 69]}}}
+{"verified": "val-00003", "frames": 199, "hdr": {"observed": {"count": 269, "covered": [140, 226, 236]}, "gap": {"count": 174, "covered": [56, 147, 150]}}}
+{"verified": "val-00004", "frames": 416, "hdr": {"observed": {"count": 1157, "covered": [553, 931, 985]}, "gap": {"count": 30, "covered": [19, 22, 25]}}}
+{"verified": "val-00005", "frames": 512, "hdr": {"observed": {"count": 1466, "covered": [694, 1148, 1229]}, "gap": {"count": 54, "covered": [11, 42, 43]}}}
+{"verified": "val-00006", "frames": 425, "hdr": {"observed": {"count": 1050, "covered": [555, 855, 896]}, "gap": {"count": 97, "covered": [50, 83, 83]}}}
+{"verified": "val-00007", "frames": 286, "hdr": {"observed": {"count": 496, "covered": [228, 441, 458]}, "gap": {"count": 180, "covered": [105, 175, 175]}}}
+{"verified": "val-00008", "frames": 512, "hdr": {"observed": {"count": 1489, "covered": [766, 1159, 1199]}, "gap": {"count": 30, "covered": [11, 20, 25]}}}
+{"verified": "val-00009", "frames": 512, "hdr": {"observed": {"count": 1476, "covered": [731, 1190, 1253]}, "gap": {"count": 54, "covered": [29, 44, 53]}}}
+{"verified": "val-00010", "frames": 411, "hdr": {"observed": {"count": 978, "covered": [449, 723, 774]}, "gap": {"count": 97, "covered": [47, 79, 89]}}}
+{"verified": "val-00011", "frames": 512, "hdr": {"observed": {"count": 1339, "covered": [661, 1104, 1159]}, "gap": {"count": 197, "covered": [111, 160, 173]}}}
+{"verified": "val-00012", "frames": 452, "hdr": {"observed": {"count": 1181, "covered": [585, 995, 1053]}, "gap": {"count": 29, "covered": [19, 28, 28]}}}
+{"verified": "val-00013", "frames": 290, "hdr": {"observed": {"count": 789, "covered": [441, 645, 675]}, "gap": {"count": 54, "covered": [18, 39, 40]}}}
+{"verified": "val-00014", "frames": 450, "hdr": {"observed": {"count": 998, "covered": [545, 861, 909]}, "gap": {"count": 97, "covered": [61, 94, 97]}}}
+{"verified": "val-00015", "frames": 204, "hdr": {"observed": {"count": 279, "covered": [175, 242, 253]}, "gap": {"count": 113, "covered": [69, 90, 98]}}}
