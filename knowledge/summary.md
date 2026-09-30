@@ -1,4 +1,4 @@
-<!-- knowledge-review: 2cbe96bd207103c4ed25fb296050efa5dba5fac04d24c92d99bd13c56a782958 on 2026-09-30 -->
+<!-- knowledge-review: c99cfb9df8ff4e5fffecc0c8846a8915f873546d5c432edfd1c6f7a4661587f8 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -312,7 +312,7 @@ Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあ�
 採用基準から外した。adaptive rayはGT品質がHに近く、費用は約20倍だった。
 Hにも過小被覆と一部層の大きい位置誤差が残り、較正や最終性能の合格とはしない。
 停止データの完成済みtrain9件だけの標本で、全量・別splitの保証ではない。
-[96件H dev](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を約52分・222 MBで生成し、40,774 frame/全125成分のreader・float32 SPD・存在質量・未評価flagを検証した。合成train/valの2D HDR90/95はobserved81.65/86.16%、gap84.39/88.53%で、新しい実pilotのvalより低い。母集団差はあるが暫定劣化の較正差が残り、項目2の最終完了とはしない。次は固定予算のflow/回帰短時間実行で資源とvalを測り、最終精度の判断は保留する。
+[96件H dev](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を約52分・222 MBで生成し、40,774 frame/全125成分のreader・float32 SPD・存在質量・未評価flagを検証した。合成train/valの2D HDR90/95はobserved81.65/86.16%、gap84.39/88.53%で、新しい実pilotのvalより低い。母集団差はあるが暫定劣化の較正差が残り、項目2の最終完了とはしない。[固定2k更新の回収](nodes/ball_refiner_3d/000015-run-i936-h-dev-flow-regression-r9-s936-20260930.md)では、flow/回帰のval RMSEは8.01/8.20m、加速度p95は約2,940/4,057m/s²で有用性未達。335秒・allocated 0.425GBを実測した。次は同一valの単純ベースライン比較と更新数のみ20kへの延長で、入力分布を読む以上の学習かを検査する。
 #959暫定reportを単一入力として維持し、640件は最終#935出力を待つ。
 
 [保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
