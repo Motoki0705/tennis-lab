@@ -282,3 +282,105 @@ def test_script_execute_and_load_without_training_store(exported, tmp_path, monk
     assert first["references"] == second["references"]
     assert set(first["components"].values()) == {"executed"}
     assert set(second["components"].values()) == {"loaded"}
+
+
+@pytest.fixture
+def calibrated_option(exported, tmp_path, monkeypatch):
+    from src.tasks.ball_refiner import pipeline_options
+
+    root, _, bundle = exported
+    best = json.loads((root / "archived-training/best.json").read_text())
+    path = tmp_path / "calibration.json"
+    path.write_text(json.dumps({
+        "schema": "ball_refiner_2d.covariance_calibration.v1",
+        "covariance_multiplier": 1.8125148752, "checkpoint_sha256": best["checkpoint_sha256"],
+        "provenance": {"test": "fixed synthetic fixture"},
+    }))
+    identity = pipeline_options.BallPathIdentity(
+        bundle.detector.checkpoint_sha256, best["checkpoint_sha256"], bundle.manifest_sha256, dual_sha256(path),
+    )
+    monkeypatch.setattr(pipeline_options, "E9_ANCHORED_S42", identity)
+    return path, identity
+
+
+def test_calibrated_option_execute_and_load_preserve_scaled_full_gmm(
+    executed, calibrated_option, tmp_path, monkeypatch,
+):
+    from src.tennis_scene.pipeline.components.ball_refiner import (
+        CalibratedBallRefiner2DOutput,
+    )
+
+    source, config, raw_runner, bundle = executed
+    path, identity = calibrated_option
+    options = dict(detector_config=config, bundle_directory=bundle.directory, batch_size=2,
+                   code_identity="test", ball_path="e9_anchored_s42_covariance", calibration_artifact=path)
+    nodes = ball_refiner_definition(source, execution_source="execute", **options)
+    runner = ComponentRunner(nodes, ClipStore(tmp_path / "calibrated-store", json_value(source)))
+    runner.run()
+    output = runner.output("ball_refiner_2d/cam0")
+    raw = raw_runner.output("ball_refiner_2d/cam0")
+    assert isinstance(output, CalibratedBallRefiner2DOutput)
+    assert output.calibration == "covariance_scale_v1"
+    assert output.covariance_calibration.checkpoint_sha256 == identity.checkpoint_sha256
+    assert output.calibration_artifact_sha256 == identity.calibration_sha256
+    assert nodes[1].io.version == 2
+    for name in ("means", "mixture_logits", "presence_logits"):
+        torch.testing.assert_close(getattr(output.prediction.distribution, name),
+                                   getattr(raw.prediction.distribution, name), atol=0, rtol=0)
+    torch.testing.assert_close(output.prediction.distribution.covariance,
+                               raw.prediction.distribution.covariance * 1.8125148752)
+    descriptor = runner.store.descriptor(runner.references["ball_refiner_2d/cam0"])
+    assert descriptor["identity"]["settings"]["covariance_calibration"]["artifact_sha256"] == dual_sha256(path)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("load must not construct models or assemble video inputs")
+
+    monkeypatch.setattr(InferenceBundle, "load_model", forbidden)
+    monkeypatch.setattr(RefinerEvidenceModule, "load", forbidden)
+    monkeypatch.setattr(BallRefiner2DInputAssembler, "assemble", forbidden)
+    fresh = ComponentRunner(ball_refiner_definition(source, execution_source="load", **options),
+                            ClipStore(runner.store.root, json_value(source), memory_entries=0))
+    assert fresh.run() == runner.references
+    restored = fresh.output("ball_refiner_2d/cam0")
+    assert isinstance(restored, CalibratedBallRefiner2DOutput)
+    assert restored.covariance_calibration == output.covariance_calibration
+    for field in fields(output.prediction.distribution):
+        torch.testing.assert_close(getattr(restored.prediction.distribution, field.name),
+                                   getattr(output.prediction.distribution, field.name), atol=0, rtol=0)
+    path.write_text(path.read_text() + " ")
+    with pytest.raises(ValueError, match="SHA256 mismatch"):
+        ball_refiner_definition(source, execution_source="load", **options)
+
+
+@pytest.mark.parametrize("failure", ["missing", "corrupt", "checkpoint", "bundle", "detector", "omitted"])
+def test_named_option_stops_on_missing_or_wrong_assets(exported, calibrated_option, monkeypatch, failure):
+    from src.tasks.ball_refiner import pipeline_options
+
+    bundle = exported[2]
+    path, identity = calibrated_option
+    if failure == "missing":
+        path.unlink()
+    elif failure == "corrupt":
+        path.write_text("{}")
+    elif failure == "checkpoint":
+        monkeypatch.setattr(pipeline_options, "E9_ANCHORED_S42", replace(identity, checkpoint_sha256="0" * 64))
+    elif failure == "bundle":
+        bundle = replace(bundle, manifest_sha256="0" * 64)
+    elif failure == "detector":
+        bundle = replace(bundle, detector=replace(bundle.detector, checkpoint_sha256="0" * 64))
+    elif failure == "omitted":
+        path = None
+    with pytest.raises((ValueError, FileNotFoundError), match="missing|mismatch|requires"):
+        pipeline_options.select_ball_path("e9_anchored_s42_covariance", bundle, path)
+
+
+def test_no_implicit_calibration_or_unknown_ball_path(exported, calibrated_option):
+    from src.tasks.ball_refiner.pipeline_options import select_ball_path
+
+    bundle = exported[2]
+    path = calibrated_option[0]
+    assert select_ball_path("bundle", bundle, None) is None
+    with pytest.raises(ValueError, match="explicitly select"):
+        select_ball_path("bundle", bundle, path)
+    with pytest.raises(ValueError, match="Unknown ball path"):
+        select_ball_path("typo", bundle, path)

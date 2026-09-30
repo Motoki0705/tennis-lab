@@ -10,6 +10,7 @@ from src.tasks.ball_refiner.deployment import (
     DetectorRequirements,
     load_inference_bundle,
 )
+from src.tasks.ball_refiner.pipeline_options import select_ball_path
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionConfig,
@@ -17,7 +18,10 @@ from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
     BallDetectionOutput,
 )
-from src.tennis_scene.pipeline.components.ball_refiner import BallRefiner2DModule
+from src.tennis_scene.pipeline.components.ball_refiner import (
+    BallRefiner2DModule,
+    CalibratedBallRefiner2DModule,
+)
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource
 from src.tennis_scene.pipeline.input_assembly.ball_refiner import (
     BallRefiner2DInputAssembler,
@@ -59,6 +63,7 @@ class RefinerEvidenceModule(BallDetectionModule):
 def ball_refiner_definition(
     source: ClipSource, *, detector_config: BallDetectionConfig, bundle_directory: Path,
     batch_size: int, code_identity: str, execution_source: str,
+    ball_path: str = "bundle", calibration_artifact: Path | None = None,
 ) -> tuple[ComponentNode, ...]:
     """One independent detector -> refiner chain per camera, no 3D or point fallback.
 
@@ -68,6 +73,7 @@ def ball_refiner_definition(
     if detector_config.device not in {"cpu", "cuda"}:
         raise ValueError("Refiner recipe requires an explicit cpu/cuda device")
     bundle = load_inference_bundle(bundle_directory)
+    calibration = select_ball_path(ball_path, bundle, calibration_artifact)
     required = bundle.detector
     if (dual_sha256(detector_config.checkpoint) != required.checkpoint_sha256
             or detector_config.image_size != required.image_size_hw
@@ -87,11 +93,21 @@ def ball_refiner_definition(
         "bundle_manifest_sha256": bundle.manifest_sha256, "weights_sha256": bundle.weights_sha256,
         "batch_size": batch_size, "device": detector_config.device,
     })
+    if calibration is not None:
+        refiner_settings["ball_path"] = ball_path
+        refiner_settings["covariance_calibration"] = json_value({
+            "artifact_sha256": calibration.sha256, "parameters": calibration.load(),
+        })
     nodes: list[ComponentNode] = []
     for camera in source.camera_ids:
         context = AssemblyContext(source, camera)
         detector = RefinerEvidenceModule(detector_config, required)
-        refiner = BallRefiner2DModule(bundle, device=detector_config.device, batch_size=batch_size)
+        refiner = (
+            BallRefiner2DModule(bundle, device=detector_config.device, batch_size=batch_size)
+            if calibration is None else CalibratedBallRefiner2DModule(
+                bundle, device=detector_config.device, batch_size=batch_size, calibration=calibration,
+            )
+        )
         nodes.extend((
             ComponentNode(f"ball_detection/{camera}", detector, detector.io, BallDetectionInputAssembler(), {},
                           context, detector_settings, code_identity, execution_source),

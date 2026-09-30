@@ -12,6 +12,7 @@ from typing import Any, cast
 from omegaconf import OmegaConf
 
 from src.tasks.ball_refiner.deployment import CENTRE_SELECTION, load_inference_bundle
+from src.tasks.ball_refiner.pipeline_options import BALL_PATHS
 from src.tennis_scene.configuration import build_ball_detection_config
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.ball_refiner_recipe import ball_refiner_definition
@@ -37,6 +38,7 @@ PATH_BOUNDARY = NonHydraPathBoundary(
         BoundaryPathField("video", PathRole.DATA, PathDirection.INPUT, PathKind.FILE, must_exist=True),
         BoundaryPathField("bundle", PathRole.CHECKPOINT, PathDirection.INPUT, PathKind.DIRECTORY, must_exist=True),
         BoundaryPathField("detector_checkpoint", PathRole.CHECKPOINT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+        BoundaryPathField("calibration_artifact", PathRole.CHECKPOINT, PathDirection.INPUT, PathKind.FILE, must_exist=True, required=False),
         BoundaryPathField("store", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY),
     ),
 )
@@ -46,6 +48,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("video", "bundle", "detector-checkpoint", "store"):
         parser.add_argument(f"--{name}", type=Path, required=True)
+    parser.add_argument("--ball-path", choices=BALL_PATHS, default="bundle")
+    parser.add_argument("--calibration-artifact", type=Path)
     parser.add_argument("--camera-id", required=True)
     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
     parser.add_argument("--source", choices=("execute", "load"), required=True)
@@ -54,16 +58,22 @@ def main() -> None:
     args = parser.parse_args()
     if not all(getattr(args, name).is_absolute() for name in ("video", "bundle", "detector_checkpoint", "store")):
         parser.error("All paths must be absolute")
-    checkpoint_root = Path(os.path.commonpath([args.bundle.parent, args.detector_checkpoint.parent]))
+    checkpoint_paths = [args.bundle.parent, args.detector_checkpoint.parent]
+    if args.calibration_artifact is not None:
+        if not args.calibration_artifact.is_absolute():
+            parser.error("Calibration artifact path must be absolute")
+        checkpoint_paths.append(args.calibration_artifact.parent)
+    checkpoint_root = Path(os.path.commonpath(checkpoint_paths))
     roots = RuntimePathRoots(
         project_root=PROJECT_ROOT, data_root=args.video.parent, checkpoint_root=checkpoint_root,
         cache_root=args.store.parent, artifact_root=args.store.parent,
         output_root=args.store.parent, external_asset_root=PROJECT_ROOT / "third_party",
     )
     resolver = PathResolver(roots)
-    paths = PATH_BOUNDARY.validate({name: getattr(args, name) for name in (
-        "video", "bundle", "detector_checkpoint", "store",
-    )}, resolver=resolver)
+    path_values = {name: getattr(args, name) for name in ("video", "bundle", "detector_checkpoint", "store")}
+    if args.calibration_artifact is not None:
+        path_values["calibration_artifact"] = args.calibration_artifact
+    paths = PATH_BOUNDARY.validate(path_values, resolver=resolver)
     video_path = paths.declared("video").path
     bundle_path = paths.declared("bundle").path
     store_path = paths.declared("store").path
@@ -95,7 +105,8 @@ def main() -> None:
     })
     nodes = ball_refiner_definition(
         source, detector_config=detector, bundle_directory=bundle_path, batch_size=args.refiner_batch_size,
-        code_identity=code_identity, execution_source=args.source,
+        code_identity=code_identity, execution_source=args.source, ball_path=args.ball_path,
+        calibration_artifact=(paths.declared("calibration_artifact").path if args.calibration_artifact is not None else None),
     )
     store = ClipStore(store_path, json_value(source))
     runner = ComponentRunner(nodes, store)
