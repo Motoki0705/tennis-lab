@@ -54,7 +54,8 @@ GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検�
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
 
 `person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
-既存の公開重みを使う場合はこの設定で場所を明示する（絶対パスも可）。hashはAFLink readerが検証する。
+公開重みをcheckpoint root内へ配置し、この設定でroot相対の場所を明示する。
+共通PathResolverに従い、絶対パスやroot外へのsymlinkは受け付けない。hashはAFLink readerが検証する。
 **AFLink重みの利用条件は未確認**で、当面使用するユーザー判断と後日の再学習判断は
 [出自/制約の正本](../../tasks/person_tracking/strongsort_NOTICE.md)を参照。
 
