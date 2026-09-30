@@ -1,0 +1,30 @@
+{
+  "recorded_at": "2026-09-30T21:25:37.280552+09:00",
+  "tests": {
+    "passed": 99,
+    "seconds": 47.04,
+    "workers": 1,
+    "log": "refiner-tests.txt"
+  },
+  "ruff": "passed",
+  "mypy": {
+    "status": "passed",
+    "files": 8,
+    "log": "mypy.txt"
+  },
+  "knowledge": "0 errors",
+  "repro": "0 missing, 0 unverifiable; 289 scripts / 363 references",
+  "generator": {
+    "pid": 4044520,
+    "status": "running",
+    "completed_rallies": 28,
+    "failures": 0,
+    "unchanged_input_hashes": 36,
+    "output_bytes_at_snapshot": 64234719
+  },
+  "minimum_host_ram_rule_gib": 6,
+  "available_host_bytes_at_snapshot": 14924992512,
+  "gpu_job_state": "queued",
+  "shared_worker_pid": 3216003,
+  "source_code_commit": "0c98a9cf9ae8e2b2b85eb1953ec9f6ff37c3a499"
+}
