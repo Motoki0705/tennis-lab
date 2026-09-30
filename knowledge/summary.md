@@ -1,4 +1,4 @@
-<!-- knowledge-review: 2b5883165e66bdff0d60f8acb6c6a7048fc3574b5613987696633ad5f954c162 on 2026-10-01 -->
+<!-- knowledge-review: 736f8c005a9a9e0a4eef9081336c5ca05d2a36dd580fbe1ac6f802b0edaaa471 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -78,13 +78,16 @@ GSI syntheticは別maskのままで評価の実観測へ入れていない。費
 
 [run 12の事前protocol](nodes/player_association/000003-run-i964-recalibration-r12-20260930.md)は、
 新既定StrongSORT++＋pose/CLIP、ユーザー確定のmerge offを固定し、無ラベル6clipで
-尺度/判定しきい値を較正してからdevを一度採点する計画。まだfit・dev再採点はしておらず、
-旧#933の結論は旧trackに限定したまま維持する。
+尺度/判定しきい値を較正してからdevを一度採点する計画。
+[run14のfit](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)は支持/安定性条件を満たし、
+LOVO正例recall85.93%、全動画の負例誤結合0でAを選択した。A/B同点、Cはrecall不足。
+video_001/clip_020の停止を母数へ含み、同動画recall54.97%という弱点も残る。
+新尺度を名前付きの非既定YAMLとして固定し、devはそのcommit/push後に一度だけ採点する。
+旧#933の結論は旧trackに限定したまま維持し、既定変更・凍結はユーザー判断を待つ。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
 旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。
-新規9cameraは約76分、peak GPU4.26GBで完了した。fitは合成6clipでのみ検証済みで、
-実fit/新dev採点はまだ行っていない。
+新規9cameraは約76分、peak GPU4.26GBで完了した。実fitは上記run14で完了し、devはまだ開いていない。
 準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
 既定を維持して9行を明示mask投影し、2cameraのCPU再追跡と元row/GSI検証を完了した。
 run 11は保存特徴からの再現として有効だが、画像入口との完全同一性の証明とはしない。
