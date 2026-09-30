@@ -1,4 +1,4 @@
-<!-- knowledge-review: 9ae982f10e9e79aaad3f74aa0abf5dfd75b432954bbf2702a50915ff1fccfe8a on 2026-10-01 -->
+<!-- knowledge-review: 1a1e511200937d855bc9be018e8318d170a1e41323ed7e9b395703aa332b6f1c on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
