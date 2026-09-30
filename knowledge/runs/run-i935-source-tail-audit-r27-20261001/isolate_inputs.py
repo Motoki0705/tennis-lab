@@ -46,12 +46,14 @@ from src.utils.resource_guard import available_ram_bytes
 from src.utils.video import BgrToTensorTransform, FramePacket, OpenCVVideoFrameReader
 
 
-def main(mode: str) -> None:
+def main(mode: str, output: Path | None = None) -> None:
     if torch.cuda.is_initialized():
         raise RuntimeError("This experiment must not initialize CUDA")
     torch.set_num_threads(2)
     cv2.setNumThreads(1)
-    out = ROOT / "isolation" / "cpu-v3" / f"cam2-{mode}"
+    out = ROOT / "isolation" / "cpu-v3" / f"cam2-{mode}" if output is None else output
+    if not out.is_absolute():
+        raise ValueError("Output must be an absolute new directory")
     out.mkdir(parents=True, exist_ok=False)
     inputs = Inputs()
     plan = read(inputs.pin(PLAN))
@@ -195,4 +197,6 @@ def main(mode: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", required=True, choices=("reencoded", "raw", "resize_only"))
-    main(parser.parse_args().mode)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    main(args.mode, args.output)

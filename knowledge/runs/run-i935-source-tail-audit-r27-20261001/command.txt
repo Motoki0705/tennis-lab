@@ -1,2 +1,15 @@
-PYTHONPATH=<checkout> <checkout>/.venv/bin/python <checkout>/knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_frames.py
-入力pathは前runのplan.jsonとaudit_frames.pyで固定。frames/は新規directoryを要求する。再実行時は既存証跡を削除せず、別checkoutで行う。
+実行時はPYTHONPATH=<checkout>、OMP_NUM_THREADS=1（isolationのみ2）、OPENBLAS_NUM_THREADS=1、OPENCV_FFMPEG_THREADS=2。
+Pythonは<checkout>/.venv/bin/python、script directoryは<checkout>/knowledge/runs/run-i935-source-tail-audit-r27-20261001/。
+
+実行済み:
+audit_frames.py
+audit_pixels.py
+isolate_inputs.py --mode reencoded
+isolate_inputs.py --mode raw
+audit_noise.py
+audit_noise.py --balanced
+
+入力pathは前runのplan.jsonとaudit_frames.pyで固定。既存の入力/checkpoint/outputは削除しない。
+再実行は各scriptに --output <絶対新規directory> を追加する。既存出力への上書きは拒否する。
+audit_noise.pyとsummarize_isolation.pyはgit保存した凍結比較入力を読む。
+isolation初期setup2失敗とbootstrapのobserved0件に関する失敗は、対応したlogに保持。
