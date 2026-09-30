@@ -1,0 +1,29 @@
+{"completed_rally": "val-00000", "seconds": 5.288572138990276}
+{"completed_rally": "val-00001", "seconds": 16.740146672003902}
+{"completed_rally": "val-00002", "seconds": 28.081407852005213}
+{"completed_rally": "val-00003", "seconds": 33.66373065096559}
+{"completed_rally": "val-00004", "seconds": 44.48862738895696}
+{"completed_rally": "val-00005", "seconds": 56.070594699005596}
+{"completed_rally": "val-00006", "seconds": 66.63595151295885}
+{"completed_rally": "val-00007", "seconds": 74.19999768096022}
+{"completed_rally": "val-00008", "seconds": 85.64314152399311}
+{"completed_rally": "val-00009", "seconds": 97.08058583398815}
+{"completed_rally": "val-00010", "seconds": 105.4105364640127}
+{"completed_rally": "val-00011", "seconds": 116.89753022696823}
+{"completed_rally": "val-00012", "seconds": 128.31133329495788}
+{"completed_rally": "val-00013", "seconds": 135.9224094050005}
+{"completed_rally": "val-00014", "seconds": 145.01639293698827}
+{"completed_rally": "val-00015", "seconds": 150.65840313601075}
+{
+  "resources": {
+    "elapsed_seconds": 150.79929147695657,
+    "peak_rss_bytes": 979320832,
+    "minimum_available_host_bytes": 27492020224,
+    "gpu_jobs": 0
+  },
+  "diagnostic": {
+    "flow_overlap_mean": true,
+    "flow_overlap_samples": true,
+    "regression_overlap_mean": false
+  }
+}
