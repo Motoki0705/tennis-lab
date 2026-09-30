@@ -19,7 +19,8 @@ from tests.integration.tasks.ball_refiner.test_training import (
 )
 
 
-def test_cached_evaluation_trains_restores_and_exports_candidate_variant(pilot_inputs, tmp_path, monkeypatch):
+@pytest.mark.parametrize('training_seed', [42, 43])
+def test_cached_evaluation_trains_restores_and_exports_candidate_variant(pilot_inputs, tmp_path, monkeypatch, training_seed):
     for module in (original, cached):
         monkeypatch.setattr(module, 'validation_clips', lambda store: tuple(r for r in store.clips if r.split == 'val'))
     baseline = run_training(config_for(pilot_inputs, tmp_path / 'baseline'))
@@ -30,6 +31,7 @@ def test_cached_evaluation_trains_restores_and_exports_candidate_variant(pilot_i
     cfg.model.mean_parameterization = 'candidate_residual_v1'
     cfg.model.anchored_components = 2
     cfg.model.max_offset_uv = .02
+    cfg.run.seed = training_seed
     variant = run_training(cfg)
 
     def forbidden(*args, **kwargs):
@@ -47,6 +49,9 @@ def test_cached_evaluation_trains_restores_and_exports_candidate_variant(pilot_i
     assert metrics['variant/meiji/observed/observed']['frames'] == 24
     assert metrics['variant/meiji/evidence_gap/observed']['frames'] < 24
     assert metrics['variant/meiji/observed/no_instance_unknown']['mean_nll_px'] is None
+    manifest = json.loads((result / 'manifest.json').read_text())
+    assert manifest['training_seed'] == training_seed
+    assert manifest['reference_training_seed'] == 42
     bundle = export_pilot_bundle(variant, tmp_path / 'bundle')
     loaded = load_inference_bundle(bundle.directory)
     assert isinstance(loaded.model_config, CandidateAnchoredConfig)
