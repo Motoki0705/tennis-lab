@@ -35,3 +35,10 @@ peak GPU 4,548,722,688 bytes、最少available RAM 11,544,985,600 bytes、
 旧出力約254MB。学習/fit/採点ではなく特徴抽出の失敗で、精度指標・学習曲線はない。
 6clip/閾値/既定は維持し、18camera完了前に実データfitをしない。
 次は完全なcameraだけの明示的再利用と合成入力のfitテスト、dev2cameraのCPU再追跡を準備する。
+
+再開入口をa1303f02で実装し、合成再開/不一致停止/既存mask/監視の15 testsがpassした。
+[明示再利用一覧](../../runs/run-i964-recalibration-resume-r13-20261001/reuse.json)と
+[新plan](../../runs/run-i964-recalibration-resume-r13-20261001/resume-plan.json)をCPU検証した。
+[再見積り](../../runs/run-i964-recalibration-resume-r13-20261001/estimate.json)は実測最遅cameraに
+300秒のbuild/起動と2.2倍の夜間負荷余裕を加え約3.5時間。上限4.5時間、peak見積り6GB、
+GPU停止9.5GB、追加出力見積り0.5GBで残り9cameraを1jobにする。
