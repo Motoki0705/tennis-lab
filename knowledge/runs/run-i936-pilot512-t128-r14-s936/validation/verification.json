@@ -1,0 +1,46 @@
+{
+  "source_commit": "fcba4994",
+  "cpu_threads": 1,
+  "pytest_workers": 1,
+  "tests": [
+    {
+      "files": [
+        "test_dev_metrics.py",
+        "test_baselines.py"
+      ],
+      "passed": 16,
+      "seconds": 10.14
+    },
+    {
+      "files": [
+        "test_roughness.py"
+      ],
+      "passed": 7,
+      "seconds": 2.64
+    },
+    {
+      "files": [
+        "test_experiment.py",
+        "test_condition_audit.py",
+        "test_dev_training_3d.py"
+      ],
+      "passed": 33,
+      "seconds": 18.23
+    },
+    {
+      "files": [
+        "test_experiment.py"
+      ],
+      "passed": 6,
+      "seconds": 8.18,
+      "repeated_cases": 4
+    }
+  ],
+  "unique_cases": 58,
+  "ruff": "passed",
+  "mypy": "passed, follow-imports=skip, 12 distinct files across collection/diagnosis/runner/rendering checks",
+  "knowledge": "0 errors",
+  "repro": "0 missing / 0 unverifiable",
+  "queue_jobs_added_this_run": 2,
+  "training_not_awaited": true
+}
