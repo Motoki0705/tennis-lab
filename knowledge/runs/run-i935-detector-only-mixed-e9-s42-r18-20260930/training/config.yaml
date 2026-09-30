@@ -1,0 +1,61 @@
+model:
+  components: 4
+  hidden_dim: 128
+  attention_heads: 4
+  temporal_layers: 1
+  patch_size: 5
+  court_keypoints: 14
+  dropout: 0.1
+  pose_dropout: 0.25
+  min_std: 0.001
+  max_std: 0.5
+  initial_std: 0.05
+  max_correlation: 0.95
+  use_detector: true
+  use_pose: false
+  use_court: false
+paths:
+  project_root: .
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: /home/kamimura/projects/tennis-lab/data
+  external_asset_root: third_party
+data:
+  store: ball_detection/ball-mix-v1
+  evidence: ball_refiner/detector-mixed-e9-trainval-r17-20260930
+  sources:
+  - tracknet
+  - meiji
+  - chat_annotation
+  window_length: 33
+  stride: 16
+  partition_seed: 42
+  short_clip_policy: exclude_and_report
+training:
+  batch_size: 32
+  epochs: 12
+  steps_per_epoch: 250
+  max_steps: 3000
+  num_workers: 0
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  gap_probability: 0.5
+  gap_lengths:
+  - 1
+  - 4
+  - 8
+  - 16
+compile:
+  enabled: true
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+run:
+  output_dir: ball_refiner/train/detector_only/i935-mixed-e9-s42-r18-20260930
+  device: cuda
+  seed: 42
+  dry_run: false
