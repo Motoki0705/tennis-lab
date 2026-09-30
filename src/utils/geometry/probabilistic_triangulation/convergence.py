@@ -10,6 +10,7 @@ from numpy.typing import NDArray
 
 from src.utils.geometry.triangulation import PinholeCamera
 
+from .adaptive import AdaptiveRayConfig, AdaptiveRayProposal
 from .distributions import CameraGMM, FloatArray, GaussianPrior3D
 from .ray import RayConfig, RayProposal
 from .solver import (
@@ -85,11 +86,34 @@ class RayConvergenceConfig:
         return {"quadrature_order": self.orders[index]}
 
 
+@dataclass(frozen=True)
+class AdaptiveRayConvergenceConfig(RayConvergenceConfig):
+    relative_errors: tuple[float, ...]
+    max_cells: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if len(self.relative_errors) != len(self.orders) or len(self.max_cells) != len(self.orders):
+            raise ValueError("Adaptive budgets must match orders")
+        if any(b >= a for a, b in zip(self.relative_errors[:-1], self.relative_errors[1:], strict=True)) or any(b <= a for a, b in zip(self.max_cells[:-1], self.max_cells[1:], strict=True)):
+            raise ValueError("Adaptive error must decrease and cell budget increase")
+        for i in range(self.round_limit):
+            self.budget(i)
+
+    def budget(self, index: int) -> AdaptiveRayConfig:
+        return AdaptiveRayConfig(self.orders[index], self.relative_errors[index], self.max_cells[index])
+
+    def budget_record(self, index: int) -> dict[str, int]:
+        return {"quadrature_order": self.orders[index], "max_cells": self.max_cells[index]}
+
+
 def convergence_config(values: dict[str, Any]) -> ConvergenceConfig | RayConvergenceConfig:
     settings = dict(values)
     method = settings.pop("method", "voxel")  # Historical schema explicitly defines voxel.
     if method == "ray":
         return RayConvergenceConfig(**settings)
+    if method == "adaptive_ray":
+        return AdaptiveRayConvergenceConfig(**settings)
     if method == "voxel":
         return ConvergenceConfig(**settings)
     raise ValueError(f"Unknown integration method: {method}")
@@ -119,7 +143,7 @@ def triangulate_converged(
     These finite-grid checks do not bound box truncation or Laplace model error.
     """
     cache: ComponentCache = {}
-    ray_cache: dict[tuple[int, ...], RayProposal] = {}
+    ray_cache: dict[tuple[int, ...], RayProposal | AdaptiveRayProposal] = {}
     previous: ProbabilisticTriangulation | None = None
     initial_probes = np.empty((0, 3))
     history: list[dict[str, float | int | bool]] = []
