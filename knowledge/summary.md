@@ -1,4 +1,4 @@
-<!-- knowledge-review: 81a51013c0db7c704848e5ffbeccb1f05ee3debc0ffcacbf4d255e82b73fe732 on 2026-10-01 -->
+<!-- knowledge-review: c0aaea415645e83c7406f0c7e5ee0b2d6c486a9e01938aa04c592af6dd15b86b on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -82,9 +82,10 @@ GSI syntheticは別maskのままで評価の実観測へ入れていない。費
 旧#933の結論は旧trackに限定したまま維持する。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
-旧見積りは不足していた。残り9cameraを検証済み再開で生成してからfitする。
+旧見積りは不足していた。残り9cameraの再開jobを4.5時間枠で登録した。fitは合成6clipでのみ検証済みで、
+実fit/新dev採点はまだ行っていない。
 準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
-既定は維持し、明示mask投影と2cameraのCPU再追跡で入力をそろえる。
+既定を維持して9行を明示mask投影し、2cameraのCPU再追跡と元row/GSI検証を完了した。
 run 11は保存特徴からの再現として有効だが、画像入口との完全同一性の証明とはしない。
 
 幾何（box下端の足元距離の対数尤度比）とCLIP-ReIDの外観をMILP（`cluster_multiview`）で統合し、コートの各sideで在場の長いidentityを選手に選ぶ対応付けを
