@@ -1,0 +1,428 @@
+{
+  "primary_update": 20000,
+  "rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5915164321",
+  "results": {
+    "flow_20000_mean": {
+      "axes": {
+        "rmse_m_overall": {
+          "candidate": 2.017656978669936,
+          "reference": 3.6505274877702,
+          "tolerance": 4.6505274877701995e-06,
+          "status": "better"
+        },
+        "rmse_m_gap": {
+          "candidate": 2.093226429967805,
+          "reference": 2.073769127903791,
+          "tolerance": 3.0737691279037905e-06,
+          "status": "worse"
+        },
+        "rmse_m_no_evidence": {
+          "candidate": 2.1072178948385396,
+          "reference": 2.2393647745382492,
+          "tolerance": 3.239364774538249e-06,
+          "status": "better"
+        },
+        "rmse_m_event_pm5": {
+          "candidate": 1.940392103268374,
+          "reference": 3.1740525825068286,
+          "tolerance": 4.174052582506829e-06,
+          "status": "better"
+        },
+        "camera_0_rmse": {
+          "candidate": 2.1072178948385396,
+          "reference": 2.2393647745382492,
+          "tolerance": 3.239364774538249e-06,
+          "status": "better"
+        },
+        "camera_1_rmse": {
+          "candidate": 5.800272729836773,
+          "reference": 12.666631901720173,
+          "tolerance": 1.3666631901720173e-05,
+          "status": "better"
+        },
+        "camera_2_rmse": {
+          "candidate": 2.7330353983000313,
+          "reference": 2.5685440943690003,
+          "tolerance": 3.5685440943690005e-06,
+          "status": "worse"
+        },
+        "camera_3_rmse": {
+          "candidate": 0.8670853647340802,
+          "reference": 0.880006446834675,
+          "tolerance": 1.8800064468346748e-06,
+          "status": "better"
+        },
+        "acceleration_all_p95": {
+          "candidate": 3436.652818633018,
+          "reference": 3549.824241515548,
+          "tolerance": 0.0035508242415155477,
+          "status": "better"
+        },
+        "acceleration_free_flight_p95": {
+          "candidate": 1984.5370458361485,
+          "reference": 1847.8867651318078,
+          "tolerance": 0.0018488867651318076,
+          "status": "worse"
+        },
+        "jerk_all_p95": {
+          "candidate": 351874.12934020313,
+          "reference": 362765.92565898964,
+          "tolerance": 0.3627669256589896,
+          "status": "better"
+        },
+        "jerk_free_flight_p95": {
+          "candidate": 202224.4738091643,
+          "reference": 199756.436737368,
+          "tolerance": 0.19975743673736798,
+          "status": "worse"
+        },
+        "reprojection_mean": {
+          "candidate": 21.877532188148873,
+          "reference": 26.67764270115244,
+          "tolerance": 2.767764270115244e-05,
+          "status": "better"
+        },
+        "reprojection_p50": {
+          "candidate": 11.572356636318716,
+          "reference": 13.619303856146619,
+          "tolerance": 1.461930385614662e-05,
+          "status": "better"
+        },
+        "reprojection_p95": {
+          "candidate": 74.6178141831995,
+          "reference": 74.11649738089882,
+          "tolerance": 7.511649738089881e-05,
+          "status": "worse"
+        }
+      },
+      "behind": {
+        "candidate": {
+          "count": 17528,
+          "invalid_count": 4,
+          "fraction": 0.00022820629849383843
+        },
+        "reference": {
+          "count": 17528,
+          "invalid_count": 6,
+          "fraction": 0.00034230944774075767
+        },
+        "pass": true
+      },
+      "pass": false
+    },
+    "flow_20000_samples": {
+      "axes": {
+        "rmse_m_overall": {
+          "candidate": 2.0207350723164454,
+          "reference": 3.651779147944231,
+          "tolerance": 4.651779147944231e-06,
+          "status": "better"
+        },
+        "rmse_m_gap": {
+          "candidate": 2.093895810751845,
+          "reference": 2.075366531737139,
+          "tolerance": 3.075366531737139e-06,
+          "status": "worse"
+        },
+        "rmse_m_no_evidence": {
+          "candidate": 2.1078885144169535,
+          "reference": 2.240939961364521,
+          "tolerance": 3.240939961364521e-06,
+          "status": "better"
+        },
+        "rmse_m_event_pm5": {
+          "candidate": 1.9446647698568418,
+          "reference": 3.1760493031409003,
+          "tolerance": 4.1760493031409e-06,
+          "status": "better"
+        },
+        "camera_0_rmse": {
+          "candidate": 2.1078885144169535,
+          "reference": 2.240939961364521,
+          "tolerance": 3.240939961364521e-06,
+          "status": "better"
+        },
+        "camera_1_rmse": {
+          "candidate": 5.812389153971788,
+          "reference": 12.670438732410854,
+          "tolerance": 1.3670438732410854e-05,
+          "status": "better"
+        },
+        "camera_2_rmse": {
+          "candidate": 2.7360014620729465,
+          "reference": 2.571313844625022,
+          "tolerance": 3.571313844625022e-06,
+          "status": "worse"
+        },
+        "camera_3_rmse": {
+          "candidate": 0.8673842937667153,
+          "reference": 0.88016142556754,
+          "tolerance": 1.88016142556754e-06,
+          "status": "better"
+        },
+        "acceleration_all_p95": {
+          "candidate": 3511.1774095136307,
+          "reference": 3586.515468229644,
+          "tolerance": 0.0035875154682296437,
+          "status": "better"
+        },
+        "acceleration_free_flight_p95": {
+          "candidate": 1947.4551747749626,
+          "reference": 1848.342794003864,
+          "tolerance": 0.0018493427940038637,
+          "status": "worse"
+        },
+        "jerk_all_p95": {
+          "candidate": 364145.94754476973,
+          "reference": 370166.53787138435,
+          "tolerance": 0.3701675378713843,
+          "status": "better"
+        },
+        "jerk_free_flight_p95": {
+          "candidate": 203617.26580323654,
+          "reference": 199471.41618214222,
+          "tolerance": 0.1994724161821422,
+          "status": "worse"
+        },
+        "reprojection_mean": {
+          "candidate": 21.88221183455111,
+          "reference": 26.71609977563876,
+          "tolerance": 2.771609977563876e-05,
+          "status": "better"
+        },
+        "reprojection_p50": {
+          "candidate": 11.577269326934019,
+          "reference": 13.609499179900396,
+          "tolerance": 1.4609499179900396e-05,
+          "status": "better"
+        },
+        "reprojection_p95": {
+          "candidate": 74.64467714252746,
+          "reference": 74.15076234947459,
+          "tolerance": 7.515076234947459e-05,
+          "status": "worse"
+        }
+      },
+      "behind": {
+        "candidate": {
+          "count": 70112,
+          "invalid_count": 16,
+          "fraction": 0.00022820629849383843
+        },
+        "reference": {
+          "count": 70112,
+          "invalid_count": 24,
+          "fraction": 0.00034230944774075767
+        },
+        "pass": true
+      },
+      "pass": false
+    },
+    "regression_20000_mean": {
+      "axes": {
+        "rmse_m_overall": {
+          "candidate": 2.411791289528576,
+          "reference": 2.650689165811896,
+          "tolerance": 3.6506891658118955e-06,
+          "status": "better"
+        },
+        "rmse_m_gap": {
+          "candidate": 2.3111410002579182,
+          "reference": 1.9014129639665238,
+          "tolerance": 2.9014129639665234e-06,
+          "status": "worse"
+        },
+        "rmse_m_no_evidence": {
+          "candidate": 2.3501600360747643,
+          "reference": 1.9832221292105932,
+          "tolerance": 2.9832221292105933e-06,
+          "status": "worse"
+        },
+        "rmse_m_event_pm5": {
+          "candidate": 2.182522682580134,
+          "reference": 2.0776064816417406,
+          "tolerance": 3.07760648164174e-06,
+          "status": "worse"
+        },
+        "camera_0_rmse": {
+          "candidate": 2.3501600360747643,
+          "reference": 1.9832221292105932,
+          "tolerance": 2.9832221292105933e-06,
+          "status": "worse"
+        },
+        "camera_1_rmse": {
+          "candidate": 7.696982867118173,
+          "reference": 8.75680841726437,
+          "tolerance": 9.75680841726437e-06,
+          "status": "better"
+        },
+        "camera_2_rmse": {
+          "candidate": 2.226803219960485,
+          "reference": 2.3163594950070268,
+          "tolerance": 3.3163594950070264e-06,
+          "status": "better"
+        },
+        "camera_3_rmse": {
+          "candidate": 0.8879070261829076,
+          "reference": 0.8993913463282626,
+          "tolerance": 1.8993913463282625e-06,
+          "status": "better"
+        },
+        "acceleration_all_p95": {
+          "candidate": 3330.258643086697,
+          "reference": 3603.664560094372,
+          "tolerance": 0.003604664560094372,
+          "status": "better"
+        },
+        "acceleration_free_flight_p95": {
+          "candidate": 2065.1706053277844,
+          "reference": 2203.6215053999445,
+          "tolerance": 0.0022046215053999445,
+          "status": "better"
+        },
+        "jerk_all_p95": {
+          "candidate": 346451.6652537088,
+          "reference": 389815.74930748396,
+          "tolerance": 0.3898167493074839,
+          "status": "better"
+        },
+        "jerk_free_flight_p95": {
+          "candidate": 216741.98118242255,
+          "reference": 241100.708043826,
+          "tolerance": 0.24110170804382597,
+          "status": "better"
+        },
+        "reprojection_mean": {
+          "candidate": 21.061246618421592,
+          "reference": 23.30834240287086,
+          "tolerance": 2.430834240287086e-05,
+          "status": "better"
+        },
+        "reprojection_p50": {
+          "candidate": 11.48527934798777,
+          "reference": 11.62654413706673,
+          "tolerance": 1.262654413706673e-05,
+          "status": "better"
+        },
+        "reprojection_p95": {
+          "candidate": 72.86931079410485,
+          "reference": 81.78739302344528,
+          "tolerance": 8.278739302344527e-05,
+          "status": "better"
+        }
+      },
+      "behind": {
+        "candidate": {
+          "count": 17528,
+          "invalid_count": 4,
+          "fraction": 0.00022820629849383843
+        },
+        "reference": {
+          "count": 17528,
+          "invalid_count": 1,
+          "fraction": 5.705157462345961e-05
+        },
+        "pass": false
+      },
+      "pass": false
+    }
+  },
+  "common_improvement": false,
+  "directive_all_32_table_values_match": true,
+  "directive_table": [
+    {
+      "method": "mixture_mean_rts",
+      "reported": [
+        "4.408",
+        "3.020",
+        "669",
+        "158",
+        "16.4",
+        "2.47",
+        "74.8",
+        "1"
+      ],
+      "actual": [
+        4.408436476414247,
+        3.0202999639316173,
+        669.4421482022793,
+        158.10784583426127,
+        16.43640899702379,
+        2.472078710348802,
+        74.81194600500865,
+        1
+      ]
+    },
+    {
+      "method": "flow_20000_mean",
+      "reported": [
+        "3.651",
+        "2.074",
+        "3550",
+        "1848",
+        "26.7",
+        "13.6",
+        "74.1",
+        "6"
+      ],
+      "actual": [
+        3.6505274877702,
+        2.073769127903791,
+        3549.824241515548,
+        1847.8867651318078,
+        26.67764270115244,
+        13.619303856146619,
+        74.11649738089882,
+        6
+      ]
+    },
+    {
+      "method": "flow_20000_mean",
+      "reported": [
+        "2.018",
+        "2.093",
+        "3437",
+        "1985",
+        "21.9",
+        "11.6",
+        "74.6",
+        "4"
+      ],
+      "actual": [
+        2.017656978669936,
+        2.093226429967805,
+        3436.652818633018,
+        1984.5370458361485,
+        21.877532188148873,
+        11.572356636318716,
+        74.6178141831995,
+        4
+      ]
+    },
+    {
+      "method": "regression_20000_mean",
+      "reported": [
+        "2.412",
+        "2.311",
+        "3330",
+        "2065",
+        "21.1",
+        "11.5",
+        "72.9",
+        "4"
+      ],
+      "actual": [
+        2.411791289528576,
+        2.3111410002579182,
+        3330.258643086697,
+        2065.1706053277844,
+        21.061246618421592,
+        11.48527934798777,
+        72.86931079410485,
+        4
+      ]
+    }
+  ],
+  "flow_10000_rmse_m": 2.0887317641151975,
+  "flow_20000_rmse_m": 2.017656978669936
+}
