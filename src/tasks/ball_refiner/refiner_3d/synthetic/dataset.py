@@ -154,6 +154,26 @@ def _validate_integration(arrays: dict[str, NDArray[Any]], record: dict[str, Any
         raise ValueError("Invalid per-component convergence diagnostics")
     if any(value.shape != (t,) for value in (nll, converged, rounds)) or converged.dtype != np.bool_ or (nll < 0).any():
         raise ValueError("Invalid per-frame convergence diagnostics")
+    summary = record["integration"]
+    if config.get("method") == "fixed_hybrid":
+        from src.utils.geometry.probabilistic_triangulation.conditioning import (
+            conditioning_config,
+        )
+        conditioning_config(config)
+        assessed = arrays["integration_convergence_assessed"]
+        if assessed.shape != (t,) or assessed.dtype != np.bool_ or assessed.any():
+            raise ValueError("Fixed budget must explicitly declare convergence unassessed")
+        if flags.any() or converged.any() or changes.any() or nll.any() or not np.issubdtype(rounds.dtype, np.integer) or (rounds != 1).any():
+            raise ValueError("Fixed budget cannot claim convergence or measured deltas")
+        if summary["rule"] != config or summary["converged_frames"] != 0 or summary["nonconverged_frames"] != 0 or summary["unassessed_frames"] != t:
+            raise ValueError("Fixed-budget diagnostic summary mismatch")
+        if len(summary["history"]) != t or any(summary["history"]):
+            raise ValueError("Fixed budget has no convergence history")
+        return
+    if "integration_convergence_assessed" in arrays:
+        assessed = arrays["integration_convergence_assessed"]
+        if assessed.shape != (t,) or assessed.dtype != np.bool_ or not assessed.all() or summary["unassessed_frames"] != 0:
+            raise ValueError("Refinement method requires assessed convergence diagnostics")
     tolerances = np.asarray([config["log_evidence_tolerance_nat"], config["mean_tolerance"], config["covariance_relative_tolerance"]])
     expected_flags = (changes <= tolerances).all(-1)
     cap = convergence_config(config).round_limit
@@ -171,7 +191,6 @@ def _validate_integration(arrays: dict[str, NDArray[Any]], record: dict[str, Any
         raise ValueError("Convergence flags disagree with achieved tolerance")
     if (rounds[~converged] != cap).any():
         raise ValueError("Nonconverged frames must exhaust the explicit cap")
-    summary = record["integration"]
     if summary["rule"] != config or summary["converged_frames"] != int(converged.sum()) or summary["nonconverged_frames"] != int((~converged).sum()):
         raise ValueError("Convergence summary mismatch")
 

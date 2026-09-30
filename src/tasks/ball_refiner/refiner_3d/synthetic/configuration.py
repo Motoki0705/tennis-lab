@@ -19,8 +19,8 @@ from src.utils.configuration import (
     PathResolver,
     PathRole,
 )
-from src.utils.geometry.probabilistic_triangulation.convergence import (
-    convergence_config,
+from src.utils.geometry.probabilistic_triangulation.conditioning import (
+    conditioning_config,
 )
 
 from .calibration import CalibrationBank, load_calibration, with_calibration_report
@@ -87,9 +87,12 @@ def load_plan(path: Path, resolver: PathResolver, *, calibration_report: Path | 
         raise ValueError("Physics timestep or event exclusion differs from v1")
     if sampling["max_frames_per_rally"] < 72:
         raise ValueError("Need >=72 frames of capacity for the 64-frame gap")
-    if degradation["triangulation"] != "src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged":
-        raise ValueError("This recipe requires convergence-checked A/B integration")
-    convergence_config(degradation["boundary_convergence"])
+    declared = degradation["triangulation"]
+    legacy = "src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged"
+    current = "src.utils.geometry.probabilistic_triangulation.conditioning.triangulate_conditioning"
+    if declared not in (legacy, current) or (declared == legacy and degradation["boundary_convergence"]["method"] == "fixed_hybrid"):
+        raise ValueError("This recipe requires an explicit shared conditioning method")
+    conditioning_config(degradation["boundary_convergence"])
     calibration = degradation["calibration"]
     paths = CALIBRATION_BOUNDARY.validate(
         {key: Path(calibration[key]) if Path(calibration[key]).is_absolute() else resolver.resolve(PathRole.PROJECT, calibration[key]) for key in ("bank", "report")}, resolver=resolver,
