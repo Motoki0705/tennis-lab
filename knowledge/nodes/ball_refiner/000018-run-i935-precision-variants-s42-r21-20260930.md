@@ -18,6 +18,8 @@ artifacts:
   collection: knowledge/runs/run-i935-precision-variants-s42-r21-20260930/collection.json
   comparison: knowledge/runs/run-i935-precision-variants-s42-r21-20260930/comparison.md
   log: knowledge/runs/run-i935-precision-variants-s42-r21-20260930/queue.log
+  overlays: knowledge/runs/run-i935-precision-variants-s42-r21-20260930/overlay-verification.json
+  proposals: knowledge/runs/run-i935-precision-variants-s42-r21-20260930/proposals.md
 parents: [run-i935-precision-variants-s42-r20-20260930]
 relations: []
 papers: []
@@ -130,3 +132,42 @@ r18とanchored_12kそれぞれ5 val clip・先頭/中央/末尾33frame・observe
 CPU float32で比較し、bytes完全一致・最大差0。入力・checkpoint・修正前後sourceのhashを保存した。
 CUDAでのbit一致や再学習結果の一致はこの検査の主張に含めない。
 候補残差headの設計採用とpipeline default切替はユーザー判断待ちで、実験用のまま。
+
+## valの比較動画と次の判断
+
+[r19を拡張したrenderer](../../runs/run-i935-precision-variants-s42-r21-20260930/render_overlay.py)で、
+指定clip_010全270frameと、clip_001の400–669frameをCPU描画した。
+[事前投稿した選定規則](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5903921668)は
+clip_010を除くMeiji valでdetector top-1の20px超observed件数（3camera合計）最大、
+同率clip ID順、同clip内の270frameの件数最大・同率は最も早い開始位置。
+refinerの結果を選定に使っていない。[順位と入力hash](../../runs/run-i935-precision-variants-s42-r21-20260930/clip_selection.json)を保存した。
+
+3camera×通常/固定gapの2段で、observed/推定label、detector slot0、
+r18混合平均、anchored最大weight成分平均、anchoredの各成分2σ楕円（alpha=weight）、
+元frame/PTS、checkpoint hash、人工gap/実遮蔽推定を示す。
+点誤差表は両refinerとも最大weight成分平均なので、r18の動画点要約とは区別する。
+detectorは人工gapで描かない。推定遮蔽の位置を正解observedとして表示しない。
+
+clip_010の通常行はdetector誤り128件中11件が20px以内へ修正、117件が残り、新規誤り12件。
+追加の厳しい区間は388件中42件を修正、346件が残り、新規誤り75件。
+この選択された厳しい区間では20px成功率が悪化するため、
+全val分位点の改善から個別frameの優越は主張できない。
+各cameraの該当frame一覧は[clip010](../../runs/run-i935-precision-variants-s42-r21-20260930/overlay-clip010.json)と
+[追加clip](../../runs/run-i935-precision-variants-s42-r21-20260930/overlay-hard.json)に記録した。
+
+[動画検査とSHA-256](../../runs/run-i935-precision-variants-s42-r21-20260930/overlay-verification.json)で、
+2本×270frame、2880×1444、native 59.94006fps、全decode・PTS単調性・文字のencode後保持を検査。
+描画は28.18/40.50秒、動画と静止画を含む出力directoryは33,789,612 bytes。
+GPUなし、旧成果物の削除なし。代表frameを目視し、推定遮蔽・gap・修正/失敗の描画を確認した。
+
+[提案A–D](../../runs/run-i935-precision-variants-s42-r21-20260930/proposals.md)は、
+head基準設計、componentのe9＋anchored切替、CPUでの裾較正比較、#936の新較正bankと
+派生合成データ再生成を、選択肢・費用・未検証事項付きで提示する。
+#936の旧#959 bankからの誤差縮小は中央値約13倍、p95約1.5倍、gap中央値約2.6倍で、
+一律10倍のscale変更にはしない。現在の比較JSONは#936の較正report schemaと異なり、
+直接差し替え可能なbankとは扱わない。提案の実行とdefault変更は行っていない。
+
+通常検証はモデル/architecture 44件＋描画6件（いずれも-n4）、対象ruff/mypy、
+knowledge base-refとrepro整合検査。CI修正commit 8b71ac6fの
+[Python CI](https://github.com/Motoki0705/tennis-lab/actions/runs/36667977105)は成功。
+動画・proposed文書を含む最終HEADのCI状態は#971の最終レビューガイドを参照する。
