@@ -106,7 +106,38 @@ def test_relative_calibration_paths_resolve_inside_explicit_project_root(tmp_pat
     assert len(plan.camera_paths) == 3
     assert PROJECT_ROOT / values['degradation']['calibration']['bank'] in plan.input_paths
     plan.verify_inputs()
+    report = PROJECT_ROOT / values['degradation']['calibration']['report']
+    replacement = load_plan(path, resolver, calibration_report=report)
+    assert replacement.values['degradation']['calibration']['report'] == str(report)
+    np.testing.assert_array_equal(replacement.calibration.arrays['error_uv'], plan.calibration.arrays['error_uv'])
+    replacement.verify_inputs()
     values['geometry']['sources'][0]['camera_keys'].reverse()
     path.write_text(yaml.safe_dump(values))
     with pytest.raises(ValueError, match='Camera order'):
         load_plan(path, resolver)
+
+
+def test_calibration_report_is_one_explicit_verified_input(tmp_path):
+    import json
+    import shutil
+
+    from src.tasks.ball_refiner.refiner_3d.synthetic.calibration import (
+        with_calibration_report,
+    )
+
+    settings = yaml.safe_load((PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml').read_text())['degradation']
+    folder = PROJECT_ROOT / 'knowledge/runs/run-i936-provisional-degradation-r5-s936'
+    shutil.copyfile(folder / 'bank.npz', tmp_path / 'bank.npz')
+    report = json.loads((folder / 'calibration.json').read_text())
+    report['status'] = 'test_replacement'
+    path = tmp_path / 'calibration.json'
+    path.write_text(json.dumps(report))
+    changed = with_calibration_report(settings, path)
+    assert changed['status'] == 'test_replacement'
+    assert settings['status'] != changed['status']
+    assert changed['max_components'] == 125
+    assert changed['boundary_convergence'] == settings['boundary_convergence']
+    report['bank_sha256'] = '0' * 64
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError, match='SHA mismatch'):
+        with_calibration_report(settings, path)
