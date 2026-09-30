@@ -70,3 +70,34 @@ cam2 observed p90はpipeline座標のままで55.162 px、store座標規約も�
 CPU約210秒、GPU未初期化。初期の診断runnerでruntime設定からYAML設定へ変換する際のdevice/enable key errorが2回あり、
 いずれもdetector推論前に停止。scriptを修正して再実行し、失敗logも残した。productionのbugではない。
 raw/resizeのみの同一CPU対照とbootstrapは進行中。現段階では(b)を強く支持するが、最終結論は対照と併せて記録する。
+
+## p90のsampling noiseと末尾（節目4）
+
+observedだけを詰め直さず、各cameraの元270frameを連続blockに切り、同じ抽出indexを両経路へ適用してからobservedを選ぶ。
+10,000反復、seed1729、linear quantile、percentile 95%区間。長さ8/16/33/66frameを比較した。
+最初のnon-wrapping moving blockは端のframeの採用率が低くなるため、末尾が重要な今回は感度解析として保持する。
+主に解釈するdisjoint block法は短い端blockも丸ごと復元抽出し、全frameの期待出現回数を1に保つ。
+開始位置0と半blockずらし、camera独立抽出と同時刻cameraを一緒に抽出する感度解析も全て残した。
+
+| block長 | pooled Δp90 95%区間 px（開始0、camera内独立） |
+|---|---:|
+| 8 | [-15.87, 90.16] |
+| 16 | [-25.05, 93.06] |
+| 33 | [-34.32, 93.38] |
+| 66 | [-35.02, 94.49] |
+
+16条件全てで0と観測された+46.34 pxを含む。**pooled +46 pxがsampling noiseの外にあるとは示せない。**
+33frame・開始0の同期camera抽出も[-42.58,71.38]。同条件camera別ではcam0 [-76.99,5.10]、
+cam1 [-61.58,119.09]、cam2 [3.20,149.58]で、cam2の局所的退行とpooledの不確実性は両立する。
+これは4.5秒の単一clip内の探索的診断で、独立clipに一般化できる区間でもp値でもない。
+block母数は少なく末尾も非定常で、p90の標本分布は偏っている。CIの広さを使って固定Bゲートを変更しない。
+
+cam2の217–265（49/49 observed）では自由成分最大が14→39frame、元sourceのpooled p90=140.69 pxを超える行が5→24。
+この49行だけのsource誤差をcacheへ置く**事後的な数値診断**ではpooled p90=72.25 px、差=-22.10 px。
+両経路から除く場合も差=-20.89 pxとなる。frame230は最大成分0→3、誤差1.90→89.75 px。
+frame250は3→1、131.34→579.20 px、frame265は0→3、3.26→173.90 px。
+これはgate再採点や、frameを除外する提案ではなく、裾の寄与の説明である。
+
+正本: [bootstrap summary](../../runs/run-i935-source-tail-audit-r27-20261001/noise-balanced-v2/summary.json)、
+[末尾49行](../../runs/run-i935-source-tail-audit-r27-20261001/noise-balanced-v2/cam2-217-265.csv)。
+一部の長blockでcamera単独のobservedが0件の反復は未定義件数として明示し、0誤差へ置換しない。pooledの未定義は0件。
