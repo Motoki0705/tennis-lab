@@ -1,0 +1,26 @@
+{
+  "pytest": {
+    "tests": 7,
+    "workers": 4,
+    "status": "passed",
+    "path": "tests/unit/tasks/ball_refiner/test_variant_watchdog.py"
+  },
+  "ruff": "passed (retry runner, copied renderer, new unit test)",
+  "mypy": "passed --follow-imports=skip (same 3 files)",
+  "preflight": "passed: 678 hashes, 3 identical data manifests, 310-frame baseline CPU replay",
+  "gpu_retry": "not started at verification time",
+  "frozen_old_bundle": "original plan, command, scripts, configs and preflight retained byte-for-byte; failed queue and resources added",
+  "ci_before_retry": {
+    "head": "0d3fd3f8a2498da33edbaf04656c1dee81185c3b",
+    "python": "failure",
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/36663198204",
+    "failed": 1,
+    "passed": 6570,
+    "skipped": 133,
+    "test": "tests/e2e/development/test_architecture_boundaries.py::test_repository_owned_forwards_are_computation_only",
+    "cause": "Refiner2DModel.forward runtime isinstance causes two computation-only boundary violations",
+    "knowledge": "success",
+    "knowledge_webui": "success",
+    "followup": "keep PR draft; fix architecture boundary separately after the fixed-input retry (no test allowlist expansion)"
+  }
+}
