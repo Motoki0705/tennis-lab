@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import pytest
 
+from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tennis_scene.pipeline.components import person_tracking as module
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.contracts import SourceVideo
@@ -20,7 +21,7 @@ def test_more_than_six_people_keep_their_raw_rows(tmp_path: Path, monkeypatch: p
     boxes: np.ndarray = np.arange(32, dtype=np.float32).reshape(8, 4)
     detection = PersonDetectionOutput('cam0', np.array([0, 8], np.int64), boxes, np.full(8, .3, np.float32))
     video = SourceVideo('cam0', tmp_path / 'x.mp4', 'hash', 1, 30., 100, 100)
-    result = module.PersonTrackingModule().process(module.PersonTrackingInput(video, detection))
+    result = module.PersonTrackingModule(TrackingConfig(method='all_person_botsort')).process(module.PersonTrackingInput(video, detection))
     assert result.track_ids.tolist() == list(range(10, 18))
     assert result.observed.all() and not result.tracklet_links
     np.testing.assert_array_equal(result.boxes_xyxy[:, 0], boxes[::-1])

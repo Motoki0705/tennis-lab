@@ -88,9 +88,12 @@ def test_the_association_records_its_encoder_weights_and_needs_them_only_with_pe
     cfg.association_encoder_weights.unlink()
     with pytest.raises(FileNotFoundError, match="person_vit_clip_reid"):
         standard_definition(cfg, source, code_identity="test")
-    # Geometry-only association and disabled person observations read no Re-ID weights.
+    # Geometry-only association still needs CLIP for the default tracker.
     geometry_only = replace(cfg, player_association=replace(cfg.player_association, appearance=None), association_encoder_weights=None)
-    standard_definition(geometry_only, source, code_identity="test")
+    with pytest.raises(FileNotFoundError, match="person_vit_clip_reid"):
+        standard_definition(geometry_only, source, code_identity="test")
+    from src.tasks.person_tracking.sequence import TrackingConfig
+    standard_definition(replace(geometry_only, tracking=TrackingConfig(method='all_person_botsort')), source, code_identity="test")
     no_people = replace(cfg, enabled={**cfg.enabled, "person_observations": False, "player_reconstruction": False, "gvhmr": False})
     node = next(node for node in standard_definition(no_people, source, code_identity="test") if node.name == "player_association")
     assert node.settings["assets"] == {"enabled": False}

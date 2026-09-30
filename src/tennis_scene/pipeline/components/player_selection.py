@@ -21,6 +21,7 @@ from src.tasks.person_tracking.court_linking import (
     LinkingConfig,
     select_linked_candidates,
 )
+from src.tasks.person_tracking.feature_tracks import evidence_appearance
 from src.tasks.person_tracking.linked_timeline import linked_timeline
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tasks.player_association.appearance.sampling import (
@@ -70,8 +71,8 @@ class PlayerSelectionOutput:
 
 class PlayerSelectionModule:
     io = ComponentIO('player_selection', PlayerSelectionInput, PlayerSelectionOutput,
-        {'tracks': InputPort('person_tracks', 4), 'calibration': InputPort('local_court_calibration')},
-        'selected_player_tracks')
+        {'tracks': InputPort('person_tracks', 5), 'calibration': InputPort('local_court_calibration')},
+        'selected_player_tracks', version=2)
 
     def __init__(self, config: LinkingConfig, *, footpoints: FootpointConfig,
                  sampling: CropSamplingConfig, encoder: Callable[[], AppearanceEncoder] | None,
@@ -88,7 +89,8 @@ class PlayerSelectionModule:
         cameras = {v.camera.camera_id: v.camera for v in inputs.calibration.calibration.views}
         if not self.enabled or video.camera_id not in cameras:
             empty = PersonTrackingOutput(video.camera_id, np.empty(0, np.int64),
-                np.zeros((0, video.num_frames, 4), np.float32), np.zeros((0, video.num_frames), bool), (), ())
+                np.zeros((0, video.num_frames, 4), np.float32), np.zeros((0, video.num_frames), bool), (), (),
+                None if raw.evidence is None else raw.evidence.regroup(np.full((0, video.num_frames), -1, np.int64)))
             return PlayerSelectionOutput(video.camera_id, raw.track_ids, np.zeros_like(raw.observed), empty,
                 np.full((0, video.num_frames), -1, np.int64),
                 {'reason': 'disabled' if not self.enabled else 'camera_not_calibrated'})
@@ -98,7 +100,12 @@ class PlayerSelectionModule:
         footpoints = replace(self.footpoints, bottom_border_px=self.footpoints.bottom_border_px * scale)
         appearances = None
         appearance_record: dict[str, Any] = {'enabled': self.encoder is not None}
-        if self.encoder is not None and raw.observed.any():
+        if raw.evidence is not None and self.encoder_name == raw.evidence.encoder:
+            appearances = evidence_appearance(raw.boxes_xyxy, raw.observed, raw.evidence,
+                                              (video.width, video.height), sampling)
+            appearance_record.update(encoder=raw.evidence.encoder, sampling=asdict(sampling),
+                                     source='tracked_detection_features')
+        elif self.encoder is not None and raw.observed.any():
             encoder = self.encoder()
             try:
                 if encoder.name != self.encoder_name:
@@ -115,6 +122,7 @@ class PlayerSelectionModule:
         selected, diagnostic = select_linked_candidates(camera_tracks, video.fps, self.config, footpoints)
         grouped, origins = linked_timeline(camera_tracks, diagnostic)
         tracks = PersonTrackingOutput(video.camera_id, grouped.track_ids, grouped.boxes_xyxy, grouped.observed,
-            tuple((int(i),) for i in grouped.track_ids), ())
+            tuple((int(i),) for i in grouped.track_ids), (),
+            None if raw.evidence is None else raw.evidence.regroup(origins))
         return PlayerSelectionOutput(video.camera_id, raw.track_ids, selected, tracks, origins,
             {'rule': asdict(self.config), 'appearance': appearance_record, 'linking': diagnostic})

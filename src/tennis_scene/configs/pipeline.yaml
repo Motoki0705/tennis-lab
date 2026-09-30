@@ -58,6 +58,8 @@ court_kp:
     ambiguity_displacement_ratio: 0.03
 people_models:
   detector: dino
+  # Explicit trial only; comparison pending. Keep the higher score at IoU >= .8.
+  merge_duplicate_person_boxes: false
   # COCO full-frame source (#964). #937 is available through an explicit checkpoint override.
   dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
   dino_repository: DINO
@@ -100,6 +102,11 @@ people_models:
     hmr2:
       batch_size: 16
     static_cam: true
+person_tracking:
+  # Fixed run-10 pose/CLIP profile, including run-9 AFLink/GSI; alternatives are explicit.
+  method: strongsort_pp_pose
+  encoder: clipreid_vitb16_market1501
+  aflink_checkpoint: person_tracking/AFLink_epoch20.pth
 person_observations:
   enabled: true
   visibility_threshold: 0.15

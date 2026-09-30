@@ -2,7 +2,9 @@
 
 #964のcamera内追跡。検出rowごとの特徴を保存し、同じ検出・pose・外観を複数の追跡方式で使う。
 標準pipelineの人物sourceとコート選別は[pipeline README](../../tennis_scene/pipeline/README.md)を参照。
-追跡は3方式のCPU比較段階。pipelineの方式既定は比較結果を確認してから決める。
+既定はユーザーが採用した **StrongSORT++＋pose/CLIP**。run 10の固定設定を使用する。
+AFLinkは論文再実装と公開重みを当面使うが、**重みの独立した利用条件は未確認**。
+継続利用か自前再学習かは後日判断する。出自・hash・再配布しない方針は[NOTICE](strongsort_NOTICE.md)を参照。
 
 | モジュール | 責務 |
 |---|---|
@@ -14,7 +16,8 @@
 | `strongsort.py` / `strongsort_offline.py` | 論文からのStrongSORT・AFLink・GSI推論再実装。明示的なpose重み（既定0）で共通pose距離を両照合段へ加算できる。GSI補間は別maskで保持。[出自と重みの制約](strongsort_NOTICE.md) |
 | `part_archive.py` | 検証済みKPR native archiveのreader。Deep OC-SORT / StrongSORTへ共通可視partのEuclidean距離を渡す |
 | `feature_tracks.py` / `evaluation.py` | 元検出rowを維持するscatter・共通外観samplingと、部分参照ラベル上のcamera内IDF1/switch/fragment |
-| `methods.py` | BoT-SORT+pose / Deep OC-SORT+poseの明示選択。未実装名は停止し、別方式へ戻さない |
+| `methods.py` / `sequence.py` | 明示選択とproduction/文脈/比較が共有する`track_sequence`。固定profile、元row・pose・CLIP、AFLink source ID、GSI syntheticを保存 |
+| `duplicate_boxes.py` | 検出直後の任意greedy統合（IoU>=.8）。score降順・同点元row順でkeep/dropを記録。既定off |
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
 | `court_linking.py` | 標準pipelineと開発比較で共有する固定選別。足元連続性とCLIPで断片を連結して滞在を集約する。領域はmembership判定にだけ使い、選択済み断片の全実観測を保持する。定義・限界はmodule docstring |
 | `selection_diagnosis.py` | 選択されたtrackの人物unit構成と足元座標から、人物混在と領域の誤採用を分離する事後診断。ラベルを選別へ渡さない |
@@ -29,11 +32,24 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 1 cameraごとにtrackerを構築し、空frameも含め0から順に渡す。
 上限6は共通コート選別後のgroupにだけ適用する。
 
+`TrackingConfig`の既定は`strongsort_pp_pose`。`strongsort_pp`（poseなし）、`deep_ocsort_pose`、
+`deep_ocsort_pose_aflink_gsi`、`botsort_pose`、`all_person_botsort`は明示指定する。
+名前の誤り・欠損重み・不正な特徴や状態は停止する。profileの値は`TrackingConfig.identity()`と
+[run 10定義](../../../knowledge/runs/run-i964-tracker-hybrids-r10-20260930/protocol-addendum.md)で確認できる。
+既定のpose重みは.15、低信頼poseの扱い・AFLink/GSIも固定定義どおり。Kalman潜在状態は実boxとは区別する。
+
+#935の文脈生成は、検出直後に`merge_person_boxes(..., enabled=設定値)`を呼び、保持した元rowを
+`FeatureExtractor`へ渡し、全frameを`track_sequence(..., config=TrackingConfig(), aflink=AFLink(path))`
+へ渡す。同じ入口を標準`PersonTrackingModule`も使う。学習用JPEGの復号は呼び出し側が所有する。
+`TrackingSequence.evidence`から実観測のpose/外観を得る。`reconstruction.interpolated`はsyntheticであり、
+文脈の観測maskには使わない。camera全体を処理してからAFLinkするため、chunkごとにIDを再初期化しない。
+
 外観はCLIP-ReID既定。低いcrop等の外観不足はzero embeddingとmaskで明示する。poseの第3channelは
 ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加工せず保持する。1を超える値や負の値を
 clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2のみを読み、v1を暗黙変換しない。
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
-双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。外観不一致はhigh/low両段でIoUによって打ち消さない。
+双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。
+BoT-SORT+poseでは外観不一致をhigh/low両段でIoUによって打ち消さない。
 特徴抽出のprompt契約はKPRの入力にも使える。KPR推論portはnative parts/visibilityを保持し、
 共通の単一embeddingへ暗黙変換しない。距離・EMA・区間平均は`player_association/appearance/parts.py`、
 比較の明示的な尺度転用は[run 9 addendum](../../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)を参照。
