@@ -1,0 +1,34 @@
+{
+  "kind": "CPU real-dev plumbing; no optimizer update or quality conclusion",
+  "rallies": [
+    "train-00000",
+    "train-00001",
+    "train-00002",
+    "train-00003",
+    "train-00004",
+    "train-00005",
+    "train-00006",
+    "train-00007"
+  ],
+  "config_sha256": "e5731032350a2893ad5003e2f554223be40cadbd9bc891d94ac8344c5aee6673",
+  "source_manifest_sha256": "e0ff317c4f50e8f44a4b4f557e665941e2dd60b41e97645e7d453dd4ddcd09b3",
+  "shape": [
+    8,
+    128,
+    125,
+    3
+  ],
+  "real_frames": 1024,
+  "parameters": 817285,
+  "loss": 0.7871050238609314,
+  "terms": {
+    "x0": 0.40749698877334595,
+    "reprojection": 18.4645938873291,
+    "physics": 973.6578979492188,
+    "event": 0.9759628772735596
+  },
+  "gradient_norm": 5.693675518035889,
+  "all_gradients_finite": true,
+  "seconds": 1.3232340670074336,
+  "peak_rss_kib": 1249196
+}
