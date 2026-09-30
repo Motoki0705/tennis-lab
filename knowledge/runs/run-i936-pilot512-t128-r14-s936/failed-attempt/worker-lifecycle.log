@@ -1,0 +1,2 @@
+[worker] 2026-10-01T02:07:16+09:00 running: 1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001.log)
+[worker] 2026-10-01T02:07:31+09:00 FAILED (rc=1): 1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001.job resource=all slot=all
