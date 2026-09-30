@@ -105,10 +105,22 @@ def test_nsa_covariance_gives_high_confidence_measurement_more_weight() -> None:
 def test_invalid_prediction_fails_with_frame_and_id_without_silently_dropping_track() -> None:
     tracker = StrongSort()
     tracker.update(frame(0))
-    tracker.tracks[0].motion.mean[6] = -10
+    tracker.tracks[0].motion.mean[6] = np.nan
     with pytest.raises(InvalidPrediction, match='frame=1 track=1'):
         tracker.update(frame(1))
     assert len(tracker.tracks) == 1
+
+
+def test_missing_track_can_extrapolate_negative_latent_height_without_emitting_a_box() -> None:
+    tracker = StrongSort()
+    for index in range(3):
+        tracker.update(frame(index))
+    tracker.tracks[0].motion.mean[7] = -100
+    assert not len(tracker.update(frame(3, empty=True)).track_ids)
+    assert tracker.tracks[0].motion.mean[3] < 0
+    for index in range(4, 34):
+        assert not len(tracker.update(frame(index, empty=True)).track_ids)
+    assert tracker.tracks == []
 
 
 def test_deep_native_parts_survive_gap_and_cannot_be_silently_saved_as_v2(tmp_path: Path) -> None:
