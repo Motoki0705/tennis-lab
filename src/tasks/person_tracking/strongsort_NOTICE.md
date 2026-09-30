@@ -14,6 +14,13 @@ for YOLOX/BoT, disables ECC on the fixed cameras, and retains detection-row
 identity and real-observation masks. GSI output remains a separate reconstruction;
 it is never relabelled as a real detection. No pose cost is added to StrongSORT.
 This is a specified adaptation, not a reproduction of the MOT benchmark scores.
+NSA follows paper equation 9 literally: the **covariance** is multiplied by
+`1-confidence`. A synthetic black-box check found that the reference code instead
+multiplies standard deviations before squaring. The precommitted paper formula is
+retained; this difference is not tuned on Meiji. Initialization and ordinary
+prediction agreed exactly with the reference in that check. Missed latent Kalman
+states may extrapolate through zero height before expiry, as in the reference;
+they are retained internally but never emitted as detections.
 All comparison settings have one source, the [run-9 addendum](../../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md).
 
 AFLink checkpoint: the official README's [Google Drive folder](https://drive.google.com/drive/folders/1Zk6TaSJPbpnqbz1w4kfhkKFCEzQbjfp_),

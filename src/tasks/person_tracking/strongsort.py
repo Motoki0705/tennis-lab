@@ -60,7 +60,10 @@ class MotionState:
         std = np.asarray([h / 20, h / 20, .01, h / 20, h / 160, h / 160, .00001, h / 160])
         self.mean = transition @ self.mean
         self.covariance = transition @ self.covariance @ transition.T + np.diag(std ** 2)
-        if not np.isfinite(self.mean).all() or self.mean[3] <= 0 or self.mean[2] <= 0:
+        # A missed track may extrapolate through zero extent before max_age.
+        # This latent state is not an emitted box; reference Kalman prediction
+        # also retains it. Only actual detections ever reach TrackAssignments.
+        if not np.isfinite(self.mean).all() or not np.isfinite(self.covariance).all():
             raise InvalidPrediction(f'StrongSORT predicted an invalid box: xyah={self.mean[:4].tolist()}')
 
     def project(self, confidence: float = 0.) -> NDArray[np.float64]:
