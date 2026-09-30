@@ -129,6 +129,7 @@ class CheckedTriangulation:
     component_changes: FloatArray  # M,3: log evidence, mean norm, relative covariance
     nll_delta_nat: float
     history: tuple[dict[str, float | int | bool], ...]
+    convergence_assessed: bool = True
 
 
 def triangulate_converged(

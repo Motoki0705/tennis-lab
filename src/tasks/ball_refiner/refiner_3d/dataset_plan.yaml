@@ -74,14 +74,13 @@ degradation:
   occlusion_changes_presence: false
   out_of_frame_changes_presence: true
   mean_bounds_policy: clip_to_source_grid
-  triangulation: src.utils.geometry.probabilistic_triangulation.convergence.triangulate_converged
+  triangulation: src.utils.geometry.probabilistic_triangulation.conditioning.triangulate_conditioning
   boundary_convergence:
-    method: ray
-    orders: [12, 20, 32, 48, 64]
-    nll_tolerance_nat: 0.05
-    log_evidence_tolerance_nat: 0.05
-    mean_tolerance: 0.02
-    covariance_relative_tolerance: 0.05
+    method: fixed_hybrid
+    initial_cells: 8
+    levels: 4
+    refine_cells: 64
+    prior_sigmas: 5.0
   prior_mean_m:
   - 0.0
   - 0.0
