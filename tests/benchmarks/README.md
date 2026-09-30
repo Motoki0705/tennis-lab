@@ -13,6 +13,11 @@ NPZ roundtrip、allocator7GiB、GPU全体9.5GB/RAM/disk監視による停止を�
 `association_recalibration_audit.py --repo <main root> --plan <plan.json> --preflight <preflight.json> --report <new output>`
 は既存dev特徴/track/較正courtの再利用をCPU検査する。小cropの明示的なmask投影と出自を別archiveへ保存する。
 
+run 13の再開は同じ入口の `--phase resume-plan --source-report <失敗run> --report <新規directory>`。
+科学的な入力identityを維持し、明示した全長完了cameraのhash・provenance・元rowを再検証する。
+未完了cameraは新しいdirectoryで最初から再計算する。旧出力は保持し、黙った再試行はしない。
+今回許可された外側timeoutは `timeout -k 10s 16180s`（build込み4.5時間以内）。
+
 `pipeline_preflight.py --repo <main root> --clip <structured clip> --report <new output>` は
 全execute構成のcheckpoint/依存schemaをCPUで検査し、CUDA用の解決済みYAMLを出す。
 推論・成果物生成・精度評価の成功とは扱わない。較正後は `--association-config <project-relative YAML>` を渡す。

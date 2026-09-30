@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The queue wraps build + extraction in timeout -k 10s 7190s (total <= 2 h).
+# The queue wraps build + extraction in the explicitly granted timeout.
 set -euo pipefail
 if [[ $# -ne 2 ]]; then
     echo "usage: $0 <main-repo> <report-with-plan.json>" >&2
