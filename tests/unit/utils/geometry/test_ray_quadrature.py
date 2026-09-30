@@ -85,3 +85,22 @@ def test_bounded_depth_gradient_matches_independent_finite_difference():
     numerical = np.array([(proposal.cost(coordinates+x)-proposal.cost(coordinates-x))/2e-6 for x in axes])
     _, analytic = proposal.cost_gradient(coordinates)
     np.testing.assert_allclose(analytic,numerical,rtol=2e-5,atol=2e-6)
+
+
+def test_camera_chart_change_transports_the_pilot_mode():
+    from pathlib import Path
+
+    # Fixed synthetic smoke test-00000/frame252, source SHA
+    # 5ea82ed055995148461e5c6ea9646f5f324d711cd15dcd113c404092da75baee.
+    # No GT is used. Reusing an independently fitted mode after changing charts
+    # caused a nonpositive Hessian for one retained product in this frame.
+    with np.load(Path(__file__).parent/'fixtures/ray_camera_boundary.npz') as data:
+        obs=CameraGMM(data['means'],data['covariance'],data['weights'],data['presence'])
+        cameras=tuple(PinholeCamera(str(i),data['K'][i],data['R'][i],data['t'][i]) for i in range(3))
+    result=triangulate_converged(obs,cameras,prior=GaussianPrior3D(np.array([0.,0.,2.]),np.diag([36.,144.,9.])),
+        laplace=LaplaceConfig(64,100),config=RayConvergenceConfig((12,20,32,48,64),.05,.05,.02,.05))
+    assert result.posterior.distribution.means.shape==(64,3)
+    np.linalg.cholesky(result.posterior.distribution.covariance)
+    for mask in np.unique(result.posterior.camera_subsets,axis=0):
+        selected=(result.posterior.camera_subsets==mask).all(-1)
+        assert result.posterior.distribution.weights[selected].sum()==pytest.approx(np.prod(np.where(mask,obs.presence,1-obs.presence)))
