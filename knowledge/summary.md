@@ -1,4 +1,4 @@
-<!-- knowledge-review: 9ba5cc0d3c4b40e82a8d6098430612cb57560549262b155a954197de5ce4fc7a on 2026-09-30 -->
+<!-- knowledge-review: 87123d92b39191ff60911857bb0463a3cf9f5470b444afcdae66f553e6089385 on 2026-09-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964のCOCO人物sourceの確定とSOLIDER CPU推論整合を反映）
@@ -43,7 +43,8 @@ unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低
 参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致したが、精度比較は未完了。
 [特徴job回収](nodes/person_tracking/000007-run-i964-coco-person-features-r7-20260930.md)で全24 NPZ・各40,531rowのhash/値/出自一致を確認した。
 [事前固定した2方式×2encoder比較](nodes/person_tracking/000008-run-i964-tracker-matrix-r8-20260930.md)では候補内でDeep OC-SORT+pose/CLIPを推薦する。
-新検出+旧追跡より選手coverageは増えたが、IDF1は微減しcam1遠側とfragmentが悪化したため、既定採用を自動で進めない。
+新検出+旧追跡はLab連結曖昧により1camera停止（11/12完走）、候補は全camera完走した。停止を予測空として扱う固定規則の下で
+推薦候補の選手coverageは増えたが、IDF1は微減しcam1遠側とfragmentが悪化したため、既定採用を自動で進めない。
 BoT候補は非選手残存と1clipの対応停止が多い。camera間encoderをSOLIDERへ替えても今回の固定尺度で最終対応は変わらなかった。
 [KPRの実2crop CPU parity](nodes/person_tracking/000009-run-i964-kpr-cpu-parity-r8-20260930.md)はpositive/negative両promptで上流と差0。
 native partsを保持する特徴抽出を準備し、3encoder比較・全pipeline完走・未見一回評価は後続とする。
