@@ -1,4 +1,4 @@
-"""Fail-closed admission of preregistered, single-factor development trials."""
+"""Fail-closed admission of declared single-factor trials and combined candidates."""
 from __future__ import annotations
 
 import json
@@ -32,6 +32,20 @@ def assert_single_factor(candidate: dict[str, Any], control: dict[str, Any], fac
         raise ValueError('Changes beyond the declared single factor')
 
 
+def assert_combined_candidate(candidate: dict[str, Any], control: dict[str, Any]) -> None:
+    """Admit only the measured 64→512 data factor plus 10× physics weight.
+
+    This is a two-factor model candidate, not a single-factor causal diagnosis.
+    Validation selection remains fixed separately by reference_validation().
+    """
+    if (control['expected_counts'] != {'train': 64, 'val': 16, 'test': 16}
+            or candidate['expected_counts'] != {'train': 512, 'val': 64, 'test': 64}):
+        raise ValueError('Combined candidate requires the declared 64-to-512 counts')
+    normalized = deepcopy(candidate)
+    normalized['expected_counts'] = control['expected_counts']
+    assert_single_factor(normalized, control, 'physics_weight')
+
+
 def preflight(plan: dict[str, Any]) -> dict[str, Any]:
     """Inspect complete metadata/file hashes before any CUDA allocation or fitting."""
     names = ('dataset', 'control_manifest', 'config', 'generation_plan', 'preflight_output', 'output')
@@ -47,7 +61,10 @@ def preflight(plan: dict[str, Any]) -> dict[str, Any]:
     reference = json.loads(reference_path.read_text())
     config = asdict(load_config(Path(plan['config'])))
     config['evaluate_updates'] = list(config['evaluate_updates'])
-    assert_single_factor(config, reference['config'], plan['factor'])
+    if plan['factor'] == 'training_rallies_and_physics_weight':
+        assert_combined_candidate(config, reference['config'])
+    else:
+        assert_single_factor(config, reference['config'], plan['factor'])
     generation = json.loads(Path(plan['generation_plan']).read_text())
     if source.manifest['plan'] != generation['expanded_plan']:
         raise ValueError('Generation differs from the preregistered expanded plan')
@@ -78,5 +95,8 @@ def run_experiment(plan_path: Path, *, device: str, audit_only: bool = False) ->
     write_json(audit_path, audit)
     if audit_only:
         return audit
-    return run_dev_training(Path(plan['dataset']), Path(plan['config']), Path(plan['output']),
-                            device=device, validation_reference=Path(plan['control_manifest']))
+    result: dict[str, Any] = run_dev_training(
+        Path(plan['dataset']), Path(plan['config']), Path(plan['output']),
+        device=device, validation_reference=Path(plan['control_manifest']),
+    )
+    return result
