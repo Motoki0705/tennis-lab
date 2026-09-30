@@ -253,7 +253,7 @@ HDR体積はR³上の独立MC推定、報告するMC標準誤差は推定閾値�
 5frameの誤差trendと残差は窓内・自由飛行だけで計算し、診断後の軌道で元の指標を置換しない。
 再現script・全16valの数値・解釈は[粗さ診断](../../../../knowledge/nodes/ball_refiner_3d/000022-run-i936-roughness-r14-s936.md)を参照。
 
-### 一因子の学習比較と固定validation
+### 宣言した学習比較と固定validation
 
 `python -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan <絶対path> --device cuda`
 は共有queueで実行する。planに固定したcode/config/controlのhashと、生成の完全manifest・
@@ -268,3 +268,8 @@ HDR体積はR³上の独立MC推定、報告するMC標準誤差は推定閾値�
 `diffusion/experiment.py`が各差分と元train/val保存hashの一致を要求する。
 `condition_audit.audit_manifest(..., expected_counts=...)`は指定したdev/pilotをhashで監査する。
 testはファイルhashとJSONの整合確認のみで、配列を開かない。
+
+[512train＋physics10設定](training_pilot512_physics10_t128.yaml)は、別々に測定した
+二因子を併用する候補モデル。`factor: training_rallies_and_physics_weight`を明示し、
+専用guardが64→512件とphysics10倍以外の差分を拒否する。
+一因子の診断としては受け付けず、候補の判定規則は実験knowledgeに固定する。
