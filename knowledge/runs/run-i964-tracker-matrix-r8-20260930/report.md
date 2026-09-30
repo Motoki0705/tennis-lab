@@ -1,5 +1,10 @@
 # Run 8 固定matrixの結果
 
+**完走率: new detection+old trackingは11/12 camera、他5条件は12/12。**
+new+oldの`video_000/clip_007/cam0`はLab連結の複数候補で明示停止した。事前規則どおり予測を空、全参照player unitをFNとして採点済み。
+停止cameraを除いた平均や代替trackerで補っていない。下表の保持差とswitch/fragment差にもこの停止が影響する。
+全cameraの状態・理由・raw ID数・group数・未照合選択box数は[availability.csv](availability.csv)。
+
 主指標は事前protocolの部分参照IDF1。参照選手20,558 unit、既知非選手4,454 unit。全条件が8人物を50%以上保持。
 
 |方式|IDF1|ID switch|Fragment|選手保持|非選手残存|
