@@ -1,0 +1,9 @@
+{
+  "observed_at": "2026-10-01T08:28:49.253615+09:00",
+  "worker": "worker: RUNNING (PID 2083655)",
+  "job_id": "1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001",
+  "state_file": "state=waiting\nresource=all\nslot=all\npid=2695021\npgid=-\nwait=main-exclusive-lock\n",
+  "location": [
+    "jobs"
+  ]
+}

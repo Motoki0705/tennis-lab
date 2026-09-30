@@ -1,0 +1,8 @@
+{
+  "new_or_changed_tracked_file_contents_bytes": 18474079,
+  "own_temporary_logs_bytes": 97981,
+  "new_dataset_bytes": 0,
+  "reserved_gpu_output_bytes": 150000000,
+  "budget_bytes": 5000000000,
+  "note": "tracked-content and own scratch sizes; excludes shared existing data/checkpoints and cache accounting"
+}

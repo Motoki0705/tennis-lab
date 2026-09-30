@@ -1,0 +1,16 @@
+{
+  "job_id": "1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001",
+  "registered_at": "2026-10-01T08:27:34.116881+09:00",
+  "registered_head": "8f8d191608c7319281d65251a77e3fe82fc77eb5",
+  "registered_worktree_clean": true,
+  "plan_sha256": "8f7ee81c31a8fa955d0887bc3fa15060753dd684d869fbad76e51cb489b40ca2",
+  "pinned_files_verified": 68,
+  "initial_state": "jobs",
+  "resource": "all",
+  "provider": "codex",
+  "session": "01a0f48a-352c-7fe0-8609-b27d0b56436b",
+  "rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5921371425",
+  "add_stdout": "queued: 1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001.job\n",
+  "maximum_wall_seconds": 5355,
+  "maximum_device_bytes": 10000000000
+}
