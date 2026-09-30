@@ -51,3 +51,14 @@ ruff/mypy成功。今回の型検査はfollow-imports=skipで既存returnのAny�
 [cpu-preflight.json](../../runs/run-i936-combined512-physics10-r16-s936/cpu-preflight.json)は4.232秒で成功。
 全640保存hash/JSON/plan、元80train+val、同16val/6,383frame、66固定入力hashを確認した。
 学習出力・本番preflight先は未作成。今回変更しない対照(a)/(b)のmanifest hashもpinした。
+
+
+## Run 16: 共有queue登録
+
+2026-10-01 **05:29:54 JST** に **1790800194473949395_4059977_i936-combined512-physics10-r16-s936-20261001** をresource=allで1件だけ登録した。
+[queue.json](../../runs/run-i936-combined512-physics10-r16-s936/queue.json)と[queued.job](../../runs/run-i936-combined512-physics10-r16-s936/queued.job)が登録時原本。
+登録HEAD **a7ba039b1ddd9df80c3b76a9c8a7da3eec7d7b71**、worktree clean、plan SHA **e8ca185a9f9cfbe05514653001129181d86b2185ddf12acbbd0650f0e2c8b19a**、66固定hashを再確認。
+登録時はworker停止、commit後に起動してPID/状態をissueへ記録する。`worker_start_pending`は登録瞬間のsnapshot。
+(d)はCPU完了・GPU0件で、追加GPU jobやretryは行わない。CPU overlapの結果を(c)設定へ反映せず、元stride128を維持。
+log/reproは共有queue内の本job ID、出力は上記output_dirと同pathの`-preflight.json`。
+GPU完了を待たずWAITING_QUEUE。次runでpreflight/repro/全5評価時点/全予測/hash/資源を回収し、事前登録の候補診断と正式規則を別々に適用する。
