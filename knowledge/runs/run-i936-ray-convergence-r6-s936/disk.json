@@ -1,0 +1,12 @@
+{
+  "directories_bytes": {
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-ray-r6": 23319731,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-ray-r6": 3808596,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/diagnostics/i936-ray-r6-v2": 39544490,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/training/i936-cpu-overfit-r6": 417795,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-ray-convergence-r6-s936": 4092927,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-flow-overfit-r6-s936": 362219
+  },
+  "total_bytes_before_this_report": 71545758,
+  "note": "New data/outputs/knowledge artifacts after lossless JSON archival, including failed first audit; existing checkout/Git/cache excluded. Preexisting dev output retained separately (32,438,753 bytes at stop)."
+}

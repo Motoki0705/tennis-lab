@@ -1,0 +1,16 @@
+[
+  {
+    "archive": "dev-manifest-before-stop.json.gz",
+    "raw_sha256": "13c1e1c89d6ea40cca555d54f7b4d9ef5919e72c26333cb493976f658f49b5a4",
+    "raw_bytes": 3903059,
+    "archive_sha256": "4b05d84f8f13505e533a46ad58da47819912f526c6322c32570077508a03182c",
+    "archive_bytes": 400126
+  },
+  {
+    "archive": "initial-batch-failure.json.gz",
+    "raw_sha256": "89a8c7a457531b390b87d430c65c318389b79af62e8765b452d49bbd01b1e8f5",
+    "raw_bytes": 520209,
+    "archive_sha256": "f3de691ad20cb11deda8f4b8c0bc713eba448317bee32f511012b7da3175c6b4",
+    "archive_bytes": 64864
+  }
+]
