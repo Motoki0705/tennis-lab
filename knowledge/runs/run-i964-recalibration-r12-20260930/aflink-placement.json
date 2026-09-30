@@ -1,0 +1,8 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-linking-r9-20260930/resources/AFLink_epoch20.pth",
+  "target": "/home/kamimura/projects/tennis-lab/ckpt/person_tracking/AFLink_epoch20.pth",
+  "sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4",
+  "bytes": 4348705,
+  "regular_local_copy": true,
+  "redistributed": false
+}
