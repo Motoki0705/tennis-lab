@@ -1,0 +1,13 @@
+{
+  "source_commit": "0f124818ea97dbec716e20a7fa6da315edb8ee82",
+  "source_path": "src/tennis_scene/pipeline/components/ball_smoothing.py",
+  "source_sha256": "ed3c13778f152cc48acdd7b844c1a99f1310bd39c0ccd3b2d92251da95f83887",
+  "unmodified_function_ast": {
+    "_valid_runs": true,
+    "ball_event_frames": true,
+    "_segments": true,
+    "_rts_pass": true,
+    "_ballistic_rts": true
+  },
+  "changed_adapter": "all-frame finite mixture means; pipeline geometric bounds/speed exceptions replaced by explicit violation counts"
+}
