@@ -19,6 +19,7 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
 | `appearance/kpr.py`・`parts.py` | KPR Market/SOLIDERの推論portとnative可視part距離。6×512のnative partsとvisibilityを保持し、全体cosineへの暗黙変換はしない。HL3・移植差分は[notice](appearance/kpr_vendor/NOTICE.md) |
 | `appearance/affinity.py` | 区間の平均 embedding の cosine の対数尤度比（camera 間の組だけ） |
 | `evaluation/` | 評価ラベルと指標（下記） |
+| `calibration/` | run 12で事前固定した擬似pair-window・階層重み・尺度fit・leave-one-video-out検証。支持不足/不収束/不安定/3候補不合格ではconfigを返さず証拠を残す |
 
 データから決める値（`geometry.sigma_m`、`appearance.slope`・`center`）は、ラベルの無い Meiji clip の擬似ラベルで当てはめる
 （`tests/benchmarks/player_association_clips.py --phase calibrate`。評価ラベルの clip は使わない）。
