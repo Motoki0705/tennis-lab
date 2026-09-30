@@ -1,0 +1,396 @@
+{
+  "status": "complete",
+  "matching": "maximum cardinality within 20 source px, then minimum total distance; diagnostic only",
+  "cameras": [
+    {
+      "camera": "cam0",
+      "frames": 270,
+      "timeline_windows_equal": true,
+      "winner_component_changes": 60,
+      "both_winners_anchored": 202,
+      "winner_anchor_changes_20px": 23,
+      "top1_changed_20px": 84,
+      "frames_with_matched_rank_changes": 257,
+      "cache_free_winner": 59,
+      "source_free_winner": 22,
+      "matched_peaks_20px": 1077,
+      "candidate_slots": 2160,
+      "same_rank_native_cells": 246,
+      "pipeline_settings": {
+        "config": {
+          "batch_size": 4,
+          "candidates": {
+            "max_candidates": 8,
+            "nms_kernel": 5,
+            "patch_size": 5
+          },
+          "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+          "checkpoint_strict": true,
+          "checkpoint_weights_only": false,
+          "device": "cuda",
+          "image_size": [
+            288,
+            512
+          ],
+          "normalize_imagenet": true,
+          "overlap_aggregation": "nearest_window_centre_then_earlier_start",
+          "pin_memory": true,
+          "prefetch_batches": 2,
+          "score_threshold": 0.5,
+          "subpixel_refine": true,
+          "tail_policy": "backfill",
+          "trajectory_gate": {
+            "enabled": true,
+            "k_support": 2,
+            "max_passes": 2,
+            "max_residual_px": 60.0,
+            "max_support_gap": 5
+          },
+          "window_stride": 4
+        },
+        "requirements": {
+          "candidates": {
+            "max_candidates": 8,
+            "nms_kernel": 5,
+            "patch_size": 5
+          },
+          "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+          "image_size_hw": [
+            288,
+            512
+          ],
+          "normalization": {
+            "enabled": true,
+            "mean": [
+              0.485,
+              0.456,
+              0.406
+            ],
+            "std": [
+              0.229,
+              0.224,
+              0.225
+            ]
+          },
+          "stride": 4,
+          "subpixel_refine": true,
+          "window_length": 8
+        }
+      },
+      "cache_settings": {
+        "batch_size": 4,
+        "candidates": {
+          "max_candidates": 8,
+          "nms_kernel": 5,
+          "patch_size": 5
+        },
+        "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+        "device": "cuda:0",
+        "image_normalization": {
+          "enabled": true,
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ]
+        },
+        "image_size_hw": [
+          288,
+          512
+        ],
+        "model_config": {
+          "depth": 2,
+          "dims": [
+            64,
+            128,
+            256,
+            512
+          ],
+          "drop_path_prob": 0.0,
+          "in_channels": 2,
+          "input_layout": "bcthw",
+          "input_mode": "mdd",
+          "mdd_a": 0.2,
+          "mdd_b": 0.15,
+          "name": "conv_next_unet",
+          "num_classes": 1,
+          "num_frames": 8
+        },
+        "rgb": "JPEG BGR -> INTER_LINEAR -> RGB float32 [0,1]",
+        "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "stride": 4,
+        "subpixel_refine": true,
+        "tail_policy": "backfill_real_frames_no_padding",
+        "torch_version": "2.13.0+cu130",
+        "window_length": 8,
+        "window_selection": "nearest_window_centre_then_earlier_start"
+      }
+    },
+    {
+      "camera": "cam1",
+      "frames": 270,
+      "timeline_windows_equal": true,
+      "winner_component_changes": 24,
+      "both_winners_anchored": 236,
+      "winner_anchor_changes_20px": 19,
+      "top1_changed_20px": 39,
+      "frames_with_matched_rank_changes": 252,
+      "cache_free_winner": 27,
+      "source_free_winner": 22,
+      "matched_peaks_20px": 1160,
+      "candidate_slots": 2160,
+      "same_rank_native_cells": 320,
+      "pipeline_settings": {
+        "config": {
+          "batch_size": 4,
+          "candidates": {
+            "max_candidates": 8,
+            "nms_kernel": 5,
+            "patch_size": 5
+          },
+          "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+          "checkpoint_strict": true,
+          "checkpoint_weights_only": false,
+          "device": "cuda",
+          "image_size": [
+            288,
+            512
+          ],
+          "normalize_imagenet": true,
+          "overlap_aggregation": "nearest_window_centre_then_earlier_start",
+          "pin_memory": true,
+          "prefetch_batches": 2,
+          "score_threshold": 0.5,
+          "subpixel_refine": true,
+          "tail_policy": "backfill",
+          "trajectory_gate": {
+            "enabled": true,
+            "k_support": 2,
+            "max_passes": 2,
+            "max_residual_px": 60.0,
+            "max_support_gap": 5
+          },
+          "window_stride": 4
+        },
+        "requirements": {
+          "candidates": {
+            "max_candidates": 8,
+            "nms_kernel": 5,
+            "patch_size": 5
+          },
+          "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+          "image_size_hw": [
+            288,
+            512
+          ],
+          "normalization": {
+            "enabled": true,
+            "mean": [
+              0.485,
+              0.456,
+              0.406
+            ],
+            "std": [
+              0.229,
+              0.224,
+              0.225
+            ]
+          },
+          "stride": 4,
+          "subpixel_refine": true,
+          "window_length": 8
+        }
+      },
+      "cache_settings": {
+        "batch_size": 4,
+        "candidates": {
+          "max_candidates": 8,
+          "nms_kernel": 5,
+          "patch_size": 5
+        },
+        "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+        "device": "cuda:0",
+        "image_normalization": {
+          "enabled": true,
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ]
+        },
+        "image_size_hw": [
+          288,
+          512
+        ],
+        "model_config": {
+          "depth": 2,
+          "dims": [
+            64,
+            128,
+            256,
+            512
+          ],
+          "drop_path_prob": 0.0,
+          "in_channels": 2,
+          "input_layout": "bcthw",
+          "input_mode": "mdd",
+          "mdd_a": 0.2,
+          "mdd_b": 0.15,
+          "name": "conv_next_unet",
+          "num_classes": 1,
+          "num_frames": 8
+        },
+        "rgb": "JPEG BGR -> INTER_LINEAR -> RGB float32 [0,1]",
+        "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "stride": 4,
+        "subpixel_refine": true,
+        "tail_policy": "backfill_real_frames_no_padding",
+        "torch_version": "2.13.0+cu130",
+        "window_length": 8,
+        "window_selection": "nearest_window_centre_then_earlier_start"
+      }
+    },
+    {
+      "camera": "cam2",
+      "frames": 270,
+      "timeline_windows_equal": true,
+      "winner_component_changes": 62,
+      "both_winners_anchored": 191,
+      "winner_anchor_changes_20px": 10,
+      "top1_changed_20px": 52,
+      "frames_with_matched_rank_changes": 249,
+      "cache_free_winner": 42,
+      "source_free_winner": 60,
+      "matched_peaks_20px": 1069,
+      "candidate_slots": 2160,
+      "same_rank_native_cells": 293,
+      "pipeline_settings": {
+        "config": {
+          "batch_size": 4,
+          "candidates": {
+            "max_candidates": 8,
+            "nms_kernel": 5,
+            "patch_size": 5
+          },
+          "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+          "checkpoint_strict": true,
+          "checkpoint_weights_only": false,
+          "device": "cuda",
+          "image_size": [
+            288,
+            512
+          ],
+          "normalize_imagenet": true,
+          "overlap_aggregation": "nearest_window_centre_then_earlier_start",
+          "pin_memory": true,
+          "prefetch_batches": 2,
+          "score_threshold": 0.5,
+          "subpixel_refine": true,
+          "tail_policy": "backfill",
+          "trajectory_gate": {
+            "enabled": true,
+            "k_support": 2,
+            "max_passes": 2,
+            "max_residual_px": 60.0,
+            "max_support_gap": 5
+          },
+          "window_stride": 4
+        },
+        "requirements": {
+          "candidates": {
+            "max_candidates": 8,
+            "nms_kernel": 5,
+            "patch_size": 5
+          },
+          "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+          "image_size_hw": [
+            288,
+            512
+          ],
+          "normalization": {
+            "enabled": true,
+            "mean": [
+              0.485,
+              0.456,
+              0.406
+            ],
+            "std": [
+              0.229,
+              0.224,
+              0.225
+            ]
+          },
+          "stride": 4,
+          "subpixel_refine": true,
+          "window_length": 8
+        }
+      },
+      "cache_settings": {
+        "batch_size": 4,
+        "candidates": {
+          "max_candidates": 8,
+          "nms_kernel": 5,
+          "patch_size": 5
+        },
+        "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+        "device": "cuda:0",
+        "image_normalization": {
+          "enabled": true,
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ]
+        },
+        "image_size_hw": [
+          288,
+          512
+        ],
+        "model_config": {
+          "depth": 2,
+          "dims": [
+            64,
+            128,
+            256,
+            512
+          ],
+          "drop_path_prob": 0.0,
+          "in_channels": 2,
+          "input_layout": "bcthw",
+          "input_mode": "mdd",
+          "mdd_a": 0.2,
+          "mdd_b": 0.15,
+          "name": "conv_next_unet",
+          "num_classes": 1,
+          "num_frames": 8
+        },
+        "rgb": "JPEG BGR -> INTER_LINEAR -> RGB float32 [0,1]",
+        "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "stride": 4,
+        "subpixel_refine": true,
+        "tail_policy": "backfill_real_frames_no_padding",
+        "torch_version": "2.13.0+cu130",
+        "window_length": 8,
+        "window_selection": "nearest_window_centre_then_earlier_start"
+      }
+    }
+  ],
+  "frame_rows": 810,
+  "candidate_rows": 6480,
+  "component_rows": 3240
+}
