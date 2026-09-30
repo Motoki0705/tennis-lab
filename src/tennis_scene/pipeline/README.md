@@ -121,6 +121,24 @@ code・bundle・設定・source・依存artifactの不一致や配列のchecksum
   --device cuda --source execute --detector-batch-size 4 --refiner-batch-size 32
 ```
 
+### e9・anchored seed42・共分散補正の明示option
+
+上のCLIに `--ball-path e9_anchored_s42_covariance --calibration-artifact <絶対path>/covariance-calibration-r23.json`
+を追加し、`--bundle`と`--detector-checkpoint`にも対応する資産を明示する。
+資産の固定SHA256は[名前付きoption](../../tasks/ball_refiner/pipeline_options.py)が正本。
+検出器e9、anchored_12k seed42のepoch41（checkpoint `985308b0…`）から書き出したbundle、
+共分散倍率artifact `197f9e64…`（Σに1.8125148752倍）を要求する。
+欠落・hash不一致・別checkpoint用の倍率はexecute/loadとも定義構築時に停止する。
+manifestは重み・全入力設定・元checkpointを束縛し、倍率artifactは実行前後にも照合する。
+
+このoptionの成果物は`ball_distribution_2d` **schema v2**、
+`CalibratedBallRefiner2DOutput`。全成分のCholeskyに倍率の平方根だけを掛け、
+平均・混合logit・存在logit・frame/PTS/採用窓は維持する。
+倍率、元checkpoint SHA256、artifact SHA256を保存し、load-onlyでは再補正しない。
+既存`bundle` optionは未較正schema v1を維持し、未知optionや暗黙の倍率1は許可しない。
+既定のscene detector（ft-e13）と現refinerの選択は変更していない。
+このoptionは評価用で、Bの既定切替はseed確認と元動画3camera execute/load照合後に判断する。
+
 ## 成果物
 
 構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。
