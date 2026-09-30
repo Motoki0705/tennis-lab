@@ -1,0 +1,61 @@
+{
+  "candidate": "strongsort_pp_pose__clipreid_vitb16_market1501",
+  "video": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/review.mp4",
+  "windows": [
+    {
+      "clip": "video_000/clip_000",
+      "start": 710,
+      "end": 1010,
+      "differing_player_units": 383,
+      "baseline": "deep_ocsort_pose__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_000/clip_007",
+      "start": 352,
+      "end": 652,
+      "differing_player_units": 474,
+      "baseline": "deep_ocsort_pose__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_001/clip_001",
+      "start": 273,
+      "end": 573,
+      "differing_player_units": 210,
+      "baseline": "deep_ocsort_pose__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_002/clip_013",
+      "start": 0,
+      "end": 300,
+      "differing_player_units": 389,
+      "baseline": "deep_ocsort_pose__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose__clipreid_vitb16_market1501"
+    }
+  ]
+}
+	Command being timed: "timeout 1100 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_tracking_matrix_video.py --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930 --baseline deep_ocsort_pose__clipreid_vitb16_market1501 --candidate strongsort_pp_pose__clipreid_vitb16_market1501"
+	User time (seconds): 65.81
+	System time (seconds): 7.47
+	Percent of CPU this job got: 319%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:22.94
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1408296
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 398615
+	Voluntary context switches: 168182
+	Involuntary context switches: 1649
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 8656
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
