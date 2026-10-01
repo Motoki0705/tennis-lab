@@ -98,9 +98,18 @@ def build_label_masks(
     player_yaw: NDArray[np.float32],
     ball_3d: NDArray[np.float32],
     config: QualityConfig,
+    scene_schema_version: int,
     teacher_quality: dict[str, Any] | None = None,
+    player_reconstruction_valid: NDArray[np.bool_] | None = None,
+    player_heading_valid: NDArray[np.bool_] | None = None,
+    ball_reconstruction_valid: NDArray[np.bool_] | None = None,
 ) -> dict[str, NDArray[Any]]:
     """Compute label validity masks and confidence weights for a whole clip.
+
+    ``scene_schema_version`` is the source SceneResult version and has no
+    default. v2 scenes must pass all three reconstruction validity masks, which
+    are hard gates (2D visibility never re-enables a rejected 3D teacher); v1
+    scenes carry no such masks and must not pass them.
 
     Returns a dict with:
         - ``player_label_valid``: ``(P, T)`` bool
@@ -160,6 +169,27 @@ def build_label_masks(
                 raise ValueError(f"Invalid {name} teacher-quality weights")
             weight *= evidence
             valid &= evidence > 0
+
+    if scene_schema_version not in (1, 2):
+        raise ValueError("Unsupported scene schema for teacher masks")
+    reconstruction_masks = (player_reconstruction_valid, player_heading_valid, ball_reconstruction_valid)
+    if scene_schema_version == 1 and any(mask is not None for mask in reconstruction_masks):
+        raise ValueError("v1 scenes have no reconstruction validity masks")
+    if scene_schema_version == 2:
+        for name, mask, expected in (
+            ("player reconstruction", player_reconstruction_valid, player_valid.shape),
+            ("player heading", player_heading_valid, player_valid.shape),
+            ("ball reconstruction", ball_reconstruction_valid, ball_valid.shape),
+        ):
+            if not isinstance(mask, np.ndarray) or mask.dtype != np.bool_ or mask.shape != expected:
+                raise ValueError(f"v2 requires boolean {name} validity of shape {expected}")
+        assert player_reconstruction_valid is not None
+        assert player_heading_valid is not None
+        assert ball_reconstruction_valid is not None
+        player_valid &= player_reconstruction_valid & player_heading_valid
+        ball_valid &= ball_reconstruction_valid
+        player_weight[~player_valid] = 0
+        ball_weight[~ball_valid] = 0
 
     return {
         "player_label_valid": player_valid,
