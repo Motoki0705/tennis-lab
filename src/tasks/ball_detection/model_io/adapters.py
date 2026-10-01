@@ -12,7 +12,10 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.ball_detection.configuration import validate_model
+from src.tasks.ball_detection.model_io.candidates import decode_candidates
 from src.tasks.ball_detection.model_io.contracts import (
+    DEFAULT_CANDIDATE_CONFIG,
+    BallCandidateConfig,
     BallInputLayout,
     BallInputMode,
     BallModelCall,
@@ -468,9 +471,10 @@ class BallModelIOAdapter:
         call: BallModelCall,
         *,
         subpixel_refine: bool,
+        candidate_config: BallCandidateConfig = DEFAULT_CANDIDATE_CONFIG,
     ) -> BallPrediction:
         """Decode logits into the canonical typed inference result."""
-        heatmaps = self.probability_heatmaps(logits, call)
+        heatmaps = self.probability_heatmaps(logits, call).float()
         coords, confidence = heatmaps_to_argmax(heatmaps)
         if subpixel_refine:
             coords = refine_peaks_log_parabolic(heatmaps, coords)
@@ -478,6 +482,9 @@ class BallModelIOAdapter:
             coords=coords.cpu(),
             confidence=confidence.cpu(),
             heatmaps=heatmaps.cpu(),
+            candidates=decode_candidates(
+                heatmaps, config=candidate_config, subpixel_refine=subpixel_refine,
+            ),
         )
 
     def mdd_features(

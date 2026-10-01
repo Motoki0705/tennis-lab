@@ -17,6 +17,7 @@ from src.submodules.configuration import (
     SubmoduleRuntimeConfig,
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
+from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
@@ -174,6 +175,10 @@ _TRAJECTORY_SCHEMA = StrictConfigSchema(
         "max_passes": ConfigField.of(int),
     },
 )
+_BALL_CANDIDATE_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.ball_detection.candidates",
+    fields={name: ConfigField.of(int) for name in ("max_candidates", "nms_kernel", "patch_size")},
+)
 _BALL_SCHEMA = StrictConfigSchema(
     name="tennis_scene.ball_detection",
     fields={
@@ -192,6 +197,7 @@ _BALL_SCHEMA = StrictConfigSchema(
         "overlap_aggregation": ConfigField.of(str),
         "pin_memory": ConfigField.of(bool),
         "trajectory_gate": ConfigField.mapping(_TRAJECTORY_SCHEMA),
+        "candidates": ConfigField.mapping(_BALL_CANDIDATE_SCHEMA),
     },
 )
 _FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": ConfigField.of(bool)})
@@ -897,6 +903,7 @@ def build_ball_detection_config(
     """Compose the shared, strictly validated scene ball detector contract."""
     ball = _BALL_SCHEMA.validate(settings)
     gate = _mapping(ball["trajectory_gate"], name="ball_detection.trajectory_gate")
+    candidates = _mapping(ball["candidates"], name="ball_detection.candidates")
     image_size = parse_hw(ball["image_size"], name="ball_detection.image_size")
     batch_size = cast(int, ball["batch_size"])
     _positive(batch_size, name="ball_detection.batch_size")
@@ -955,6 +962,11 @@ def build_ball_detection_config(
             k_support=gate_support,
             max_support_gap=gate_gap,
             max_passes=gate_passes,
+        ),
+        candidates=BallCandidateConfig(
+            max_candidates=cast(int, candidates["max_candidates"]),
+            nms_kernel=cast(int, candidates["nms_kernel"]),
+            patch_size=cast(int, candidates["patch_size"]),
         ),
         resolver=resolver,
     )

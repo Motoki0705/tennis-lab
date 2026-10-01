@@ -1,8 +1,11 @@
-# Declared component pipeline (see src/tennis_scene/pipeline/README.md). Defaults are the
-# configuration that completed on the real Meiji clip (knowledge tennis_scene/000008, #931).
-defaults:
-- paths: default
-- _self_
+paths:
+  project_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/i934-evidence-meiji-clip000-r4-20260928
+  output_root: /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/i934-evidence-meiji-clip000-r4-20260928
+  cache_root: /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/i934-evidence-meiji-clip000-r4-20260928/cache
+  external_asset_root: /home/kamimura/projects/tennis-lab/third_party
 video_paths:
 - samples/cam0.mp4
 - samples/cam1.mp4
@@ -11,7 +14,7 @@ camera_ids:
 - cam0
 - cam1
 - cam2
-output_directory: ${tennis_output:tennis_scene,generate,pipeline,${tennis_run_id:}}
+output_directory: run
 output_name: tennis_clip
 device: cuda
 execution:
@@ -33,8 +36,6 @@ execution:
 court_kp:
   checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
   subpixel_refine: true
-  # Only frame 0 of each fixed camera is inferred. The region search picks the court
-  # crop on that frame from the image alone.
   region_search:
     enabled: true
     min_inliers: 8
@@ -71,7 +72,7 @@ people_models:
     smplx_verts437: src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt
     smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
   runtime:
-    device: ${device}
+    device: cuda
     tracking:
       yolo_confidence: 0.5
       bbox_enlarge: 1.2
@@ -99,22 +100,18 @@ people_models:
       batch_size: 16
     static_cam: true
 person_observations:
-  enabled: true
+  enabled: false
   visibility_threshold: 0.15
   sideline_margin_m: 1.0
-  # Far-baseline players stand well behind the court (5 m lost them on the Meiji clip).
   baseline_margin_m: 10.0
-  # Cumulative camera-local track IDs per clip; more stops tracking (IDs are never recycled or
-  # merged to fit). Non-player tracks (ball persons, the neighbouring court) are excluded later by
-  # player_association, so the cap must leave room for them: 12 Meiji clips reached up to 11
-  # tracks in one camera (#933, i933-observe-v1).
   max_tracks_per_camera: 16
 ball_detection:
   enabled: true
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   batch_size: 4
-  image_size: [288, 512]
-  # Ball's model-I/O adapter owns model preprocessing and requires RGB [0, 1].
+  image_size:
+  - 288
+  - 512
   normalize_imagenet: true
   score_threshold: 0.5
   subpixel_refine: true
@@ -135,18 +132,14 @@ ball_detection:
     k_support: 2
     max_support_gap: 5
     max_passes: 2
-# ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
 frame_sampling:
   max_frames: 1024
-# camera_alignment's absolute check of the decided sides with player and ball evidence.
 camera_geometry:
   reference_camera: null
   calibration_error_ratio: 0.005
   side_min_frames: 8
   side_max_cost: 0.5
   side_min_support: 0.5
-# Ball-only half-turn hypothesis test (src/tasks/court_side). Pixels at 1920x1080. Thresholds
-# from the synthetic benchmark (knowledge court_side/000001, #932).
 court_side:
   reprojection_px: 20.0
   min_motion_px: 5.0
@@ -154,13 +147,11 @@ court_side:
   max_cost: 0.8
   min_support: 0.2
   min_margin: 0.15
-# Cross-camera association of the person tracks (src/tasks/player_association, #933). The
-# method's parameters live in `config` (project-relative); the game format is the clip's.
 player_association:
   config: src/tasks/player_association/configs/association.yaml
-  players_per_side: 1  # 1 = singles, 2 = doubles
+  players_per_side: 1
 player_reconstruction:
-  enabled: true
+  enabled: false
   reprojection_px: 40.0
   joint_confidence: 0.3
   placement:
@@ -180,17 +171,9 @@ ball_reconstruction:
   reprojection_px: 20.0
   min_frames: 5
 gvhmr:
-  enabled: true
+  enabled: false
 cache:
-  # ARTIFACT-root store for unstructured runs, keyed by the source digest. It must not
-  # contain the run ID, otherwise cache.source=load could never find a previous run.
   directory: tennis_scene/cache/pipeline
   source: execute
   overwrite: false
 max_frames: null
-hydra:
-  run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${output_directory},hydra}
-  output_subdir: null
-  job:
-    chdir: false

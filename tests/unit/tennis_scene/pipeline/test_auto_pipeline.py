@@ -108,7 +108,7 @@ def inputs(*, empty: bool = False, frames: int = 24) -> tuple[CourtKPResult, Obj
         score[:] = 0
     people = ObjectObservations(tuple(c.camera_id for c in cameras), (1280, 720), 30., human, confidence, observed, np.zeros((3, human.shape[2]), np.int64))
     balls = tuple(BallDetectionOutput(camera.camera_id, np.arange(frames, dtype=np.int64), ball_px[v], score[v], ball_visible[v],
-                                      ball_visible[v].astype(np.uint8), "model_score") for v, camera in enumerate(cameras))
+                                      ball_visible[v].astype(np.uint8), "annotation_acceptance_not_probability", None) for v, camera in enumerate(cameras))
     return court, people, balls
 
 
