@@ -1,10 +1,8 @@
-"""Validate the independently inferred court sides against matched observations."""
+"""Validate the decided court sides against matched observations and build the cameras."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-import numpy as np
 
 from src.tennis_scene.pipeline.components.camera_geometry import (
     CameraGeometryConfig,
@@ -15,11 +13,11 @@ from src.tennis_scene.pipeline.components.camera_geometry import (
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
-from src.tennis_scene.pipeline.components.identity import (
-    IDENTITIES_PORT,
+from src.tennis_scene.pipeline.components.court_side import (
     SIDE_PORT,
     CourtSideOutput,
 )
+from src.tennis_scene.pipeline.components.identity import IDENTITIES_PORT
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
 from src.tennis_scene.pipeline.frame_sampling import sampled_frame_indices
 from src.tennis_scene.pipeline.observation_types import GroupedObservations
@@ -70,5 +68,5 @@ class CameraAlignmentModule:
         if inputs.balls.visibility.any():
             evidence.append(SideEvidence("ball", inputs.balls.uv_px[:, :, sample], inputs.balls.visibility[:, :, sample], self.ball_reprojection_px * scale))
         geometry = resolve_camera_geometry(inputs.calibration.calibration, inputs.calibration.reference_camera,
-            (np.asarray(inputs.side.view_half_turns, bool),), tuple(evidence), config=self.config)
+            inputs.side.view_half_turns, tuple(evidence), config=self.config)
         return CameraAlignmentOutput(geometry)

@@ -19,12 +19,13 @@ def _runtime(
     return PipelineRuntimeConfig.from_config(cfg, bind_inputs=bind_inputs)
 
 
-def test_defaults_load_imported_identities_and_sides() -> None:
+def test_defaults_load_imported_identities_and_decide_sides() -> None:
     runtime = _runtime([])
     assert runtime.camera_geometry.reference_camera is None
-    # No model implements these nodes yet (#933 / #932): they are imported.
+    # No model implements the association yet (#933): it is imported.
     assert runtime.component_sources["player_association"] == "load"
-    assert runtime.component_sources["court_side"] == "load"
+    assert runtime.component_sources["court_side"] == "execute"
+    assert runtime.court_side.reprojection_px > 0 and runtime.court_side.min_margin > 0
     assert runtime.sampling_max_frames == 1024
     assert "blcs_association" not in runtime.enabled
     assert len(runtime.camera_ids) == 3

@@ -1,4 +1,4 @@
-"""Known-camera geometry, ambiguous sides, and the full-clip sampling grid."""
+"""Known-camera geometry, side validation, and the full-clip sampling grid."""
 
 from __future__ import annotations
 
@@ -42,20 +42,23 @@ def side_inputs() -> tuple[CalibrationSet, SideEvidence]:
     return calibration, SideEvidence("plcs", uv, np.ones(uv.shape[:-1], bool), 5.)
 
 
-def test_disagreeing_side_is_decided_by_geometry() -> None:
+def test_decided_side_is_validated_and_recorded() -> None:
     calibration, evidence = side_inputs()
-    result = resolve_camera_geometry(calibration, "a", (np.array([False, False, True]), np.array([False, False, False])), (evidence,), config=CameraGeometryConfig())
+    result = resolve_camera_geometry(calibration, "a", (False, False, True), (evidence,), config=CameraGeometryConfig())
     assert result.view_half_turns == (False, False, True)
-    assert len(result.document["side_candidates"]) == 2
+    assert result.document["side_validation"]["cost"] < .01
+    with pytest.raises(ValueError, match="reference unturned"):
+        resolve_camera_geometry(calibration, "a", (True, False, True), (evidence,), config=CameraGeometryConfig())
 
 
-def test_agreement_cannot_bypass_evidence_or_geometry() -> None:
+def test_wrong_side_cannot_bypass_evidence_or_geometry() -> None:
     calibration, evidence = side_inputs()
-    with pytest.raises(ReconstructionUnavailable, match="geometric"):
-        resolve_camera_geometry(calibration, "a", (np.zeros(3, bool),), (evidence,), config=CameraGeometryConfig())
+    with pytest.raises(ReconstructionUnavailable, match="geometric") as rejected:
+        resolve_camera_geometry(calibration, "a", (False, False, False), (evidence,), config=CameraGeometryConfig())
+    assert rejected.value.diagnostics["validation"]["cost"] > .5
     evidence.visibility[:, 1:] = False
     with pytest.raises(ReconstructionUnavailable, match="Too few"):
-        resolve_camera_geometry(calibration, "a", (np.zeros(3, bool),), (evidence,), config=CameraGeometryConfig())
+        resolve_camera_geometry(calibration, "a", (False, False, True), (evidence,), config=CameraGeometryConfig())
 
 
 def test_full_clip_grid_preserves_duration_without_windowing() -> None:
