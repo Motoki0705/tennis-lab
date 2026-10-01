@@ -1,0 +1,7 @@
+{
+  "queue_wall_seconds": 4030,
+  "clock_difference_seconds": 198.2598687610589,
+  "source": "collected/worker-lifecycle.log",
+  "queue_started_at": "2026-10-01T08:38:38+09:00",
+  "queue_done_at": "2026-10-01T09:45:48+09:00"
+}
