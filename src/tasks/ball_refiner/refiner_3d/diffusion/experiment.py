@@ -18,6 +18,11 @@ from .dev_training import run_dev_training
 
 def assert_single_factor(candidate: dict[str, Any], control: dict[str, Any], factor: str) -> None:
     normalized = deepcopy(candidate)
+    control = deepcopy(control)
+    # The field was introduced after the recorded temporal-only controls.
+    # Materialize that documented default; unknown explicit values are not repaired.
+    for config in (normalized, control):
+        config['model'].setdefault('position_head_input', 'temporal')
     if factor == 'training_rallies':
         if candidate['expected_counts']['train'] <= control['expected_counts']['train']:
             raise ValueError('Training-rally trial must increase train count')
@@ -30,6 +35,11 @@ def assert_single_factor(candidate: dict[str, Any], control: dict[str, Any], fac
         if candidate['loss']['reprojection'] != 3 * control['loss']['reprojection']:
             raise ValueError('Declared reprojection trial must change only the weight by 3x')
         normalized['loss']['reprojection'] = control['loss']['reprojection']
+    elif factor == 'position_head_input':
+        if (control['model']['position_head_input'] != 'temporal'
+                or normalized['model']['position_head_input'] != 'temporal_and_condition'):
+            raise ValueError('Head-input trial must explicitly add pooled condition to a temporal-only head')
+        normalized['model']['position_head_input'] = 'temporal'
     else:
         raise ValueError('Unknown declared single factor')
     if normalized != control:
@@ -80,8 +90,8 @@ def preflight(plan: dict[str, Any]) -> dict[str, Any]:
     for row in reference['read_rallies']:
         if row['rally_id'].startswith('test-') or records.get(row['rally_id'], {}).get('npz_sha256') != row['npz_sha256']:
             raise ValueError('Control train/val rally was changed or removed')
-    if plan['factor'] in ('physics_weight', 'reprojection_weight') and audit['manifest_sha256'] != reference['source_manifest_sha256']:
-        raise ValueError('Loss-weight trial must use the identical dataset')
+    if plan['factor'] in ('physics_weight', 'reprojection_weight', 'position_head_input') and audit['manifest_sha256'] != reference['source_manifest_sha256']:
+        raise ValueError('Loss/head trial must use the identical dataset')
     return {'status': 'complete', 'factor': plan['factor'], 'config': config, 'dataset_audit': audit,
             'control_manifest_sha256': sha256(reference_path), 'primary_val_rallies': sorted(ids),
             'primary_val_frames': sum(records[key]['frames'] for key in ids),

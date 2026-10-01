@@ -99,6 +99,13 @@ camera subsetを非線形に符号化してから混合重みで集約し、時�
 座標は共有の `isotropic_half_length` 契約を使い、三角測量の平均への残差加算はしない。
 実frameの欠損と右paddingは別で、全camera欠損でも実frameはattentionへ残る。
 
+`ModelConfig.position_head_input`の既定`temporal`は従来の時間tokenだけを使う。
+明示的な`temporal_and_condition`は最終LayerNorm後の時間tokenと、
+既存の全成分pool tokenを連結して1つの絶対位置Linear headへ渡す。
+三角測量座標への残差加算やread-out layerの移植は行わない。event headは時間tokenだけを使う。
+候補の初期化は従来headの時間側重み・biasと全共通parameterを保持し、
+追加condition列だけゼロにして乱数列を維持する。
+
 `diffusion/flow.py` は `x_t=(1-t)noise+t*x0` の経路でx0を回帰し、
 `v_t=(predicted_x0-x_t)/(1-t)` のEuler法でsampleする。
 t=1で速度を評価しない。x0 MSEは一様tで学習し、velocity MSEで見れば
@@ -281,6 +288,11 @@ testはファイルhashとJSONの整合確認のみで、配列を開かない�
 physics1e-3、512train、dataset hashを維持し、他の設定変更は拒否する。
 対照自身がval subsetを使う場合、保存済みの採用/未使用IDの完全な分割と実読込hashを検査して継承する。
 declared val件数だけを見て評価対象を全64件へ広げることはない。
+
+[headへの条件連結設定](training_pilot512_physics10_head_context_t128.yaml)は
+`factor: position_head_input`の単因子候補。対照(c)と同じdatasetを要求し、
+上記head入力以外の変更を拒否する。過去の設定で未指定のfieldは、
+明示された歴史的既定`temporal`として比較し、不正な値を置換しない。
 
 ### 固定重みの重複窓診断
 

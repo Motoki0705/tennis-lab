@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, fields
+from typing import Literal
 
 import torch
 from torch import Tensor, nn
@@ -20,12 +21,16 @@ class ModelConfig:
     feedforward_multiplier: int
     time_frequencies: int
     dropout: float
+    # Explicit legacy default: existing checkpoints use only the temporal token.
+    position_head_input: Literal["temporal", "temporal_and_condition"] = "temporal"
 
     def __post_init__(self) -> None:
         if any(type(v) is not int or v < 1 for v in (self.width, self.layers, self.heads, self.feedforward_multiplier, self.time_frequencies)):
             raise ValueError("Model dimensions must be positive integers")
         if self.width % self.heads or not math.isfinite(self.dropout) or not 0 <= self.dropout < 1:
             raise ValueError("Invalid attention heads/dropout")
+        if self.position_head_input not in ("temporal", "temporal_and_condition"):
+            raise ValueError("Unknown absolute position head input")
 
 
 @dataclass(frozen=True)
@@ -120,6 +125,15 @@ class TrajectoryDenoiser(nn.Module):
         self.norm = nn.LayerNorm(config.width)
         self.position_head = nn.Linear(config.width, 3)
         self.event_head = nn.Linear(config.width, 2)
+        if config.position_head_input == "temporal_and_condition":
+            # Preserve every legacy parameter and the RNG stream. Only the new
+            # condition columns start at zero; this is still one absolute head.
+            with torch.random.fork_rng(devices=[]), torch.no_grad():
+                expanded = nn.Linear(2 * config.width, 3)
+                expanded.weight[:, :config.width].copy_(self.position_head.weight)
+                expanded.weight[:, config.width:].zero_()
+                expanded.bias.copy_(self.position_head.bias)
+            self.position_head = expanded
 
     def time_features(self, value: Tensor) -> Tensor:
         angles = value[..., None] * self.frequencies
@@ -143,6 +157,8 @@ class TrajectoryDenoiser(nn.Module):
         hidden = context + self.state_encoder(state)
         hidden = hidden.masked_fill(condition.padding_mask[..., None], 0)
         hidden = self.norm(self.temporal(hidden, src_key_padding_mask=condition.padding_mask))
-        positions = self.position_head(hidden).masked_fill(condition.padding_mask[..., None], 0)
+        position_features = (torch.cat((hidden, context), dim=-1)
+                             if self.config.position_head_input == "temporal_and_condition" else hidden)
+        positions = self.position_head(position_features).masked_fill(condition.padding_mask[..., None], 0)
         events = self.event_head(hidden).masked_fill(condition.padding_mask[..., None], 0)
         return DenoiserOutput(positions, events)

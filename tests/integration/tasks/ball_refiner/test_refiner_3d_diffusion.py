@@ -46,14 +46,53 @@ def test_memory_profile_cpu_forward_backward_all_four_losses():
     assert batch.condition.means_m.shape == (2, 128, 64, 3)
 
 
-def test_output_head_is_absolute_x0_and_not_a_residual():
+@pytest.mark.parametrize('position_head_input', ['temporal', 'temporal_and_condition'])
+def test_output_head_is_absolute_x0_and_not_a_residual(position_head_input):
     batch = analytic_memory_batch(FIXTURE, batch_size=2, frames=16, seed=4)
-    model = small_model().eval()
+    model = TrajectoryDenoiser(replace(small_model().config, position_head_input=position_head_input)).eval()
     with torch.no_grad():
         model.position_head.weight.zero_()
         model.position_head.bias.copy_(torch.tensor([.1, .2, .3]))
     result = model(torch.randn(2, 16, 3) * 10, torch.tensor([.1, .8]), batch.condition)
     torch.testing.assert_close(result.positions_norm, torch.tensor([.1, .2, .3]).expand(2, 16, 3))
+
+
+def test_context_head_preserves_initialization_and_learns_its_new_columns() -> None:
+    torch.set_num_threads(1)
+    config = ModelConfig(32, 1, 4, 2, 4, 0.)
+    torch.manual_seed(936)
+    control = TrajectoryDenoiser(config).eval()
+    rng_after_control = torch.get_rng_state().clone()
+    torch.manual_seed(936)
+    candidate = TrajectoryDenoiser(replace(config, position_head_input='temporal_and_condition')).eval()
+    assert torch.equal(torch.get_rng_state(), rng_after_control)
+    for name, value in control.state_dict().items():
+        actual = candidate.state_dict()[name]
+        if name == 'position_head.weight':
+            assert torch.count_nonzero(actual[:, config.width:]) == 0
+            actual = actual[:, :config.width]
+        torch.testing.assert_close(actual, value, rtol=0, atol=0)
+    batch = analytic_memory_batch(FIXTURE, batch_size=2, frames=16, seed=4)
+    state, time = torch.randn(2, 16, 3), torch.tensor([.1, .8])
+    expected = control(state, time, batch.condition)
+    actual = candidate(state, time, batch.condition)
+    torch.testing.assert_close(actual.positions_norm, expected.positions_norm, rtol=1e-6, atol=1e-7)
+    torch.testing.assert_close(actual.event_logits, expected.event_logits, rtol=0, atol=0)
+    loss, _ = training_objective(candidate, batch, LossConfig(1., .01, .001, .1),
+                                 torch.Generator().manual_seed(937), objective='flow')
+    loss.backward()
+    gradient = candidate.position_head.weight.grad
+    assert gradient is not None and bool(torch.isfinite(gradient).all())
+    assert torch.count_nonzero(gradient[:, config.width:]) > 0
+    torch.optim.AdamW(candidate.parameters(), lr=1e-4).step()
+    assert torch.count_nonzero(candidate.position_head.weight[:, config.width:]) > 0
+    with pytest.raises(RuntimeError, match='size mismatch'):
+        control.load_state_dict(candidate.state_dict(), strict=True)
+
+
+def test_unknown_head_input_is_rejected() -> None:
+    with pytest.raises(ValueError, match='head input'):
+        ModelConfig(32, 1, 4, 2, 4, 0., position_head_input='typo')  # type: ignore[arg-type]
 
 
 def test_full_mixture_permutation_invariance_and_last_component_influence():
