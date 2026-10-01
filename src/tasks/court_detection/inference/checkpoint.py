@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +30,8 @@ from src.tasks.court_detection.model_io.factory import (
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 
+_LOGGER = logging.getLogger(__name__)
+
 
 def file_sha256(path: Path) -> str:
     with path.open("rb") as stream:
@@ -47,6 +50,37 @@ def _plain(value: object) -> dict[str, Any]:
     return cast(dict[str, Any], OmegaConf.to_container(config, resolve=True))
 
 
+def _runtime_backbone_layout(values: Mapping[str, Any]) -> tuple[Mapping[str, Any], dict[str, str] | None]:
+    """Translate the serialized external DINOv3 layout, never probe another file.
+
+    Older Court checkpoints stored ``dinov3/checkpoints/<file>`` relative to
+    the external source root. The supported runtime layout is the same filename
+    at ``dinov3/<file>`` under the checkpoint root. This is a deterministic
+    metadata migration; missing canonical assets remain errors.
+    """
+    model = _mapping(values.get("model"), "model")
+    encoder = _mapping(model.get("encoder"), "model.encoder")
+    saved_path = encoder.get("checkpoint_path")
+    if encoder.get("name") != "dinov3" or not isinstance(saved_path, str):
+        return values, None
+    parts = Path(saved_path).parts
+    if parts[:2] != ("dinov3", "checkpoints"):
+        return values, None
+    if len(parts) != 3 or parts[2] in {".", ".."}:
+        raise CourtModelIOError("Legacy DINOv3 asset path must name exactly one checkpoint file")
+    runtime_path = str(Path("dinov3") / parts[2])
+    runtime_model = _plain(model)
+    runtime_model["encoder"]["checkpoint_path"] = runtime_path
+    # Only inference-owned sections are copied; the saved config is not mutated
+    # and unrelated historical training interpolation is not evaluated here.
+    runtime = {
+        "model": runtime_model,
+        "data": _plain(values.get("data")),
+        "loss": _plain(values.get("loss")),
+    }
+    return runtime, {"layout": "external_dinov3_to_checkpoint", "saved_path": saved_path, "runtime_path": runtime_path}
+
+
 @dataclass(frozen=True)
 class CourtInferenceSpec:
     model: CourtModelConfig
@@ -56,6 +90,7 @@ class CourtInferenceSpec:
     pose_long_side: bool
     patch_size: int
     architecture: dict[str, Any]
+    backbone_asset_migration: dict[str, str] | None = None
 
     @classmethod
     def from_checkpoint_config(
@@ -72,14 +107,25 @@ class CourtInferenceSpec:
         make an old checkpoint look like a modern training run.
         """
         values = _mapping(config, "config")
+        runtime_values, migration = _runtime_backbone_layout(values)
         if resolver is None:
+            paths = _mapping(values.get("paths"), "paths")
+            if migration is not None:
+                # In the old layout, checkpoint_root described training outputs,
+                # not the pretrained backbone. Standalone inference now uses the
+                # documented project ckpt root; explicit runtime roots take precedence.
+                paths = {**paths, "checkpoint_root": "ckpt"}
             resolver = PathResolver(
                 RuntimePathRoots.from_mapping(
-                    _mapping(values.get("paths"), "paths"),
+                    paths,
                     repository_root=PROJECT_ROOT,
                 )
             )
-        runtime = CourtInferenceConfig.from_config(config, resolver=resolver)
+        if migration is not None:
+            migration["checkpoint_root"] = str(resolver.roots.checkpoint_root)
+            _LOGGER.warning("Migrating saved DINOv3 asset path %s -> %s under %s",
+                            migration["saved_path"], migration["runtime_path"], migration["checkpoint_root"])
+        runtime = CourtInferenceConfig.from_config(runtime_values, resolver=resolver)
         model, loss = runtime.model, runtime.loss
         bundle = deserialize_target_bundle(
             _mapping(bundle_state, "target_bundle_state")
@@ -100,6 +146,7 @@ class CourtInferenceSpec:
             runtime.pose_long_side,
             runtime.patch_size,
             _plain(values["model"]),
+            migration,
         )
 
 
@@ -167,6 +214,7 @@ def load_court_checkpoint(
         "checkpoint_path": str(path),
         "checkpoint_sha256": digest,
         "backbone_sha256": file_sha256(backbone) if backbone is not None else None,
+        "backbone_asset_migration": spec.backbone_asset_migration,
         "architecture": spec.architecture,
         "target_bundle": serialize_target_bundle(spec.target_bundle),
         "short_side": spec.short_side,

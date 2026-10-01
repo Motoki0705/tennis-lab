@@ -41,9 +41,13 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path) -> None:
     cfg.aflink_checkpoint.unlink()
     with pytest.raises(FileNotFoundError, match='AFLink'):
         standard_definition(cfg, source, code_identity='test')
-    assert _runtime(['person_tracking.method=all_person_botsort']).tracking.method == 'all_person_botsort'
-    with pytest.raises(ValueError, match='Unknown tracking'):
-        _runtime(['person_tracking.method=invalid'])
+
+
+@pytest.mark.parametrize('method', ['all_person_botsort', 'strongsort_pp', 'deep_ocsort_pose',
+                                   'deep_ocsort_pose_aflink_gsi', 'botsort_pose', 'invalid'])
+def test_standard_pipeline_rejects_comparison_methods(method: str) -> None:
+    with pytest.raises(ValueError, match='Production tracking requires'):
+        _runtime([f'person_tracking.method={method}'])
 
 
 def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

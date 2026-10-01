@@ -52,6 +52,19 @@ _stage_dinov3_checkpoint() {
     fi
 }
 
+_stage_smplh_models() {
+    local data_dir="$1"
+    local dest="${2}/ckpt/body_models/smplh"
+    if [[ ! -d "${data_dir}/smplh" || ! -d "${data_dir}/smplx/smplh" ]]; then
+        echo "[prepare_archive_dataset] both SMPL-H NPZ and PKL archive directories are required." >&2
+        return 1
+    fi
+    # Keep archive contents as provenance; runtime body models live in ckpt.
+    mkdir -p "${dest}" || return
+    cp -av "${data_dir}/smplh/." "${dest}/" || return
+    cp -av "${data_dir}/smplx/smplh/." "${dest}/"
+}
+
 prepare_archive_dataset() {
     local target="$1"
     local repo_root="$2"
@@ -62,7 +75,7 @@ prepare_archive_dataset() {
     local dinov3_ckpt="${DINOV3_CKPT:-${drive_data}/${dinov3_ckpt_name}}"
     local dinov3_ssl_ckpt_name="dinov3_vitb16_tennis_ssl_merged.pth"
     local dinov3_ssl_ckpt="${DINOV3_SSL_CKPT:-${drive_data}/${dinov3_ssl_ckpt_name}}"
-    local dinov3_dest_dir="${repo_root}/third_party/dinov3/checkpoints"
+    local dinov3_dest_dir="${repo_root}/ckpt/dinov3"
     local archives=()
 
     case "${target}" in
@@ -125,6 +138,10 @@ prepare_archive_dataset() {
         echo "[prepare_archive_dataset] extracting ${archive} to ${data_dir}..."
         tar -I zstd -xf "${cache_dir}/${archive}" -C "${data_dir}"
     done
+
+    if [[ "${target}" == "plcs" ]]; then
+        _stage_smplh_models "${data_dir}" "${repo_root}" || return
+    fi
 
     if [[ "${target}" == "ball" || "${target}" == "court" \
           || "${target}" == "synthetic_court_v2" \
