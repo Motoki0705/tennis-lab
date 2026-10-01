@@ -1,0 +1,54 @@
+# TrackNet + Meiji external annotations + chat-annotation balls -> data/ball_detection/<version>
+# Disable a source with e.g. `~sources.meiji`. Schema: src/tasks/ball_detection/data/store.py
+defaults:
+  - paths: default
+  - _self_
+
+sources:
+  tracknet:
+    # DATA-root-relative TrackNet release (<game>/<Clip*>/Label.csv + 0000.jpg..).
+    root: tennis/tracknet
+    # Nominal frame rate of the TrackNet release (not stored in its files).
+    fps: 30
+    # Same game split as the former TrackNet split files.
+    split:
+      train: [game1, game2, game3, game4, game5, game6, game7, game8]
+      val: [game9]
+      test: [game10]
+  meiji:
+    # DATA-root-relative Meiji multi-camera dataset (dataset.json, clips/*/outsource).
+    root: tennis_multivew/processed/meiji_3cam/dataset
+    # Split unit is the recording (video); shared with the #936 real-data evaluation.
+    split:
+      train: [video_002]
+      val: [video_000]
+      test: [video_001]
+  chat_annotation:
+    # OUTPUT-root-relative chat annotation root (annotated/processed/ball + _preparation).
+    annotation_root: chat_annotation
+    allowed_statuses: [completed, partial]
+    # Split unit is the YouTube source video (all its clips share one split).
+    split:
+      val_ratio: 0.15
+      test_ratio: 0.15
+      seed: 42
+
+dataset:
+  version: ball-mix-v1
+  jpeg_quality: 90
+  # Taller clips (Meiji / chat 1080p) are downscaled to this height; TrackNet
+  # (720p) is stored byte-for-byte.
+  max_height: 720
+
+workers: 8
+
+run:
+  # DATA-root-relative dataset version directory (generate_dataset convention).
+  output_dir: ${tennis_dataset:ball_detection,${dataset.version}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_detection,generate,${dataset.version},${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false
