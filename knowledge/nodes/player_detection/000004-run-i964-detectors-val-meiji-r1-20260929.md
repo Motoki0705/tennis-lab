@@ -2,7 +2,7 @@
 id: run-i964-detectors-val-meiji-r1-20260929
 type: run
 task: player_detection
-sequence: 1
+sequence: 4
 recorded_at: '2026-09-29'
 title: 選手DINOのvalidation比較とMeiji旧box不一致の診断
 issue: 964

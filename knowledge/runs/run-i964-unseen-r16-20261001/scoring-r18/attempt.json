@@ -1,0 +1,30 @@
+{
+  "scoring_batch": 1,
+  "plan": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/plan.json",
+    "sha256": "b1bc4ca6bf423726d3f88d20fcfdddfb67d9af3459bf95b1aa5e10a28d41ab7a"
+  },
+  "completed": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/complete.json",
+    "sha256": "b4dd1e799f53653232fe4ba61137614d75374aa93e0078e8afbe2193290cf0f5"
+  },
+  "labels_manifest": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/labels-manifest-r18.json",
+    "sha256": "cacca628a9d03a54e030b469f0a18cbad9b3770c72c6b8bd10edb4b3d068f64f"
+  },
+  "labels": {
+    "video_000/clip_002": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_002/annotations/player_association/labels.json",
+      "sha256": "4b8e1d6ef1d6958e10b569745b868bb7364a2af4cde03c15c1c61c9623c9c826"
+    },
+    "video_001/clip_003": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/annotations/player_association/labels.json",
+      "sha256": "fed9336e5dc68f050db5db7b5daf8d0663dd5954f2f2ddcd26c2f802a40c7d28"
+    },
+    "video_002/clip_003": {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_003/annotations/player_association/labels.json",
+      "sha256": "40c1a1bf777ea6303b990b0d8b9ab0c534c8dc8809d8e515299bdd8b81b9d8c7"
+    }
+  },
+  "retune_allowed": false
+}

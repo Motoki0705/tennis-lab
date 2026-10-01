@@ -25,7 +25,6 @@ EXTRACTION_MODELS_SCHEMA = StrictConfigSchema(
     name="plcs.extraction.models",
     fields={
         "config": ConfigField.of(str),
-        "checkpoint_root": ConfigField.of(str),
         "dino_checkpoint": ConfigField.of(str),
         "runtime_overrides": ConfigField.of(dict),
     },
@@ -105,9 +104,7 @@ class ExtractionConfig:
         model_runtime = load_model_runtime(
             resolver.resolve(PathRole.PROJECT, models["config"]),
             repository_root=resolver.roots.project_root,
-            checkpoint_root=resolver.resolve(
-                PathRole.EXTERNAL_ASSET, models["checkpoint_root"]
-            ),
+            checkpoint_root=resolver.roots.checkpoint_root,
             dino_checkpoint=resolver.resolve(
                 PathRole.CHECKPOINT, models["dino_checkpoint"]
             ),
