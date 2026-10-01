@@ -1,0 +1,399 @@
+diff --git a/src/tasks/player_detection/README.md b/src/tasks/player_detection/README.md
+index 44da9dee..61da1b45 100644
+--- a/src/tasks/player_detection/README.md
++++ b/src/tasks/player_detection/README.md
+@@ -38,3 +38,41 @@ DINO の denoising は CUDA 前提のため、学習と評価は GPU（training
+ 
+ DINO の構築と前処理は [src/submodules/models/dino/architecture.py](../../submodules/models/dino/architecture.py) を
+ 推論（`DinoPersonDetector`）と共有します。
++
++## fine-tuned checkpoint での推論
++
++`inference.DinoPlayerDetector` は export 済みの player checkpoint の出自を検証してから、
++既存の `DinoPersonDetector` でロード・推論します。COCO の person checkpoint や
++Lightning の `.ckpt` を player 用として誤って読まないための入口です。
++入力は BGR `uint8` frame、出力は元画像の pixel `xyxy` box と confidence です。
++tracking ID は検出器の出力には含まれません。
++
++今回の学習で validation AP が最高だった epoch 3 の Lightning checkpoint は
++`ckpt/player_detection/chat-player-v1-e8-best-epoch03.ckpt`、推論用に export した
++DINO 形式は `ckpt/player_detection/chat-player-v1-e8-best-pr937.pth` です。
++推論には後者を使います。pipeline では
++`people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`
++を指定できます。
++
++```python
++from pathlib import Path
++
++from src.tasks.player_detection.inference import (
++    DinoPlayerDetector,
++    PlayerDetectionRequest,
++)
++
++root = Path("/path/to/tennis-lab")
++detector = DinoPlayerDetector(
++    root / "ckpt/player_detection/chat-player-v1-e8-best-pr937.pth",
++    root / "third_party/DINO",
++    device="cuda",
++    confidence=0.3,
++    short_side=800,
++    max_long_side=1333,
++)
++result = detector.predict(PlayerDetectionRequest(frame_bgr=frame_bgr))
++detector.unload()
++```
++
++`frame_bgr` は OpenCV などで読み込んだ `(H, W, 3)` の配列です。
+diff --git a/src/tasks/player_detection/inference/__init__.py b/src/tasks/player_detection/inference/__init__.py
+new file mode 100644
+index 00000000..e9d873aa
+--- /dev/null
++++ b/src/tasks/player_detection/inference/__init__.py
+@@ -0,0 +1,21 @@
++"""Inference with checkpoints exported by the player-detection task."""
++
++from src.submodules.models.dino.person_detector import (
++    PersonDetectionRequest as PlayerDetectionRequest,
++)
++from src.submodules.models.dino.person_detector import (
++    PersonDetectionResult as PlayerDetectionResult,
++)
++from src.tasks.player_detection.inference.checkpoint import (
++    PlayerCheckpointInfo,
++    inspect_player_checkpoint,
++)
++from src.tasks.player_detection.inference.predictor import DinoPlayerDetector
++
++__all__ = [
++    "DinoPlayerDetector",
++    "PlayerCheckpointInfo",
++    "PlayerDetectionRequest",
++    "PlayerDetectionResult",
++    "inspect_player_checkpoint",
++]
+diff --git a/src/tasks/player_detection/inference/checkpoint.py b/src/tasks/player_detection/inference/checkpoint.py
+new file mode 100644
+index 00000000..b5453e36
+--- /dev/null
++++ b/src/tasks/player_detection/inference/checkpoint.py
+@@ -0,0 +1,78 @@
++"""Validate the provenance of a deployable player DINO checkpoint."""
++
++from __future__ import annotations
++
++from collections.abc import Mapping
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Any
++
++import torch
++
++from src.submodules.models.dino.architecture import COCO_PERSON_CLASS_ID
++from src.tasks.player_detection.model_export import EXPORT_FORMAT
++
++
++@dataclass(frozen=True, slots=True)
++class PlayerCheckpointInfo:
++    """Identity of a fine-tuned checkpoint; the weights are loaded separately."""
++
++    path: Path
++    source_checkpoint_sha256: str
++    epoch: int
++    global_step: int
++
++
++def inspect_player_checkpoint(checkpoint: Path) -> PlayerCheckpointInfo:
++    """Reject COCO and Lightning checkpoints before player inference.
++
++    ``mmap`` avoids reading all model tensors merely to inspect provenance.
++    ``DinoPersonDetector`` subsequently validates the architecture and loads
++    the full state dict strictly.
++    """
++    if not checkpoint.is_absolute():
++        raise ValueError(f"Player checkpoint must be absolute: {checkpoint}")
++    if not checkpoint.is_file():
++        raise FileNotFoundError(f"Player checkpoint not found: {checkpoint}")
++    payload: Any = torch.load(
++        checkpoint, map_location="cpu", weights_only=False, mmap=True
++    )
++    if not isinstance(payload, Mapping) or not isinstance(
++        payload.get("tennis_lab"), Mapping
++    ):
++        raise ValueError(
++            "Expected an exported player DINO checkpoint with tennis_lab provenance; "
++            "export a Lightning .ckpt with scripts.export_checkpoint first."
++        )
++    metadata: Mapping[str, Any] = payload["tennis_lab"]
++    expected = {
++        "format": EXPORT_FORMAT,
++        "task": "player_detection",
++        "class_id": COCO_PERSON_CLASS_ID,
++    }
++    mismatches = {
++        name: (value, metadata.get(name))
++        for name, value in expected.items()
++        if type(metadata.get(name)) is not type(value) or metadata.get(name) != value
++    }
++    if mismatches:
++        raise ValueError(f"Checkpoint is not a supported tennis-player model: {mismatches}")
++    source_hash = metadata.get("source_checkpoint_sha256")
++    if (
++        not isinstance(source_hash, str)
++        or len(source_hash) != 64
++        or any(char not in "0123456789abcdef" for char in source_hash)
++    ):
++        raise ValueError("Checkpoint has no valid source_checkpoint_sha256")
++    epoch = metadata.get("epoch")
++    global_step = metadata.get("global_step")
++    if type(epoch) is not int or epoch < 0:
++        raise ValueError(f"Checkpoint has invalid epoch: {epoch!r}")
++    if type(global_step) is not int or global_step < 0:
++        raise ValueError(f"Checkpoint has invalid global_step: {global_step!r}")
++    return PlayerCheckpointInfo(
++        path=checkpoint,
++        source_checkpoint_sha256=source_hash,
++        epoch=epoch,
++        global_step=global_step,
++    )
+diff --git a/src/tasks/player_detection/inference/predictor.py b/src/tasks/player_detection/inference/predictor.py
+new file mode 100644
+index 00000000..53ed8dae
+--- /dev/null
++++ b/src/tasks/player_detection/inference/predictor.py
+@@ -0,0 +1,30 @@
++"""Player-specific entry point for the shared DINO person detector."""
++
++from __future__ import annotations
++
++from src.submodules.models.dino.person_detector import DinoPersonDetector
++from src.tasks.player_detection.inference.checkpoint import (
++    PlayerCheckpointInfo,
++    inspect_player_checkpoint,
++)
++
++
++class DinoPlayerDetector(DinoPersonDetector):
++    """Detect court players from an exported player checkpoint.
++
++    Inherits the deployed BGR preprocessing, strict DINO loading, confidence
++    filtering, and original-pixel ``xyxy`` output from ``DinoPersonDetector``.
++    A COCO person checkpoint is rejected rather than silently used as a player
++    model.
++    """
++
++    checkpoint_info: PlayerCheckpointInfo | None = None
++
++    def _load_impl(self) -> None:
++        info = inspect_player_checkpoint(self.checkpoint)
++        super()._load_impl()
++        self.checkpoint_info = info
++
++    def _unload_impl(self) -> None:
++        super()._unload_impl()
++        self.checkpoint_info = None
+diff --git a/tests/integration/tasks/player_detection/test_exported_inference.py b/tests/integration/tasks/player_detection/test_exported_inference.py
+new file mode 100644
+index 00000000..60e0629b
+--- /dev/null
++++ b/tests/integration/tasks/player_detection/test_exported_inference.py
+@@ -0,0 +1,75 @@
++"""Opt-in real-frame check of the exported fine-tuned DINO checkpoint."""
++
++from __future__ import annotations
++
++import os
++from pathlib import Path
++
++import numpy as np
++import pytest
++import torch
++
++from src.tasks.player_detection.configuration import FrameSelectionConfig
++from src.tasks.player_detection.data.detection_dataset import select_detection_frames
++from src.tasks.player_detection.data.store import PlayerFrameStore
++from src.tasks.player_detection.inference import (
++    DinoPlayerDetector,
++    PlayerDetectionRequest,
++)
++
++
++def test_exported_player_checkpoint_predicts_a_held_out_frame() -> None:
++    if os.environ.get("PLAYER_DETECTION_GPU_TEST") != "1":
++        pytest.skip("Set PLAYER_DETECTION_GPU_TEST=1 for the GPU/artifact check")
++    if not torch.cuda.is_available():
++        pytest.skip("DINO deformable attention requires CUDA")
++    root = Path(os.environ["PLAYER_DETECTION_ARTIFACT_ROOT"])
++    checkpoint = root / "ckpt/player_detection/chat-player-v1-e8-best-pr937.pth"
++    store_dir = root / "data/player_detection/chat-player-v1"
++    prediction_file = (
++        root
++        / "outputs/player_detection/train/dino_swinl_ft/chat-player-v1-e8-20260926"
++        / "predictions/pred_test.npz"
++    )
++    required = (checkpoint, store_dir / "index.npz", prediction_file)
++    missing = [str(path) for path in required if not path.is_file()]
++    if missing:
++        pytest.fail(f"Required player inference artifacts are missing: {missing}")
++
++    torch.set_float32_matmul_precision("high")
++    store = PlayerFrameStore(store_dir)
++    selection = select_detection_frames(
++        store, "test", FrameSelectionConfig(True, True, 4.0), frame_stride=1
++    )
++    row = int(selection.frames[0])
++    image = store.read_bgr(row)
++    detector = DinoPlayerDetector(
++        checkpoint,
++        root / "third_party/DINO",
++        device="cuda",
++        confidence=0.3,
++        short_side=800,
++        max_long_side=1333,
++    )
++    try:
++        detector.load()
++        assert detector.is_loaded
++        assert detector.checkpoint_info is not None
++        assert detector.checkpoint_info.epoch == 3
++        result = detector.predict(PlayerDetectionRequest(image))
++    finally:
++        detector.unload()
++    assert not detector.is_loaded
++    assert result.boxes_xyxy.ndim == 2 and result.boxes_xyxy.shape[1] == 4
++    assert result.scores.shape == (len(result.boxes_xyxy),)
++    assert np.isfinite(result.boxes_xyxy).all()
++    assert np.isfinite(result.scores).all()
++    assert (result.scores >= 0.3).all()
++
++    with np.load(prediction_file) as archived:
++        assert archived["scene_ids"][0] == store.frame_key(row)
++        keep = archived["scores"][0] >= 0.3
++        expected_boxes = archived["boxes_xyxy"][0, keep]
++        expected_scores = archived["scores"][0, keep]
++    np.testing.assert_allclose(result.boxes_xyxy, expected_boxes, atol=1.0, rtol=0)
++    np.testing.assert_allclose(result.scores, expected_scores, atol=0.001, rtol=0)
+diff --git a/tests/unit/tasks/player_detection/test_inference.py b/tests/unit/tasks/player_detection/test_inference.py
+new file mode 100644
+index 00000000..5013325d
+--- /dev/null
++++ b/tests/unit/tasks/player_detection/test_inference.py
+@@ -0,0 +1,119 @@
++"""The task inference entry point accepts only exported player weights."""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++import pytest
++import torch
++
++from src.submodules.models.dino.person_detector import DinoPersonDetector
++from src.tasks.player_detection.inference import (
++    DinoPlayerDetector,
++    inspect_player_checkpoint,
++)
++from src.tasks.player_detection.model_export import EXPORT_FORMAT
++
++
++def _write_checkpoint(path: Path, **overrides: object) -> Path:
++    metadata: dict[str, object] = {
++        "format": EXPORT_FORMAT,
++        "task": "player_detection",
++        "class_id": 1,
++        "source_checkpoint_sha256": "a" * 64,
++        "epoch": 3,
++        "global_step": 8000,
++    }
++    metadata.update(overrides)
++    torch.save({"model": {}, "args": object(), "tennis_lab": metadata}, path)
++    return path
++
++
++def test_player_checkpoint_inspection_reports_training_identity(tmp_path: Path) -> None:
++    checkpoint = _write_checkpoint(tmp_path / "player.pth")
++
++    info = inspect_player_checkpoint(checkpoint)
++
++    assert info.path == checkpoint
++    assert info.source_checkpoint_sha256 == "a" * 64
++    assert (info.epoch, info.global_step) == (3, 8000)
++
++
++@pytest.mark.parametrize(
++    ("override", "message"),
++    [
++        ({"format": "unknown"}, "not a supported tennis-player"),
++        ({"task": "ball_detection"}, "not a supported tennis-player"),
++        ({"class_id": 0}, "not a supported tennis-player"),
++        ({"class_id": True}, "not a supported tennis-player"),
++        ({"source_checkpoint_sha256": "invalid"}, "source_checkpoint_sha256"),
++        ({"epoch": -1}, "invalid epoch"),
++        ({"global_step": True}, "invalid global_step"),
++    ],
++)
++def test_player_checkpoint_rejects_wrong_provenance(
++    tmp_path: Path, override: dict[str, object], message: str
++) -> None:
++    checkpoint = _write_checkpoint(tmp_path / "wrong.pth", **override)
++
++    with pytest.raises(ValueError, match=message):
++        inspect_player_checkpoint(checkpoint)
++
++
++def test_player_detector_rejects_coco_checkpoint_before_model_build(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    checkpoint = tmp_path / "coco.pth"
++    torch.save({"model": {}, "args": object()}, checkpoint)
++    detector = DinoPlayerDetector(
++        checkpoint, tmp_path, device="cpu", confidence=0.3,
++        short_side=800, max_long_side=1333,
++    )
++    built = False
++
++    def unexpected_build(self: DinoPersonDetector) -> None:
++        nonlocal built
++        built = True
++
++    monkeypatch.setattr(DinoPersonDetector, "_load_impl", unexpected_build)
++    with pytest.raises(ValueError, match="exported player DINO checkpoint"):
++        detector.load()
++    assert not built
++    assert not detector.is_loaded
++
++
++def test_player_detector_loads_valid_export_and_tracks_provenance(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    checkpoint = _write_checkpoint(tmp_path / "player.pth")
++    detector = DinoPlayerDetector(
++        checkpoint, tmp_path, device="cpu", confidence=0.3,
++        short_side=800, max_long_side=1333,
++    )
++    calls: list[str] = []
++
++    def fake_load(self: DinoPersonDetector) -> None:
++        calls.append("load")
++
++    def fake_unload(self: DinoPersonDetector) -> None:
++        calls.append("unload")
++
++    monkeypatch.setattr(DinoPersonDetector, "_load_impl", fake_load)
++    monkeypatch.setattr(DinoPersonDetector, "_unload_impl", fake_unload)
++    detector.load()
++    detector.load()
++    assert calls == ["load"]
++    assert detector.is_loaded
++    assert detector.checkpoint_info is not None
++    assert detector.checkpoint_info.epoch == 3
++    detector.unload()
++    assert calls == ["load", "unload"]
++    assert not detector.is_loaded
++    assert detector.checkpoint_info is None
++
++
++def test_player_checkpoint_requires_absolute_existing_path(tmp_path: Path) -> None:
++    with pytest.raises(ValueError, match="absolute"):
++        inspect_player_checkpoint(Path("player.pth"))
++    with pytest.raises(FileNotFoundError, match="not found"):
++        inspect_player_checkpoint(tmp_path / "missing.pth")
