@@ -116,6 +116,8 @@ runに `members` は指定しない。groupには1件以上のmemberが必要。
 
 run bundleの`repro.sh`は、checkoutするcommitで追跡されたファイル、bundleに保存したファイル（`$SCRIPT_DIR/...`）、
 保存した`uncommitted.patch`が追加するファイルだけをscriptとして参照する（`*.py`/`*.sh`/`*.yaml`、`-m` module、`PYTHONPATH`）。
+検査器が認識する外部CLI moduleは、そのcheckout commitの`uv.lock`に固定されている場合に限り利用できる。
+CLIへ渡すtest等のscript参照は、引き続き上記の保存先で検証する。
 `/tmp`や`outputs/`のscript、repo外でbuildした拡張は、bundleへ保存するかrepro.sh内でbuildする。
 
 ```bash
