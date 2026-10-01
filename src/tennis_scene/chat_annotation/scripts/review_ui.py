@@ -1,10 +1,11 @@
-"""Run the private annotation ZIP intake MCP server."""
+"""Serve the read-only annotation progress and quality dashboard."""
 
 from __future__ import annotations
 
 import argparse
-import logging
 from pathlib import Path
+
+import uvicorn
 
 from src.utils.configuration.paths import (
     BoundaryPathField,
@@ -15,16 +16,17 @@ from src.utils.configuration.paths import (
 )
 
 from ..artifacts.configuration import artifact_path_resolver
-from ..artifacts.server import create_server
+from ..web.app import create_app
 
 PATH_BOUNDARY = NonHydraPathBoundary(
-    name="tennis_scene.chat_annotation.serve_artifacts",
+    name="tennis_scene.chat_annotation.review_ui",
     fields=(
         BoundaryPathField(
             "root",
             PathRole.OUTPUT,
-            PathDirection.OUTPUT,
+            PathDirection.INPUT,
             PathKind.DIRECTORY,
+            must_exist=True,
             allow_role_root=True,
         ),
     ),
@@ -34,26 +36,17 @@ PATH_BOUNDARY = NonHydraPathBoundary(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--root", type=Path, required=True, help="Absolute raw ZIP directory"
+        "--root", required=True, type=Path, help="outputs/chat_annotation の絶対パス"
     )
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=8769)
     args = parser.parse_args()
     if not args.root.is_absolute():
-        parser.error("--root must be an absolute directory")
+        parser.error("--root must be absolute")
     root = args.root.resolve()
     paths = PATH_BOUNDARY.validate(
         {"root": root}, resolver=artifact_path_resolver(root)
     )
-    # httpx INFO messages include signed URLs; suppress those access logs.
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    create_server(paths.declared("root").path).run(
-        transport="streamable-http",
-        host=args.host,
-        port=args.port,
-        stateless_http=True,
-        json_response=True,
-    )
+    uvicorn.run(create_app(paths.declared("root").path), host="127.0.0.1", port=args.port)
 
 
 if __name__ == "__main__":

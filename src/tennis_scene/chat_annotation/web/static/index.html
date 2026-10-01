@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Annotation Desk — Tennis Lab</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">TENNIS LAB / ANNOTATION</span>
+        <h1>Annotation Desk</h1>
+      </div>
+      <div class="top-actions">
+        <span id="campaign-state" class="pill">読み込み中</span
+        ><button id="refresh">再集計</button>
+      </div>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <h2>次に渡す動画を、迷わず選ぶ。</h2>
+          <p>
+            未確認範囲を整理してChatGPTへ委託。確認済みの注釈は、統計と動画で点検できます。
+          </p>
+        </div>
+        <label class="view-label"
+          >集計するデータ<select id="view">
+            <option value="working">
+              作業進捗（採用済み優先・下書きも含む）
+            </option>
+            <option value="accepted">採用済みのみ</option>
+          </select></label
+        >
+      </section>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <section id="summary" class="summary" aria-label="進捗集計"></section>
+      <div id="workspace" class="workspace">
+        <section class="inventory">
+          <div class="toolbar">
+            <label class="search-label"
+              >動画を検索<input
+                id="search"
+                type="search"
+                placeholder="タイトル / source ID / clip ID" /></label
+            ><label
+              >ソース<select id="source">
+                <option value="">すべてのソース</option>
+              </select></label
+            >
+          </div>
+          <div class="filter-row">
+            <div
+              id="filters"
+              class="filters"
+              role="group"
+              aria-label="状態で絞り込み"
+            ></div>
+            <label class="sort-label"
+              >並び順<select id="sort">
+                <option value="pending">未確認が多い順</option>
+                <option value="source">ソース・クリップ順</option>
+                <option value="uncertain">未解決が多い順</option>
+              </select></label
+            >
+          </div>
+          <div class="selection-bar">
+            <div>
+              <strong id="selection-count">0件選択</strong
+              ><button id="select-page" class="text-button">
+                表示中の委託候補を選択</button
+              ><button id="clear-selection" class="text-button">解除</button>
+            </div>
+            <button id="handoff-batch" class="primary" disabled>
+              選択動画の委託情報
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="check-col"><span class="sr-only">選択</span></th>
+                  <th>動画 / 作業状態</th>
+                  <th>ボール</th>
+                  <th>選手</th>
+                  <th>未確認</th>
+                </tr>
+              </thead>
+              <tbody id="clips"></tbody>
+            </table>
+            <div id="empty" class="empty" hidden>
+              条件に一致する動画はありません。
+            </div>
+          </div>
+          <footer class="list-footer">
+            <span id="list-count"></span>
+            <div>
+              <button id="prev-page">前へ</button><span id="page-label"></span
+              ><button id="next-page">次へ</button>
+            </div>
+          </footer>
+          <details id="diagnostics-box" class="diagnostics" hidden>
+            <summary id="diagnostics-title">読み込み時の問題</summary>
+            <pre id="diagnostics"></pre>
+          </details>
+          <p class="caption">
+            確認率はJSONのreviewedを集計した値です。全確認済みでも不確実性が残る場合はpartialです。位置の正しさは動画で確認してください。
+          </p>
+        </section>
+        <aside id="detail" class="detail" hidden aria-label="動画の詳細">
+          <div class="detail-header">
+            <div>
+              <span class="eyebrow" id="detail-source"></span>
+              <h2 id="detail-title"></h2>
+            </div>
+            <button id="close-detail" aria-label="詳細を閉じる">×</button>
+          </div>
+          <code id="detail-id" class="clip-id"></code>
+          <div id="detail-meta" class="detail-meta"></div>
+          <div id="detail-warnings" class="notice warning" hidden></div>
+          <div id="versions" class="versions"></div>
+          <div class="video-shell">
+            <video
+              id="video"
+              controls
+              controlslist="nodownload"
+              playsinline
+              preload="metadata"
+            ></video
+            ><span id="video-mode" class="video-mode">元動画</span>
+          </div>
+          <div class="video-controls">
+            <label
+              >重ねる対象<select id="overlay-target">
+                <option value="both">ボール＋選手</option>
+                <option value="ball">ボール</option>
+                <option value="player">選手</option>
+              </select></label
+            ><button id="render-preview" class="primary">
+              一時overlayを生成</button
+            ><button id="original">元動画</button
+            ><button id="cancel-preview" hidden>生成を中止</button>
+          </div>
+          <p id="preview-status" class="caption" role="status">
+            overlayはメモリ上で生成され、画面を離れると破棄されます。
+          </p>
+          <div class="frame-controls">
+            <button id="frame-prev" aria-label="1フレーム戻る">←</button
+            ><label
+              >フレーム<input
+                id="frame-index"
+                type="number"
+                min="0"
+                value="0" /></label
+            ><span id="frame-total"></span
+            ><button id="frame-next" aria-label="1フレーム進む">→</button
+            ><label
+              >速度<select id="speed">
+                <option value="0.25">0.25×</option>
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1×</option>
+                <option value="2">2×</option>
+              </select></label
+            >
+          </div>
+          <div class="timeline-legend">
+            <span class="dot unreviewed">未確認</span
+            ><span class="dot reviewed">確認済み</span
+            ><span class="dot uncertain">不確実性あり</span>
+          </div>
+          <div id="timelines"></div>
+          <section>
+            <h3>選択したJSONの統計</h3>
+            <div id="quality"></div>
+          </section>
+          <details open>
+            <summary>現在フレームの記録</summary>
+            <pre id="frame-data"></pre>
+          </details>
+          <details>
+            <summary>未確認範囲・未解決範囲・検証結果</summary>
+            <div id="ranges"></div>
+          </details>
+          <section class="handoff-section">
+            <h3>ChatGPTへ渡す</h3>
+            <p class="caption">
+              元動画と選択した既存JSONを添付し、依頼文を貼り付けます。この画面から送信・採用は行いません。
+            </p>
+            <div class="download-links">
+              <a id="download-video" class="button" download>元動画</a
+              ><span id="json-downloads"></span>
+            </div>
+            <div class="handoff-buttons">
+              <button id="handoff-one" class="primary">
+                未確認範囲の依頼文</button
+              ><button id="handoff-refine">不確実箇所の再確認用</button>
+            </div>
+          </section>
+          <p class="caption">
+            採用済みと下書きは別の版です。統計やpreviewの表示で元JSON・キャンペーン状態は変更されません。
+          </p>
+        </aside>
+      </div>
+    </main>
+    <dialog id="handoff-dialog">
+      <div class="dialog-heading">
+        <h2>委託情報</h2>
+        <button id="close-handoff" aria-label="委託情報を閉じる">×</button>
+      </div>
+      <p>
+        対象動画・選択したJSON・半開区間の作業範囲と、正式なREQUESTを含みます。
+      </p>
+      <label
+        >委託するChatGPT Projectの対象<select id="handoff-target"></select
+      ></label>
+      <p class="caption">
+        ボールと選手は対象ごとに別の依頼文です。該当するProjectへ貼り付けてください。
+      </p>
+      <textarea
+        id="handoff-text"
+        readonly
+        aria-label="委託用の依頼文"
+      ></textarea>
+      <div class="dialog-actions">
+        <button id="copy-handoff" class="primary">依頼文をコピー</button
+        ><button id="download-handoff">依頼文.txt</button
+        ><button id="download-manifest">対象一覧.json</button>
+      </div>
+    </dialog>
+    <div id="toast" role="status" class="toast" hidden></div>
+  </body>
+</html>
