@@ -53,6 +53,7 @@ __all__ = [
     "BaseTrainingConfig",
     "ArtifactStoreConfig",
     "CheckpointConfig",
+    "CheckpointInput",
     "ChunkDataConfig",
     "CompileConfig",
     "EarlyStoppingConfig",
@@ -68,6 +69,7 @@ __all__ = [
     "exact_config_mapping",
     "require_config_mapping",
     "require_config_value",
+    "resolve_checkpoint_input",
 ]
 
 
@@ -273,21 +275,38 @@ def require_config_mapping(
     )
 
 
-def _optional_path(
+@dataclass(frozen=True, slots=True)
+class CheckpointInput:
+    """A resolved model file retaining its explicit input authority."""
+
+    path: Path
+    role: PathRole
+
+
+def resolve_checkpoint_input(
     mapping: ConfigMapping,
     key: str,
     *,
     path: str,
     resolver: PathResolver,
-    role: PathRole,
-) -> Path | None:
-    raw = require_config_value(mapping, key, (str, type(None)), path=path)
+) -> CheckpointInput | None:
+    """Keep legacy checkpoint fragments; artifact inputs declare their role."""
+    raw = require_config_value(mapping, key, (str, dict, DictConfig, type(None)), path=path)
     if raw is None:
         return None
+    role = PathRole.CHECKPOINT
+    if not isinstance(raw, str):
+        location = f"{path}.{key}"
+        declaration = exact_config_mapping(raw, path=location, required_keys={"role", "path"})
+        role_name = cast(str, require_config_value(declaration, "role", str, path=location))
+        if role_name not in {PathRole.CHECKPOINT.value, PathRole.ARTIFACT.value}:
+            raise SemanticConfigurationError(f"{location}.role must be checkpoint or artifact.")
+        role = PathRole(role_name)
+        raw = require_config_value(declaration, "path", str, path=location)
     if raw == "":
         raise SemanticConfigurationError(f"{path}.{key}: path must not be empty.")
     resolved: Path = resolver.resolve(role, cast("str", raw))
-    return resolved
+    return CheckpointInput(resolved, role)
 
 
 def _positive(value: int | float, *, path: str, allow_zero: bool = False) -> None:
@@ -416,15 +435,14 @@ class BaseRunConfig:
         )
         if not output:
             raise SemanticConfigurationError("run.output_dir must not be empty.")
-        resume = _optional_path(
-            mapping, "resume", path="run", resolver=resolver, role=PathRole.CHECKPOINT
+        resume = resolve_checkpoint_input(
+            mapping, "resume", path="run", resolver=resolver,
         )
-        init_weights = _optional_path(
+        init_weights = resolve_checkpoint_input(
             mapping,
             "init_weights",
             path="run",
             resolver=resolver,
-            role=PathRole.CHECKPOINT,
         )
         if resume is not None and init_weights is not None:
             raise SemanticConfigurationError(
@@ -451,8 +469,8 @@ class BaseRunConfig:
             output_dir=resolver.resolve(PathRole.OUTPUT, output),
             seed=seed,
             gpus=gpus,
-            resume=resume,
-            init_weights=init_weights,
+            resume=None if resume is None else resume.path,
+            init_weights=None if init_weights is None else init_weights.path,
             fast_dev_run=fast_dev_run,
             dry_run=dry_run,
             test_after_fit=cast(
