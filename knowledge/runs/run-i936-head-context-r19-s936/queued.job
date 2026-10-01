@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i936-head-context-r19-s936-20261001
+# added: 2026-10-01T10:56:30+09:00
+# provider: codex
+# session: 01a0f519-04f1-7523-aed3-bc44a5fa493c
+# issue: 936
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+export TENNIS_RUN_ID=1790819790903430816_1781754_i936-head-context-r19-s936-20261001
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790819790903430816_1781754_i936-head-context-r19-s936-20261001
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790819790903430816_1781754_i936-head-context-r19-s936-20261001 --name i936-head-context-r19-s936-20261001 --provider codex --session 01a0f519-04f1-7523-aed3-bc44a5fa493c --issue 936 --cmd timeout\ --signal=TERM\ --kill-after=15s\ 5340s\ env\ CUDA_VISIBLE_DEVICES=0\ OMP_NUM_THREADS=1\ MKL_NUM_THREADS=1\ OPENBLAS_NUM_THREADS=1\ NUMEXPR_NUM_THREADS=1\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python\ -u\ -m\ src.tasks.ball_refiner.scripts.experiment_dev_3d\ --plan\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-head-context-r19-s936/plan.json\ --device\ cuda
+timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-head-context-r19-s936/plan.json --device cuda

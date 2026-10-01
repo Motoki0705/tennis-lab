@@ -5,7 +5,7 @@ task: ball_refiner_3d
 sequence: 33
 recorded_at: '2026-10-01'
 date: '2026-10-01'
-title: 全成分pool tokenを絶対位置headへ連結する単因子比較（実行前）
+title: 全成分pool tokenを絶対位置headへ連結する単因子比較（queue待ち）
 issue: 936
 provider: codex
 status: planned
@@ -26,6 +26,7 @@ metrics:
 artifacts:
   run_dir: knowledge/runs/run-i936-head-context-r19-s936
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r19-head-context-512-physics10-s936-t128-20k
+  queue_job: 1790819790903430816_1781754_i936-head-context-r19-s936-20261001
 parents:
 - run-i936-condition-readout-r19-s936
 - run-i936-combined512-physics10-r16-s936
@@ -44,6 +45,7 @@ repro:
     -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-head-context-r19-s936/plan.json
     --device cuda
   branch: campaign930/i936-2-synthetic-diffusion
+  commit: 7c4521f9acb031881c4dc83cfb93f8134fbc0e8b
 ---
 
 [実行前規則・暫定判断](https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5923087105)に従う
@@ -119,7 +121,10 @@ testと追加valはhash/metadata監査のみで配列を開かない。
 trainer5100秒、driver10GB、allocator6GiB、空きRAM6GiB。
 新出力150MB予約でrun19のread-out約21.2MBと合わせ5GB以内。
 実VRAM・学習時間・性能は未測定で、実行開始を成功として扱わない。
-queue id/statusは登録後に本ノードへ追記する。学習完了を待たずrunを終了する。
+唯一のjob **1790819790903430816_1781754_i936-head-context-r19-s936-20261001** をresource=allで登録済み。
+登録時commitは7c4521f9a/clean、worker2083655稼働中。
+[queue記録](../../runs/run-i936-head-context-r19-s936/queue.json)と原jobを保存。
+学習完了を待たずrunを終了する。
 再学習curve/TensorBoard等の証拠はまだ無い。
 
 実Meiji評価・pipeline統合は未実施。項目1の完了、項目2の最終独立較正未完、
