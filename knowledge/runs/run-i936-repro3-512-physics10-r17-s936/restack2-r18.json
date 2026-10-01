@@ -1,0 +1,42 @@
+{
+  "reason": "Concurrent upstream restack detected during final API/remote checks: PR967 showed 330 files; rebase again to keep only issue936 changes.",
+  "intermediate_base": "de0906e6cf15acec614e3a94455911df221128b2",
+  "final_base": "6d7d03cca227208ba1f888ad751aebfcb7121d25",
+  "conflicts": "one review marker in knowledge/summary.md per PR; all narratives retained; marker regenerated",
+  "prs": [
+    {
+      "pr": 967,
+      "old_tip": "4c0ea94b02dc7462ccd0e20fd501400daa9492d4",
+      "rebased_tip": "14b2662e550f7b8a413c4318fad3d717899af01b",
+      "changed_paths_count": 29,
+      "path_sets_identical": true,
+      "all_non_summary_blobs_identical": true,
+      "tag": "campaign930/i936-run18-restack2-967"
+    },
+    {
+      "pr": 969,
+      "old_tip": "ea6f76b4718355cf0600acfafd0916ccfb1b0942",
+      "rebased_tip": "32fc821e44359abbce0a1a623be8ce0d2b2b2a14",
+      "changed_paths_count": 1962,
+      "path_sets_identical": true,
+      "all_non_summary_blobs_identical": true,
+      "tag": "campaign930/i936-run18-restack2-969"
+    }
+  ],
+  "pinned_hashes_unchanged": 68,
+  "validation": {
+    "967": {
+      "tests": 119,
+      "seconds": 9.95,
+      "ruff_mypy_source_files": 11,
+      "knowledge_errors": 0
+    },
+    "969": {
+      "tests": 268,
+      "test_summary": "============================= 268 passed in 15.94s =============================",
+      "ruff_mypy_source_files": 85,
+      "knowledge_errors": 0
+    },
+    "cpu_analysis_source_hashes_rechecked": 106
+  }
+}
