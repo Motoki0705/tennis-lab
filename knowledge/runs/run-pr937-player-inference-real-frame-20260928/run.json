@@ -1,0 +1,16 @@
+{
+  "run_id": "1790554677533710453_1498875_pr937-player-inference-real-frame-20260928",
+  "name": "pr937-player-inference-real-frame-20260928",
+  "command": "PLAYER_DETECTION_GPU_TEST=1 PLAYER_DETECTION_ARTIFACT_ROOT=/home/kamimura/projects/tennis-lab .venv/bin/python -m pytest -n 0 tests/integration/tasks/player_detection/test_exported_inference.py -q",
+  "provider": "codex",
+  "session": "01a0e2cc-b573-7011-939d-947448f2d4e0",
+  "issue": "937",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "665d10d1e25085e991678910dd216e791b29817c",
+  "branch": "codex/pr937-player-inference",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/pr937-player-inference",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/pr937-player-inference",
+  "captured_at": "2026-09-28T09:17:57+09:00"
+}
