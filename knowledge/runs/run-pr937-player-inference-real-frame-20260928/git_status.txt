@@ -1,0 +1,6 @@
+M  src/tasks/player_detection/README.md
+A  src/tasks/player_detection/inference/__init__.py
+A  src/tasks/player_detection/inference/checkpoint.py
+A  src/tasks/player_detection/inference/predictor.py
+A  tests/integration/tasks/player_detection/test_exported_inference.py
+A  tests/unit/tasks/player_detection/test_inference.py
