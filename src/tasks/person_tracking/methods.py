@@ -1,4 +1,4 @@
-"""Explicit method selection; encoders and feature extraction are independent."""
+"""Comparison tracker factory; production uses the adopted StrongSORT profile."""
 
 from src.tasks.person_tracking.botsort_pose import BotSortPose, BotSortPoseConfig
 from src.tasks.person_tracking.contracts import TrackingMethod
