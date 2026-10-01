@@ -97,6 +97,7 @@
 ### configs/
 - モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
 - DINOv3の`backbone.repository_path`はEXTERNAL_ASSET、`backbone.checkpoint_path`はCHECKPOINT rootから解決する。配布ファイル名は[モデル設定](configs/model/dinov3_rope.yaml)を参照。
+- 通常・staged学習は`ckpt/`の事前学習重みを使い、phase間の`init_weights`はARTIFACTを明示して元の学習runを参照する（契約は[出力規約](../OUTPUTS.md)）。eval/visualize/manifest/旧YouTube予測も、元学習runの入力モデルだけ`{role: artifact, path: ...}`を使う。DINOv3の事前学習重みは独立したCHECKPOINT rootから解決する。
 
 ## 検出証拠の出力契約
 

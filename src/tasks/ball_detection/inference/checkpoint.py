@@ -42,12 +42,13 @@ def _runtime_backbone_config(
         return config, None
     runtime = copy.deepcopy(config)
     saved_path = str(config.model.backbone.checkpoint_path)
-    parts = Path(saved_path).parts
     migration = None
-    if parts[:2] == ("dinov3", "checkpoints"):
-        if len(parts) != 3 or parts[2] in {".", ".."}:
+    legacy_prefix = "dinov3/checkpoints/"
+    if saved_path == legacy_prefix[:-1] or saved_path.startswith(legacy_prefix):
+        filename = saved_path[len(legacy_prefix):]
+        if not filename or "/" in filename or "\\" in filename or filename in {".", ".."}:
             raise BallInferenceCheckpointError("Legacy DINOv3 asset path must name exactly one checkpoint file")
-        runtime_path = str(Path("dinov3") / parts[2])
+        runtime_path = f"dinov3/{filename}"
         runtime.model.backbone.checkpoint_path = runtime_path
         migration = {"layout": "external_dinov3_to_checkpoint", "saved_path": saved_path, "runtime_path": runtime_path}
         if resolver is None:
