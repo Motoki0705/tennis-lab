@@ -1,4 +1,4 @@
-<!-- knowledge-review: e911e62adca5411ee6831de0f1feafe592923bf13c9699093966bc7b00cbba0d on 2026-10-01 -->
+<!-- knowledge-review: bf9f0b95ccefd9da432b0c3ab4a78b2c587625f8fc598ce56a4455ec8297738c on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -102,7 +102,8 @@ ball labelはclip_000の診断専用で使用し、production import・人物lab
 予約3clipを同じ注釈ball由来side規約で一回だけ評価する予定だが、事前検査で
 video_001/clip_003のcourt/side参照欠測と、現componentの見積り約157分（2時間grant超過）が判明した。
 run16のGPU投入・人物推論/採点は0。run17では欠測の明示的な停止扱いと3時間枠が承認され、
-同ノードの実行addendumで準備を再開する。全cameraの人物処理/動画と停止clipの母数を保持し、
+同ノードの実行addendumとパス契約修正の準備追記でCPU検査を完了し、全9camera/11,124frameを1jobへ登録した。
+全cameraの人物処理/動画と停止clipの母数を保持し、
 人物freezeとft-e13/court_sideは維持する。未見の採点は保存出力から次runに一回だけ行う。
 [run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
 特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
