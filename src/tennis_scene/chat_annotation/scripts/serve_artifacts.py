@@ -47,8 +47,12 @@ def main() -> None:
     )
     # httpx INFO messages include signed URLs; suppress those access logs.
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    create_server(paths.declared("root").path, args.host, args.port).run(
-        transport="streamable-http"
+    create_server(paths.declared("root").path).run(
+        transport="streamable-http",
+        host=args.host,
+        port=args.port,
+        stateless_http=True,
+        json_response=True,
     )
 
 
