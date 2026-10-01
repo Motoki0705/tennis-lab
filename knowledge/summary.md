@@ -1,4 +1,4 @@
-<!-- knowledge-review: de89cd22251183788fe783d8c8a02fc9ce1f599eae29995d6a992659c27c43de on 2026-10-01 -->
+<!-- knowledge-review: 6198692d0bcf3de6a3c154e4b8a09a29faf25585947a884b135b0f0d85717e19 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -427,3 +427,13 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
+
+[run30のMeiji限定context計画](nodes/ball_refiner/000029-run-i935-meiji-context-r30-20261001.md)で
+#964凍結人物経路と全17点、clip単位のhash検証付き再開、他sourceの明示的な文脈不在を実装した。
+CPUの契約/再開/共有tracking検証と実資産preflightは成功し、108clipの生成はqueue回収待ちへ進める。
+文脈による精度改善・ablationは未確認。
+[同runの相関安全bench](nodes/court_side/000005-run-i935-correlated-safety-r30-20261001.md)は、
+実GMM残差とconfidenceを同一rowで移植しても2/11,200誤判定でFAIL。選別で実残差は小さくなり停止も減るが、
+元の静的偽点等のstressは残る。run29の3件は全入力を再現し、2件は特定cameraの真点消失・偽点だけの残存、
+1件は精度のよい点でも識別に必要なpair支持を失うことを確認した。閾値は変えずqualificationは保留し、
+追加支持ruleか独立実出力benchかの選択は未決。
