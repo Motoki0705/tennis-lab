@@ -1,0 +1,18 @@
+{
+  "original_metric_checks": 40,
+  "source_hashes_verified": 106,
+  "camera_estimated_true_parity_rallies": 16,
+  "oracle_finite_difference_checks": 630,
+  "maximum_derivative_difference": 1.962259541521405e-07,
+  "precision_mean_and_sample_paths": 224,
+  "all_sample_precision": {
+    "round_trip_m": 1.9073486328125e-06,
+    "round_trip_three_visible_px": 0.00022118109990870184,
+    "next_float32_m": 3.814697265625e-06,
+    "next_float32_three_visible_px": 0.0009343257803422617
+  },
+  "maximum_translation_physics_change": 1.509903313490213e-14,
+  "code_sha256": "79a182e9e05808f03cd5cd86ff514559da52a3b5a5493ce43f8cedb68c0ea463",
+  "test_arrays_read": 0,
+  "extra_val_arrays_read": 0
+}
