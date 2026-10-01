@@ -323,6 +323,10 @@ raw人物は全cameraで保持し、校正欠測clipも採点母数に含む。c
 raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を保存する。
 対象・指標・限界・凍結の根拠は[run16](../../knowledge/nodes/player_association/000006-run-i964-unseen-r16-20261001.md)を参照。
 
+`person_unseen_labels.py --phase views --report <未見出力> --output <新規dir>`はraw artifactと元映像だけからblindラベル用cropを作る。`details`は`--requests <JSON>`のtrack/frame範囲を拡大し、`labels`はoutput内のclip別review.yamlを既存schemaへ変換する。ラベルを確定・push後にのみ既存の一回scorerを使う。
+
+`person_unseen_review_video.py --report <採点済み未見出力>`はsingle score receiptのラベルhashを検証し、保存raw box/IDとラベルを全長3cameraで比較する。IDの表示名は採点済み対応表を使い、camera間で異なる置換を拒否する。box単位の4色と曖昧色を表示し、再推論・再採点はしない。
+
 - `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [refiner README](../../src/tasks/ball_refiner/README.md#点consumerの信頼度規則) を参照。
 
 - `court_side_confidence.py`: #932の元held-out全28条件の集計を再現し、固定confidenceの連続blockを追加した対比較をCPUで実行。元/filteredの全仮説を保存。実refinerとの誤差相関は再現していない。結果と限界は [安全bench](../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。

@@ -46,11 +46,11 @@ ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
 旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
 
-`person_tracking.method=strongsort_pp_pose`が既定。StrongSORT++＋pose/CLIPのrun 10固定profileを
+標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
 productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
 `person_tracks` v5は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
-選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式は`person_tracking.method`で明示する。
+選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
 
 `person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
@@ -72,13 +72,13 @@ CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だ�
 元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
 poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
 `origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
-既定では追跡前のViTPose/CLIPを元rowでgroup軸へ移し替える。motion-only baselineを明示した場合だけ
-groupの実観測にViTPoseを推論する。欠落を実観測として補間しない。
+追跡前のViTPose/CLIPを元rowでgroup軸へ移し替える。欠落を実観測として補間しない。
 
 `player_association`（`components/identity.py`、`person_identities` schema version 3）は
 [src/tasks/player_association](../../tasks/player_association/README.md)の対応付けを、校正済みcameraのtrackのboxと
-`court_side`が決めたsideに適用する。方式のパラメータは`player_association.config`（task側のYAML）、
-シングルス/ダブルスは`player_association.players_per_side`で明示する。外観を使う設定ではRe-IDの重みを資産identityに含める。
+`court_side`が決めたsideに適用する。方式のパラメータはtaskの採用済みdefault YAMLを読み、
+シングルス/ダブルスは`player_association.players_per_side`で明示する。CLIPの重みを資産identityに含める。
+比較用の旧尺度・別encoderはtaskの比較APIから使用する。
 player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
 決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。
 

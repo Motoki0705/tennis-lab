@@ -233,11 +233,11 @@ def test_pipeline_and_task_default_use_fitted_association(tmp_path: Path) -> Non
     assert (fitted.min_margin, fitted.max_runner_up_ratio) == (1.0, 0.5)
 
 
-def test_legacy_association_requires_explicit_option(tmp_path: Path) -> None:
-    override = f"player_association.config={LEGACY_CONFIG.relative_to(PROJECT_ROOT)}"
-    runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override), bind_inputs=False)
+def test_legacy_association_is_available_only_through_comparison_api(tmp_path: Path) -> None:
+    override = f"+player_association.config={LEGACY_CONFIG.relative_to(PROJECT_ROOT)}"
+    with pytest.raises(UnknownConfigurationKeyError, match="config"):
+        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override), bind_inputs=False)
     legacy = load_association_config(LEGACY_CONFIG, players_per_side=1)
-    assert runtime.player_association == legacy
     assert legacy.geometry.sigma_m == 1.05
     assert legacy.appearance is not None
     assert (legacy.appearance.slope, legacy.appearance.center) == (62.7, 0.847)
