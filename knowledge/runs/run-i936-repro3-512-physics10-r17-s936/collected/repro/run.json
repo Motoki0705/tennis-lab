@@ -1,0 +1,16 @@
+{
+  "run_id": "1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001",
+  "name": "i936-repro3-512-physics10-r17-s936-20261001",
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/plan.json --device cuda",
+  "provider": "codex",
+  "session": "01a0f48a-352c-7fe0-8609-b27d0b56436b",
+  "issue": "936",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "4a882fcaf9a5e0e74121fb697d9ca1e20bfa0b3e",
+  "branch": "campaign930/i936-2-synthetic-diffusion",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "captured_at": "2026-10-01T08:38:39+09:00"
+}
