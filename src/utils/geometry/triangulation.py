@@ -73,6 +73,24 @@ class PinholeCamera:
         np.divide(projected[..., :2], projected[..., 2, None], out=uv, where=front[..., None])
         return uv, front
 
+    def backproject_to_plane(self, uv: NDArray[np.floating], height: float = 0.) -> tuple[NDArray[np.float64], NDArray[np.bool_]]:
+        """World points ``(..., 3)`` where the pixel rays of ``uv`` ``(..., 2)`` meet the plane ``z = height``.
+
+        A ray parallel to the plane or meeting it behind the camera is invalid
+        (its point is zero), never extrapolated.
+        """
+        pixels = np.asarray(uv, np.float64)
+        if pixels.shape[-1:] != (2,):
+            raise ValueError("Pixels must be (..., 2)")
+        homogeneous = np.concatenate((pixels, np.ones((*pixels.shape[:-1], 1))), -1)
+        rays = homogeneous @ np.linalg.inv(self.intrinsic).T @ self.rotation  # world directions
+        center = self.center
+        with np.errstate(divide="ignore", invalid="ignore"):
+            scale = (height - center[2]) / rays[..., 2]
+        valid = np.isfinite(pixels).all(-1) & np.isfinite(scale) & (scale > 0) & (np.abs(rays[..., 2]) > 1e-12)
+        points = np.where(valid[..., None], center + np.where(valid, scale, 0)[..., None] * rays, 0.)
+        return points, valid
+
     def half_turned(self, turn: bool) -> PinholeCamera:
         gauge = np.diag([-1.0, -1.0, 1.0]) if turn else np.eye(3)
         return PinholeCamera(self.camera_id, self.intrinsic.copy(), self.rotation @ gauge, self.translation.copy())
