@@ -296,8 +296,9 @@ poseは同一mediaのdense frame indexによってstoreのPTSに束縛し、時�
 実行済みだが検出なしのmaskとは別である。入力不整合・破損はエラーになる。
 
 poseにはCOCO17の肘・手首を使い、補間boxを観測としない。
-ViTPoseのscoreは非負のheatmap peakで1を超えうるため、refinerの有界特徴へ
-`min(score,1)`で写す。変換名・上限に達したslot数・元の最大値をprovenanceに記録する。
+この既存pipeline readerは非負のheatmap peakを要求し、1を超える値をrefinerの有界特徴へ
+`min(score,1)`で写す。負の生peakも保持する新cacheの契約は次節を参照する。
+変換名・上限に達したslot数・元の最大値をprovenanceに記録する。
 これは確率較正ではない。有限な画像外の関節位置は保持する。
 courtは`camera_view_v2`のKP14、frame 0のみを受け付ける。
 
