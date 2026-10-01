@@ -1,7 +1,7 @@
 """CPU-only asset and artifact-contract check for a fresh full-pipeline run.
 
 Does not call ComponentRunner.run or load an inference model. The emitted CUDA
-configuration records the explicitly selected association option for this run.
+configuration records the adopted association settings for this run.
 """
 from __future__ import annotations
 
@@ -28,8 +28,7 @@ from src.utils.checksum import dual_sha256
 CODE = Path(__file__).resolve().parents[2]
 
 
-def compose_config(repo: Path, report: Path, clip: Path, device: str,
-                   association_config: str | None = None) -> DictConfig:
+def compose_config(repo: Path, report: Path, clip: Path, device: str) -> DictConfig:
     manifest = ClipManifest.load(clip)
     media = [str(manifest.media_path(c).relative_to(repo / 'data')) for c in manifest.camera_ids]
     overrides = [
@@ -40,8 +39,6 @@ def compose_config(repo: Path, report: Path, clip: Path, device: str,
         f'video_paths={media}', f'camera_ids={list(manifest.camera_ids)}', f'device={device}',
         'people_models.runtime.vitpose.batch_size=4', 'people_models.runtime.hmr2.batch_size=4',
     ]
-    if association_config is not None:
-        overrides.append(f'player_association.config={association_config}')
     with initialize_config_dir(version_base='1.3', config_dir=str(CODE / 'src/tennis_scene/configs')):
         config = compose(config_name='pipeline', overrides=overrides)
     return config
@@ -60,11 +57,11 @@ def check_full_recipe(runtime: PipelineRuntimeConfig) -> None:
         raise ValueError('The frozen detector/tracker/merge/selection contract changed')
 
 
-def preflight(repo: Path, clip: Path, report: Path, association_config: str | None = None) -> dict[str, Any]:
+def preflight(repo: Path, clip: Path, report: Path) -> dict[str, Any]:
     report.mkdir(parents=True, exist_ok=True)
     if (report / 'preflight.json').exists():
         raise FileExistsError('Preflight receipts are immutable; use a new report')
-    config = compose_config(repo, report, clip, 'cpu', association_config)
+    config = compose_config(repo, report, clip, 'cpu')
     runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=True)
     check_full_recipe(runtime)
     manifest = ClipManifest.load(clip)
@@ -102,9 +99,8 @@ def main() -> None:
     parser.add_argument('--repo', type=Path, required=True)
     parser.add_argument('--clip', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--association-config')
     args = parser.parse_args()
-    result = preflight(args.repo.resolve(), args.clip.resolve(), args.report.resolve(), args.association_config)
+    result = preflight(args.repo.resolve(), args.clip.resolve(), args.report.resolve())
     print(f'CPU preflight: {len(result["assets"])} assets, {len(result["nodes"])} nodes; no inference')
 
 

@@ -20,6 +20,7 @@ ROOT = Path(__file__).parents[3]
 COLAB_ROOT = ROOT / "scripts/colab"
 PATH_CONTRACT = COLAB_ROOT / "setup/path_contract.sh"
 PREPARE_GENERATED = COLAB_ROOT / "setup/prepare_generated_dataset.sh"
+PREPARE_ARCHIVE = COLAB_ROOT / "setup/prepare_archive_dataset.sh"
 INSTALL_CUDA_OPS = COLAB_ROOT / "setup/install_cuda_ops.sh"
 
 
@@ -67,10 +68,35 @@ def _override_mapping(overrides: list[str]) -> dict[str, str]:
 
 @pytest.mark.parametrize(
     "script",
-    (PATH_CONTRACT, PREPARE_GENERATED, INSTALL_CUDA_OPS),
+    (PATH_CONTRACT, PREPARE_GENERATED, PREPARE_ARCHIVE, INSTALL_CUDA_OPS),
 )
 def test_colab_setup_scripts_have_valid_bash_syntax(script: Path) -> None:
     subprocess.run(["bash", "-n", str(script)], check=True)
+
+
+def test_smplh_archive_staging_preserves_both_formats_and_originals(tmp_path: Path) -> None:
+    data, repo = tmp_path / 'data', tmp_path / 'repo'
+    sources = {'smplh/male/model.npz': b'npz-body-model', 'smplx/smplh/SMPLH_MALE.pkl': b'pkl-body-model'}
+    for name, value in sources.items():
+        path = data / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(value)
+    subprocess.run(['bash', '-c', 'source "$1"; _stage_smplh_models "$2" "$3"',
+        'stage-smplh', str(PREPARE_ARCHIVE), str(data), str(repo)], check=True, capture_output=True)
+    assert (repo / 'ckpt/body_models/smplh/male/model.npz').read_bytes() == sources['smplh/male/model.npz']
+    assert (repo / 'ckpt/body_models/smplh/SMPLH_MALE.pkl').read_bytes() == sources['smplx/smplh/SMPLH_MALE.pkl']
+    for name, value in sources.items():
+        assert (data / name).read_bytes() == value
+
+
+def test_smplh_archive_staging_rejects_incomplete_assets(tmp_path: Path) -> None:
+    data, repo = tmp_path / 'data', tmp_path / 'repo'
+    (data / 'smplh').mkdir(parents=True)
+    result = subprocess.run(['bash', '-c', 'source "$1"; _stage_smplh_models "$2" "$3"',
+        'stage-smplh', str(PREPARE_ARCHIVE), str(data), str(repo)], capture_output=True, text=True)
+    assert result.returncode != 0
+    assert 'both SMPL-H NPZ and PKL' in result.stderr
+    assert not (repo / 'ckpt/body_models').exists()
 
 
 @pytest.mark.parametrize(

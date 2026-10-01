@@ -490,7 +490,7 @@ class ExternalModelAssetPaths:
                 PathRole.CHECKPOINT, cast(str, validated["body_models_dir"])
             ),
             smpl_faces=resolver.resolve(
-                PathRole.DATA, cast(str, validated["smpl_faces"])
+                PathRole.CHECKPOINT, cast(str, validated["smpl_faces"])
             ),
             bundled=BundledModelAssetPaths.from_mapping(bundled, resolver=resolver),
         )
