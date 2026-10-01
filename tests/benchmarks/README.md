@@ -292,6 +292,9 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 run17では[execution addendum](../../knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json)を
 push後、planへ `--addendum <JSON> --addendum-commit <commit>` を付けて準備を明示的に再開する。
 元freeze/opening/停止receiptのhash、未推論、未採点、既存出力がopeningだけであることを検証する。
+run17のパス束縛エラー後は、別の `--preparation-addendum <JSON> --preparation-commit <commit>` が必須。
+[準備追記](../../knowledge/runs/run-i964-unseen-r16-20261001/preparation-addendum-r17b.json)は
+元の2つのopeningと今回の停止receiptを保持し、人物推論前のこの失敗に限って再開を許す。
 予算とside欠測の扱いはaddendumを正本とし、freezeを書き換えない。
 `timeout -k 10s 10790s bash tests/benchmarks/person_unseen.sh <main root> <出力先>` を
 共有queueのresource=allの1jobとして登録する。推論失敗・途中出力を再利用して再試行しない。

@@ -37,6 +37,23 @@ def test_unpushed_freeze_prevents_opening_inputs(unseen: Any, tmp_path: Path, mo
     assert not report.exists()
 
 
+def test_clip_config_binds_data_root_relative_media_and_rejects_escape(
+    unseen: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    data = tmp_path / 'data'
+    clip = data / 'dataset/videos/video_000/clips/clip_002'
+    monkeypatch.setattr(unseen.ClipManifest, 'load', lambda root: SimpleNamespace(
+        media_path=lambda camera: root / 'media' / f'{camera}.mp4'))
+    frozen = {'pipeline_config': {'paths': {'data_root': str(data)}}}
+    cfg = unseen.clip_config(frozen, clip)
+    assert list(cfg.video_paths) == [f'dataset/videos/video_000/clips/clip_002/media/{c}.mp4' for c in unseen.CAMERAS]
+    assert list(cfg.camera_ids) == list(unseen.CAMERAS)
+    with pytest.raises(ValueError, match='not in the subpath'):
+        unseen.clip_config(frozen, tmp_path / 'outside-data')
+
+
 def test_only_decided_annotation_sides_are_accepted(unseen: Any) -> None:
     document = {'clips': [{'clip_id': c, 'camera_ids': list(unseen.CAMERAS),
                           'annotation': {'decided': True, 'view_half_turns': [False, False, True]},
