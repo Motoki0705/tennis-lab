@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [3 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products 
+tests/unit/utils/geometry/test_conditioning.py::test_unknown_conditioning_method_is_an_error 
+tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_retains_known_linear_gaussian_moments 
+[gw1] [ 33%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_unknown_conditioning_method_is_an_error 
+[gw0] [ 66%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_retains_known_linear_gaussian_moments 
+[gw2] [100%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products 
+
+============================== 3 passed in 4.00s ===============================
