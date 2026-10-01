@@ -21,8 +21,7 @@ execution:
   person_tracking: execute
   pose_estimation: execute
   ball_detection: execute
-  # No model implementation yet (#933): import the artifact, then load.
-  player_association: load
+  player_association: execute
   court_side: execute
   camera_alignment: execute
   player_triangulation: execute
@@ -151,6 +150,11 @@ court_side:
   max_cost: 0.8
   min_support: 0.2
   min_margin: 0.15
+# Cross-camera association of the person tracks (src/tasks/player_association, #933). The
+# method's parameters live in `config` (project-relative); the game format is the clip's.
+player_association:
+  config: src/tasks/player_association/configs/association.yaml
+  players_per_side: 1  # 1 = singles, 2 = doubles
 player_reconstruction:
   enabled: true
   reprojection_px: 40.0

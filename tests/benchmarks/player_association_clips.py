@@ -51,13 +51,12 @@ from src.tasks.player_association.appearance.affinity import (
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import (
     CropSamplingConfig,
-    embed_samples,
-    sample_tracks,
+    TrackAppearance,
+    embed_tracks,
 )
 from src.tasks.player_association.association.associate import (
     AssociationUndecided,
     CameraTracks,
-    TrackAppearance,
     associate,
 )
 from src.tasks.player_association.association.config import (
@@ -284,12 +283,10 @@ def track_appearances(cache: Path, source: ClipSource, tracks: dict[str, PersonT
         arrays: dict[str, Any] = {"key": np.asarray(key)}
         for video in source.videos:
             t = tracks[video.camera_id]
-            samples = sample_tracks(t.boxes_xyxy, t.observed, source.size, sampling)
-            embedded = embed_samples(video.path, t.boxes_xyxy, samples, [encoder])[encoder_name]
-            for row, track in enumerate(t.track_ids.tolist()):
-                arrays[f"{video.camera_id}/{track}/frames"] = samples[row].frames
-                vectors = embedded[row] if len(samples[row].frames) else np.zeros((0, 0))
-                arrays[f"{video.camera_id}/{track}/embeddings"] = vectors.astype(np.float32)
+            appearances, _ = embed_tracks(video.path, t.boxes_xyxy, t.observed, source.size, encoder, sampling)
+            for track, appearance in zip(t.track_ids.tolist(), appearances, strict=True):
+                arrays[f"{video.camera_id}/{track}/frames"] = appearance.frames
+                arrays[f"{video.camera_id}/{track}/embeddings"] = appearance.embeddings
         path.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(path, **arrays)
         stored = np.load(path)
@@ -316,7 +313,7 @@ def calibrate(args: argparse.Namespace, dataset: Path, report: Path) -> dict[str
     positives: list[dict[str, Any]] = []
     negatives: list[dict[str, Any]] = []
     skipped: dict[str, str] = {}
-    config = load_association_config(args.config)
+    config = load_association_config(args.config, players_per_side=args.players_per_side)
     for clip_id in wanted:
         record = observed["clips"][clip_id]
         stopped = [camera for camera, value in record.get("cameras", {}).items() if value["status"] != "ok"]
@@ -410,7 +407,8 @@ def evaluate_clips(args: argparse.Namespace, dataset: Path, report: Path) -> dic
     """Associate and score every labelled clip; stops are reported per clip with their reason."""
     observe_report = args.observe.resolve()
     sides = json.loads(args.sides.read_text())
-    config = load_association_config(args.config, overrides={"appearance": None} if args.geometry_only else None)
+    config = load_association_config(args.config, players_per_side=args.players_per_side,
+                                     overrides={"appearance": None} if args.geometry_only else None)
     results: dict[str, Any] = {}
     for label_path in sorted(args.labels_dir.resolve().glob("*/*.json")):
         labels = ClipLabels.load(label_path)
@@ -500,6 +498,7 @@ def main() -> None:
     parser.add_argument("--observe", type=Path, help="calibrate/evaluate: report directory of the observe phase")
     parser.add_argument("--sides", type=Path, help="calibrate/evaluate: decisions JSON of court_side_clips.py (reviewed-ball sides)")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="calibrate/evaluate: association config YAML")
+    parser.add_argument("--players-per-side", type=int, default=1, help="calibrate/evaluate: 1 = singles (every Meiji 3cam clip), 2 = doubles")
     parser.add_argument("--geometry-only", action="store_true", help="evaluate: ignore the appearance section of --config")
     parser.add_argument("--encoder", default="clipreid_vitb16_market1501", help="calibrate: appearance encoder")
     parser.add_argument("--min-shared-s", type=float, default=2., help="calibrate: shared observation time of a pseudo-labelled pair")

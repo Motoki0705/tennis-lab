@@ -39,8 +39,7 @@ def _camera(name: str, center: list[float]) -> PinholeCamera:
     return PinholeCamera(name, np.array([[900., 0., 640.], [0., 900., 360.], [0., 0., 1.]]), r, -r @ c)
 
 
-def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False, overrides: tuple[str, ...] = ()) -> PipelineRuntimeConfig:
-    """``execute_identity_overrides`` executes a test stand-in for the import-only association."""
+def runtime(tmp_path: Path, *, overrides: tuple[str, ...] = ()) -> PipelineRuntimeConfig:
     config_dir = Path(__file__).parents[4] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
         cfg = compose(config_name="pipeline", overrides=[
@@ -48,7 +47,6 @@ def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False, overrid
             f"paths.artifact_root={tmp_path}", f"paths.output_root={tmp_path}",
             f"paths.checkpoint_root={tmp_path / 'ckpt'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
             "output_directory=run", "cache.directory=stages",
-            *(["execution.player_association=execute"] if execute_identity_overrides else []),
             *overrides,
         ])
     return PipelineRuntimeConfig.from_config(cfg)
@@ -164,27 +162,34 @@ def patch_video_probe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, frames: i
     return paths
 
 
+class TrackIdentities:
+    """Stands in for the association on the fixture's placeholder boxes: equal tracker IDs are one player."""
+
+    def __init__(self, camera_ids: tuple[str, ...]) -> None:
+        from src.tennis_scene.pipeline.components.identity import player_association_io
+        self.io = player_association_io(camera_ids)
+        self.calls = 0
+
+    def process(self, request: Any) -> Any:
+        from src.tennis_scene.pipeline.components.identity import PlayerIdentitiesOutput
+        self.calls += 1
+        cameras = request.side.camera_ids
+        tracks = {t.camera_id: t for t in request.tracks}
+        carriers = max(len(t.track_ids) for t in request.tracks)
+        local: NDArray[np.int64] = np.full((len(cameras), carriers), -1, np.int64)
+        players: NDArray[np.int64] = np.full((len(cameras), carriers, request.source.num_frames), -1, np.int64)
+        for row, camera in enumerate(cameras):
+            count = len(tracks[camera].track_ids)
+            local[row, :count] = tracks[camera].track_ids
+            players[row, :count] = np.where(tracks[camera].observed, tracks[camera].track_ids[:, None], -1)
+        return PlayerIdentitiesOutput(cameras, local, players, {"stand_in": True})
+
+
 def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
-    from src.tennis_scene.pipeline.components.identity import (
-        DeclaredArtifacts,
-        PlayerIdentitiesOutput,
-        player_association_io,
-    )
-    from src.tennis_scene.pipeline.input_assembly.observations import gather_people
-    cfg = runtime(tmp_path, execute_identity_overrides=True)
+    cfg = runtime(tmp_path)
     court, people, balls = inputs(empty=empty)
     stages: dict[str, Any] = dict(camera_stages(court, people, balls))
-    class Identities:
-        """Stands in for the imported association: equal tracker IDs are one player."""
-        io = player_association_io(people.camera_ids)
-        calls = 0
-        def process(self, request: DeclaredArtifacts) -> PlayerIdentitiesOutput:
-            self.calls += 1
-            calibration = request.artifacts["calibration"]
-            active = tuple(v.source_index for v in calibration.calibration.views)
-            raw = gather_people(request.context.source, request.artifacts).select_views(active)
-            return PlayerIdentitiesOutput(raw.camera_ids, raw.local_track_ids.copy(), raw.local_track_ids.copy())
-    stages["player_association"] = Identities()
+    stages["player_association"] = TrackIdentities(people.camera_ids)
     pipeline = TennisSceneOrchestrator(cfg, components=stages)
     paths = patch_video_probe(tmp_path, monkeypatch)
     def forbidden(*args: Any, **kwargs: Any) -> None:

@@ -176,17 +176,26 @@ ENCODER_CANDIDATES = ("osnet_ain_x1_0_msmt17", "osnet_x1_0_msmt17", "clipreid_vi
 """Encoders compared for #933. Re-ID weights live under ``<checkpoint_root>/player_association``; DINOv3 under ``<external_root>/dinov3``."""
 
 
-def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str) -> AppearanceEncoder:
+def encoder_weights(name: str, *, checkpoint_root: Path, external_root: Path) -> Path:
+    """The weight file ``build_encoder`` reads for ``name`` (the asset whose digest identifies a run)."""
     reid = checkpoint_root / "player_association"
-    dinov3 = external_root / "dinov3"
+    dinov3 = external_root / "dinov3/checkpoints"
+    weights = {"osnet_ain_x1_0_msmt17": reid / "osnet_ain_x1_0_msmt17.pth", "osnet_x1_0_msmt17": reid / "osnet_x1_0_msmt17_combineall.pth",
+               "clipreid_vitb16_market1501": reid / "person_vit_clip_reid.pth",
+               "dinov3_vits16": dinov3 / "dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
+               "dinov3_vitb16": dinov3 / "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"}
+    if name not in weights:
+        raise ValueError(f"Unknown appearance encoder {name!r}; candidates: {ENCODER_CANDIDATES}")
+    return weights[name]
+
+
+def build_encoder(name: str, *, checkpoint_root: Path, external_root: Path, device: str) -> AppearanceEncoder:
+    weights = encoder_weights(name, checkpoint_root=checkpoint_root, external_root=external_root)
     if name == "osnet_ain_x1_0_msmt17":
-        return OSNetEncoder(name, "osnet_ain_x1_0", reid / "osnet_ain_x1_0_msmt17.pth", device)
+        return OSNetEncoder(name, "osnet_ain_x1_0", weights, device)
     if name == "osnet_x1_0_msmt17":
-        return OSNetEncoder(name, "osnet_x1_0", reid / "osnet_x1_0_msmt17_combineall.pth", device)
+        return OSNetEncoder(name, "osnet_x1_0", weights, device)
     if name == "clipreid_vitb16_market1501":
-        return ClipReIDEncoder(name, reid / "person_vit_clip_reid.pth", device)
-    if name == "dinov3_vits16":
-        return DINOv3Encoder(name, name, dinov3, dinov3 / "checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth", device)
-    if name == "dinov3_vitb16":
-        return DINOv3Encoder(name, name, dinov3, dinov3 / "checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth", device)
-    raise ValueError(f"Unknown appearance encoder {name!r}; candidates: {ENCODER_CANDIDATES}")
+        return ClipReIDEncoder(name, weights, device)
+    assert name.startswith("dinov3_")
+    return DINOv3Encoder(name, name, external_root / "dinov3", weights, device)

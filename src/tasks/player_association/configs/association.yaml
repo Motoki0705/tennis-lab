@@ -1,8 +1,8 @@
 # Cross-camera player association (#933). Every field is required (association/config.py).
+# players_per_side (1 = singles, 2 = doubles) is a property of the clip: callers pass it.
 # Semantics: association/associate.py and the modules named per section.
 # Data-driven values (geometry.sigma_m, appearance.slope/center) are fitted by
 # `tests/benchmarks/player_association_clips.py --phase calibrate` on unlabelled Meiji clips.
-players_per_side: 1            # 1 = singles, 2 = doubles
 footpoints:                    # geometry/footpoints.py
   bottom_border_px: 4.0
 switches:                      # geometry/switches.py
