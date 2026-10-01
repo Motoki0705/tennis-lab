@@ -15,7 +15,6 @@
 | 生成処理のログ | `paths.output_root` | `<task>/generate/<recipe>/<run-id>/hydra/` |
 | 特徴抽出のログ | `paths.output_root` | `<task>/precompute/<recipe>/<run-id>/hydra/` |
 | BLCS/PLCS合成データ | `paths.data_root` | `<task>/<dataset-version>/` |
-| 抽出モーション | `paths.data_root` | `plcs/motions/<source>/<collection-version>/` |
 | 実クリップの教師データ・RGB特徴 | `paths.data_root` | `<dataset-version>/<manifestで指定したclip>/annotations/<producer>/` |
 
 各タスクの既定 `output_root` と `artifact_root` はともに `outputs`。
@@ -141,7 +140,6 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 | BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
-| PLCS `extract_gvhmr_motions` | DATA / `run.output_dir`（`plcs/motions/gvhmr/<collection-version>`）。抽出元もDATA、外部モデルは別のroot |
 | ball `convert_web_dataset` | DATA / `convert.output_dir`。既存共有dataset `tennis/web/unified` を維持 |
 | ball/court YouTube準備・annotation、ball SSL画像抽出・clip予測 | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
 | court `generate_masks`、`generate_line_masks`、`materialize_targets` | DATA配下の派生教師・target store。line maskのpreviewはOUTPUT / `generate_line_masks.preview_dir`（同じgenerate run内の `preview/`）。`materialize_targets` のログ用途はprecompute |
@@ -179,13 +177,11 @@ UIの推論要求ファイルは障害調査用の永続IPCであり、学習run
 保存場所は `inference_queue.shared_repository_root()` がgit共通ディレクトリから決め、
 worktreeやUIのcheckpoint探索rootを変えても共有queueを使う。
 この入口には任意の成果物保存先を選ぶ設定はなく、UI終了時にも要求・結果を削除しない。
-BLCS/PLCS tracking推論のsplit補助ファイルだけは `TemporaryDirectory` 内で作成して破棄する。
 UI表示を再利用可能なGIF等へ保存する場合は、上表の可視化CLIの保存設定を使う。
 
 ## CPUスモークの検証範囲
 
 `tests/unit/utils/test_output_layout.py` は全Hydra入口のcompose・validator・path解決を確認する。
-抽出モーションでは外部モデルの存在確認だけをmockする。
 `tests/integration/tasks/base/test_output_artifacts_smoke.py` は全5タスクのtrain設定を合成し、
 データ・モデルhookを小さなCPU fixtureに置き換えて共通runnerを1 step実行する。
 実際に保存したconfig、TensorBoard、checkpoint、qualitative GIF、予測NPZとmetric JSONを

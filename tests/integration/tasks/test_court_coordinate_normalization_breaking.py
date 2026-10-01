@@ -2,61 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from hydra import compose, initialize_config_dir
 
-from src.tasks.blcs.data.tracking_dataset import BLCSTrackingDataset
 from src.tasks.plcs.visualization.rendering.scene_renderer import PLCSSceneRenderer
-from src.utils.schema.court_normalization import (
-    CourtCoordinateContractError,
-    court_coordinate_normalization_metadata,
-)
 
 pytestmark = pytest.mark.integration
-
-
-def test_mixed_scene_contract_is_rejected_before_sample_loading(
-    tmp_path: Path,
-) -> None:
-    scenes = tmp_path / "scenes"
-    valid = scenes / "valid"
-    mismatched = scenes / "mismatched"
-    valid.mkdir(parents=True)
-    mismatched.mkdir()
-    current = court_coordinate_normalization_metadata()
-    old = court_coordinate_normalization_metadata()
-    old["scale_xyz_m"] = [5.485, 11.885, 1.07]
-    for path, contract in ((valid, current), (mismatched, old)):
-        (path / "meta.json").write_text(
-            json.dumps(
-                {
-                    "num_frames": 8,
-                    "court_coordinate_normalization": contract,
-                }
-            )
-        )
-        (path / "scalars.json").write_text(json.dumps({"num_cameras": 2}))
-    (tmp_path / "train.txt").write_text("valid\nmismatched\n")
-
-    config_dir = Path("src/tasks/blcs/configs").resolve()
-    with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
-        config = compose(config_name="train_tracking")
-    config.data.seq_len_range = [8, 8]
-    config.data.num_views_range = [2, 2]
-
-    with pytest.raises(CourtCoordinateContractError, match="mismatched"):
-        BLCSTrackingDataset(
-            scene_dir=tmp_path,
-            split_file="train.txt",
-            config=config,
-            augment=False,
-        )
 
 
 def test_contract_documentation_has_one_authoritative_breaking_policy() -> None:

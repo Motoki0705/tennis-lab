@@ -23,10 +23,6 @@ from src.tasks.base.generate_dataset import (
     court_points_physical_to_target,
     resolve_court_keypoint_contract,
 )
-from src.tasks.blcs.configuration import (
-    TrackQueryReferenceModelConfig,
-    parse_model_config,
-)
 from src.tasks.blcs.data.dataset import (
     BallTrajectoryDataset,
     collate_multiview_trajectories,
@@ -43,11 +39,7 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
     compose_blcs_trajectory_model_io,
 )
-from src.tasks.blcs.models.blcs_track_query_reference_model import (
-    BLCSTrackQueryReferenceModel,
-)
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
-from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.court_keypoint_contract import (
     headings_target_to_physical,
     normalized_points_target_to_physical,
@@ -59,9 +51,6 @@ from src.tasks.plcs.generate_dataset.scene_generator import (
 )
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData as PLCSSceneData
 from src.tasks.plcs.model_io import PLCSDecodedPrediction, PLCSPhysicalPrediction
-from src.tasks.plcs.models.plcs_track_query_reference_model import (
-    PLCSTrackQueryReferenceModel,
-)
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
 from src.utils.schema.court_normalization import (
@@ -570,130 +559,6 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     )
     torch.testing.assert_close(plcs_sample["camera_C"][0], expected_center)
     torch.testing.assert_close(plcs_sample["camera_R"][0], half_turn)
-
-
-def _blcs_tracking_model() -> BLCSTrackQueryReferenceModel:
-    config = parse_model_config(
-        {
-            "model": {
-                "name": "blcs_track_query_reference",
-                "hidden_dim": 24,
-                "num_heads": 4,
-                "num_stages": 4,
-                "ffn_dim": 32,
-                "ffn_type": "swiglu",
-                "num_queries": 2,
-                "rope_dim": 6,
-                "dropout": 0.0,
-                "invisible_init_std": 0.02,
-                "target_frame_contract": "reference_camera_court_rzpi_v1",
-                "track_query_rope_contract": "time_camera_reference_selector_v1",
-                "reference_selector_mode": "reference",
-                "mhc": {
-                    "coefficient_dim": 8,
-                    "sinkhorn_iters": 2,
-                    "eps": 1.0e-6,
-                    "residual_identity_bias": 4.0,
-                    "update_scale_init": 0.0,
-                },
-                "cswa": {
-                    "compression_ratio": 2,
-                    "window_radius": 1,
-                    "backend": "reference",
-                },
-            }
-        }
-    )
-    assert isinstance(config, TrackQueryReferenceModelConfig)
-    model = BLCSTrackQueryReferenceModel(config)
-    model.eval()
-    return model
-
-
-def _plcs_tracking_model() -> PLCSTrackQueryReferenceModel:
-    config = PLCSModelConfig.from_mapping(
-        {
-            "name": "plcs_track_query_reference",
-            "hidden_dim": 24,
-            "num_heads": 4,
-            "ffn_dim": 32,
-            "num_queries": 2,
-            "num_stages": 4,
-            "num_joints": 17,
-            "rope_dim": 6,
-            "rope_theta": 10_000.0,
-            "ffn_type": "swiglu",
-            "dropout": 0.0,
-            "invisible_init_std": 0.02,
-            "target_frame_contract": "reference_camera_court_rzpi_v1",
-            "track_query_rope_contract": "time_camera_reference_selector_v1",
-            "reference_selector_mode": "reference",
-            "mhc": {
-                "coefficient_dim": 8,
-                "sinkhorn_iters": 2,
-                "eps": 1.0e-6,
-                "residual_identity_bias": 4.0,
-                "update_scale_init": 0.0,
-            },
-            "cswa": {
-                "compression_ratio": 2,
-                "window_radius": 1,
-                "backend": "reference",
-            },
-        }
-    )
-    model = PLCSTrackQueryReferenceModel(config)
-    model.eval()
-    return model
-
-
-def test_tracking_models_consume_reference_aligned_first14(
-    tmp_path: Path,
-) -> None:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    _write_blcs_dataset(tmp_path / "blcs", contract)
-    blcs_dataset = BallTrajectoryDataset(
-        scene_dir=tmp_path / "blcs",
-        split_file="test.txt",
-        config=_blcs_config("camera_view_v2"),
-        augment=False,
-        reference_camera_id="cam_1",
-    )
-    blcs_sample = cast("dict[str, Tensor]", blcs_dataset[0])
-    court = blcs_sample["court_kp"][:, :, :14]
-    ball = blcs_sample["ball_uv"].unsqueeze(2).expand(-1, -1, 2, -1)
-    with torch.no_grad():
-        output = _blcs_tracking_model()(
-            ball.unsqueeze(0),
-            torch.ones(1, 2, 2, 2, dtype=torch.bool),
-            court.unsqueeze(0),
-            torch.ones(1, 2, 2, 14, dtype=torch.bool),
-            torch.zeros(1, 2, 2, dtype=torch.bool),
-            blcs_sample["reference_view_index"].reshape(1),
-        )
-    assert output["position"].shape == (1, 2, 2, 3)
-
-    _write_plcs_dataset(tmp_path / "plcs", contract)
-    plcs_dataset = SceneDataset(
-        scene_dir=tmp_path / "plcs",
-        split_file="test.txt",
-        config=_plcs_config("camera_view_v2"),
-        augment=False,
-        reference_camera_id="camera_1",
-    )
-    plcs_sample = plcs_dataset[0]
-    court = plcs_sample["court_kp"][:, :, :14]
-    human = plcs_sample["human_kp"].unsqueeze(2).expand(-1, -1, 2, -1, -1)
-    with torch.no_grad():
-        output = _plcs_tracking_model()(
-            human.unsqueeze(0),
-            torch.ones(1, 2, 2, 2, 17, dtype=torch.bool),
-            court.unsqueeze(0),
-            torch.ones(1, 2, 2, 14, dtype=torch.bool),
-            torch.zeros(1, 2, 2, dtype=torch.bool),
-            plcs_sample["reference_view_index"].reshape(1),
-        )
-    assert output["position"].shape == (1, 2, 2, 3)
 
 
 class _ReferenceBLCS:
