@@ -56,19 +56,23 @@ def _runtime_backbone_layout(values: Mapping[str, Any]) -> tuple[Mapping[str, An
     Older Court checkpoints stored ``dinov3/checkpoints/<file>`` relative to
     the external source root. The supported runtime layout is the same filename
     at ``dinov3/<file>`` under the checkpoint root. This is a deterministic
-    metadata migration; missing canonical assets remain errors.
+    metadata migration; missing canonical assets remain errors. The persisted
+    reference has a closed string grammar, not a filesystem path authority.
+    CourtInferenceConfig/PathResolver alone constructs and validates its runtime path.
     """
     model = _mapping(values.get("model"), "model")
     encoder = _mapping(model.get("encoder"), "model.encoder")
     saved_path = encoder.get("checkpoint_path")
     if encoder.get("name") != "dinov3" or not isinstance(saved_path, str):
         return values, None
-    parts = Path(saved_path).parts
-    if parts[:2] != ("dinov3", "checkpoints"):
+    legacy_prefix = "dinov3/checkpoints"
+    if saved_path != legacy_prefix and not saved_path.startswith(legacy_prefix + "/"):
         return values, None
-    if len(parts) != 3 or parts[2] in {".", ".."}:
+    filename = saved_path[len(legacy_prefix) + 1:]
+    if not filename or filename != filename.strip() or filename in {".", ".."} \
+            or any(separator in filename for separator in ("/", "\\", "\x00")):
         raise CourtModelIOError("Legacy DINOv3 asset path must name exactly one checkpoint file")
-    runtime_path = str(Path("dinov3") / parts[2])
+    runtime_path = "dinov3/" + filename
     runtime_model = _plain(model)
     runtime_model["encoder"]["checkpoint_path"] = runtime_path
     # Only inference-owned sections are copied; the saved config is not mutated
