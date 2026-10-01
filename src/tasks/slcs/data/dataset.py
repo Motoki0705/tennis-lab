@@ -217,6 +217,10 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
         ball_3d=ball_3d,
         config=cfg.quality,
         teacher_quality=scene.metadata.get("label_quality"),
+        scene_schema_version=scene.schema_version,
+        player_reconstruction_valid=scene.player_valid,
+        player_heading_valid=scene.player_heading_valid,
+        ball_reconstruction_valid=scene.ball_3d_valid,
     )
     order = _canonical_player_order(
         player_position, masks["player_label_valid"], clip_id=clip_id

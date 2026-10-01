@@ -1,62 +1,55 @@
-# GVHMR world motion の PLCS 整合
+# COCO17によるGVHMRの時系列配置
 
-GVHMRのワールドモーションを、トラック全体に共通の
-`s * Rz(yaw) * point + translation` でPLCSのコート軌道へ整合します。
-フレームごとの補正、時間平滑化、ファインチューニングは行いません。
+標準Tennis Sceneは、関節姿勢を固定して、三角測量COCO17へ各frameの位置・yawを合わせます。
+全区間共通の相似変換と関節姿勢の最適化は提供しません。身体の形状は人物内で共通、
+スケールは対応骨長比の中央値から人物の全有効区間を使って一度だけ推定します。
 
-## パイプライン契約
+## 入力・目的関数
 
-整合は`TennisSceneOrchestrator.run()`内で常に実行されます。実行するかどうかを
-選ぶ設定はありません。PLCS配置を上書きせず、`SceneResult`には両方を保存します。
+`temporal.py`は、コート方向へ回転済み・COCO左右hip中心を原点とした17点、
+同じ人物・frameの三角測量点と品質重みを受け取ります。body pose、betas、roll/pitchは
+最適化しません。scaleを`s`、yaw補正を`psi_t`、hip中心位置を`q_t`とし、
+`J_t = s * Rz(psi_t) @ J_source_t + q_t`を推定します。
 
-| 内容 | `SceneResult`フィールド |
-|---|---|
-| PLCS配置 | `player_position`, `player_yaw` |
-| incam GVHMR | `smpl_global_orient`, `smpl_vertices_local` |
-| 整合後の配置 | `gvhmr_aligned_player_position`, `gvhmr_aligned_player_yaw` |
-| 整合後のGVHMR | `gvhmr_aligned_smpl_global_orient`, `gvhmr_aligned_smpl_vertices_local` |
+17点の3Dベクトル距離にはpseudo-Huber損失、位置とyawにはnative FPSに応じた
+加速度正則化を使います。解析的な疎Jacobianを用いるfloat64 CPU最小二乗です。
+失敗・未収束は理由付き欠測にし、他方式へ切り替えません。
 
-`smpl_body_pose`と`smpl_betas`は整合の前後で変わらないため共有します。下流は用途に
-応じてPLCS配置または`gvhmr_aligned_*`を明示的に選びます。
+設定は`TemporalPlacementConfig`です。
+`data_sigma_m`、加速度のsigma・`temporal_weight`が目的関数、`min_joints`がframe支持、
+`min_scale_pairs`とscale上下限が体格推定、`max_nfev`が計算量を制御します。
+再投影の閾値と重みsigmaは1920×1080を基準とし、画像対角長の比で変換します。
 
-world `transl`を持たない旧GVHMR artifact、識別不能なトラック、ソルバ失敗では
-PLCSだけを保存するフォールバックを行わず、パイプラインをエラーにします。
+使用するのは三角測量で採用された2視点以上のjointです。confidence平均を
+`1+(reprojection_rms/sigma)^2`で割り、顔5点は0.5倍します。高さ[-0.25,3.5)m、
+設定した再投影RMS以内の点だけを使います。confidenceは校正済み確率ではありません。
+hips自体が欠けても、他の十分な17点から位置・yawが観測可能なら配置できます。
 
-## 整合後フィールド
+## 欠測と連続性
 
-`A = SMPL_Y_UP_TO_COURT_Z_UP`、推定したスケール・yaw・並進を`s`/`psi`/`b`、
-正準頂点を`V_can`、そのjoint 0 rootを`c`、Y-upのworld回転を`R_world`、
-court-frame headingを`theta_G`とすると、整合後の4フィールドは次の値です。
+有効点不足、yawの幾何的退化、身体復元区間の切れ目で時間方向の最適化を分割します。
+欠測frameを補間・外挿して有効3Dに復活させません。body poseの元frameへのSO(3)補間は、
+対応が確定した同一GVHMR区間内だけで行います。人体の関節角を観測へ再fitする処理ではありません。
 
-```python
-gvhmr_aligned_player_position = s * Rz(psi) @ p_src + b
-gvhmr_aligned_player_yaw = wrap(theta_G + psi)
-gvhmr_aligned_smpl_vertices_local = s * (V_can - c)
-gvhmr_aligned_smpl_global_orient = matrix_to_axis_angle(
-    R_world.T @ A.T @ Rz(theta_G) @ A
-)
-```
+身体スケールの根拠不足・範囲外はその人物の配置を棄却します。ソルバ失敗は区間単位で
+棄却します。`body_placement` metadataへ人物別scale、骨長支持数、区間・収束診断・
+理由別frame数を保存し、`player_rejection_code`とv2 validity maskへ伝えます。
+欠測コード101〜105の定義は`PlacementRejection`です。既存の無身体=1、速度棄却=6も維持します。
 
-これらはレンダラーの配置規則
-`Rz(player_yaw) @ A @ R(global_orient).T @ (vertices_local - root) + player_position`
-で、world頂点の直接相似変換を再現します。
+## SMPLとrendererの境界
 
-`SceneResult.metadata["gvhmr_alignment"]`には`scale_mode`と、選手ごとのtrack ID、
-scale、yaw、位置・heading残差、solver診断、confidence clipの有無を保存します。
-PLCSの参照軌道は既存の`player_position` / `player_yaw`に保持されるためmetadataへ
-重複保存しません。
+`mesh_placement.py`はincam meshをroot中心のcanonical posed verticesへ変換します。
+fitの原点はCOCO hip中心ですが、SceneResultの`player_position`はSMPL joint0です。
+両者のoffsetにもscaleとyaw補正をかけ、`vertices_local`へ同じscaleを適用します。
+`global_orient`は既存renderer式に整合する回転へ変換し、原姿勢の傾きを保持します。
+3D関節・mesh・SMPL rootが同一の変換を受けるため、位置の二重加算はありません。
 
-## 設定
+SceneResultのvalidity・archive契約は[tennis_scene README](../README.md)を参照してください。
+旧v1 archiveの`gvhmr_aligned_*`とその閲覧機能は読込互換のため保持します。
+床接地・非貫通・関節IKはこの配置の目的関数には含めません。
 
-`configs/pipeline.yaml`の`player_motion.scale_mode`(`fixed`/`free`)と
-`player_motion.alignment`配下の重み・正則化・ソルバ設定が推定方法を制御します。
-既定値は位置誤差尺度0.5m、heading誤差尺度30°、heading項重み1、scale prior 1、
-scale範囲0.5–2です。
+## 移行中の旧整合
 
-`similarity.py`はfloat64で推定し、heading差の重み付き円周平均と閉形式スケールで
-初期化します。headingが弱い場合はXYの重み付きSVDを使い、重力固定の5変数
-（スケール固定時4変数）をSciPy TRFで最適化します。
-
-fitのsource rootは、global meshへ`smpl_neutral_J_regressor[0]`を適用した点です。
-raw `transl`を実pelvisとしては使いません。PLCSへの一致度は真の3D精度ではなく、
-位置・heading残差はPLCSとの整合を監査する診断値です。
+`similarity.py`（GVHMR world motionをPLCS軌道へ全区間共通の相似変換で合わせる旧方式）は、
+現行orchestratorの`gvhmr_aligned_*`出力が使用しています。宣言型component pipelineへの移行で
+本ディレクトリの配置処理へ置き換え、`similarity.py`は削除します。

@@ -183,6 +183,12 @@ def load_slcs_annotation(
             f"{manifest.clip_id}: scene archive missing: {scene_path}"
         )
     scene = load_scene_result(scene_path)
+    if scene.schema_version == 2:
+        context = scene.metadata.get("court_reference")
+        if not isinstance(context, dict) or tuple(context.get("camera_ids", ())) != tuple(manifest.camera_ids):
+            raise DatasetManifestError(
+                f"{manifest.clip_id}: v2 SLCS input requires calibration for every manifest camera"
+            )
     _validate_scene_against_manifest(scene, manifest)
     _validate_scene_arrays(scene, arrays_spec, clip_id=manifest.clip_id)
     return scene
